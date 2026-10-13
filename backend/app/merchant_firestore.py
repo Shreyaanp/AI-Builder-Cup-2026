@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import secrets
 import time
 from typing import Any
@@ -22,6 +23,7 @@ from .merchant import (
     PROPOSAL_SECONDS,
     ProposalRequest,
     challenge_prompts,
+    public_projection,
     seal_proposal,
     validate_proposal,
 )
@@ -69,6 +71,7 @@ class FirestoreMerchantStore:
             "fields": data["fields"],
             "revision": data["revision"],
             "registration": data["status"],
+            "public": bool(data.get("public")),
             "google_publication": "not_connected",
         }
 
@@ -158,15 +161,17 @@ class FirestoreMerchantStore:
                         "revision": 1,
                         "status": "draft",
                         "owners": [uid],
+                        "public": False,
                         "created": now,
                     },
                 )
             else:
-                for ref, product in zip(items, data["products"], strict=True):
-                    prior = existing[ref.id]
-                    created = (prior.to_dict() or {}).get("created", now) if prior.exists else now
-                    transaction.set(ref, {"fields": product, "created": created, "updated": now})
                 transaction.update(business_ref, {"revision": data["revision"] + 1})
+            # Inventory proposals, or a brand-new shop arriving with its menu.
+            for ref, product in zip(items, data["products"], strict=True):
+                prior = existing[ref.id]
+                created = (prior.to_dict() or {}).get("created", now) if prior.exists else now
+                transaction.set(ref, {"fields": product, "created": created, "updated": now})
             receipt = {
                 "business_id": bid,
                 "revision": data["revision"] + 1,
@@ -283,3 +288,43 @@ class FirestoreMerchantStore:
                 batch.delete(ref)
             batch.commit()
         return owned
+
+    def set_availability(
+        self, uid: str, bid: str, product_id: str, available: bool
+    ) -> dict[str, Any]:
+        business_ref = self.businesses.document(document_id(bid, "Business not found."))
+        if not re.fullmatch(r"[0-9a-f]{64}", product_id):
+            raise HTTPException(404, "Product not found.")
+        item_ref = business_ref.collection("inventory").document(product_id)
+
+        @firestore.transactional
+        def run(transaction: Any) -> dict[str, Any]:
+            business = self.owned(business_ref.get(transaction=transaction), uid)
+            item = item_ref.get(transaction=transaction)
+            if not item.exists:
+                raise HTTPException(404, "Product not found.")
+            fields = {**(item.to_dict() or {})["fields"], "available": available}
+            transaction.update(item_ref, {"fields": fields, "updated": time.time()})
+            transaction.update(business_ref, {"revision": business["revision"] + 1})
+            return {"id": product_id, **fields, "revision": business["revision"] + 1}
+
+        return run(self.client.transaction())
+
+    def share(self, uid: str, bid: str, public: bool) -> dict[str, Any]:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        self.owned(ref.get(), uid)
+        ref.update({"public": public})
+        return {"business_id": ref.id, "public": public}
+
+    def public_shop(self, bid: str) -> dict[str, Any] | None:
+        try:
+            ref = self.businesses.document(document_id(bid, "Not found."))
+        except HTTPException:
+            return None
+        snapshot = ref.get()
+        data = snapshot.to_dict() if snapshot.exists else None
+        if not data or not data.get("public"):
+            return None
+        rows = [s.to_dict() or {} for s in ref.collection("inventory").limit(500).stream()]
+        rows.sort(key=lambda row: row.get("created", 0))
+        return public_projection(ref.id, data["fields"], [row["fields"] for row in rows])

@@ -130,7 +130,7 @@ def test_inventory_approval_saves_product_for_owner_only(app) -> None:
         products = response.json()
         assert len(products) == 1
         assert products[0]["id"]
-        assert products[0] == {"id": products[0]["id"], **product}
+        assert products[0] == {"id": products[0]["id"], **product, "available": True}
 
     with TestClient(app) as stranger:
         join(stranger)
