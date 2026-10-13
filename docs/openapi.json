@@ -5,6 +5,87 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v1/me": {
+      "get": {
+        "summary": "Me",
+        "operationId": "me_api_v1_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Me Api V1 Me Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consent": {
+      "post": {
+        "summary": "Consent",
+        "operationId": "consent_api_v1_consent_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Consent Api V1 Consent Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/data": {
+      "delete": {
+        "summary": "Erase",
+        "description": "Erase everything this owner stored: records, memory, conversations, photos, face data.",
+        "operationId": "erase_api_v1_me_data_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Erase Api V1 Me Data Delete"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses": {
       "get": {
         "summary": "Businesses",
@@ -207,6 +288,160 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Update Api V1 Businesses  Business Id  Update Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/inventory/{product_id}/availability": {
+      "post": {
+        "summary": "Availability",
+        "description": "The owner's own sold-out switch: an immediate, explicit action (no AI involved).",
+        "operationId": "availability_api_v1_businesses__business_id__inventory__product_id__availability_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AvailabilityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Availability Api V1 Businesses  Business Id  Inventory  Product Id  Availability Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/share": {
+      "post": {
+        "summary": "Share",
+        "operationId": "share_api_v1_businesses__business_id__share_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Share Api V1 Businesses  Business Id  Share Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/shops/{business_id}": {
+      "get": {
+        "summary": "Public Shop",
+        "description": "Customer page data. No sign-in; only shops the owner chose to share are visible.\n\nResponses are not cached (boundary middleware), so a sold-out change shows immediately.",
+        "operationId": "public_shop_api_v1_public_shops__business_id__get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Public Shop Api V1 Public Shops  Business Id  Get"
                 }
               }
             }
@@ -578,6 +813,20 @@
         ],
         "title": "Approval"
       },
+      "AvailabilityRequest": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "available"
+        ],
+        "title": "AvailabilityRequest"
+      },
       "BusinessFields": {
         "properties": {
           "name": {
@@ -686,6 +935,31 @@
         ],
         "title": "CoachTurn"
       },
+      "ConsentRequest": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "title": "Version"
+          },
+          "terms": {
+            "type": "boolean",
+            "title": "Terms"
+          },
+          "privacy": {
+            "type": "boolean",
+            "title": "Privacy"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "terms",
+          "privacy"
+        ],
+        "title": "ConsentRequest"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -733,6 +1007,11 @@
               }
             ],
             "title": "Stock"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": true
           }
         },
         "additionalProperties": false,
@@ -792,6 +1071,20 @@
           "kind"
         ],
         "title": "ProposalRequest"
+      },
+      "ShareRequest": {
+        "properties": {
+          "public": {
+            "type": "boolean",
+            "title": "Public"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "public"
+        ],
+        "title": "ShareRequest"
       },
       "ValidationError": {
         "properties": {
