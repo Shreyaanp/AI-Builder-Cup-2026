@@ -1,0 +1,11 @@
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def offline_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """User shell settings must never cause these fixture tests to call a model."""
+    monkeypatch.setenv("COACH_MODE", "offline")
+    monkeypatch.setenv("AUTH_MODE", "local")
+    monkeypatch.setenv("APP_ENV", "test")
+    for name in ("GOOGLE_API_KEY", "GOOGLE_TEXT_MODEL", "GOOGLE_LIVE_MODEL"):
+        monkeypatch.delenv(name, raising=False)

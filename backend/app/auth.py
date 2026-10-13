@@ -1,0 +1,107 @@
+import secrets
+from dataclasses import dataclass
+from pathlib import Path
+
+import anyio
+import firebase_admin
+from fastapi import HTTPException, Request, Response, WebSocket
+from firebase_admin import auth as firebase_auth
+from itsdangerous import BadSignature, URLSafeTimedSerializer
+
+from .settings import Settings
+
+COOKIE = "ogoogle_preview_session"
+
+
+@dataclass(frozen=True)
+class Principal:
+    uid: str
+    source: str
+
+
+class IdentityService:
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+        secret = settings.session_signing_secret.get_secret_value()
+        if not secret and settings.app_env == "local":
+            path = Path("data/local-session.key")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if not path.exists():
+                path.write_text(secrets.token_urlsafe(32), encoding="utf-8")
+            secret = path.read_text(encoding="utf-8")
+        self.signer = URLSafeTimedSerializer(secret or secrets.token_urlsafe(32), salt="preview")
+        self.firebase_app = (
+            firebase_admin.initialize_app(
+                options={"projectId": settings.google_cloud_project}, name=secrets.token_hex(8)
+            )
+            if settings.auth_mode == "firebase"
+            else None
+        )
+
+    def bootstrap(self, request: Request, response: Response) -> dict[str, str]:
+        if self.settings.auth_mode != "local":
+            return {"auth_mode": "firebase"}
+        try:
+            self.local_principal(request.cookies.get(COOKIE))
+        except HTTPException:
+            response.set_cookie(
+                COOKIE,
+                self.signer.dumps(secrets.token_urlsafe(24)),
+                httponly=True,
+                samesite="strict",
+                secure=self.settings.app_env == "production",
+                max_age=86400,
+            )
+        return {"auth_mode": "local", "status": "private development session"}
+
+    def local_principal(self, cookie: str | None) -> Principal:
+        try:
+            uid = self.signer.loads(cookie or "", max_age=86400)
+            if not isinstance(uid, str) or not uid:
+                raise BadSignature("Invalid preview identity")
+            return Principal(uid, "local")
+        except BadSignature as error:
+            raise HTTPException(401, "Start a private session first.") from error
+
+    async def bearer_principal(self, token: str) -> Principal:
+        if not token or len(token) > 8192:
+            raise HTTPException(401, "A valid sign-in token is required.")
+        try:
+            claims = await anyio.to_thread.run_sync(
+                lambda: firebase_auth.verify_id_token(token, app=self.firebase_app)
+            )
+            return Principal(str(claims["uid"]), "firebase")
+        except Exception as error:
+            raise HTTPException(401, "Sign-in token could not be verified.") from error
+
+    async def require(self, request: Request) -> Principal:
+        if self.settings.auth_mode == "local":
+            return self.local_principal(request.cookies.get(COOKIE))
+        authorization = request.headers.get("authorization", "")
+        if not authorization.startswith("Bearer "):
+            raise HTTPException(401, "Sign in before starting a conversation.")
+        return await self.bearer_principal(authorization[7:])
+
+    async def require_websocket(self, websocket: WebSocket) -> Principal:
+        if self.settings.auth_mode == "local":
+            return self.local_principal(websocket.cookies.get(COOKIE))
+        # Browsers cannot attach an Authorization header to a WebSocket.
+        # Authenticate in the first bounded frame, never in a logged URL query.
+        first = await websocket.receive_text()
+        if len(first) > 10_000:
+            raise HTTPException(401, "Authentication frame too large.")
+        from pydantic import BaseModel, ConfigDict, Field
+
+        class Authentication(BaseModel):
+            model_config = ConfigDict(extra="forbid")
+            kind: str = Field(pattern="^authenticate$")
+            token: str = Field(max_length=8192)
+
+        try:
+            return await self.bearer_principal(Authentication.model_validate_json(first).token)
+        except ValueError as error:
+            raise HTTPException(401, "Authentication required.") from error
+
+    def close(self) -> None:
+        if self.firebase_app:
+            firebase_admin.delete_app(self.firebase_app)

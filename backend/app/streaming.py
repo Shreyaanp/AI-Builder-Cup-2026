@@ -1,0 +1,136 @@
+import asyncio
+from collections.abc import AsyncIterator
+from uuid import uuid4
+
+import anyio
+from fastapi import HTTPException
+from google.adk.agents.run_config import RunConfig, StreamingMode
+from google.adk.events import Event
+from google.adk.runners import Runner
+from google.adk.sessions import BaseSessionService
+from google.genai import types
+
+from .agent import make_agent
+from .auth import Principal
+from .contracts import StreamEvent
+from .settings import Settings
+
+APP_NAME = "ogoogle_ai"
+
+
+def public_events(event: Event) -> list[StreamEvent]:
+    """Expose allowed UI fields, excluding thoughts, tool arguments and provider error details."""
+    output: list[StreamEvent] = []
+    if event.error_code:
+        return [StreamEvent(kind="error", code="PROVIDER_ERROR")]
+    if event.interrupted:
+        output.append(StreamEvent(kind="interrupted"))
+    for name in ["input_transcription", "output_transcription"]:
+        transcription = getattr(event, name, None)
+        if transcription and transcription.text:
+            output.append(
+                StreamEvent(
+                    kind="input_transcript"
+                    if name == "input_transcription"
+                    else "output_transcript",
+                    text=transcription.text[:4000],
+                )
+            )
+    if event.content and event.content.role == "model":
+        text = "".join(part.text or "" for part in event.content.parts or [] if not part.thought)
+        if text:
+            output.append(StreamEvent(kind="delta" if event.partial else "reply", text=text[:4000]))
+    if event.turn_complete:
+        output.append(StreamEvent(kind="turn_complete"))
+    return output
+
+
+class CoachRuntime:
+    def __init__(self, settings: Settings, sessions: BaseSessionService) -> None:
+        self.settings = settings
+        self.sessions = sessions
+        self.text_runner = Runner(
+            app_name=APP_NAME, agent=make_agent(settings), session_service=sessions
+        )
+        self.live_runner = Runner(
+            app_name=APP_NAME, agent=make_agent(settings, live=True), session_service=sessions
+        )
+
+    async def session(self, principal: Principal, requested: str | None) -> str:
+        if requested:
+            existing = await self.sessions.get_session(
+                app_name=APP_NAME,
+                user_id=principal.uid,
+                session_id=requested,
+            )
+            if not existing:
+                raise HTTPException(404, "Conversation not found in this workspace.")
+            if len(existing.events) > 60:
+                raise HTTPException(429, "Start a new conversation to continue.")
+            return requested
+        listing = await self.sessions.list_sessions(app_name=APP_NAME, user_id=principal.uid)
+        if len(listing.sessions) >= 20:
+            raise HTTPException(
+                429, "This preview supports 20 conversations per private workspace."
+            )
+        session_id = str(uuid4())
+        await self.sessions.create_session(
+            app_name=APP_NAME,
+            user_id=principal.uid,
+            session_id=session_id,
+        )
+        return session_id
+
+    async def text_events(
+        self,
+        principal: Principal,
+        session_id: str,
+        text: str,
+        language: str,
+    ) -> AsyncIterator[StreamEvent]:
+        run = self.text_runner.run_async(
+            user_id=principal.uid,
+            session_id=session_id,
+            new_message=types.Content(
+                role="user",
+                parts=[types.Part(text=f"[language={language}] {text}")],
+            ),
+            run_config=RunConfig(streaming_mode=StreamingMode.SSE, max_llm_calls=4),
+        )
+        queue: asyncio.Queue[StreamEvent | Exception | None] = asyncio.Queue(maxsize=8)
+
+        async def produce() -> None:
+            # A raw asyncio task isolates ADK/SQLAlchemy cleanup from the SSE
+            # task group's repeated (level) cancellation on browser disconnect.
+            try:
+                try:
+                    async for event in run:
+                        for visible in public_events(event):
+                            await queue.put(visible)
+                            if visible.kind == "error":
+                                return
+                finally:
+                    await run.aclose()
+            except Exception as error:
+                await queue.put(error)
+            else:
+                await queue.put(None)
+
+        task = asyncio.create_task(produce(), name="adk-text-producer")
+        try:
+            while True:
+                item = await queue.get()
+                if item is None:
+                    break
+                if isinstance(item, Exception):
+                    raise item
+                yield item
+                if item.kind == "error":
+                    return
+        finally:
+            if not task.done():
+                task.cancel()
+            with anyio.CancelScope(shield=True):
+                async with asyncio.timeout(5):
+                    await asyncio.gather(task, return_exceptions=True)
+        yield StreamEvent(kind="turn_complete", session_id=session_id)

@@ -1,0 +1,16 @@
+.agents/
+node_modules/
+dist/
+artifacts/
+test-results/
+playwright-report/
+package-lock.json
+src/design/material-roles.generated.json
+src/api/generated.d.ts
+docs/openapi.json
+backend/.venv/
+backend/uv.lock
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/.mypy_cache/
+backend/data/
