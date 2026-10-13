@@ -60,7 +60,9 @@ export default function App() {
   const preferenceDispatch = usePreferencesDispatch()
   const business = useBusiness()
   const businessDispatch = useBusinessDispatch()
-  const roles = useTheme().material
+  const activeTheme = useTheme()
+  const roles = activeTheme.material
+  const isLight = activeTheme.palette.mode === 'light'
   const online = useOnline()
   const t = copy[preferences.language]
   const [dialog, setDialog] = useState<DialogState>(null)
@@ -162,15 +164,12 @@ export default function App() {
               </Select>
             </FormControl>
             <IconButton
-              aria-label={preferences.appearance === 'light' ? t.dark : t.light}
+              aria-label={isLight ? t.dark : t.light}
               onClick={() =>
-                preferenceDispatch({
-                  type: 'appearance',
-                  appearance: preferences.appearance === 'light' ? 'dark' : 'light',
-                })
+                preferenceDispatch({ type: 'appearance', appearance: isLight ? 'dark' : 'light' })
               }
             >
-              {preferences.appearance === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+              {isLight ? <Moon size={20} /> : <Sun size={20} />}
             </IconButton>
           </Stack>
         </Stack>

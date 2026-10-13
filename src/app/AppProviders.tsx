@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer } from 'react'
 import type { ReactNode } from 'react'
-import { CssBaseline, ThemeProvider } from '@mui/material'
+import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material'
 import { nivaTheme } from '../design/theme'
 import {
   BusinessContext,
@@ -24,7 +24,8 @@ function readPreferences(): Preferences {
   }
   return {
     language: saved?.language === 'hi' ? 'hi' : 'en',
-    appearance: saved?.appearance === 'dark' ? 'dark' : 'light',
+    appearance:
+      saved?.appearance === 'dark' || saved?.appearance === 'light' ? saved.appearance : 'system',
     destination: 'coach',
   }
 }
@@ -50,7 +51,16 @@ function Providers({ children }: { children: ReactNode }) {
     undefined,
     readPreferences,
   )
-  const theme = useMemo(() => nivaTheme(preferences.appearance), [preferences.appearance])
+  const systemDark = useMediaQuery('(prefers-color-scheme: dark)', { noSsr: true })
+  const resolved =
+    preferences.appearance === 'system' ? (systemDark ? 'dark' : 'light') : preferences.appearance
+  const theme = useMemo(() => nivaTheme(resolved), [resolved])
+  useEffect(() => {
+    // Keep the PWA/browser chrome in step with the active surface colour.
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', theme.material.surface)
+  }, [theme])
   useEffect(() => {
     document.documentElement.lang = preferences.language
     try {

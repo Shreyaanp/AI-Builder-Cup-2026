@@ -9,11 +9,16 @@ from pydantic import BaseModel, ConfigDict
 from .merchant import (
     Approval,
     BusinessFields,
+    ConsentRequest,
     MerchantRepository,
     ProductFields,
     ProposalRequest,
 )
 from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected
+from .streaming import APP_NAME
+
+# Bump when the Terms or Privacy Notice text changes; owners must accept again.
+LEGAL_VERSION = "2026-10-14"
 
 PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
@@ -35,7 +40,68 @@ async def owner(request: Request) -> str:
     return str((await request.app.state.services.identity.require(request)).uid)
 
 
+async def consented_owner(request: Request) -> str:
+    """Business changes and uploads require acceptance of the current Terms and Privacy Notice."""
+    uid = await owner(request)
+    record = await anyio.to_thread.run_sync(store(request).consent, uid)
+    if not record or record.get("version") != LEGAL_VERSION:
+        raise HTTPException(428, "CONSENT_REQUIRED")
+    return uid
+
+
 router = APIRouter(prefix="/api/v1")
+
+
+@router.get("/me")
+async def me(request: Request) -> dict[str, Any]:
+    uid = await owner(request)
+    record = await anyio.to_thread.run_sync(store(request).consent, uid)
+    return {
+        "legal_version": LEGAL_VERSION,
+        "consent": record,
+        "consent_current": bool(record and record.get("version") == LEGAL_VERSION),
+    }
+
+
+@router.post("/consent")
+async def consent(body: ConsentRequest, request: Request) -> dict[str, Any]:
+    uid = await owner(request)
+    if body.version != LEGAL_VERSION or not (body.terms and body.privacy):
+        raise HTTPException(422, "Accept the current Terms and Privacy Notice to continue.")
+    return await anyio.to_thread.run_sync(store(request).record_consent, uid, body.version)
+
+
+@router.delete("/me/data")
+async def erase(request: Request) -> dict[str, Any]:
+    """Erase everything this owner stored: records, memory, conversations, photos, face data."""
+    uid = await owner(request)
+    settings = request.app.state.v1_settings
+    token = settings.face_worker_token.get_secret_value()
+    if token:
+        try:
+            async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+                response = await client.delete(
+                    settings.face_worker_url + "/template",
+                    headers={"Authorization": "Bearer " + token, "X-Owner": uid},
+                )
+            if not response.is_success:
+                raise HTTPException(503, "Face data deletion could not be confirmed. Retry.")
+        except httpx.HTTPError as error:
+            raise HTTPException(503, "Face data deletion could not be confirmed. Retry.") from error
+    photos = await anyio.to_thread.run_sync(request.app.state.photos.erase_owner_sync, uid)
+    businesses = await anyio.to_thread.run_sync(store(request).erase_owner, uid)
+    if request.app.state.recall:
+        await anyio.to_thread.run_sync(request.app.state.recall.forget, uid, businesses)
+    runtime = request.app.state.services.runtime
+    listing = await runtime.sessions.list_sessions(app_name=APP_NAME, user_id=uid)
+    for session in listing.sessions:
+        await runtime.sessions.delete_session(app_name=APP_NAME, user_id=uid, session_id=session.id)
+    return {
+        "status": "erased",
+        "businesses": len(businesses),
+        "photos": photos,
+        "conversations": len(listing.sessions),
+    }
 
 
 @router.get("/businesses")
@@ -52,13 +118,13 @@ async def inventory(business_id: str, request: Request) -> list[dict[str, Any]]:
 
 @router.post("/proposals")
 async def propose(body: ProposalRequest, request: Request) -> dict[str, Any]:
-    uid = await owner(request)
+    uid = await consented_owner(request)
     return await anyio.to_thread.run_sync(store(request).propose, uid, body)
 
 
 @router.post("/proposals/{proposal_id}/approve")
 async def approve(proposal_id: str, body: Approval, request: Request) -> dict[str, Any]:
-    uid = await owner(request)
+    uid = await consented_owner(request)
     return await anyio.to_thread.run_sync(store(request).commit, uid, proposal_id, body.digest)
 
 
@@ -66,7 +132,7 @@ async def approve(proposal_id: str, body: Approval, request: Request) -> dict[st
 async def update(
     business_id: str, body: BusinessFields, request: Request, revision: int = 0
 ) -> dict[str, Any]:
-    uid = await owner(request)
+    uid = await consented_owner(request)
     return await anyio.to_thread.run_sync(
         store(request).propose,
         uid,
@@ -76,7 +142,7 @@ async def update(
 
 @router.post("/photos")
 async def photo(request: Request, business_id: str | None = None) -> dict[str, Any]:
-    uid = await owner(request)
+    uid = await consented_owner(request)
     service = store(request)
     pipeline: PhotoPipeline = request.app.state.photos
     context = await anyio.to_thread.run_sync(service.context, uid, business_id)
@@ -140,7 +206,7 @@ async def photo(request: Request, business_id: str | None = None) -> dict[str, A
 
 @router.post("/face/challenges")
 async def challenge(body: ChallengeRequest, request: Request) -> dict[str, Any]:
-    uid = await owner(request)
+    uid = await consented_owner(request)
     if not body.consent:
         raise HTTPException(
             422, "Camera/biometric consent is required; your draft stays available."
@@ -156,7 +222,7 @@ async def result(challenge_id: str, request: Request) -> dict[str, Any]:
 
 @router.post("/face/challenges/{challenge_id}/capture")
 async def capture(challenge_id: str, request: Request) -> dict[str, Any]:
-    uid = await owner(request)
+    uid = await consented_owner(request)
     service = store(request)
     metadata = await anyio.to_thread.run_sync(service.consume, uid, challenge_id)
     content_type = request.headers.get("content-type", "").split(";")[0]

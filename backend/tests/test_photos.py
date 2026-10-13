@@ -35,6 +35,16 @@ def app(tmp_path: Path):
     return create_app(settings, InMemorySessionService())
 
 
+def join(client: TestClient) -> None:
+    """Start a local workspace and accept the current Terms and Privacy Notice."""
+    client.get("/api/v1/bootstrap")
+    version = client.get("/api/v1/me").json()["legal_version"]
+    accepted = client.post(
+        "/api/v1/consent", json={"version": version, "terms": True, "privacy": True}
+    )
+    assert accepted.status_code == 200
+
+
 def upload(client: TestClient, data: bytes, query: str = "", mime: str = "image/jpeg"):
     return client.post(f"/api/v1/photos{query}", content=data, headers={"content-type": mime})
 
@@ -51,7 +61,7 @@ def test_sanitize_strips_metadata_and_rejects_non_images() -> None:
 
 def test_explicit_photo_is_blocked_before_extraction_or_storage(app) -> None:
     with TestClient(app) as client:
-        client.get("/api/v1/bootstrap")
+        join(client)
         blocked = upload(client, jpeg(FIXTURE_BLOCK_WIDTH))
         assert blocked.status_code == 422
         assert blocked.json()["detail"] == "PHOTO_BLOCKED"
@@ -61,7 +71,7 @@ def test_explicit_photo_is_blocked_before_extraction_or_storage(app) -> None:
 
 def test_clean_photo_becomes_a_reviewable_proposal_only(app) -> None:
     with TestClient(app) as client:
-        client.get("/api/v1/bootstrap")
+        join(client)
         response = upload(client, jpeg())
         assert response.status_code == 200
         body = response.json()
@@ -80,11 +90,11 @@ def test_clean_photo_becomes_a_reviewable_proposal_only(app) -> None:
             {"name": "Chai", "price": 1500, "unit": "cup", "stock": None}
         ]
     with TestClient(app) as stranger:
-        stranger.get("/api/v1/bootstrap")
+        join(stranger)
         assert upload(stranger, jpeg(), f"?business_id={bid}").status_code == 404
 
 
 def test_oversized_photo_is_rejected(app) -> None:
     with TestClient(app) as client:
-        client.get("/api/v1/bootstrap")
+        join(client)
         assert upload(client, b"\xff\xd8\xff" + b"\x00" * 5_000_001).status_code == 413

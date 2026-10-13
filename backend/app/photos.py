@@ -170,6 +170,21 @@ class PhotoPipeline:
         blob.upload_from_string(image, content_type="image/jpeg")
         return photo_id
 
+    def erase_owner_sync(self, uid: str) -> int:
+        """Delete every stored photo for this owner; returns the number removed."""
+        if not self.settings.media_bucket:
+            return 0
+        from google.cloud import storage  # type: ignore[attr-defined]
+
+        if self._bucket is None:
+            client = storage.Client(project=self.settings.google_cloud_project)
+            self._bucket = client.bucket(self.settings.media_bucket)
+        owner = hashlib.sha256(uid.encode()).hexdigest()
+        blobs = list(self._bucket.list_blobs(prefix=f"approved/{owner}/"))
+        for blob in blobs:
+            blob.delete()
+        return len(blobs)
+
     # --- pipeline ---------------------------------------------------------------------
     async def process(self, uid: str, bid: str | None, data: bytes) -> dict[str, Any]:
         image = await anyio.to_thread.run_sync(sanitize, data)

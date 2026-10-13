@@ -24,6 +24,7 @@ EMBEDDING_DIMENSIONS = 768
 class Recall(Protocol):
     def remember(self, uid: str, bid: str | None, text: str) -> None: ...
     def search(self, uid: str, bid: str | None, text: str) -> list[str]: ...
+    def forget(self, uid: str, bids: list[str]) -> None: ...
     def close(self) -> None: ...
 
 
@@ -59,6 +60,7 @@ class FirestoreRecall:
     def __init__(
         self, client: firestore.Client, namespace: str, embed: Callable[[str], list[float]]
     ) -> None:
+        self.client = client
         self.root = client.collection(namespace).document("merchant").collection("recall")
         self.embed = embed
 
@@ -89,6 +91,15 @@ class FirestoreRecall:
             for data in (snapshot.to_dict() or {} for snapshot in query.get())
             if data.get("distance", 1.0) <= self.max_distance
         ]
+
+    def forget(self, uid: str, bids: list[str]) -> None:
+        for bid in [None, *bids]:
+            items = list(self.items(uid, bid).stream())
+            for start in range(0, len(items), 400):
+                batch = self.client.batch()
+                for snapshot in items[start : start + 400]:
+                    batch.delete(snapshot.reference)
+                batch.commit()
 
     def close(self) -> None:
         return None
@@ -156,6 +167,10 @@ class ConversationRecall:
             for point in result.points
             if point.score > 0.1
         ]
+
+    def forget(self, uid: str, bids: list[str]) -> None:
+        owner = models.FieldCondition(key="uid", match=models.MatchValue(value=uid))
+        self.client.delete(self.collection, models.Filter(must=[owner]))
 
     def close(self) -> None:
         self.client.close()

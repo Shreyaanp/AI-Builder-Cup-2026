@@ -254,3 +254,32 @@ class FirestoreMerchantStore:
         for snapshot in self.challenges.where(filter=FieldFilter("uid", "==", uid)).stream():
             batch.delete(snapshot.reference)
         batch.commit()
+
+    def consent(self, uid: str) -> dict[str, Any] | None:
+        record = (self.person_ref(uid).get().to_dict() or {}).get("consent")
+        return dict(record) if record else None
+
+    def record_consent(self, uid: str, version: str) -> dict[str, Any]:
+        record = {"version": version, "accepted": time.time()}
+        self.person_ref(uid).set({"consent": record}, merge=True)
+        return record
+
+    def erase_owner(self, uid: str) -> list[str]:
+        refs: list[Any] = []
+        owned = []
+        query = self.businesses.where(filter=FieldFilter("owners", "array_contains", uid))
+        for snapshot in query.stream():
+            owned.append(snapshot.id)
+            refs += [item.reference for item in snapshot.reference.collection("inventory").stream()]
+            refs.append(snapshot.reference)
+        for collection in (self.proposals, self.challenges):
+            refs += [
+                s.reference for s in collection.where(filter=FieldFilter("uid", "==", uid)).stream()
+            ]
+        refs.append(self.person_ref(uid))
+        for start in range(0, len(refs), 400):  # Firestore batches accept up to 500 writes.
+            batch = self.client.batch()
+            for ref in refs[start : start + 400]:
+                batch.delete(ref)
+            batch.commit()
+        return owned

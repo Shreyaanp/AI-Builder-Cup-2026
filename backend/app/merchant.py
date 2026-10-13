@@ -63,6 +63,18 @@ class MerchantRepository(Protocol):
     def face_result(self, uid: str, cid: str, result: dict[str, Any]) -> None: ...
     def result(self, uid: str, cid: str) -> dict[str, Any]: ...
     def invalidate_face(self, uid: str) -> None: ...
+    def consent(self, uid: str) -> dict[str, Any] | None: ...
+    def record_consent(self, uid: str, version: str) -> dict[str, Any]: ...
+    def erase_owner(self, uid: str) -> list[str]:
+        """Delete every record owned by uid; return the deleted business IDs."""
+        ...
+
+
+class ConsentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    version: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    terms: bool
+    privacy: bool
 
 
 def validate_proposal(request: ProposalRequest) -> None:
@@ -103,6 +115,8 @@ class MerchantStore:
             CREATE TABLE IF NOT EXISTS challenges(id TEXT PRIMARY KEY, uid TEXT NOT NULL,
                 business_id TEXT NOT NULL, prompts TEXT NOT NULL, expires REAL NOT NULL,
                 consumed INTEGER NOT NULL DEFAULT 0, result TEXT);
+            CREATE TABLE IF NOT EXISTS consents(uid TEXT PRIMARY KEY, version TEXT NOT NULL,
+                accepted REAL NOT NULL);
             """)
 
     def connect(self) -> sqlite3.Connection:
@@ -307,3 +321,37 @@ class MerchantStore:
                 (uid,),
             )
             db.execute("DELETE FROM challenges WHERE uid=?", (uid,))
+
+    def consent(self, uid: str) -> dict[str, Any] | None:
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT version, accepted FROM consents WHERE uid=?", (uid,)
+            ).fetchone()
+        return {"version": row[0], "accepted": row[1]} if row else None
+
+    def record_consent(self, uid: str, version: str) -> dict[str, Any]:
+        record = {"version": version, "accepted": time.time()}
+        with self.connect() as db:
+            db.execute(
+                "INSERT INTO consents VALUES(?,?,?) ON CONFLICT(uid) "
+                "DO UPDATE SET version=excluded.version, accepted=excluded.accepted",
+                (uid, version, record["accepted"]),
+            )
+        return record
+
+    def erase_owner(self, uid: str) -> list[str]:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            owned = [
+                row[0]
+                for row in db.execute(
+                    "SELECT business_id FROM memberships WHERE uid=? AND role='owner'", (uid,)
+                )
+            ]
+            for bid in owned:
+                db.execute("DELETE FROM inventory WHERE business_id=?", (bid,))
+                db.execute("DELETE FROM memberships WHERE business_id=?", (bid,))
+                db.execute("DELETE FROM businesses WHERE id=?", (bid,))
+            for table in ("proposals", "challenges", "consents", "people"):
+                db.execute(f"DELETE FROM {table} WHERE uid=?", (uid,))  # noqa: S608 - fixed names
+        return owned
