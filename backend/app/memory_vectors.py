@@ -1,12 +1,97 @@
-"""Local lexical-vector recall, explicitly not a neural semantic embedding model."""
+"""Owner/business-scoped conversation recall.
+
+Local mode uses Qdrant with lexical hashed vectors (explicitly not semantic). Production uses
+Firestore vector search over Vertex `gemini-embedding-2` vectors, one collection per
+owner+business so a nearest-neighbour query can never cross account or business boundaries.
+"""
 
 import hashlib
 import re
 import time
+from collections.abc import Callable
+from typing import Any, Protocol
 from uuid import uuid4
 
 import numpy as np
+from google.cloud import firestore
+from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
+from google.cloud.firestore_v1.vector import Vector
 from qdrant_client import QdrantClient, models
+
+EMBEDDING_DIMENSIONS = 768
+
+
+class Recall(Protocol):
+    def remember(self, uid: str, bid: str | None, text: str) -> None: ...
+    def search(self, uid: str, bid: str | None, text: str) -> list[str]: ...
+    def close(self) -> None: ...
+
+
+def gemini_embedder(project: str, location: str, model: str) -> Callable[[str], list[float]]:
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(vertexai=True, project=project, location=location)
+    config = types.EmbedContentConfig(output_dimensionality=EMBEDDING_DIMENSIONS)
+
+    def embed(text: str) -> list[float]:
+        result = client.models.embed_content(model=model, contents=text[:2000], config=config)
+        values = (result.embeddings or [types.ContentEmbedding()])[0].values or []
+        return normalize(values)
+
+    return embed
+
+
+def normalize(values: list[float]) -> list[float]:
+    vector = np.asarray(values, dtype=np.float32)
+    norm = float(np.linalg.norm(vector))
+    return (vector / norm).tolist() if norm else vector.tolist()
+
+
+def padded_lexical(text: str) -> list[float]:
+    """Offline fixture embedder matching the production vector width."""
+    return lexical_vector(text) + [0.0] * (EMBEDDING_DIMENSIONS - 256)
+
+
+class FirestoreRecall:
+    max_distance = 0.6  # cosine distance; background context only, never authority
+
+    def __init__(
+        self, client: firestore.Client, namespace: str, embed: Callable[[str], list[float]]
+    ) -> None:
+        self.root = client.collection(namespace).document("merchant").collection("recall")
+        self.embed = embed
+
+    def items(self, uid: str, bid: str | None) -> Any:
+        scope = hashlib.sha256(f"{uid}\0{bid or ''}".encode()).hexdigest()
+        return self.root.document(scope).collection("items")
+
+    def remember(self, uid: str, bid: str | None, text: str) -> None:
+        vector = self.embed(text)
+        if any(vector):
+            self.items(uid, bid).add(
+                {"text": text[:2000], "at": time.time(), "embedding": Vector(vector)}
+            )
+
+    def search(self, uid: str, bid: str | None, text: str) -> list[str]:
+        vector = self.embed(text)
+        if not any(vector):
+            return []
+        query = self.items(uid, bid).find_nearest(
+            vector_field="embedding",
+            query_vector=Vector(vector),
+            distance_measure=DistanceMeasure.COSINE,
+            limit=4,
+            distance_result_field="distance",
+        )
+        return [
+            str(data.get("text", ""))
+            for data in (snapshot.to_dict() or {} for snapshot in query.get())
+            if data.get("distance", 1.0) <= self.max_distance
+        ]
+
+    def close(self) -> None:
+        return None
 
 
 def lexical_vector(text: str) -> list[float]:

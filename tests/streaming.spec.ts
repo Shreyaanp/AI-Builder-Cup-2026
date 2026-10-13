@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { CoachEvent } from '../src/api/stream.js'
 
 test('real Python stream completes without changing reviewed business facts', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/?classic=1')
   await expect(page).toHaveTitle(/oGoogle AI/)
   await page.getByRole('textbox', { name: 'Your note', exact: true }).fill('I run a tea stall')
   const response = page.waitForResponse((item) => item.url().endsWith('/api/v1/coach/stream'))
@@ -16,7 +16,7 @@ test('real Python stream completes without changing reviewed business facts', as
 })
 
 test('stopping a real stream preserves the input and allows another turn', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/?classic=1')
   const note = page.getByRole('textbox', { name: 'Your note', exact: true })
   await note.fill('Help with my bakery')
   await page.getByRole('button', { name: 'Add note', exact: true }).click()
@@ -37,7 +37,7 @@ test('an incomplete stream is reported and the note can be retried', async ({ pa
       body: 'data: {"kind":"ready","mode":"offline"}\n\ndata: {"kind":"delta","text":"Partial"}\n\n',
     }),
   )
-  await page.goto('/')
+  await page.goto('/?classic=1')
   const note = page.getByRole('textbox', { name: 'Your note', exact: true })
   await note.fill('My grocery shop')
   await page.getByRole('button', { name: 'Add note', exact: true }).click()
@@ -47,7 +47,7 @@ test('an incomplete stream is reported and the note can be retried', async ({ pa
 })
 
 test('stream decoder handles split UTF-8, CRLF and heartbeat frames', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/?classic=1')
   const result = await page.evaluate(async () => {
     const modulePath = '/src/api/stream.ts'
     const { streamCoach } = await import(/* @vite-ignore */ modulePath)

@@ -19,6 +19,8 @@ Production is restricted to the `main` branch. Releases check required setting n
 
 - Zero minimum instances, maximum ten instances, startup CPU boost, request-based CPU, concurrency sixteen, 1 GiB RAM and a 180-second Cloud Run timeout. Application text/voice deadlines are shorter.
 - Production uses `COACH_MODE=gemini` on **Vertex AI** (`gemini-3.5-flash-lite` text, `gemini-live-2.5-flash-native-audio` voice, `global` location). The runtime service account holds `roles/aiplatform.user`; no model key exists or is injected. Local and CI runs stay offline by default.
+- V1 merchant records, proposals, face challenges and recall live in Firestore under `ogoogle_ai_v1/merchant`. Recall uses Vertex `gemini-embedding-2` (768-d) with a flat vector index on collection group `items`; each owner+business has its own collection.
+- Owner photos are re-encoded (EXIF/GPS removed), checked with Cloud Vision SafeSearch (adult ≥ possible, racy/violence ≥ likely are rejected) and by Gemini for business relevance. Only accepted photos are written to the private, public-access-prevented bucket `ichiropractic-shop-photos` (asia-south1); the runtime holds bucket-scoped object create/view only. Rejected photos are never stored.
 - Cloud Run, image storage and Firestore can consume credits or incur charges. Existing eligible credits/free allowances are preferred. Resource limits do **not** enforce a ₹500 monetary cap. No billing activation or budget changes are part of setup.
 - Shared Firebase Auth/default Firestore are retained. App namespace and identity separate usage; datastore IAM remains project-scoped. A sign-in token does not grant merchant publishing authority.
 

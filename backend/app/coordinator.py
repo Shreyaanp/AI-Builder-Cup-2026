@@ -4,12 +4,12 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any
 
-from .merchant import BusinessFields, MerchantStore, ProductFields, ProposalRequest
+from .merchant import BusinessFields, MerchantRepository, ProductFields, ProposalRequest
 
 
 @dataclass
 class MerchantContext:
-    store: MerchantStore
+    store: MerchantRepository
     uid: str
     business_id: str | None
     recalled: list[str]

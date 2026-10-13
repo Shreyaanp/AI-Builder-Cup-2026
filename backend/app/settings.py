@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     frontend_dist: str = ""
     release_commit: str = "local"
     v1_enabled: bool = False
+    merchant_backend: Literal["sqlite", "firestore"] = "sqlite"
+    embedding_model: str = "gemini-embedding-2"
+    media_bucket: str = ""
+    moderation_mode: Literal["vision", "fixture"] = "fixture"
+    max_photo_bytes: int = Field(default=5_000_000, ge=65_536, le=10_000_000)
     merchant_database: str = "data/merchant.sqlite3"
     recall_path: str = "data/conversation-vectors"
     face_worker_url: str = "http://127.0.0.1:3401"
@@ -49,8 +54,12 @@ class Settings(BaseSettings):
             if self.gemini_backend == "api_key" and not self.google_api_key.get_secret_value():
                 raise ValueError("API-key Gemini requires a server key.")
         if self.app_env == "production":
-            if self.v1_enabled:
-                raise ValueError("Local V1 repositories cannot be enabled in production.")
+            if self.v1_enabled and self.merchant_backend != "firestore":
+                raise ValueError("Production merchant records require the Firestore adapter.")
+            if self.v1_enabled and (self.moderation_mode != "vision" or not self.media_bucket):
+                raise ValueError(
+                    "Production photos require Vision moderation and a private bucket."
+                )
             if self.auth_mode != "firebase" or not self.google_cloud_project:
                 raise ValueError("Production requires Firebase identity and an explicit project.")
             if self.session_backend != "firestore":

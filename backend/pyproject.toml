@@ -20,6 +20,9 @@ dependencies = [
   "qdrant-client>=1.19.1",
   "numpy>=2.5.4",
   "httpx>=0.28.1",
+  "google-cloud-vision>=3.10,<4",
+  "google-cloud-storage>=3,<4",
+  "pillow>=11,<13",
 ]
 
 [project.optional-dependencies]
