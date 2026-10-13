@@ -16,6 +16,9 @@ backend in `backend/`. Product rules (also in AGENTS.md, rules in ../rules.md if
 - Material 3: use theme roles (`useTheme().material.*`), M3 type variants (`titleLarge`,
   `bodyMedium`, `labelMedium` …), shape scale from `src/design/theme.ts`, 48dp targets, visible
   focus, no colour-only state, reduced motion respected. Phone-first; check 412px width.
+- Also follow `.agents/skills/web-interface-guidelines/SKILL.md` for every UI change (forms, focus,
+  loading/empty/error states, motion on transform/opacity only, safe areas, `…` and tabular
+  numbers), and the vendored performance/best-practices skills when touching loading or security.
 - Backend: owner-scoped everything (`consented_owner` for writes, `owner` for reads in
   `merchant_routes.py`). Add methods to the `MerchantRepository` protocol and implement them in
   BOTH `MerchantStore` (SQLite) and `FirestoreMerchantStore`. Validate IDs (see
