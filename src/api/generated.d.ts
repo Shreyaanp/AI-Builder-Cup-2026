@@ -425,9 +425,8 @@ export interface components {
             /**
              * Language
              * @default en
-             * @enum {string}
              */
-            language: "en" | "hi";
+            language: string;
             /** Session Id */
             session_id?: string | null;
             /** Business Id */

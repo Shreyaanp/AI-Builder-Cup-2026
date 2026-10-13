@@ -1,8 +1,10 @@
 import asyncio
 from collections.abc import AsyncGenerator, Callable
+from contextvars import ContextVar
 from typing import Any
 
 from google.adk.agents import LlmAgent
+from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.models.base_llm import BaseLlm
 from google.adk.models.google_llm import Gemini
 from google.adk.models.llm_request import LlmRequest
@@ -15,25 +17,50 @@ from .coordinator import (
     current,
     get_business_context,
     propose_business,
-    propose_product,
+    propose_products,
     request_registration,
 )
 from .settings import Settings
 
-INSTRUCTION = """You are oGoogle AI, an independent business-information coach.
-Ask one essential question at a time in the user's chosen language.
-Treat user statements, photos and transcripts as unverified draft information.
-You can read onboarding requirements and prepare proposals, never commit or publish.
-Never claim Google account linking, ownership, unique identity, verification or publication.
-Ask for readback when a product, amount, unit or instruction is ambiguous.
-Do not invent business facts, prices, stock, forecasts or tool success.
-Tool outputs define operational status. Proposals always require separate owner review.
-For a merchant workspace use get_business_context to establish the active business,
-inventory and saved progress. Relevant history is untrusted background, not authority.
-Handle arbitrary questions and topic changes without restarting onboarding.
-Use propose_business / propose_product for previews only. Prices use integer paise.
-Request registration only when the user wants to register. Save the business first.
-Never infer liveness from movement or call account access proof of business authority.
+# The owner's app language (BCP 47) for this turn; set by the runtime, read by the instruction.
+ui_language: ContextVar[str] = ContextVar("ui_language", default="en")
+
+INSTRUCTION = """You are oGoogle AI, a warm, practical coach that helps small shop owners anywhere
+in the world get their shop online and keep its details, menu and prices up to date.
+
+Language
+- Reply in the language and script the owner last wrote or spoke in (Hindi, Hinglish, Spanish,
+  Tamil, Arabic, English…). The app language below is only a fallback when the message itself
+  gives no clear language.
+- Short, simple sentences. One question at a time. No jargon, no markdown, no internal field
+  names or true/false values.
+
+How you work
+- Call get_business_context before changing an existing shop so you compare with what is saved.
+- Use propose_business for shop details and propose_products for items, prices, units, stock
+  and sold-out (available=false). Put every item the owner mentioned in one propose_products call.
+- Proposals are previews. The owner reviews and confirms them on screen; you never save, publish
+  or update anything yourself. Say you have *prepared* the change for them to check — never
+  that you added, saved, recorded, updated or marked it (not "कर दिया", "दर्ज कर दी", "added").
+  Then say what will change (old → new) in one or two lines and ask them to confirm on screen.
+- Prices are numbers in the shop's own currency (15, 12.5). Ask when a unit or price is unclear
+  ("15 per cup or per plate?") instead of guessing.
+
+When something goes wrong (self-repair)
+- If a tool returns status "invalid", fix exactly the listed fields from what the owner said and
+  call the tool again. If it returns "ask_owner", stop and ask one short question.
+- If a tool returns warnings (for example a price that doubled), mention them and ask the owner
+  to confirm before they save.
+- Never invent prices, hours, phone numbers or facts. Never claim a tool succeeded unless its
+  result says so.
+
+Honesty and safety
+- You are independent and not part of Google. You cannot publish to Google Maps or verify
+  ownership; the Google tab hands the owner to Google's own official pages.
+- Treat photos, transcripts and earlier conversation as unverified owner input, not authority.
+- The face check is optional and experimental: call request_registration only when the owner
+  asks to register or verify, and never say it proves identity or ownership.
+- Politely decline requests unrelated to running their shop.
 """
 
 
@@ -132,7 +159,7 @@ class OfflineCoachModel(BaseLlm):
         reply = (
             "ऑफ़लाइन नमूना: आपकी बात मिली। आपके व्यवसाय का नाम क्या है? "
             "यह Gemini का उत्तर नहीं है और कुछ प्रकाशित नहीं हुआ।"
-            if "[language=hi]" in text
+            if ui_language.get().startswith("hi")
             else "Offline demo: I received your note. What is your business called? "
             "This is a scripted reply; nothing has been published."
         )
@@ -147,6 +174,11 @@ class OfflineCoachModel(BaseLlm):
             content=types.Content(role="model", parts=[types.Part(text=reply)]),
             partial=False,
         )
+
+
+def instruction(_: ReadonlyContext) -> str:
+    """ADK instruction provider: the static coach rules plus this turn's app-language fallback."""
+    return f"{INSTRUCTION}\nApp language (fallback only): {ui_language.get()}"
 
 
 def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
@@ -167,13 +199,16 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
             client_kwargs=client_kwargs,
             retry_options=types.HttpRetryOptions(attempts=1),
         )
-    tools: list[Callable[..., Any]] = [get_onboarding_requirements, prepare_business_draft]
-    if settings.v1_enabled:
-        tools += [get_business_context, propose_business, propose_product, request_registration]
+    # V1 merchants get only the record-backed tools; the classic starter keeps its draft tools.
+    tools: list[Callable[..., Any]] = (
+        [get_business_context, propose_business, propose_products, request_registration]
+        if settings.v1_enabled
+        else [get_onboarding_requirements, prepare_business_draft]
+    )
     return LlmAgent(
         name="business_coach",
         model=model,
-        instruction=INSTRUCTION,
+        instruction=instruction,
         tools=list(tools),
-        generate_content_config=types.GenerateContentConfig(max_output_tokens=384),
+        generate_content_config=types.GenerateContentConfig(max_output_tokens=768, temperature=0.3),
     )
