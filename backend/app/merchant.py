@@ -30,6 +30,17 @@ class ProductFields(BaseModel):
     price: int = Field(ge=0, le=100_000_000, description="INR paise; integer, never a float")
     unit: str = Field(default="item", min_length=1, max_length=40)
     stock: int | None = Field(default=None, ge=0, le=1_000_000)
+    available: bool = True
+
+
+class AvailabilityRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    available: bool
+
+
+class ShareRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    public: bool
 
 
 class ProposalRequest(BaseModel):
@@ -69,6 +80,40 @@ class MerchantRepository(Protocol):
         """Delete every record owned by uid; return the deleted business IDs."""
         ...
 
+    def set_availability(
+        self, uid: str, bid: str, product_id: str, available: bool
+    ) -> dict[str, Any]:
+        """Owner's direct sold-out toggle; bumps the revision so pending proposals go stale."""
+        ...
+
+    def share(self, uid: str, bid: str, public: bool) -> dict[str, Any]: ...
+    def public_shop(self, bid: str) -> dict[str, Any] | None:
+        """Customer-facing projection of a shared shop, or None when not shared."""
+        ...
+
+
+def public_projection(
+    bid: str, fields: dict[str, Any], products: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Only what a customer should see: no owners, revisions, stock counts or internal status."""
+    return {
+        "id": bid,
+        "name": fields["name"],
+        "category": fields.get("category", ""),
+        "location": fields.get("location", ""),
+        "hours": fields.get("hours", ""),
+        "phone": fields.get("phone", ""),
+        "products": [
+            {
+                "name": product["name"],
+                "price": product["price"],
+                "unit": product["unit"],
+                "available": product.get("available", True),
+            }
+            for product in products
+        ],
+    }
+
 
 class ConsentRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -82,6 +127,9 @@ def validate_proposal(request: ProposalRequest) -> None:
         raise HTTPException(422, "Business details are required.")
     if request.kind == "inventory" and (not request.business_id or not request.products):
         raise HTTPException(422, "Select a business and add products.")
+    if request.kind == "business" and request.business_id and request.products:
+        # A new shop may arrive with its menu (one review); edits keep products separate.
+        raise HTTPException(422, "Update products separately from business details.")
 
 
 def seal_proposal(request: ProposalRequest) -> tuple[dict[str, Any], str, str]:
@@ -117,6 +165,7 @@ class MerchantStore:
                 consumed INTEGER NOT NULL DEFAULT 0, result TEXT);
             CREATE TABLE IF NOT EXISTS consents(uid TEXT PRIMARY KEY, version TEXT NOT NULL,
                 accepted REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS shares(business_id TEXT PRIMARY KEY);
             """)
 
     def connect(self) -> sqlite3.Connection:
@@ -146,13 +195,15 @@ class MerchantStore:
                 ).fetchall()
             ]
 
-    @staticmethod
-    def present(row: sqlite3.Row) -> dict[str, Any]:
+    def present(self, row: sqlite3.Row) -> dict[str, Any]:
+        with self.connect() as db:
+            shared = db.execute("SELECT 1 FROM shares WHERE business_id=?", (row["id"],)).fetchone()
         return {
             "id": row["id"],
             "fields": json.loads(row["fields"]),
             "revision": row["revision"],
             "registration": row["status"],
+            "public": bool(shared),
             "google_publication": "not_connected",
         }
 
@@ -233,23 +284,24 @@ class MerchantStore:
                     )
                     db.execute("INSERT INTO memberships VALUES(?,?,'owner')", (uid, bid))
             else:
-                for product in data["products"]:
-                    existing = db.execute(
-                        "SELECT id FROM inventory WHERE business_id=? AND "
-                        "json_extract(fields,'$.name')=? AND json_extract(fields,'$.unit')=?",
-                        (bid, product["name"], product["unit"]),
-                    ).fetchone()
-                    if existing:
-                        db.execute(
-                            "UPDATE inventory SET fields=? WHERE id=?",
-                            (json.dumps(product), existing[0]),
-                        )
-                    else:
-                        db.execute(
-                            "INSERT INTO inventory VALUES(?,?,?)",
-                            (str(uuid4()), bid, json.dumps(product)),
-                        )
                 db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))
+            # Inventory proposals, or a brand-new shop arriving with its menu.
+            for product in data["products"]:
+                existing = db.execute(
+                    "SELECT id FROM inventory WHERE business_id=? AND "
+                    "json_extract(fields,'$.name')=? AND json_extract(fields,'$.unit')=?",
+                    (bid, product["name"], product["unit"]),
+                ).fetchone()
+                if existing:
+                    db.execute(
+                        "UPDATE inventory SET fields=? WHERE id=?",
+                        (json.dumps(product), existing[0]),
+                    )
+                else:
+                    db.execute(
+                        "INSERT INTO inventory VALUES(?,?,?)",
+                        (str(uuid4()), bid, json.dumps(product)),
+                    )
             receipt = {
                 "business_id": bid,
                 "revision": data["revision"] + 1,
@@ -352,6 +404,50 @@ class MerchantStore:
                 db.execute("DELETE FROM inventory WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM memberships WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM businesses WHERE id=?", (bid,))
+                db.execute("DELETE FROM shares WHERE business_id=?", (bid,))
             for table in ("proposals", "challenges", "consents", "people"):
                 db.execute(f"DELETE FROM {table} WHERE uid=?", (uid,))  # noqa: S608 - fixed names
         return owned
+
+    def set_availability(
+        self, uid: str, bid: str, product_id: str, available: bool
+    ) -> dict[str, Any]:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self.owned(db, uid, bid)
+            row = db.execute(
+                "SELECT fields FROM inventory WHERE id=? AND business_id=?", (product_id, bid)
+            ).fetchone()
+            if not row:
+                raise HTTPException(404, "Product not found.")
+            fields = {**json.loads(row[0]), "available": available}
+            db.execute("UPDATE inventory SET fields=? WHERE id=?", (json.dumps(fields), product_id))
+            db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))
+            revision = db.execute("SELECT revision FROM businesses WHERE id=?", (bid,)).fetchone()
+        return {"id": product_id, **fields, "revision": revision[0]}
+
+    def share(self, uid: str, bid: str, public: bool) -> dict[str, Any]:
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            if public:
+                db.execute("INSERT INTO shares VALUES(?) ON CONFLICT DO NOTHING", (bid,))
+            else:
+                db.execute("DELETE FROM shares WHERE business_id=?", (bid,))
+        return {"business_id": bid, "public": public}
+
+    def public_shop(self, bid: str) -> dict[str, Any] | None:
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT b.fields FROM businesses b JOIN shares s ON s.business_id=b.id "
+                "WHERE b.id=?",
+                (bid,),
+            ).fetchone()
+            if not row:
+                return None
+            products = [
+                json.loads(item[0])
+                for item in db.execute(
+                    "SELECT fields FROM inventory WHERE business_id=? ORDER BY rowid", (bid,)
+                )
+            ]
+        return public_projection(bid, json.loads(row[0]), products)

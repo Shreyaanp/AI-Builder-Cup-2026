@@ -8,11 +8,13 @@ from pydantic import BaseModel, ConfigDict
 
 from .merchant import (
     Approval,
+    AvailabilityRequest,
     BusinessFields,
     ConsentRequest,
     MerchantRepository,
     ProductFields,
     ProposalRequest,
+    ShareRequest,
 )
 from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected
 from .streaming import APP_NAME
@@ -140,6 +142,35 @@ async def update(
     )
 
 
+@router.post("/businesses/{business_id}/inventory/{product_id}/availability")
+async def availability(
+    business_id: str, product_id: str, body: AvailabilityRequest, request: Request
+) -> dict[str, Any]:
+    """The owner's own sold-out switch: an immediate, explicit action (no AI involved)."""
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        store(request).set_availability, uid, business_id, product_id, body.available
+    )
+
+
+@router.post("/businesses/{business_id}/share")
+async def share(business_id: str, body: ShareRequest, request: Request) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(store(request).share, uid, business_id, body.public)
+
+
+@router.get("/public/shops/{business_id}")
+async def public_shop(business_id: str, request: Request) -> dict[str, Any]:
+    """Customer page data. No sign-in; only shops the owner chose to share are visible.
+
+    Responses are not cached (boundary middleware), so a sold-out change shows immediately.
+    """
+    shop = await anyio.to_thread.run_sync(store(request).public_shop, business_id)
+    if shop is None:
+        raise HTTPException(404, "This shop page is not available.")
+    return shop
+
+
 @router.post("/photos")
 async def photo(request: Request, business_id: str | None = None) -> dict[str, Any]:
     uid = await consented_owner(request)
@@ -165,8 +196,18 @@ async def photo(request: Request, business_id: str | None = None) -> dict[str, A
     extraction: PhotoExtraction = outcome["extraction"]
     found = extraction.business
     business = context["business"]
+    products = [
+        ProductFields(
+            name=p.name.strip()[:180],
+            price=round((p.price_rupees or 0) * 100),
+            unit=(p.unit or "item").strip()[:40] or "item",
+        )
+        for p in extraction.products
+        if p.price_rupees is not None and p.name.strip()
+    ][:30]
     proposal = None
     if business is None and found.name.strip():
+        # A new shop and its menu are reviewed together in one sheet.
         request_body = ProposalRequest(
             kind="business",
             business=BusinessFields(
@@ -176,22 +217,15 @@ async def photo(request: Request, business_id: str | None = None) -> dict[str, A
                 hours=found.hours[:180],
                 phone=found.phone[:40],
             ),
+            products=products,
         )
         proposal = await anyio.to_thread.run_sync(service.propose, uid, request_body)
-    priced = [p for p in extraction.products if p.price_rupees is not None and p.name.strip()]
-    if business is not None and priced:
+    elif business is not None and products:
         request_body = ProposalRequest(
             kind="inventory",
             business_id=business["id"],
             revision=business["revision"],
-            products=[
-                ProductFields(
-                    name=p.name[:170],
-                    price=round((p.price_rupees or 0) * 100),
-                    unit=(p.unit or "item")[:40],
-                )
-                for p in priced
-            ],
+            products=products,
         )
         proposal = await anyio.to_thread.run_sync(service.propose, uid, request_body)
     return {
