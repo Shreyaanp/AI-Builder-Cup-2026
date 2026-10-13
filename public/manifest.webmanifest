@@ -1,0 +1,12 @@
+{
+  "id": "/",
+  "name": "oGoogle AI — Your business companion",
+  "short_name": "oGoogle AI",
+  "description": "A local interface starter for business onboarding and coaching.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7faf3",
+  "theme_color": "#f7faf3",
+  "icons": [{ "src": "/niva.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
