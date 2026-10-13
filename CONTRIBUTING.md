@@ -8,4 +8,4 @@ The remote is `https://github.com/Shreyaanp/AI-Builer-Cup-2026.git`. The owner e
 
 Never commit .env files, tokens, personal merchant data, recordings or private research. Backend API keys must remain server-side; a VITE_ prefix makes values public in browser bundles. Don't introduce frontend credentials.
 
-CI runs backend/frontend checks on push and pull requests. Inspect the Actions result before merging follow-up work. Cloud deployment is a separate decision.
+CI runs backend/frontend/emulator/container checks on push and pull requests. Inspect the Actions result before merging follow-up work. Cloud releases require a manual **Cloud Run release** dispatch of a checked main SHA; a push does not deploy automatically. Follow deployment/README.md. Keep live-model configuration and merchant publishing authorization separate.
