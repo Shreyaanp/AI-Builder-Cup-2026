@@ -11,7 +11,7 @@ test('initial session setup preserves a note and photo added before it finishes'
     await bootstrapGate
     await route.fulfill({ json: { auth_mode: 'local' } })
   })
-  await page.goto('/')
+  await page.goto('/?classic=1')
   const note = page.getByRole('textbox', { name: 'Your note', exact: true })
   try {
     await note.fill('Keep my startup draft')
@@ -52,7 +52,7 @@ test('hosted mode requires Google sign-in before sending a private note', async 
     coachRequests += 1
     return route.abort()
   })
-  await page.goto('/')
+  await page.goto('/?classic=1')
   await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeEnabled()
   const note = page.getByRole('textbox', { name: 'Your note', exact: true })
   await note.fill('A private merchant note')
@@ -67,7 +67,7 @@ test('missing sign-in configuration preserves inputs and shows a useful error', 
   await page.route('**/api/v1/bootstrap', (route) =>
     route.fulfill({ json: { auth_mode: 'firebase', firebase: {} } }),
   )
-  await page.goto('/')
+  await page.goto('/?classic=1')
   await expect(page.getByRole('alert')).toContainText('Sign-in setup is unavailable')
   const note = page.getByRole('textbox', { name: 'Your note', exact: true })
   await note.fill('Keep this draft')

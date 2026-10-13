@@ -12,7 +12,7 @@ async function settled(page: Page) {
 }
 
 test('coach, editing and independent review share state across destinations', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/?classic=1')
   await page.getByRole('button', { name: 'Try an example' }).click()
   await page.getByRole('button', { name: 'Tea & snacks', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Little Chai Corner' })).toBeVisible()
@@ -41,7 +41,7 @@ test('coach, editing and independent review share state across destinations', as
 })
 
 test('Hindi, large text and narrow viewport retain usable controls', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/?classic=1')
   await page.getByRole('combobox', { name: 'Language' }).click()
   await page.getByRole('option', { name: 'हिन्दी' }).click()
   await expect(page.getByRole('heading', { name: 'आपके व्यवसाय का अगला कदम।' })).toBeVisible()
@@ -62,7 +62,7 @@ test('Hindi, large text and narrow viewport retain usable controls', async ({ pa
 })
 
 test('light, dark and editing dialog pass automated accessibility checks', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/?classic=1')
   await page.evaluate(() => document.fonts.ready)
   for (const mode of ['light', 'dark']) {
     if (mode === 'dark') await page.getByRole('button', { name: 'Use dark appearance' }).click()
@@ -89,7 +89,7 @@ test('photos stay local, voice status is honest and no Google calls occur', asyn
     if (!request.url().startsWith('http://127.0.0.1:3200') && !request.url().startsWith('blob:'))
       external.push(request.url())
   })
-  await page.goto('/')
+  await page.goto('/?classic=1')
   await page.locator('input[type=file]').setInputFiles({
     name: 'shop.png',
     mimeType: 'image/png',
@@ -110,7 +110,7 @@ test('photos stay local, voice status is honest and no Google calls occur', asyn
 })
 
 test('appearance persists while private business data does not', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/?classic=1')
   await page.getByRole('button', { name: 'Try an example' }).click()
   await page.getByRole('button', { name: 'Bakery', exact: true }).click()
   await page.getByRole('button', { name: 'Use dark appearance' }).click()
@@ -125,7 +125,7 @@ test('appearance persists while private business data does not', async ({ page }
 test('adaptive layout keeps navigation and content at boundary widths', async ({
   page,
 }, testInfo) => {
-  await page.goto('/')
+  await page.goto('/?classic=1')
   for (const width of [360, 599, 600, 899, 900, 1200]) {
     await page.setViewportSize({ width, height: 800 })
     await expect(page.getByRole('textbox', { name: 'Your note', exact: true })).toBeVisible()

@@ -8,7 +8,7 @@ import secrets
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -44,6 +44,44 @@ class ProposalRequest(BaseModel):
 class Approval(BaseModel):
     model_config = ConfigDict(extra="forbid")
     digest: str = Field(min_length=64, max_length=64)
+
+
+PROPOSAL_SECONDS = 600
+CHALLENGE_SECONDS = 90
+
+
+class MerchantRepository(Protocol):
+    """Owner-scoped merchant records shared by the local SQLite and Firestore adapters."""
+
+    def list_businesses(self, uid: str) -> list[dict[str, Any]]: ...
+    def context(self, uid: str, bid: str | None) -> dict[str, Any]: ...
+    def inventory(self, uid: str, bid: str) -> list[dict[str, Any]]: ...
+    def propose(self, uid: str, request: ProposalRequest) -> dict[str, Any]: ...
+    def commit(self, uid: str, pid: str, digest: str) -> dict[str, Any]: ...
+    def challenge(self, uid: str, bid: str) -> dict[str, Any]: ...
+    def consume(self, uid: str, cid: str) -> dict[str, Any]: ...
+    def face_result(self, uid: str, cid: str, result: dict[str, Any]) -> None: ...
+    def result(self, uid: str, cid: str) -> dict[str, Any]: ...
+    def invalidate_face(self, uid: str) -> None: ...
+
+
+def validate_proposal(request: ProposalRequest) -> None:
+    if request.kind == "business" and request.business is None:
+        raise HTTPException(422, "Business details are required.")
+    if request.kind == "inventory" and (not request.business_id or not request.products):
+        raise HTTPException(422, "Select a business and add products.")
+
+
+def seal_proposal(request: ProposalRequest) -> tuple[dict[str, Any], str, str]:
+    """Return the canonical snapshot, its JSON text and the digest the owner must approve."""
+    payload = request.model_dump()
+    payload["business_id"] = request.business_id or str(uuid4())
+    text = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+    return payload, text, hashlib.sha256(text.encode()).hexdigest()
+
+
+def challenge_prompts() -> list[str]:
+    return secrets.SystemRandom().sample(["turn_left", "turn_right", "look_up"], 2)
 
 
 class MerchantStore:
@@ -125,10 +163,7 @@ class MerchantStore:
             ]
 
     def propose(self, uid: str, request: ProposalRequest) -> dict[str, Any]:
-        if request.kind == "business" and request.business is None:
-            raise HTTPException(422, "Business details are required.")
-        if request.kind == "inventory" and (not request.business_id or not request.products):
-            raise HTTPException(422, "Select a business and add products.")
+        validate_proposal(request)
         with self.connect() as db:
             if request.business_id:
                 row = self.owned(db, uid, request.business_id)
@@ -136,12 +171,9 @@ class MerchantStore:
                     raise HTTPException(409, "The business changed. Reload before reviewing.")
             elif request.revision != 0:
                 raise HTTPException(409, "A new business starts at revision zero.")
-            payload = request.model_dump()
-            payload["business_id"] = request.business_id or str(uuid4())
-            text = json.dumps(payload, sort_keys=True, ensure_ascii=False)
-            digest = hashlib.sha256(text.encode()).hexdigest()
+            payload, text, digest = seal_proposal(request)
             pid = str(uuid4())
-            expires = time.time() + 600
+            expires = time.time() + PROPOSAL_SECONDS
             db.execute(
                 "INSERT INTO proposals VALUES(?,?,?,?,?,NULL)", (pid, uid, text, digest, expires)
             )
@@ -214,9 +246,9 @@ class MerchantStore:
             return receipt
 
     def challenge(self, uid: str, bid: str) -> dict[str, Any]:
-        prompts = secrets.SystemRandom().sample(["turn_left", "turn_right", "look_up"], 2)
+        prompts = challenge_prompts()
         cid = str(uuid4())
-        expires = time.time() + 90
+        expires = time.time() + CHALLENGE_SECONDS
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             self.owned(db, uid, bid)

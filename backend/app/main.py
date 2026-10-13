@@ -28,9 +28,17 @@ from .coordinator import MerchantContext, current
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .frontend import serve_frontend
 from .limits import Lease, RunRegistry
-from .memory_vectors import ConversationRecall
-from .merchant import MerchantStore
+from .memory_vectors import (
+    ConversationRecall,
+    FirestoreRecall,
+    Recall,
+    gemini_embedder,
+    padded_lexical,
+)
+from .merchant import MerchantRepository, MerchantStore
+from .merchant_firestore import FirestoreMerchantStore
 from .merchant_routes import router as merchant_router
+from .photos import PhotoPipeline
 from .settings import Settings
 from .streaming import CoachRuntime
 from .voice import serve_voice
@@ -47,6 +55,27 @@ class Services:
 
 def get_services(connection: Request | WebSocket) -> Services:
     return cast(Services, connection.app.state.services)
+
+
+def merchant_services(settings: Settings) -> tuple[MerchantRepository | None, Recall | None]:
+    if not settings.v1_enabled:
+        return None, None
+    if settings.merchant_backend == "sqlite":
+        return MerchantStore(settings.merchant_database), ConversationRecall(settings.recall_path)
+    client = firestore.Client(
+        project=settings.google_cloud_project, database=settings.firestore_database
+    )
+    embed = (
+        gemini_embedder(
+            settings.google_cloud_project, settings.google_cloud_location, settings.embedding_model
+        )
+        if settings.coach_mode == "gemini" and settings.gemini_backend == "vertex"
+        else padded_lexical
+    )
+    return (
+        FirestoreMerchantStore(client, settings.firestore_namespace),
+        FirestoreRecall(client, settings.firestore_namespace, embed),
+    )
 
 
 def create_app(
@@ -77,16 +106,10 @@ def create_app(
             session_service = sessions
         identity = await anyio.to_thread.run_sync(IdentityService, settings)
         app.state.v1_settings = settings
-        app.state.merchant = (
-            await anyio.to_thread.run_sync(MerchantStore, settings.merchant_database)
-            if settings.v1_enabled
-            else None
+        app.state.merchant, app.state.recall = await anyio.to_thread.run_sync(
+            merchant_services, settings
         )
-        app.state.recall = (
-            await anyio.to_thread.run_sync(ConversationRecall, settings.recall_path)
-            if settings.v1_enabled
-            else None
-        )
+        app.state.photos = PhotoPipeline(settings) if settings.v1_enabled else None
         app.state.services = Services(
             identity,
             CoachRuntime(settings, session_service),

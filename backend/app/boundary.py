@@ -36,11 +36,12 @@ class RequestBoundary:
             return
         next_receive = receive
         if scope["method"] in {"POST", "PUT", "PATCH"}:
-            if scope["path"].startswith("/api/v1/face/challenges/") and scope["path"].endswith(
-                "/capture"
+            path = scope["path"]
+            if path == "/api/v1/photos" or (
+                path.startswith("/api/v1/face/challenges/") and path.endswith("/capture")
             ):
                 # The authenticated route consumes a bounded in-memory stream. Do not
-                # spool biometric media or buffer it before identity verification.
+                # spool media or buffer it before identity verification.
                 await self.app(scope, receive, send_headers)
                 return
             try:

@@ -6,7 +6,16 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
-from .merchant import Approval, BusinessFields, MerchantStore, ProposalRequest
+from .merchant import (
+    Approval,
+    BusinessFields,
+    MerchantRepository,
+    ProductFields,
+    ProposalRequest,
+)
+from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected
+
+PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
 class ChallengeRequest(BaseModel):
@@ -15,11 +24,11 @@ class ChallengeRequest(BaseModel):
     consent: bool
 
 
-def store(request: Request) -> MerchantStore:
+def store(request: Request) -> MerchantRepository:
     service = getattr(request.app.state, "merchant", None)
     if service is None:
         raise HTTPException(503, "Local V1 is not enabled.")
-    return cast(MerchantStore, service)
+    return cast(MerchantRepository, service)
 
 
 async def owner(request: Request) -> str:
@@ -63,6 +72,70 @@ async def update(
         uid,
         ProposalRequest(kind="business", business_id=business_id, revision=revision, business=body),
     )
+
+
+@router.post("/photos")
+async def photo(request: Request, business_id: str | None = None) -> dict[str, Any]:
+    uid = await owner(request)
+    service = store(request)
+    pipeline: PhotoPipeline = request.app.state.photos
+    context = await anyio.to_thread.run_sync(service.context, uid, business_id)
+    if request.headers.get("content-type", "").split(";")[0] not in PHOTO_TYPES:
+        raise HTTPException(415, "Send a JPEG, PNG or WebP photo.")
+    limit = request.app.state.v1_settings.max_photo_bytes
+    buffer = bytearray()
+    try:
+        async with asyncio.timeout(20):
+            async for chunk in request.stream():
+                if len(buffer) + len(chunk) > limit:
+                    raise HTTPException(413, "Photo is too large.")
+                buffer.extend(chunk)
+        try:
+            outcome = await pipeline.process(uid, business_id, bytes(buffer))
+        except PhotoRejected as rejected:
+            raise HTTPException(rejected.status, rejected.code) from None
+    finally:
+        buffer.clear()
+    extraction: PhotoExtraction = outcome["extraction"]
+    found = extraction.business
+    business = context["business"]
+    proposal = None
+    if business is None and found.name.strip():
+        request_body = ProposalRequest(
+            kind="business",
+            business=BusinessFields(
+                name=found.name.strip()[:180],
+                category=found.category[:180],
+                location=found.location[:300],
+                hours=found.hours[:180],
+                phone=found.phone[:40],
+            ),
+        )
+        proposal = await anyio.to_thread.run_sync(service.propose, uid, request_body)
+    priced = [p for p in extraction.products if p.price_rupees is not None and p.name.strip()]
+    if business is not None and priced:
+        request_body = ProposalRequest(
+            kind="inventory",
+            business_id=business["id"],
+            revision=business["revision"],
+            products=[
+                ProductFields(
+                    name=p.name[:170],
+                    price=round((p.price_rupees or 0) * 100),
+                    unit=(p.unit or "item")[:40],
+                )
+                for p in priced
+            ],
+        )
+        proposal = await anyio.to_thread.run_sync(service.propose, uid, request_body)
+    return {
+        "status": "needs_review" if proposal else "nothing_to_propose",
+        "photo_id": outcome["photo_id"],
+        "photo_kind": extraction.photo_kind,
+        "extraction": extraction.model_dump(),
+        "proposal": proposal,
+        "google_publication": "not_connected",
+    }
 
 
 @router.post("/face/challenges")

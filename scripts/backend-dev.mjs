@@ -11,7 +11,16 @@ const child = spawn(uv, ['run', '--locked', 'python', 'run.py'], {
   cwd: backend,
   stdio: 'inherit',
   // Review mode deliberately overrides provider modes; no paid inference.
-  env: { ...process.env, COACH_MODE: 'offline', AUTH_MODE: 'local', APP_ENV: 'local' },
+  env: {
+    ...process.env,
+    COACH_MODE: 'offline',
+    AUTH_MODE: 'local',
+    APP_ENV: 'local',
+    V1_ENABLED: 'true',
+    MERCHANT_BACKEND: 'sqlite',
+    MODERATION_MODE: 'fixture',
+    MEDIA_BUCKET: '',
+  },
 })
 child.on('error', (error) => {
   console.error(error.message)

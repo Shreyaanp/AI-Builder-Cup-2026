@@ -13,6 +13,8 @@ const kinds = new Set<CoachEvent['kind']>([
   'output_transcript',
   'audio_format',
   'pong',
+  'proposal',
+  'workflow',
 ])
 
 function decodeEvent(data: string): CoachEvent {
