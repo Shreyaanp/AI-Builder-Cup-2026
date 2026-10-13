@@ -10,9 +10,10 @@ from google.adk.runners import Runner
 from google.adk.sessions import BaseSessionService
 from google.genai import types
 
-from .agent import make_agent
+from .agent import make_agent, ui_language
 from .auth import Principal
 from .contracts import StreamEvent
+from .coordinator import current
 from .settings import Settings
 
 APP_NAME = "ogoogle_ai"
@@ -47,12 +48,17 @@ def public_events(event: Event) -> list[StreamEvent]:
             response = part.function_response
             if response and response.name in {
                 "propose_business",
-                "propose_product",
+                "propose_products",
                 "request_registration",
             }:
                 payload = response.response or {}
-                if isinstance(payload.get("proposal"), dict):
-                    output.append(StreamEvent(kind="proposal", data=payload["proposal"]))
+                # The model sees only the id; the exact sealed proposal goes to the review UI.
+                merchant = current.get()
+                proposal = (
+                    merchant.proposals.get(str(payload.get("proposal_id"))) if merchant else None
+                )
+                if proposal:
+                    output.append(StreamEvent(kind="proposal", data=proposal))
                 if payload.get("status") in {"verification_required", "save_business_first"}:
                     output.append(StreamEvent(kind="workflow", data={"status": payload["status"]}))
     return output
@@ -106,14 +112,15 @@ class CoachRuntime:
         text: str,
         language: str,
     ) -> AsyncIterator[StreamEvent]:
+        # The app language reaches the instruction via a context variable, never the owner's
+        # message (models echo bracketed prefixes back into replies).
+        ui_language.set(language)
         run = self.text_runner.run_async(
             user_id=principal.uid,
             session_id=session_id,
-            new_message=types.Content(
-                role="user",
-                parts=[types.Part(text=f"[language={language}] {text}")],
-            ),
-            run_config=RunConfig(streaming_mode=StreamingMode.SSE, max_llm_calls=4),
+            new_message=types.Content(role="user", parts=[types.Part(text=text)]),
+            # Room for context → propose → self-repair → propose → reply.
+            run_config=RunConfig(streaming_mode=StreamingMode.SSE, max_llm_calls=8),
         )
         queue: asyncio.Queue[StreamEvent | Exception | None] = asyncio.Queue(maxsize=8)
 

@@ -896,10 +896,7 @@
           },
           "language": {
             "type": "string",
-            "enum": [
-              "en",
-              "hi"
-            ],
+            "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$",
             "title": "Language",
             "default": "en"
           },
