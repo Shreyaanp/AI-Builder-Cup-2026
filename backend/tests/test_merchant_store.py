@@ -103,6 +103,31 @@ def test_inventory_upserts_by_name_and_unit(store: MerchantRepository) -> None:
         store.inventory("bob", bid)
 
 
+def test_consent_and_erasure_are_owner_scoped(store: MerchantRepository) -> None:
+    assert store.consent("alice") is None
+    assert store.record_consent("alice", "2026-10-14")["version"] == "2026-10-14"
+    assert store.consent("alice")["version"] == "2026-10-14"
+    alice_shop = create(store, "alice")
+    inventory = store.propose(
+        "alice",
+        ProposalRequest(
+            kind="inventory",
+            business_id=alice_shop,
+            revision=1,
+            products=[ProductFields(name="Chai", price=1500, unit="cup")],
+        ),
+    )
+    store.commit("alice", inventory["id"], inventory["digest"])
+    store.challenge("alice", alice_shop)
+    bob_shop = create(store, "bob", "Bob Bakery")
+    assert store.erase_owner("alice") == [alice_shop]
+    assert store.list_businesses("alice") == []
+    assert store.consent("alice") is None
+    with pytest.raises(HTTPException):
+        store.inventory("alice", alice_shop)
+    assert [b["id"] for b in store.list_businesses("bob")] == [bob_shop]
+
+
 def test_face_challenge_is_single_use_and_deletion_invalidates(store: MerchantRepository) -> None:
     bid = create(store, "alice")
     with pytest.raises(HTTPException):

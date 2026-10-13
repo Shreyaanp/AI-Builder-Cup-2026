@@ -1,4 +1,4 @@
-import type { Appearance } from '../design/theme'
+import type { ColorMode } from '../design/theme'
 
 export type Language = 'en' | 'hi'
 export type Destination = 'coach' | 'business' | 'activity'
@@ -23,10 +23,10 @@ export type BusinessAction =
   | { type: 'note'; text: string }
   | { type: 'review'; revision: number }
   | { type: 'reset' }
-export type Preferences = { language: Language; appearance: Appearance; destination: Destination }
+export type Preferences = { language: Language; appearance: ColorMode; destination: Destination }
 export type PreferencesAction =
   | { type: 'language'; language: Language }
-  | { type: 'appearance'; appearance: Appearance }
+  | { type: 'appearance'; appearance: ColorMode }
   | { type: 'destination'; destination: Destination }
 export const initialBusiness: BusinessState = {
   fields: { name: '', category: '', location: '', hours: '', phone: '' },

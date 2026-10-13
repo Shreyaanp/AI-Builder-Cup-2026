@@ -24,6 +24,16 @@ export interface Proposal {
     products: Product[]
   }
 }
+export interface Me {
+  legal_version: string
+  consent: { version: string; accepted: number } | null
+  consent_current: boolean
+}
+export interface Conversation {
+  session_id: string
+  business_id?: string | null
+  updated: number
+}
 export interface PhotoResult {
   status: 'needs_review' | 'nothing_to_propose'
   photo_kind: string
