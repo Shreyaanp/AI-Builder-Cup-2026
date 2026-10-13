@@ -5,7 +5,7 @@ const request = (path, init = {}) =>
   fetch(`${origin}${path}`, { signal: AbortSignal.timeout(15_000), ...init })
 const health = await (await request('/api/v1/health')).json()
 assert.equal(health.product, 'oGoogle AI')
-assert.equal(health.coach_mode, 'offline')
+assert.equal(health.coach_mode, process.env.SMOKE_COACH_MODE || 'offline')
 const authMode = process.env.SMOKE_AUTH_MODE || 'firebase'
 assert.equal(health.auth_mode, authMode)
 assert.equal(health.session_backend, authMode === 'firebase' ? 'firestore' : 'sqlite')

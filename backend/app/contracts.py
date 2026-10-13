@@ -12,6 +12,7 @@ class CoachTurn(StrictModel):
     message: str = Field(min_length=1, max_length=2000)
     language: Literal["en", "hi"] = "en"
     session_id: UUID | None = None
+    business_id: UUID | None = None
 
     @field_validator("message")
     @classmethod
@@ -45,12 +46,15 @@ class StreamEvent(StrictModel):
         "output_transcript",
         "audio_format",
         "pong",
+        "proposal",
+        "workflow",
     ]
     session_id: str | None = None
     text: str | None = None
     code: str | None = None
     mode: Literal["offline", "gemini"] | None = None
     sample_rate: int | None = None
+    data: dict[str, object] | None = None
 
     def payload(self) -> dict[str, object]:
         return self.model_dump(exclude_none=True)

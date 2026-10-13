@@ -13,7 +13,11 @@ config = {
     "APP_ENV": "production",
     "AUTH_MODE": "firebase",
     "SESSION_BACKEND": "firestore",
-    "COACH_MODE": "offline",
+    "COACH_MODE": "gemini",
+    "GEMINI_BACKEND": "vertex",
+    "GOOGLE_CLOUD_LOCATION": "global",
+    "GOOGLE_TEXT_MODEL": "gemini-3.5-flash-lite",
+    "GOOGLE_LIVE_MODEL": "gemini-live-2.5-flash-native-audio",
     "GOOGLE_CLOUD_PROJECT": target["projectId"],
     "FIRESTORE_DATABASE": target["firestoreDatabase"],
     "FIRESTORE_NAMESPACE": target["firestoreNamespace"],
@@ -29,4 +33,4 @@ config = {
 output = Path(".deployment/runtime.json")
 output.parent.mkdir(exist_ok=True)
 output.write_text(json.dumps(config), encoding="utf-8")
-print("Prepared ignored Cloud Run runtime configuration; model calls remain disabled.")
+print("Prepared ignored Cloud Run runtime configuration; Vertex Gemini uses the runtime identity.")

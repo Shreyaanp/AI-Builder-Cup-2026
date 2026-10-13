@@ -24,9 +24,13 @@ from starlette.background import BackgroundTask
 from .auth import IdentityService
 from .boundary import RequestBoundary
 from .contracts import CoachTurn, StreamEvent
+from .coordinator import MerchantContext, current
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .frontend import serve_frontend
 from .limits import Lease, RunRegistry
+from .memory_vectors import ConversationRecall
+from .merchant import MerchantStore
+from .merchant_routes import router as merchant_router
 from .settings import Settings
 from .streaming import CoachRuntime
 from .voice import serve_voice
@@ -72,6 +76,17 @@ def create_app(
         else:
             session_service = sessions
         identity = await anyio.to_thread.run_sync(IdentityService, settings)
+        app.state.v1_settings = settings
+        app.state.merchant = (
+            await anyio.to_thread.run_sync(MerchantStore, settings.merchant_database)
+            if settings.v1_enabled
+            else None
+        )
+        app.state.recall = (
+            await anyio.to_thread.run_sync(ConversationRecall, settings.recall_path)
+            if settings.v1_enabled
+            else None
+        )
         app.state.services = Services(
             identity,
             CoachRuntime(settings, session_service),
@@ -88,6 +103,8 @@ def create_app(
             yield
         finally:
             identity.close()
+            if app.state.recall:
+                await anyio.to_thread.run_sync(app.state.recall.close)
             if sessions is None and isinstance(session_service, DatabaseSessionService):
                 await session_service.close()
             if engine:
@@ -97,11 +114,12 @@ def create_app(
                 client.close()
 
     app = FastAPI(title="oGoogle AI streaming API", version="0.1.0", lifespan=lifespan)
+    app.include_router(merchant_router)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "DELETE"],
         allow_headers=["Authorization", "Content-Type"],
     )
 
@@ -136,7 +154,11 @@ def create_app(
 
     @app.get("/api/v1/bootstrap")
     async def bootstrap(request: Request, response: Response) -> dict[str, object]:
-        return get_services(request).identity.bootstrap(request, response)
+        return {
+            **get_services(request).identity.bootstrap(request, response),
+            "v1_enabled": settings.v1_enabled,
+            "coach_mode": settings.coach_mode,
+        }
 
     @app.post(
         "/api/v1/coach/stream",
@@ -151,13 +173,26 @@ def create_app(
     async def coach_stream(body: CoachTurn, request: Request) -> EventSourceResponse:
         services = get_services(request)
         principal = await services.identity.require(request)
+        bid = str(body.business_id) if body.business_id else None
+        if bid:
+            if not app.state.merchant:
+                raise HTTPException(503, "Local V1 is not enabled.")
+            await anyio.to_thread.run_sync(app.state.merchant.context, principal.uid, bid)
         sid = await services.runtime.session(
-            principal, str(body.session_id) if body.session_id else None
+            principal, str(body.session_id) if body.session_id else None, bid
         )
 
         lease = await services.registry.acquire_async(principal.uid, sid)
 
         async def events() -> AsyncIterator[dict[str, str]]:
+            token = None
+            if app.state.merchant:
+                recall = await anyio.to_thread.run_sync(
+                    app.state.recall.search, principal.uid, bid, body.message
+                )
+                token = current.set(
+                    MerchantContext(app.state.merchant, principal.uid, bid, recall, body.message)
+                )
             sequence = 0
 
             def frame(event: StreamEvent) -> dict[str, str]:
@@ -184,7 +219,13 @@ def create_app(
                 log.warning("coach_stream_failed", code="PROVIDER_UNAVAILABLE")
                 yield frame(StreamEvent(kind="error", code="PROVIDER_UNAVAILABLE"))
             finally:
+                if token is not None:
+                    current.reset(token)
                 await services.registry.release_async(lease)
+            if app.state.recall:
+                await anyio.to_thread.run_sync(
+                    app.state.recall.remember, principal.uid, bid, body.message
+                )
 
         return EventSourceResponse(
             events(),
@@ -202,7 +243,11 @@ def create_app(
             app_name="ogoogle_ai", user_id=principal.uid
         )
         return [
-            {"session_id": item.id, "updated": item.last_update_time}
+            {
+                "session_id": item.id,
+                "updated": item.last_update_time,
+                "business_id": item.state.get("business_id"),
+            }
             for item in reversed(listing.sessions)
         ]
 
@@ -238,13 +283,24 @@ def create_app(
         await websocket.accept()
         services = get_services(websocket)
         lease: Lease | None = None
+        context_token = None
         try:
             async with asyncio.timeout(5):
                 principal = await services.identity.require_websocket(websocket)
             requested = websocket.query_params.get("session_id")
             if requested:
                 requested = str(UUID(requested))
-            sid = await services.runtime.session(principal, requested)
+            bid = websocket.query_params.get("business_id")
+            if bid:
+                bid = str(UUID(bid))
+                if not app.state.merchant:
+                    raise HTTPException(503, "Local V1 is not enabled.")
+                await anyio.to_thread.run_sync(app.state.merchant.context, principal.uid, bid)
+            if app.state.merchant:
+                context_token = current.set(
+                    MerchantContext(app.state.merchant, principal.uid, bid, [])
+                )
+            sid = await services.runtime.session(principal, requested, bid)
             lease = await services.registry.acquire_async(principal.uid, sid)
             await websocket.send_json(
                 StreamEvent(
@@ -262,6 +318,8 @@ def create_app(
         except WebSocketDisconnect:
             pass
         finally:
+            if context_token is not None:
+                current.reset(context_token)
             if lease:
                 await services.registry.release_async(lease)
             with suppress(RuntimeError, WebSocketDisconnect):
