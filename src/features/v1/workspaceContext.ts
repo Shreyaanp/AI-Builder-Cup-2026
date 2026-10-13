@@ -17,6 +17,11 @@ export interface Workspace {
   go: (destination: Destination) => void
   select: (id: string | null) => void
   reload: () => Promise<void>
+  /** Owner's immediate sold-out switch. */
+  setAvailability: (product: Product, available: boolean) => Promise<void>
+  /** Turns the public customer page on or off. */
+  setShared: (shared: boolean) => Promise<void>
+  shareUrl: string | null
   /** Show an exact proposal for owner review; saving happens only from the review dialog. */
   review: (proposal: Proposal) => void
   notify: (message: string) => void

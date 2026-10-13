@@ -1,6 +1,9 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Snackbar } from '@mui/material'
+import { Button, IconButton, Snackbar, useTheme } from '@mui/material'
+import { X } from 'lucide-react'
+import { canOfferInstall, offerInstall, rememberInstallDeclined } from '../../app/pwa'
+import { useCopy } from './strings'
 import type { Api, Business, Me, Product, Proposal } from './api'
 import { WorkspaceContext } from './workspaceContext'
 import type { Destination, Editor, Workspace } from './workspaceContext'
@@ -27,6 +30,9 @@ export function WorkspaceProvider({
   children: ReactNode
 }) {
   const { language } = usePreferences()
+  const t = useCopy()
+  const theme = useTheme()
+  const [installOffer, setInstallOffer] = useState(false)
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [loading, setLoading] = useState(true)
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -84,6 +90,40 @@ export function WorkspaceProvider({
     return () => abort.abort()
   }, [activeId, api])
 
+  const setAvailability = useCallback(
+    async (product: Product, available: boolean) => {
+      if (!activeId || !product.id) return
+      // Optimistic: the switch moves at once; a failure restores the saved state.
+      setProducts((items) =>
+        items.map((item) => (item.id === product.id ? { ...item, available } : item)),
+      )
+      try {
+        await api(`/businesses/${activeId}/inventory/${product.id}/availability`, {
+          method: 'POST',
+          body: JSON.stringify({ available }),
+        })
+        await reload()
+      } catch {
+        setProducts((items) =>
+          items.map((item) => (item.id === product.id ? { ...item, available: !available } : item)),
+        )
+        setToast(language === 'hi' ? 'बदलाव सहेजा नहीं गया' : 'Couldn’t update. Try again.')
+      }
+    },
+    [activeId, api, reload, language],
+  )
+  const setShared = useCallback(
+    async (shared: boolean) => {
+      if (!activeId) return
+      await api(`/businesses/${activeId}/share`, {
+        method: 'POST',
+        body: JSON.stringify({ public: shared }),
+      })
+      await reload()
+    },
+    [activeId, api, reload],
+  )
+
   const value = useMemo<Workspace>(
     () => ({
       api,
@@ -108,6 +148,9 @@ export function WorkspaceProvider({
       go: setDestination,
       select: setActiveId,
       reload,
+      setAvailability,
+      setShared,
+      shareUrl: activeId ? `${location.origin}/s/${activeId}` : null,
       review: setProposal,
       notify: setToast,
       requestPhoto: () => {
@@ -131,6 +174,8 @@ export function WorkspaceProvider({
       destination,
       speakReplies,
       reload,
+      setAvailability,
+      setShared,
       photoPending,
       consumePhotoRequest,
       faceOpen,
@@ -149,8 +194,45 @@ export function WorkspaceProvider({
           await reload()
           setActiveId(businessId)
           await loadProducts(businessId).catch(() => undefined)
-          setToast(language === 'hi' ? 'à¤¸à¤¹à¥‡à¤œà¤¾ à¤—à¤¯à¤¾' : 'Saved')
+          // Offer installation only after useful progress, never up front.
+          if (canOfferInstall()) setInstallOffer(true)
+          else setToast(t.saved)
         }}
+      />
+      <Snackbar
+        open={installOffer}
+        message={t.install}
+        onClose={(_, reason) => {
+          if (reason === 'clickaway') return
+          setInstallOffer(false)
+          rememberInstallDeclined()
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }}
+        action={
+          <>
+            <Button
+              color="inherit"
+              onClick={() => {
+                setInstallOffer(false)
+                void offerInstall()
+              }}
+              sx={{ color: theme.material.inversePrimary }}
+            >
+              {t.installAction}
+            </Button>
+            <IconButton
+              aria-label={t.close}
+              color="inherit"
+              onClick={() => {
+                setInstallOffer(false)
+                rememberInstallDeclined()
+              }}
+            >
+              <X size={18} />
+            </IconButton>
+          </>
+        }
       />
       <BusinessDialog />
       <ProductDialog />

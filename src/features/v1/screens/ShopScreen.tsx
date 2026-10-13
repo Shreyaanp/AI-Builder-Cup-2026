@@ -10,11 +10,25 @@
   ListItemText,
   Skeleton,
   Stack,
+  Switch,
   Typography,
   useTheme,
 } from '@mui/material'
-import { Camera, Clock, MapPin, Pencil, Phone, Plus, Store, Tag } from 'lucide-react'
-import { Fragment } from 'react'
+import {
+  Camera,
+  Clock,
+  Copy,
+  ExternalLink,
+  Globe,
+  MapPin,
+  Pencil,
+  Phone,
+  Plus,
+  Share2,
+  Store,
+  Tag,
+} from 'lucide-react'
+import { Fragment, useState } from 'react'
 import type { ReactNode } from 'react'
 import { formatPrice } from '../format'
 import { useCopy } from '../strings'
@@ -191,35 +205,154 @@ export function ShopSummary({ compact = false }: { compact?: boolean }) {
             disablePadding
             sx={{ bgcolor: roles.surfaceContainerLow, borderRadius: `${shape.lg}px` }}
           >
-            {ws.products.map((product, index) => (
-              <Fragment key={product.id ?? product.name}>
-                {index > 0 && <Divider component="li" />}
-                <ListItemButton
-                  sx={{ borderRadius: 0 }}
-                  aria-label={`${t.editProduct} ${product.name}`}
-                  onClick={() => ws.openEditor({ kind: 'product', product })}
-                >
-                  <ListItemText
-                    primary={product.name}
-                    secondary={product.stock == null ? null : `${t.stock}: ${product.stock}`}
-                    slotProps={{
-                      primary: { variant: 'bodyLarge' },
-                      secondary: { variant: 'bodyMedium' },
-                    }}
-                  />
-                  <Typography variant="titleMedium" sx={{ whiteSpace: 'nowrap', ml: 2 }}>
-                    {formatPrice(product.price)}
-                    <Typography component="span" variant="bodyMedium" color="text.secondary">
-                      {' '}
-                      / {product.unit}
-                    </Typography>
-                  </Typography>
-                </ListItemButton>
-              </Fragment>
-            ))}
+            {ws.products.map((product, index) => {
+              const available = product.available !== false
+              return (
+                <Fragment key={product.id ?? product.name}>
+                  {index > 0 && <Divider component="li" />}
+                  <ListItem
+                    disablePadding
+                    secondaryAction={
+                      <Switch
+                        edge="end"
+                        checked={available}
+                        onChange={(_, checked) => void ws.setAvailability(product, checked)}
+                        slotProps={{
+                          input: { 'aria-label': `${t.available}: ${product.name}` },
+                        }}
+                      />
+                    }
+                    sx={{ '& .MuiListItemSecondaryAction-root': { right: 16 } }}
+                  >
+                    <ListItemButton
+                      sx={{ borderRadius: 0, pr: 10 }}
+                      aria-label={`${t.editProduct} ${product.name}`}
+                      onClick={() => ws.openEditor({ kind: 'product', product })}
+                    >
+                      <ListItemText
+                        primary={product.name}
+                        secondary={
+                          available
+                            ? `${formatPrice(product.price)} / ${product.unit}` +
+                              (product.stock == null ? '' : ` · ${t.stock}: ${product.stock}`)
+                            : `${t.soldOut} · ${formatPrice(product.price)} / ${product.unit}`
+                        }
+                        slotProps={{
+                          primary: { variant: 'bodyLarge', sx: { opacity: available ? 1 : 0.6 } },
+                          secondary: {
+                            variant: 'bodyMedium',
+                            color: available ? 'text.secondary' : 'error',
+                          },
+                        }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                </Fragment>
+              )
+            })}
           </List>
         )}
       </Box>
+      {!compact && <CustomerPage />}
     </Stack>
+  )
+}
+
+function CustomerPage() {
+  const t = useCopy()
+  const ws = useWorkspace()
+  const roles = useTheme().material
+  const [busy, setBusy] = useState(false)
+  const shop = ws.active
+  if (!shop || !ws.shareUrl) return null
+  const url = ws.shareUrl
+  return (
+    <Box
+      component="section"
+      aria-labelledby="customer-page-title"
+      sx={{ bgcolor: roles.surfaceContainerLow, borderRadius: `${shape.lg}px`, p: 3 }}
+    >
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
+        <Box aria-hidden="true" sx={{ color: roles.primary, display: 'flex' }}>
+          <Globe size={22} />
+        </Box>
+        <Typography id="customer-page-title" component="h2" variant="titleMedium" sx={{ flex: 1 }}>
+          {t.customerPage}
+        </Typography>
+        <Switch
+          checked={shop.public}
+          disabled={busy}
+          onChange={(_, checked) => {
+            setBusy(true)
+            ws.setShared(checked)
+              .catch(() => ws.notify(t.actionFailed))
+              .finally(() => setBusy(false))
+          }}
+          slotProps={{ input: { 'aria-label': t.pageSwitch } }}
+        />
+      </Stack>
+      <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
+        {shop.public ? t.customerPageOn : t.customerPageOff}
+      </Typography>
+      {shop.public && (
+        <>
+          <Typography
+            variant="bodyMedium"
+            sx={{
+              mt: 2,
+              px: 2,
+              py: 1.5,
+              borderRadius: `${shape.sm}px`,
+              bgcolor: roles.surfaceContainerHighest,
+              overflowWrap: 'anywhere',
+              fontFamily: 'monospace',
+            }}
+          >
+            {url}
+          </Typography>
+          <Stack direction="row" sx={{ mt: 2, gap: 1, flexWrap: 'wrap' }}>
+            <Button
+              variant="contained"
+              startIcon={<Share2 size={18} />}
+              onClick={() => {
+                const data = {
+                  title: shop.fields.name,
+                  text: t.shareMessage(shop.fields.name),
+                  url,
+                }
+                if (navigator.share) void navigator.share(data).catch(() => undefined)
+                else
+                  void navigator.clipboard
+                    .writeText(url)
+                    .then(() => ws.notify(t.linkCopied))
+                    .catch(() => ws.notify(t.actionFailed))
+              }}
+            >
+              {t.share}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Copy size={18} />}
+              onClick={() =>
+                void navigator.clipboard
+                  .writeText(url)
+                  .then(() => ws.notify(t.linkCopied))
+                  .catch(() => ws.notify(t.actionFailed))
+              }
+            >
+              {t.copyLink}
+            </Button>
+            <Button
+              startIcon={<ExternalLink size={18} />}
+              href={url}
+              target="_blank"
+              rel="noopener"
+            >
+              {t.openPage}
+            </Button>
+          </Stack>
+        </>
+      )}
+    </Box>
   )
 }

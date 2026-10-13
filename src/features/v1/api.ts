@@ -3,6 +3,7 @@ export interface Business {
   fields: { name: string; category: string; location: string; hours: string; phone: string }
   revision: number
   registration: string
+  public: boolean
   google_publication: string
 }
 export interface Product {
@@ -11,6 +12,7 @@ export interface Product {
   price: number
   unit: string
   stock: number | null
+  available?: boolean
 }
 export interface Proposal {
   id: string

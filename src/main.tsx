@@ -7,6 +7,9 @@ import '@fontsource/noto-sans-devanagari/devanagari-500.css'
 import '@fontsource/noto-sans-devanagari/devanagari-600.css'
 import Root from './app/Root'
 import { AppProviders } from './app/AppProviders'
+import { setupPwa } from './app/pwa'
+
+setupPwa()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

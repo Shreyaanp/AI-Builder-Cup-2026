@@ -38,6 +38,7 @@ import { usePreferences } from '../../../state/hooks'
 import { ApiError } from '../api'
 import type { Conversation, PhotoResult, Proposal } from '../api'
 import { useCopy } from '../strings'
+import { NextAction } from '../NextAction'
 import { useVoice } from '../useVoice'
 import { useWorkspace } from '../workspaceContext'
 import { shape } from '../../../design/theme'
@@ -188,7 +189,7 @@ export function CoachScreen() {
         headers: { 'Content-Type': file.type },
         signal: AbortSignal.timeout(60_000),
       })
-      const notes = result.extraction.uncertain.slice(0, 3).join(' Â· ')
+      const notes = result.extraction.uncertain.slice(0, 3).join(' · ')
       setMessages((items) =>
         [
           ...items,
@@ -304,7 +305,8 @@ export function CoachScreen() {
             <Typography component="h1" variant="headlineMedium">
               {ws.active ? t.coachGreetingShop(ws.active.fields.name) : t.coachGreeting}
             </Typography>
-            <Typography variant="bodyLarge" color="text.secondary">
+            <NextAction />
+            <Typography variant="bodyMedium" color="text.secondary">
               {t.coachHint}
             </Typography>
             <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
