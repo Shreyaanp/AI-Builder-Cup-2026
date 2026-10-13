@@ -1,8 +1,7 @@
-﻿import {
+import {
   Box,
   Button,
   Chip,
-  Divider,
   List,
   ListItem,
   ListItemButton,
@@ -158,8 +157,7 @@ export function ShopSummary({ compact = false }: { compact?: boolean }) {
         >
           {rows.map((row, index) => (
             <Fragment key={row.key}>
-              {index > 0 && <Divider component="li" variant="inset" />}
-              <ListItem>
+              <ListItem divider={index < rows.length - 1}>
                 <ListItemIcon
                   sx={{ color: roles.onSurfaceVariant, minWidth: 44 }}
                   aria-hidden="true"
@@ -209,8 +207,8 @@ export function ShopSummary({ compact = false }: { compact?: boolean }) {
               const available = product.available !== false
               return (
                 <Fragment key={product.id ?? product.name}>
-                  {index > 0 && <Divider component="li" />}
                   <ListItem
+                    divider={index < ws.products.length - 1}
                     disablePadding
                     secondaryAction={
                       <Switch
@@ -238,7 +236,10 @@ export function ShopSummary({ compact = false }: { compact?: boolean }) {
                             : `${t.soldOut} · ${formatPrice(product.price)} / ${product.unit}`
                         }
                         slotProps={{
-                          primary: { variant: 'bodyLarge', sx: { opacity: available ? 1 : 0.6 } },
+                          primary: {
+                            variant: 'bodyLarge',
+                            color: available ? 'text.primary' : 'text.secondary',
+                          },
                           secondary: {
                             variant: 'bodyMedium',
                             color: available ? 'text.secondary' : 'error',
