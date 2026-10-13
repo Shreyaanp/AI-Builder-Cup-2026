@@ -123,15 +123,12 @@ class OfflineCoachModel(BaseLlm):
                         )
                     )
                     return
-                reply = (
-                    "ऑफ़लाइन नमूना: आपकी बात सुरक्षित है। व्यवसाय जोड़ने के लिए ‘व्यवसाय जोड़ें’ चुनें।"
-                    if "[language=hi]" in question
-                    else "Offline demo: I can keep your progress and prepare reviewed drafts. "
-                    "Use Add business or tell me ‘name: ...; category: ...; location: ...’. "
-                    "Live Gemini conversation is not enabled."
+            if responses:
+                yield LlmResponse(
+                    content=types.Content(role="model", parts=[types.Part(text=reply)])
                 )
-            yield LlmResponse(content=types.Content(role="model", parts=[types.Part(text=reply)]))
-            return
+                return
+            # Otherwise fall through to the shared scripted reply.
         reply = (
             "ऑफ़लाइन नमूना: आपकी बात मिली। आपके व्यवसाय का नाम क्या है? "
             "यह Gemini का उत्तर नहीं है और कुछ प्रकाशित नहीं हुआ।"

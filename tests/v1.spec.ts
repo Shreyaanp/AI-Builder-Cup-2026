@@ -44,6 +44,8 @@ test('a shop photo becomes a reviewable draft; an explicit photo is refused', as
   await input.setInputFiles({ name: 'sign.png', mimeType: 'image/png', buffer: await png(page, 64) })
   const review = page.getByRole('dialog', { name: 'Review before saving' })
   await expect(review).toContainText('Offline Fixture Tea Stall')
+  // The modal hides the page from assistive tech; check the coach note once it closes.
+  await review.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByRole('log')).toContainText('Review the details before saving')
 })
 
