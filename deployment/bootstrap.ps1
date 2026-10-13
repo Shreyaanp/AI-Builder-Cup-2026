@@ -27,14 +27,17 @@ function Invoke-Cloud([string[]]$Arguments, [switch]$AllowMissing) {
   }
   return (($taskOutput | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n")
 }
-function Invoke-Github([string[]]$Arguments) {
+function Invoke-Github([string[]]$Arguments, [switch]$AllowMissing) {
   $taskPreference = $ErrorActionPreference
   try {
     $ErrorActionPreference = 'Continue'
     $taskOutput = & $taskGh @Arguments 2>&1
     $taskExit = $LASTEXITCODE
   } finally { $ErrorActionPreference = $taskPreference }
-  if ($taskExit -ne 0) { throw ('GitHub operation failed: ' + $Arguments[0]) }
+  if ($taskExit -ne 0) {
+    if ($AllowMissing -and ($taskOutput -join ' ') -match 'HTTP 404') { return $null }
+    throw ('GitHub operation failed: ' + $Arguments[0])
+  }
   return (($taskOutput | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n")
 }
 Write-Output 'Preparing dedicated oGoogle AI resources; billing and budgets are unchanged.'
@@ -93,7 +96,11 @@ if (-not $taskKey) {
 if (-not $taskKey) { throw 'Dedicated Firebase browser key was not created.' }
 $taskKeyString = (Invoke-Cloud @('services','api-keys','get-key-string',$taskKey.name,"--project=$taskProject",'--format=value(keyString)')).Trim()
 $taskProvider = 'projects/' + $taskTarget.projectNumber + '/locations/global/workloadIdentityPools/' + $taskTarget.identityPool + '/providers/github'
-$null = Invoke-Github @('api','--method','PUT',('repos/' + $taskTarget.githubRepository + '/environments/production'))
+$taskEnvironmentPath = 'repos/' + $taskTarget.githubRepository + '/environments/production'
+$taskEnvironment = Invoke-Github @('api',$taskEnvironmentPath) -AllowMissing
+if (-not $taskEnvironment) {
+  $null = Invoke-Github @('api','--method','PUT',$taskEnvironmentPath)
+}
 $null = Invoke-Github @('variable','set','GCP_IDENTITY_PROVIDER','--env','production','--repo',$taskTarget.githubRepository,'--body',$taskProvider)
 $null = Invoke-Github @('variable','set','FIREBASE_WEB_APP_ID','--env','production','--repo',$taskTarget.githubRepository,'--body',$taskApp.appId)
 $taskKeyString | & $taskGh secret set FIREBASE_WEB_API_KEY --env production --repo $taskTarget.githubRepository

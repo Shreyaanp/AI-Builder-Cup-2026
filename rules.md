@@ -2,7 +2,7 @@
 
 Current scope: complete deployment of the Python/FastAPI/Google ADK and React template, using one Cloud Run service, Firebase Google sign-in, and persistent cloud conversations. Reuse `ichiropractic` with separate app resources and a dedicated Firestore namespace. Product naming is independent and does not imply Google affiliation. The older POC is outside this repository's evidence.
 
-Deployment commit `2e00689` is verified on main. Checks run `38449461411` and manual release `38449869464` passed. The hosted HTTPS app, exact revision, Google login handoff and unauthenticated API rejection are verified. Human login and saved-chat recovery still need user testing. Live model use, native placement, business publishing and final submission readiness remain separate statuses.
+Deployment commit `2e00689` is verified on main. Checks run `38449461411` and manual release `38449869464` passed. Hosted HTTPS, exact revision, Google login handoff and unauthenticated API rejection are independently verified; the user confirmed real login/chat recovery. Follow-up docs commit CI `38450857724` exposed a startup photo reset. The cause was reproduced and fixed with a controlled-bootstrap regression; all 26 local browser cases passed. Updated remote CI remains pending. Live model use, native placement, business publishing and final submission readiness remain separate statuses.
 
 - Information maintenance and business coaching; no marketplace, automatic public listing or inferred ownership.
 - Default to explicit offline fixtures. An installed SDK or adapter is not live inference, speech recognition, native Google placement or publishing access.

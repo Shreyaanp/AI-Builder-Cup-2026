@@ -1,5 +1,38 @@
 import { expect, test } from '@playwright/test'
 
+test('initial session setup preserves a note and photo added before it finishes', async ({
+  page,
+}) => {
+  let releaseBootstrap = () => {}
+  const bootstrapGate = new Promise<void>((resolve) => {
+    releaseBootstrap = resolve
+  })
+  await page.route('**/api/v1/bootstrap', async (route) => {
+    await bootstrapGate
+    await route.fulfill({ json: { auth_mode: 'local' } })
+  })
+  await page.goto('/')
+  const note = page.getByRole('textbox', { name: 'Your note', exact: true })
+  try {
+    await note.fill('Keep my startup draft')
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'shop.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lxoAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    })
+    await expect(page.getByRole('img', { name: 'Add shop photo' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Add note', exact: true })).toBeDisabled()
+  } finally {
+    releaseBootstrap()
+  }
+  await expect(page.getByRole('button', { name: 'Add note', exact: true })).toBeEnabled()
+  await expect(note).toHaveValue('Keep my startup draft')
+  await expect(page.getByRole('img', { name: 'Add shop photo' })).toBeVisible()
+})
+
 test('hosted mode requires Google sign-in before sending a private note', async ({ page }) => {
   let coachRequests = 0
   await page.route('**/api/v1/bootstrap', (route) =>
