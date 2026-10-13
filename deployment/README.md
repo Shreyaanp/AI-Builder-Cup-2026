@@ -9,9 +9,11 @@ One Cloud Run service serves compiled React and the Python API at the same HTTPS
 3. Build the image, authenticate using short-lived Workload Identity Federation, push the SHA-tagged image, and deploy `ogoogle-ai` in `asia-south1`.
 4. Verify HTTPS health, release SHA, frontend, authentication and blocked unknown paths. A failed verification fails the workflow; it does not automatically roll back traffic.
 
-Live URL: [oGoogle AI](https://ogoogle-ai-176787245026.asia-south1.run.app). Release `2e00689` passed on October 14, 2026: [successful workflow](https://github.com/Shreyaanp/AI-Builer-Cup-2026/actions/runs/38449869464). Independent HTTPS/mobile checks passed, including the real Google login handoff. Human login and saved-chat recovery still need user verification. `target.json` defines fixed resources. `bootstrap.ps1` defaults to printing a plan; `-Apply` performs idempotent setup without billing activation or deployment.
+Live URL: [oGoogle AI](https://ogoogle-ai-176787245026.asia-south1.run.app). Release `2e00689` passed on October 14, 2026: [successful workflow](https://github.com/Shreyaanp/AI-Builer-Cup-2026/actions/runs/38449869464). Independent HTTPS/mobile checks passed, including the real Google login handoff. The user confirmed actual Google sign-in and saved-chat recovery work. `target.json` defines fixed resources. `bootstrap.ps1` defaults to printing a plan; `-Apply` performs idempotent setup without billing activation or deployment and preserves existing environment protection.
 
 The production GitHub environment contains the WIF provider and Firebase app ID as variables and the dedicated Firebase browser key as a secret. No service-account JSON key is required. The browser key is public runtime configuration restricted to Firebase Auth APIs and expected referrers; it is separate from private Gemini keys. Generated runtime configuration is ignored and removed after release.
+
+Production is restricted to the `main` branch. Releases check required setting names before building an image; missing values fail without printing credentials. Pull-request CI uses offline fixtures/emulators and needs no production secrets or GCP login. Gemini keys are not required for this pipeline and are not injected.
 
 ## Runtime and cost boundaries
 

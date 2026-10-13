@@ -49,6 +49,16 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ needs.revision.outputs.sha }}
+      - name: Check production configuration
+        env:
+          GCP_IDENTITY_PROVIDER: ${{ vars.GCP_IDENTITY_PROVIDER }}
+        run: |
+          for name in FIREBASE_WEB_API_KEY FIREBASE_WEB_APP_ID GCP_IDENTITY_PROVIDER; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing production setting: $name"
+              exit 1
+            fi
+          done
       - name: Build immutable image
         run: docker build -t "asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA" .
       - id: google

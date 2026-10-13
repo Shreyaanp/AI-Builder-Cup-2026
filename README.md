@@ -2,7 +2,7 @@
 
 A React/TypeScript frontend with a Python/FastAPI backend and Google ADK. Text replies stream through SSE; the backend also provides a WebSocket adapter for Gemini Live. The default is a labelled, scripted offline ADK model. The hosted configuration adds Firebase Google sign-in and Firestore conversations; local review uses a signed workspace and SQLite. oGoogle AI is an independent project.
 
-Hosted preview: **[Open oGoogle AI](https://ogoogle-ai-176787245026.asia-south1.run.app)**. Release `2e00689` passed CI, container and HTTPS verification on October 14. Google login opens the real account page; first human login and saved-conversation recovery remain pending. Gemini inference is not enabled.
+Hosted preview: **[Open oGoogle AI](https://ogoogle-ai-176787245026.asia-south1.run.app)**. Release `2e00689` passed CI, container and HTTPS verification on October 14. The user confirmed real Google login and saved-conversation recovery work. Gemini inference is not enabled.
 
 ## Review locally
 

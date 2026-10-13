@@ -39,6 +39,12 @@ function BusinessWorkspace({ children }: { children: ReactNode }) {
 
 function Providers({ children }: { children: ReactNode }) {
   const identity = useIdentity()
+  // Initial setup and signed-out preview share drafts. Actual account changes
+  // still remount the workspace so one user's private inputs cannot carry over.
+  const workspaceScope =
+    identity.mode === 'firebase' && identity.status === 'ready'
+      ? identity.scope
+      : 'unlinked-preview'
   const [preferences, preferencesDispatch] = useReducer(
     preferencesReducer,
     undefined,
@@ -61,7 +67,7 @@ function Providers({ children }: { children: ReactNode }) {
       <PreferencesDispatchContext value={preferencesDispatch}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <BusinessWorkspace key={identity.scope}>{children}</BusinessWorkspace>
+          <BusinessWorkspace key={workspaceScope}>{children}</BusinessWorkspace>
         </ThemeProvider>
       </PreferencesDispatchContext>
     </PreferencesContext>
