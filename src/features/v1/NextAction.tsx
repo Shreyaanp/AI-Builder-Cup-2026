@@ -86,13 +86,11 @@ export function NextAction() {
         p: 3,
       }}
     >
-      <Typography variant="labelMedium" sx={{ opacity: 0.8 }}>
-        {t.nextLabel}
-      </Typography>
+      <Typography variant="labelMedium">{t.nextLabel}</Typography>
       <Typography id="next-step-title" component="h2" variant="titleLarge" sx={{ mt: 0.5 }}>
         {step.title}
       </Typography>
-      <Typography variant="bodyMedium" sx={{ mt: 0.5, opacity: 0.9 }}>
+      <Typography variant="bodyMedium" sx={{ mt: 0.5 }}>
         {step.body}
       </Typography>
       <Stack direction="row" sx={{ mt: 2 }}>
