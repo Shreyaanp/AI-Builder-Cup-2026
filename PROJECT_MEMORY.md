@@ -2,6 +2,8 @@
 
 Updated October 13, 2026. Confirmed decisions and evidence only; never record secrets or full conversations here.
 
+- Initial publication completed: template commit `c79cd7fe63eb89709605e6eecab92af47bb8628d` is on GitHub `main`, confirmed against the remote commit API. GitHub Actions run `38439789071` started for that commit; no remote pass is claimed while it is running. Credentials, SQLite/session keys, recordings, dependencies and runtime outputs were excluded.
+
 - Product: **oGoogle AI**, independent business-information coach. React/TypeScript frontend; latest choice is **Python/FastAPI + Google ADK**, superseding Express. Full UI redesign and face/liveness are deferred.
 - Latest authorization: user explicitly requested initial commit/push to `Shreyaanp/AI-Builer-Cup-2026` after the local review template was delivered. Pre-publication inspection confirmed the remote is empty, the 99 source candidates contain no detected credential patterns or private database/audio files, and the CI action tags exist. No cloud deployment or paid inference is authorized by this push.
 - Implemented: real ADK scripted offline model, SSE React connection with stop/error/input preservation, signed local workspace, owned SQLite ADK sessions, bounded read/propose tools and WebSocket Gemini Live adapter. Live configuration is separate. No server key copied, model call or external business write performed.

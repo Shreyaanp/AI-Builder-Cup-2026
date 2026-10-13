@@ -2,6 +2,8 @@
 
 Current scope: publish the reviewed Python/FastAPI/Google ADK streaming template to `Shreyaanp/AI-Builer-Cup-2026`. Keep React/TypeScript and the installed Material Design 3 skill. Product naming is independent and does not imply Google affiliation. The older POC is outside this repository's evidence.
 
+Initial public source is verified on `main` at commit `c79cd7f`. CI started; deployment, live provider use and submission readiness remain separate statuses.
+
 - Information maintenance and business coaching; no marketplace, automatic public listing or inferred ownership.
 - Default to explicit offline fixtures. An installed SDK or adapter is not live inference, speech recognition, native Google placement or publishing access.
 - Keep keys/tokens server-side, out of browser bundles, Git, logs and project memory. Local conversation files and signing keys are ignored private data.
