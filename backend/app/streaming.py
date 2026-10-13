@@ -42,6 +42,19 @@ def public_events(event: Event) -> list[StreamEvent]:
             output.append(StreamEvent(kind="delta" if event.partial else "reply", text=text[:4000]))
     if event.turn_complete:
         output.append(StreamEvent(kind="turn_complete"))
+    if event.content:
+        for part in event.content.parts or []:
+            response = part.function_response
+            if response and response.name in {
+                "propose_business",
+                "propose_product",
+                "request_registration",
+            }:
+                payload = response.response or {}
+                if isinstance(payload.get("proposal"), dict):
+                    output.append(StreamEvent(kind="proposal", data=payload["proposal"]))
+                if payload.get("status") in {"verification_required", "save_business_first"}:
+                    output.append(StreamEvent(kind="workflow", data={"status": payload["status"]}))
     return output
 
 
@@ -56,7 +69,9 @@ class CoachRuntime:
             app_name=APP_NAME, agent=make_agent(settings, live=True), session_service=sessions
         )
 
-    async def session(self, principal: Principal, requested: str | None) -> str:
+    async def session(
+        self, principal: Principal, requested: str | None, business_id: str | None = None
+    ) -> str:
         if requested:
             existing = await self.sessions.get_session(
                 app_name=APP_NAME,
@@ -65,6 +80,8 @@ class CoachRuntime:
             )
             if not existing:
                 raise HTTPException(404, "Conversation not found in this workspace.")
+            if existing.state.get("business_id") != business_id:
+                raise HTTPException(404, "Conversation belongs to a different business.")
             if len(existing.events) > 60:
                 raise HTTPException(429, "Start a new conversation to continue.")
             return requested
@@ -78,6 +95,7 @@ class CoachRuntime:
             app_name=APP_NAME,
             user_id=principal.uid,
             session_id=session_id,
+            state={"business_id": business_id},
         )
         return session_id
 

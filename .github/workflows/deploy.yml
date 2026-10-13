@@ -85,11 +85,12 @@ jobs:
             --image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA" \
             --service-account=ogoogle-runtime@ichiropractic.iam.gserviceaccount.com \
             --env-vars-file=.deployment/runtime.json --allow-unauthenticated \
-            --min=0 --max=1 --concurrency=8 --cpu=1 --memory=1Gi --timeout=180 \
-            --no-cpu-boost --quiet
+            --min=0 --max=10 --concurrency=16 --cpu=1 --memory=1Gi --timeout=180 \
+            --cpu-boost --quiet
       - name: Verify the released revision
         env:
           SMOKE_ORIGIN: https://ogoogle-ai-176787245026.asia-south1.run.app
+          SMOKE_COACH_MODE: gemini
         run: node scripts/hosting-smoke.mjs
       - name: Remove generated credential configuration
         if: always()

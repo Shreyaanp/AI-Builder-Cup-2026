@@ -17,6 +17,17 @@ dependencies = [
   "google-cloud-firestore==2.34.1",
   "itsdangerous>=2.2,<3",
   "structlog>=25,<27",
+  "qdrant-client>=1.19.1",
+  "numpy>=2.5.4",
+  "httpx>=0.28.1",
+]
+
+[project.optional-dependencies]
+face = [
+    "av>=15,<18",
+    "onnxruntime>=1.22,<2",
+    "opencv-python-headless>=4.12,<5",
+    "openvino>=2025,<2027",
 ]
 
 [dependency-groups]
