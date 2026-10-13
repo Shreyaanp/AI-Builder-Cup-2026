@@ -23,4 +23,13 @@ try {
     [Environment]::SetEnvironmentVariable($taskName, $taskSavedEnvironment[$taskName], 'Process')
   }
 }
+$taskReady = $false
+$taskDeadline = (Get-Date).AddSeconds(15)
+while ((Get-Date) -lt $taskDeadline) {
+  try {
+    $taskHealth = Invoke-RestMethod -Uri 'http://127.0.0.1:3300/api/v1/health' -TimeoutSec 1
+    if ($taskHealth.product -eq 'oGoogle AI') { $taskReady = $true; break }
+  } catch { Start-Sleep -Milliseconds 200 }
+}
+if (-not $taskReady) { throw 'Backend did not become ready; inspect artifacts/backend.stderr.log.' }
 Write-Output 'oGoogle AI backend: http://127.0.0.1:3300/docs (offline review mode)'

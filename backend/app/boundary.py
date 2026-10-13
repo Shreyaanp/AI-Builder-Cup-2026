@@ -20,7 +20,8 @@ class RequestBoundary:
         async def send_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = MutableHeaders(scope=message)
-                headers["Cache-Control"] = "no-store"
+                if not (scope["path"].startswith("/assets/") and message["status"] == 200):
+                    headers["Cache-Control"] = "no-store"
                 headers["X-Content-Type-Options"] = "nosniff"
                 headers["Referrer-Policy"] = "same-origin"
             await send(message)

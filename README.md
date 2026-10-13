@@ -1,6 +1,6 @@
 # oGoogle AI — streaming review template
 
-A React/TypeScript frontend with a Python/FastAPI backend and Google ADK. Text replies stream through SSE; the backend also provides a bidirectional WebSocket adapter for Gemini Live. The default is a labelled, scripted offline model using the real ADK runtime. No live model requests or cloud deployment have been performed for this template. oGoogle AI is an independent project.
+A React/TypeScript frontend with a Python/FastAPI backend and Google ADK. Text replies stream through SSE; the backend also provides a WebSocket adapter for Gemini Live. The default is a labelled, scripted offline ADK model. The hosted configuration adds Firebase Google sign-in and Firestore conversations; local review uses a signed workspace and SQLite. oGoogle AI is an independent project.
 
 ## Review locally
 
@@ -34,8 +34,8 @@ Type a note and watch the reply arrive. Stop a reply and your note is preserved.
 npm run check
 npm run format:check
 cd backend
-uv run ruff check app tests scripts run.py
-uv run ruff format --check app tests scripts run.py
+uv run ruff check app tests scripts server.py run.py
+uv run ruff format --check app tests scripts server.py run.py
 uv run mypy
 uv run pytest -q
 uv run pip-audit --local --progress-spinner off
@@ -47,10 +47,10 @@ Playwright uses installed Chrome on Windows and bundled Chromium elsewhere. On a
 
 ## Boundaries
 
-ADK is connected locally; the offline model is a fixture, not Gemini inference or speech recognition. Live Gemini credentials/models, frontend microphone capture/playback, Google sign-in UI, business ownership/roles, Google publishing, public pages, inventory CRUD, forecasts and notifications remain separate work. Image selection previews a photo without uploading or analysing it.
+ADK is connected; the offline model is a fixture, not Gemini inference or speech recognition. Live Gemini credentials/models, frontend microphone/playback, business ownership/roles, Google publishing, public pages, inventory CRUD, forecasts and notifications remain separate work. Image selection previews a photo without uploading or analysing it. Hosted Google sign-in identifies the person; it does not establish business authority.
 
-The manifest is preliminary; no installed-PWA, Android splash or service-worker/offline guarantee is claimed. Existing physical-phone evidence belongs to the older POC. Only language/appearance persist in browser preference storage. Never add server secrets to browser environment variables. The installed Firebase/Firestore libraries do not establish cloud persistence or authorization.
+The manifest is preliminary; no installed-PWA, Android splash or service-worker/offline guarantee is claimed. Existing physical-phone evidence belongs to the older POC. Only language/appearance persist in browser preference storage. Never add server secrets to browser environment variables. Firestore sessions and distributed leases are tested with the real local emulator; actual hosted OAuth/readiness results are recorded in PROJECT_MEMORY.md.
 
 ## Repository and contributors
 
-Repository: [Shreyaanp/AI-Builer-Cup-2026](https://github.com/Shreyaanp/AI-Builer-Cup-2026), branch `main`. Initial publication was explicitly authorized after local review. CONTRIBUTING.md defines two-contributor review conventions. GitHub Actions checks Python, the generated API contract and React/browser behaviour; it does not deploy cloud services.
+Repository: [Shreyaanp/AI-Builer-Cup-2026](https://github.com/Shreyaanp/AI-Builer-Cup-2026), branch `main`. CONTRIBUTING.md defines two-contributor review conventions. Checks run on push/PR. The separate manual release workflow deploys a checked main SHA to one Cloud Run service. See [deployment instructions](deployment/README.md) for setup, resource limits and rollback. Publishing this template does not establish final hackathon readiness.

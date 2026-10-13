@@ -44,6 +44,8 @@ import {
 } from '../state/hooks'
 import type { BusinessFields, Destination, Segment } from '../state/model'
 import { useOnline } from '../hooks/useOnline'
+import { AccountControl } from '../auth/AccountControl'
+import { useIdentity } from '../auth/useIdentity'
 
 type DialogState =
   | { kind: 'example' | 'voice' | 'connections' }
@@ -53,6 +55,7 @@ type DialogState =
 const fieldKeys: (keyof BusinessFields)[] = ['name', 'category', 'location', 'hours', 'phone']
 
 export default function App() {
+  const identity = useIdentity()
   const preferences = usePreferences()
   const preferenceDispatch = usePreferencesDispatch()
   const business = useBusiness()
@@ -101,6 +104,7 @@ export default function App() {
           pb: 3,
         }}
       >
+        <AccountControl />
         <Stack
           direction="row"
           sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}
@@ -265,7 +269,9 @@ export default function App() {
                 )}
                 <InputDock onVoice={() => setDialog({ kind: 'voice' })} onNotice={setNotice} />
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
-                  {t.dataNotice}
+                  {identity.mode === 'firebase' && identity.status === 'ready'
+                    ? t.signedPrivate
+                    : t.dataNotice}
                 </Typography>
               </Box>
               <Box sx={{ order: { xs: 1, md: 2 }, minWidth: 0 }}>

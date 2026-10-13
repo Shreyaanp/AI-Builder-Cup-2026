@@ -1,5 +1,12 @@
 name: oGoogle AI checks
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_call:
+    inputs:
+      revision:
+        type: string
+        required: false
 permissions:
   contents: read
 jobs:
@@ -10,21 +17,43 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.revision || github.sha }}
       - uses: astral-sh/setup-uv@v10.3.0
         with:
           version: '0.13.0'
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
       - run: uv sync --locked
-      - run: uv run ruff check app tests scripts run.py
-      - run: uv run ruff format --check app tests scripts run.py
+      - uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: google-github-actions/setup-gcloud@v3.0.1
+        with:
+          install_components: cloud-firestore-emulator
+      - name: Start local Firestore emulator
+        run: |
+          gcloud emulators firestore start --host-port=127.0.0.1:8085 --project=demo-ogoogle-local --quiet > "$RUNNER_TEMP/firestore.log" 2>&1 &
+          uv run python -c 'import socket,time; deadline=time.monotonic()+30; ready=False
+          while time.monotonic()<deadline:
+              try:
+                  socket.create_connection(("127.0.0.1",8085),timeout=1).close();ready=True;break
+              except OSError: time.sleep(.2)
+          assert ready, "Firestore emulator did not start"'
+      - run: uv run ruff check app tests scripts server.py run.py
+      - run: uv run ruff format --check app tests scripts server.py run.py
       - run: uv run mypy
       - run: uv run pytest -q
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8085
       - run: uv run pip-audit --local --progress-spinner off
   frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.revision || github.sha }}
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: '24'
@@ -43,3 +72,34 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run check
       - run: npm run format:check
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: browser-failures
+          path: test-results
+          retention-days: 3
+  container:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+      - name: Build and check the packaged application
+        run: |
+          docker build -t ogoogle-ci .
+          docker run -d --name ogoogle-ci -p 8080:8080 -e APP_ENV=local -e AUTH_MODE=local -e SESSION_BACKEND=sqlite ogoogle-ci
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null; then break; fi
+            sleep 1
+          done
+          SMOKE_AUTH_MODE=local node scripts/hosting-smoke.mjs
+      - name: Show container errors
+        if: failure()
+        run: docker logs ogoogle-ci
+      - name: Stop test container
+        if: always()
+        run: docker rm -f ogoogle-ci || true

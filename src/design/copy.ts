@@ -45,7 +45,7 @@ export const copy = {
     integrations: 'Google connections',
     connectionStatus: 'Google publishing: not connected',
     integrationBody:
-      'ADK streaming runs locally with a scripted model. Live Gemini, Google Business Profile, Merchant API and native AI Mode / Lens are not connected.',
+      'ADK streaming uses a scripted demo model. Live Gemini, Google Business Profile, Merchant API and native AI Mode / Lens are not connected.',
     close: 'Close',
     apply: 'Apply corrections',
     confirm: 'Confirm for this session',
@@ -62,10 +62,11 @@ export const copy = {
     coachDetail:
       'Later, your coach can use real sales and stock to suggest what needs attention. No forecasts are invented here.',
     offline:
-      'You’re offline. This local preview remains usable; cloud sync and offline recovery are not connected.',
+      'You’re offline. You can edit this draft; replies and cloud history need a connection. Reload recovery is not available.',
     photoNotice: 'Photo stays in this tab. AI photo reading is not connected.',
     invalidPhoto: 'Choose a JPG, PNG or WebP image smaller than 8 MB.',
     dataNotice: 'Private session. No account linked.',
+    signedPrivate: 'Signed in · private draft',
     saved: 'Details reviewed. Nothing published.',
     progress: 'details added',
     navigation: 'Main navigation',
@@ -116,7 +117,7 @@ export const copy = {
     integrations: 'Google से जुड़ाव',
     connectionStatus: 'Google प्रकाशन: जुड़ा नहीं है',
     integrationBody:
-      'ADK स्ट्रीमिंग स्थानीय नमूना मॉडल से चलती है। लाइव Gemini, Google Business Profile, Merchant API और मूल AI Mode / Lens नहीं जुड़े हैं।',
+      'ADK स्ट्रीमिंग नमूना मॉडल से चलती है। लाइव Gemini, Google Business Profile, Merchant API और मूल AI Mode / Lens नहीं जुड़े हैं।',
     close: 'बंद करें',
     apply: 'सुधार लागू करें',
     confirm: 'इस सत्र में पुष्टि करें',
@@ -132,10 +133,11 @@ export const copy = {
     coachDetail:
       'बाद में सहायक वास्तविक बिक्री और स्टॉक से सुझाव दे सकता है। यहाँ अनुमानित बिक्री नहीं दिखाई जाती।',
     offline:
-      'आप ऑफ़लाइन हैं। स्थानीय नमूना उपलब्ध है; क्लाउड सिंक और ऑफ़लाइन रिकवरी अभी नहीं जुड़े हैं।',
+      'आप ऑफ़लाइन हैं। ड्राफ्ट बदल सकते हैं; जवाब और क्लाउड इतिहास के लिए इंटरनेट चाहिए। रीलोड पर ड्राफ्ट वापस नहीं आता।',
     photoNotice: 'फोटो इसी टैब में रहती है। AI फोटो पहचान अभी नहीं जुड़ी है।',
     invalidPhoto: '8 MB से छोटी JPG, PNG या WebP फोटो चुनें।',
     dataNotice: 'निजी सत्र। कोई खाता नहीं जुड़ा है।',
+    signedPrivate: 'साइन इन है · निजी ड्राफ्ट',
     saved: 'विवरण जाँचे गए। कुछ प्रकाशित नहीं हुआ।',
     progress: 'विवरण जुड़े',
     navigation: 'मुख्य नेविगेशन',

@@ -42,6 +42,7 @@ export async function streamCoach(
   turn: CoachTurn,
   signal: AbortSignal,
   onEvent: (event: CoachEvent) => void,
+  token: string | null = null,
 ): Promise<void> {
   signal = AbortSignal.any([signal, AbortSignal.timeout(45_000)])
   const bootstrap = await fetch('/api/v1/bootstrap', { credentials: 'same-origin', signal })
@@ -50,7 +51,10 @@ export async function streamCoach(
     method: 'POST',
     credentials: 'same-origin',
     signal,
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(turn),
   })
   if (!response.ok) {

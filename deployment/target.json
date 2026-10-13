@@ -1,0 +1,20 @@
+{
+  "projectId": "ichiropractic",
+  "projectNumber": "176787245026",
+  "region": "asia-south1",
+  "service": "ogoogle-ai",
+  "repository": "ogoogle-ai",
+  "firestoreDatabase": "(default)",
+  "firestoreNamespace": "ogoogle_ai_v1",
+  "runtimeAccount": "ogoogle-runtime",
+  "deployerAccount": "ogoogle-deployer",
+  "identityPool": "ogoogle-github",
+  "githubRepository": "Shreyaanp/AI-Builer-Cup-2026",
+  "githubRepositoryId": "1417301126",
+  "githubOwnerId": "79451850",
+  "minimumInstances": 0,
+  "maximumInstances": 1,
+  "concurrency": 8,
+  "requestTimeoutSeconds": 180,
+  "coachMode": "offline"
+}

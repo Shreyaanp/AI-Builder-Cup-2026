@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
@@ -14,12 +15,17 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from google.adk.sessions import BaseSessionService, DatabaseSessionService
+from google.cloud import firestore
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
 from sse_starlette import EventSourceResponse
 from starlette.background import BackgroundTask
 
 from .auth import IdentityService
 from .boundary import RequestBoundary
 from .contracts import CoachTurn, StreamEvent
+from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
+from .frontend import serve_frontend
 from .limits import Lease, RunRegistry
 from .settings import Settings
 from .streaming import CoachRuntime
@@ -32,7 +38,7 @@ log = structlog.get_logger()
 class Services:
     identity: IdentityService
     runtime: CoachRuntime
-    registry: RunRegistry
+    registry: RunRegistry | FirestoreRunRegistry
 
 
 def get_services(connection: Request | WebSocket) -> Services:
@@ -46,12 +52,37 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        if sessions is None and settings.session_database_url.startswith("sqlite"):
+        client = None
+        engine = None
+        session_service: BaseSessionService
+        if sessions is None and settings.session_backend == "firestore":
+            client = firestore.AsyncClient(
+                project=settings.google_cloud_project, database=settings.firestore_database
+            )
+            await (
+                client.collection(settings.firestore_namespace).document("readiness").get(timeout=5)
+            )
+            session_service = FirestoreSessionService(client, settings.firestore_namespace)
+        elif sessions is None:
             await anyio.to_thread.run_sync(lambda: Path("data").mkdir(exist_ok=True))
-        session_service = sessions or DatabaseSessionService(db_url=settings.session_database_url)
+            engine = create_async_engine(settings.session_database_url, poolclass=NullPool)
+            async with engine.begin() as connection:
+                await connection.exec_driver_sql("PRAGMA journal_mode=WAL")
+            session_service = DatabaseSessionService(db_engine=engine)
+        else:
+            session_service = sessions
         identity = await anyio.to_thread.run_sync(IdentityService, settings)
         app.state.services = Services(
-            identity, CoachRuntime(settings, session_service), RunRegistry(settings.max_active_runs)
+            identity,
+            CoachRuntime(settings, session_service),
+            FirestoreRunRegistry(
+                client,
+                settings.firestore_namespace,
+                settings.max_active_runs,
+                max(settings.max_voice_seconds, settings.max_turn_seconds) + 10,
+            )
+            if client
+            else RunRegistry(settings.max_active_runs),
         )
         try:
             yield
@@ -59,6 +90,11 @@ def create_app(
             identity.close()
             if sessions is None and isinstance(session_service, DatabaseSessionService):
                 await session_service.close()
+            if engine:
+                await engine.dispose()
+            if client:
+                await client._firestore_api.transport.close()
+                client.close()
 
     app = FastAPI(title="oGoogle AI streaming API", version="0.1.0", lifespan=lifespan)
     app.add_middleware(
@@ -94,10 +130,12 @@ def create_app(
             "google_publishing": False,
             "native_google_connected": False,
             "live_provider_verified": False,
+            "session_backend": settings.session_backend,
+            "release_commit": settings.release_commit,
         }
 
     @app.get("/api/v1/bootstrap")
-    async def bootstrap(request: Request, response: Response) -> dict[str, str]:
+    async def bootstrap(request: Request, response: Response) -> dict[str, object]:
         return get_services(request).identity.bootstrap(request, response)
 
     @app.post(
@@ -116,7 +154,8 @@ def create_app(
         sid = await services.runtime.session(
             principal, str(body.session_id) if body.session_id else None
         )
-        lease = services.registry.acquire(principal.uid, sid)
+
+        lease = await services.registry.acquire_async(principal.uid, sid)
 
         async def events() -> AsyncIterator[dict[str, str]]:
             sequence = 0
@@ -145,15 +184,51 @@ def create_app(
                 log.warning("coach_stream_failed", code="PROVIDER_UNAVAILABLE")
                 yield frame(StreamEvent(kind="error", code="PROVIDER_UNAVAILABLE"))
             finally:
-                services.registry.release(lease)
+                await services.registry.release_async(lease)
 
         return EventSourceResponse(
             events(),
             ping=10,
             send_timeout=5,
             headers={"X-Accel-Buffering": "no", "Cache-Control": "no-store"},
-            background=BackgroundTask(services.registry.release, lease),
+            background=BackgroundTask(services.registry.release_async, lease),
         )
+
+    @app.get("/api/v1/conversations")
+    async def conversations(request: Request) -> list[dict[str, object]]:
+        services = get_services(request)
+        principal = await services.identity.require(request)
+        listing = await services.runtime.sessions.list_sessions(
+            app_name="ogoogle_ai", user_id=principal.uid
+        )
+        return [
+            {"session_id": item.id, "updated": item.last_update_time}
+            for item in reversed(listing.sessions)
+        ]
+
+    @app.get("/api/v1/conversations/{session_id}")
+    async def conversation(session_id: UUID, request: Request) -> dict[str, object]:
+        services = get_services(request)
+        principal = await services.identity.require(request)
+        session = await services.runtime.sessions.get_session(
+            app_name="ogoogle_ai", user_id=principal.uid, session_id=str(session_id)
+        )
+        if not session:
+            raise HTTPException(404, "Conversation not found.")
+        messages = []
+        for event in session.events:
+            if event.content and event.content.role in {"model", "user"}:
+                text = "".join(
+                    part.text or "" for part in event.content.parts or [] if not part.thought
+                )
+                if text:
+                    messages.append(
+                        {
+                            "role": "assistant" if event.content.role == "model" else "user",
+                            "text": re.sub(r"^\[language=(en|hi)\]\s*", "", text)[:4000],
+                        }
+                    )
+        return {"session_id": session.id, "messages": messages}
 
     @app.websocket("/api/v1/voice")
     async def voice(websocket: WebSocket) -> None:
@@ -170,7 +245,7 @@ def create_app(
             if requested:
                 requested = str(UUID(requested))
             sid = await services.runtime.session(principal, requested)
-            lease = services.registry.acquire(principal.uid, sid)
+            lease = await services.registry.acquire_async(principal.uid, sid)
             await websocket.send_json(
                 StreamEvent(
                     kind="ready",
@@ -188,10 +263,12 @@ def create_app(
             pass
         finally:
             if lease:
-                services.registry.release(lease)
+                await services.registry.release_async(lease)
             with suppress(RuntimeError, WebSocketDisconnect):
                 await websocket.close()
 
+    if settings.frontend_dist:
+        serve_frontend(app, settings.frontend_dist)
     return app
 
 
