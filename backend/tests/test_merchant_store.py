@@ -38,6 +38,159 @@ def create(store: MerchantRepository, uid: str, name: str = "Ram Tea Stall") -> 
     return str(store.commit(uid, proposal["id"], proposal["digest"])["business_id"])
 
 
+def create_with_products(store: MerchantRepository, uid: str = "alice") -> str:
+    proposal = store.propose(
+        uid,
+        ProposalRequest(
+            kind="business",
+            business=BusinessFields(
+                name="Ram Tea Stall",
+                category="Tea",
+                location="Market Road",
+                hours="09:00–18:00",
+                phone="1234567890",
+            ),
+            products=[
+                ProductFields(name="Chai", price=1500, unit="cup", stock=10),
+                ProductFields(name="Samosa", price=1000, unit="piece", stock=40),
+            ],
+        ),
+    )
+    return str(store.commit(uid, proposal["id"], proposal["digest"])["business_id"])
+
+
+def test_new_business_proposal_commits_products_at_revision_one(store: MerchantRepository) -> None:
+    bid = create_with_products(store)
+    items = {item["name"]: item for item in store.inventory("alice", bid)}
+    assert set(items) == {"Chai", "Samosa"}
+    assert items["Chai"] == {
+        "id": items["Chai"]["id"],
+        "name": "Chai",
+        "price": 1500,
+        "unit": "cup",
+        "stock": 10,
+        "available": True,
+    }
+    assert items["Samosa"] == {
+        "id": items["Samosa"]["id"],
+        "name": "Samosa",
+        "price": 1000,
+        "unit": "piece",
+        "stock": 40,
+        "available": True,
+    }
+    assert store.context("alice", bid)["business"]["revision"] == 1
+
+
+def test_business_edit_cannot_include_products(store: MerchantRepository) -> None:
+    bid = create(store, "alice")
+    with pytest.raises(HTTPException) as rejected:
+        store.propose(
+            "alice",
+            ProposalRequest(
+                kind="business",
+                business_id=bid,
+                revision=1,
+                business=BusinessFields(name="Changed Tea Stall"),
+                products=[ProductFields(name="Chai", price=1500, unit="cup")],
+            ),
+        )
+    assert rejected.value.status_code == 422
+    assert store.context("alice", bid)["business"]["revision"] == 1
+    assert store.inventory("alice", bid) == []
+
+
+def test_sharing_is_explicit_reversible_and_owner_scoped(store: MerchantRepository) -> None:
+    bid = create_with_products(store)
+    create(store, "bob", "Bob Bakery")
+    assert store.public_shop(bid) is None
+    for public in (True, False):
+        with pytest.raises(HTTPException) as denied:
+            store.share("bob", bid, public)
+        assert denied.value.status_code == 404
+    assert store.public_shop(bid) is None
+    assert store.share("alice", bid, True) == {"business_id": bid, "public": True}
+    assert store.public_shop(bid) is not None
+    assert store.share("alice", bid, False) == {"business_id": bid, "public": False}
+    assert store.public_shop(bid) is None
+
+
+def test_public_shop_exposes_only_customer_fields(store: MerchantRepository) -> None:
+    bid = create_with_products(store)
+    store.share("alice", bid, True)
+    shop = store.public_shop(bid)
+    assert shop is not None
+    # Exact key sets at both levels exclude owners, revision, stock and registration.
+    assert set(shop) == {"id", "name", "category", "location", "hours", "phone", "products"}
+    assert {key: value for key, value in shop.items() if key != "products"} == {
+        "id": bid,
+        "name": "Ram Tea Stall",
+        "category": "Tea",
+        "location": "Market Road",
+        "hours": "09:00–18:00",
+        "phone": "1234567890",
+    }
+    assert {product["name"]: product for product in shop["products"]} == {
+        "Chai": {"name": "Chai", "price": 1500, "unit": "cup", "available": True},
+        "Samosa": {"name": "Samosa", "price": 1000, "unit": "piece", "available": True},
+    }
+
+
+def test_availability_changes_one_product_and_invalidates_proposals(
+    store: MerchantRepository,
+) -> None:
+    bid = create_with_products(store)
+    store.share("alice", bid, True)
+    revision = store.context("alice", bid)["business"]["revision"]
+    proposal = store.propose(
+        "alice",
+        ProposalRequest(
+            kind="inventory",
+            business_id=bid,
+            revision=revision,
+            products=[ProductFields(name="Chai", price=2000, unit="cup")],
+        ),
+    )
+    items = {item["name"]: item for item in store.inventory("alice", bid)}
+    changed = store.set_availability("alice", bid, items["Chai"]["id"], False)
+    assert changed == {**items["Chai"], "available": False, "revision": revision + 1}
+    assert store.context("alice", bid)["business"]["revision"] == revision + 1
+    assert {item["name"]: item for item in store.inventory("alice", bid)} == {
+        "Chai": {**items["Chai"], "available": False},
+        "Samosa": items["Samosa"],
+    }
+    shop = store.public_shop(bid)
+    assert shop is not None
+    assert {product["name"]: product["available"] for product in shop["products"]} == {
+        "Chai": False,
+        "Samosa": True,
+    }
+    with pytest.raises(HTTPException) as stale:
+        store.commit("alice", proposal["id"], proposal["digest"])
+    assert stale.value.status_code == 409
+
+
+def test_availability_requires_known_product_and_owner(store: MerchantRepository) -> None:
+    bid = create_with_products(store)
+    create(store, "bob", "Bob Bakery")
+    items = store.inventory("alice", bid)
+    # A valid-shaped missing ID for Firestore also exercises SQLite's missing-row check.
+    for uid, product_id in [("alice", "0" * 64), ("bob", items[0]["id"])]:
+        with pytest.raises(HTTPException) as denied:
+            store.set_availability(uid, bid, product_id, False)
+        assert denied.value.status_code == 404
+    assert store.inventory("alice", bid) == items
+    assert store.context("alice", bid)["business"]["revision"] == 1
+
+
+def test_erasure_removes_shared_shop(store: MerchantRepository) -> None:
+    bid = create_with_products(store)
+    store.share("alice", bid, True)
+    assert store.public_shop(bid) is not None
+    assert store.erase_owner("alice") == [bid]
+    assert store.public_shop(bid) is None
+
+
 def test_reviewed_business_is_owner_scoped(store: MerchantRepository) -> None:
     bid = create(store, "alice")
     assert [b["fields"]["name"] for b in store.list_businesses("alice")] == ["Ram Tea Stall"]
