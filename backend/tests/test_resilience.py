@@ -104,7 +104,10 @@ def test_sqlite_adk_session_survives_application_restart(tmp_path: Path) -> None
 
 
 @pytest.mark.asyncio
-async def test_sse_disconnect_preserves_sqlite_and_allows_next_turn(tmp_path: Path) -> None:
+@pytest.mark.parametrize("phase", ["ready", "delta"])
+async def test_sse_disconnect_preserves_sqlite_and_allows_next_turn(
+    tmp_path: Path, phase: str
+) -> None:
     settings = Settings(
         app_env="test",
         session_database_url=f"sqlite+aiosqlite:///{(tmp_path / 'cancel.sqlite3').as_posix()}",
@@ -123,7 +126,9 @@ async def test_sse_disconnect_preserves_sqlite_and_allows_next_turn(tmp_path: Pa
 
         async def send(message: dict) -> None:
             nonlocal disconnected
-            if b'"kind": "delta"' in message.get("body", b"") and not disconnected:
+            if ('"kind": "' + phase + '"').encode() in message.get(
+                "body", b""
+            ) and not disconnected:
                 disconnected = True
                 incoming.put_nowait({"type": "http.disconnect"})
 

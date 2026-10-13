@@ -35,9 +35,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
+                  "additionalProperties": true,
                   "type": "object",
                   "title": "Response Bootstrap Api V1 Bootstrap Get"
                 }
@@ -68,6 +66,71 @@
               "text/event-stream": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations": {
+      "get": {
+        "summary": "Conversations",
+        "operationId": "conversations_api_v1_conversations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Conversations Api V1 Conversations Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations/{session_id}": {
+      "get": {
+        "summary": "Conversation",
+        "operationId": "conversation_api_v1_conversations__session_id__get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Conversation Api V1 Conversations  Session Id  Get"
                 }
               }
             }

@@ -12,7 +12,7 @@ For every design or UI change, read `.agents/skills/material-design-3-ui/SKILL.m
 - Use generated semantic Material roles and a shared theme. Preserve text scaling, readable labels, keyboard access, safe areas and reduced motion.
 - Use typed Context/reducer state with separate state/dispatch contexts. Keep transient form state local. Never put credentials or merchant data into preference storage.
 - Optional PWA installation must allow uninterrupted web use. The starter manifest does not establish installation/offline readiness.
-- The user now authorizes initial commit/push to `Shreyaanp/AI-Builer-Cup-2026`. This does not authorize paid API calls, cloud deployment, external business writes or committing credentials/private data.
+- Current task authorizes the deployment flow: one Cloud Run service for React/Python, Firebase Google sign-in, and persistent Firestore conversations in `ichiropractic`, with separate app resources. Release only after checks. Prefer existing eligible credits/free allowances; preserve the ₹500 total cash ceiling and paused budget setup. Do not enable billing, purchase credits, call paid models or change external businesses as part of this release.
 - Run `npm run check` after functional changes. Record what passed and what remains unvalidated. Browser emulation is not a physical-phone test.
 - For backend changes run Ruff, mypy and pytest; test disconnect cleanup and owned sessions. Offline fixtures never establish live Gemini or ASR accuracy. Local SQLite is not durable Cloud Run storage.
 

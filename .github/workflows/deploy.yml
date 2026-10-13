@@ -1,0 +1,86 @@
+name: Cloud Run release
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Commit SHA on main (blank uses current main)
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: ogoogle-production-release
+  cancel-in-progress: false
+jobs:
+  revision:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.select.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - id: select
+        env:
+          REQUESTED_SHA: ${{ inputs.revision }}
+        run: |
+          revision="${REQUESTED_SHA:-$GITHUB_SHA}"
+          [[ "$revision" =~ ^[a-f0-9]{40}$ ]]
+          git merge-base --is-ancestor "$revision" origin/main
+          echo "sha=$revision" >> "$GITHUB_OUTPUT"
+  checks:
+    needs: revision
+    uses: ./.github/workflows/checks.yml
+    with:
+      revision: ${{ needs.revision.outputs.sha }}
+  release:
+    needs: [revision, checks]
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RELEASE_SHA: ${{ needs.revision.outputs.sha }}
+      FIREBASE_WEB_API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
+      FIREBASE_WEB_APP_ID: ${{ vars.FIREBASE_WEB_APP_ID }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.revision.outputs.sha }}
+      - name: Build immutable image
+        run: docker build -t "asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA" .
+      - id: google
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_IDENTITY_PROVIDER }}
+          service_account: ogoogle-deployer@ichiropractic.iam.gserviceaccount.com
+          token_format: access_token
+      - uses: google-github-actions/setup-gcloud@v3.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+      - name: Publish immutable image
+        env:
+          GOOGLE_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
+        run: |
+          echo "$GOOGLE_ACCESS_TOKEN" | docker login -u oauth2accesstoken --password-stdin https://asia-south1-docker.pkg.dev
+          image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA"
+          docker push "$image"
+      - name: Release the single service
+        run: |
+          python deployment/runtime-config.py
+          gcloud run deploy ogoogle-ai --project=ichiropractic --region=asia-south1 \
+            --image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA" \
+            --service-account=ogoogle-runtime@ichiropractic.iam.gserviceaccount.com \
+            --env-vars-file=.deployment/runtime.json --allow-unauthenticated \
+            --min=0 --max=1 --concurrency=8 --cpu=1 --memory=1Gi --timeout=180 \
+            --no-cpu-boost --quiet
+      - name: Verify the released revision
+        env:
+          SMOKE_ORIGIN: https://ogoogle-ai-176787245026.asia-south1.run.app
+        run: node scripts/hosting-smoke.mjs
+      - name: Remove generated credential configuration
+        if: always()
+        run: rm -f .deployment/runtime.json

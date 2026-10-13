@@ -14,6 +14,7 @@ import { ArrowUp, Camera, Mic, X } from 'lucide-react'
 import { copy } from '../../design/copy'
 import { useBusinessDispatch, usePreferences } from '../../state/hooks'
 import { useCoachStream } from '../../hooks/useCoachStream'
+import { useIdentity } from '../../auth/useIdentity'
 
 export function InputDock({
   onVoice,
@@ -27,6 +28,7 @@ export function InputDock({
   const t = copy[language]
   const roles = useTheme().material
   const coach = useCoachStream()
+  const identity = useIdentity()
   const [note, setNote] = useState('')
   const [photoUrl, setPhotoUrl] = useState('')
   const [error, setError] = useState('')
@@ -58,7 +60,7 @@ export function InputDock({
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const message = note.trim()
-    if (!message || coach.status === 'streaming') return
+    if (!message || coach.busy) return
     if (await coach.send(message, language)) {
       dispatch({ type: 'note', text: message })
       setNote('')
@@ -67,22 +69,37 @@ export function InputDock({
   }
   return (
     <Box component="section" aria-label={t.note} sx={{ mt: 5 }}>
-      {coach.reply && (
-        <Box aria-label="Coach response" sx={{ mb: 3, px: 1 }}>
-          <Typography variant="caption" sx={{ color: 'text.secondary', mb: 1 }}>
-            {coach.mode === 'offline' ? t.offlineCoach : 'Gemini coach'}
-          </Typography>
-          <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-            {coach.reply}
-          </Typography>
-        </Box>
+      {identity.mode === 'firebase' && identity.status === 'ready' && (
+        <TextField
+          select
+          fullWidth
+          label={language === 'hi' ? 'आपकी बातचीत' : 'Your conversations'}
+          value={coach.sessionId ?? ''}
+          disabled={coach.busy}
+          onChange={(event) => {
+            void coach.selectSession(event.target.value || null)
+          }}
+          slotProps={{ select: { native: true } }}
+          sx={{ mb: 3 }}
+        >
+          <option value="">{language === 'hi' ? 'नई बातचीत' : 'New conversation'}</option>
+          {coach.history.map((item) => (
+            <option key={item.session_id} value={item.session_id}>
+              {new Date(item.updated * 1000).toLocaleString(language === 'hi' ? 'hi-IN' : 'en-IN')}
+            </option>
+          ))}
+        </TextField>
       )}
       <Typography role="status" variant="body2" sx={{ mb: 2 }}>
-        {coach.status === 'streaming'
-          ? t.replying
-          : coach.status === 'cancelled'
-            ? t.replyStopped
-            : ''}
+        {coach.restoring
+          ? language === 'hi'
+            ? 'बातचीत खोल रहे हैं…'
+            : 'Restoring your conversation…'
+          : coach.status === 'streaming'
+            ? t.replying
+            : coach.status === 'cancelled'
+              ? t.replyStopped
+              : ''}
       </Typography>
       {coach.error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -138,7 +155,7 @@ export function InputDock({
           minRows={1}
           maxRows={5}
           value={note}
-          disabled={coach.status === 'streaming'}
+          disabled={coach.busy}
           onChange={(event) => setNote(event.target.value)}
           slotProps={{ htmlInput: { maxLength: 600 } }}
           sx={{ mb: 2 }}
@@ -159,7 +176,7 @@ export function InputDock({
           <IconButton
             type="submit"
             aria-label={t.send}
-            disabled={!note.trim() || coach.status === 'streaming'}
+            disabled={!note.trim() || coach.busy || identity.status !== 'ready'}
             sx={{ bgcolor: roles.primaryContainer, color: roles.onPrimaryContainer }}
           >
             <ArrowUp size={20} />
@@ -175,6 +192,16 @@ export function InputDock({
         aria-label={t.camera}
         onChange={attach}
       />
+      {coach.reply && (
+        <Box aria-label="Coach response" sx={{ mt: 3, px: 1 }}>
+          <Typography variant="caption" sx={{ color: 'text.secondary', mb: 1 }}>
+            {coach.mode === 'offline' ? t.offlineCoach : 'Gemini coach'}
+          </Typography>
+          <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+            {coach.reply}
+          </Typography>
+        </Box>
+      )}
     </Box>
   )
 }

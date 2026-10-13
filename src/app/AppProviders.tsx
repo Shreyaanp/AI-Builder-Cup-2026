@@ -10,6 +10,8 @@ import {
 } from '../state/contexts'
 import { businessReducer, initialBusiness, preferencesReducer } from '../state/model'
 import type { Preferences } from '../state/model'
+import { IdentityProvider } from '../auth/IdentityProvider'
+import { useIdentity } from '../auth/useIdentity'
 
 function readPreferences(): Preferences {
   let saved: Partial<Preferences> = {}
@@ -26,13 +28,22 @@ function readPreferences(): Preferences {
     destination: 'coach',
   }
 }
-export function AppProviders({ children }: { children: ReactNode }) {
+function BusinessWorkspace({ children }: { children: ReactNode }) {
+  const [business, businessDispatch] = useReducer(businessReducer, initialBusiness)
+  return (
+    <BusinessContext value={business}>
+      <BusinessDispatchContext value={businessDispatch}>{children}</BusinessDispatchContext>
+    </BusinessContext>
+  )
+}
+
+function Providers({ children }: { children: ReactNode }) {
+  const identity = useIdentity()
   const [preferences, preferencesDispatch] = useReducer(
     preferencesReducer,
     undefined,
     readPreferences,
   )
-  const [business, businessDispatch] = useReducer(businessReducer, initialBusiness)
   const theme = useMemo(() => nivaTheme(preferences.appearance), [preferences.appearance])
   useEffect(() => {
     document.documentElement.lang = preferences.language
@@ -48,15 +59,19 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <PreferencesContext value={preferences}>
       <PreferencesDispatchContext value={preferencesDispatch}>
-        <BusinessContext value={business}>
-          <BusinessDispatchContext value={businessDispatch}>
-            <ThemeProvider theme={theme}>
-              <CssBaseline />
-              {children}
-            </ThemeProvider>
-          </BusinessDispatchContext>
-        </BusinessContext>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <BusinessWorkspace key={identity.scope}>{children}</BusinessWorkspace>
+        </ThemeProvider>
       </PreferencesDispatchContext>
     </PreferencesContext>
+  )
+}
+
+export function AppProviders({ children }: { children: ReactNode }) {
+  return (
+    <IdentityProvider>
+      <Providers>{children}</Providers>
+    </IdentityProvider>
   )
 }

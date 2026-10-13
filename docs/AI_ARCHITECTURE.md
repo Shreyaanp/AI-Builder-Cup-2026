@@ -4,14 +4,15 @@ This is one modular Python service, with a React client. Account and merchant wo
 
 ```mermaid
 flowchart LR
-  UI[React coach] -->|same-origin POST / SSE| API[FastAPI boundary]
+  UI[React coach + Firebase sign-in] -->|same-origin POST / SSE| API[FastAPI boundary]
   Client[Future microphone client] <-->|WebSocket PCM + controls| API
   API --> Auth[Server-verified principal]
   Auth --> Runtime[Google ADK runners]
   Runtime --> Fixture[Scripted offline model]
   Runtime -. configured separately .-> Gemini[Gemini text / Live]
   Runtime --> Tools[Read requirements / prepare draft]
-  Runtime --> Sessions[Owned ADK sessions / local SQLite]
+  Runtime --> Sessions[Owned ADK sessions / Firestore hosted, SQLite local]
+  API --> Leases[Firestore atomic run leases in hosted mode]
 ```
 
 ## Responsibilities
@@ -45,8 +46,8 @@ Offline mode exercises transport without ASR. Its audio-end reply explicitly say
 
 ## Bounds and outstanding production work
 
-Requests: 16 KiB body, five-second body deadline, 2,000-character message. Text: 30-second turn, four model calls, 384 output-token configuration, bounded eight-event queue, five-second cleanup deadline. Voice: 120-second session, four-million-byte input, 12 text turns. Workspace: 20 conversations and 60-event context threshold. One active run per conversation and eight runs per process. These are resource limits, not an exact cost cap.
+Requests: 16 KiB body, five-second body deadline, 2,000-character message. Text: 30-second turn, four model calls, 384 output-token configuration, bounded eight-event queue, five-second cleanup deadline. Voice: 120-second session, four-million-byte input, 12 text turns. Workspace: 20 conversations and 60-event context threshold. One active run per conversation and eight global runs in hosted Firestore mode (process-local in SQLite review mode). These are resource limits, not an exact cost cap.
 
-Sessions persist locally but the browser does not yet offer conversation history/resume. No encrypted merchant data store, cloud memory adapter, shared rate/concurrency gate, retention controls, provider evaluation, frontend Firebase flow, real Google publishing, native host placement or cloud deployment is delivered. Multi-worker/instance operation must first replace the process-local run registry. Future Firebase Hosting/Cloud Run architecture remains a proposal; no CD deployment workflow is enabled.
+Hosted mode provides Google sign-in, Firestore session durability, user-scoped history/resume and transaction-backed distributed run leases. The deployment workflow packages React and Python into one HTTPS Cloud Run service; local mode retains SQLite. Both reject unauthorized session access. Shared Firestore has a dedicated app namespace, with project-scoped runtime datastore IAM. Business records/access policies, retention controls, provider evaluation, real Google publishing and native host placement remain outstanding. Deployment and real human OAuth results must be verified separately from emulator/token-mock tests.
 
 Sources: [ADK streaming](https://adk.dev/live/get-started/streaming-python/), [custom Live server](https://adk.dev/live/custom-server/), [FastAPI WebSockets](https://fastapi.tiangolo.com/advanced/websockets/).

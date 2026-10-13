@@ -1,3 +1,4 @@
+import os
 from typing import Literal
 
 from pydantic import Field, SecretStr, model_validator
@@ -10,6 +11,14 @@ class Settings(BaseSettings):
     coach_mode: Literal["offline", "gemini"] = "offline"
     auth_mode: Literal["local", "firebase"] = "local"
     session_database_url: str = "sqlite+aiosqlite:///./data/sessions.sqlite3"
+    session_backend: Literal["sqlite", "firestore"] = "sqlite"
+    firestore_database: str = "(default)"
+    firestore_namespace: str = Field(default="ogoogle_ai_v1", pattern=r"^ogoogle_ai_[a-zA-Z0-9_]+$")
+    frontend_dist: str = ""
+    release_commit: str = "local"
+    firebase_web_api_key: str = ""
+    firebase_web_app_id: str = ""
+    firebase_auth_domain: str = ""
     session_signing_secret: SecretStr = SecretStr("")
     allowed_origins: list[str] = ["http://127.0.0.1:3200", "http://localhost:3200"]
     google_api_key: SecretStr = SecretStr("")
@@ -23,6 +32,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def reject_unsafe_configuration(self) -> "Settings":
+        if self.session_backend == "firestore" and not self.google_cloud_project:
+            raise ValueError("Firestore requires an explicit project.")
         if self.coach_mode == "gemini" and not (
             self.google_api_key.get_secret_value()
             and self.google_text_model
@@ -32,10 +43,16 @@ class Settings(BaseSettings):
         if self.app_env == "production":
             if self.auth_mode != "firebase" or not self.google_cloud_project:
                 raise ValueError("Production requires Firebase identity and an explicit project.")
-            if "sqlite" in self.session_database_url or ":memory:" in self.session_database_url:
-                raise ValueError("Production requires durable external session storage.")
-            if len(self.session_signing_secret.get_secret_value()) < 32:
-                raise ValueError(
-                    "Production requires a stable signing secret of at least 32 chars."
-                )
+            if self.session_backend != "firestore":
+                raise ValueError("Production requires the durable Firestore session adapter.")
+            if not all(
+                (self.firebase_web_api_key, self.firebase_web_app_id, self.firebase_auth_domain)
+            ):
+                raise ValueError("Production requires dedicated Firebase browser configuration.")
+            if os.getenv("FIRESTORE_EMULATOR_HOST") or os.getenv("FIREBASE_AUTH_EMULATOR_HOST"):
+                raise ValueError("Production cannot use local identity or database emulators.")
+            if not self.allowed_origins or any(
+                not url.startswith("https://") for url in self.allowed_origins
+            ):
+                raise ValueError("Production requires explicit HTTPS origins.")
         return self

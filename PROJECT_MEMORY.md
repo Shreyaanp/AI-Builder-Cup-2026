@@ -1,6 +1,18 @@
 # Project memory
 
-Updated October 13, 2026. Confirmed decisions and evidence only; never record secrets or full conversations here.
+Updated October 14, 2026. Confirmed decisions and evidence only; never record secrets or full conversations here.
+
+## Current deployment phase — supersedes earlier scope/status
+
+- User selected one Cloud Run service for React/Python, Firebase Google sign-in, persistent cloud conversations, and reuse of `ichiropractic` with separate resources. Existing eligible credits/free allowances and the ₹500 total cash ceiling apply; budget mutations remain paused. No billing activation or model calls occurred in this phase.
+- Google provider is independently confirmed enabled after the user's console action. Created separate oGoogle web app, restricted Firebase browser key, `ogoogle-ai` image repository, runtime/deployer accounts and main-only repository-ID-restricted GitHub Workload Identity Federation. Existing Firebase users/default Firestore database are shared; app data uses `ogoogle_ai_v1`. Runtime datastore IAM is project-scoped, not collection-scoped. No service-account private key was created.
+- Implemented Firestore ADK sessions, atomic distributed run leases, Google-only verified Firebase identity, scoped history/resume, single-origin SPA/API packaging and manual release workflow. Tools still read/propose only. Production refuses local identity/SQLite/emulator settings. Hosted startup checks its own namespace before becoming ready.
+- Local evidence: **23 backend tests passed**, including real Firestore emulator RPCs, persistence across new runners, owner isolation, leases and stale/idempotent writes. Firebase identity tests substitute token verification; actual human Google OAuth remains pending. Ruff/mypy and frontend lint/build/hooks passed. Twenty browser scenarios passed before adding hosted identity scenarios. Ten repeated stop/retry checks passed after WAL/connection cleanup and stable stop controls. npm audit reports no known vulnerabilities.
+- Installed local Firestore emulator and checksum-verified Java 21. Emulator tests use an explicit demo project and anonymous credentials; they never contact production Firestore. Firebase loads lazily in hosted mode.
+- Remote status commit `7492a54` is verified. Initial CI run failed one browser stop/retry case; subsequent run `38439971679` passed. Updated CI/container and Cloud Run release have not run yet. Default model is a scripted offline ADK fixture; no live Gemini/speech evidence is claimed.
+- Cloud conversations do not make browser business cards durable. Remaining product work includes microphone/playback, live evaluation, merchant authorization/records, retention/deletion UX, Google publication/native placement and actual new-starter Android/PWA installation.
+
+## October 13 publication history
 
 - Initial publication completed: template commit `c79cd7fe63eb89709605e6eecab92af47bb8628d` is on GitHub `main`, confirmed against the remote commit API. GitHub Actions run `38439789071` started for that commit; no remote pass is claimed while it is running. Credentials, SQLite/session keys, recordings, dependencies and runtime outputs were excluded.
 

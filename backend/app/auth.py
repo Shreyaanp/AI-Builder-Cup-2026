@@ -38,9 +38,17 @@ class IdentityService:
             else None
         )
 
-    def bootstrap(self, request: Request, response: Response) -> dict[str, str]:
+    def bootstrap(self, request: Request, response: Response) -> dict[str, object]:
         if self.settings.auth_mode != "local":
-            return {"auth_mode": "firebase"}
+            return {
+                "auth_mode": "firebase",
+                "firebase": {
+                    "apiKey": self.settings.firebase_web_api_key,
+                    "appId": self.settings.firebase_web_app_id,
+                    "authDomain": self.settings.firebase_auth_domain,
+                    "projectId": self.settings.google_cloud_project,
+                },
+            }
         try:
             self.local_principal(request.cookies.get(COOKIE))
         except HTTPException:
@@ -70,7 +78,13 @@ class IdentityService:
             claims = await anyio.to_thread.run_sync(
                 lambda: firebase_auth.verify_id_token(token, app=self.firebase_app)
             )
+            if claims.get("firebase", {}).get("sign_in_provider") != "google.com" or not claims.get(
+                "email_verified"
+            ):
+                raise HTTPException(403, "Use a verified Google sign-in for this app.")
             return Principal(str(claims["uid"]), "firebase")
+        except HTTPException:
+            raise
         except Exception as error:
             raise HTTPException(401, "Sign-in token could not be verified.") from error
 

@@ -30,3 +30,9 @@ class RunRegistry:
     def release(self, lease: Lease) -> None:
         if self.active.get(lease.key) == lease.token:
             del self.active[lease.key]
+
+    async def acquire_async(self, user_id: str, session_id: str) -> Lease:
+        return self.acquire(user_id, session_id)
+
+    async def release_async(self, lease: Lease) -> None:
+        self.release(lease)
