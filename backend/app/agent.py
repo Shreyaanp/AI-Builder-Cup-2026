@@ -189,7 +189,9 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
             {
                 "vertexai": True,
                 "project": settings.google_cloud_project,
-                "location": settings.google_cloud_location,
+                "location": settings.google_live_location
+                if live
+                else settings.google_cloud_location,
             }
             if settings.gemini_backend == "vertex"
             else {"api_key": settings.google_api_key.get_secret_value(), "vertexai": False}
