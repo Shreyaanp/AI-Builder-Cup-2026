@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  Divider,
   List,
   ListItem,
   ListItemText,
@@ -151,7 +150,7 @@ export default function PublicShop({ id }: { id: string }) {
           {shop.name}
         </Typography>
         {shop.category && (
-          <Typography variant="bodyLarge" sx={{ mt: 0.5, opacity: 0.85 }}>
+          <Typography variant="bodyLarge" sx={{ mt: 0.5 }}>
             {shop.category}
           </Typography>
         )}
@@ -219,8 +218,8 @@ export default function PublicShop({ id }: { id: string }) {
         >
           {shop.products.map((product, index) => (
             <Fragment key={product.name + product.unit}>
-              {index > 0 && <Divider component="li" />}
-              <ListItem sx={{ py: 1.5, opacity: product.available ? 1 : 0.6 }}>
+              {/* Sold-out rows use colour + strike-through + label, not opacity (contrast). */}
+              <ListItem divider={index < shop.products.length - 1} sx={{ py: 1.5 }}>
                 <ListItemText
                   primary={product.name}
                   secondary={product.available ? null : t.soldOut}
