@@ -655,6 +655,8 @@ export interface components {
              * @default en
              */
             language: string;
+            /** Currency */
+            currency?: string | null;
             /** Session Id */
             session_id?: string | null;
             /** Business Id */

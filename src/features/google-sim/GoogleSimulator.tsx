@@ -19,6 +19,7 @@ import { layout, shape } from '../../design/theme'
 import type { Api, Business } from '../v1/api'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useSimCopy } from './strings'
+import { mapsSearch, OWNER_URL } from './links'
 
 type State = components['schemas']['SimState']
 type Action = components['schemas']['SimAction']
@@ -49,6 +50,7 @@ export function GoogleSimulator() {
   const t = useSimCopy()
   const ws = useWorkspace()
   const [open, setOpen] = useState(false)
+  const [find, setFind] = useState(false)
   const [scenario, setScenario] = useState<Scenario>(
     scenarios.includes(requestedScenario as Scenario)
       ? (requestedScenario as Scenario)
@@ -58,9 +60,27 @@ export function GoogleSimulator() {
   if (!ws.active) return null
   return (
     <Stack spacing={3}>
-      <Alert severity="info">{t.banner}</Alert>
-      <Button variant="outlined" onClick={() => setOpen(true)}>
+      <Alert severity="info">
+        <Typography variant="labelLarge">{t.connectionFlag}</Typography>
+        <Typography variant="bodyMedium">{t.banner}</Typography>
+      </Alert>
+      <Button
+        variant="outlined"
+        onClick={() => {
+          setFind(false)
+          setOpen(true)
+        }}
+      >
         {t.start}
+      </Button>
+      <Button
+        variant="outlined"
+        onClick={() => {
+          setFind(true)
+          setOpen(true)
+        }}
+      >
+        {t.find}
       </Button>
       <Box
         component="details"
@@ -105,6 +125,7 @@ export function GoogleSimulator() {
           api={ws.api}
           scenario={scenario}
           forceScenario={forceScenario}
+          find={find}
           close={() => {
             setOpen(false)
             setForceScenario(false)
@@ -120,12 +141,14 @@ function Wizard({
   api,
   scenario,
   forceScenario,
+  find,
   close,
 }: {
   shop: Business
   api: Api
   scenario: Scenario
   forceScenario: boolean
+  find: boolean
   close: () => void
 }) {
   const t = useSimCopy()
@@ -214,12 +237,7 @@ function Wizard({
     </Button>
   )
   const official = (
-    <Button
-      component="a"
-      href="https://business.google.com/add"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
+    <Button component="a" href={OWNER_URL} target="_blank" rel="noopener noreferrer">
       {t.handoff}
     </Button>
   )
@@ -246,7 +264,10 @@ function Wizard({
         {t.title}
       </DialogTitle>
       <Box sx={{ px: 6, pb: 3 }}>
-        <Alert severity="info">{t.banner}</Alert>
+        <Alert severity="info">
+          <Typography variant="labelLarge">{t.connectionFlag}</Typography>
+          <Typography variant="bodyMedium">{t.banner}</Typography>
+        </Alert>
       </Box>
       <DialogContent aria-busy={busy}>
         <Stack spacing={4}>
@@ -285,7 +306,8 @@ function Wizard({
               {s.error && <Alert severity="error">{t.errors[s.error]}</Alert>}
               {s.authorization === 'required' && <Alert severity="warning">{t.reauthorize}</Alert>}
               {s.needs_reverification && <Alert severity="warning">{t.reverification}</Alert>}
-              {s.phase === 'goal' && button(t.start, { kind: 'start' }, true)}
+              {s.phase === 'goal' &&
+                button(find ? t.find : t.start, { kind: 'start', value: find ? 'find' : '' }, true)}
               {s.phase === 'type' && (
                 <>
                   <Typography component="h2" variant="titleLarge">
@@ -350,7 +372,9 @@ function Wizard({
                   </Typography>
                   <Alert severity="info">{t.ownershipStatuses[s.ownership ?? 'none']}</Alert>
                   {s.ownership === 'none' && button(t.claim, { kind: 'claim' }, true)}
-                  {official}
+                  {s.ownership !== 'none' && (
+                    <Typography variant="bodyMedium">{t.claimSaved}</Typography>
+                  )}
                 </>
               )}
               {s.phase === 'review' && (
@@ -388,7 +412,6 @@ function Wizard({
                   {!s.methods?.length && (
                     <>
                       <Alert severity="info">{t.noMethods}</Alert>
-                      {official}
                     </>
                   )}
                   {s.methods?.map((method) =>
@@ -414,7 +437,6 @@ function Wizard({
                   {s.rehearsal_complete && <Alert severity="info">{t.prepared}</Alert>}
                   {button(t.rehearse, { kind: 'rehearse', value: 'complete' })}
                   {button(t.cancelRehearsal, { kind: 'rehearse', value: 'cancel' })}
-                  {official}
                 </>
               )}
               {s.phase === 'result' && (
@@ -454,6 +476,23 @@ function Wizard({
                 </>
               )}
               <Typography variant="bodyMedium">{t.independent}</Typography>
+              <Stack spacing={1}>
+                <Typography variant="labelMedium">{t.liveMaps}</Typography>
+                <Button
+                  component="a"
+                  href={mapsSearch(
+                    s.facts.name,
+                    s.business_type === 'service' ? s.facts.service_area : s.facts.location,
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t.mapsHandoff}
+                </Button>
+                <Typography variant="labelMedium">{t.liveOwner}</Typography>
+                {official}
+                <Typography variant="bodyMedium">{t.handoffHelp}</Typography>
+              </Stack>
               <Box
                 component="details"
                 sx={{
