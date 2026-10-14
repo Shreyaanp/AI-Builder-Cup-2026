@@ -30,7 +30,8 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "voice": ((10, 3600),),
     "photo": ((10, 60), (60, 86_400)),
     "import": ((10, 3_600), (30, 86_400)),
-    "forecast": ((10, 3_600), (30, 86_400)),
+    # The Prep plan tile loads with My shop; repeats are answered from the forecast cache.
+    "forecast": ((120, 3_600), (1_000, 86_400)),
     "recap": ((30, 60), (300, 86_400)),
     "tts": ((30, 60), (600, 86_400)),
     "proposal": ((60, 60),),
