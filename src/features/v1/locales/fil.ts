@@ -1,6 +1,7 @@
 import type { Copy } from '../strings'
 
 export const fil: Copy = {
+  rateLimited: 'Masyadong maraming request. Maghintay ng isang minuto at subukang muli.',
   appName: 'Chalkboard',
   independent: 'Hiwalay na prototype · hindi produkto ng Google',
   connectionOffline: 'Offline',

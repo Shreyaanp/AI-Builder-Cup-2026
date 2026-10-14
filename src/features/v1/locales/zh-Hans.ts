@@ -1,6 +1,7 @@
 import type { Copy } from '../strings'
 
 export const zhHans: Copy = {
+  rateLimited: '请求太频繁，请稍等一分钟再试。',
   connectionOffline: '离线',
   connectionReconnecting: '正在重新连接…',
   voiceFailed: '语音连接已结束。请重试或使用文字。',

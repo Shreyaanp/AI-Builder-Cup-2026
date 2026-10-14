@@ -6,6 +6,8 @@ from starlette.datastructures import Headers, MutableHeaders
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from .limits import JSON_BODY_BYTES
+
 
 class RequestBoundary:
     def __init__(self, app: ASGIApp, allowed_origins: list[str]) -> None:
@@ -35,7 +37,12 @@ class RequestBoundary:
             await reject("ORIGIN_BLOCKED", 403)
             return
         next_receive = receive
-        if scope["method"] in {"POST", "PUT", "PATCH"}:
+        content_type = headers.get("content-type", "").split(";", 1)[0].strip().lower()
+        if (
+            scope["method"] in {"POST", "PUT", "PATCH"}
+            or content_type == "application/json"
+            or content_type.endswith("+json")
+        ):
             path = scope["path"]
             if path == "/api/v1/photos" or (
                 path.startswith("/api/v1/face/challenges/") and path.endswith("/capture")
@@ -51,7 +58,7 @@ class RequestBoundary:
             except ValueError:
                 await reject("INVALID_LENGTH", 400)
                 return
-            if length > 16_384:
+            if length > JSON_BODY_BYTES:
                 await reject("BODY_TOO_LARGE", 413)
                 return
             body = bytearray()
@@ -62,7 +69,7 @@ class RequestBoundary:
                         if message["type"] == "http.disconnect":
                             return
                         chunk = message.get("body", b"")
-                        if len(body) + len(chunk) > 16_384:
+                        if len(body) + len(chunk) > JSON_BODY_BYTES:
                             await reject("BODY_TOO_LARGE", 413)
                             return
                         body.extend(chunk)

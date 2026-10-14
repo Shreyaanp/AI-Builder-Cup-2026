@@ -1,6 +1,7 @@
 import type { Copy } from '../strings'
 
 export const th: Copy = {
+  rateLimited: 'มีคำขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่',
   connectionOffline: 'ออฟไลน์',
   connectionReconnecting: 'กำลังเชื่อมต่อใหม่…',
   voiceFailed: 'การเชื่อมต่อเสียงสิ้นสุดแล้ว ลองอีกครั้งหรือใช้ข้อความ',

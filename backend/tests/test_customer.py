@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
-from app.customer import Answer, CustomerAnswers, InquiryInput, PublicLimiter, Question
+from app.customer import Answer, CustomerAnswers, InquiryInput, Question
 from app.main import create_app
 from app.merchant import (
     BusinessFields,
@@ -214,32 +214,9 @@ def test_public_rate_limit_and_validation(app) -> None:
         for _ in range(10):
             assert client.post(path, json={"question": "Kopi?"}).status_code == 200
         rejected = client.post(path, json={"question": "Kopi?"})
-        assert rejected.status_code == 429 and rejected.headers["retry-after"] == "60"
-        assert "wait a minute" in rejected.json()["detail"]
-
-
-def test_limiter_bounds_both_dimensions_and_memory() -> None:
-    now = [0.0]
-    limiter = PublicLimiter(lambda: now[0])
-    for index in range(50):
-        limiter.take("ask", "same-shop", str(index))
-    with pytest.raises(HTTPException):
-        limiter.take("ask", "same-shop", "new-ip")
-    other = PublicLimiter(lambda: now[0])
-    for _ in range(10):
-        other.take("ask", "one-shop", "same-ip")
-    with pytest.raises(HTTPException):
-        other.take("ask", "one-shop", "same-ip")
-    other.take("ask", "another-shop", "same-ip")
-    bounded = PublicLimiter(lambda: now[0])
-    for index in range(1024):
-        bounded.take("ask", str(index), str(index))
-    with pytest.raises(HTTPException):
-        bounded.take("ask", "another", "another")
-    assert len(bounded.windows) == 2048
-    now[0] = 60
-    bounded.take("ask", "another", "another")
-    assert len(bounded.windows) == 2
+        assert rejected.status_code == 429
+        assert 1 <= int(rejected.headers["retry-after"]) <= 60
+        assert rejected.json()["detail"] == "RATE_LIMITED"
 
 
 def test_inquiry_routes_consent_pending_dedupe_and_owner_scope(app) -> None:

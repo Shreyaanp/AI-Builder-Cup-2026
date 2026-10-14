@@ -1,6 +1,7 @@
 import type { Copy } from '../strings'
 
 export const vi: Copy = {
+  rateLimited: 'Quá nhiều yêu cầu. Vui lòng đợi một phút rồi thử lại.',
   connectionOffline: 'Ngoại tuyến',
   connectionReconnecting: 'Đang kết nối lại…',
   voiceFailed: 'Kết nối giọng nói đã kết thúc. Hãy thử lại hoặc dùng văn bản.',

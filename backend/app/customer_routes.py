@@ -4,6 +4,7 @@ import anyio
 from fastapi import APIRouter, HTTPException, Request
 
 from .customer import Answer, Inquiry, InquiryInput, InquiryReceipt, Question
+from .limits import client_ip, enforce_limits
 from .merchant_routes import consented_owner, owner, store
 
 router = APIRouter(prefix="/api/v1")
@@ -16,16 +17,12 @@ async def shared(request: Request, bid: str) -> dict:
     return shop
 
 
-def limit(request: Request, action: str, bid: str) -> None:
-    request.app.state.customer_limiter.take(
-        action, bid, request.client.host if request.client else "unknown"
-    )
-
-
 @router.post("/public/shops/{business_id}/ask", response_model=Answer)
 async def ask(business_id: str, body: Question, request: Request) -> Answer:
     shop = await shared(request, business_id)
-    limit(request, "ask", business_id)
+    await enforce_limits(
+        request, [("ask:ip", client_ip(request)), ("ask:shop", business_id)], anonymous=True
+    )
     answer = await request.app.state.customer_answers.answer(shop, body)
     # An in-flight answer must not survive unsharing or a changed menu.
     if await shared(request, business_id) != shop:
@@ -36,7 +33,9 @@ async def ask(business_id: str, body: Question, request: Request) -> Answer:
 @router.post("/public/shops/{business_id}/inquiries", response_model=InquiryReceipt)
 async def inquire(business_id: str, body: InquiryInput, request: Request) -> InquiryReceipt:
     await shared(request, business_id)
-    limit(request, "inquire", business_id)
+    await enforce_limits(
+        request, [("inquire:ip", client_ip(request)), ("inquire:shop", business_id)], anonymous=True
+    )
     return await anyio.to_thread.run_sync(store(request).add_inquiry, business_id, body)
 
 

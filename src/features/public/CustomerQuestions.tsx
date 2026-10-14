@@ -156,7 +156,7 @@ export function CustomerQuestions({
         </Button>
       </Stack>
       {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
+        <Alert severity="error" role="status" aria-live="polite" sx={{ mt: 2 }}>
           {error}
         </Alert>
       )}
@@ -313,7 +313,7 @@ export function CustomerInquiry({ id, copy: t }: { id: string; copy: CustomerCop
         </Button>
       </Stack>
       {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
+        <Alert severity="error" role="status" aria-live="polite" sx={{ mt: 2 }}>
           {error}
         </Alert>
       )}
