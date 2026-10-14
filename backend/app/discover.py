@@ -129,8 +129,39 @@ def distance(lat: float, lng: float, other_lat: float, other_lng: float) -> int:
     return round(6_371_000 * 2 * math.asin(math.sqrt(min(1, h))))
 
 
-def open_now(hours: str, timezone: str, now: datetime | None = None) -> bool | None:
+def open_now(
+    hours: str,
+    timezone: str,
+    now: datetime | None = None,
+    weekly_hours: list[dict[str, Any]] | None = None,
+) -> bool | None:
     """Match the owner's plain daily-range logic; day-specific/ambiguous text stays unknown."""
+    if weekly_hours:
+        try:
+            local = (now or datetime.now(UTC)).astimezone(shop_timezone(timezone))
+        except (ValueError, KeyError):
+            return None
+        days = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+        entries = {entry["day"]: entry for entry in weekly_hours}
+        today = entries.get(days[local.weekday()])
+        previous = entries.get(days[(local.weekday() - 1) % 7])
+        current = local.hour * 60 + local.minute
+
+        def minute(value: str) -> int:
+            hour, minute = value.split(":")
+            return int(hour) * 60 + int(minute)
+
+        # A closed day may still include the tail of the previous day's overnight shift.
+        if previous and not previous["closed"]:
+            begin, finish = minute(previous["open"]), minute(previous["close"])
+            if begin > finish and current < finish:
+                return True
+        if not today:
+            return None
+        if today["closed"]:
+            return False
+        begin, finish = minute(today["open"]), minute(today["close"])
+        return begin <= current < finish if begin < finish else current >= begin
     match = re.search(
         r"(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*(?:-|–|—|to)\s*"
         r"(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?",
@@ -365,7 +396,9 @@ async def discover(
             lat=shop["lat"],
             lng=shop["lng"],
             distance_m=d,
-            open_now=open_now(shop["hours"], shop["timezone"]),
+            open_now=open_now(
+                shop["hours"], shop["timezone"], weekly_hours=shop.get("weekly_hours")
+            ),
             currency=shop["currency"],
             items=[TopItem(**p) for p in shop["products"][:3]],
             sold_out=[p["name"] for p in shop["products"] if not p["available"]],

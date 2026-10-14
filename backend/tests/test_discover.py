@@ -62,7 +62,8 @@ def test_public_discovery_both_stores(
     shared_shop(store, shared=False)
     shared_shop(store, lat=1.35)
     monkeypatch.setattr(
-        "app.discover.open_now", lambda h, z: open_now(h, z, datetime(2026, 10, 14, 1, tzinfo=UTC))
+        "app.discover.open_now",
+        lambda h, z, **kw: open_now(h, z, datetime(2026, 10, 14, 1, tzinfo=UTC), **kw),
     )
     app = create_app(settings(tmp_path), InMemorySessionService())
     with TestClient(app) as client:

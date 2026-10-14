@@ -52,6 +52,9 @@ import { PlanTomorrow } from '../planning/PlanTomorrow'
 import { useCopy as usePlanCopy } from '../planning/strings'
 import { enterRise, shape } from '../../design/theme'
 import { useRewardCopy } from '../rewards/strings'
+import { HoursList } from '../shop/Hours'
+import { hasHours } from '../shop/hoursModel'
+import { CategoryGroups } from '../shop/CategoryGroups'
 
 export type ShopSheetKind =
   'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
@@ -64,6 +67,7 @@ export function Tile({
   children,
   wide = false,
   onClick,
+  compact = false,
 }: {
   icon: ReactNode
   label: string
@@ -71,6 +75,7 @@ export function Tile({
   children?: ReactNode
   wide?: boolean
   onClick: () => void
+  compact?: boolean
 }) {
   const roles = useTheme().material
   return (
@@ -79,13 +84,13 @@ export function Tile({
       sx={{
         gridColumn: wide ? '1 / -1' : undefined,
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'stretch',
+        flexDirection: compact ? 'row' : 'column',
+        alignItems: compact ? 'center' : 'stretch',
         justifyContent: 'flex-start',
         textAlign: 'start',
         gap: 2,
-        p: 4,
-        minHeight: 120,
+        p: compact ? 2 : 4,
+        minHeight: compact ? 48 : 120,
         minWidth: 0,
         borderRadius: `${shape.lgIncreased}px`,
         bgcolor: roles.surfaceContainer,
@@ -108,7 +113,7 @@ export function Tile({
       </Stack>
       <Typography
         component="span"
-        variant="titleLarge"
+        variant={compact ? 'labelLarge' : 'titleLarge'}
         sx={{ display: 'block', overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}
       >
         {value}
@@ -144,13 +149,14 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
     <Stack spacing={4}>
       {!narrow && (
         <PendingCard
+          compact
           unread={unread}
           onMessages={() => setSheet('messages')}
           onAnswer={(fact) => ws.startCoachDraft(`${t.factNames[fact]}: `)}
         />
       )}
       <ShopTiles unread={unread} onSheet={setSheet} narrow={narrow} />
-      {!narrow && <FreshnessCard />}
+      {!narrow && <FreshnessCard compact />}
       <ShopSheets
         kind={sheet}
         onClose={() => {
@@ -181,7 +187,12 @@ export function ShopTiles({
   const shop = ws.active
   if (!shop) return null
   const currency = shopCurrency(shop)
-  const open = openNow(shop.fields.hours)
+  const open = openNow(
+    shop.fields.hours,
+    new Date(),
+    shop.fields.weekly_hours,
+    shop.fields.timezone ?? 'Asia/Singapore',
+  )
   const soldOut = ws.products.filter((product) => product.available === false).length
   const { done, total } = readiness(ws)
   return (
@@ -216,27 +227,33 @@ export function ShopTiles({
         onClick={() => onSheet('menu')}
       >
         {ws.products.length > 0 && (
-          <Stack component="span" spacing={1}>
-            {ws.products.slice(0, 3).map((product) => (
-              <Stack
-                component="span"
-                key={product.id ?? product.name}
-                direction="row"
-                sx={{ gap: 2, justifyContent: 'space-between' }}
-              >
-                <Typography component="span" variant="bodyMedium" noWrap sx={{ minWidth: 0 }}>
-                  {product.name}
-                </Typography>
-                <Typography
-                  component="span"
-                  variant="bodyMedium"
-                  sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {formatPrice(product.price, currency)}
-                </Typography>
+          <CategoryGroups products={ws.products} inline>
+            {(items) => (
+              <Stack component="span" spacing={1} sx={{ px: 2, pb: 1 }}>
+                {items.slice(0, 3).map((product) => (
+                  <Stack
+                    component="span"
+                    key={product.id ?? product.name}
+                    direction="row"
+                    sx={{ gap: 2, justifyContent: 'space-between' }}
+                  >
+                    <Typography component="span" variant="bodyMedium" noWrap sx={{ minWidth: 0 }}>
+                      {product.name}
+                    </Typography>
+                    <Typography
+                      component="span"
+                      variant="bodyMedium"
+                      sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {product.available === false
+                        ? t.soldOut
+                        : formatPrice(product.price, currency)}
+                    </Typography>
+                  </Stack>
+                ))}
               </Stack>
-            ))}
-          </Stack>
+            )}
+          </CategoryGroups>
         )}
         <Typography component="span" variant="labelLarge" sx={{ color: roles.primary }}>
           {ws.products.length ? t.viewAll : t.addProduct}
@@ -283,16 +300,19 @@ export function ShopTiles({
       <Tile
         wide
         icon={<Gauge size={20} />}
+        compact={done === total}
         label={t.readinessTitle}
         value={t.readiness(done, total)}
         onClick={() => onSheet('readiness')}
       >
-        <LinearProgress
-          variant="determinate"
-          value={(done / total) * 100}
-          aria-hidden="true"
-          sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
-        />
+        {done < total && (
+          <LinearProgress
+            variant="determinate"
+            value={(done / total) * 100}
+            aria-hidden="true"
+            sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
+          />
+        )}
       </Tile>
       <RecapTile />
     </Box>
@@ -385,6 +405,7 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
             </Box>
           </Box>
           <Box sx={{ mt: 6 }}>
+            <HoursList hours={shop.fields.weekly_hours} />
             <FactList
               fields={shop.fields}
               onAnswer={(fact) => then(() => ws.startCoachDraft(`${t.factNames[fact]}: `))()}
@@ -451,38 +472,46 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
                 {t.productsEmpty}
               </Typography>
             ) : (
-              <List disablePadding sx={list}>
-                {ws.products.map((product, index) => {
-                  const available = product.available !== false
-                  return (
-                    <ListItemButton
-                      key={product.id ?? product.name}
-                      divider={index < ws.products.length - 1}
-                      aria-label={`${t.editProduct} ${product.name}`}
-                      onClick={then(() => ws.openEditor({ kind: 'product', product }))}
-                      sx={{ borderRadius: 0, minHeight: 56, gap: 2 }}
-                    >
-                      <ListItemText
-                        primary={product.name}
-                        secondary={available ? product.unit : `${t.soldOut} · ${product.unit}`}
-                        slotProps={{
-                          primary: { variant: 'bodyLarge', noWrap: true },
-                          secondary: {
-                            variant: 'bodySmall',
-                            color: available ? 'text.secondary' : 'error',
-                          },
-                        }}
-                      />
-                      <Typography
-                        variant="titleSmall"
-                        sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
-                      >
-                        {formatPrice(product.price, currency)}
-                      </Typography>
-                    </ListItemButton>
-                  )
-                })}
-              </List>
+              <CategoryGroups products={ws.products}>
+                {(items) => (
+                  <List disablePadding>
+                    {items.map((product, index) => {
+                      const available = product.available !== false
+                      return (
+                        <ListItem key={product.id ?? product.name} disablePadding>
+                          <ListItemButton
+                            key={product.id ?? product.name}
+                            divider={index < items.length - 1}
+                            aria-label={`${t.editProduct} ${product.name}`}
+                            onClick={then(() => ws.openEditor({ kind: 'product', product }))}
+                            sx={{ borderRadius: 0, minHeight: 56, gap: 2 }}
+                          >
+                            <ListItemText
+                              primary={product.name}
+                              secondary={
+                                available ? product.unit : `${t.soldOut} · ${product.unit}`
+                              }
+                              slotProps={{
+                                primary: { variant: 'bodyLarge', noWrap: true },
+                                secondary: {
+                                  variant: 'bodySmall',
+                                  color: available ? 'text.secondary' : 'error',
+                                },
+                              }}
+                            />
+                            <Typography
+                              variant="titleSmall"
+                              sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+                            >
+                              {formatPrice(product.price, currency)}
+                            </Typography>
+                          </ListItemButton>
+                        </ListItem>
+                      )
+                    })}
+                  </List>
+                )}
+              </CategoryGroups>
             )}
           </Sheet>
           <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
@@ -564,7 +593,7 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
         { label: t.checkName, done: Boolean(f.name.trim()) },
         { label: t.checkCategory, done: Boolean(f.category.trim()) },
         { label: t.checkLocation, done: Boolean(f.location.trim()) },
-        { label: t.checkHours, done: Boolean(f.hours.trim()) },
+        { label: t.checkHours, done: hasHours(f) },
         { label: t.checkPhone, done: Boolean(f.phone.trim()) },
         { label: t.checkProducts, done: ws.products.length > 0 },
       ]
@@ -621,7 +650,7 @@ function CustomerPage() {
   return (
     <Box>
       <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
-        <Typography variant="bodyMedium" color="text.secondary" sx={{ flex: 1 }}>
+        <Typography variant="bodySmall" color="text.secondary" sx={{ flex: 1 }}>
           {shop.public ? t.customerPageOn : t.customerPageOff}
         </Typography>
         <Switch
@@ -688,6 +717,7 @@ function CustomerPage() {
             </Button>
             <Button
               startIcon={<ExternalLink size={18} />}
+              sx={{ typography: 'labelMedium', minHeight: 48 }}
               href={url}
               target="_blank"
               rel="noopener"

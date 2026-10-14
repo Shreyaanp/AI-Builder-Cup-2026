@@ -320,7 +320,7 @@ export const th: Copy = {
   verifiedYes: 'Google ยืนยันร้านของฉันแล้ว',
   verifiedOwner: 'ยืนยันแล้ว — ตามที่คุณแจ้ง Chalkboard ตรวจสอบกับ Google ไม่ได้',
   verifiedUndo: 'ยังไม่ได้ยืนยัน',
-  practiceSteps: 'ฝึกขั้นตอน (จำลอง)',
+  practiceSteps: 'ฝึกขั้นตอน',
   readiness: (done: number, total: number) => `พร้อม ${done} จาก ${total} รายการ`,
   checkName: 'ชื่อร้าน',
   checkCategory: 'หมวดหมู่',

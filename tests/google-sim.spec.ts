@@ -2,14 +2,13 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 const banner = 'Simulated — no Google listing is created or changed'
-const dialog = (page: Page) =>
-  page.getByRole('dialog', { name: 'Google owner journey (simulation)' })
+const dialog = (page: Page) => page.getByRole('dialog', { name: 'Practice: Google owner journey' })
 
 async function labelled(page: Page) {
-  await expect(dialog(page).getByText(banner, { exact: true })).toBeVisible()
   await expect(
-    dialog(page).getByText('Simulated — not connected to Google', { exact: true }),
+    dialog(page).getByRole('heading', { name: 'Practice: Google owner journey' }),
   ).toBeVisible()
+  await expect(dialog(page)).not.toContainText(/simulation|simulated|simulate submission/i)
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -32,10 +31,11 @@ async function open(page: Page, scenario = 'new-store-success', type = 'Customer
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await page.getByRole('button', { name: 'Confirm and save' }).click()
   await page.getByRole('button', { name: 'Google', exact: true }).click()
-  await page.getByRole('button', { name: 'Practice the steps (simulation)' }).click()
-  await page.getByRole('button', { name: 'Put my shop on Google (simulation)' }).click()
+  await expect(page.getByText(banner, { exact: true })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Practice the steps' }).click()
+  await page.getByRole('button', { name: 'Put my shop on Google' }).click()
   await labelled(page)
-  await dialog(page).getByRole('button', { name: 'Put my shop on Google (simulation)' }).click()
+  await dialog(page).getByRole('button', { name: 'Put my shop on Google' }).click()
   await labelled(page)
   await dialog(page).getByRole('button', { name: type, exact: true }).click()
   await labelled(page)
@@ -59,14 +59,14 @@ async function review(page: Page) {
     .getByRole('button', { name: 'Demo owner account (fictional)', exact: true })
     .click()
   await labelled(page)
-  await dialog(page).getByRole('button', { name: 'Create a new simulated listing' }).click()
+  await dialog(page).getByRole('button', { name: 'Create a new listing' }).click()
   await labelled(page)
   await expect(dialog(page).getByText('Checked locally — not validated by Google')).toBeVisible()
 }
 
 async function submit(page: Page) {
   await dialog(page)
-    .getByRole('button', { name: 'Approve this revision and simulate submission' })
+    .getByRole('button', { name: 'Approve this revision and submit for practice' })
     .click()
   await labelled(page)
 }
@@ -95,12 +95,8 @@ test('new-store-success: labelled journey, local validation, verified and public
   ).toEqual([])
   await submit(page)
   await code(page)
-  await expect(
-    dialog(page).getByText('Verification (simulated): Verified (simulated)', { exact: true }),
-  ).toBeVisible()
-  await expect(
-    dialog(page).getByText('Publication (simulated): Pending (simulated)', { exact: true }),
-  ).toBeVisible()
+  await expect(dialog(page).getByText('Verification: Verified', { exact: true })).toBeVisible()
+  await expect(dialog(page).getByText('Publication: Pending', { exact: true })).toBeVisible()
   await expect(dialog(page).getByText(/Fictional receipt: SIM-/)).toBeVisible()
 })
 
@@ -116,20 +112,19 @@ test('claim rejected preserves draft and never claims ownership', async ({ page 
     .getByRole('button', { name: 'Continue: Demo Market Road', exact: true })
     .click()
   await labelled(page)
-  await dialog(page)
-    .getByRole('button', { name: 'Request simulated ownership', exact: true })
-    .click()
+  await dialog(page).getByRole('button', { name: 'Request ownership', exact: true }).click()
   await labelled(page)
   await expect(dialog(page).getByText('Rejected — draft preserved')).toBeVisible()
   await expect(
-    dialog(page).getByRole('button', { name: 'Approve this revision and simulate submission' }),
+    dialog(page).getByRole('button', { name: 'Approve this revision and submit for practice' }),
   ).toHaveCount(0)
   await dialog(page).getByRole('button', { name: 'Close and keep progress' }).click()
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'Google', exact: true }).click()
-  await page.getByRole('button', { name: 'Practice the steps (simulation)' }).click()
-  await page.getByRole('button', { name: 'Put my shop on Google (simulation)' }).click()
+  await expect(page.getByText(banner, { exact: true })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Practice the steps' }).click()
+  await page.getByRole('button', { name: 'Put my shop on Google' }).click()
   await expect(dialog(page).getByText('Rejected — draft preserved')).toBeVisible()
 })
 
@@ -145,9 +140,7 @@ test('expired code recovers with a new fictional attempt', async ({ page }) => {
   await labelled(page)
   await dialog(page).getByLabel('Fictional code', { exact: true }).fill('123456')
   await dialog(page).getByRole('button', { name: 'Check fictional code', exact: true }).click()
-  await expect(
-    dialog(page).getByText('Verification (simulated): Verified (simulated)', { exact: true }),
-  ).toBeVisible()
+  await expect(dialog(page).getByText('Verification: Verified', { exact: true })).toBeVisible()
 })
 
 test('unknown submission restores pending, reconciles once without duplicate creation', async ({
@@ -161,14 +154,14 @@ test('unknown submission restores pending, reconciles once without duplicate cre
     .getByText(/Fictional receipt: SIM-/)
     .textContent()
   await dialog(page).getByRole('button', { name: 'Close and keep progress' }).click()
-  await page.getByRole('button', { name: 'Put my shop on Google (simulation)' }).click()
+  await page.getByRole('button', { name: 'Put my shop on Google' }).click()
   await expect(dialog(page).getByText('Submission pending — outcome unknown')).toBeVisible()
   await labelled(page)
   await dialog(page).getByRole('button', { name: 'Reconcile and retry' }).click()
   await labelled(page)
   await expect(dialog(page).getByText(/Fictional receipt: SIM-/)).toHaveText(receipt!)
   await code(page)
-  await expect(dialog(page).getByText(/Simulated submissions: 1/)).toBeVisible()
+  await expect(dialog(page).getByText(/Submissions: 1/)).toBeVisible()
 })
 
 test('service-area preview hides private address and scenario reset preserves real shop', async ({
@@ -185,21 +178,19 @@ test('service-area preview hides private address and scenario reset preserves re
   ).toHaveAttribute('href', /query=Simulator%20Tea%20Demo%20Katong%20area$/)
   await expect(
     dialog(page).getByText(
-      'Private address hidden — only the service area appears in the simulated public preview.',
+      'Private address hidden — only the service area appears in the public preview.',
     ),
   ).toBeVisible()
   const before = await (await page.request.get('/api/v1/businesses')).json()
   await dialog(page).getByText('Reviewer controls', { exact: true }).click()
   await dialog(page).getByLabel('Reviewer: scenario').click()
   await page.getByRole('option', { name: 'new-store-success', exact: true }).click()
-  await expect(
-    dialog(page).getByRole('button', { name: 'Put my shop on Google (simulation)' }),
-  ).toBeVisible()
+  await expect(dialog(page).getByRole('button', { name: 'Put my shop on Google' })).toBeVisible()
   await labelled(page)
   const after = await (await page.request.get('/api/v1/businesses')).json()
   expect(after).toEqual(before)
   await dialog(page).getByRole('button', { name: 'Close and keep progress' }).click()
-  await page.getByRole('button', { name: 'Put my shop on Google (simulation)' }).click()
+  await page.getByRole('button', { name: 'Put my shop on Google' }).click()
   await dialog(page).getByText('Reviewer controls', { exact: true }).click()
   await expect(dialog(page).getByLabel('Reviewer: scenario')).toContainText('new-store-success')
 })
@@ -215,9 +206,7 @@ test('video checklist and cancellation never mark verified', async ({ page }) =>
     ),
   ).toBeVisible()
   await labelled(page)
-  await expect(
-    dialog(page).getByText('Verification (simulated): Pending (simulated)', { exact: true }),
-  ).toBeVisible()
+  await expect(dialog(page).getByText('Verification: Pending', { exact: true })).toBeVisible()
   await dialog(page).getByRole('button', { name: 'Cancel preparation' }).click()
   await expect(
     dialog(page).getByText(
@@ -238,7 +227,7 @@ test('rejected hours require a corrected revision and disconnect preserves owner
   await dialog(page).getByRole('button', { name: 'Reviewer: reject hours on submission' }).click()
   await expect(
     dialog(page).getByText(
-      'Hours rejected (simulated). Correct hours and review a new revision before submitting again.',
+      'Hours rejected. Correct hours and review a new revision before submitting again.',
     ),
   ).toBeVisible()
   await expect(dialog(page).getByLabel('Shop name')).toHaveValue('Simulator Tea')
@@ -248,13 +237,11 @@ test('rejected hours require a corrected revision and disconnect preserves owner
   await submit(page)
   await code(page)
   // The expander may stay open between wizard steps.
-  const disconnect = dialog(page).getByRole('button', { name: 'Disconnect simulated management' })
+  const disconnect = dialog(page).getByRole('button', { name: 'Disconnect management' })
   if (!(await disconnect.isVisible()))
     await dialog(page).getByText('Reviewer controls', { exact: true }).click()
   await disconnect.click()
-  await expect(
-    dialog(page).getByText('Removal pending — simulated queued changes stopped'),
-  ).toBeVisible()
+  await expect(dialog(page).getByText('Removal pending — queued changes stopped')).toBeVisible()
   await labelled(page)
   await expect(
     dialog(page).getByText(
@@ -262,7 +249,5 @@ test('rejected hours require a corrected revision and disconnect preserves owner
     ),
   ).toBeVisible()
   await dialog(page).getByRole('button', { name: 'Reviewer: confirm removal' }).click()
-  await expect(
-    dialog(page).getByText('Removal confirmed (simulated)', { exact: true }),
-  ).toBeVisible()
+  await expect(dialog(page).getByText('Removal confirmed', { exact: true })).toBeVisible()
 })

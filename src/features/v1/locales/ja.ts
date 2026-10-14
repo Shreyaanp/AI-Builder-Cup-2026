@@ -323,7 +323,7 @@ export const ja: Copy = {
   verifiedYes: 'Google で確認が済みました',
   verifiedOwner: '確認済み（ご本人の申告）。Chalkboard は Google に確認できません。',
   verifiedUndo: 'まだ確認していない',
-  practiceSteps: '手順を練習（シミュレーション）',
+  practiceSteps: '手順を練習',
   readiness: (done: number, total: number) => `${total}項目中${done}項目が準備完了`,
   checkName: 'お店の名前',
   checkCategory: 'カテゴリ',

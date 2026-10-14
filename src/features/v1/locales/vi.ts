@@ -326,7 +326,7 @@ export const vi: Copy = {
   verifiedYes: 'Google đã xác minh cửa hàng của tôi',
   verifiedOwner: 'Đã xác minh — theo bạn cho biết. Chalkboard không thể kiểm tra với Google.',
   verifiedUndo: 'Chưa xác minh',
-  practiceSteps: 'Luyện tập các bước (mô phỏng)',
+  practiceSteps: 'Luyện tập các bước',
   readiness: (done: number, total: number) => `Sẵn sàng ${done} / ${total} mục`,
   checkName: 'Tên cửa hàng',
   checkCategory: 'Danh mục',

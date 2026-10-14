@@ -2844,6 +2844,14 @@
             "title": "Hours",
             "default": ""
           },
+          "weekly_hours": {
+            "items": {
+              "$ref": "#/components/schemas/DayHours"
+            },
+            "type": "array",
+            "maxItems": 7,
+            "title": "Weekly Hours"
+          },
           "phone": {
             "type": "string",
             "maxLength": 40,
@@ -3130,6 +3138,58 @@
           "id"
         ],
         "title": "CustomerThread"
+      },
+      "DayHours": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "enum": [
+              "mon",
+              "tue",
+              "wed",
+              "thu",
+              "fri",
+              "sat",
+              "sun"
+            ],
+            "title": "Day"
+          },
+          "closed": {
+            "type": "boolean",
+            "title": "Closed",
+            "default": false
+          },
+          "open": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open"
+          },
+          "close": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "day"
+        ],
+        "title": "DayHours"
       },
       "Decision": {
         "properties": {
@@ -3771,6 +3831,12 @@
             "maxLength": 180,
             "minLength": 1,
             "title": "Name"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Category",
+            "default": ""
           },
           "price": {
             "type": "integer",
