@@ -138,7 +138,13 @@ export function CoachScreen() {
     try {
       const token = await identity.getToken()
       await streamCoach(
-        { message, language, session_id: session.current, business_id: activeId },
+        {
+          message,
+          language,
+          currency: defaultCurrency(),
+          session_id: session.current,
+          business_id: activeId,
+        },
         abort.signal,
         (event) => {
           receive(event)

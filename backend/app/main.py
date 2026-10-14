@@ -243,7 +243,7 @@ def create_app(
                 yield frame(StreamEvent(kind="ready", session_id=sid, mode=settings.coach_mode))
                 async with asyncio.timeout(settings.max_turn_seconds):
                     async for event in services.runtime.text_events(
-                        principal, sid, body.message, body.language
+                        principal, sid, body.message, body.language, body.currency
                     ):
                         yield frame(event)
                         if event.kind == "error":

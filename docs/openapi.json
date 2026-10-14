@@ -1635,6 +1635,18 @@
             "title": "Language",
             "default": "en"
           },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
           "session_id": {
             "anyOf": [
               {
