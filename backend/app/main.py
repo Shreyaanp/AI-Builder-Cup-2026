@@ -28,6 +28,7 @@ from .coordinator import MerchantContext, current
 from .customer import CustomerAnswers
 from .customer_routes import router as customer_router
 from .day_close import router as day_close_router
+from .demo_workspace import router as demo_workspace_router
 from .discover import MapsService
 from .discover import router as discover_router
 from .discover_ask import router as discover_ask_router
@@ -197,6 +198,7 @@ def create_app(
     app.include_router(discover_router)
     app.include_router(discover_ask_router)
     app.include_router(day_close_router)
+    app.include_router(demo_workspace_router)
     app.include_router(sourcing_router)
     app.add_middleware(
         CORSMiddleware,
