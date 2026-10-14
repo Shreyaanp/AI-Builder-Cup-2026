@@ -47,6 +47,7 @@ import type { Conversation, PhotoResult, Proposal } from '../api'
 import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
 import { Sheet } from '../Sheet'
+import { useBackClose } from '../backStack'
 import { ShopCard, ShopSheet, StartCard } from '../ShopCard'
 import { PendingCard } from '../PendingCard'
 import { ShopSheets } from '../ShopTiles'
@@ -164,6 +165,16 @@ export function CoachScreen() {
     consumeCoachDraft()
     messageInput.current?.focus()
   }, [coachDraft, consumeCoachDraft])
+
+  // A typed draft: Back asks "Discard changes?" before leaving, and so does closing the tab.
+  useBackClose(
+    Boolean(note.trim()),
+    () => {
+      setNote('')
+      window.history.back()
+    },
+    true,
+  )
 
   function resetThread() {
     controller.current?.abort()

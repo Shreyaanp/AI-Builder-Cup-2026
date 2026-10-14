@@ -45,6 +45,7 @@ import { ShopScreen } from './screens/ShopScreen'
 import { ShopOverview } from './ShopTiles'
 import { GoogleScreen } from './screens/GoogleScreen'
 import { PrivacyScreen } from './screens/PrivacyScreen'
+import { DiscardPrompt } from './DiscardPrompt'
 
 export function AppShell() {
   const t = useCopy()
@@ -178,6 +179,7 @@ export function AppShell() {
           ))}
         </Box>
       )}
+      <DiscardPrompt />
     </Box>
   )
 }

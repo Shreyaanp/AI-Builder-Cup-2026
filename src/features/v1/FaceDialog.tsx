@@ -14,6 +14,7 @@ import {
   Typography,
 } from '@mui/material'
 import type { Api } from './api'
+import { useBackClose } from './backStack'
 import { useCopy } from './strings'
 import { useLocale } from '../../state/hooks'
 import { LEGAL } from './legal'
@@ -196,6 +197,7 @@ export function FaceDialog({
     release()
     onClose()
   }
+  useBackClose(open, close)
   return (
     <Dialog open={open} onClose={close} fullWidth maxWidth="sm" aria-labelledby="face-title">
       <DialogTitle id="face-title">{t.faceTitle}</DialogTitle>

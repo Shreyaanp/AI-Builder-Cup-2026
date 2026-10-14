@@ -28,7 +28,7 @@ async function axe(page: Page) {
   const result = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
     .analyze()
-  expect(result.violations).toEqual([])
+  expect(result.violations.map((v) => [v.id, v.nodes.map((n) => [n.target, n.html])])).toEqual([])
 }
 
 async function saveShop(page: Page) {
@@ -150,4 +150,72 @@ test('B3: the composer is one line (even with a long translated hint), grows for
   await finish.tap()
   await expect(form.getByRole('status')).toHaveText('Replying…')
   expect(await form.boundingBox()).toEqual(before)
+})
+
+test('B4: Back closes the top sheet or dialog first, and asks before throwing away unsaved input', async ({
+  page,
+}) => {
+  await enter(page)
+  await saveShop(page)
+  const composer = page.getByLabel('Message', { exact: true })
+  const prompt = page.getByRole('dialog', { name: 'Discard changes?' })
+
+  // A sheet: Back closes it and the owner stays in the app.
+  await page.getByRole('button', { name: 'Shop details: Katong Kopi' }).first().tap()
+  const sheet = page.getByRole('dialog', { name: 'Katong Kopi' })
+  await expect(sheet).toBeVisible()
+  await page.goBack()
+  await expect(sheet).toBeHidden()
+  await expect(composer).toBeVisible()
+
+  // A sheet that hands over to a form: Back closes the form, then nothing is left open.
+  await page.getByRole('button', { name: 'Shop details: Katong Kopi' }).first().tap()
+  await sheet.getByRole('button', { name: 'Edit details' }).tap()
+  const form = page.getByRole('dialog', { name: 'Edit details' })
+  await expect(form).toBeVisible()
+  await page.goBack()
+  await expect(form).toBeHidden()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  // Typed changes: Back asks first. Keep editing keeps them; Discard closes the form.
+  await page.getByRole('button', { name: 'Shop details: Katong Kopi' }).first().tap()
+  await sheet.getByRole('button', { name: 'Edit details' }).tap()
+  await form.getByLabel('Opening hours').fill('7am–3pm')
+  await page.goBack()
+  await expect(prompt).toBeVisible()
+  await axe(page)
+  await prompt.getByRole('button', { name: 'Keep editing' }).tap()
+  await expect(prompt).toBeHidden()
+  await expect(form.getByLabel('Opening hours')).toHaveValue('7am–3pm')
+  await page.goBack()
+  await prompt.getByRole('button', { name: 'Discard' }).tap()
+  await expect(form).toBeHidden()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  // An open review is unsaved: Back asks, Discard closes it without saving.
+  await page.getByRole('button', { name: 'Shop details: Katong Kopi' }).first().tap()
+  await sheet.getByRole('button', { name: 'Edit details' }).tap()
+  await form.getByLabel('Opening hours').fill('7am–3pm')
+  await form.getByRole('button', { name: 'Review', exact: true }).tap()
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
+  await expect(review).toBeVisible()
+  await page.goBack()
+  await prompt.getByRole('button', { name: 'Discard' }).tap()
+  await expect(review).toBeHidden()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByText('7am–3pm')).toHaveCount(0)
+
+  // A typed draft: Back asks, and leaving the page asks the browser to confirm.
+  await composer.fill('Kopi is $1.80 today')
+  await page.goBack()
+  await prompt.getByRole('button', { name: 'Keep editing' }).tap()
+  await expect(composer).toHaveValue('Kopi is $1.80 today')
+  const unload = new Promise<string>((resolve) =>
+    page.once('dialog', (dialog) => {
+      resolve(dialog.type())
+      void dialog.dismiss()
+    }),
+  )
+  await page.close({ runBeforeUnload: true })
+  expect(await unload).toBe('beforeunload')
 })

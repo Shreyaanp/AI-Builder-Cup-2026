@@ -11,6 +11,7 @@ import {
   useMediaQuery,
 } from '@mui/material'
 import { LEGAL_VERSION, LEGAL } from './legal'
+import { useBackClose } from './backStack'
 import { useCopy } from './strings'
 import { useLocale } from '../../state/hooks'
 import { windowClass } from '../../design/theme'
@@ -23,6 +24,7 @@ export function LegalDialog({ open, onClose }: { open: LegalDocument; onClose: (
   const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
   const document = LEGAL[locale] ?? LEGAL.en!
   const sections = open === 'privacy' ? document.PRIVACY : document.TERMS
+  useBackClose(open !== null, onClose)
   return (
     <Dialog
       open={open !== null}
