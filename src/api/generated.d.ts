@@ -831,6 +831,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/discover/place": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find Place
+         * @description A typed city or area anywhere in the world, as the centre for discovery.
+         */
+        get: operations["find_place_api_v1_discover_place_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/discover": {
         parameters: {
             query?: never;
@@ -1362,6 +1382,15 @@ export interface components {
              * @enum {string}
              */
             source: "owner" | "demo";
+        };
+        /** PlaceMatch */
+        PlaceMatch: {
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /** Label */
+            label: string;
         };
         /** PlanningInput */
         PlanningInput: {
@@ -3520,6 +3549,37 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    find_place_api_v1_discover_place_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceMatch"];
                 };
             };
             /** @description Validation Error */
