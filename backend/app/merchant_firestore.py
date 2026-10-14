@@ -186,7 +186,17 @@ class FirestoreMerchantStore:
                 )
                 for product in data["products"]
             ]
+            # A new unit for a saved item replaces that item (see ProductFields.previous_unit).
+            replaced = [
+                business_ref.collection("inventory").document(
+                    product_key(product["name"], product["previous_unit"])
+                )
+                if product.get("previous_unit")
+                else None
+                for product in data["products"]
+            ]
             existing = {ref.id: ref.get(transaction=transaction) for ref in items}
+            old = {ref.id: ref.get(transaction=transaction) for ref in replaced if ref}
             if data["kind"] == "business" and business.exists:
                 transaction.update(
                     business_ref, {"fields": data["business"], "revision": data["revision"] + 1}
@@ -206,10 +216,14 @@ class FirestoreMerchantStore:
             else:
                 transaction.update(business_ref, {"revision": data["revision"] + 1})
             # Inventory proposals, or a brand-new shop arriving with its menu.
-            for ref, product in zip(items, data["products"], strict=True):
+            for ref, previous, product in zip(items, replaced, data["products"], strict=True):
                 prior = existing[ref.id]
                 created = (prior.to_dict() or {}).get("created", now) if prior.exists else now
-                transaction.set(ref, {"fields": product, "created": created, "updated": now})
+                if previous is not None and previous.id != ref.id and old[previous.id].exists:
+                    created = (old[previous.id].to_dict() or {}).get("created", created)
+                    transaction.delete(previous)
+                fields = {key: value for key, value in product.items() if key != "previous_unit"}
+                transaction.set(ref, {"fields": fields, "created": created, "updated": now})
             receipt = {
                 "business_id": bid,
                 "revision": data["revision"] + 1,

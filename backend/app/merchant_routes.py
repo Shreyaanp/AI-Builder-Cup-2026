@@ -28,6 +28,7 @@ from .merchant import (
 from .money import DEFAULT_CURRENCY, to_minor
 from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected
 from .product_categories import suggest_category
+from .product_units import normalize_unit
 from .sales import daily_sales
 from .stock_alerts import StockAlertInput, StockAlertReceipt
 from .streaming import APP_NAME
@@ -146,7 +147,49 @@ async def propose(body: ProposalRequest, request: Request) -> dict[str, Any]:
         saved = (context["business"] or {}).get("fields", {}).get("currency")
         body.business.currency = saved or DEFAULT_CURRENCY
     await prepare_pin(body, store(request), uid, request.app.state.maps)
+    # Every item gets a category; the owner sees the suggestion in the review before saving.
+    for product in body.products:
+        if not product.category:
+            product.category = suggest_category(product.name)
     return await anyio.to_thread.run_sync(store(request).propose, uid, body)
+
+
+@router.post("/businesses/{business_id}/sort-menu")
+async def sort_menu(business_id: str, request: Request) -> dict[str, Any]:
+    """ "Sort my menu": a category for every uncategorised item, sealed for owner review.
+
+    Nothing changes until the owner confirms the proposal; prices, units and stock stay as saved.
+    """
+    uid = await consented_owner(request)
+    await enforce_limits(request, [("proposal", uid)])
+    service = store(request)
+    context = await anyio.to_thread.run_sync(service.context, uid, business_id)
+    business = context["business"]
+    if not business:
+        raise HTTPException(404, "Business not found.")
+    unsorted = [item for item in context["inventory"] if not item.get("category")]
+    if not unsorted:
+        raise HTTPException(422, "NOTHING_TO_SORT")
+    sections = await request.app.state.column_mapper.categorise(
+        [item["name"] for item in unsorted], business["fields"].get("category", "")
+    )
+    allowed = ProductFields.model_fields
+    products = [
+        ProductFields.model_validate(
+            {key: value for key, value in item.items() if key in allowed} | {"category": section}
+        )
+        for item, section in zip(unsorted, sections, strict=True)
+    ]
+    return await anyio.to_thread.run_sync(
+        service.propose,
+        uid,
+        ProposalRequest(
+            kind="inventory",
+            business_id=business_id,
+            revision=business["revision"],
+            products=products,
+        ),
+    )
 
 
 @router.post("/proposals/{proposal_id}/approve")
@@ -268,7 +311,7 @@ async def photo(
             name=p.name.strip()[:180],
             category=suggest_category(p.name, p.category),
             price=to_minor(p.price or 0, currency),
-            unit=(p.unit or "item").strip()[:40] or "item",
+            unit=normalize_unit(p.unit),
         )
         for p in extraction.products
         if p.price is not None and p.name.strip()
@@ -323,6 +366,11 @@ async def photo(
                             price=p.price,
                             unit=p.unit,
                             available=saved.get(name, {}).get("available", True),
+                            # A new item takes the section read from the board; a saved item
+                            # keeps its own.
+                            category=None
+                            if name in saved
+                            else suggest_category(p.name, p.category),
                         )
                         for p in extraction.products
                         if p.price is not None and p.name.strip()
@@ -510,12 +558,31 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
     by_name: dict[str, list[dict[str, Any]]] = {}
     for saved_item in context["inventory"]:
         by_name.setdefault(saved_item["name"].casefold(), []).append(saved_item)
-    products = []
+    matches = []
     for item in items:
         known = saved.get((item["name"].casefold(), item["unit"].casefold()))
         if not known and len(by_name.get(item["name"].casefold(), [])) == 1:
             # Exports often omit or rename units; one item with that name is the same item.
             known = by_name[item["name"].casefold()][0]
+        matches.append(known)
+    # New items with no category column are sorted into sections together. Saved items keep
+    # their own (uncategorised ones are sorted with "Sort my menu").
+    unsorted = [
+        item["name"]
+        for item, known in zip(items, matches, strict=True)
+        if not item.get("category") and not known
+    ]
+    sections = dict(
+        zip(
+            unsorted,
+            await request.app.state.column_mapper.categorise(
+                unsorted, business["fields"].get("category", "")
+            ),
+            strict=True,
+        )
+    )
+    products = []
+    for item, known in zip(items, matches, strict=True):
         products.append(
             ProductFields(
                 name=known["name"] if known else item["name"],
@@ -525,8 +592,11 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
                 # An import never undoes an owner's sold-out switch.
                 available=known.get("available", True) if known else True,
                 category=item.get("category")
-                or (known or {}).get("category")
-                or suggest_category(item["name"]),
+                or (
+                    known.get("category", "")
+                    if known
+                    else sections.get(item["name"]) or suggest_category(item["name"])
+                ),
             )
         )
     proposal = await anyio.to_thread.run_sync(
