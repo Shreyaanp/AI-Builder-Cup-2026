@@ -1,6 +1,14 @@
 export interface Business {
   id: string
-  fields: { name: string; category: string; location: string; hours: string; phone: string }
+  fields: {
+    name: string
+    category: string
+    location: string
+    hours: string
+    phone: string
+    /** ISO 4217; shops saved before currencies existed have none (treated as SGD). */
+    currency?: string
+  }
   revision: number
   registration: string
   public: boolean

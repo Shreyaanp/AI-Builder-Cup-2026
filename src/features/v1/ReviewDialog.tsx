@@ -19,7 +19,7 @@ import { ShieldCheck } from 'lucide-react'
 import type { Proposal } from './api'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
-import { formatPrice } from './format'
+import { formatPrice, shopCurrency } from './format'
 import { shape, windowClass } from '../../design/theme'
 
 /**
@@ -43,7 +43,10 @@ export function ReviewDialog({
   const [error, setError] = useState('')
   const snapshot = proposal?.snapshot
   // Honest visibility: shared shops show confirmed changes to customers immediately.
-  const shared = businesses.some((shop) => shop.id === snapshot?.business_id && shop.public)
+  const target = businesses.find((shop) => shop.id === snapshot?.business_id)
+  const shared = Boolean(target?.public)
+  // A new shop carries its currency in the proposal; edits use the saved shop's.
+  const currency = snapshot?.business?.currency ?? shopCurrency(target)
   const open = proposal !== null
   function close() {
     if (busy) return
@@ -125,7 +128,7 @@ export function ReviewDialog({
                   )}
                 </Box>
                 <Typography variant="titleMedium" sx={{ whiteSpace: 'nowrap' }}>
-                  {formatPrice(product.price)} / {product.unit}
+                  {formatPrice(product.price, currency)} / {product.unit}
                 </Typography>
               </Stack>
             ))}

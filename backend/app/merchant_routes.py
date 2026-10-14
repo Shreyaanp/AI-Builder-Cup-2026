@@ -1,4 +1,5 @@
 import asyncio
+import re
 from typing import Any, cast
 
 import anyio
@@ -16,6 +17,7 @@ from .merchant import (
     ProposalRequest,
     ShareRequest,
 )
+from .money import DEFAULT_CURRENCY, to_minor
 from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected
 from .streaming import APP_NAME
 
@@ -121,6 +123,11 @@ async def inventory(business_id: str, request: Request) -> list[dict[str, Any]]:
 @router.post("/proposals")
 async def propose(body: ProposalRequest, request: Request) -> dict[str, Any]:
     uid = await consented_owner(request)
+    if body.business and body.business_id:
+        # Saved prices are minor units of the saved currency, so edits keep it.
+        context = await anyio.to_thread.run_sync(store(request).context, uid, body.business_id)
+        saved = (context["business"] or {}).get("fields", {}).get("currency")
+        body.business.currency = saved or DEFAULT_CURRENCY
     return await anyio.to_thread.run_sync(store(request).propose, uid, body)
 
 
@@ -172,7 +179,10 @@ async def public_shop(business_id: str, request: Request) -> dict[str, Any]:
 
 
 @router.post("/photos")
-async def photo(request: Request, business_id: str | None = None) -> dict[str, Any]:
+async def photo(
+    request: Request, business_id: str | None = None, currency: str | None = None
+) -> dict[str, Any]:
+    """``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own."""
     uid = await consented_owner(request)
     service = store(request)
     pipeline: PhotoPipeline = request.app.state.photos
@@ -196,14 +206,21 @@ async def photo(request: Request, business_id: str | None = None) -> dict[str, A
     extraction: PhotoExtraction = outcome["extraction"]
     found = extraction.business
     business = context["business"]
+    currency = (
+        business["fields"].get("currency", DEFAULT_CURRENCY)
+        if business
+        else (currency or "").upper()
+        if re.fullmatch(r"[A-Za-z]{3}", currency or "")
+        else DEFAULT_CURRENCY
+    )
     products = [
         ProductFields(
             name=p.name.strip()[:180],
-            price=round((p.price_rupees or 0) * 100),
+            price=to_minor(p.price or 0, currency),
             unit=(p.unit or "item").strip()[:40] or "item",
         )
         for p in extraction.products
-        if p.price_rupees is not None and p.name.strip()
+        if p.price is not None and p.name.strip()
     ][:30]
     proposal = None
     if business is None and found.name.strip():
@@ -216,6 +233,7 @@ async def photo(request: Request, business_id: str | None = None) -> dict[str, A
                 location=found.location[:300],
                 hours=found.hours[:180],
                 phone=found.phone[:40],
+                currency=currency,
             ),
             products=products,
         )

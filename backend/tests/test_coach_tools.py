@@ -71,6 +71,7 @@ def test_context_exposes_only_readable_shop_and_major_unit_products(saved_shop, 
             "location": "Market Road",
             "hours": "7–21",
             "phone": "",
+            "currency": "SGD",
         },
         "customer_page_shared": shared,
         "products": [
@@ -109,10 +110,25 @@ def test_hours_only_edit_preserves_saved_fields(saved_shop):
         "location": "Market Road",
         "hours": "8–20",
         "phone": "",
+        "currency": "SGD",
     }
     assert result["changes"] == ["hours: 7–21 → 8–20"]
     assert_sealed(proposal)
     assert get_business_context()["shop"]["hours"] == "7–21"
+
+
+def test_zero_decimal_shop_uses_whole_yen(ctx):
+    result = propose_business(name="Ramen Ichi", location="Shibuya", currency="jpy")
+    proposal = ctx.proposals[result["proposal_id"]]
+    assert proposal["snapshot"]["business"]["currency"] == "JPY"
+    ctx.business_id = ctx.store.commit("alice", proposal["id"], proposal["digest"])["business_id"]
+    result = propose_products([ProductInput(name="Ramen", price=980, unit="bowl")])
+    products = ctx.proposals[result["proposal_id"]]["snapshot"]["products"]
+    assert products[0]["price"] == 980
+    assert result["changes"] == ["New item: Ramen, 980 per bowl"]
+    # An edit that does not mention currency keeps the saved one.
+    edit = propose_business(name="", hours="11–22")
+    assert ctx.proposals[edit["proposal_id"]]["snapshot"]["business"]["currency"] == "JPY"
 
 
 def test_multiple_products_use_one_sealed_inventory_proposal(saved_shop):
