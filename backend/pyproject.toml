@@ -23,6 +23,7 @@ dependencies = [
   "google-cloud-vision>=3.10,<4",
   "google-cloud-storage>=3,<4",
   "pillow>=11,<13",
+  "openpyxl==3.1.5",
 ]
 
 [project.optional-dependencies]

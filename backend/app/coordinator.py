@@ -15,6 +15,7 @@ from typing import Any
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
+from .business_profile import QuestionPlanner
 from .merchant import (
     FACT_KEYS,
     BusinessFields,
@@ -52,6 +53,55 @@ class MerchantContext:
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)
 ui_currency: ContextVar[str | None] = ContextVar("ui_currency", default=None)
+
+
+class FactInput(BaseModel):
+    """One answer to a question from get_question_plan."""
+
+    key: str = Field(description="The question's key from get_question_plan, e.g. walk_ins")
+    label: str = Field(description="The question's label, e.g. Walk-ins")
+    value: str = Field(description="The owner's answer in their own words, short")
+
+
+# Set at startup (main.py); tests and offline runs fall back to the deterministic catalogue.
+question_planner: QuestionPlanner | None = None
+
+
+def _planner() -> QuestionPlanner:
+    global question_planner
+    if question_planner is None:
+        from .settings import Settings
+
+        question_planner = QuestionPlanner(Settings(_env_file=None))  # type: ignore[call-arg]
+    return question_planner
+
+
+async def get_question_plan() -> dict[str, Any]:
+    """List what customers of this kind of business usually ask that the shop has not answered
+    yet. Call it once the shop's name and category are saved. Then ask the owner ONE pending
+    question at a time, in their language, and record each answer with
+    propose_business(name="", custom_facts=[{key, label, value}]). The owner may skip any."""
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {
+            "status": "needs_business",
+            "instruction": "Ask for the shop name first and use propose_business.",
+        }
+    shop = ctx.store.context(ctx.uid, ctx.business_id)["business"]
+    fields = shop["fields"] if shop else {}
+    plan = await _planner().plan(
+        fields.get("category", ""), fields.get("name", ""), fields.get("location", "")
+    )
+    answered = {fact["key"] for fact in fields.get("custom_facts", [])}
+    pending = [question.model_dump() for question in plan.questions if question.key not in answered]
+    return {
+        "business_type": plan.business_type,
+        "pending": pending,
+        "answered": len(answered),
+        "instruction": "Ask one pending question at a time; stop when the owner wants to."
+        if pending
+        else "All common customer questions are answered.",
+    }
 
 
 class ProductInput(BaseModel):
@@ -115,7 +165,8 @@ def get_business_context() -> dict[str, Any]:
             for key, value in shop["fields"].items()
             # Coordinates stay hidden from the model; customer facts are part of the shop.
             if key
-            in {"name", "category", "location", "hours", "phone", "currency"} | set(FACT_KEYS)
+            in {"name", "category", "location", "hours", "phone", "currency", "custom_facts"}
+            | set(FACT_KEYS)
         }
         if shop
         else None,
@@ -153,6 +204,7 @@ def propose_business(
     preorder_lead_time: str = "",
     payment_methods: list[str] | None = None,
     busy_hours: str = "",
+    custom_facts: list[FactInput] | None = None,
 ) -> dict[str, Any]:
     """Prepare the shop's details (new shop, or edits to the active shop) for the owner to review.
     Nothing is saved until the owner confirms. Leave a field empty if the owner did not say it.
@@ -162,7 +214,8 @@ def propose_business(
     vegetarian_options and preorders are true/false; delivery is none, own, grab, foodpanda or
     other (delivery_note: up to 80 characters, e.g. "within 3 km"); preorder_lead_time e.g.
     "1 day ahead"; payment_methods from cash, paynow, card, grabpay, nets, other; busy_hours
-    e.g. "12:00-13:30". For an existing shop pass name="" and only the facts that changed."""
+    e.g. "12:00-13:30". custom_facts: answers to get_question_plan questions (key, label,
+    value). For an existing shop pass name="" and only the facts that changed."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}
@@ -198,6 +251,16 @@ def propose_business(
     elif not re.fullmatch(r"[A-Z]{3}", given["currency"]):
         given["currency"] = ui_currency.get() or DEFAULT_CURRENCY
     given.update({key: value for key, value in facts.items() if value is not None})
+    if custom_facts:
+        # Merge by key: an answer replaces the earlier answer to the same question only.
+        merged = {fact["key"]: fact for fact in given.get("custom_facts", [])}
+        for fact in TypeAdapter(list[FactInput]).validate_python(custom_facts):
+            merged[fact.key.strip().lower()] = {
+                "key": fact.key.strip().lower(),
+                "label": fact.label,
+                "value": fact.value,
+            }
+        given["custom_facts"] = list(merged.values())
     try:
         fields = BusinessFields.model_validate(given)
         if existing and existing["fields"].get("location") == fields.location:
@@ -218,7 +281,16 @@ def propose_business(
         [
             f"{key}: {existing['fields'].get(key) or '(empty)'} → {value or '(empty)'}"
             for key, value in fields.model_dump().items()
-            if value != existing["fields"].get(key, "" if key not in FACT_KEYS else None)
+            if key != "custom_facts"
+            and value != existing["fields"].get(key, "" if key not in FACT_KEYS else None)
+        ]
+        + [
+            f"{fact['label']}: {before.get(fact['key']) or '(empty)'} → {fact['value']}"
+            for before in [
+                {f["key"]: f["value"] for f in existing["fields"].get("custom_facts", [])}
+            ]
+            for fact in fields.model_dump().get("custom_facts", [])
+            if before.get(fact["key"]) != fact["value"]
         ]
         if existing
         else [f"New shop: {fields.name}"]

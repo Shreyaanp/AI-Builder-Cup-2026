@@ -44,8 +44,10 @@ class RequestBoundary:
             or content_type.endswith("+json")
         ):
             path = scope["path"]
-            if path == "/api/v1/photos" or (
-                path.startswith("/api/v1/face/challenges/") and path.endswith("/capture")
+            if (
+                path == "/api/v1/photos"
+                or path.endswith("/import")
+                or (path.startswith("/api/v1/face/challenges/") and path.endswith("/capture"))
             ):
                 # The authenticated route consumes a bounded in-memory stream. Do not
                 # spool media or buffer it before identity verification.

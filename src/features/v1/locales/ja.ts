@@ -214,6 +214,15 @@ export const ja: Copy = {
   productName: '商品名',
   price: '価格',
   currency: '通貨',
+  importMenu: 'POS や Excel から取り込む',
+  importing: 'ファイルを読み込んでいます…',
+  importFailed:
+    'ファイルを読み込めませんでした。商品名と価格を含む CSV または Excel を送ってください。',
+  salesSummary: '売上の概要',
+  salesNotSaved: 'ファイルの内容です。何も保存していません。',
+  salesRange: (days: number, from: string, to: string) =>
+    days ? `${days} 日間 · ${from} – ${to}` : 'ファイルに日付がありません',
+  topItems: '売れ筋',
   currencyLocked: 'お店を保存した後は変更できません',
   unit: '単位（杯、kg、個…）',
   stockOptional: '在庫（任意）',

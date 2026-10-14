@@ -44,6 +44,15 @@ FACT_KEYS = (
 )
 
 
+class CustomFact(BaseModel):
+    """A fact this kind of business's customers ask about (e.g. a salon's walk-in policy)."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    key: str = Field(pattern=r"^[a-z0-9_]{1,40}$")
+    label: str = Field(min_length=1, max_length=80)
+    value: str = Field(min_length=1, max_length=200)
+
+
 class BusinessFields(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=180)
@@ -67,11 +76,20 @@ class BusinessFields(BaseModel):
     preorder_lead_time: str = Field(default="", max_length=80)
     payment_methods: list[Payment] = Field(default_factory=list, max_length=6)
     busy_hours: str = Field(default="", max_length=80)
+    # Type-specific facts from the question plan; owner-confirmed like every other field.
+    custom_facts: list[CustomFact] = Field(default_factory=list, max_length=30)
 
     @field_validator("payment_methods")
     @classmethod
     def unique_methods(cls, value: list[str]) -> list[str]:
         return list(dict.fromkeys(value))
+
+    @field_validator("custom_facts")
+    @classmethod
+    def one_fact_per_key(cls, value: list[CustomFact]) -> list[CustomFact]:
+        # The latest answer for a key wins, keeping the original order.
+        latest = {fact.key: fact for fact in value}
+        return list(latest.values())
 
     @model_serializer(mode="wrap")
     def drop_unset_facts(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
@@ -85,12 +103,8 @@ class BusinessFields(BaseModel):
             and not (key in pin_defaults and value is None)
             and not (key == "pin_demo" and value is False)
             and not (key == "timezone" and value == "Asia/Singapore")
+            and not (key == "custom_facts" and value == [])
         }
-
-
-def customer_facts(fields: dict[str, Any]) -> dict[str, Any]:
-    """The facts a shop has stated, for customers (unset facts are simply absent)."""
-    return {key: fields[key] for key in FACT_KEYS if fields.get(key) not in (None, "", [])}
 
     @model_validator(mode="after")
     def validate_location(self) -> BusinessFields:
@@ -101,6 +115,17 @@ def customer_facts(fields: dict[str, Any]) -> dict[str, Any]:
         except (ZoneInfoNotFoundError, ValueError) as error:
             raise ValueError("Use an IANA timezone.") from error
         return self
+
+
+def customer_facts(fields: dict[str, Any]) -> dict[str, Any]:
+    """The facts a shop has stated, for customers (unset facts are simply absent)."""
+    facts = {key: fields[key] for key in FACT_KEYS if fields.get(key) not in (None, "", [])}
+    if fields.get("custom_facts"):
+        facts["custom"] = [
+            {"key": fact["key"], "label": fact["label"], "value": fact["value"]}
+            for fact in fields["custom_facts"]
+        ]
+    return facts
 
 
 class ProductFields(BaseModel):
