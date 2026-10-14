@@ -488,6 +488,7 @@ async def discover(
                 shop["hours"], shop["timezone"], weekly_hours=shop.get("weekly_hours")
             ),
             currency=shop["currency"],
+            halal={"yes": True, "no": False}.get(shop.get("facts", {}).get("halal")),
             # The owner's first gallery photo, served only because the shop is shared.
             photo_url=(
                 f"/api/v1/public/shops/{shop['id']}/photos/{shop['gallery'][0]}.jpg"

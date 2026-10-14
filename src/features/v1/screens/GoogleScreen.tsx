@@ -33,7 +33,9 @@ import { useWorkspace } from '../workspaceContext'
 import { mapsSearch, OWNER_URL } from '../../google-sim/links'
 import { shape } from '../../../design/theme'
 import { HoursList } from '../../shop/Hours'
-import { hasHours } from '../../shop/hoursModel'
+import { hasHours, weekdays } from '../../shop/hoursModel'
+import { useShopCopy } from '../../shop/strings'
+import { useLocale } from '../../../state/hooks'
 import { categoryArt } from '../../frontdoors/photos'
 import { fill, useGoogleCopy } from '../../google/strings'
 import { GALLERY_LIMIT, useGallery } from '../../google/useGallery'
@@ -71,6 +73,8 @@ const motionKeyframes = {
 export function GoogleScreen() {
   const t = useCopy()
   const g = useGoogleCopy()
+  const locale = useLocale()
+  const shopCopy = useShopCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   const gallery = useGallery()
@@ -119,10 +123,22 @@ export function GoogleScreen() {
     requestAnimationFrame(() => heading.current?.focus())
   }
 
+  const weeklyHours = (f.weekly_hours ?? [])
+    .map((entry) => {
+      const day = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(
+        new Date(Date.UTC(2026, 0, 5 + weekdays.indexOf(entry.day))),
+      )
+      const hours = entry.closed
+        ? shopCopy.closed
+        : `${entry.open}–${entry.close}${entry.open! > entry.close! ? ' (+1)' : ''}`
+      return `${day}: ${hours}`
+    })
+    .join('; ')
   const listing = [
     f.name,
     f.category && `${t.fields.category}: ${f.category}`,
     f.location && `${t.fields.location}: ${f.location}`,
+    weeklyHours && `${t.fields.hours}: ${weeklyHours}`,
     f.hours && `${t.fields.hours}: ${f.hours}`,
     f.phone && `${t.fields.phone}: ${f.phone}`,
     ws.products.length > 0 &&
