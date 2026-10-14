@@ -322,9 +322,11 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
         tools=list(tools),
         # Thinking shares the output budget: a small cap left some turns completely empty.
         # Low temperature keeps tool calls for reported changes consistent.
+        # The Live (voice) model rejects a custom thinking level ("project is not allowlisted"),
+        # which ended every voice session at once; only the text model gets one.
         generate_content_config=types.GenerateContentConfig(
             max_output_tokens=2048,
             temperature=0.1,
-            thinking_config=types.ThinkingConfig(thinking_budget=512),
+            thinking_config=None if live else types.ThinkingConfig(thinking_budget=512),
         ),
     )
