@@ -83,7 +83,10 @@ test('light, dark and editing dialog pass automated accessibility checks', async
 test('photos stay local, voice status is honest and no Google calls occur', async ({ page }) => {
   const external: string[] = []
   page.on('request', (request) => {
-    if (!request.url().startsWith('http://127.0.0.1:3200') && !request.url().startsWith('blob:'))
+    if (
+      !request.url().startsWith(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}`) &&
+      !request.url().startsWith('blob:')
+    )
       external.push(request.url())
   })
   await page.goto('/?classic=1')

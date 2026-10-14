@@ -34,7 +34,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
     const customer = await customerContext.newPage()
     await localOnly(customer)
     await test.step('1 · open customer entry', async () => {
-      await customer.goto('http://127.0.0.1:3200/explore/')
+      await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/`)
       await expect(customer.getByRole('button', { name: 'Use my location' })).toBeVisible()
       await shot(customer, 3, 1)
     })
@@ -91,28 +91,23 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       await customer.route(`**/api/v1/public/shops/${sample.id}`, (route) =>
         route.fulfill({ json: sample }),
       )
-      await customer.goto(`http://127.0.0.1:3200/explore/s/${sample.id}`)
+      await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/s/${sample.id}`)
       await expect(customer.getByText('Demo shop', { exact: true })).toBeVisible()
       await expect(
         customer.getByText('Sample shop for this prototype — not a real business.'),
       ).toBeVisible()
       await expect(customer.locator('a[href^="tel:"], a[href*="wa.me"]')).toHaveCount(0)
       await shot(customer, 3, '4-demo')
-      gap(
-        'S3/4: owner-uploaded gallery is not displayed on the customer page; generic category artwork is used',
-      )
+      await expect(customer.locator('main img[src^="/art/category-"]')).toBeVisible()
       await customer.goto(url)
     })
     await test.step('5 · halal answer from confirmed shop facts', async () => {
       await customer.getByRole('button', { name: 'Chat with the shop' }).click()
       await customer.getByLabel('Your question').fill('halal?')
       await customer.getByLabel('Your question').press('Enter')
-      await expect(customer.getByRole('status').filter({ hasText: 'Not listed' })).toContainText(
-        'Please contact the shop',
-      )
-      gap(
-        'S3/5: the offline answer fixture says halal is not listed even though the public page shows the confirmed Halal fact',
-      )
+      await expect(
+        customer.getByRole('status').filter({ hasText: 'Halal, according to the owner' }),
+      ).toContainText('Not certified or verified by Chalkboard')
       await expect(customer.getByText("Answer based on the shop's listed details")).toBeVisible()
       await expect(
         customer.getByText('Simulated answer · offline fixture, no live AI connected'),

@@ -1,4 +1,5 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
+import { photoCopy } from '../../coach/photoCopy'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent, ReactElement } from 'react'
 import {
@@ -84,18 +85,42 @@ type Message =
 const REPLY_POLL_MS = 1500
 const REPLY_WAIT_MS = 45_000
 
-export function CoachScreen() {
+type GalleryPhoto = { file: File; businessId: string }
+
+// The extraction file survives the new-shop confirmation, which changes the chat's key.
+// It stays local to this coach workspace and never enters preference storage.
+export function CoachWorkspace() {
+  const { activeId } = useWorkspace()
+  const [galleryPhoto, setGalleryPhoto] = useState<GalleryPhoto | null>(null)
+  return (
+    <CoachScreen
+      key={activeId ?? 'no-shop'}
+      galleryPhoto={galleryPhoto}
+      setGalleryPhoto={setGalleryPhoto}
+    />
+  )
+}
+
+function CoachScreen({
+  galleryPhoto,
+  setGalleryPhoto,
+}: {
+  galleryPhoto: GalleryPhoto | null
+  setGalleryPhoto: (value: GalleryPhoto | null) => void
+}) {
   const t = useCopy()
   const theme = useTheme()
   const roles = theme.material
   const identity = useIdentity()
   const language = useLocale()
+  const photoText = photoCopy(language)
   const ws = useWorkspace()
   const [messages, setMessages] = useState<Message[]>([])
   const [reply, setReply] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState<'idle' | 'reply' | 'photo'>('idle')
   const [error, setError] = useState('')
+  const [photoPin, setPhotoPin] = useState<Proposal | null>(null)
   const online = useOnline()
   const [reconnecting, setReconnecting] = useState(false)
   const [mode, setMode] = useState<'offline' | 'gemini' | null>(null)
@@ -121,6 +146,7 @@ export function CoachScreen() {
   // One attach button: Take photo (phones: there is no camera capture on a desktop), Photo
   // library, and Document (PDF/Excel/CSV, once there is a shop to import into).
   const touch = useMediaQuery('(pointer: coarse)')
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [photoMenu, setPhotoMenu] = useState<HTMLElement | null>(null)
   const [sales, setSales] = useState<SalesImport | null>(null)
   const importer = useImport({ onSales: setSales })
@@ -214,17 +240,18 @@ export function CoachScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, activeId])
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
-  }, [messages, reply])
+    end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
+  }, [messages, reply, reducedMotion])
   // The composer is one line until the text itself needs more. Sized from the text only: the
   // old autosize also measured the placeholder, so a long translated hint made an empty
   // composer two or three lines tall (B3).
   useLayoutEffect(() => {
     const field = messageInput.current
     if (!field) return
-    field.style.height = '48px'
-    if (note) field.style.height = `${Math.max(48, field.scrollHeight)}px`
-  }, [note, voice.state])
+    const base = language === 'ta' ? 56 : 48
+    field.style.height = `${base}px`
+    if (note) field.style.height = `${Math.max(base, field.scrollHeight)}px`
+  }, [note, voice.state, language])
   // A pending request (e.g. "Start from a photo" on My shop) opens the chooser once, from the
   // composer's photo button.
   const { photoPending, consumePhotoRequest } = ws
@@ -429,6 +456,7 @@ export function CoachScreen() {
       return
     }
     setBusy('photo')
+    setGalleryPhoto(null)
     try {
       // A new shop takes the phone region's currency; an existing shop keeps its own.
       const query = activeId
@@ -441,6 +469,13 @@ export function CoachScreen() {
         signal: AbortSignal.timeout(60_000),
       })
       const notes = result.extraction.uncertain.slice(0, 3).join(' · ')
+      setPhotoPin(result.pin_proposal ?? null)
+      const businessId = activeId ?? result.proposal?.snapshot.business_id
+      if (
+        businessId &&
+        ['storefront', 'signboard', 'menu', 'price_list'].includes(result.photo_kind)
+      )
+        setGalleryPhoto({ file, businessId })
       setMessages((items) =>
         [
           ...items,
@@ -638,6 +673,90 @@ export function CoachScreen() {
       </Sheet>
 
       <Box sx={{ flex: 1, pb: 4 }}>
+        {galleryPhoto && galleryPhoto.businessId === ws.active?.id && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Typography variant="titleSmall">{photoText.galleryOffer}</Typography>
+            <Typography variant="bodySmall">{photoText.galleryNote}</Typography>
+            <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                disabled={busy !== 'idle'}
+                onClick={async () => {
+                  setBusy('photo')
+                  setError('')
+                  try {
+                    await api(
+                      `/businesses/${encodeURIComponent(galleryPhoto.businessId)}/gallery`,
+                      {
+                        method: 'POST',
+                        body: galleryPhoto.file,
+                        headers: { 'Content-Type': galleryPhoto.file.type },
+                        signal: AbortSignal.timeout(150_000),
+                      },
+                    )
+                    setGalleryPhoto(null)
+                    await ws.reload()
+                  } catch {
+                    setError(t.actionFailed)
+                  } finally {
+                    setBusy('idle')
+                  }
+                }}
+              >
+                {photoText.galleryAdd}
+              </Button>
+              <Button disabled={busy !== 'idle'} onClick={() => setGalleryPhoto(null)}>
+                {photoText.later}
+              </Button>
+            </Stack>
+          </Alert>
+        )}
+        {photoPin &&
+          ws.active?.id === photoPin.snapshot.business_id &&
+          ws.active.fields.lat == null && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {photoText.pinOffer}
+              <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
+                <Button
+                  disabled={busy !== 'idle'}
+                  onClick={async () => {
+                    if (!ws.active || !photoPin.snapshot.business) return
+                    setBusy('photo')
+                    setError('')
+                    try {
+                      // Keep the photo coordinates, but review current shop details and revision.
+                      // Any concurrent change is rejected by the normal sealed proposal endpoint.
+                      const { lat, lng, place_id, pin_label, pin_demo } = photoPin.snapshot.business
+                      const next = await api<Proposal>('/proposals', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                          kind: 'business',
+                          business_id: ws.active.id,
+                          revision: ws.active.revision,
+                          business: {
+                            ...ws.active.fields,
+                            lat,
+                            lng,
+                            place_id,
+                            pin_label,
+                            pin_demo,
+                          },
+                        }),
+                      })
+                      review(next)
+                    } catch {
+                      setError(t.actionFailed)
+                      await ws.reload()
+                    } finally {
+                      setBusy('idle')
+                    }
+                  }}
+                >
+                  {photoText.reviewPin}
+                </Button>
+                <Button onClick={() => setPhotoPin(null)}>{photoText.dismiss}</Button>
+              </Stack>
+            </Alert>
+          )}
         {empty ? (
           <Stack spacing={{ xs: 3, sm: 5 }} sx={{ pt: { xs: 1, sm: 10 }, pb: 4 }}>
             {/* With a shop, the top bar already names it: no greeting line, only a heading for
@@ -713,6 +832,7 @@ export function CoachScreen() {
                 }}
               >
                 <ShopCard dense onOpen={openSheet} />
+                <FreshnessCard key={`freshness-${ws.active.id}`} compact />
               </Box>
             )}
             <Stack
@@ -960,8 +1080,8 @@ export function CoachScreen() {
                 flex: 1,
                 minWidth: 0,
                 boxSizing: 'border-box',
-                height: '48px',
-                maxHeight: `calc(${COMPOSER_ROWS} * 1.5rem + 24px)`,
+                height: language === 'ta' ? '56px' : '48px',
+                maxHeight: `calc(${COMPOSER_ROWS} * ${language === 'ta' ? '2rem' : '1.5rem'} + 24px)`,
                 m: 0,
                 px: 1,
                 py: 3,
@@ -973,7 +1093,8 @@ export function CoachScreen() {
                 color: 'text.primary',
                 font: 'inherit',
                 fontSize: '1rem',
-                lineHeight: '1.5rem',
+                lineHeight: language === 'ta' ? '2rem' : '1.5rem',
+                fontFamily: language === 'ta' ? '"Noto Sans Tamil", sans-serif' : 'inherit',
                 '&:disabled': { color: 'text.disabled' },
                 // The hint stays on one line on narrow phones (truncated, never wrapped).
                 '&::placeholder': {
