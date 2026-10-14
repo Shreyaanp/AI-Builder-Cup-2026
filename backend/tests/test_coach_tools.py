@@ -117,6 +117,27 @@ def test_hours_only_edit_preserves_saved_fields(saved_shop):
     assert get_business_context()["shop"]["hours"] == "7–21"
 
 
+def test_bare_string_items_are_repairable_not_a_crash(saved_shop):
+    # Seen live: the model sent ["Chai"] instead of objects, which crashed the whole turn.
+    result = propose_products(["Chai"])  # type: ignore[list-item]
+    assert result["status"] == "invalid"
+    assert saved_shop.proposals == {}
+
+
+def test_sold_out_by_name_keeps_saved_price_and_unit(saved_shop):
+    result = propose_products([ProductInput(name="chai", available=False)])
+    product = saved_shop.proposals[result["proposal_id"]]["snapshot"]["products"][0]
+    assert product == {
+        "name": "Chai",
+        "price": 1500,
+        "unit": "cup",
+        "stock": 10,
+        "available": False,
+    }
+    assert result["changes"] == ["Chai: sold out"]
+    assert propose_products([ProductInput(name="Bun")])["status"] == "invalid"
+
+
 def test_zero_decimal_shop_uses_whole_yen(ctx):
     result = propose_business(name="Ramen Ichi", location="Shibuya", currency="jpy")
     proposal = ctx.proposals[result["proposal_id"]]

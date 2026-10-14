@@ -132,7 +132,7 @@ def prepared_not_saved(turn: Turn) -> bool:
 
 def sane_prices(turn: Turn) -> bool:
     """Proposed prices are major units; a stored-minor-unit leak shows up as 100× prices."""
-    return all(float(entry.get("price", 0)) < 1000 for entry in items(turn))
+    return all(float(entry.get("price") or 0) < 1000 for entry in items(turn))
 
 
 GLOBAL_CHECKS: list[tuple[str, Callable[[Turn], bool]]] = [

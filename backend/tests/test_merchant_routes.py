@@ -183,10 +183,13 @@ def test_face_capture_is_single_use_without_worker(app) -> None:
         )
 
 
-def test_face_template_deletion_requires_worker(app) -> None:
+def test_face_template_deletion_without_worker_confirms(app) -> None:
+    # No worker configured means no template was ever stored, so deletion succeeds.
     with TestClient(app) as client:
         join(client)
-        assert client.delete("/api/v1/face/template").status_code == 503
+        response = client.delete("/api/v1/face/template")
+        assert response.status_code == 200
+        assert response.json() == {"status": "deleted"}
 
 
 def test_coach_stream_rejects_another_workspaces_business(app) -> None:

@@ -332,7 +332,9 @@ async def delete_template(request: Request) -> dict[str, str]:
     settings = request.app.state.v1_settings
     token = settings.face_worker_token.get_secret_value()
     if not token:
-        raise HTTPException(503, "Start the private face worker to delete its templates.")
+        # No worker means no template was ever stored; clear the local result and confirm.
+        await anyio.to_thread.run_sync(store(request).invalidate_face, uid)
+        return {"status": "deleted"}
     try:
         async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
             response = await client.delete(
