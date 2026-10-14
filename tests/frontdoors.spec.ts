@@ -64,7 +64,7 @@ test('one host/path policy, legacy URLs and origin validation', () => {
     ['http://127.0.0.1:3200/?app=customer', 'customer'],
   ]
   for (const [url, app] of cases) expect(resolveApp(new URL(url))).toBe(app)
-  expect(canonicalCustomerPath('/discover')).toBe('/explore/')
+  expect(canonicalCustomerPath('/discover')).toBe('/explore/browse')
   expect(canonicalCustomerPath(`/s/${shopId}`)).toBe(`/explore/s/${shopId}`)
   expect(safeCustomerOrigin('https://chalkboard.shreyaan.work')).toBe(
     'https://chalkboard.shreyaan.work',
@@ -159,11 +159,15 @@ test('first customer journey: denied location, interests, coach mark and return'
     await expect(page.getByRole('button', { name: category, exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Coffee & tea', exact: true }).click()
   await page.getByRole('button', { name: 'Explore my neighbourhood' }).click()
-  await expect(page.getByText(/Tap a category to narrow/)).toBeVisible()
-  await page.getByRole('button', { name: 'Got it' }).click()
+  // AI-first front door after the welcome; returning skips the welcome.
+  await expect(page.getByRole('heading', { name: 'What are you looking for?' })).toBeVisible({
+    timeout: 30_000,
+  })
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'What’s around me?' })).toBeVisible()
-  await expect(page.getByText(/Tap a category to narrow/)).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'What are you looking for?' })).toBeVisible({
+    timeout: 30_000,
+  })
+  await expect(page.getByText('Step 1 of 2', { exact: true })).toHaveCount(0)
   expect(await page.evaluate(() => localStorage.getItem('chalkboard.customer.journey'))).toBe(
     'done',
   )
@@ -177,7 +181,7 @@ for (const mode of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: mode, reducedMotion: 'reduce' })
     await page.addInitScript(() => localStorage.setItem('chalkboard.customer.journey', 'done'))
     if (info.project.name === 'phone') await page.setViewportSize({ width: 412, height: 915 })
-    await page.goto('/explore/?app=customer')
+    await page.goto('/explore/browse?app=customer')
     await expect(page.getByRole('heading', { name: 'What’s around me?' })).toBeVisible()
     await expect(page.getByRole('heading', { name: shopName })).toBeVisible()
     const capture = async (name: string) => {

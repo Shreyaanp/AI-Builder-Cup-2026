@@ -23,6 +23,11 @@ const child = spawn(uv, ['run', '--locked', 'python', 'run.py'], {
     MEDIA_BUCKET: '',
     MAPS_SERVER_KEY: '',
     MAPS_BROWSER_KEY: '',
+    // The dev web server's own origin (per-worktree WEB_PORT, default 3200).
+    ALLOWED_ORIGINS: JSON.stringify([
+      `http://127.0.0.1:${process.env.WEB_PORT ?? 3200}`,
+      `http://localhost:${process.env.WEB_PORT ?? 3200}`,
+    ]),
   },
 })
 child.on('error', (error) => {
