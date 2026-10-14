@@ -1,13 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  LinearProgress,
-  Stack,
-  Typography,
-} from '@mui/material'
+import { Alert, Box, Button, Chip, LinearProgress, Stack, Typography } from '@mui/material'
 import { useLocale } from '../../state/hooks'
 import { discoverCopy } from '../discover/strings'
 import { PlaceSearch } from '../discover/PlaceSearch'
