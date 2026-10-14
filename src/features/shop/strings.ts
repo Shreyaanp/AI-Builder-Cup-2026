@@ -4,6 +4,7 @@ import type { Locale } from '../../i18n/locales'
 const en = {
   weeklyHours: 'Weekly hours',
   setWeeklyHours: 'Set hours by weekday',
+  differentHours: 'Different hours on some days',
   closed: 'Closed',
   opens: 'Opens',
   closes: 'Closes',
@@ -23,6 +24,7 @@ type Copy = typeof en
 const translations: Record<Locale, Copy> = {
   en,
   'zh-Hans': {
+    differentHours: '部分日期的营业时间不同',
     weeklyHours: '每周营业时间',
     setWeeklyHours: '按星期设置时间',
     closed: '休息',
@@ -34,6 +36,7 @@ const translations: Record<Locale, Copy> = {
     categories: { drinks: '饮品', food: '食品', desserts: '甜点', services: '服务', other: '其他' },
   },
   ms: {
+    differentHours: 'Waktu berbeza pada sesetengah hari',
     weeklyHours: 'Waktu mingguan',
     setWeeklyHours: 'Tetapkan waktu mengikut hari',
     closed: 'Tutup',
@@ -51,6 +54,7 @@ const translations: Record<Locale, Copy> = {
     },
   },
   ta: {
+    differentHours: 'சில நாட்களில் வேறு நேரங்கள்',
     weeklyHours: 'வார நேரங்கள்',
     setWeeklyHours: 'வார நாளின்படி நேரம் அமைக்கவும்',
     closed: 'மூடப்பட்டது',
@@ -68,6 +72,7 @@ const translations: Record<Locale, Copy> = {
     },
   },
   ja: {
+    differentHours: '一部の曜日で営業時間が異なる',
     weeklyHours: '曜日別営業時間',
     setWeeklyHours: '曜日ごとに時間を設定',
     closed: '休業',
@@ -85,6 +90,7 @@ const translations: Record<Locale, Copy> = {
     },
   },
   ko: {
+    differentHours: '일부 요일은 다른 영업시간',
     weeklyHours: '요일별 영업시간',
     setWeeklyHours: '요일별 시간 설정',
     closed: '휴무',
@@ -102,6 +108,7 @@ const translations: Record<Locale, Copy> = {
     },
   },
   id: {
+    differentHours: 'Jam berbeda pada beberapa hari',
     weeklyHours: 'Jam mingguan',
     setWeeklyHours: 'Atur jam per hari',
     closed: 'Tutup',
@@ -119,6 +126,7 @@ const translations: Record<Locale, Copy> = {
     },
   },
   th: {
+    differentHours: 'บางวันมีเวลาเปิดปิดต่างกัน',
     weeklyHours: 'เวลาประจำสัปดาห์',
     setWeeklyHours: 'ตั้งเวลาตามวัน',
     closed: 'ปิด',
@@ -136,6 +144,7 @@ const translations: Record<Locale, Copy> = {
     },
   },
   vi: {
+    differentHours: 'Giờ khác nhau vào một số ngày',
     weeklyHours: 'Giờ theo tuần',
     setWeeklyHours: 'Đặt giờ theo ngày',
     closed: 'Đóng cửa',
@@ -153,6 +162,7 @@ const translations: Record<Locale, Copy> = {
     },
   },
   fil: {
+    differentHours: 'Ibang oras sa ilang araw',
     weeklyHours: 'Oras bawat linggo',
     setWeeklyHours: 'Itakda ang oras bawat araw',
     closed: 'Sarado',

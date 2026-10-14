@@ -1,5 +1,9 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import type { components } from '../src/api/generated.js'
+
+type DayHours = components['schemas']['DayHours']
+const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 
 test.skip(({ isMobile }) => !isMobile, '390×844 phone proof')
 test.beforeEach(async ({ page }) => {
@@ -57,11 +61,13 @@ const business = {
   },
 }
 
-async function enter(page: Page, fixture = true) {
+async function enter(page: Page, fixture = true, weekly_hours?: DayHours[]) {
   if (fixture) {
     await page.route('**/api/v1/businesses', (route) =>
       route.fulfill({
-        json: [{ ...business, fields: { ...business.fields, phone: '+65 6000 0000' } }],
+        json: [
+          { ...business, fields: { ...business.fields, phone: '+65 6000 0000', weekly_hours } },
+        ],
       }),
     )
     await page.route('**/api/v1/businesses/*/inventory', (route) =>
@@ -134,7 +140,9 @@ test('B9: one notice at practice, with a clearly named practice modal', async ({
   await proof(page, 'B9')
 })
 
-test('B10: recap attribution uses distinct chips', async ({ page }) => {
+test('B10: empty recap is compact, has no empty headings and uses a date range', async ({
+  page,
+}) => {
   await enter(page)
   await page.route('**/api/v1/businesses/*/recap?*', (route) =>
     route.fulfill({
@@ -158,16 +166,64 @@ test('B10: recap attribution uses distinct chips', async ({ page }) => {
     }),
   )
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
-  await page.getByRole('button', { name: /^Weekly recap/ }).click()
-  const ai = page.getByText('Written by AI', { exact: true })
-  const offline = page.getByText('Offline template', { exact: true })
-  await expect(ai).toBeVisible()
-  await expect(offline).toBeVisible()
-  const left = (await ai.boundingBox())!,
-    right = (await offline.boundingBox())!
-  expect(right.x).toBeGreaterThan(left.x + left.width)
+  const tile = page.getByRole('button', { name: /^Weekly recap/ })
+  await expect(tile).not.toContainText('2026-W42')
+  await expect(tile).toContainText('12–18 Oct')
+  await tile.click()
+  const sheet = page.getByRole('dialog', { name: 'Weekly recap' })
+  await expect(sheet).toContainText('12–18 Oct')
+  await expect(sheet.getByRole('alert')).toContainText('No saved sales this week')
+  await expect(sheet).toContainText('Recorded sold-out switches: 0')
+  await expect(sheet).toContainText('Customer messages: 0')
+  await expect(sheet.getByRole('heading', { level: 3 })).toHaveCount(0)
+  await expect(sheet.getByText('Written by AI', { exact: true })).toHaveCount(0)
+  await expect(sheet.getByText('Offline template', { exact: true })).toHaveCount(0)
+  await expect(sheet).not.toContainText('Import your sales to prepare')
+  expect((await sheet.boundingBox())!.height).toBeLessThan(360)
   await proof(page, 'B10')
 })
+
+for (const mode of ['offline', 'gemini']) {
+  test(`B10: ${mode} recap has exactly one truthful source label`, async ({ page }) => {
+    await enter(page)
+    await page.route('**/api/v1/businesses/*/recap?*', (route) =>
+      route.fulfill({
+        json: {
+          week: '2026-W42',
+          currency: 'SGD',
+          sales_days: 2,
+          previous_sales_days: 1,
+          top_sellers: [{ item: 'Kopi', quantity: 20, revenue: 3600 }],
+          slow_movers: [],
+          revenue: 3600,
+          previous_revenue: 1800,
+          revenue_change: 1800,
+          revenue_change_percent: 100,
+          sold_out_count: 1,
+          customer_questions_count: 2,
+          summary: 'Two saved sales days this week.',
+          language: 'en',
+          mode,
+        },
+      }),
+    )
+    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: /^Weekly recap/ }).click()
+    const sheet = page.getByRole('dialog', { name: 'Weekly recap' })
+    await expect(
+      sheet.getByText(mode === 'offline' ? 'Offline template' : 'Written by AI', { exact: true }),
+    ).toBeVisible()
+    await expect(
+      sheet.getByText(mode === 'offline' ? 'Written by AI' : 'Offline template', { exact: true }),
+    ).toHaveCount(0)
+    await expect(sheet.getByRole('heading', { name: 'Top sellers' })).toBeVisible()
+    await expect(sheet.getByRole('heading', { name: 'Slow movers' })).toHaveCount(0)
+    expect(
+      (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
+        .violations,
+    ).toEqual([])
+  })
+}
 
 test('B11: weekday hours are reviewed, saved and shown publicly', async ({ page }) => {
   await enter(page, false)
@@ -175,11 +231,51 @@ test('B11: weekday hours are reviewed, saved and shown publicly', async ({ page 
   await page.getByLabel('Shop name').fill('Katong Night Kopi')
   await page.getByLabel('Opening hours', { exact: true }).fill('Ask about holiday hours')
   await page.getByLabel('Set hours by weekday').check()
-  await page.getByLabel('Monday: Closed', { exact: true }).uncheck()
-  await page.getByLabel('Monday: Opens', { exact: true }).fill('22:00')
-  await page.getByLabel('Monday: Closes', { exact: true }).fill('02:00')
-  await page.getByLabel('Sunday: Closed', { exact: true }).scrollIntoViewIfNeeded()
+  await expect(page.locator('input[type="time"]')).toHaveCount(2)
+  for (const day of [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ]) {
+    await expect(page.getByRole('button', { name: day, exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  }
+  await expect(
+    page.getByText('Closing before opening means the next day.', { exact: true }),
+  ).toHaveCount(0)
+  await page.getByLabel('Opens', { exact: true }).fill('22:00')
+  await page.getByLabel('Closes', { exact: true }).fill('02:00')
+  await page.getByRole('button', { name: 'Sunday', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Different hours on some days', exact: true })
+    .scrollIntoViewIfNeeded()
   await proof(page, 'B11')
+  await page.getByRole('button', { name: 'Different hours on some days', exact: true }).click()
+  await expect(page.locator('input[type="time"]')).toHaveCount(14)
+  await page.getByLabel('Saturday: Opens', { exact: true }).fill('21:00')
+  await page
+    .getByLabel('Set hours by weekday')
+    .evaluate((node) => node.closest('label')!.scrollIntoView({ block: 'start' }))
+  await proof(page, 'B11-expanded')
+  await page.getByLabel('Saturday: Opens', { exact: true }).fill('22:00')
+  await expect(page.locator('input[type="time"]')).toHaveCount(2)
+  await expect(
+    page.getByRole('button', { name: 'Different hours on some days', exact: true }),
+  ).toBeFocused()
+  for (const target of await page
+    .getByRole('dialog')
+    .locator('input[type="time"], button[aria-pressed], button[aria-expanded]')
+    .all()) {
+    const bounds = (await target.boundingBox())!
+    expect(bounds.height).toBeGreaterThanOrEqual(48)
+    expect(bounds.width).toBeGreaterThanOrEqual(48)
+  }
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Weekly hours' })).toContainText('22:00–02:00 (+1)')
   await page.getByRole('button', { name: 'Confirm and save', exact: true }).click()
@@ -188,7 +284,14 @@ test('B11: weekday hours are reviewed, saved and shown publicly', async ({ page 
     id: string
     fields: { weekly_hours: unknown[] }
   }[]
-  expect(saved[0].fields.weekly_hours).toHaveLength(7)
+  expect(saved[0].fields.weekly_hours).toEqual(
+    weekdays.map((day) => ({
+      day,
+      closed: day === 'sun',
+      open: day === 'sun' ? null : '22:00',
+      close: day === 'sun' ? null : '02:00',
+    })),
+  )
   await page.evaluate(
     async (id) =>
       fetch(`/api/v1/businesses/${id}/share`, {
@@ -200,12 +303,97 @@ test('B11: weekday hours are reviewed, saved and shown publicly', async ({ page 
   )
   await page.goto(`/explore/s/${saved[0].id}`)
   await expect(page.getByRole('region', { name: 'Weekly hours' })).toContainText('22:00–02:00 (+1)')
-  await expect(page.getByRole('region', { name: 'Weekly hours' })).toContainText('TuesdayClosed')
+  await expect(page.getByRole('region', { name: 'Weekly hours' })).toContainText('SundayClosed')
   expect(
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
       .violations,
   ).toEqual([])
 })
+
+test('B11: existing different hours survive editing, and shared times survive closing every day', async ({
+  page,
+}) => {
+  const hours: DayHours[] = weekdays.map((day) => ({
+    day,
+    closed: false,
+    open: day === 'sat' ? '10:00' : '09:00',
+    close: '18:00',
+  }))
+  await enter(page, true, hours)
+  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: /^Shop details/ }).click()
+  await page.getByRole('button', { name: 'Edit details', exact: true }).click()
+  await expect(page.locator('input[type="time"]')).toHaveCount(14)
+  await expect(page.getByLabel('Saturday: Opens', { exact: true })).toHaveValue('10:00')
+  await page.route('**/api/v1/proposals', (route) => {
+    expect(route.request().postDataJSON().business.weekly_hours).toEqual(hours)
+    return route.fulfill({ status: 503, json: {} })
+  })
+  await page.getByRole('button', { name: 'Review', exact: true }).click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  await page.getByLabel('Saturday: Opens', { exact: true }).fill('09:00')
+  await expect(page.locator('input[type="time"]')).toHaveCount(2)
+  const dayButtons = page.getByRole('dialog').locator('button[aria-pressed]')
+  for (const button of await dayButtons.all()) await button.click()
+  await expect(page.getByLabel('Opens', { exact: true })).toHaveValue('09:00')
+  await page.getByRole('button', { name: 'Monday', exact: true }).focus()
+  await page.keyboard.press('Space')
+  await expect(page.getByRole('button', { name: 'Monday', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(page.getByLabel('Closes', { exact: true })).toHaveValue('18:00')
+  await page.getByLabel('Set hours by weekday').uncheck()
+  await expect(page.locator('input[type="time"]')).toHaveCount(0)
+  await expect(page.getByLabel('Opening hours', { exact: true })).toHaveValue(business.fields.hours)
+})
+
+for (const locale of [
+  'en-SG',
+  'zh-Hans-SG',
+  'ms-MY',
+  'ta-SG',
+  'ja-JP',
+  'ko-KR',
+  'id-ID',
+  'th-TH',
+  'vi-VN',
+  'fil-PH',
+]) {
+  test.describe(`B10 date locale ${locale}`, () => {
+    test.use({ locale })
+    test('formats the week and a year boundary using the device locale', async ({ page }) => {
+      // Keep controls in English while retaining the browser's native Intl date locale.
+      await page.addInitScript(() =>
+        Object.defineProperty(navigator, 'languages', { get: () => ['en-SG'] }),
+      )
+      await enter(page)
+      for (const [week, first, last] of [
+        ['2026-W42', '2026-10-12', '2026-10-18'],
+        ['2020-W53', '2020-12-28', '2021-01-03'],
+      ]) {
+        await page.route('**/api/v1/businesses/*/freshness', (route) =>
+          route.fulfill({
+            json: { today: '2026-10-14', last_confirmed: null, monday: false, recap_week: week },
+          }),
+        )
+        await page.getByRole('button', { name: 'My shop', exact: true }).click()
+        const expected = await page.evaluate(
+          ({ first, last }) =>
+            new Intl.DateTimeFormat(undefined, {
+              day: 'numeric',
+              month: 'short',
+              timeZone: 'UTC',
+              year: first.slice(0, 4) !== last.slice(0, 4) ? 'numeric' : undefined,
+            }).formatRange(new Date(`${first}T00:00:00Z`), new Date(`${last}T00:00:00Z`)),
+          { first, last },
+        )
+        await expect(page.getByRole('button', { name: /^Weekly recap/ })).toContainText(expected)
+        await page.getByRole('button', { name: 'Coach', exact: true }).click()
+      }
+    })
+  })
+}
 
 test('B12: compact categories, uncategorised last and sold-out last', async ({ page }) => {
   await enter(page)
