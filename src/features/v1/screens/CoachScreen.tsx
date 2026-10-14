@@ -57,7 +57,7 @@ import { useVoice } from '../useVoice'
 import { useOnline } from '../useOnline'
 import { useWorkspace } from '../workspaceContext'
 import { OwnerJourney } from '../../frontdoors/OwnerJourney'
-import { enterRise, shape } from '../../../design/theme'
+import { enterRise, shape, windowClass } from '../../../design/theme'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 // The composer grows with multi-line text up to this many lines, then scrolls.
@@ -509,24 +509,44 @@ export function CoachScreen() {
               </Typography>
             )}
             {ws.active ? <ShopCard onOpen={openSheet} /> : <StartCard />}
-            {ws.active && (
-              <>
-                <FreshnessCard key={`freshness-${ws.active.id}`} />
-                <RecapTile key={`recap-${ws.active.id}`} mondayOnly />
-              </>
-            )}
-            {ws.active && (
-              <PendingCard
-                unread={unread}
-                onMessages={() => setShopSheet('messages')}
-                onAnswer={(fact) => {
-                  setNote(`${t.factNames[fact]}: `)
-                  messageInput.current?.focus()
-                }}
-              />
-            )}{' '}
-            {/* Before a shop exists the start card is the only thing shown. */}
+            {/* Suggestions right under the shop card; before a shop exists the start card is
+                the only thing shown. */}
             {ws.active && chips}
+            {ws.active && (
+              // Phones: one attention card at a time so the first view fits without scrolling.
+              // The first card with something to say shows, the rest wait their turn (each one
+              // also lives on My shop). A card with nothing to say renders nothing.
+              <Box
+                data-testid="coach-attention"
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: { xs: 0, sm: 5 },
+                  '& > :empty': { display: 'none' },
+                  [`@media (max-width:${windowClass.medium - 1}px)`]: {
+                    '& > :not(:empty) ~ *': { display: 'none' },
+                  },
+                  '&:not(:has(> :not(:empty)))': { display: 'none' },
+                }}
+              >
+                <div>
+                  <FreshnessCard key={`freshness-${ws.active.id}`} />
+                </div>
+                <div>
+                  <RecapTile key={`recap-${ws.active.id}`} mondayOnly />
+                </div>
+                <div>
+                  <PendingCard
+                    unread={unread}
+                    onMessages={() => setShopSheet('messages')}
+                    onAnswer={(fact) => {
+                      setNote(`${t.factNames[fact]}: `)
+                      messageInput.current?.focus()
+                    }}
+                  />
+                </div>
+              </Box>
+            )}
           </Stack>
         ) : (
           <>

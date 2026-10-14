@@ -90,6 +90,7 @@ export const fil: Copy = {
   draftLegal: 'Draft para sa prototype — hinihintay pa ang legal na pagsusuri.',
   legalTranslation: 'Salin para sa kaginhawaan — ang bersiyong Ingles ang masusunod.',
   close: 'Isara',
+  setupDone: 'Tapos na ang setup',
   discardTitle: 'Itapon ang mga pagbabago?',
   discardBody: 'Hindi pa naka-save ang tinype mo o ang sinusuri mo.',
   discard: 'Itapon',

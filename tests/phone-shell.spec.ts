@@ -245,3 +245,49 @@ test('B5: no "What’s new at …" line; + sits top-right next to settings', asy
   await page.getByRole('button', { name: 'My shop', exact: true }).tap()
   await expect(plus).toHaveCount(0)
 })
+
+test('B6: the coach fits the phone without scrolling, suggestions sit under the shop card, and finished setup is one chip', async ({
+  page,
+}) => {
+  await enter(page)
+  await saveShop(page)
+  const fits = () =>
+    page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)
+  const suggestions = page.getByRole('button', { name: 'Share my customer page' })
+  const freshness = page.getByRole('heading', { name: 'Still the same menu today?' })
+  await expect(suggestions).toBeInViewport()
+  await expect(freshness).toBeVisible()
+  expect(await fits()).toBe(true)
+  // Suggestions come straight after the shop card, above the attention card.
+  const shopCard = (await page.getByRole('region', { name: 'Katong Kopi' }).boundingBox())!
+  const chip = (await suggestions.boundingBox())!
+  expect(chip.y).toBeGreaterThan(shopCard.y + shopCard.height - 1)
+  expect(chip.y).toBeLessThan((await freshness.boundingBox())!.y)
+  // Everything clears the composer.
+  const composer = (await page.locator('#coach form').boundingBox())!
+  const attention = (await page.getByTestId('coach-attention').boundingBox())!
+  expect(attention.y + attention.height).toBeLessThanOrEqual(composer.y)
+  // One attention card at a time: once the menu is confirmed, the next one takes its place.
+  await expect(page.getByRole('region', { name: /^Customers ask/ })).toBeHidden()
+  await page.getByRole('button', { name: 'Yes, all good' }).tap()
+  await expect(freshness).toHaveCount(0)
+  await expect(page.getByRole('region', { name: /^Customers ask/ })).toBeVisible()
+  expect(await fits()).toBe(true)
+  await axe(page)
+
+  // Finish setup (share the customer page): the setup card collapses to one small chip.
+  await expect(page.getByText('Step 4 of 5')).toBeVisible()
+  await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  await page.getByRole('button', { name: /^Customer page/ }).tap()
+  await page.getByRole('switch', { name: 'Share customer page' }).tap()
+  await expect(page.getByRole('switch', { name: 'Share customer page' })).toBeChecked()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Coach', exact: true }).tap()
+  const done = page.getByRole('link', { name: 'Setup complete · Open customer page' })
+  await expect(done).toBeVisible()
+  expect((await done.boundingBox())!.height).toBeLessThanOrEqual(32)
+  await expect(page.getByText(/^Step \d of 5$/)).toHaveCount(0)
+  await expect(page.getByRole('progressbar', { name: /^Step/ })).toHaveCount(0)
+  expect(await fits()).toBe(true)
+  await axe(page)
+})
