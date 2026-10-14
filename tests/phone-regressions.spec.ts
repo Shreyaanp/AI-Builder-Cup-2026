@@ -252,9 +252,9 @@ test('PHONE-2: every shop and product Add entry opens its form; coach plus opens
   await expect(page.getByRole('dialog', { name: 'Edit details' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
   // Phones choose camera or gallery first (B7).
-  await page.getByRole('button', { name: 'Add photo', exact: true }).tap()
+  await page.getByRole('button', { name: 'Attach a photo or document', exact: true }).tap()
   const picker = page.waitForEvent('filechooser')
-  await page.getByRole('menuitem', { name: 'Upload photo' }).tap()
+  await page.getByRole('menuitem', { name: 'Photo library' }).tap()
   await picker
 })
 
