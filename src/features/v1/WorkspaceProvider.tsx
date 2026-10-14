@@ -50,6 +50,7 @@ export function WorkspaceProvider({
   // A chat starter from another screen (e.g. My shop's "Customers ask" card).
   const [coachDraft, setCoachDraft] = useState<string | null>(null)
   const consumeCoachDraft = useCallback(() => setCoachDraft(null), [])
+  const [coachActions, setCoachActions] = useState(false)
   const [faceOpen, setFaceOpen] = useState(false)
   const [editor, setEditor] = useState<Editor>({ kind: 'none' })
   const [speakReplies, setSpeak] = useState(readSpeak)
@@ -204,6 +205,8 @@ export function WorkspaceProvider({
       },
       coachDraft,
       consumeCoachDraft,
+      coachActions,
+      setCoachActions,
       faceOpen,
       setFaceOpen,
       editor,
@@ -227,6 +230,7 @@ export function WorkspaceProvider({
       consumePhotoRequest,
       coachDraft,
       consumeCoachDraft,
+      coachActions,
       faceOpen,
       editor,
     ],

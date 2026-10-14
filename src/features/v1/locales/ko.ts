@@ -106,7 +106,6 @@ export const ko: Copy = {
   signOut: '로그아웃',
   saved: '저장했어요',
   coachGreeting: '오늘은 무엇을 해 볼까요?',
-  coachGreetingShop: (name: string) => `${name}에 새로운 소식이 있나요?`,
   coachHint: '간판 사진을 보내거나 가게 이름을 알려 주세요.',
   suggestPhoto: '가게 사진 보내기',
   suggestAdd: '내 가게 추가',

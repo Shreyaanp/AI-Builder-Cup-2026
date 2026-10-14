@@ -109,7 +109,6 @@ export const ms: Copy = {
   signOut: 'Log keluar',
   saved: 'Disimpan',
   coachGreeting: 'Apa yang mahu dibuat hari ini?',
-  coachGreetingShop: (name: string) => `Apa yang baharu di ${name}?`,
   coachHint: 'Hantar foto papan kedai, atau beritahu nama kedai anda.',
   suggestPhoto: 'Hantar foto kedai',
   suggestAdd: 'Tambah kedai saya',
