@@ -327,7 +327,7 @@ export const id: Copy = {
   verifiedYes: 'Google sudah memverifikasi toko saya',
   verifiedOwner: 'Terverifikasi — menurut Anda. Chalkboard tidak bisa mengeceknya ke Google.',
   verifiedUndo: 'Belum terverifikasi',
-  practiceSteps: 'Latihan langkah-langkahnya (simulasi)',
+  practiceSteps: 'Latihan langkah-langkahnya',
   readiness: (done: number, total: number) => `${done} dari ${total} siap`,
   checkName: 'Nama toko',
   checkCategory: 'Kategori',

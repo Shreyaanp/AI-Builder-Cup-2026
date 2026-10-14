@@ -332,7 +332,7 @@ export const fil: Copy = {
   verifiedYes: 'Na-verify na ng Google ang tindahan ko',
   verifiedOwner: 'Verified — ayon sa iyo. Hindi ito masusuri ng Chalkboard sa Google.',
   verifiedUndo: 'Hindi pa verified',
-  practiceSteps: 'Sanayin ang mga hakbang (simulation)',
+  practiceSteps: 'Sanayin ang mga hakbang',
   readiness: (done: number, total: number) => `${done} sa ${total} ang handa`,
   checkName: 'Pangalan ng tindahan',
   checkCategory: 'Kategorya',

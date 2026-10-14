@@ -140,6 +140,10 @@ test('Google handoff shows readiness and only official Google links', async ({ p
   // The coach's shop card (kept mounted while hidden) shows the same readiness.
   await expect(page.getByRole('region', { name: 'Google' }).getByText('1 of 6 ready')).toBeVisible()
   await expect(page.getByText(/we can’t publish to Google for you/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Practice the steps', exact: true })).toBeVisible()
+  await expect(
+    page.getByText('Simulated — no Google listing is created or changed', { exact: true }),
+  ).toHaveCount(1)
   await expect(page.getByRole('link', { name: 'Add on Google' })).toHaveAttribute(
     'href',
     'https://business.google.com/add',
@@ -237,8 +241,12 @@ test('busy-hours sweep asks about top items; Sold out uses the owner switch', as
   await kopi.getByRole('button', { name: 'Sold out' }).click()
   const teh = page.getByRole('region', { name: 'Still have Teh?' })
   await expect(teh).toBeVisible()
-  const items = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
-  expect(items.find((item: { name: string }) => item.name === 'Kopi').available).toBe(false)
+  await expect
+    .poll(async () => {
+      const items = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
+      return items.find((item: { name: string }) => item.name === 'Kopi').available
+    })
+    .toBe(false)
   // "Yes" hides that item until the next busy window; nothing else is left to sweep.
   await teh.getByRole('button', { name: 'Yes' }).click()
   await expect(page.getByRole('region', { name: /^Still have/ })).toHaveCount(0)
