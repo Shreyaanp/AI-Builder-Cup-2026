@@ -131,7 +131,8 @@ function CustomerWelcome({
         setBusy(false)
         setDenied(true)
       },
-      { timeout: 8000, maximumAge: 60000, enableHighAccuracy: false },
+      // Precise: "around me" should mean this street, not this district.
+      { timeout: 15_000, maximumAge: 30_000, enableHighAccuracy: true },
     )
   }
   const progress = t.step.replace('{step}', String(step)).replace('{total}', '2')

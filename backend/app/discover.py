@@ -43,6 +43,14 @@ CATEGORIES = {
     "grocery": ("grocery_store", ("grocery", "supermarket")),
     "catering": ("restaurant", ("catering", "caterer")),
 }
+# Google Places (New) types for "what's around me": small local businesses, food and non-food.
+LOCAL_SHOP_TYPES = [
+    *("restaurant", "cafe", "bakery", "food_court", "meal_takeaway"),
+    *("grocery_store", "supermarket", "convenience_store"),
+    *("pharmacy", "hardware_store", "florist", "clothing_store", "shoe_store", "book_store"),
+    *("electronics_store", "home_goods_store", "pet_store", "store"),
+    *("beauty_salon", "hair_care", "laundry"),
+]
 AREAS = {
     "Tiong Bahru": (1.2847, 103.832),
     "Chinatown": (1.283, 103.843),
@@ -310,18 +318,19 @@ class MapsService:
                 payload: dict[str, Any] = {
                     "textQuery": q,
                     "locationBias": {"circle": circle},
+                    "rankPreference": "DISTANCE",
                     "pageSize": 20,
                 }
                 if category:
                     payload["includedType"] = CATEGORIES[category][0]
             else:
                 method = "searchNearby"
+                # Nearest first, and every kind of local shop, not only food.
                 payload = {
                     "locationRestriction": {"circle": circle},
                     "maxResultCount": 20,
-                    "includedTypes": [CATEGORIES[category][0]]
-                    if category
-                    else ["cafe", "restaurant", "bakery", "grocery_store", "food_court"],
+                    "rankPreference": "DISTANCE",
+                    "includedTypes": [CATEGORIES[category][0]] if category else LOCAL_SHOP_TYPES,
                 }
             try:
                 response = await self.client.post(
