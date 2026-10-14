@@ -3,6 +3,9 @@ import { conversationEnglish } from '../inquiries/conversationCopy'
 export const customerEnglish = {
   ...conversationEnglish,
   chatTitle: 'Chat with the shop',
+  instantAnswer: 'Instant answer',
+  askOwner: 'Ask the owner',
+  cancel: 'Cancel',
   chatIntro:
     'Get an instant answer from the shop’s listed details, or send a message the owner replies to.',
   askTitle: 'Ask about this shop',

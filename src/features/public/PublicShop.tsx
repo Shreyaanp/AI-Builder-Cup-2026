@@ -24,7 +24,7 @@ import { formatPrice } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
 import type { ShopFacts } from '../v1/api'
 import { shape } from '../../design/theme'
-import { CustomerInquiry, CustomerQuestions } from './CustomerQuestions'
+import { ShopChat } from './ShopChat'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
 import { customerTranslations } from './customerLocales'
 
@@ -636,19 +636,14 @@ export default function PublicShop({ id }: { id: string }) {
         <Typography variant="bodyMedium" color="text.secondary">
           {t.chatIntro}
         </Typography>
-        <Box id="shop-ask">
-          <CustomerQuestions
-            key={`ask-${id}`}
-            id={id}
-            facts={stale ? '' : JSON.stringify(shop)}
-            item={menu[0]?.name}
-            currency={currency}
-            copy={t}
-          />
-        </Box>
-        <Box id="shop-message">
-          <CustomerInquiry key={`contact-${id}`} id={id} copy={t} />
-        </Box>
+        <ShopChat
+          key={`chat-${id}`}
+          id={id}
+          facts={stale ? '' : JSON.stringify(shop)}
+          item={menu[0]?.name}
+          currency={currency}
+          copy={t}
+        />
       </Sheet>
     </Box>
   )
