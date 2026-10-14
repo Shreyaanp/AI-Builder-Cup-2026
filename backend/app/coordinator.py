@@ -17,7 +17,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
-from .business_profile import QuestionPlanner
+from .business_profile import FOOD, QuestionPlanner
 from .merchant import (
     FACT_KEYS,
     BusinessFields,
@@ -80,10 +80,11 @@ def _planner() -> QuestionPlanner:
 
 
 async def get_question_plan() -> dict[str, Any]:
-    """List what customers of this kind of business usually ask that the shop has not answered
-    yet. Call it once the shop's name and category are saved. Then ask the owner ONE pending
-    question at a time, in their language, and record each answer with
-    propose_customer_facts(custom_facts=[{key, label, value}]). The owner may skip any."""
+    """Everything customers usually ask that the shop has not answered yet, in asking order.
+    Call it whenever the owner invites questions or the basics are saved. Ask ONE pending
+    question at a time, in the owner's language. Record each answer with propose_customer_facts:
+    if record_with is a fact name, pass that argument; if it is custom_facts, pass
+    custom_facts=[{key, label, value}]. The owner may skip any."""
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {
@@ -96,7 +97,21 @@ async def get_question_plan() -> dict[str, Any]:
         fields.get("category", ""), fields.get("name", ""), fields.get("location", "")
     )
     answered = {fact["key"] for fact in fields.get("custom_facts", [])}
-    pending = [question.model_dump() for question in plan.questions if question.key not in answered]
+    # One list in asking order: common facts still missing (recorded with their own argument of
+    # propose_customer_facts), then what customers of this business type ask (custom_facts).
+    common = [
+        {"key": key, "question": COMMON_QUESTIONS[key], "record_with": key}
+        for key in ASK_ORDER
+        if fields.get(key) in (None, "", [])
+        and (key not in FOOD_ONLY_FACTS or serves_food(fields))
+        and key in COMMON_QUESTIONS
+    ]
+    typed = [
+        {**question.model_dump(), "record_with": "custom_facts"}
+        for question in plan.questions
+        if question.key not in answered
+    ]
+    pending = common + typed
     return {
         "business_type": plan.business_type,
         "pending": pending,
@@ -187,14 +202,33 @@ def get_business_context() -> dict[str, Any]:
         "relevant_history": ctx.recalled,
         # Durable notes the owner asked the coach to keep (visible and deletable in My shop).
         "remembered_notes": [note["text"] for note in (shop or {}).get("coach_notes") or []],
-        # Customer facts not stated yet, in the order the coach should ask about them.
+        # Customer facts not stated yet, in the order the coach should ask about them. Food facts
+        # (halal, vegetarian, delivery, pre-orders) only make sense for food and drink shops.
         "customer_facts_to_ask": [
-            key for key in ASK_ORDER if shop and shop["fields"].get(key) in (None, "", [])
+            key
+            for key in ASK_ORDER
+            if shop
+            and shop["fields"].get(key) in (None, "", [])
+            and (key not in FOOD_ONLY_FACTS or serves_food(shop["fields"]))
         ],
     }
 
 
+COMMON_QUESTIONS = {
+    "halal": "Is your food halal?",
+    "payment_methods": "Which payments do you accept (cash, PayNow, card…)?",
+    "delivery": "Do you deliver, for example by Grab or foodpanda?",
+    "vegetarian_options": "Do you have vegetarian options?",
+    "preorders": "Can customers order ahead?",
+    "busy_hours": "When are you busiest?",
+}
 NOTE_LIMIT = 30
+FOOD_ONLY_FACTS = {"halal", "vegetarian_options", "delivery", "preorders"}
+
+
+def serves_food(fields: dict[str, Any]) -> bool:
+    text = f"{fields.get('category', '')} {fields.get('name', '')}".casefold()
+    return bool(re.search(FOOD[0], text))
 
 
 def remember_note(note: str) -> dict[str, Any]:
