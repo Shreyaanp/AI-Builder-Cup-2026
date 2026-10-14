@@ -596,10 +596,10 @@ export interface components {
             category_id: string;
             /**
              * Region
-             * @default IN
+             * @default SG
              * @enum {string}
              */
-            region: "IN" | "GB";
+            region: "SG" | "JP";
         };
         /** SimReset */
         SimReset: {

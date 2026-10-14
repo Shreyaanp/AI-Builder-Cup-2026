@@ -44,7 +44,7 @@ async function open(page: Page, scenario = 'new-store-success', type = 'Customer
     await dialog(page).getByLabel('Public service area').fill('Demo Pune area')
   }
   await dialog(page).getByLabel('Google category fixture').click()
-  await page.getByRole('option', { name: 'Tea shop', exact: true }).click()
+  await page.getByRole('option', { name: 'Hawker stall', exact: true }).click()
   await expect(page.locator('[role="listbox"]')).toHaveCount(0)
 }
 

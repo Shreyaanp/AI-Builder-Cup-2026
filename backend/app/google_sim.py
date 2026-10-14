@@ -35,7 +35,11 @@ Phase = Literal[
 ]
 Method = Literal["sms", "email", "phone", "postcard", "pin", "automatic"]
 
-CATEGORIES = {"IN": ["tea_shop", "bakery", "grocery"], "GB": ["bakery", "grocery"]}
+# Fixture category lists per region (APAC demo: Singapore default, Japan for the unsupported case).
+CATEGORIES = {
+    "SG": ["hawker_stall", "cafe", "bakery", "grocery"],
+    "JP": ["cafe", "bakery", "grocery"],
+}
 
 
 class SimFacts(BaseModel):
@@ -47,7 +51,7 @@ class SimFacts(BaseModel):
     website: str = Field(default="", max_length=300)
     service_area: str = Field(default="", max_length=300)
     category_id: str = Field(default="", max_length=40)
-    region: Literal["IN", "GB"] = "IN"
+    region: Literal["SG", "JP"] = "SG"
 
 
 class Match(BaseModel):
