@@ -40,7 +40,7 @@ function BusinessWorkspace({ children }: { children: ReactNode }) {
   )
 }
 
-function Providers({ children }: { children: ReactNode }) {
+function OwnedWorkspace({ children }: { children: ReactNode }) {
   const identity = useIdentity()
   // Initial setup and signed-out preview share drafts. Actual account changes
   // still remount the workspace so one user's private inputs cannot carry over.
@@ -48,6 +48,10 @@ function Providers({ children }: { children: ReactNode }) {
     identity.mode === 'firebase' && identity.status === 'ready'
       ? identity.scope
       : 'unlinked-preview'
+  return <BusinessWorkspace key={workspaceScope}>{children}</BusinessWorkspace>
+}
+
+function Providers({ children }: { children: ReactNode }) {
   const [preferences, preferencesDispatch] = useReducer(
     preferencesReducer,
     undefined,
@@ -81,17 +85,26 @@ function Providers({ children }: { children: ReactNode }) {
       <PreferencesDispatchContext value={preferencesDispatch}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <BusinessWorkspace key={workspaceScope}>{children}</BusinessWorkspace>
+          {children}
         </ThemeProvider>
       </PreferencesDispatchContext>
     </PreferencesContext>
   )
 }
 
-export function AppProviders({ children }: { children: ReactNode }) {
+export function AppProviders({
+  children,
+  business = true,
+}: {
+  children: ReactNode
+  business?: boolean
+}) {
+  if (!business) return <Providers>{children}</Providers>
   return (
     <IdentityProvider>
-      <Providers>{children}</Providers>
+      <Providers>
+        <OwnedWorkspace>{children}</OwnedWorkspace>
+      </Providers>
     </IdentityProvider>
   )
 }

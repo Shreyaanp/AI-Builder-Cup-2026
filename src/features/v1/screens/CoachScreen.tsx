@@ -56,6 +56,7 @@ import { useUnread } from '../useUnread'
 import { useVoice } from '../useVoice'
 import { useOnline } from '../useOnline'
 import { useWorkspace } from '../workspaceContext'
+import { OwnerJourney } from '../../frontdoors/OwnerJourney'
 import { enterRise, shape } from '../../../design/theme'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -361,6 +362,7 @@ export function CoachScreen() {
       }}
     >
       {/* One quiet row: which coach is answering, and every other action behind one "+". */}
+      <OwnerJourney />
       <Stack direction="row" sx={{ alignItems: 'center', minHeight: 48, gap: 1 }}>
         <Typography variant="labelMedium" color="text.secondary" sx={{ flex: 1 }} noWrap>
           {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
