@@ -1,5 +1,5 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent, ReactElement } from 'react'
 import {
   Alert,
@@ -67,11 +67,21 @@ import { useOnline } from '../useOnline'
 import { useWorkspace } from '../workspaceContext'
 import { OwnerJourney } from '../../frontdoors/OwnerJourney'
 import { enterRise, shape, windowClass } from '../../../design/theme'
+import { useSourcingCopy } from '../../sourcing/copy'
+import { OrdersSheet } from '../../sourcing/Orders'
+import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
+import type { Order, SupplierResult } from '../../sourcing/types'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 // The composer grows with multi-line text up to this many lines, then scrolls.
 const COMPOSER_ROWS = 6
-type Message = { role: 'user' | 'assistant'; text: string }
+type Message =
+  | { role: 'user' | 'assistant'; text: string }
+  // Sourcing cards live in the conversation; an order card always shows the order's latest state.
+  | { role: 'suppliers'; result: SupplierResult; key: string }
+  | { role: 'order'; orderId: string }
+const REPLY_POLL_MS = 1500
+const REPLY_WAIT_MS = 45_000
 
 export function CoachScreen() {
   const t = useCopy()
@@ -89,6 +99,12 @@ export function CoachScreen() {
   const [reconnecting, setReconnecting] = useState(false)
   const [mode, setMode] = useState<'offline' | 'gemini' | null>(null)
   const [history, setHistory] = useState<Conversation[]>([])
+  const s = useSourcingCopy()
+  // Sourcing: the item being searched for, every order shown in the chat, the open thread.
+  const [searching, setSearching] = useState<string | null>(null)
+  const [orders, setOrders] = useState<Record<string, Order>>({})
+  const [thread, setThread] = useState<string | null>(null)
+  const watching = useRef(new Set<string>())
   // Shop details sheet: null = closed, -1 = open, n = open on product n.
   const [sheet, setSheet] = useState<number | null>(null)
   const openSheet = (product?: number) => setSheet(product ?? -1)
@@ -143,6 +159,26 @@ export function CoachScreen() {
       if (event.kind === 'input_transcript')
         setMessages((items) => [...items, { role: 'user', text: event.text ?? '' }])
       if (event.kind === 'proposal') review(event.data as unknown as Proposal)
+      if (event.kind === 'sourcing') setSearching(String(event.data?.item ?? ''))
+      if (event.kind === 'suppliers') {
+        setSearching(null)
+        const result = event.data as unknown as SupplierResult
+        setMessages((items) =>
+          [...items, { role: 'suppliers' as const, result, key: crypto.randomUUID() }].slice(-40),
+        )
+      }
+      if (event.kind === 'order') {
+        const order = event.data as unknown as Order
+        setOrders((known) => ({ ...known, [order.id]: order }))
+        // One card per order, moved to the end when the coach updates it.
+        setMessages((items) =>
+          [
+            ...items.filter((item) => !(item.role === 'order' && item.orderId === order.id)),
+            { role: 'order' as const, orderId: order.id },
+          ].slice(-40),
+        )
+      }
+      if (event.kind === 'turn_complete') setSearching(null)
       if (event.kind === 'workflow' && event.data?.status === 'verification_required') {
         go('privacy')
         setFaceOpen(true)
@@ -199,11 +235,16 @@ export function CoachScreen() {
     setSeenDraft(coachDraft)
     if (coachDraft !== null) setNote(coachDraft)
   }
+  const sendDraft = useEffectEvent((text: string) => {
+    void send(text)
+  })
+  const { coachDraftSend } = ws
   useEffect(() => {
     if (coachDraft === null) return
     consumeCoachDraft()
-    messageInput.current?.focus()
-  }, [coachDraft, consumeCoachDraft])
+    if (coachDraftSend) sendDraft(coachDraft)
+    else messageInput.current?.focus()
+  }, [coachDraft, coachDraftSend, consumeCoachDraft])
 
   // A typed draft: Back asks "Discard changes?" before leaving, and so does closing the tab.
   useBackClose(
@@ -218,6 +259,7 @@ export function CoachScreen() {
   function resetThread() {
     controller.current?.abort()
     session.current = null
+    setSearching(null)
     setMessages([])
     setReply('')
     setError('')
@@ -304,8 +346,69 @@ export function CoachScreen() {
       if (controller.current === abort) {
         controller.current = null
         setBusy('idle')
+        setSearching(null)
         setReconnecting(false)
       }
+    }
+  }
+
+  const orderPath = (id: string) =>
+    `/businesses/${encodeURIComponent(activeId ?? '')}/orders/${encodeURIComponent(id)}`
+
+  // After Send, wait for the supplier's answer and announce it in this conversation.
+  async function watchReply(order: Order) {
+    if (watching.current.has(order.id)) return
+    watching.current.add(order.id)
+    const before = order.messages.filter((message) => message.author === 'supplier').length
+    const until = Date.now() + REPLY_WAIT_MS
+    try {
+      while (Date.now() < until) {
+        await new Promise((resolve) => window.setTimeout(resolve, REPLY_POLL_MS))
+        const latest = await api<Order>(orderPath(order.id)).catch(() => null)
+        if (!latest) continue
+        setOrders((known) => ({ ...known, [latest.id]: latest }))
+        const replies = latest.messages.filter((message) => message.author === 'supplier')
+        if (replies.length > before) {
+          const reply = replies[replies.length - 1]!
+          const text = s.replied(latest.supplier.name, reply.text)
+          setMessages((items) => [...items, { role: 'assistant' as const, text }].slice(-40))
+          if (speakReplies) void speakReply(text)
+          void api(`${orderPath(latest.id)}/read`, { method: 'POST' }).catch(() => undefined)
+          return
+        }
+      }
+    } finally {
+      watching.current.delete(order.id)
+    }
+  }
+
+  async function sendOrder(order: Order): Promise<boolean> {
+    setError('')
+    try {
+      const sent = await api<Order>(`${orderPath(order.id)}/send`, {
+        method: 'POST',
+        body: JSON.stringify({ version: order.version }),
+      })
+      setOrders((known) => ({ ...known, [sent.id]: sent }))
+      void watchReply(sent)
+      return true
+    } catch (cause) {
+      setError(
+        cause instanceof ApiError && cause.code === 'ADD_SHOP_PHONE' ? s.addPhone : s.sendFailed,
+      )
+      return false
+    }
+  }
+
+  async function discardOrder(order: Order) {
+    try {
+      const dropped = await api<Order>(`${orderPath(order.id)}/discard`, {
+        method: 'POST',
+        body: JSON.stringify({ version: order.version }),
+      })
+      setOrders((known) => ({ ...known, [dropped.id]: dropped }))
+    } catch {
+      setError(t.actionFailed)
     }
   }
 
@@ -610,13 +713,38 @@ export function CoachScreen() {
               spacing={3}
               sx={{ listStyle: 'none', m: 0, p: 0, pt: 2 }}
             >
-              {messages.map((message, index) => (
-                <Bubble key={index} message={message} you={t.you} coach={t.coach} />
-              ))}
+              {messages.map((message, index) =>
+                message.role === 'suppliers' ? (
+                  <SupplierCarousel
+                    key={message.key}
+                    result={message.result}
+                    onChoose={(card) => {
+                      const amount = message.result.quantity
+                        ? `${message.result.quantity} ${message.result.unit} `
+                        : ''
+                      setNote(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
+                      messageInput.current?.focus()
+                    }}
+                  />
+                ) : message.role === 'order' ? (
+                  orders[message.orderId] && (
+                    <OrderCard
+                      key={message.orderId}
+                      order={orders[message.orderId]!}
+                      onSend={sendOrder}
+                      onDiscard={discardOrder}
+                      onOpen={(order) => setThread(order.id)}
+                    />
+                  )
+                ) : (
+                  <Bubble key={index} message={message} you={t.you} coach={t.coach} />
+                ),
+              )}
+              {searching !== null && <SearchingSuppliers item={searching} />}
               {reply && (
                 <Bubble message={{ role: 'assistant', text: reply }} you={t.you} coach={t.coach} />
               )}
-              {busy === 'reply' && !reply && (
+              {busy === 'reply' && !reply && searching === null && (
                 <Box component="li" sx={{ pl: 10 }}>
                   <CircularProgress size={20} aria-label={t.speaking} />
                 </Box>
@@ -637,6 +765,7 @@ export function CoachScreen() {
         }}
       />
       <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
+      <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
       <ShopSheets
         kind={shopSheet}
         onClose={() => {
@@ -938,7 +1067,15 @@ export function CoachScreen() {
   )
 }
 
-function Bubble({ message, you, coach }: { message: Message; you: string; coach: string }) {
+function Bubble({
+  message,
+  you,
+  coach,
+}: {
+  message: { role: 'user' | 'assistant'; text: string }
+  you: string
+  coach: string
+}) {
   const roles = useTheme().material
   if (message.role === 'user')
     return (
