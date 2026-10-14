@@ -5,13 +5,16 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   Stack,
   SwipeableDrawer,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material'
+import { X } from 'lucide-react'
 import { motion, shape, windowClass } from '../../design/theme'
+import { useCopy } from './strings'
 
 const timing = { enter: motion.duration.enter, exit: motion.duration.exit }
 
@@ -39,7 +42,18 @@ export function Sheet({
   onEntered?: () => void
 }) {
   const roles = useTheme().material
+  const t = useCopy()
   const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
+  // Swipe, Esc and the scrim also close; the button makes it obvious and works for everyone.
+  const close = (
+    <IconButton
+      aria-label={t.close}
+      onClick={onClose}
+      sx={{ position: 'absolute', top: 8, right: 8, width: 48, height: 48, zIndex: 1 }}
+    >
+      <X size={20} />
+    </IconButton>
+  )
 
   if (compact)
     return (
@@ -67,6 +81,7 @@ export function Sheet({
               pb: 'env(safe-area-inset-bottom)',
               display: 'flex',
               flexDirection: 'column',
+              position: 'relative',
             },
           },
         }}
@@ -85,12 +100,13 @@ export function Sheet({
             mb: 2,
           }}
         />
+        {close}
         {title && (
           <Typography
             id={titleId}
             component="h2"
             variant="headlineSmall"
-            sx={{ px: 6, pt: 2, pb: 4 }}
+            sx={{ px: 6, pr: 16, pt: 2, pb: 4 }}
           >
             {title}
           </Typography>
@@ -116,7 +132,12 @@ export function Sheet({
       transitionDuration={timing}
       slotProps={{ transition: { onEntered } }}
     >
-      {title && <DialogTitle id={titleId}>{title}</DialogTitle>}
+      {close}
+      {title && (
+        <DialogTitle id={titleId} sx={{ pr: 16 }}>
+          {title}
+        </DialogTitle>
+      )}
       <DialogContent>{children}</DialogContent>
       {actions && <DialogActions sx={{ px: 6, pb: 6 }}>{actions}</DialogActions>}
     </Dialog>
