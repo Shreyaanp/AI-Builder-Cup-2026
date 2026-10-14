@@ -35,6 +35,8 @@ async function openShop(page: Page) {
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  // Planning lives in the Plan tomorrow tile's sheet.
+  await page.getByRole('button', { name: /^Plan tomorrow/ }).click()
   return receipt.business_id as string
 }
 

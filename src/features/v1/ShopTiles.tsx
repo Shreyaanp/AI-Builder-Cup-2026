@@ -1,0 +1,575 @@
+import { useState } from 'react'
+import type { ReactNode } from 'react'
+import {
+  Box,
+  Button,
+  ButtonBase,
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Stack,
+  Switch,
+  Typography,
+  useTheme,
+} from '@mui/material'
+import {
+  CalendarClock,
+  CheckCircle2,
+  ChevronRight,
+  Circle,
+  Copy,
+  ExternalLink,
+  Gauge,
+  Globe,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Share2,
+  Store,
+  UtensilsCrossed,
+  ZapOff,
+} from 'lucide-react'
+import { formatPrice, shopCurrency } from './format'
+import { Sheet } from './Sheet'
+import { openNow, readiness } from './shopProgress'
+import { useCopy } from './strings'
+import { useWorkspace } from './workspaceContext'
+import { Messages } from '../inquiries/Messages'
+import { PlanTomorrow } from '../planning/PlanTomorrow'
+import { useCopy as usePlanCopy } from '../planning/strings'
+import { enterRise, shape } from '../../design/theme'
+
+export type ShopSheetKind =
+  'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
+
+/** A glanceable tile: icon + label, one big value, a little supporting detail. */
+export function Tile({
+  icon,
+  label,
+  value,
+  children,
+  wide = false,
+  onClick,
+}: {
+  icon: ReactNode
+  label: string
+  value: ReactNode
+  children?: ReactNode
+  wide?: boolean
+  onClick: () => void
+}) {
+  const roles = useTheme().material
+  return (
+    <ButtonBase
+      onClick={onClick}
+      sx={{
+        gridColumn: wide ? '1 / -1' : undefined,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        justifyContent: 'flex-start',
+        textAlign: 'start',
+        gap: 2,
+        p: 4,
+        minHeight: 120,
+        minWidth: 0,
+        borderRadius: `${shape.lgIncreased}px`,
+        bgcolor: roles.surfaceContainer,
+        color: roles.onSurface,
+        ...enterRise,
+      }}
+    >
+      <Stack component="span" direction="row" sx={{ alignItems: 'center', gap: 2 }}>
+        <Box component="span" aria-hidden="true" sx={{ display: 'flex', color: roles.primary }}>
+          {icon}
+        </Box>
+        <Typography
+          component="span"
+          variant="labelLarge"
+          noWrap
+          sx={{ flex: 1, color: roles.onSurfaceVariant }}
+        >
+          {label}
+        </Typography>
+        <ChevronRight size={18} aria-hidden="true" color={roles.onSurfaceVariant} />
+      </Stack>
+      <Typography
+        component="span"
+        variant="titleLarge"
+        sx={{ display: 'block', overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}
+      >
+        {value}
+      </Typography>
+      {children}
+    </ButtonBase>
+  )
+}
+
+export function Supporting({ children }: { children: ReactNode }) {
+  return (
+    <Typography
+      component="span"
+      variant="bodyMedium"
+      color="text.secondary"
+      sx={{ display: 'block', overflowWrap: 'anywhere' }}
+    >
+      {children}
+    </Typography>
+  )
+}
+
+/** My shop: a grid of tiles; each opens a bottom sheet with the full list and actions. */
+export function ShopTiles({
+  unread,
+  onSheet,
+}: {
+  unread: number | null
+  onSheet: (kind: ShopSheetKind) => void
+}) {
+  const t = useCopy()
+  const plan = usePlanCopy()
+  const ws = useWorkspace()
+  const roles = useTheme().material
+  const shop = ws.active
+  if (!shop) return null
+  const currency = shopCurrency(shop)
+  const open = openNow(shop.fields.hours)
+  const soldOut = ws.products.filter((product) => product.available === false).length
+  const { done, total } = readiness(ws)
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' },
+        gap: 3,
+      }}
+    >
+      <Tile
+        wide
+        icon={<Store size={20} />}
+        label={t.shopDetails}
+        value={open === null ? shop.fields.hours || t.fields.hours : open ? t.openNow : t.closedNow}
+        onClick={() => onSheet('details')}
+      >
+        <Supporting>
+          {[open === null ? '' : shop.fields.hours, shop.fields.category, shop.fields.location]
+            .filter(Boolean)
+            .join(' · ') || t.notProvided}
+        </Supporting>
+      </Tile>
+      <Tile
+        wide
+        icon={<UtensilsCrossed size={20} />}
+        label={t.menu}
+        value={ws.products.length ? t.itemCount(ws.products.length) : t.noItems}
+        onClick={() => onSheet('menu')}
+      >
+        {ws.products.length > 0 && (
+          <Stack component="span" spacing={1}>
+            {ws.products.slice(0, 3).map((product) => (
+              <Stack
+                component="span"
+                key={product.id ?? product.name}
+                direction="row"
+                sx={{ gap: 2, justifyContent: 'space-between' }}
+              >
+                <Typography component="span" variant="bodyMedium" noWrap sx={{ minWidth: 0 }}>
+                  {product.name}
+                </Typography>
+                <Typography
+                  component="span"
+                  variant="bodyMedium"
+                  sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {formatPrice(product.price, currency)}
+                </Typography>
+              </Stack>
+            ))}
+          </Stack>
+        )}
+        <Typography component="span" variant="labelLarge" sx={{ color: roles.primary }}>
+          {ws.products.length ? t.viewAll : t.addProduct}
+        </Typography>
+      </Tile>
+      <Tile
+        icon={<ZapOff size={20} />}
+        label={t.soldOutToday}
+        value={t.soldOutCount(soldOut)}
+        onClick={() => onSheet('soldOut')}
+      >
+        {soldOut > 0 && (
+          <Supporting>
+            {ws.products
+              .filter((product) => product.available === false)
+              .map((product) => product.name)
+              .join(' · ')}
+          </Supporting>
+        )}
+      </Tile>
+      <Tile
+        icon={<Globe size={20} />}
+        label={t.customerPage}
+        value={shop.public ? t.shared : t.notShared}
+        onClick={() => onSheet('customer')}
+      />
+      <Tile
+        icon={<MessageSquare size={20} />}
+        label={t.messages}
+        value={unread === null ? '–' : t.unread(unread)}
+        onClick={() => onSheet('messages')}
+      />
+      <Tile
+        icon={<CalendarClock size={20} />}
+        label={plan.title}
+        value={t.planHint}
+        onClick={() => onSheet('plan')}
+      />
+      <Tile
+        wide
+        icon={<Gauge size={20} />}
+        label={t.readinessTitle}
+        value={t.readiness(done, total)}
+        onClick={() => onSheet('readiness')}
+      >
+        <LinearProgress
+          variant="determinate"
+          value={(done / total) * 100}
+          aria-hidden="true"
+          sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
+        />
+      </Tile>
+    </Box>
+  )
+}
+
+/** Every My shop sheet. Also opened from coach suggestion chips. */
+export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onClose: () => void }) {
+  const t = useCopy()
+  const plan = usePlanCopy()
+  const ws = useWorkspace()
+  const roles = useTheme().material
+  // Keep the last sheet's content while it slides away.
+  const [last, setLast] = useState(kind)
+  if (kind !== null && kind !== last) setLast(kind)
+  const shop = ws.active
+  if (!shop) return null
+  const currency = shopCurrency(shop)
+  // Editors are their own dialogs; close the sheet first so modals never stack.
+  const then = (run: () => void) => () => {
+    onClose()
+    run()
+  }
+  const list = {
+    bgcolor: roles.surfaceContainer,
+    borderRadius: `${shape.lg}px`,
+    overflow: 'hidden',
+  }
+  const editDetails = (
+    <Button
+      variant="contained"
+      startIcon={<Pencil size={18} />}
+      onClick={then(() => ws.openEditor({ kind: 'business', fields: shop.fields }))}
+    >
+      {t.editDetails}
+    </Button>
+  )
+  const addProduct = (
+    <Button
+      variant="contained"
+      startIcon={<Plus size={18} />}
+      onClick={then(() => ws.openEditor({ kind: 'product', product: null }))}
+    >
+      {t.addProduct}
+    </Button>
+  )
+  const common = { open: kind !== null, onClose }
+
+  switch (kind ?? last) {
+    case 'details':
+      return (
+        <Sheet
+          {...common}
+          titleId="details-sheet-title"
+          title={shop.fields.name}
+          actions={editDetails}
+        >
+          <Box component="dl" sx={{ m: 0, display: 'grid', gap: 4 }}>
+            {(['category', 'location', 'hours', 'phone'] as const).map((key) => (
+              <Box key={key}>
+                <Typography component="dt" variant="labelMedium" color="text.secondary">
+                  {t.fields[key]}
+                </Typography>
+                <Typography
+                  component="dd"
+                  variant="bodyLarge"
+                  sx={{
+                    m: 0,
+                    overflowWrap: 'anywhere',
+                    color: shop.fields[key] ? 'text.primary' : 'text.secondary',
+                  }}
+                >
+                  {shop.fields[key] || t.notProvided}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Sheet>
+      )
+    case 'menu':
+      return (
+        <Sheet {...common} titleId="menu-sheet-title" title={t.menu} actions={addProduct}>
+          {ws.products.length === 0 ? (
+            <Typography variant="bodyMedium" color="text.secondary">
+              {t.productsEmpty}
+            </Typography>
+          ) : (
+            <List disablePadding sx={list}>
+              {ws.products.map((product, index) => {
+                const available = product.available !== false
+                return (
+                  <ListItemButton
+                    key={product.id ?? product.name}
+                    divider={index < ws.products.length - 1}
+                    aria-label={`${t.editProduct} ${product.name}`}
+                    onClick={then(() => ws.openEditor({ kind: 'product', product }))}
+                    sx={{ borderRadius: 0, minHeight: 56, gap: 2 }}
+                  >
+                    <ListItemText
+                      primary={product.name}
+                      secondary={available ? product.unit : `${t.soldOut} · ${product.unit}`}
+                      slotProps={{
+                        primary: { variant: 'bodyLarge', noWrap: true },
+                        secondary: {
+                          variant: 'bodySmall',
+                          color: available ? 'text.secondary' : 'error',
+                        },
+                      }}
+                    />
+                    <Typography
+                      variant="titleSmall"
+                      sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {formatPrice(product.price, currency)}
+                    </Typography>
+                  </ListItemButton>
+                )
+              })}
+            </List>
+          )}
+        </Sheet>
+      )
+    case 'soldOut':
+      return (
+        <Sheet {...common} titleId="soldout-sheet-title" title={t.soldOutToday}>
+          <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 4 }}>
+            {ws.products.length ? t.soldOutHint : t.productsEmpty}
+          </Typography>
+          {ws.products.length > 0 && (
+            <List disablePadding sx={list}>
+              {ws.products.map((product, index) => {
+                const available = product.available !== false
+                return (
+                  <ListItem
+                    key={product.id ?? product.name}
+                    divider={index < ws.products.length - 1}
+                    secondaryAction={
+                      <Switch
+                        edge="end"
+                        checked={available}
+                        onChange={(_, checked) => void ws.setAvailability(product, checked)}
+                        slotProps={{ input: { 'aria-label': `${t.available}: ${product.name}` } }}
+                      />
+                    }
+                    sx={{ minHeight: 56 }}
+                  >
+                    <ListItemText
+                      primary={product.name}
+                      secondary={available ? t.available : t.soldOut}
+                      slotProps={{
+                        primary: { variant: 'bodyLarge' },
+                        secondary: {
+                          variant: 'bodySmall',
+                          color: available ? 'text.secondary' : 'error',
+                        },
+                      }}
+                    />
+                  </ListItem>
+                )
+              })}
+            </List>
+          )}
+        </Sheet>
+      )
+    case 'customer':
+      return (
+        <Sheet {...common} titleId="customer-sheet-title" title={t.customerPage}>
+          <CustomerPage />
+        </Sheet>
+      )
+    case 'messages':
+      // Messages brings its own "Messages (n)" heading, which names the sheet.
+      return (
+        <Sheet {...common} titleId="messages-title">
+          <Messages key={`messages-${shop.id}`} businessId={shop.id} />
+        </Sheet>
+      )
+    case 'plan':
+      // Planning brings its own "Plan tomorrow" heading; it needs a saved product first.
+      return ws.products.some((product) => product.id) ? (
+        <Sheet {...common} titleId="plan-title">
+          <Box sx={{ pt: 2 }}>
+            <PlanTomorrow key={`plan-${shop.id}`} />
+          </Box>
+        </Sheet>
+      ) : (
+        <Sheet {...common} titleId="plan-sheet-title" title={plan.title} actions={addProduct}>
+          <Typography variant="bodyMedium" color="text.secondary">
+            {t.productsEmpty}
+          </Typography>
+        </Sheet>
+      )
+    case 'readiness': {
+      const f = shop.fields
+      const checks = [
+        { label: t.checkName, done: Boolean(f.name.trim()) },
+        { label: t.checkCategory, done: Boolean(f.category.trim()) },
+        { label: t.checkLocation, done: Boolean(f.location.trim()) },
+        { label: t.checkHours, done: Boolean(f.hours.trim()) },
+        { label: t.checkPhone, done: Boolean(f.phone.trim()) },
+        { label: t.checkProducts, done: ws.products.length > 0 },
+      ]
+      const { done, total } = readiness(ws)
+      return (
+        <Sheet
+          {...common}
+          titleId="readiness-sheet-title"
+          title={t.readiness(done, total)}
+          actions={
+            <>
+              <Button onClick={then(() => ws.go('google'))}>{t.navGoogle}</Button>
+              {editDetails}
+            </>
+          }
+        >
+          <List dense disablePadding>
+            {checks.map((check) => (
+              <ListItem key={check.label} disableGutters>
+                <ListItemIcon
+                  sx={{ minWidth: 40, color: check.done ? roles.primary : roles.outline }}
+                  aria-hidden="true"
+                >
+                  {check.done ? <CheckCircle2 size={22} /> : <Circle size={22} />}
+                </ListItemIcon>
+                <ListItemText
+                  primary={check.label}
+                  secondary={check.done ? t.ready : t.missing}
+                  slotProps={{
+                    primary: { variant: 'bodyLarge' },
+                    secondary: { variant: 'bodySmall' },
+                  }}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Sheet>
+      )
+    }
+    default:
+      return null
+  }
+}
+
+/** Customer page switch, link and share actions (moved from the old My shop page). */
+function CustomerPage() {
+  const t = useCopy()
+  const ws = useWorkspace()
+  const roles = useTheme().material
+  const [busy, setBusy] = useState(false)
+  const shop = ws.active
+  if (!shop) return null
+  const url = ws.shareUrl
+  return (
+    <Box>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
+        <Typography variant="bodyMedium" color="text.secondary" sx={{ flex: 1 }}>
+          {shop.public ? t.customerPageOn : t.customerPageOff}
+        </Typography>
+        <Switch
+          checked={shop.public}
+          // Not disabled while saving: a disabled control drops focus out of the sheet (and Esc).
+          disabled={!url}
+          onChange={(_, checked) => {
+            if (busy) return
+            setBusy(true)
+            ws.setShared(checked)
+              .catch(() => ws.notify(t.actionFailed))
+              .finally(() => setBusy(false))
+          }}
+          slotProps={{ input: { 'aria-label': t.pageSwitch } }}
+        />
+      </Stack>
+      {shop.public && url && (
+        <>
+          <Typography
+            variant="bodyMedium"
+            sx={{
+              mt: 4,
+              px: 4,
+              py: 3,
+              borderRadius: `${shape.sm}px`,
+              bgcolor: roles.surfaceContainerHighest,
+              overflowWrap: 'anywhere',
+              fontFamily: 'monospace',
+            }}
+          >
+            {url}
+          </Typography>
+          <Stack direction="row" sx={{ mt: 4, gap: 2, flexWrap: 'wrap' }}>
+            <Button
+              variant="contained"
+              startIcon={<Share2 size={18} />}
+              onClick={() => {
+                const data = {
+                  title: shop.fields.name,
+                  text: t.shareMessage(shop.fields.name),
+                  url,
+                }
+                if (navigator.share) void navigator.share(data).catch(() => undefined)
+                else
+                  void navigator.clipboard
+                    .writeText(url)
+                    .then(() => ws.notify(t.linkCopied))
+                    .catch(() => ws.notify(t.actionFailed))
+              }}
+            >
+              {t.share}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Copy size={18} />}
+              onClick={() =>
+                void navigator.clipboard
+                  .writeText(url)
+                  .then(() => ws.notify(t.linkCopied))
+                  .catch(() => ws.notify(t.actionFailed))
+              }
+            >
+              {t.copyLink}
+            </Button>
+            <Button
+              startIcon={<ExternalLink size={18} />}
+              href={url}
+              target="_blank"
+              rel="noopener"
+            >
+              {t.openPage}
+            </Button>
+          </Stack>
+        </>
+      )}
+    </Box>
+  )
+}
