@@ -177,6 +177,8 @@ export const zhHans: Copy = {
     muslim_owned: '穆斯林经营',
     not_stated: '未说明',
   },
+  factInputHelp: '选择建议或输入任意名称。最多8种付款方式，每种40个字符。',
+  deliveryInputHelp: '选择建议或输入任意配送名称（40个字符）。',
   deliveryValues: {
     none: '不外送',
     own: '自家外送',

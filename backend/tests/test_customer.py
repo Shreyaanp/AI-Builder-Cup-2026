@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
-from app.customer import Answer, CustomerAnswers, InquiryInput, Question
+from app.customer import FACT_COPY, Answer, CustomerAnswers, InquiryInput, Question, fixture_answer
 from app.main import create_app
 from app.merchant import (
     BusinessFields,
@@ -21,6 +21,22 @@ from app.merchant import (
 from app.settings import Settings
 from tests.test_merchant_store import store as store
 from tests.test_photos import join
+
+
+@pytest.mark.parametrize("language", FACT_COPY)
+def test_global_customer_fact_answers(language: str) -> None:
+    shop = {
+        "facts": {"payment_methods": ["UPI", "paynow", "grabpay", "nets"], "delivery": "Swiggy"}
+    }
+    payment = fixture_answer(shop, Question(question="Payment methods?", language=language))
+    assert "UPI, PayNow, GrabPay, NETS" in payment.answer
+    delivery = fixture_answer(shop, Question(question="Delivery?", language=language))
+    assert "Swiggy" in delivery.answer
+    for name, label in [("grab", "GrabFood"), ("foodpanda", "foodpanda")]:
+        shop["facts"]["delivery"] = name
+        assert (
+            label in fixture_answer(shop, Question(question="Delivery?", language=language)).answer
+        )
 
 
 def create_shop(

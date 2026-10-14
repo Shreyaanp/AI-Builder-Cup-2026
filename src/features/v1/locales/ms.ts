@@ -182,6 +182,9 @@ export const ms: Copy = {
     muslim_owned: 'Milik Muslim',
     not_stated: 'Tidak dinyatakan',
   },
+  factInputHelp:
+    'Pilih cadangan atau masukkan nama sendiri. Hingga 8 cara bayaran, 40 aksara setiap satu.',
+  deliveryInputHelp: 'Pilih cadangan atau masukkan nama penghantaran (40 aksara).',
   deliveryValues: {
     none: 'Tiada penghantaran',
     own: 'Penghantaran sendiri',

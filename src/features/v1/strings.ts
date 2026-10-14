@@ -190,6 +190,8 @@ export const en = {
     muslim_owned: 'Muslim-owned',
     not_stated: 'Not stated',
   },
+  factInputHelp: 'Choose suggestions or enter any name. Up to 8 payments, 40 characters each.',
+  deliveryInputHelp: 'Choose a suggestion or enter any delivery name (40 characters).',
   deliveryValues: {
     none: 'No delivery',
     own: 'Own delivery',

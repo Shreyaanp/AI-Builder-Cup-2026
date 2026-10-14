@@ -32,6 +32,8 @@ import { PlaceSearch } from './PlaceSearch'
 import type { FoundPlace } from './PlaceSearch'
 import { mapsLink } from './types'
 import type { Discovery, Place, Usual } from './types'
+import { categories, categoryValue, matchesInterest } from './categories'
+import { isBudget } from './budget'
 
 const DiscoverMap = lazy(() => import('./DiscoverMap'))
 const areas = {
@@ -43,27 +45,6 @@ const areas = {
   Tampines: [1.3547, 103.9437],
 } as const
 type Area = keyof typeof areas
-const categories = {
-  kopi: 'kopi',
-  hawker: 'hawker',
-  bakery: 'bakery',
-  cafe: 'café',
-  grocery: 'grocery',
-  catering: 'catering',
-} as const
-const categoryLabels: Record<string, keyof typeof categories> = {
-  kopi: 'kopi',
-  hawker: 'hawker',
-  food_court: 'hawker',
-  bakery: 'bakery',
-  cafe: 'cafe',
-  café: 'cafe',
-  grocery: 'grocery',
-  grocery_store: 'grocery',
-  supermarket: 'grocery',
-  catering: 'catering',
-  catering_service: 'catering',
-}
 type Filters = {
   q: string
   category: string
@@ -97,7 +78,7 @@ function readFilters(): Filters {
   const category = url.get('category') ?? saved?.category
   return {
     q: (url.get('q') ?? (typeof saved?.q === 'string' ? saved.q : '')).slice(0, 180),
-    category: Object.values(categories).some((value) => value === category) ? category! : '',
+    category: categoryValue(category),
     open: url.has('open') ? url.get('open') === '1' : saved?.open === true,
     halal: url.has('halal') ? url.get('halal') === '1' : saved?.halal === true,
     budget: url.has('budget') ? url.get('budget') === '1' : saved?.budget === true,
@@ -294,16 +275,8 @@ export default function Discover({
         (place) =>
           (!filters.halal || place.halal === true) &&
           (!interestsActive ||
-            interests.some(
-              (interest) =>
-                interest === place.category.toLowerCase() ||
-                categoryLabels[place.category.toLowerCase()] ===
-                  (interest === 'café' ? 'cafe' : interest),
-            )) &&
-          (!filters.budget ||
-            place.price_level === 'PRICE_LEVEL_INEXPENSIVE' ||
-            (place.currency === 'SGD' &&
-              place.items.some((item) => item.available && item.price <= 1000))),
+            interests.some((interest) => matchesInterest(place.category, interest))) &&
+          (!filters.budget || isBudget(place)),
       ),
     [result, filters.halal, filters.budget, interests, interestsActive],
   )
@@ -320,7 +293,7 @@ export default function Discover({
     return place.open_now === null ? t.unknown : place.open_now ? t.open : t.closed
   }
   function categoryText(value: string) {
-    const key = categoryLabels[value.toLowerCase()]
+    const key = categories.find((category) => matchesInterest(value, category))
     return key ? t[key] : value.replaceAll('_', ' ')
   }
   const controlSx = {
@@ -528,10 +501,10 @@ export default function Discover({
               setFilters({ ...filters, category: '' })
             }}
           />
-          {Object.entries(categories).map(([key, category]) => (
+          {categories.map((category) => (
             <Chip
-              key={key}
-              label={t[key as keyof typeof categories]}
+              key={category}
+              label={t[category]}
               clickable
               aria-pressed={filters.category === category}
               color={filters.category === category ? 'primary' : 'default'}

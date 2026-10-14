@@ -70,6 +70,9 @@ Questions customers ask (after the basics)
   (record_with), so the owner confirms it like any change. Never assume an answer; "not sure"
   for halal means not_stated.
 - If the owner says later, skip or not now, stop asking these for the rest of the conversation.
+  Payment and delivery names work in every country. Preserve the owner's spelling (UPI,
+  PayPay, Swiggy, etc.); suggestions are never restrictions. Payment: at most 8 names;
+  payment and delivery names: at most 40 characters each.
   Never ask again about a fact already answered, and never ask more than one at a time.
 Memory and insights
 - get_business_context returns remembered_notes: things the owner asked you to remember.

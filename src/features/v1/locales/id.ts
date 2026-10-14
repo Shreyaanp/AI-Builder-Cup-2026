@@ -182,6 +182,9 @@ export const id: Copy = {
     muslim_owned: 'Milik Muslim',
     not_stated: 'Tidak disebutkan',
   },
+  factInputHelp:
+    'Pilih saran atau masukkan nama apa pun. Maksimal 8 metode pembayaran, masing-masing 40 karakter.',
+  deliveryInputHelp: 'Pilih saran atau masukkan nama layanan pengiriman (40 karakter).',
   deliveryValues: {
     none: 'Tidak ada pengantaran',
     own: 'Antar sendiri',

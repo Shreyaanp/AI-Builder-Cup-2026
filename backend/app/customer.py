@@ -156,6 +156,75 @@ FIXTURE_COPY = {
 }
 
 
+# Payment, delivery, cash, card, other, no delivery, own delivery, other delivery.
+FACT_COPY = {
+    "en": (
+        "Payment",
+        "Delivery",
+        "Cash",
+        "Card",
+        "Other",
+        "No delivery",
+        "Own delivery",
+        "Other delivery",
+    ),
+    "zh-Hans": ("付款", "配送", "现金", "银行卡", "其他", "不配送", "自行配送", "其他配送"),
+    "ms": (
+        "Bayaran",
+        "Penghantaran",
+        "Tunai",
+        "Kad",
+        "Lain-lain",
+        "Tiada penghantaran",
+        "Penghantaran sendiri",
+        "Penghantaran lain",
+    ),
+    "ta": (
+        "கட்டணம்",
+        "விநியோகம்",
+        "பணம்",
+        "அட்டை",
+        "மற்றவை",
+        "விநியோகம் இல்லை",
+        "சொந்த விநியோகம்",
+        "பிற விநியோகம்",
+    ),
+    "ja": ("支払い", "配達", "現金", "カード", "その他", "配達なし", "自店配達", "その他の配達"),
+    "ko": ("결제", "배달", "현금", "카드", "기타", "배달 없음", "자체 배달", "기타 배달"),
+    "id": (
+        "Pembayaran",
+        "Pengiriman",
+        "Tunai",
+        "Kartu",
+        "Lainnya",
+        "Tidak ada pengiriman",
+        "Pengiriman sendiri",
+        "Pengiriman lainnya",
+    ),
+    "th": ("การชำระเงิน", "การจัดส่ง", "เงินสด", "บัตร", "อื่น ๆ", "ไม่มีการจัดส่ง", "จัดส่งเอง", "การจัดส่งอื่น ๆ"),
+    "vi": (
+        "Thanh toán",
+        "Giao hàng",
+        "Tiền mặt",
+        "Thẻ",
+        "Khác",
+        "Không giao hàng",
+        "Tự giao hàng",
+        "Giao hàng khác",
+    ),
+    "fil": (
+        "Bayad",
+        "Delivery",
+        "Cash",
+        "Card",
+        "Iba pa",
+        "Walang delivery",
+        "Sariling delivery",
+        "Ibang delivery",
+    ),
+}
+
+
 def fixture_answer(shop: dict[str, Any], question: Question) -> Answer:
     missing, price_label, hours, location, available, sold_out = FIXTURE_COPY.get(
         question.language, FIXTURE_COPY["en"]
@@ -175,13 +244,71 @@ def fixture_answer(shop: dict[str, Any], question: Question) -> Answer:
             "ingredient",
             "allerg",
             "safe",
-            "delivery",
             "stock",
             "how many",
             "system prompt",
         )
     ):
         return Answer(answer=missing, mode="fixture")
+    payment, delivery, cash, card, other, none, own, other_delivery = FACT_COPY.get(
+        question.language, FACT_COPY["en"]
+    )
+    facts = shop.get("facts", {})
+    if any(
+        word in text
+        for word in (
+            "payment",
+            "paynow",
+            "pay with",
+            "付款",
+            "bayar",
+            "கட்டண",
+            "支払",
+            "결제",
+            "pembayaran",
+            "ชำระ",
+            "thanh toán",
+            "bayad",
+        )
+    ):
+        labels = {
+            "cash": cash,
+            "card": card,
+            "other": other,
+            "paynow": "PayNow",
+            "nets": "NETS",
+            "grabpay": "GrabPay",
+        }
+        methods = [labels.get(name, name) for name in facts.get("payment_methods", [])]
+        return Answer(
+            answer=f"{payment}: {', '.join(methods)}" if methods else missing, mode="fixture"
+        )
+    if any(
+        word in text
+        for word in (
+            "delivery",
+            "deliver",
+            "配送",
+            "hantar",
+            "விநியோக",
+            "配達",
+            "배달",
+            "pengiriman",
+            "จัดส่ง",
+            "giao hàng",
+        )
+    ):
+        labels = {
+            "none": none,
+            "own": own,
+            "other": other_delivery,
+            "grab": "GrabFood",
+            "foodpanda": "foodpanda",
+        }
+        name = facts.get("delivery")
+        return Answer(
+            answer=f"{delivery}: {labels.get(name, name)}" if name else missing, mode="fixture"
+        )
     if any(word in text for word in ("hours", "open", "营业", "waktu", "営業時間")):
         return Answer(
             answer=f"{hours}: {shop['hours']}" if shop["hours"] else missing, mode="fixture"
@@ -217,6 +344,9 @@ are not listed and suggest contacting the shop. customer_facts holds only what t
 confirmed (halal: yes / no / muslim_owned / not_stated); a halal answer is the shop's own
 statement, not a certification, so never say "certified".
 Never promise stock, acceptance or fulfillment.
+Payment and delivery names can be from any country. Display known saved keys as names
+(paynow: PayNow, grabpay: GrabPay, nets: NETS, grab: GrabFood, foodpanda: foodpanda).
+Preserve all other payment and delivery names exactly as the owner entered them.
 Availability means only 'available / sold out as shown'. Prices are in the shop's currency.
 Return a short plain-text answer in the answer field. Do not fill price/unit (fixture-only).
 Approved public facts:

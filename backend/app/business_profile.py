@@ -99,7 +99,11 @@ CATALOGUE: list[tuple[str, str, list[tuple[str, str, str]]]] = [
 ]
 FOOD = (
     r"food|kopi|coffee|cafe|café|tea|bakery|bake|cake|hawker|stall|restaurant|eat|kitchen|"
-    r"noodle|rice|bar|drink|juice|dessert",
+    r"noodle|rice|bar|drink|juice|dessert|"
+    r"食|餐|咖啡|面包|茶|อาหาร|กาแฟ|ขนมปัง|ชา|カフェ|パン|コーヒー|レストラン|"
+    r"음식|카페|커피|식당|빵|makan|kedai kopi|warung|restoran|roti|minuman|"
+    r"nhà hàng|quán|cà phê|trà|bánh mì|kainan|karinderya|pagkain|kape|panaderya|tsaa|"
+    r"உணவு|காபி|தேநீர்|பேக்கரி|dhaba|mess|tiffin|chai|भोजन|खाना|चाय|ढाबा|मिठाई|टिफिन|नाश्ता",
     "food & drink",
     [
         ("signature_dish", "Signature dish", "What is your signature dish or drink?"),

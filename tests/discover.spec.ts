@@ -70,7 +70,7 @@ test('search, category, open-now, sold-out and anonymous customer page', async (
   await page.getByRole('switch', { name: 'Open now', exact: true }).check()
   await expect(page.getByText('No matches. Try another area or clear your filters.')).toBeVisible()
   await page.getByRole('button', { name: 'Bakery', exact: true }).click()
-  await page.getByRole('button', { name: 'Kopi', exact: true }).click()
+  await page.getByRole('button', { name: 'Coffee & tea', exact: true }).click()
   await page.getByLabel('Search nearby').fill(name)
   await page.getByLabel('Search nearby').press('Enter')
   const card = page.getByRole('list').getByRole('link').filter({ hasText: name })
@@ -205,4 +205,45 @@ test('phone language and complete translations', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Apa yang berdekatan?' })).toBeVisible()
   await expect(page.getByLabel('Cari berdekatan')).toBeVisible()
   await expect(page.getByText('Data demo', { exact: true })).toBeVisible()
+})
+
+test('global category chips, legacy links and B22 phone screenshot', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/discover?category=kopi')
+  const coffee = page.getByRole('button', { name: 'Coffee & tea', exact: true })
+  await expect(coffee).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('heading', { name: 'Tiong Bahru Kopi' })).toBeVisible()
+  await expect(page).toHaveURL(/category=coffee/)
+  for (const name of [
+    'Coffee & tea',
+    'Food',
+    'Bakery',
+    'Groceries',
+    'Pharmacy',
+    'Hardware',
+    'Fashion',
+    'Beauty',
+    'Services',
+    'Other',
+  ]) {
+    await expect(page.getByRole('button', { name, exact: true })).toHaveCount(1)
+  }
+  await expect(page.getByRole('button', { name: 'Kopi', exact: true })).toHaveCount(0)
+  if (info.project.name === 'phone') {
+    await coffee.evaluate((element) => element.scrollIntoView({ block: 'start' }))
+    await page.screenshot({ path: 'docs/bugs/B22.png', animations: 'disabled' })
+  }
+  await page.goto('/discover?category=hawker')
+  await expect(page.getByRole('button', { name: 'Food', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(page.getByRole('heading', { name: 'Chinatown Hawker Centre' })).toBeVisible()
+  await expect(page).toHaveURL(/category=food/)
+  const invalidCategories = await page.evaluate(async () => {
+    const path = '/src/features/discover/categories.ts'
+    const { categoryValue } = await import(path)
+    return [null, 123, 'constructor', '__proto__', 'unknown'].map(categoryValue)
+  })
+  expect(invalidCategories).toEqual(['', '', '', '', ''])
 })

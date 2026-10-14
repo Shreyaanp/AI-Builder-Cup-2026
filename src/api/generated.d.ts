@@ -1058,7 +1058,7 @@ export interface components {
             /** Vegetarian Options */
             vegetarian_options?: boolean | null;
             /** Delivery */
-            delivery?: ("none" | "own" | "grab" | "foodpanda" | "other") | null;
+            delivery?: string | null;
             /**
              * Delivery Note
              * @default
@@ -1072,7 +1072,7 @@ export interface components {
              */
             preorder_lead_time: string;
             /** Payment Methods */
-            payment_methods?: ("cash" | "paynow" | "card" | "grabpay" | "nets" | "other")[];
+            payment_methods?: string[];
             /**
              * Busy Hours
              * @default
