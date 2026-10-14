@@ -69,6 +69,7 @@ import { OwnerJourney } from '../../frontdoors/OwnerJourney'
 import { enterRise, shape, windowClass } from '../../../design/theme'
 import { useSourcingCopy } from '../../sourcing/copy'
 import { OrdersSheet } from '../../sourcing/Orders'
+import { useReceiveOrder } from '../../sourcing/orderData'
 import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
 
@@ -105,6 +106,7 @@ export function CoachScreen() {
   const [orders, setOrders] = useState<Record<string, Order>>({})
   const [thread, setThread] = useState<string | null>(null)
   const watching = useRef(new Set<string>())
+  const receiveOrder = useReceiveOrder()
   // Shop details sheet: null = closed, -1 = open, n = open on product n.
   const [sheet, setSheet] = useState<number | null>(null)
   const openSheet = (product?: number) => setSheet(product ?? -1)
@@ -741,6 +743,12 @@ export function CoachScreen() {
                       onSend={sendOrder}
                       onDiscard={discardOrder}
                       onOpen={(order) => setThread(order.id)}
+                      onReceived={(order) =>
+                        void receiveOrder(order).then((received) => {
+                          if (received)
+                            setOrders((known) => ({ ...known, [received.id]: received }))
+                        })
+                      }
                     />
                   )
                 ) : (

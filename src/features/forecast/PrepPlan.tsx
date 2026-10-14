@@ -44,16 +44,24 @@ export function PrepPlanTile() {
   const tomorrow = value?.predictions?.[0]?.date
   const rows = value?.predictions?.filter((row) => row.date === tomorrow).slice(0, 3) ?? []
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
-  // Running low: a counted stock at or below tomorrow's forecast (or at most 5 when there is
-  // no forecast for it). Items without a stock count never show here.
-  const need = new Map(rows.map((row) => [row.item.toLowerCase(), row.quantity]))
-  const low = products
-    .filter(
-      (product) =>
-        product.stock != null &&
-        product.stock <= (need.get(product.name.toLowerCase()) ?? LOW_STOCK),
-    )
-    .map((product) => product.name)
+  // Runs out: the first forecast day on which the week's predicted demand passes a counted
+  // stock ("Croissant runs out Thu"). With no forecast for it, a stock of at most 5 is running
+  // low. Items without a stock count never show here.
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' })
+  const low = products.flatMap((product) => {
+    if (product.stock == null) return []
+    const days = (value?.predictions ?? [])
+      .filter((row) => row.item.toLowerCase() === product.name.toLowerCase())
+      .sort((a, b) => a.date.localeCompare(b.date))
+    let demand = 0
+    for (const row of days) {
+      demand += row.quantity
+      if (demand >= product.stock)
+        return [{ name: product.name, day: weekday.format(new Date(`${row.date}T00:00:00Z`)) }]
+    }
+    return days.length === 0 && product.stock <= LOW_STOCK ? [{ name: product.name, day: '' }] : []
+  })
+  const first = low[0]
   return (
     <>
       <Tile
@@ -93,12 +101,21 @@ export function PrepPlanTile() {
         )}
         {state?.error && <Supporting>{t.retry}</Supporting>}
       </Tile>
-      {low.length > 0 && (
+      {first && (
         <Tile
           icon={<PackageSearch size={20} />}
-          label={s.runningLow(low.slice(0, 3).join(', '))}
+          label={
+            first.day
+              ? s.runsOut(first.name, first.day)
+              : s.runningLow(
+                  low
+                    .map((item) => item.name)
+                    .slice(0, 3)
+                    .join(', '),
+                )
+          }
           value={s.findSuppliers}
-          onClick={() => startCoachDraft(s.lowMessage(low[0]!.toLowerCase()), { send: true })}
+          onClick={() => startCoachDraft(s.lowMessage(first.name.toLowerCase()), { send: true })}
         />
       )}
     </>

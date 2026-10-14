@@ -46,7 +46,8 @@ export interface OrderMessage {
   auto?: boolean
 }
 
-export type OrderStatus = 'draft' | 'sent' | 'confirmed' | 'needs_reply' | 'cancelled' | 'replaced'
+export type OrderStatus =
+  'draft' | 'sent' | 'confirmed' | 'needs_reply' | 'cancelled' | 'replaced' | 'received'
 
 export interface Order {
   id: string
