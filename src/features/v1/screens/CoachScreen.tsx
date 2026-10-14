@@ -51,6 +51,7 @@ import { Sheet } from '../Sheet'
 import { ShopCard, ShopSheet, StartCard } from '../ShopCard'
 import { PendingCard } from '../PendingCard'
 import { ShopSheets } from '../ShopTiles'
+import { FreshnessCard, RecapTile } from '../../sales/ShopInsights'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
 import { useVoice } from '../useVoice'
@@ -464,6 +465,12 @@ export function CoachScreen() {
               {plusButton}
             </Stack>
             {ws.active ? <ShopCard onOpen={openSheet} /> : <StartCard />}
+            {ws.active && (
+              <>
+                <FreshnessCard key={`freshness-${ws.active.id}`} />
+                <RecapTile key={`recap-${ws.active.id}`} mondayOnly />
+              </>
+            )}
             {ws.active && (
               <PendingCard
                 unread={unread}

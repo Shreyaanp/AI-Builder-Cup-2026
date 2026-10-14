@@ -47,7 +47,9 @@ from .merchant_firestore import FirestoreMerchantStore
 from .merchant_routes import router as merchant_router
 from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
+from .recap import RecapWriter
 from .replay import ReplayStore, TurnReplay
+from .sales_routes import router as sales_router
 from .settings import Settings
 from .streaming import CoachRuntime
 from .voice import serve_voice
@@ -130,6 +132,7 @@ def create_app(
         app.state.customer_answers = CustomerAnswers(settings)
         coordinator.question_planner = QuestionPlanner(settings)
         app.state.column_mapper = ColumnMapper(settings)
+        app.state.recap_writer = RecapWriter(settings)
         app.state.maps = maps_service or MapsService(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
         app.state.services = Services(
@@ -153,6 +156,7 @@ def create_app(
             await asyncio.gather(maintenance, return_exceptions=True)
             await app.state.services.replay.close()
             await app.state.customer_answers.close()
+            await app.state.recap_writer.close()
         await app.state.column_mapper.close()
         if coordinator.question_planner is not None:
             await coordinator.question_planner.close()
@@ -174,6 +178,7 @@ def create_app(
     app.include_router(merchant_router)
     app.include_router(google_sim_router)
     app.include_router(planning_router)
+    app.include_router(sales_router)
     app.include_router(customer_router)
     app.include_router(discover_router)
     app.add_middleware(

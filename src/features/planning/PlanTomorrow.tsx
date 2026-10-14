@@ -16,6 +16,7 @@ import {
 import { useWorkspace } from '../v1/workspaceContext'
 import { shape } from '../../design/theme'
 import { useCopy } from './strings'
+import { useCopy as useShopCopy } from '../v1/strings'
 
 interface Observation {
   date: string
@@ -25,6 +26,7 @@ interface Observation {
 }
 interface Forecast {
   status: string
+  source?: 'demo' | 'owner' | 'sales'
   baseline?: number
   planning_baseline?: number
   suggestion?: number
@@ -97,6 +99,7 @@ function PlanningCard({
 }) {
   const { api } = useWorkspace()
   const t = useCopy()
+  const shopCopy = useShopCopy()
   const roles = useTheme().material
   const [source, setSource] = useState<'owner' | 'demo'>('owner')
   const [ready, setReady] = useState('0')
@@ -306,7 +309,10 @@ function PlanningCard({
           <AccordionDetails>
             <Stack spacing={1}>
               <Typography variant="bodyMedium">
-                {t.method} {t.limited} {t.events}
+                {result?.source === 'sales'
+                  ? `${shopCopy.fromSales}. ${shopCopy.salesMethod}`
+                  : t.method}{' '}
+                {t.limited} {t.events}
               </Typography>
               {result && (
                 <>

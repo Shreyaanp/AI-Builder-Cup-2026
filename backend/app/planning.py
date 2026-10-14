@@ -76,6 +76,38 @@ def preparation(baseline: float, ready_stock: int, capacity: int) -> dict[str, i
     return {"needed": needed, "suggestion": suggestion, "gap": needed - suggestion}
 
 
+def sales_forecast(
+    rows: list[dict[str, Any]], cutoff: date, item: str, unit: str
+) -> dict[str, Any] | None:
+    """Average only recorded matching weekdays in the preceding four weeks."""
+    matching = [
+        r
+        for r in rows
+        if r["item"].casefold() == item.casefold()
+        and (cutoff - timedelta(days=28)).isoformat() <= r["date"] < cutoff.isoformat()
+        and date.fromisoformat(r["date"]).weekday() == cutoff.weekday()
+    ]
+    if not matching:
+        return None
+    values = [r["quantity"] for r in matching]
+    return {
+        "status": "ready",
+        "method": "same_weekday_four_weeks",
+        "source": "sales",
+        "forecast_date": cutoff.isoformat(),
+        "training_cutoff": (cutoff - timedelta(days=1)).isoformat(),
+        "horizon_days": 1,
+        "window": sorted(r["date"] for r in matching),
+        "n": len(matching),
+        "unit": unit,
+        "dataset_version": "imported-daily-v1",
+        "stockout_dates": [],
+        "event_adjustment": "none",
+        "baseline": math.floor(mean(values) + 0.5),
+        "range_seen": [min(values), max(values)],
+    }
+
+
 def backtest(rows: list[dict[str, Any]], unit: str) -> dict[str, Any]:
     errors: list[float] = []
     naive: list[float] = []

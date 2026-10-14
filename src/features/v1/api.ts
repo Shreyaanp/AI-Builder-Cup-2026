@@ -13,6 +13,7 @@ export interface ShopFacts {
 }
 export interface Business {
   id: string
+  last_confirmed?: string | null
   fields: {
     name: string
     category: string
