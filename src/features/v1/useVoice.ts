@@ -167,7 +167,7 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
           stop()
           return
         }
-        if (event.kind === 'error') throw new Error('VOICE_UNAVAILABLE')
+        if (event.kind === 'error') throw new Error(`server:${event.code ?? 'error'}`)
         eventRef.current(event)
         if (event.kind === 'ready') {
           clearTimeout(current.deadline)
@@ -210,8 +210,14 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
             Math.max(100, (current.next - audio.currentTime) * 1000 + 100),
           )
         }
-      } catch {
+      } catch (failure) {
         if (runtime.current !== current) return
+        // Tell the server why (mic blocked, audio failed, server error) so it shows in the logs.
+        const reason =
+          failure instanceof Error ? `${failure.name}: ${failure.message}` : String(failure)
+        if (socket.readyState === WebSocket.OPEN)
+          socket.send(JSON.stringify({ kind: 'client_error', text: reason.slice(0, 200) }))
+        console.warn('Voice stopped:', reason)
         setError(t.voiceFailed)
         stop()
       }

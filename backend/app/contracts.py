@@ -27,7 +27,9 @@ class CoachTurn(StrictModel):
 
 
 class VoiceControl(StrictModel):
-    kind: Literal["text", "audio_end", "close", "ping", "pong"]
+    # client_error: the app reports why it gave up (mic blocked, audio failed), so the
+    # failure is visible in server logs instead of a silent "Voice connection ended".
+    kind: Literal["text", "audio_end", "close", "ping", "pong", "client_error"]
     text: str = Field(default="", max_length=2000)
 
 
