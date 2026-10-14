@@ -50,6 +50,7 @@ from .planning_routes import router as planning_router
 from .replay import ReplayStore, TurnReplay
 from .settings import Settings
 from .streaming import CoachRuntime
+from .tts import Speech
 from .voice import serve_voice
 
 log = structlog.get_logger()
@@ -130,6 +131,7 @@ def create_app(
         app.state.customer_answers = CustomerAnswers(settings)
         coordinator.question_planner = QuestionPlanner(settings)
         app.state.column_mapper = ColumnMapper(settings)
+        app.state.speech = Speech(settings)
         app.state.maps = maps_service or MapsService(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
         app.state.services = Services(
