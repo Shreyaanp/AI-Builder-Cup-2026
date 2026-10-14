@@ -1,6 +1,7 @@
 import { Box, Button, Stack, Typography, useTheme } from '@mui/material'
 import { ArrowRight, Camera, Globe, PencilLine, Share2 } from 'lucide-react'
 import type { ReactElement } from 'react'
+import { LoadError } from './LoadError'
 import { useCopy } from './strings'
 import type { Copy } from './strings'
 import { useWorkspace } from './workspaceContext'
@@ -73,6 +74,7 @@ export function NextAction() {
   const ws = useWorkspace()
   const roles = useTheme().material
   if (ws.loading) return null
+  if (ws.loadError) return <LoadError />
   const step = nextStep(ws, t)
   return (
     <Box

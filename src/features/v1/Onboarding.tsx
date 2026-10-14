@@ -98,6 +98,28 @@ export function Splash() {
   )
 }
 
+/** Signed in, but the account could not be loaded: recover without showing marketing again. */
+export function AccountError({ onSignOut }: { onSignOut: () => void | Promise<void> }) {
+  const t = useCopy()
+  return (
+    <Frame>
+      <Mark />
+      <Typography component="h1" variant="headlineSmall">
+        {t.accountFailed}
+      </Typography>
+      <Typography variant="bodyLarge" color="text.secondary">
+        {t.accountFailedBody}
+      </Typography>
+      <Stack spacing={1.5}>
+        <Button variant="contained" size="large" onClick={() => location.reload()}>
+          {t.retry}
+        </Button>
+        <Button onClick={() => void onSignOut()}>{t.signOut}</Button>
+      </Stack>
+    </Frame>
+  )
+}
+
 export function Welcome({ onPreview }: { onPreview: () => void }) {
   const t = useCopy()
   const identity = useIdentity()

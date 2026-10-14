@@ -55,9 +55,24 @@ export function PrivacyScreen() {
   const { language } = usePreferences()
   const ws = useWorkspace()
   const [legal, setLegal] = useState<LegalDocument>(null)
-  const [confirming, setConfirming] = useState(false)
+  // Destructive actions always confirm first.
+  const [confirming, setConfirming] = useState<'none' | 'all' | 'face'>('none')
   const [busy, setBusy] = useState(false)
   const pending = ws.businesses.some((shop) => shop.registration === 'verification_pending')
+
+  async function deleteFace() {
+    setBusy(true)
+    try {
+      await ws.api('/face/template', { method: 'DELETE' })
+      await ws.reload()
+      ws.notify(t.faceDeleted)
+    } catch {
+      ws.notify(t.actionFailed)
+    } finally {
+      setBusy(false)
+      setConfirming('none')
+    }
+  }
 
   async function eraseEverything() {
     setBusy(true)
@@ -69,7 +84,7 @@ export function PrivacyScreen() {
     } catch {
       ws.notify(t.actionFailed)
       setBusy(false)
-      setConfirming(false)
+      setConfirming('none')
     }
   }
 
@@ -106,16 +121,7 @@ export function PrivacyScreen() {
             <Button variant="contained" disabled={!ws.active} onClick={() => ws.setFaceOpen(true)}>
               {t.faceStart}
             </Button>
-            <Button
-              color="error"
-              onClick={() => {
-                void ws
-                  .api('/face/template', { method: 'DELETE' })
-                  .then(() => ws.reload())
-                  .then(() => ws.notify(t.faceDeleted))
-                  .catch(() => ws.notify(t.actionFailed))
-              }}
-            >
+            <Button color="error" onClick={() => setConfirming('face')}>
               {t.faceDelete}
             </Button>
           </Stack>
@@ -135,7 +141,7 @@ export function PrivacyScreen() {
             color="error"
             startIcon={<Trash2 size={18} />}
             sx={{ mt: 2 }}
-            onClick={() => setConfirming(true)}
+            onClick={() => setConfirming('all')}
           >
             {t.deleteAll}
           </Button>
@@ -144,23 +150,27 @@ export function PrivacyScreen() {
 
       <LegalDialog open={legal} onClose={() => setLegal(null)} />
       <Dialog
-        open={confirming}
-        onClose={() => !busy && setConfirming(false)}
+        open={confirming !== 'none'}
+        onClose={() => !busy && setConfirming('none')}
         aria-labelledby="erase-title"
       >
-        <DialogTitle id="erase-title">{t.deleteTitle}</DialogTitle>
+        <DialogTitle id="erase-title">
+          {confirming === 'face' ? t.faceDeleteTitle : t.deleteTitle}
+        </DialogTitle>
         <DialogContent>
-          <DialogContentText>{t.deleteBody}</DialogContentText>
+          <DialogContentText>
+            {confirming === 'face' ? t.faceDeleteBody : t.deleteBody}
+          </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button disabled={busy} onClick={() => setConfirming(false)}>
+          <Button disabled={busy} onClick={() => setConfirming('none')}>
             {t.cancel}
           </Button>
           <Button
             variant="contained"
             color="error"
             disabled={busy}
-            onClick={() => void eraseEverything()}
+            onClick={() => void (confirming === 'face' ? deleteFace() : eraseEverything())}
           >
             {t.deleteConfirm}
           </Button>
