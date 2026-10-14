@@ -7,6 +7,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
+from .face_transport import worker_headers
 from .merchant import (
     Approval,
     AvailabilityRequest,
@@ -298,14 +299,13 @@ async def capture(challenge_id: str, request: Request) -> dict[str, Any]:
         token = settings.face_worker_token.get_secret_value()
         if token:
             try:
-                async with httpx.AsyncClient(timeout=20, trust_env=False) as client:
+                async with httpx.AsyncClient(timeout=70, trust_env=False) as client:
                     response = await client.post(
                         settings.face_worker_url + "/evaluate",
                         content=buffer,
                         headers={
-                            "Authorization": "Bearer " + token,
+                            **await worker_headers(settings, uid),
                             "Content-Type": content_type,
-                            "X-Owner": uid,
                             "X-Challenge": challenge_id,
                             "X-Prompts": ",".join(metadata["prompts"]),
                         },
@@ -336,10 +336,10 @@ async def delete_template(request: Request) -> dict[str, str]:
         await anyio.to_thread.run_sync(store(request).invalidate_face, uid)
         return {"status": "deleted"}
     try:
-        async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+        async with httpx.AsyncClient(timeout=70, trust_env=False) as client:
             response = await client.delete(
                 settings.face_worker_url + "/template",
-                headers={"Authorization": "Bearer " + token, "X-Owner": uid},
+                headers=await worker_headers(settings, uid),
             )
             if not response.is_success:
                 raise HTTPException(503, "Template deletion could not be confirmed. Retry.")
