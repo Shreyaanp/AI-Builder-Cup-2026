@@ -60,7 +60,7 @@ def app(tmp_path: Path):
     )
 
 
-def test_inquiries_are_private_owned_deduplicated_and_erased(store: MerchantRepository) -> None:
+def test_inquiries_are_private_owned_independent_and_erased(store: MerchantRepository) -> None:
     bid = create_shop(store)
     other = create_shop(store, "bob", "Jurong Bakery")
     body = InquiryInput(contact="customer@example.test", message="May I contact you about kopi?")
@@ -70,17 +70,17 @@ def test_inquiries_are_private_owned_deduplicated_and_erased(store: MerchantRepo
     store.share("alice", bid, True)
     public_before = store.public_shop(bid)
     revision = store.context("alice", bid)["business"]["revision"]
-    # Atomic dedupe handles actual simultaneous submissions in both adapters.
+    # Independent capabilities must never be recoverable from matching contact/text.
     with ThreadPoolExecutor(max_workers=4) as pool:
         receipts = list(pool.map(lambda _: store.add_inquiry(bid, body), range(4)))
-    assert len({receipt.id for receipt in receipts}) == 1
+    assert len({receipt.id for receipt in receipts}) == 4
     assert all(receipt.status == "pending" for receipt in receipts)
     first = store.inquiries("alice", bid)[0]
     assert first.name == "" and first.contact == body.contact and not first.done
     second = store.add_inquiry(
         bid, InquiryInput(name="Lee", contact="+65 8123 4567", message="Thank you")
     )
-    assert [item.id for item in store.inquiries("alice", bid)] == [second.id, first.id]
+    assert store.inquiries("alice", bid)[0].id == second.id
     assert store.inquiries("bob", other) == []
     for action in [
         lambda: store.inquiries("bob", bid),
@@ -93,11 +93,11 @@ def test_inquiries_are_private_owned_deduplicated_and_erased(store: MerchantRepo
         assert denied.value.status_code == 404
     assert store.complete_inquiry("alice", bid, first.id).done
     assert store.complete_inquiry("alice", bid, first.id).done  # idempotent
-    assert store.add_inquiry(bid, body) == receipts[0]  # no public handling-status disclosure
+    assert store.add_inquiry(bid, body).id != receipts[0].id
     assert store.public_shop(bid) == public_before
     assert store.context("alice", bid)["business"]["revision"] == revision
     store.share("alice", bid, False)
-    assert len(store.inquiries("alice", bid)) == 2  # owner inbox survives unsharing
+    assert len(store.inquiries("alice", bid)) == 6  # owner inbox survives unsharing
     store.erase_owner("alice")
     if isinstance(store, MerchantStore):
         with store.connect() as db:
@@ -113,7 +113,7 @@ def test_inquiries_are_private_owned_deduplicated_and_erased(store: MerchantRepo
     assert store.context("bob", other)["business"]["id"] == other
 
 
-def test_inquiry_duplicate_window_expires(store: MerchantRepository, monkeypatch) -> None:
+def test_same_contact_can_start_independent_threads(store: MerchantRepository, monkeypatch) -> None:
     import time
 
     bid = create_shop(store)
@@ -219,7 +219,7 @@ def test_public_rate_limit_and_validation(app) -> None:
         assert rejected.json()["detail"] == "RATE_LIMITED"
 
 
-def test_inquiry_routes_consent_pending_dedupe_and_owner_scope(app) -> None:
+def test_inquiry_routes_consent_capability_and_owner_scope(app) -> None:
     with TestClient(app) as client:
         join(client)
         proposal = client.post(
@@ -244,8 +244,8 @@ def test_inquiry_routes_consent_pending_dedupe_and_owner_scope(app) -> None:
         ]:
             assert client.post(path, json=invalid).status_code == 422
         receipt = client.post(path, json=body).json()
-        assert set(receipt) == {"id", "status"} and receipt["status"] == "pending"
-        assert client.post(path, json=body).json() == receipt
+        assert set(receipt) == {"id", "token", "status"} and receipt["status"] == "pending"
+        assert client.post(path, json=body).json()["id"] != receipt["id"]
         join(client)  # Different owner sees no private data.
         done_path = f"{owner_path}/{receipt['id']}/done"
         assert client.get(owner_path).status_code == 404
@@ -253,7 +253,7 @@ def test_inquiry_routes_consent_pending_dedupe_and_owner_scope(app) -> None:
         client.cookies.clear()
         client.cookies.update(owner_cookies)
         listed = client.get(owner_path).json()
-        assert len(listed) == 1 and listed[0]["contact"] == body["contact"]
+        assert len(listed) == 2 and listed[0]["contact"] == body["contact"]
         with app.state.merchant.connect() as db:
             uid = db.execute("SELECT uid FROM memberships WHERE business_id=?", (bid,)).fetchone()[
                 0
@@ -264,7 +264,7 @@ def test_inquiry_routes_consent_pending_dedupe_and_owner_scope(app) -> None:
         join(client)
         assert client.post(done_path).json()["done"]
         client.post(path, json=body)
-        assert len(client.get(owner_path).json()) == 1
+        assert len(client.get(owner_path).json()) == 3
         client.delete("/api/v1/me/data")
         assert client.post(path, json=body).status_code == 404
 

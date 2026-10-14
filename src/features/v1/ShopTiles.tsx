@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import {
+  Badge,
   Box,
   Button,
   ButtonBase,
@@ -257,7 +258,11 @@ export function ShopTiles({
         onClick={() => onSheet('customer')}
       />
       <Tile
-        icon={<MessageSquare size={20} />}
+        icon={
+          <Badge badgeContent={unread ?? 0} color="primary" aria-hidden="true">
+            <MessageSquare size={20} />
+          </Badge>
+        }
         label={t.messages}
         value={unread === null ? '–' : t.unread(unread)}
         onClick={() => onSheet('messages')}

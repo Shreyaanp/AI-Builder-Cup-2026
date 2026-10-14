@@ -76,12 +76,13 @@ export class ApiError extends Error {
     this.code = code
   }
 }
-export type Api = <T>(path: string, init?: RequestInit) => Promise<T>
+export type Api = <T>(path: string, init?: RequestInit & { raw?: boolean }) => Promise<T>
 export function makeApi(getToken: () => Promise<string | null>): Api {
-  return async <T>(path: string, init: RequestInit = {}) => {
+  return async <T>(path: string, init: RequestInit & { raw?: boolean } = {}) => {
+    const { raw, ...requestInit } = init
     const token = await getToken()
     const response = await fetch('/api/v1' + path, {
-      ...init,
+      ...requestInit,
       credentials: 'same-origin',
       signal: init.signal ?? AbortSignal.timeout(25_000),
       headers: {
@@ -105,6 +106,7 @@ export function makeApi(getToken: () => Promise<string | null>): Api {
         detail,
       )
     }
+    if (raw) return response as T
     return response.json() as Promise<T>
   }
 }
