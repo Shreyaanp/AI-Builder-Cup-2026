@@ -56,7 +56,8 @@ export function AppShell() {
     { id: 'privacy', label: t.navPrivacy, icon: <ShieldCheck size={22} /> },
   ]
   const screen = {
-    coach: <CoachScreen />,
+    // Keyed by shop: each shop gets its own clean conversation thread and draft.
+    coach: <CoachScreen key={ws.activeId ?? 'no-shop'} />,
     shop: <ShopScreen />,
     google: <GoogleScreen />,
     privacy: <PrivacyScreen />,
