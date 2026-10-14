@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict
 
 from .discover import prepare_pin
 from .face_transport import worker_headers
+from .imports import MAX_BYTES as MAX_IMPORT_BYTES
+from .imports import SAMPLE_ROWS, ImportRejected, menu_items, parse_table, sales_summary
 from .limits import client_ip, enforce_limits
 from .merchant import (
     Approval,
@@ -370,3 +372,86 @@ async def delete_template(request: Request) -> dict[str, str]:
         raise HTTPException(503, "Template deletion could not be confirmed. Retry.") from error
     await anyio.to_thread.run_sync(store(request).invalidate_face, uid)
     return {"status": "deleted"}
+
+
+@router.post("/businesses/{business_id}/import")
+async def import_table(business_id: str, request: Request) -> dict[str, Any]:
+    """Menu or sales export from any POS or spreadsheet (CSV / Excel), mapped by AI.
+
+    A menu becomes a sealed inventory proposal for review; sales come back as a summary only.
+    """
+    uid = await consented_owner(request)
+    await enforce_limits(request, [("import", uid)])
+    service = store(request)
+    context = await anyio.to_thread.run_sync(service.context, uid, business_id)
+    business = context["business"]
+    if not business:
+        raise HTTPException(404, "Business not found.")
+    content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    buffer = bytearray()
+    try:
+        async with asyncio.timeout(20):
+            async for chunk in request.stream():
+                if len(buffer) + len(chunk) > MAX_IMPORT_BYTES:
+                    raise HTTPException(413, "FILE_TOO_LARGE")
+                buffer.extend(chunk)
+        try:
+            headers, rows = await anyio.to_thread.run_sync(parse_table, bytes(buffer), content_type)
+        except ImportRejected as rejected:
+            raise HTTPException(rejected.status, rejected.code) from None
+    finally:
+        buffer.clear()
+    mapping = await request.app.state.column_mapper.map(headers, rows[:SAMPLE_ROWS])
+    if mapping.name is None:
+        raise HTTPException(422, "NO_ITEM_COLUMN")
+    if mapping.kind == "sales":
+        return {
+            "kind": "sales",
+            "headers": headers,
+            "mapping": mapping.model_dump(),
+            "summary": sales_summary(rows, mapping),
+            "saved": False,
+        }
+    items, skipped = menu_items(rows, mapping)
+    if not items:
+        raise HTTPException(422, "NO_PRICED_ITEMS")
+    currency = business["fields"].get("currency") or DEFAULT_CURRENCY
+    saved = {(p["name"].casefold(), p["unit"].casefold()): p for p in context["inventory"]}
+    by_name: dict[str, list[dict[str, Any]]] = {}
+    for saved_item in context["inventory"]:
+        by_name.setdefault(saved_item["name"].casefold(), []).append(saved_item)
+    products = []
+    for item in items:
+        known = saved.get((item["name"].casefold(), item["unit"].casefold()))
+        if not known and len(by_name.get(item["name"].casefold(), [])) == 1:
+            # Exports often omit or rename units; one item with that name is the same item.
+            known = by_name[item["name"].casefold()][0]
+        products.append(
+            ProductFields(
+                name=known["name"] if known else item["name"],
+                price=to_minor(item["price"], currency),
+                unit=known["unit"] if known else item["unit"],
+                stock=item["stock"] if item["stock"] is not None else (known or {}).get("stock"),
+                # An import never undoes an owner's sold-out switch.
+                available=known.get("available", True) if known else True,
+            )
+        )
+    proposal = await anyio.to_thread.run_sync(
+        service.propose,
+        uid,
+        ProposalRequest(
+            kind="inventory",
+            business_id=business_id,
+            revision=business["revision"],
+            products=products,
+        ),
+    )
+    return {
+        "kind": "menu",
+        "status": "needs_review",
+        "headers": headers,
+        "mapping": mapping.model_dump(),
+        "items": len(products),
+        "skipped": skipped,
+        "proposal": proposal,
+    }

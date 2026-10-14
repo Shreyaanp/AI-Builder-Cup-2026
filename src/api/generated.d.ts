@@ -290,6 +290,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Table
+         * @description Menu or sales export from any POS or spreadsheet (CSV / Excel), mapped by AI.
+         *
+         *     A menu becomes a sealed inventory proposal for review; sales come back as a summary only.
+         */
+        post: operations["import_table_api_v1_businesses__business_id__import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/google-sim": {
         parameters: {
             query?: never;
@@ -869,6 +891,8 @@ export interface components {
              * @default
              */
             busy_hours: string;
+            /** Custom Facts */
+            custom_facts?: components["schemas"]["CustomFact"][];
         };
         /** ChallengeRequest */
         ChallengeRequest: {
@@ -901,6 +925,18 @@ export interface components {
             terms: boolean;
             /** Privacy */
             privacy: boolean;
+        };
+        /**
+         * CustomFact
+         * @description A fact this kind of business's customers ask about (e.g. a salon's walk-in policy).
+         */
+        CustomFact: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
         };
         /** CustomerThread */
         CustomerThread: {
@@ -2013,6 +2049,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    import_table_api_v1_businesses__business_id__import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
