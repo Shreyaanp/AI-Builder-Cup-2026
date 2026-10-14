@@ -26,6 +26,7 @@ export interface Business {
     timezone?: string
     hours: string
     phone: string
+    reward_text?: string
     /** ISO 4217; shops saved before currencies existed have none (treated as SGD). */
     currency?: string
   } & ShopFacts

@@ -41,6 +41,9 @@ async function poster(qr: string, name: string, caption: string): Promise<Blob> 
 
 /** QR code for the shared customer page, with share (Web Share) or download of a print PNG. */
 export function ShopQr({ url, name }: { url: string; name: string }) {
+  const qrUrl = new URL(url, location.origin)
+  qrUrl.searchParams.set('source', 'qr')
+  const stampedUrl = qrUrl.href
   const t = useCopy()
   const ws = useWorkspace()
   const [qr, setQr] = useState<{ url: string; data: string } | null>(null)
@@ -48,7 +51,7 @@ export function ShopQr({ url, name }: { url: string; name: string }) {
     let live = true
     // Loaded on demand so the QR encoder never ships in the main bundle.
     void import('qrcode')
-      .then((module) => module.toDataURL(url, QR_OPTIONS))
+      .then((module) => module.toDataURL(stampedUrl, QR_OPTIONS))
       .then((data) => {
         if (live) setQr({ url, data })
       })
@@ -56,7 +59,7 @@ export function ShopQr({ url, name }: { url: string; name: string }) {
     return () => {
       live = false
     }
-  }, [url])
+  }, [url, stampedUrl])
   const data = qr?.url === url ? qr.data : null
   const file = `${name.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'shop'}-qr.png`
 

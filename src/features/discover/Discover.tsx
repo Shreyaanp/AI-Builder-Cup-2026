@@ -22,6 +22,8 @@ import { enterRise, motion, shape } from '../../design/theme'
 import { BrandSplash } from '../frontdoors/Splash'
 import { PlaceImage } from '../frontdoors/PlaceImage'
 import { useFrontCopy } from '../frontdoors/strings'
+import { BadgeRow } from '../rewards/Rewards'
+import { useRewards } from '../rewards/storage'
 import { customerNavigate } from '../frontdoors/navigation'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { Sheet } from '../v1/Sheet'
@@ -120,6 +122,7 @@ export default function Discover({
   const locale = useLocale()
   const t = discoverCopy(locale)
   const front = useFrontCopy()
+  const rewards = useRewards()
   const roles = useTheme().material
   const [filters, setFilters] = useState(() => ({
     ...readFilters(),
@@ -582,11 +585,12 @@ export default function Discover({
           </Alert>
         )}
         {result?.google_unavailable && <Alert severity="warning">{t.partial}</Alert>}
-        {usuals.length > 0 && (
+        {(usuals.length > 0 || Object.keys(rewards.data.shops).length > 0) && (
           <Box>
             <Typography variant="titleLarge" component="h2">
               {t.usuals}
             </Typography>
+            <BadgeRow />
             <Typography variant="bodySmall" color="text.secondary" sx={{ mb: 3 }}>
               {t.usualsNote}
             </Typography>

@@ -30,6 +30,14 @@ from .merchant import (
     validate_proposal,
 )
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
+from .stock_alerts import (
+    ALERT_SECONDS,
+    MAX_ALERTS,
+    StockAlertInput,
+    StockAlertReceipt,
+    alert_key,
+    check_item,
+)
 from .threads import change_thread, contact_hash, new_thread
 
 
@@ -56,6 +64,7 @@ class FirestoreMerchantStore:
         # Avoid competing local read-lock upgrades on one dedupe document. Transactions
         # still enforce deduplication and sharing across independent server processes.
         self.inquiry_lock = Lock()
+        self.stock_alert_lock = Lock()
 
     def person_ref(self, uid: str) -> Any:
         return self.people.document(hashlib.sha256(uid.encode()).hexdigest())
@@ -320,6 +329,7 @@ class FirestoreMerchantStore:
                 "sales_imports",
                 "recaps",
                 "sold_out_days",
+                "stock_alerts",
             ):
                 refs += [
                     item.reference for item in snapshot.reference.collection(collection).stream()
@@ -355,6 +365,19 @@ class FirestoreMerchantStore:
             day = today_for(business["fields"]).isoformat()
             signal_ref = business_ref.collection("sold_out_days").document(day)
             signal = signal_ref.get(transaction=transaction).to_dict() or {}
+            alerts = list(business_ref.collection("stock_alerts").stream(transaction=transaction))
+            now = time.time()
+            for alert in alerts:
+                data = alert.to_dict() or {}
+                if data["expires"] <= now:
+                    transaction.delete(alert.reference)
+                elif (
+                    available
+                    and not (item.to_dict() or {})["fields"].get("available", True)
+                    and data["name"] == fields["name"]
+                    and data["unit"] == fields["unit"]
+                ):
+                    transaction.update(alert.reference, {"ready": True})
             if not available and (item.to_dict() or {})["fields"].get("available", True):
                 transaction.set(signal_ref, {"count": signal.get("count", 0) + 1})
             transaction.update(item_ref, {"fields": fields, "updated": time.time()})
@@ -390,6 +413,75 @@ class FirestoreMerchantStore:
             **public_projection(ref.id, data["fields"], [row["fields"] for row in rows]),
             "last_confirmed": data.get("last_confirmed"),
         }
+
+    def subscribe_stock(self, bid: str, body: StockAlertInput) -> StockAlertReceipt:
+        business = self.businesses.document(document_id(bid, "Shop not available."))
+        ref = business.collection("stock_alerts").document(alert_key(body))
+
+        @firestore.transactional
+        def run(transaction: Any) -> StockAlertReceipt:
+            parent = business.get(transaction=transaction).to_dict() or {}
+            items = list(business.collection("inventory").stream(transaction=transaction))
+            check_item(
+                {"products": [(p.to_dict() or {})["fields"] for p in items]}
+                if parent.get("public") and not parent.get("deleting")
+                else None,
+                body,
+            )
+            alerts = list(business.collection("stock_alerts").stream(transaction=transaction))
+            now = time.time()
+            live = [p for p in alerts if (p.to_dict() or {})["expires"] > now]
+            for alert in alerts:
+                if (alert.to_dict() or {})["expires"] <= now:
+                    transaction.delete(alert.reference)
+            prior = next((p for p in live if p.id == ref.id), None)
+            if prior:
+                return StockAlertReceipt(expires=(prior.to_dict() or {})["expires"])
+            if len(live) >= MAX_ALERTS:
+                raise HTTPException(429, "Too many reminders. Try again later.")
+            expires = now + ALERT_SECONDS
+            # Serialize capacity checks for distinct devices on the same shop, including
+            # requests handled by different server processes. This is subscription metadata.
+            transaction.update(
+                business, {"stock_alert_revision": parent.get("stock_alert_revision", 0) + 1}
+            )
+            transaction.set(
+                ref,
+                {
+                    "device_id": str(body.device_id),
+                    "name": body.name,
+                    "unit": body.unit,
+                    "expires": expires,
+                    "ready": False,
+                },
+            )
+            return StockAlertReceipt(expires=expires)
+
+        # Prevent same-process read-lock upgrades from starving each other's retries.
+        # The shared parent write still enforces the limit across server processes.
+        with self.stock_alert_lock:
+            return run(self.client.transaction())
+
+    def stock_alerts(self, bid: str, device_id: str) -> list[dict[str, Any]]:
+        business = self.businesses.document(document_id(bid, "Shop not available."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> list[dict[str, Any]]:
+            parent = business.get(transaction=transaction).to_dict() or {}
+            if not parent.get("public") or parent.get("deleting"):
+                raise HTTPException(404, "Shop not available.")
+            alerts = list(business.collection("stock_alerts").stream(transaction=transaction))
+            result = []
+            now = time.time()
+            for snapshot in alerts:
+                data = snapshot.to_dict() or {}
+                if data["expires"] <= now:
+                    transaction.delete(snapshot.reference)
+                elif data["device_id"] == device_id:
+                    result.append({key: data[key] for key in ("name", "unit", "expires", "ready")})
+            return result
+
+        return run(self.client.transaction())
 
     def sales_history(self, uid: str, bid: str) -> list[dict[str, Any]]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
