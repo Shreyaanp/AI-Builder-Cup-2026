@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import io
 import warnings
+from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -215,6 +216,57 @@ class PhotoPipeline:
         for blob in blobs:
             blob.delete()
         return len(blobs)
+
+    # --- shop gallery (photos the owner chose to show) --------------------------------
+    def _gallery_bucket(self) -> Any:
+        from google.cloud import storage  # type: ignore[attr-defined]
+
+        if self._bucket is None:
+            client = storage.Client(project=self.settings.google_cloud_project)
+            self._bucket = client.bucket(self.settings.media_bucket)
+        return self._bucket
+
+    def _gallery_path(self, bid: str, photo_id: str) -> Path:
+        return Path(self.settings.media_dir) / "shops" / bid / f"{photo_id}.jpg"
+
+    def save_gallery_sync(self, bid: str, photo_id: str, image: bytes) -> None:
+        if self.settings.media_bucket:
+            blob = self._gallery_bucket().blob(f"shops/{bid}/{photo_id}.jpg")
+            blob.upload_from_string(image, content_type="image/jpeg")
+            return
+        path = self._gallery_path(bid, photo_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(image)
+
+    def load_gallery_sync(self, bid: str, photo_id: str) -> bytes | None:
+        if self.settings.media_bucket:
+            blob = self._gallery_bucket().blob(f"shops/{bid}/{photo_id}.jpg")
+            return blob.download_as_bytes() if blob.exists() else None
+        path = self._gallery_path(bid, photo_id)
+        return path.read_bytes() if path.is_file() else None
+
+    def delete_gallery_sync(self, bid: str, photo_id: str | None = None) -> None:
+        """Delete one gallery photo, or the whole shop's gallery when photo_id is None."""
+        if self.settings.media_bucket:
+            prefix = f"shops/{bid}/" + (f"{photo_id}.jpg" if photo_id else "")
+            for blob in self._gallery_bucket().list_blobs(prefix=prefix):
+                blob.delete()
+            return
+        if photo_id:
+            self._gallery_path(bid, photo_id).unlink(missing_ok=True)
+        else:
+            folder = Path(self.settings.media_dir) / "shops" / bid
+            for file in folder.glob("*.jpg"):
+                file.unlink()
+
+    async def gallery_photo(self, data: bytes) -> bytes:
+        """Sanitize and moderate a photo the owner wants customers to see."""
+        image = await anyio.to_thread.run_sync(sanitize, data)
+        scores = await anyio.to_thread.run_sync(self.moderate_sync, image)
+        if self.blocked(scores):
+            log.info("gallery_rejected", code="EXPLICIT_CONTENT")
+            raise PhotoRejected(422, "PHOTO_BLOCKED")
+        return image
 
     # --- pipeline ---------------------------------------------------------------------
     async def process(self, uid: str, bid: str | None, data: bytes) -> dict[str, Any]:

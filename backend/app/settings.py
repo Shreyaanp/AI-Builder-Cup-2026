@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     merchant_backend: Literal["sqlite", "firestore"] = "sqlite"
     embedding_model: str = "gemini-embedding-2"
     media_bucket: str = ""
+    # Shop gallery photos when no bucket is configured (local development and tests).
+    media_dir: str = "data/media"
     moderation_mode: Literal["vision", "fixture"] = "fixture"
     # Abuse protection; the local browser-test server turns it off (all tests share one IP).
     rate_limits_enabled: bool = True
