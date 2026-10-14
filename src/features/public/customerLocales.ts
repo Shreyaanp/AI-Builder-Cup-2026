@@ -321,6 +321,8 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
     factCard: '银行卡',
     factOtherPayment: '其他付款方式',
     factBusy: '繁忙时段 {hours}',
+    demoShop: '示范店铺',
+    demoShopNote: '本原型的示例店铺，并非真实商家。',
   },
   ms: {
     ...chatTranslations['ms'],
@@ -377,6 +379,8 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
     factCard: 'Kad',
     factOtherPayment: 'Bayaran lain',
     factBusy: 'Sibuk {hours}',
+    demoShop: 'Kedai demo',
+    demoShopNote: 'Kedai contoh untuk prototaip ini — bukan perniagaan sebenar.',
   },
   ta: {
     ...chatTranslations['ta'],
@@ -434,6 +438,8 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
     factCard: 'அட்டை',
     factOtherPayment: 'பிற கட்டணம்',
     factBusy: 'நெரிசல் {hours}',
+    demoShop: 'மாதிரிக் கடை',
+    demoShopNote: 'இந்த முன்மாதிரிக்கான மாதிரிக் கடை — உண்மையான வணிகம் அல்ல.',
   },
   ja: {
     ...chatTranslations['ja'],
@@ -489,6 +495,8 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
     factCard: 'カード',
     factOtherPayment: 'その他の支払い',
     factBusy: '混雑 {hours}',
+    demoShop: 'デモ店舗',
+    demoShopNote: 'このプロトタイプ用のサンプル店舗です。実在のお店ではありません。',
   },
   ko: {
     ...chatTranslations['ko'],
@@ -543,6 +551,8 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
     factCard: '카드',
     factOtherPayment: '기타 결제',
     factBusy: '붐비는 시간 {hours}',
+    demoShop: '데모 가게',
+    demoShopNote: '이 프로토타입을 위한 예시 가게예요. 실제 가게가 아니에요.',
   },
   id: {
     ...chatTranslations['id'],
@@ -598,6 +608,8 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
     factCard: 'Kartu',
     factOtherPayment: 'Pembayaran lain',
     factBusy: 'Ramai {hours}',
+    demoShop: 'Toko demo',
+    demoShopNote: 'Toko contoh untuk prototipe ini — bukan usaha sungguhan.',
   },
   th: {
     ...chatTranslations['th'],
@@ -652,6 +664,8 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
     factCard: 'บัตร',
     factOtherPayment: 'ชำระแบบอื่น',
     factBusy: 'คนเยอะ {hours}',
+    demoShop: 'ร้านตัวอย่าง',
+    demoShopNote: 'ร้านตัวอย่างสำหรับต้นแบบนี้ ไม่ใช่ร้านจริง',
   },
   vi: {
     ...chatTranslations['vi'],
@@ -708,6 +722,8 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
     factCard: 'Thẻ',
     factOtherPayment: 'Thanh toán khác',
     factBusy: 'Đông khách {hours}',
+    demoShop: 'Cửa hàng mẫu',
+    demoShopNote: 'Cửa hàng mẫu cho bản thử nghiệm này — không phải cửa hàng thật.',
   },
   fil: {
     ...chatTranslations['fil'],
@@ -765,5 +781,7 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
     factCard: 'Card',
     factOtherPayment: 'Ibang bayad',
     factBusy: 'Matao {hours}',
+    demoShop: 'Demo na tindahan',
+    demoShopNote: 'Halimbawang tindahan para sa prototype na ito — hindi totoong negosyo.',
   },
 }

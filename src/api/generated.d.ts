@@ -1027,6 +1027,11 @@ export interface components {
              */
             pin_demo: boolean;
             /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+            /**
              * Timezone
              * @default Asia/Singapore
              */
@@ -1227,6 +1232,11 @@ export interface components {
              * @default false
              */
             demo: boolean;
+            /**
+             * Demo Shop
+             * @default false
+             */
+            demo_shop: boolean;
             /** Photo Url */
             photo_url?: string | null;
             /**

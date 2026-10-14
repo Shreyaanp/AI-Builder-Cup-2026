@@ -745,6 +745,17 @@ export default function Discover({
                       {place.demo && place.source === 'chalkboard' && (
                         <Chip label={`${t.pin} · ${t.demo}`} size="small" />
                       )}
+                      {place.demo_shop && (
+                        <Chip
+                          label={t.demoShop}
+                          size="small"
+                          sx={{
+                            bgcolor: roles.tertiaryContainer,
+                            color: roles.onTertiaryContainer,
+                            fontWeight: 600,
+                          }}
+                        />
+                      )}
                     </Stack>
                     {place.source === 'google' && place.rating != null && (
                       <Typography variant="bodyMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
