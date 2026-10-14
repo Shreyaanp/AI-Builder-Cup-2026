@@ -1,188 +1,205 @@
-# Account 2 status — My shop bugs B26–B28 and B16
+# Account 2 status: Source supplies in the coach chat (Forecast → Source → Sell)
 
-**Branch:** `fix/myshop`, from `origin/main` at `0694fac`, pushed to `origin/fix/myshop` only.
-No features beyond the brief, and no AI co-author trailers.
+**Brief:** `docs/handoff/account2-sourcing.md` · **Story:** STORIES.md S4.
+**Branch:** `feat/sourcing`, from `origin/main`, with `origin/main` merged in at `f9d1d16`
+(B40 demo world, STORIES.md). Pushed to `origin/feat/sourcing` only. No AI co-author trailers.
+The previous status (My shop bugs B26–B28, B16) is in git history at `c0e3e5d`.
 
-**Codex's areas:** nothing in `discover.py`, `Discover.tsx` or `business_profile.py`. In
-`merchant.py` the change is minimal: one optional `ProductFields.previous_unit` field and a
-few lines in the SQLite commit (B28).
-
-## Commits
-
-| Bug | Commit(s)                                                             | What changed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| --- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| B26 | `e32d23c`                                                             | **Header removed:** the repeated shop name and the "Draft" / "Check pending" chip are gone (a visually hidden `h1` remains), so the tiles move up. A pending check now shows as a small chip inside the **Readiness** tile. "Draft" was the same on every shop and said nothing, so it was dropped (the unused string too).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| B27 | `2b5d22e`                                                             | **Grid:** `repeat(auto-fill, minmax(min(100%, 168px), 1fr))` with `grid-auto-flow: row dense`, which gives 2 columns at 390 px, 2 at 600 px (beside the rail) and 4 on a desktop.<br>**Spans:** each tile's span follows its content (`tileSpan.ts`: two columns only when the text would wrap past two lines in one).<br>**Menu tile:** takes the whole row, with its category groups side by side. Readiness spans two columns while it shows a bar, and becomes one thin full row once complete.<br>**Narrow screens:** a container query gives two-column tiles the full row when only one column fits.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| B28 | `f936d17` (backend), `2016755` (frontend), `5227db9` (demo-flow spec) | **Categories:** every _new_ item gets one, whether from a photo, an import, the coach or the owner's form, and the owner reviews it with the rest of the proposal.<br>• Photo reads keep the section the model read; a menu photo for an existing shop used to drop it.<br>• The coach's empty category no longer leaves a new item uncategorised.<br>• `/proposals` fills a suggestion.<br>• Imports without a category column are sorted by Gemini (`ColumnMapper.categorise`); offline, or if that fails, the broader multi-language keyword guess is used.<br>• Saved items keep their own category; existing uncategorised items use **"Sort my menu"** (`POST /businesses/{id}/sort-menu`), a sealed inventory proposal opened in the review sheet, never a silent write.<br>**Menu layout:** each category is a section with a grid of compact cards (2 per row on a phone, 3 in the desktop dialog) showing the name, the unit, a sold-out chip and the price.<br>**Inline price:** tapping the price edits it in place (decimal keypad). Enter or blur prepares the exact proposal, one tap on "Save S$2.20" approves that digest (`ws.confirm`), and Esc cancels without closing the sheet.<br>**Units:** a dropdown of the 19 fixed units, translated in all 10 locales.<br>• Legacy spellings map on load ("pcs" shows as piece). Other free text shows as "tray (current)" until replaced.<br>• Photo reads (an enum in the schema), the coach (a normalising validator) and imports all output fixed units.<br>• Picking a new unit replaces the saved item instead of duplicating it (`previous_unit`, applied in both stores).<br>**Sheet buttons:** "Import" (the accessible name keeps the full description) and "Add product" sit on one aligned row; the import choices open in the sheet body. |
-| B16 | `67412d7`                                                             | **The coach's one attach button (paperclip) opens a menu:**<br>• **Take photo** (phones only, `capture="environment"`)<br>• **Photo library**<br>• **Document (PDF, Excel, CSV)**, shown once a shop exists. It goes to `POST /businesses/{bid}/import` through the shared `useImport` hook, the same flow as `ImportMenu`: a menu opens the review, and sales open the sales summary.<br>**One file input:** it stays a single input with `accept`/`capture` switched per choice, so existing specs still find it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-
-## Screenshots (`docs/bugs/`, 390×844 unless noted)
-
-- **B26:** `B26.png`, `B26-before.png`.
-- **B27:** `B27.png`, `B27-600.png` (600×844) and `B27-desktop.png` (1280×1000), with before shots `B27-before.png` and `B27-desktop-before.png`.
-- **B28:**
-  - `B28.png`: the menu sheet
-  - `B28-price.png`: the one-tap confirm
-  - `B28-units.png`: the unit dropdown
-  - `B28-sort.png`: Sort my menu on a legacy menu
-  - `B28-before.png`
-- **B16:** `B16.png`, after only. Before, there was no menu to show.
-
-## Tests
-
-**Phone (Playwright):** new `tests/myshop.spec.ts`, 9 tests. Each was run against the old frontend first, where it fails, and passes with the fix. axe (wcag2a/aa/21aa) is clean on My shop, the menu sheet (including the Sort prompt, the price confirm and the import panel) and the attach menu.
-
-- **B26:** no repeated name or chip, and the tiles start at the top. A pending check shows in the Readiness tile.
-- **B27:** at 390, 600 and 1280 px:
-  - the column counts are right and nothing overflows;
-  - no text is truncated;
-  - tiles wider than one column use more than 65% of their width (one-column tiles more than 45%).
-
-  The old grid fails it (Shop details used 55% of a full-width tile).
-
-- **B28:**
-  - categories, the 2-per-row grid and the sold-out mark;
-  - Sort my menu as a reviewed proposal;
-  - inline price: Enter prepares, one tap saves, Esc cancels, an invalid entry shows a hint;
-  - the unit dropdown: a legacy unit is replaced without a duplicate, and a new item offers 19 options;
-  - the compact action row.
-- **B16:** the choices with and without a shop. A CSV document reaches the import review (one request), a sales CSV opens its summary, and the picker returns to photos.
-
-**Backend:** new `backend/tests/test_menu_sorting.py`, 30 tests:
-
-- unit synonyms and keyword categories;
-- coach, photo, import and form categorisation;
-- Sort my menu (only uncategorised items, nothing saved before approval);
-- unit replacement on SQLite **and** the Firestore emulator;
-- the Gemini categoriser with a stub client, and its fallback.
-
-**Changed tests**, all for the new UI or rules:
-
-- `test_product_categories`: an empty category keeps the saved one.
-- `test_merchant_routes`: the form's product gains a suggested category.
-- Playwright:
-  - `import`: open Import first;
-  - `v1`: the top bar names the shop;
-  - `v1-a11y`: the unit dropdown and the price button;
-  - `bugs-b8-b12` B12: the menu cards;
-  - `demo-flow`: the price and sold-out mark on the card;
-  - `phone-shell` B7 and `phone-regressions` PHONE-2: the new attach labels.
-
-**Results on this machine** (1 worker, ports 3210/3310; the other checkout's 3200/3300 servers were left running):
-
-- **Main Playwright group, phone + desktop: 212 passed, 50 skipped (phone-only tests on desktop):**
-  - `myshop`, `phone-shell`, `phone-regressions`, `v1`, `v1-a11y`, `bugs-b8-b12`
-  - `import`, `identity`, `coach-reliability`, `planning`, `forecast`, `rewards`
-  - `i18n`, `google-sim`, `discover`, `frontdoors`, `streaming`
-- **Port-swapped copies**, because these hard-code 3200: `customer` 10 passed, `starter` 12 passed, `demo-flow` 2 passed (after its B28 update).
-- **Backend:** `pytest` on the 9 touched suites passes 166 with the Firestore emulator. `ruff check`, `ruff format --check` and `mypy app` pass.
-- **Frontend:** `tsc -b`, `eslint src tests --max-warnings 0` and `prettier --check src tests` pass. The API contract is regenerated.
-
-## Skills
-
-I followed `material-design-3-ui` (and `web-interface-guidelines`) and designed phone-first at
-390×844. Neither was wrong here.
-
-The item cards use the outlined/filled container roles. The sold-out state is shown by text (the
-"Sold out" chip), not by colour alone. Every target is at least 48dp. The price button's
-accessible name includes the visible price (WCAG 2.5.3).
-
-## Open questions
-
-1. **Desktop grid gap:** with a typical tile set there can still be one empty cell at the end of a
-   row (beside Plan tomorrow in `B27-desktop.png`). Dense packing fills holes when a smaller tile
-   exists, but a fixed set can't fill every width exactly.
-2. **Offline categories for non-food shops:** without Gemini, items like a hardware shop's land
-   in "Other" (a category, not "Uncategorised"). With Gemini, imports and Sort my menu pick real
-   sections ("Tools", "Paint").
-3. **Firestore product ids:** a unit replacement deletes the old document and writes the new
-   key, so that item's id changes on Firestore (SQLite keeps it). Planning data keyed by the old
-   id would not follow.
-4. **Outside this brief:** GoogleScreen's copy-ready listing still prints raw units. It's not in
-   B26–B28, so I left it.
-5. **Inline price confirm:** it is one tap on the exact sealed proposal, without the full review
-   sheet. Say if prices must always go through the review sheet; that is a one-line change to
-   `ws.review`.
-
----
-
-# Earlier: phone shell bugs B1–B7 (merged)
-
-**Branch:** `fix/phone-shell`, from `origin/main` at `bf8a0a1`, in account 2's worktree. No
-features. Nothing touches ShopTiles, GoogleScreen, the recap, hours or product categories.
-`GoogleSimulator.tsx` gets one line (B4: Back closes the wizard).
-
-The demo-shops and launch-video status from the parked `feat/demo-shops` branch lives in this
-same file on that branch. If both branches merge, keep both sections.
+**Status: done.** The story works end to end on a phone in the offline coach, and is wired for
+Gemini text and voice. Live Gemini and live voice were **not** run (no model key in this session);
+see "Not verified" below.
 
 ## Commits
 
-| Bug | Commit    | Root cause → fix                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| --- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| B1  | `d21d076` | `Sheet.tsx` overrode the drawer paper's `position: fixed` with `relative` (for the close button). The sheet fell into normal flow at the **top** of the screen. Removed the override; the fixed paper already contains the close button. Content now scrolls inside the 90dvh cap, so the title and actions stay on screen.                                                                                                                                                                                                                                                               |
-| B2  | `81d58e2` | `AppShell` hid the bottom navigation whenever a text field had **focus**. "Something changed" focuses the composer, and focus stays after the keyboard is dismissed, so the navigation never came back. It now hides only while the keyboard is really up: the window is more than 120px shorter than its full height at the same width (the page uses `interactive-widget=resizes-content`).                                                                                                                                                                                             |
-| B3  | `2a04652` | **Lines:** MUI's autosize textarea measures the _placeholder_ in a hidden copy, so a long translated hint (Tamil) made the empty composer two lines tall. Replaced it with a plain textarea sized from its own text: one line, growing to 6.<br>**Press to talk:** the long-press tooltip popped over the composer, and "Listening…" added a line above it, which jumped the layout. Now voice swaps contents in place: mute takes the photo button's slot, and the status takes the text slot. The mic shows its state with the icon and a filled container. Touch tooltips are off.     |
-| B4  | `c5b66dd` | New `backStack.ts`: every open sheet or dialog in the owner app owns one same-URL history entry. Back pops it and closes the top one. Closing in-app removes the entry again.<br>**Unsaved input:** a typed composer draft, a changed edit form or an open review shows an in-app "Discard changes?" (Keep editing / Discard), and `beforeunload` guards leaving the page.<br>**Scope:** owner app only (`BackHistory` context in `V1App`). The customer pages keep their own URL history, e.g. Discover's `?view=map`, which a second history owner broke.<br>Copy is in all 10 locales. |
-| B5  | `3d41db0` | Removed the "What's new at …" line. With a shop there's a visually hidden `h1` instead; before a shop exists, the greeting stays. The + is in the top bar next to settings, on the coach only. Its sheet state moved to the workspace (`coachActions`). The unused `coachGreetingShop` string was removed from all locales.                                                                                                                                                                                                                                                               |
-| B6  | `0f6e975` | **Fits without scrolling:** the setup card is one line plus a progress bar, and "Setup complete" becomes one small chip linking to the customer page. The suggestions sit right under the shop card. On phones only one attention card shows at a time (today's menu → Monday recap → pending), and each one also lives on My shop. Desktop shows them all. `v1.spec` confirms today's menu first on phones.                                                                                                                                                                              |
-| B7  | `525f602` | **Phones:** every coach photo entry opens a small menu with "Take photo" (`capture="environment"`) and "Upload photo". That covers the composer button, the "Add my menu" / board-photo chips, the start card's "Take a photo" and requests from other screens.<br>**Desktop** (no camera capture): goes straight to the file picker.<br>**One input:** it keeps a single file input and sets `capture` per choice, so existing specs that use `input[type=file]` still work.                                                                                                             |
+| Commit    | What                                                                                                                                                                                                                     |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `0827985` | Backend: `sourcing.py`, five coach tools, prompt rules (sourcing and voice), offline script, stream events, supplier fields and `supplier_orders` in both stores, order routes, pytest.                                  |
+| `813331a` | UI: searching radar, supplier carousel, order card with one-tap Send, reply announcement, Orders tile and sheet with the supplier thread, Prep plan Running low tile, sourcing copy in 10 locales, regenerated contract. |
+| `aa1848d` | Tests: the phone browser story (`tests/sourcing.spec.ts`) and 8 live eval scenarios in `scripts/coach_eval.py`.                                                                                                          |
+| `f9d1d16` | Merge `origin/main` (clean).                                                                                                                                                                                             |
+| `13cd0fd` | STORIES S4 steps 1 and 8: "Mark as received" opens a stock update in the usual review, and the Prep plan says "<item> runs out <day>".                                                                                   |
 
-## Screenshots (390×844, `docs/bugs/`)
+## How it works
 
-- **Before and after:** `B1`, `B2`, `B3` (Tamil), `B3-voice`, `B4`, `B5`, `B6` and `B6-done` are each paired with a `-before` copy.
-- **What the before shots show:**
-  - B4: Back left the app to a blank page.
-  - B6: the view needed scrolling.
-- **B7:** after only. Before, the button opened the file picker directly, so there was no screen to capture.
+**Tools** (`coordinator.py`, registered in `agent.py` for text and voice):
+
+- `find_suppliers(item, quantity?, unit?)`: searches shared shops within 15 km of the shop pin that
+  are flagged `supplier`, or that sell the item in a bulk unit (kg, g, litre, ml, pack, box, dozen,
+  bottle). Results are ranked by distance (50%), price per requested unit (40%) and availability.
+  It returns up to 5 cards plus `cheapest_id` and `nearest_id`.
+- `prepare_order(supplier_id, items[], note?, delivery?, replaces_order_id?)`: builds a **draft**
+  order (lines, estimated total in the shop currency, the supplier's next delivery slot). Nothing is
+  sent.
+- `get_orders()`, `message_supplier(order_id, text)`, `cancel_order(order_id)`. The message and the
+  sent-order cancellation are prepared as **pending**, and the owner taps Send. A draft that was
+  never sent is simply dropped.
+
+**One tap:** `POST /businesses/{id}/orders/{oid}/send` with the order `version` (stale taps get a
+409). Other routes: list, read, discard, messages (the owner typing in the thread is its own
+confirmation), read, received.
+
+**Supplier conversation:**
+
+- **Demo suppliers** answer 4 s after a send. The reply is created lazily on the next read, with no
+  background task that a scaled-to-zero Cloud Run instance could lose. It is always marked
+  `auto: true` and shown as "Automatic demo reply". The replies are deterministic and plausible:
+  - "Confirmed: 20 kg Wheat flour, 5 kg Sugar, ₹1,145. Delivering today at 16:00."
+  - an out-of-stock line asks whether to send the rest
+  - Sunday gets "we don't deliver on Sunday"
+  - "by 8am" gets "Yes, we can deliver by 8:00"
+  - a cancellation is acknowledged
+- **Real Chalkboard suppliers** get the request in their existing **Messages inbox**, as an inquiry
+  from "<shop> (order request)" with the ordering shop's phone as the contact. Their replies are
+  mirrored back into the order thread through the inquiry's customer token, which reuses
+  `threads.py` and the inbox unchanged. The token never reaches the browser (`public_order`).
+
+**Demo suppliers anywhere:** when nothing within range stocks the item, `SupplierGenerator`
+creates 4 suppliers near the pin:
+
+- **Source:** Gemini with a JSON schema in Gemini mode, and the deterministic fixture offline or on
+  any failure.
+- **Roles:** dry goods; dairy and fresh; cash and carry with packaging, cleaning and stationery;
+  coffee and tea. This covers the brief's common categories in one cheap call.
+- **Requested item:** at least three of them always stock it.
+- **Local feel:** names, currency and price level come from the shop's currency (INR, SGD, MYR,
+  IDR, JPY and THB have their own tables; others use approximate rates).
+- **Storage:** through `seed_demo_shop` (labelled `demo`, owned by a fixed demo owner,
+  `demo-sup-<cell>-<n>` IDs, one set per ~2 km cell), so they persist and nearby shops reuse them.
+  They are hidden from the customer Explore list.
+
+**UI (phone first):**
+
+- **Searching:** a radar pulse with shimmering placeholders where the cards land.
+- **Supplier cards:** stagger in as a snap-scrolling carousel that bleeds to the screen edge so
+  the next card peeks. Each card has a rank, name, Demo chip, distance and delivery, price per
+  unit, the estimate for the quantity, "Also stocks", the minimum order and **Choose** (which
+  starts "Order from number N: …" in the composer).
+- **Order card:** lines, estimated total, localised delivery time and the hint "Nothing is sent
+  until you tap Send. No payment". Send makes the card lift while a paper plane flies off, then
+  shows "Sent to … / Waiting for the supplier…". The supplier's reply fades in on the card, and
+  the coach announces it in the chat.
+- **Orders tile (My shop):** shows the open count, the latest status and an unread badge. Its
+  sheet lists the orders, opens the thread (bubbles, auto-reply labels, composer) and has
+  **Mark as received**.
+- **Motion:** all of it uses the theme's M3 tokens (emphasized-decelerate enter) and turns off
+  under reduced motion.
+
+## Decisions I made
+
+1. **Separate copy module** (`src/features/sourcing/copy.ts`): all 10 current locales, with an
+   English fallback for any locale added later. Codex's Hindi, Bengali, Telugu, Marathi and Kannada
+   have not reached main yet, so they show English sourcing strings until someone adds them there.
+   `choose`, `chooseDraft`, `sendTo` and `runsOut` are English in every locale for now.
+2. **Lazy demo replies** instead of a background timer (see above). The coach chat polls the order
+   for up to 45 s after Send, and the open thread polls every 2 s.
+3. **Supplier fields** `supplier`, `supplies[]` and `min_order` were added to `BusinessFields`. The
+   delivery terms reuse `delivery_note`. Lead time and delivery time are `custom_facts` on demo
+   suppliers. All of these are omitted from records when unset, so existing digests are unchanged.
+4. **No shop pin:** the search uses the currency's city centre (INR → Bengaluru, SGD → Singapore…)
+   and the cards say "Distances are approximate".
+5. **Only bulk units count** for a non-supplier shop, so a café selling coffee by the cup is not
+   offered as a coffee supplier.
+6. **Running low / runs out (Prep plan):** there is no ingredient inventory, and the demo shops have
+   no stock counts. So the tile shows only for menu items with a stock count: the first forecast day
+   on which the week's demand passes the stock ("Croissant runs out Thu"), or a stock of at most 5
+   when there is no forecast. **Find suppliers** sends "My <item> is running low…" to the coach in
+   one tap (`startCoachDraft(text, { send: true })`). For the flour demo, say it to the coach.
+7. **Mark as received** opens a normal inventory proposal (stock plus the delivered quantity, back
+   in stock) for menu items that match the delivered lines. The owner confirms it like any change.
+8. **Voice:** the same tools are registered for `make_agent(live=True)`, and the instruction now has
+   a Voice section ("you have exactly the same tools… never say you can't access the menu"). Cards
+   from a voice turn render in the chat because the voice socket uses the same `receive`.
 
 ## Tests
 
-New `tests/phone-shell.spec.ts`: one phone test per bug at 390×844.
+- **Backend:** `pytest` **465 passed**, 85 skipped (Firestore-emulator tests). `ruff check`,
+  `ruff format --check` and `mypy app` are clean. `tests/test_sourcing.py` (9 tests) covers:
+  - units and local names (atta, chini)
+  - demo generation once, then reuse
+  - one-tap send with the lazy demo reply and the stale-version 409
+  - change, Sunday question and cancel
+  - a real supplier's inbox round trip
+  - the offline phrasings, the stream events and receive → stock review
+  - HTTP end to end, from "running low" to the typed follow-up
+- **Frontend:** `tsc -b`, `npm run build` and `npm run test:hooks` pass, and Prettier is clean.
+  `eslint` passes on tracked code. Locally, `npm run lint` also scans the git-ignored
+  `docs/launch/source/dist` vendor bundle (`gsap.min.js`) and fails there; that is not part of the
+  repo.
+- **Browser (phone, Pixel 7):** `tests/sourcing.spec.ts` passes. Full phone suite: **157 passed**, 3 skipped,
+  9 failed:
+  - **B27 tile grid** (`myshop.spec.ts:120`): it measured the Prep plan tile while the forecast
+    was still loading, under 4 parallel workers. Run alone it **passes 3 of 3**, so I treat it as a
+    timing flake, not a regression.
+  - **The other 8 couldn't run correctly here.** They hard-code `http://127.0.0.1:3200`:
+    - customer pages: `customer.spec.ts` ×2, `demo-flow`, `i18n:80`, `v1-a11y` customer page ×2 and
+      `v1:172`
+    - the network allow-list: `starter:83`
 
-- **Checked both ways:** each test was run against the old code first, where it failed, and passes with the fix.
-- **axe:** each test runs axe on the touched screen (wcag2a/aa/21aa):
-  - the sheet
-  - the coach after "Something changed"
-  - the composer while recording
-  - the Discard prompt
-  - the coach with the + in the top bar
-  - the coach with the setup chip
-  - the photo menu
+    Another session owned 3200 and 3300, so I ran on 3210 and 3310, and those links went to the
+    other session's server and database. **They need a rerun on the standard ports** (the normal
+    `npm run test:ui`). None of them touches sourcing code.
+- **Live eval** (`scripts/coach_eval.py`, needs a Gemini key): 8 new sourcing scenarios, not run in
+  this session.
+- I ran everything against my own servers (`127.0.0.1:3210` and `3310`), because another session
+  owned 3200 and 3300.
 
-Changed tests:
+## Not verified (needs a person or a key)
 
-- **`phone-regressions` PHONE-2:** "Add photo" → "Upload photo" → file chooser.
-- **`v1.spec`, customer facts and busy-hours sweep:** on phones, confirm today's menu first, then the next card shows.
+- Live Gemini text: whether the model calls `find_suppliers` / `prepare_order` as the prompt says.
+  Run `scripts/coach_eval.py`.
+- Live voice: the instruction and tool registration are in place, but I could not reproduce or
+  confirm account 1's "I can't access your menu". The declarations are the same Python functions as
+  text mode, and the Voice section of the prompt tells the model to call them.
+- Gemini-generated demo suppliers: the schema and fallback are tested offline only.
+- A real phone: the screenshots come from Chrome at 390×844 with touch emulation.
+- The Firestore adapter's `supplier_orders` / `save_supplier_order`: written to mirror SQLite, and
+  type-checked, but not run against the emulator.
 
-Results on this machine, 1 worker, on ports 3210/3310. Ports 3200/3300 belong to another checkout's dev servers, which I left running.
+## Screenshots (`docs/bugs/`, 390×844, offline coach, en-IN)
 
-- **First group, 195 passed, 23 skipped (phone-only tests on desktop):**
-  - `phone-shell`, `phone-regressions`, `v1`, `v1-a11y` (light and dark, every screen)
-  - `identity`, `import`, `coach-reliability`, `i18n`, `google-sim`
-  - `discover`, `frontdoors`, `streaming`, `planning`, `rewards`, `forecast`
-  - `starter` is the exception: it failed in this group and is listed below.
-- **Port-swapped copies, all pass:** `customer`, `demo-flow` and `starter` hard-code `127.0.0.1:3200`, so they ran as temporary copies.
-  - `customer`: 10 passed
-  - `demo-flow`: 2 passed
-  - `starter`: 12 passed. In the first group it failed only because it treats non-3200 URLs as external.
-- **Static checks:** `tsc -b`, `eslint src --max-warnings 0` and `prettier --check` pass.
+- `SRC-0-searching.png`: radar and placeholders.
+- `SRC-1-suppliers.png`: the carousel with Demo chips.
+- `SRC-2-order-request.png`: the order card before the tap.
+- `SRC-3-sending.png`: the send flight, card sent and waiting.
+- `SRC-4-supplier-replied.png`: the confirmed card with the automatic demo reply, announced in the
+  chat.
+- `SRC-5-supplier-thread.png`: the thread with "Can you deliver by 8am?" and its reply.
+- `SRC-6-orders-tile.png`, `SRC-7-orders-sheet.png`, `SRC-8-received.png`: My shop.
 
-## Skills
+## Demo script (say or type these, in order)
 
-I loaded `material-design-3-ui` (plus its feedback-and-overlays reference) and
-`web-interface-guidelines` before changing components. Neither was wrong for this work. One
-tension: M3 says not to stack a modal on another modal. The Discard prompt does sit over the
-edit form or review, but that is the standard confirmation case, and the guidelines require a
-warning on unsaved changes.
+1. Sign in, then create the shop: "Shop name: Asha Bakery; category: Bakery; location: Indiranagar,
+   Bengaluru". Confirm the review.
+2. **"My flour is running low."** The radar appears and 3 demo supplier cards slide in. The coach
+   says they are demo suppliers.
+3. **"The second one looks good, order 20 kg flour and 5 kg sugar from them."** The order request
+   card appears.
+4. Tap **Send** (one tap). The card flies into "Sent", and about 4 s later the supplier's
+   automatic demo reply appears on the card and in the chat.
+5. **"Can you deliver by 8?"**: the coach prepares a message to the supplier on the order card,
+   and you tap Send (offline too). Or tap **Open conversation** and type it. Either way, the
+   supplier replies "Yes, we can deliver by 8:00".
+6. **My shop → Orders:** the tile shows "1 open · Confirmed". Open it, open the order, then
+   **Mark as received**.
+7. **By voice:** tap the mic and say "My sugar is running low" (Gemini mode). The same cards appear.
 
-## Open questions
+**Extra phrasings** (handled by the prompt; the offline script also handles them):
 
-1. **B6, card order on phones:** today's menu check comes before the "Customers ask" card and the
-   busy-hours sold-out sweep, so at lunch the owner taps "Yes, all good" before seeing the sweep.
-   Say if the sweep should go first.
-2. **B4, a draft on another tab:** a typed coach draft also guards Back on other tabs (the coach
-   stays mounted with its draft), so Back on My shop asks "Discard changes?" while a draft exists.
-3. **Unused copy:** `frontdoors` copy `celebration` ("Your shop page is ready to share!") is no
-   longer shown. Its locale rows are positional, so I left it in place.
-4. **B13–B15:** only a real phone can confirm B2 (the keyboard height rule) and B7 (the camera
-   opening directly).
+- "order 2 kg flour from the cheapest one"
+- "change the quantity to 15" (on a draft)
+- "order the same as last time"
+- "ask them if they deliver on Sunday"
+- "cancel that order"
+
+## Resume steps
+
+```
+git fetch origin && git switch feat/sourcing && git pull
+cd backend && uv run pytest tests/test_sourcing.py -q
+npm run dev:backend & npm run dev        # then follow the demo script at 390×844
+npx playwright test tests/sourcing.spec.ts --project=phone
+GEMINI_BACKEND=vertex GOOGLE_CLOUD_PROJECT=... uv run python -m scripts.coach_eval   # live eval
+```
+
+Next, if wanted: Hindi and other new-locale sourcing copy once Codex's locales land; an ingredient
+stock list so "flour runs out Thursday" can come from real stock; live voice verification.
