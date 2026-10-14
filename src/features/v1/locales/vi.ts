@@ -221,7 +221,7 @@ export const vi: Copy = {
   photoRefused:
     'Không thể dùng ảnh này. Chỉ gửi ảnh bảng hiệu, thực đơn, bảng giá, sản phẩm hoặc mặt tiền.',
   photoFailed: 'Không kiểm tra được ảnh. Vui lòng thử lại.',
-  photoType: 'Chọn ảnh JPEG, PNG hoặc WebP tối đa 5 MB.',
+  photoType: 'Chọn ảnh JPEG, PNG hoặc WebP tối đa 20 MB.',
   reviewTitle: 'Kiểm tra trước khi lưu',
   reviewNote: 'Chỉ thay đổi hồ sơ riêng của bạn. Không đăng lên Google.',
   reviewNotePublic:

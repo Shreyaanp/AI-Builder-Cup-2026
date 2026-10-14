@@ -301,7 +301,7 @@ export function CoachScreen() {
   async function uploadPhoto(file: File) {
     if (busy !== 'idle') return
     setError('')
-    if (!PHOTO_TYPES.includes(file.type) || file.size > 5_000_000) {
+    if (!PHOTO_TYPES.includes(file.type) || file.size > 20_000_000) {
       setError(t.photoType)
       return
     }
