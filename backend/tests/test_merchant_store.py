@@ -38,6 +38,49 @@ def create(store: MerchantRepository, uid: str, name: str = "Ram Tea Stall") -> 
     return str(store.commit(uid, proposal["id"], proposal["digest"])["business_id"])
 
 
+@pytest.mark.parametrize("needed", [3, 8, 20])
+def test_stamp_target_round_trip(store: MerchantRepository, needed: int) -> None:
+    proposal = store.propose(
+        "alice",
+        ProposalRequest(
+            kind="business",
+            business=BusinessFields(
+                name="Neighbourhood Kopi", stamps_needed=needed, reward_text="A free kopi"
+            ),
+        ),
+    )
+    bid = store.commit("alice", proposal["id"], proposal["digest"])["business_id"]
+    assert store.context("alice", bid)["business"]["fields"].get("stamps_needed", 8) == needed
+    store.share("alice", bid, True)
+    public = store.public_shop(bid)
+    assert public is not None
+    assert public["stamps_needed"] == needed
+    assert public["reward_text"] == "A free kopi"
+    change = store.propose(
+        "alice",
+        ProposalRequest(
+            kind="business",
+            business_id=bid,
+            revision=1,
+            business=BusinessFields(name="Neighbourhood Kopi", stamps_needed=7),
+        ),
+    )
+    store.commit("alice", change["id"], change["digest"])
+    assert store.context("alice", bid)["business"]["fields"]["stamps_needed"] == 7
+    updated = store.public_shop(bid)
+    assert updated is not None and updated["stamps_needed"] == 7
+
+
+@pytest.mark.parametrize("needed", [2, 21, 8.5, "8", True])
+def test_stamp_target_validation(needed: object) -> None:
+    with pytest.raises(ValueError):
+        BusinessFields.model_validate({"name": "Neighbourhood Kopi", "stamps_needed": needed})
+
+
+def test_stamp_target_defaults_to_eight() -> None:
+    assert BusinessFields(name="Neighbourhood Kopi").stamps_needed == 8
+
+
 @pytest.mark.parametrize("delivery", ["Swiggy", "grab", "foodpanda"])
 def test_global_payment_and_delivery_round_trip(store: MerchantRepository, delivery: str) -> None:
     methods = ["UPI", "paynow", "grabpay", "nets", "cash", "card", "PhonePe", "Paytm"]
@@ -172,6 +215,7 @@ def test_public_shop_exposes_only_customer_fields(store: MerchantRepository) -> 
         "facts",
         "products",
         "last_confirmed",
+        "stamps_needed",
     }
     # A shop that never stated customer facts publishes none.
     assert shop["facts"] == {}
@@ -187,6 +231,7 @@ def test_public_shop_exposes_only_customer_fields(store: MerchantRepository) -> 
         "hours": "09:00–18:00",
         "phone": "1234567890",
         "currency": "SGD",
+        "stamps_needed": 8,
         "last_confirmed": None,
     }
     assert {product["name"]: product for product in shop["products"]} == {
