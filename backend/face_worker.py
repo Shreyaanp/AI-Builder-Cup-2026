@@ -112,8 +112,16 @@ class CpuModels:
         }
         self.anti = ort.InferenceSession(
             str(directory / "anti-spoof-mn3" / "anti-spoof-mn3.onnx"),
+            sess_options=self.anti_options(ort),
             providers=["CPUExecutionProvider"],
         )
+
+    @staticmethod
+    def anti_options(ort):
+        options = ort.SessionOptions()
+        options.intra_op_num_threads = 2
+        options.inter_op_num_threads = 1
+        return options
 
     def infer(self, name: str, image: np.ndarray) -> dict[str, np.ndarray]:
         model = self.models[name]
@@ -252,6 +260,9 @@ async def lifespan(app: FastAPI):
     try:
         app.state.models = await anyio.to_thread.run_sync(CpuModels, Path("data/face-models"))
     except (OSError, ValueError, KeyError, ImportError):
+        if os.getenv("FACE_REQUIRE_MODELS") == "true":
+            app.state.gallery.client.close()
+            raise RuntimeError("Required face models failed to initialize") from None
         app.state.models = None
     app.state.busy = asyncio.Lock()
     try:
