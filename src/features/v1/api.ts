@@ -15,6 +15,12 @@ export interface Business {
     name: string
     category: string
     location: string
+    lat?: number | null
+    lng?: number | null
+    place_id?: string | null
+    pin_label?: string | null
+    pin_demo?: boolean
+    timezone?: string
     hours: string
     phone: string
     /** ISO 4217; shops saved before currencies existed have none (treated as SGD). */

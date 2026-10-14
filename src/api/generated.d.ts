@@ -495,6 +495,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Discover */
+        get: operations["discover_api_v1_discover_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -623,6 +640,24 @@ export interface components {
              * @default
              */
             location: string;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
+            /** Place Id */
+            place_id?: string | null;
+            /** Pin Label */
+            pin_label?: string | null;
+            /**
+             * Pin Demo
+             * @default false
+             */
+            pin_demo: boolean;
+            /**
+             * Timezone
+             * @default Asia/Singapore
+             */
+            timezone: string;
             /**
              * Hours
              * @default
@@ -721,6 +756,64 @@ export interface components {
             decision: "accepted" | "edited" | "declined";
             /** Quantity */
             quantity: number;
+        };
+        /** DiscoveryPlace */
+        DiscoveryPlace: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "chalkboard" | "google";
+            /** Category */
+            category: string;
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /** Distance M */
+            distance_m: number;
+            /** Open Now */
+            open_now: boolean | null;
+            /** Currency */
+            currency?: string | null;
+            /** Items */
+            items: components["schemas"]["TopItem"][];
+            /** Sold Out */
+            sold_out: string[];
+            /** Rating */
+            rating?: number | null;
+            /** User Rating Count */
+            user_rating_count?: number | null;
+            /** Price Level */
+            price_level?: string | null;
+            /** Google Maps Uri */
+            google_maps_uri?: string | null;
+            /** Halal */
+            halal?: boolean | null;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+        };
+        /** DiscoveryResponse */
+        DiscoveryResponse: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "demo" | "live";
+            /**
+             * Google Unavailable
+             * @default false
+             */
+            google_unavailable: boolean;
+            /** Places */
+            places: components["schemas"]["DiscoveryPlace"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -857,6 +950,11 @@ export interface components {
              * @default 0
              */
             revision: number;
+            /**
+             * Geocode Confirmed
+             * @default false
+             */
+            geocode_confirmed: boolean;
             business?: components["schemas"]["BusinessFields"] | null;
             /** Products */
             products?: components["schemas"]["ProductFields"][];
@@ -1078,6 +1176,17 @@ export interface components {
              * @default false
              */
             rehearsal_complete: boolean;
+        };
+        /** TopItem */
+        TopItem: {
+            /** Name */
+            name: string;
+            /** Price */
+            price: number;
+            /** Unit */
+            unit: string;
+            /** Available */
+            available: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -1364,6 +1473,7 @@ export interface operations {
         parameters: {
             query?: {
                 revision?: number;
+                geocode_confirmed?: boolean;
             };
             header?: never;
             path: {
@@ -2105,6 +2215,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Inquiry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discover_api_v1_discover_get: {
+        parameters: {
+            query: {
+                lat: number;
+                lng: number;
+                radius?: number;
+                q?: string;
+                category?: string;
+                open_now?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveryResponse"];
                 };
             };
             /** @description Validation Error */
