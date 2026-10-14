@@ -17,6 +17,8 @@ from .coordinator import current, ui_currency
 from .settings import Settings
 
 APP_NAME = "ogoogle_ai"
+# Tools whose results reach the chat as supplier or order cards.
+SOURCING_TOOLS = {"find_suppliers", "prepare_order", "message_supplier", "cancel_order"}
 
 
 def public_events(event: Event) -> list[StreamEvent]:
@@ -45,7 +47,27 @@ def public_events(event: Event) -> list[StreamEvent]:
         output.append(StreamEvent(kind="turn_complete"))
     if event.content:
         for part in event.content.parts or []:
+            call = part.function_call
+            if call and call.name == "find_suppliers":
+                # Shown at once, while the search runs, as "Searching nearby suppliers…".
+                item = str((call.args or {}).get("item") or "")[:80]
+                output.append(
+                    StreamEvent(kind="sourcing", data={"stage": "searching", "item": item})
+                )
             response = part.function_response
+            if response and response.name in SOURCING_TOOLS:
+                merchant = current.get()
+                card = (
+                    merchant.cards.get(str((response.response or {}).get("card_id")))
+                    if merchant
+                    else None
+                )
+                if card:
+                    output.append(
+                        StreamEvent(
+                            kind="suppliers" if card[0] == "suppliers" else "order", data=card[1]
+                        )
+                    )
             if response and response.name in {
                 "propose_business",
                 "propose_customer_facts",

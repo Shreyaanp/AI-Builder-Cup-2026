@@ -41,6 +41,7 @@ import { PendingCard } from './PendingCard'
 import { MenuSheet } from '../shop/MenuSheet'
 import { FreshnessCard, RecapTile } from '../sales/ShopInsights'
 import { PrepPlanTile } from '../forecast/PrepPlan'
+import { OrdersTile } from '../sourcing/Orders'
 import { Sheet } from './Sheet'
 import { ShopQr } from './ShopQr'
 import { useUnread } from './useUnread'
@@ -300,6 +301,7 @@ export function ShopTiles({
         value={unread === null ? '–' : t.unread(unread)}
         onClick={() => onSheet('messages')}
       />
+      <OrdersTile key={`orders-${shop.id}`} />
       <Tile
         icon={<CalendarClock size={20} />}
         label={plan.title}
