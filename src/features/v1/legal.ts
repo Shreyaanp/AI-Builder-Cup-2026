@@ -59,7 +59,7 @@ export const PRIVACY: LegalSection[] = [
   {
     heading: 'Where it is processed',
     body: [
-      'On Google Cloud in Mumbai (asia-south1) and Google’s Vertex AI models. Photos are checked by Google Cloud Vision. These providers process data on our instructions.',
+      'Your records and accepted photos are stored on Google Cloud in Mumbai, India (asia-south1). Text chat and photo reading use Google’s Gemini models in Mumbai. Some processing happens outside India: voice conversations (Google’s live voice models run in the USA), photo safety checks (Google Cloud Vision) and conversation-memory search may be processed by Google in other countries. Google processes this data on our instructions.',
     ],
   },
   {
