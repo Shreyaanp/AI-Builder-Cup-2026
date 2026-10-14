@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 
+// Real-phone regressions: compact layout, keyboard viewport and touch only.
+test.skip(({ isMobile }) => !isMobile, 'phone-only regressions')
+
 async function enter(page: Page) {
   await page.route('**/*', (route) => {
     const url = new URL(route.request().url())
