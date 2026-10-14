@@ -50,6 +50,7 @@ import { Messages } from '../inquiries/Messages'
 import { PlanTomorrow } from '../planning/PlanTomorrow'
 import { useCopy as usePlanCopy } from '../planning/strings'
 import { enterRise, shape } from '../../design/theme'
+import { useRewardCopy } from '../rewards/strings'
 
 export type ShopSheetKind =
   'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
@@ -299,6 +300,7 @@ export function ShopTiles({
 /** Every My shop sheet. Also opened from coach suggestion chips. */
 export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onClose: () => void }) {
   const t = useCopy()
+  const rewards = useRewardCopy()
   const plan = usePlanCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
@@ -367,6 +369,18 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
                 </Typography>
               </Box>
             ))}
+            <Box>
+              <Typography component="dt" variant="labelMedium" color="text.secondary">
+                {rewards.reward}
+              </Typography>
+              <Typography
+                component="dd"
+                variant="bodyLarge"
+                sx={{ m: 0, overflowWrap: 'anywhere' }}
+              >
+                {shop.fields.reward_text || t.notProvided}
+              </Typography>
+            </Box>
           </Box>
           <Box sx={{ mt: 6 }}>
             <FactList

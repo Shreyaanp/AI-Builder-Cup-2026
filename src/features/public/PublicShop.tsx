@@ -29,6 +29,7 @@ import { shape } from '../../design/theme'
 import { ShopChat } from './ShopChat'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
 import { customerTranslations } from './customerLocales'
+import { BackInStock, BadgeRow, StampCard, StockReminder } from '../rewards/Rewards'
 
 interface PublicShopData {
   id: string
@@ -39,6 +40,7 @@ interface PublicShopData {
   location: string
   hours: string
   phone: string
+  reward_text?: string
   /** ISO 4217 code the shop's prices are stored in. */
   currency?: string
   products: { name: string; price: number; unit: string; available: boolean }[]
@@ -522,6 +524,8 @@ export default function PublicShop({ id }: { id: string }) {
           ))}
         </Box>
       )}
+      <StampCard shop={id} timezone={shop.timezone ?? 'Asia/Singapore'} reward={shop.reward_text} />
+      {!stale && <BackInStock shop={id} products={shop.products} />}
       {/* Menu: dense, aligned prices, readable at a glance. */}
       <Stack
         direction="row"
@@ -575,13 +579,19 @@ export default function PublicShop({ id }: { id: string }) {
             >
               <ListItemText
                 primary={product.name}
-                secondary={product.available ? `/ ${product.unit}` : null}
+                secondary={
+                  product.available ? (
+                    `/ ${product.unit}`
+                  ) : (
+                    <StockReminder shop={id} name={product.name} unit={product.unit} />
+                  )
+                }
                 slotProps={{
                   primary: {
                     variant: 'bodyLarge',
                     sx: product.available ? undefined : { color: 'text.secondary' },
                   },
-                  secondary: { variant: 'bodySmall' },
+                  secondary: { variant: 'bodySmall', component: 'div' },
                 }}
               />
               {product.available ? (
@@ -613,6 +623,7 @@ export default function PublicShop({ id }: { id: string }) {
           ))}
         </List>
       )}
+      <BadgeRow shop={id} />
       <Stack
         direction="row"
         spacing={1}
