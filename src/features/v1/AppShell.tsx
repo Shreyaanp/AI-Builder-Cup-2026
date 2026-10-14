@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box,
@@ -48,6 +48,26 @@ export function AppShell() {
   const ws = useWorkspace()
   const roles = useTheme().material
   const rail = useMediaQuery(`(min-width:${windowClass.medium}px)`)
+  // While the on-screen keyboard is up (a text field is focused on a phone), hide the bottom
+  // navigation so the composer sits directly on the keyboard.
+  const [typing, setTyping] = useState(false)
+  useEffect(() => {
+    const isText = (node: EventTarget | null) =>
+      node instanceof HTMLTextAreaElement ||
+      (node instanceof HTMLInputElement && !['checkbox', 'radio', 'file'].includes(node.type))
+    const onIn = (event: FocusEvent) => setTyping(isText(event.target))
+    const onOut = () => setTyping(false)
+    document.addEventListener('focusin', onIn)
+    document.addEventListener('focusout', onOut)
+    return () => {
+      document.removeEventListener('focusin', onIn)
+      document.removeEventListener('focusout', onOut)
+    }
+  }, [])
+  const showNavBar = !rail && !typing
+  useEffect(() => {
+    document.documentElement.style.setProperty('--nav-offset', showNavBar ? '84px' : '0px')
+  }, [showNavBar])
   const supporting = useMediaQuery(`(min-width:${windowClass.large}px)`)
   const destinations: { id: Destination; label: string; icon: ReactNode }[] = [
     { id: 'coach', label: t.navCoach, icon: <MessageCircle size={22} /> },
@@ -146,7 +166,7 @@ export function AppShell() {
           )}
         </Box>
       </Box>
-      {!rail && (
+      {showNavBar && (
         <Box
           component="nav"
           aria-label="Main"
