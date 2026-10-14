@@ -60,7 +60,8 @@ test('demo: photo, price correction, customer page and availability', async ({ p
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await menu.click()
-  await expect(chai).toContainText('$12.00')
+  // B28: the price is its own button on the item card.
+  await expect(page.getByRole('button', { name: 'Edit price: Chai, $12.00' })).toBeVisible()
   await closeSheet()
 
   await page.getByRole('button', { name: /^Customer page/ }).click()
@@ -89,7 +90,10 @@ test('demo: photo, price correction, customer page and availability', async ({ p
     await closeSheet()
     // The saved owner row establishes that the availability request has completed.
     await menu.click()
-    await expect(chai).toContainText('Sold out')
+    // B28: the sold-out mark is on the item card.
+    await expect(sheet('Menu').getByRole('listitem').filter({ hasText: 'Chai' })).toContainText(
+      'Sold out',
+    )
     await closeSheet()
     await customer.reload()
     await expect(product).toContainText('Sold out')

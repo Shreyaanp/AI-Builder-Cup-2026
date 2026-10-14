@@ -13,6 +13,7 @@ import { discoverCopy } from '../discover/strings'
 import { useRewardCopy } from '../rewards/strings'
 import { HoursList } from '../shop/Hours'
 import { categoryLabel, useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 
 /**
  * The only place a change is saved: the owner confirms the exact digest the server sealed.
@@ -182,7 +183,7 @@ export function ReviewDialog({
                   )}
                 </Box>
                 <Typography variant="titleMedium" sx={{ whiteSpace: 'nowrap' }}>
-                  {formatPrice(product.price, currency)} / {product.unit}
+                  {formatPrice(product.price, currency)} / {unitLabel(product.unit, shopCopy)}
                 </Typography>
               </Stack>
             ))}

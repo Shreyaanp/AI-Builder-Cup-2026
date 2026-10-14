@@ -5,11 +5,11 @@ import {
   Box,
   Button,
   ButtonBase,
+  Chip,
   IconButton,
   LinearProgress,
   List,
   ListItem,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
   Stack,
@@ -38,7 +38,7 @@ import {
 import { formatPrice, shopCurrency } from './format'
 import { FactList } from './FactList'
 import { PendingCard } from './PendingCard'
-import { ImportMenu, SalesImportSheet, type SalesImport } from './ImportMenu'
+import { MenuSheet } from '../shop/MenuSheet'
 import { FreshnessCard, RecapTile } from '../sales/ShopInsights'
 import { PrepPlanTile } from '../forecast/PrepPlan'
 import { Sheet } from './Sheet'
@@ -46,6 +46,7 @@ import { ShopQr } from './ShopQr'
 import { useUnread } from './useUnread'
 import { openNow, readiness } from './shopProgress'
 import { useCopy } from './strings'
+import { spanFor } from './tileSpan'
 import { useWorkspace } from './workspaceContext'
 import { Messages } from '../inquiries/Messages'
 import { PlanTomorrow } from '../planning/PlanTomorrow'
@@ -66,6 +67,7 @@ export function Tile({
   value,
   children,
   wide = false,
+  span,
   onClick,
   compact = false,
 }: {
@@ -73,16 +75,22 @@ export function Tile({
   label: string
   value: ReactNode
   children?: ReactNode
+  /** Two columns wide (same as span={2}). */
   wide?: boolean
+  /** Columns this tile takes in the content-sized grid (pick 1 or 2 with spanFor()). */
+  span?: 1 | 2 | 'full'
   onClick: () => void
   compact?: boolean
 }) {
   const roles = useTheme().material
+  const columns = span ?? (wide ? 2 : 1)
   return (
     <ButtonBase
       onClick={onClick}
       sx={{
-        gridColumn: wide ? '1 / -1' : undefined,
+        gridColumn: columns === 'full' ? '1 / -1' : columns === 2 ? 'span 2' : undefined,
+        // A grid too narrow for two columns gives a two-column tile the whole row instead.
+        '@container tiles (max-width: 347px)': { gridColumn: '1 / -1' },
         display: 'flex',
         flexDirection: compact ? 'row' : 'column',
         alignItems: compact ? 'center' : 'stretch',
@@ -155,7 +163,7 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
           onAnswer={(fact) => ws.startCoachDraft(`${t.factNames[fact]}: `)}
         />
       )}
-      <ShopTiles unread={unread} onSheet={setSheet} narrow={narrow} />
+      <ShopTiles unread={unread} onSheet={setSheet} />
       {!narrow && <FreshnessCard compact />}
       <ShopSheets
         kind={sheet}
@@ -173,12 +181,9 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
 export function ShopTiles({
   unread,
   onSheet,
-  narrow = false,
 }: {
   unread: number | null
   onSheet: (kind: ShopSheetKind) => void
-  /** Always two columns (the desktop side pane). */
-  narrow?: boolean
 }) {
   const t = useCopy()
   const plan = usePlanCopy()
@@ -193,41 +198,51 @@ export function ShopTiles({
     shop.fields.weekly_hours,
     shop.fields.timezone ?? 'Asia/Singapore',
   )
-  const soldOut = ws.products.filter((product) => product.available === false).length
+  const soldOutNames = ws.products
+    .filter((product) => product.available === false)
+    .map((product) => product.name)
+  const soldOut = soldOutNames.length
   const { done, total } = readiness(ws)
+  const hoursValue =
+    open === null ? shop.fields.hours || t.fields.hours : open ? t.openNow : t.closedNow
+  const details =
+    [open === null ? '' : shop.fields.hours, shop.fields.category, shop.fields.location]
+      .filter(Boolean)
+      .join(' · ') || t.notProvided
   return (
+    // Content-sized grid: as many 168px+ columns as fit (2 on a phone, 3 at 600px, 4 on a
+    // desktop), each tile one or two columns wide by how much it shows, packed densely so no
+    // row is left with a hole while a smaller tile could fill it.
     <Box
+      data-testid="shop-tiles"
       sx={{
+        containerType: 'inline-size',
+        containerName: 'tiles',
         display: 'grid',
-        gridTemplateColumns: {
-          xs: 'repeat(2, minmax(0, 1fr))',
-          md: narrow ? undefined : 'repeat(3, minmax(0, 1fr))',
-        },
+        gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 168px), 1fr))',
+        gridAutoFlow: 'row dense',
         gap: 3,
       }}
     >
       <Tile
-        wide
+        span={spanFor(hoursValue, details)}
         icon={<Store size={20} />}
         label={t.shopDetails}
-        value={open === null ? shop.fields.hours || t.fields.hours : open ? t.openNow : t.closedNow}
+        value={hoursValue}
         onClick={() => onSheet('details')}
       >
-        <Supporting>
-          {[open === null ? '' : shop.fields.hours, shop.fields.category, shop.fields.location]
-            .filter(Boolean)
-            .join(' · ') || t.notProvided}
-        </Supporting>
+        <Supporting>{details}</Supporting>
       </Tile>
       <Tile
-        wide
+        // The whole row, its category groups side by side where they fit.
+        span={ws.products.length ? 'full' : 1}
         icon={<UtensilsCrossed size={20} />}
         label={t.menu}
         value={ws.products.length ? t.itemCount(ws.products.length) : t.noItems}
         onClick={() => onSheet('menu')}
       >
         {ws.products.length > 0 && (
-          <CategoryGroups products={ws.products} inline>
+          <CategoryGroups products={ws.products} inline columns>
             {(items) => (
               <Stack component="span" spacing={1} sx={{ px: 2, pb: 1 }}>
                 {items.slice(0, 3).map((product) => (
@@ -260,19 +275,13 @@ export function ShopTiles({
         </Typography>
       </Tile>
       <Tile
+        span={spanFor(t.soldOutCount(soldOut), soldOutNames.join(' · '))}
         icon={<ZapOff size={20} />}
         label={t.soldOutToday}
         value={t.soldOutCount(soldOut)}
         onClick={() => onSheet('soldOut')}
       >
-        {soldOut > 0 && (
-          <Supporting>
-            {ws.products
-              .filter((product) => product.available === false)
-              .map((product) => product.name)
-              .join(' · ')}
-          </Supporting>
-        )}
+        {soldOut > 0 && <Supporting>{soldOutNames.join(' · ')}</Supporting>}
       </Tile>
       <PrepPlanTile key={shop.id} />
       <Tile
@@ -298,13 +307,24 @@ export function ShopTiles({
         onClick={() => onSheet('plan')}
       />
       <Tile
-        wide
+        // Its progress bar wants width; done, it is one thin row across the grid.
+        span={done < total ? 2 : 'full'}
         icon={<Gauge size={20} />}
         compact={done === total}
         label={t.readinessTitle}
         value={t.readiness(done, total)}
         onClick={() => onSheet('readiness')}
       >
+        {shop.registration === 'verification_pending' && (
+          <Box component="span">
+            <Chip
+              component="span"
+              size="small"
+              label={t.verificationPending}
+              sx={{ bgcolor: roles.secondaryContainer, color: roles.onSecondaryContainer }}
+            />
+          </Box>
+        )}
         {done < total && (
           <LinearProgress
             variant="determinate"
@@ -328,11 +348,9 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
   const roles = useTheme().material
   // Keep the last sheet's content while it slides away.
   const [last, setLast] = useState(kind)
-  const [sales, setSales] = useState<SalesImport | null>(null)
   if (kind !== null && kind !== last) setLast(kind)
   const shop = ws.active
   if (!shop) return null
-  const currency = shopCurrency(shop)
   // Editors are their own dialogs; close the sheet first so modals never stack.
   const then = (run: () => void) => () => {
     onClose()
@@ -454,69 +472,7 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
         </Sheet>
       )
     case 'menu':
-      return (
-        <>
-          <Sheet
-            {...common}
-            titleId="menu-sheet-title"
-            title={t.menu}
-            actions={
-              <>
-                <ImportMenu onBeforeReview={onClose} onSales={setSales} />
-                {addProduct}
-              </>
-            }
-          >
-            {ws.products.length === 0 ? (
-              <Typography variant="bodyMedium" color="text.secondary">
-                {t.productsEmpty}
-              </Typography>
-            ) : (
-              <CategoryGroups products={ws.products}>
-                {(items) => (
-                  <List disablePadding>
-                    {items.map((product, index) => {
-                      const available = product.available !== false
-                      return (
-                        <ListItem key={product.id ?? product.name} disablePadding>
-                          <ListItemButton
-                            key={product.id ?? product.name}
-                            divider={index < items.length - 1}
-                            aria-label={`${t.editProduct} ${product.name}`}
-                            onClick={then(() => ws.openEditor({ kind: 'product', product }))}
-                            sx={{ borderRadius: 0, minHeight: 56, gap: 2 }}
-                          >
-                            <ListItemText
-                              primary={product.name}
-                              secondary={
-                                available ? product.unit : `${t.soldOut} · ${product.unit}`
-                              }
-                              slotProps={{
-                                primary: { variant: 'bodyLarge', noWrap: true },
-                                secondary: {
-                                  variant: 'bodySmall',
-                                  color: available ? 'text.secondary' : 'error',
-                                },
-                              }}
-                            />
-                            <Typography
-                              variant="titleSmall"
-                              sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
-                            >
-                              {formatPrice(product.price, currency)}
-                            </Typography>
-                          </ListItemButton>
-                        </ListItem>
-                      )
-                    })}
-                  </List>
-                )}
-              </CategoryGroups>
-            )}
-          </Sheet>
-          <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
-        </>
-      )
+      return <MenuSheet {...common} />
     case 'soldOut':
       return (
         <Sheet {...common} titleId="soldout-sheet-title" title={t.soldOutToday}>

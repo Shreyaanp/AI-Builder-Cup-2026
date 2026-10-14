@@ -23,6 +23,7 @@ import { useRewardCopy } from '../rewards/strings'
 import { HoursEditor } from '../shop/Hours'
 import { useShopCopy } from '../shop/strings'
 import { factName, factSuggestions } from './factNames'
+import { UNITS, unitKey } from '../shop/units'
 
 const EMPTY: Business['fields'] = { name: '', category: '', location: '', hours: '', phone: '' }
 
@@ -266,7 +267,8 @@ function ProductForm({ product }: { product: Product | null }) {
   const [initial] = useState(() => ({
     name: product?.name ?? '',
     price: product ? String(toMajor(product.price, currency)) : '',
-    unit: product?.unit ?? 'item',
+    // A known legacy spelling ("pcs") opens as its unit; other free text stays until replaced.
+    unit: product ? (unitKey(product.unit) ?? product.unit) : 'item',
     stock: product?.stock == null ? '' : String(product.stock),
     category: product?.category ?? '',
   }))
@@ -293,7 +295,9 @@ function ProductForm({ product }: { product: Product | null }) {
             {
               name: item.name.trim(),
               price: toMinor(price, currency),
-              unit: item.unit.trim() || 'item',
+              unit: item.unit,
+              // A new unit for a saved item changes that item instead of adding a copy.
+              ...(product && product.unit !== item.unit ? { previous_unit: product.unit } : {}),
               stock: item.stock.trim() ? Number(item.stock) : null,
               category: item.category.trim(),
               available: product?.available ?? true,
@@ -346,11 +350,21 @@ function ProductForm({ product }: { product: Product | null }) {
             }}
           />
           <TextField
-            label={t.unit}
+            select
+            label={shopCopy.unit}
+            name="unit"
             value={item.unit}
             onChange={(event) => setItem({ ...item, unit: event.target.value })}
-            slotProps={{ htmlInput: { maxLength: 40 } }}
-          />
+          >
+            {!unitKey(item.unit) && (
+              <MenuItem value={item.unit}>{shopCopy.unitCurrent(item.unit)}</MenuItem>
+            )}
+            {UNITS.map((unit) => (
+              <MenuItem key={unit} value={unit}>
+                {shopCopy.units[unit]}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
             label={shopCopy.category}
             name="category"

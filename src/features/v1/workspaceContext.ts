@@ -27,6 +27,11 @@ export interface Workspace {
   shareUrl: string | null
   /** Show an exact proposal for owner review; saving happens only from the review dialog. */
   review: (proposal: Proposal) => void
+  /**
+   * Save a sealed proposal the owner has just seen in full and tapped to confirm in place
+   * (e.g. one inline price change), then refresh. Same exact-digest approval as the review.
+   */
+  confirm: (proposal: Proposal) => Promise<void>
   notify: (message: string) => void
   /** Ask the Coach screen to open the photo picker (from empty states and suggestions). */
   requestPhoto: () => void
