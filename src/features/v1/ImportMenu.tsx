@@ -12,183 +12,123 @@ import {
   Stack,
 } from '@mui/material'
 import { Camera, FileSpreadsheet } from 'lucide-react'
-import type { Proposal } from './api'
-import { ApiError } from './api'
 import { formatPrice, shopCurrency, toMinor } from './format'
 import { Sheet } from './Sheet'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
+import { IMPORT_ACCEPT, type Importer, type SalesImport } from './useImport'
+import { useShopCopy } from '../shop/strings'
 
-const ACCEPT =
-  '.csv,.xlsx,.pdf,.txt,image/jpeg,image/png,image/webp,text/plain,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-
-interface ImportFlag {
-  row: number
-  item: string
-  reasons: string[]
-}
-
-export interface SalesSummary {
-  rows: number
-  items: number
-  days: number
-  first_day: string | null
-  last_day: string | null
-  total_revenue: number
-  top_items: { name: string; quantity: number; revenue: number }[]
-}
-
-export interface SalesImport {
-  flags?: ImportFlag[]
-  kind: 'sales'
-  summary: SalesSummary
-  import_id: string
-  digest: string
-  currency: string
-  sales: { date: string; item: string; quantity: number; revenue: number }[]
-}
-
-type ImportResult =
-  | { kind: 'menu'; proposal: Proposal; items: number; skipped: number; flags?: ImportFlag[] }
-  | SalesImport
-
-/**
- * Import a menu or sales export from any POS or spreadsheet. AI maps the columns on the server;
- * Menu and sales imports wait for the owner's exact confirmation.
- */
-export function ImportMenu({
-  onBeforeReview,
-  onSales,
+/** The menu sheet's compact "Import" action; its choices open in the sheet body. */
+export function ImportButton({
+  expanded,
+  busy,
+  onToggle,
 }: {
-  onBeforeReview?: () => void
-  onSales: (sales: SalesImport) => void
+  expanded: boolean
+  busy: boolean
+  onToggle: () => void
 }) {
   const t = useCopy()
-  const ws = useWorkspace()
+  const shop = useShopCopy()
+  return (
+    <Button
+      variant="outlined"
+      // The short label keeps both sheet buttons on one row; the name still says what it reads.
+      aria-label={t.importMenu}
+      startIcon={busy ? <CircularProgress size={18} /> : <FileSpreadsheet size={18} />}
+      disabled={busy}
+      onClick={onToggle}
+      aria-expanded={expanded}
+      aria-controls="import-panel"
+    >
+      {shop.importShort}
+    </Button>
+  )
+}
+
+/**
+ * Import a menu or sales export from any POS or spreadsheet, a photo, or pasted notes. AI maps
+ * it on the server; menu and sales imports wait for the owner's exact confirmation.
+ */
+export function ImportPanel({ importer }: { importer: Importer }) {
+  const t = useCopy()
   const input = useRef<HTMLInputElement>(null)
   const camera = useRef<HTMLInputElement>(null)
-  const [busy, setBusy] = useState(false)
-  const [expanded, setExpanded] = useState(false)
   const [notes, setNotes] = useState('')
-  const [failed, setFailed] = useState('')
-  const shop = ws.active
-  if (!shop) return null
-
-  async function upload(file: File) {
-    if (busy || !shop) return
-    setBusy(true)
-    setFailed('')
-    try {
-      const result = await ws.api<ImportResult>(
-        `/businesses/${encodeURIComponent(shop.id)}/import`,
-        {
-          method: 'POST',
-          body: file,
-          headers: { 'Content-Type': file.type || 'text/csv' },
-        },
-      )
-      if (result.kind === 'menu') {
-        onBeforeReview?.()
-        ws.review({ ...result.proposal, import_flags: result.flags })
-      } else {
-        onBeforeReview?.()
-        onSales(result)
-      }
-    } catch (cause) {
-      const message =
-        cause instanceof ApiError && cause.code === 'EXTRACTION_UNAVAILABLE'
-          ? t.importUnavailable
-          : t.importFailed
-      setFailed(message)
-      ws.notify(message)
-    } finally {
-      setBusy(false)
+  const { busy, failed } = importer
+  const upload = (file: File) => {
+    void importer.upload(file).finally(() => {
       if (input.current) input.current.value = ''
       if (camera.current) camera.current.value = ''
-    }
+    })
   }
-
   return (
-    <>
+    <Stack id="import-panel" spacing={2} sx={{ width: '100%', minWidth: 0, mb: 4 }}>
       <input
         ref={input}
         type="file"
-        accept={ACCEPT}
+        accept={IMPORT_ACCEPT}
         hidden
         aria-hidden="true"
         tabIndex={-1}
         onChange={(event) => {
           const file = event.target.files?.[0]
-          if (file) void upload(file)
+          if (file) upload(file)
         }}
       />
+      <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap' }}>
+        <Button disabled={busy} onClick={() => input.current?.click()} sx={{ minHeight: 48 }}>
+          {t.importUpload}
+        </Button>
+        <Button
+          disabled={busy}
+          startIcon={<Camera size={18} />}
+          onClick={() => camera.current?.click()}
+          sx={{ minHeight: 48, display: { xs: 'inline-flex', md: 'none' } }}
+        >
+          {t.importTakePhoto}
+        </Button>
+      </Stack>
+      <input
+        ref={camera}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
+        hidden
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) upload(file)
+        }}
+      />
+      <TextField
+        name="import-notes"
+        label={t.importNotes}
+        multiline
+        minRows={3}
+        value={notes}
+        onChange={(event) => setNotes(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault()
+            upload(new File([notes], 'notes.txt', { type: 'text/plain' }))
+          }
+        }}
+      />
+      {failed && <Alert severity="error">{failed}</Alert>}
       <Button
-        variant="outlined"
-        startIcon={busy ? <CircularProgress size={18} /> : <FileSpreadsheet size={18} />}
         disabled={busy}
-        onClick={() => setExpanded((value) => !value)}
-        aria-expanded={expanded}
-        sx={{ minHeight: 48 }}
+        onClick={() => upload(new File([notes], 'notes.txt', { type: 'text/plain' }))}
+        startIcon={busy ? <CircularProgress size={18} /> : undefined}
+        sx={{ minHeight: 48, alignSelf: 'flex-start' }}
       >
-        {t.importMenu}
+        {t.importReviewNotes}
       </Button>
-      {expanded && (
-        <Stack spacing={2} sx={{ width: '100%', minWidth: 0 }}>
-          <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap' }}>
-            <Button disabled={busy} onClick={() => input.current?.click()} sx={{ minHeight: 48 }}>
-              {t.importUpload}
-            </Button>
-            <Button
-              disabled={busy}
-              startIcon={<Camera size={18} />}
-              onClick={() => camera.current?.click()}
-              sx={{ minHeight: 48, display: { xs: 'inline-flex', md: 'none' } }}
-            >
-              {t.importTakePhoto}
-            </Button>
-          </Stack>
-          <input
-            ref={camera}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            capture="environment"
-            hidden
-            aria-hidden="true"
-            tabIndex={-1}
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) void upload(file)
-            }}
-          />
-          <TextField
-            name="import-notes"
-            label={t.importNotes}
-            multiline
-            minRows={3}
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-                event.preventDefault()
-                void upload(new File([notes], 'notes.txt', { type: 'text/plain' }))
-              }
-            }}
-          />
-          {failed && <Alert severity="error">{failed}</Alert>}
-          <Button
-            disabled={busy}
-            onClick={() => void upload(new File([notes], 'notes.txt', { type: 'text/plain' }))}
-            startIcon={busy ? <CircularProgress size={18} /> : undefined}
-            sx={{ minHeight: 48 }}
-          >
-            {t.importReviewNotes}
-          </Button>
-        </Stack>
-      )}
-    </>
+    </Stack>
   )
 }
-
 export function SalesImportSheet({
   imported,
   onClose,

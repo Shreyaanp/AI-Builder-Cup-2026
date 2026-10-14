@@ -266,7 +266,6 @@ export const zhHans: Copy = {
   coachMemory: '教练记住的事',
   forgetNote: '忘掉',
   currencyLocked: '店铺保存后不可更改',
-  unit: '单位（杯、公斤、件…）',
   stockOptional: '库存（选填）',
   enterPrice: '请输入有效价格。',
   enterName: '请输入名称。',
