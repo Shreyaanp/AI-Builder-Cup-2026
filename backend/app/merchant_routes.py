@@ -23,6 +23,7 @@ from .merchant import (
 from .money import DEFAULT_CURRENCY, to_minor
 from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected
 from .streaming import APP_NAME
+from .threads import thread_signals
 
 # Bump when the Terms or Privacy Notice text changes; owners must accept again.
 LEGAL_VERSION = "2026-10-14"
@@ -99,6 +100,8 @@ async def erase(request: Request) -> dict[str, Any]:
             raise HTTPException(503, "Face data deletion could not be confirmed. Retry.") from error
     photos = await anyio.to_thread.run_sync(request.app.state.photos.erase_owner_sync, uid)
     businesses = await anyio.to_thread.run_sync(store(request).erase_owner, uid)
+    for bid in businesses:
+        thread_signals(request).wake(bid)
     if request.app.state.recall:
         await anyio.to_thread.run_sync(request.app.state.recall.forget, uid, businesses)
     runtime = request.app.state.services.runtime

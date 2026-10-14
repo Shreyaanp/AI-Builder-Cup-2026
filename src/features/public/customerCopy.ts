@@ -1,5 +1,7 @@
+import { conversationEnglish } from '../inquiries/conversationCopy'
 /** Added to PublicShop's English source and its per-locale fallback registry. */
 export const customerEnglish = {
+  ...conversationEnglish,
   askTitle: 'Ask about this shop',
   question: 'Your question',
   questionHint: 'Ask in any language…',
