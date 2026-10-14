@@ -296,7 +296,23 @@ export const fil: Copy = {
   googleTitle: 'Ipakilala sa Google',
   googleBody:
     'Kapag handa na, tapusin sa opisyal na pahina ng Google. Google ang magsusuri ng pagmamay-ari.',
-  googleHonest: 'Hindi magpo-post ang Chalkboard sa Google para sa iyo.',
+  googleHonest:
+    'Inihahanda ng Chalkboard ang detalye mo. Ang Google ang nagbe-verify at nagpo-post — hindi kami makakapag-post sa Google para sa iyo.',
+  stepDetails: 'Suriin ang detalye mo',
+  seeChecks: 'Tingnan lahat ng check',
+  stepCopy: 'Kopyahin ang detalye mo',
+  stepCopyHint: 'I-paste sa form ng Google para magkatugma lahat.',
+  copyField: (field: string) => `Kopyahin ang ${field}`,
+  stepAdd: 'Idagdag o i-claim sa Google',
+  stepAddHint:
+    'Bubukas ang sariling page ng Google. Hanapin muna ang tindahan mo — kung naroon na, i-claim ito.',
+  stepVerify: 'Verified na sa Google?',
+  stepVerifyHint:
+    'Kinukumpirma ng Google na ikaw ang may-ari sa tawag, text, email o video. Sabihan kami kapag tapos na.',
+  verifiedYes: 'Na-verify na ng Google ang tindahan ko',
+  verifiedOwner: 'Verified — ayon sa iyo. Hindi ito masusuri ng Chalkboard sa Google.',
+  verifiedUndo: 'Hindi pa verified',
+  practiceSteps: 'Sanayin ang mga hakbang (simulation)',
   readiness: (done: number, total: number) => `${done} sa ${total} ang handa`,
   checkName: 'Pangalan ng tindahan',
   checkCategory: 'Kategorya',

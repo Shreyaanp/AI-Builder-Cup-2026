@@ -300,7 +300,24 @@ export const ta: Copy = {
   googleTitle: 'Google-இல் சேருங்கள்',
   googleBody:
     'விவரங்கள் தயாரானதும் Google-இன் பக்கத்தில் முடிக்கலாம். கடை உரிமையை Google சரிபார்க்கும்.',
-  googleHonest: 'Chalkboard உங்களுக்காக Google-இல் வெளியிடாது.',
+  googleHonest:
+    'Chalkboard உங்கள் விவரங்களைத் தயார் செய்கிறது. Google சரிபார்த்து வெளியிடும் — உங்களுக்காக நாங்கள் Google-இல் வெளியிட முடியாது.',
+  stepDetails: 'உங்கள் விவரங்களைச் சரிபாருங்கள்',
+  seeChecks: 'எல்லாச் சரிபார்ப்புகளையும் காண்க',
+  stepCopy: 'உங்கள் விவரங்களை நகலெடுங்கள்',
+  stepCopyHint: 'எல்லாம் பொருந்த Google படிவத்தில் ஒட்டுங்கள்.',
+  copyField: (field: string) => `${field} நகலெடு`,
+  stepAdd: 'Google-இல் சேருங்கள் அல்லது உரிமை கோருங்கள்',
+  stepAddHint:
+    'Google-இன் சொந்தப் பக்கம் திறக்கும். முதலில் உங்கள் கடையைத் தேடுங்கள் — இருந்தால் உரிமை கோருங்கள்.',
+  stepVerify: 'Google-இல் சரிபார்க்கப்பட்டதா?',
+  stepVerifyHint:
+    'அழைப்பு, குறுஞ்செய்தி, மின்னஞ்சல் அல்லது வீடியோ மூலம் Google உரிமையை உறுதிசெய்யும். முடிந்ததும் சொல்லுங்கள்.',
+  verifiedYes: 'Google என் கடையைச் சரிபார்த்தது',
+  verifiedOwner:
+    'சரிபார்க்கப்பட்டது — நீங்கள் சொன்னபடி. Chalkboard இதை Google-இல் சரிபார்க்க முடியாது.',
+  verifiedUndo: 'இன்னும் சரிபார்க்கவில்லை',
+  practiceSteps: 'படிகளைப் பயிற்சி செய்யுங்கள் (உருவகம்)',
   readiness: (done: number, total: number) => `${total}-இல் ${done} தயார்`,
   checkName: 'கடைப் பெயர்',
   checkCategory: 'வகை',

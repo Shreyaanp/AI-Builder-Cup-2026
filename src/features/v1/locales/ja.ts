@@ -288,7 +288,22 @@ export const ja: Copy = {
   googleTitle: 'Google に掲載',
   googleBody:
     '情報が揃ったら Google の公式ページで手続きしてください。Google がオーナーかどうかを確認します。',
-  googleHonest: 'Chalkboard が代わりに Google へ公開することはありません。',
+  googleHonest:
+    'Chalkboard は情報を準備します。確認と公開は Google が行います。Chalkboard が代わりに Google へ公開することはできません。',
+  stepDetails: '情報を確認',
+  seeChecks: 'すべての項目を見る',
+  stepCopy: '情報をコピー',
+  stepCopyHint: 'Google のフォームに貼り付けて、内容をそろえましょう。',
+  copyField: (field: string) => `${field}をコピー`,
+  stepAdd: 'Google で追加・申請',
+  stepAddHint: 'Google の公式ページを開きます。まずお店を検索し、あれば申請してください。',
+  stepVerify: 'Google で確認済み？',
+  stepVerifyHint:
+    'Google は電話、SMS、メール、動画でオーナー確認をします。終わったら教えてください。',
+  verifiedYes: 'Google で確認が済みました',
+  verifiedOwner: '確認済み（ご本人の申告）。Chalkboard は Google に確認できません。',
+  verifiedUndo: 'まだ確認していない',
+  practiceSteps: '手順を練習（シミュレーション）',
   readiness: (done: number, total: number) => `${total}項目中${done}項目が準備完了`,
   checkName: 'お店の名前',
   checkCategory: 'カテゴリ',

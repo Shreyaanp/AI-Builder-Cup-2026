@@ -270,8 +270,6 @@ test('PHONE-3: Maps handoff is visibly Live and opens the exact shop query witho
   await enter(page)
   await saveShop(page)
   await page.getByRole('button', { name: 'Google', exact: true }).tap()
-  // The official handoff links live in the "Finish on Google" sheet.
-  await page.getByRole('button', { name: /^Finish on Google/ }).tap()
   const maps = page.getByRole('link', { name: 'Find & claim on Maps', exact: true })
   await expect(page.getByText('Live — opens Google Maps', { exact: true })).toBeVisible()
   await expect(maps).toHaveAttribute(
@@ -286,6 +284,7 @@ test('PHONE-3: Maps handoff is visibly Live and opens the exact shop query witho
   const opened = await popup
   await expect(opened).toHaveURL(/query=Katong%20Kopi%20Katong%2C%20Singapore/)
   await opened.close()
+  await page.getByRole('button', { name: 'Practice the steps (simulation)' }).tap()
   await expect(page.getByText('Simulated — not connected to Google', { exact: true })).toBeVisible()
 })
 
@@ -295,6 +294,7 @@ test('PHONE-3-claim: finding a fictional match leads to a saved claim outcome wi
   await enter(page)
   await saveShop(page)
   await page.getByRole('button', { name: 'Google', exact: true }).tap()
+  await page.getByRole('button', { name: 'Practice the steps (simulation)' }).tap()
   await page.getByRole('button', { name: 'Find & claim a listing (simulation)', exact: true }).tap()
   const wizard = page.getByRole('dialog', { name: 'Google owner journey (simulation)' })
   const flag = wizard.getByText('Simulated — not connected to Google', { exact: true })

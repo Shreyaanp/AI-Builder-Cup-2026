@@ -293,7 +293,22 @@ export const ms: Copy = {
   googleTitle: 'Hadir di Google',
   googleBody:
     'Apabila butiran sedia, selesaikan di halaman rasmi Google. Google mengesahkan pemilikan kedai.',
-  googleHonest: 'Chalkboard tidak menerbitkan ke Google bagi pihak anda.',
+  googleHonest:
+    'Chalkboard menyediakan butiran anda. Google mengesahkan dan menerbitkannya — kami tidak boleh menerbitkan ke Google bagi pihak anda.',
+  stepDetails: 'Semak butiran anda',
+  seeChecks: 'Lihat semua semakan',
+  stepCopy: 'Salin butiran anda',
+  stepCopyHint: 'Tampal ke borang Google supaya semuanya sepadan.',
+  copyField: (field: string) => `Salin ${field}`,
+  stepAdd: 'Tambah atau tuntut di Google',
+  stepAddHint: 'Membuka halaman rasmi Google. Cari kedai anda dahulu — jika ada, tuntutlah.',
+  stepVerify: 'Disahkan di Google?',
+  stepVerifyHint:
+    'Google mengesahkan pemilikan melalui panggilan, SMS, e-mel atau video. Beritahu kami apabila selesai.',
+  verifiedYes: 'Google sudah mengesahkan kedai saya',
+  verifiedOwner: 'Disahkan — mengikut anda. Chalkboard tidak dapat menyemak ini dengan Google.',
+  verifiedUndo: 'Belum disahkan',
+  practiceSteps: 'Latih langkah-langkahnya (simulasi)',
   readiness: (done: number, total: number) => `${done} daripada ${total} sedia`,
   checkName: 'Nama kedai',
   checkCategory: 'Kategori',
