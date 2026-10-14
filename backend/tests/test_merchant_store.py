@@ -17,7 +17,7 @@ from app.merchant import (
 )
 from app.merchant_firestore import FirestoreMerchantStore
 
-EMULATOR = os.getenv("FIRESTORE_EMULATOR_HOST") == "127.0.0.1:8085"
+EMULATOR = (os.getenv("FIRESTORE_EMULATOR_HOST") or "").split(":")[0] in {"127.0.0.1", "localhost"}
 
 
 @pytest.fixture(params=["sqlite", "firestore"])

@@ -30,6 +30,9 @@ import { ShopChat } from './ShopChat'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
 import { customerTranslations } from './customerLocales'
 import { BackInStock, BadgeRow, StampCard, StockReminder } from '../rewards/Rewards'
+import { HoursList } from '../shop/Hours'
+import type { DayHours } from '../shop/hoursModel'
+import { CategoryGroups } from '../shop/CategoryGroups'
 
 interface PublicShopData {
   id: string
@@ -39,11 +42,12 @@ interface PublicShopData {
   category: string
   location: string
   hours: string
+  weekly_hours?: DayHours[]
   phone: string
   reward_text?: string
   /** ISO 4217 code the shop's prices are stored in. */
   currency?: string
-  products: { name: string; price: number; unit: string; available: boolean }[]
+  products: { name: string; price: number; unit: string; available: boolean; category?: string }[]
   /** Owner-confirmed customer facts; absent keys are simply not listed. */
   facts?: ShopFacts
   open_now?: boolean | null
@@ -464,6 +468,9 @@ export default function PublicShop({ id }: { id: string }) {
           ))}
         </Stack>
       )}
+      <Box sx={{ mt: 2 }}>
+        <HoursList hours={shop.weekly_hours} />
+      </Box>
       {shop.location && (
         <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1.5 }}>
           {shop.location}
@@ -567,61 +574,62 @@ export default function PublicShop({ id }: { id: string }) {
       {shop.products.length === 0 ? (
         <Alert severity="info">{t.empty}</Alert>
       ) : (
-        <List
-          disablePadding
-          sx={{ bgcolor: roles.surfaceContainerLow, borderRadius: `${shape.lg}px` }}
-        >
-          {menu.map((product, index) => (
-            <ListItem
-              key={product.name + product.unit}
-              divider={index < menu.length - 1}
-              sx={{ py: 1.5, px: 2, gap: 2 }}
-            >
-              <ListItemText
-                primary={product.name}
-                secondary={
-                  product.available ? (
-                    `/ ${product.unit}`
+        <CategoryGroups products={shop.products}>
+          {(items) => (
+            <List disablePadding>
+              {items.map((product, index) => (
+                <ListItem
+                  key={product.name + product.unit}
+                  divider={index < items.length - 1}
+                  sx={{ py: 1.5, px: 2, gap: 2 }}
+                >
+                  <ListItemText
+                    primary={product.name}
+                    secondary={
+                      product.available ? (
+                        `/ ${product.unit}`
+                      ) : (
+                        <StockReminder shop={id} name={product.name} unit={product.unit} />
+                      )
+                    }
+                    slotProps={{
+                      primary: {
+                        variant: 'bodyLarge',
+                        sx: product.available ? undefined : { color: 'text.secondary' },
+                      },
+                      secondary: { variant: 'bodySmall', component: 'div' },
+                    }}
+                  />
+                  {product.available ? (
+                    <Typography
+                      variant="titleMedium"
+                      sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {/* The phone's full locale (en-SG → $15.00), not just the UI language. */}
+                      {formatPrice(product.price, currency)}
+                    </Typography>
                   ) : (
-                    <StockReminder shop={id} name={product.name} unit={product.unit} />
-                  )
-                }
-                slotProps={{
-                  primary: {
-                    variant: 'bodyLarge',
-                    sx: product.available ? undefined : { color: 'text.secondary' },
-                  },
-                  secondary: { variant: 'bodySmall', component: 'div' },
-                }}
-              />
-              {product.available ? (
-                <Typography
-                  variant="titleMedium"
-                  sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {/* The phone's full locale (en-SG → $15.00), not just the UI language. */}
-                  {formatPrice(product.price, currency)}
-                </Typography>
-              ) : (
-                // Sold out: label + muted text, not colour alone.
-                <Box
-                  component="span"
-                  sx={{
-                    px: 1,
-                    py: 0.25,
-                    borderRadius: `${shape.xs}px`,
-                    bgcolor: roles.errorContainer,
-                    color: roles.onErrorContainer,
-                    typography: 'labelMedium',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {t.soldOut}
-                </Box>
-              )}
-            </ListItem>
-          ))}
-        </List>
+                    // Sold out: label + muted text, not colour alone.
+                    <Box
+                      component="span"
+                      sx={{
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: `${shape.xs}px`,
+                        bgcolor: roles.errorContainer,
+                        color: roles.onErrorContainer,
+                        typography: 'labelMedium',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {t.soldOut}
+                    </Box>
+                  )}
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </CategoryGroups>
       )}
       <BadgeRow shop={id} />
       <Stack
