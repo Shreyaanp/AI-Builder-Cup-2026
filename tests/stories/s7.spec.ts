@@ -90,7 +90,7 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
       await discovery.addInitScript(() =>
         localStorage.setItem('chalkboard.customer.journey', 'done'),
       )
-      await discovery.goto('http://127.0.0.1:3200/explore/')
+      await discovery.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/`)
       await expect(discovery.getByText('Demo data', { exact: true })).toBeVisible()
       for (const city of cities) {
         await discovery.getByRole('textbox', { name: 'City or area' }).fill(city)
@@ -110,7 +110,9 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
         await discovery.route(`**/api/v1/public/shops/${entry.shop.id}`, (route) =>
           route.fulfill({ json: entry.shop }),
         )
-        await discovery.goto(`http://127.0.0.1:3200/explore/s/${entry.shop.id}`)
+        await discovery.goto(
+          `http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/s/${entry.shop.id}`,
+        )
         await expect(discovery.getByRole('heading', { name: entry.shop.name })).toBeVisible()
         await expect(discovery.getByText('Demo shop', { exact: true })).toBeVisible()
         await shot(discovery, 7, `3-${entry.city}-catalogue`)

@@ -79,6 +79,7 @@ export interface PhotoResult {
   photo_kind: string
   extraction: { uncertain: string[] }
   proposal: Proposal | null
+  pin_proposal?: Proposal | null
 }
 export class ApiError extends Error {
   readonly status: number

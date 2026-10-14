@@ -56,13 +56,8 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
     await shot(page, 2, 2)
     await confirm(page)
   })
-  await test.step('3 · already-open customer page and manual refresh recovery', async () => {
-    // No reload/tab return: capture the actual stale-page gap before exercising recovery.
-    await expect(kopi).toContainText('₹18.00')
-    gap('S2/3: an already-open customer page keeps its old price until Refresh or tab return')
-    await shot(customer, 2, '3-stale')
-    await customer.getByRole('button', { name: 'Refresh', exact: true }).click()
-    await expect(kopi).toContainText('₹20.00')
+  await test.step('3 · already-open customer page updates within five seconds', async () => {
+    await expect(kopi).toContainText('₹20.00', { timeout: 5200 })
     await shot(customer, 2, 3)
   })
   await test.step('4 · sold-out switch reaches customer page', async () => {
@@ -79,15 +74,6 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
   })
   await test.step('5 · daily still-the-same check', async () => {
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
-    await expect(page.getByText('Still the same menu today?', { exact: true })).toHaveCount(0)
-    gap(
-      'S2/5: daily confirmation disappears from a non-empty coach thread; New conversation is needed to find it',
-    )
-    await page.getByRole('button', { name: 'New conversation', exact: true }).click()
-    await page
-      .getByRole('dialog', { name: 'New conversation' })
-      .getByRole('button', { name: 'New conversation', exact: true })
-      .click()
     await expect(page.getByText('Still the same menu today?', { exact: true })).toBeVisible()
     await shot(page, 2, 5)
     await page.getByRole('button', { name: 'Yes, all good' }).click()

@@ -101,10 +101,10 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     await expect(page.getByRole('dialog', { name: reviewName })).not.toContainText(
       '12.97180, 77.64120',
     )
-    gap(
-      'S1/6: an existing shop menu-photo proposal drops GPS; combined business/inventory review needs a larger backend change',
-    )
     await shot(page, 1, '6-photo-pin')
+    await confirm(page)
+    await page.getByRole('button', { name: 'Review photo location' }).click()
+    await expect(page.getByRole('dialog', { name: reviewName })).toContainText('12.97180, 77.64120')
     await confirm(page)
     await page.getByLabel('Message', { exact: true }).fill('Halal: yes')
     await page.getByRole('button', { name: 'Send', exact: true }).click()

@@ -4,7 +4,7 @@ import { materialRoles, nivaTheme, type Appearance, type MaterialRoles } from '.
 export function customerTheme(mode: Appearance) {
   const dark = mode === 'dark'
   const ink = dark ? '#fafafa' : '#111111'
-  const surface = dark ? '#111111' : '#ffffff'
+  const surface = dark ? '#111111' : '#f3f3f3'
   const container = dark ? '#242424' : '#eeeeee'
   const secondaryInk = dark ? '#c6c6c6' : '#555555'
   const roles: MaterialRoles = {
@@ -25,8 +25,8 @@ export function customerTheme(mode: Appearance) {
     surfaceDim: dark ? '#111111' : '#dddddd',
     surfaceBright: dark ? '#333333' : '#ffffff',
     surfaceContainerLowest: dark ? '#000000' : '#ffffff',
-    surfaceContainerLow: dark ? '#191919' : '#fafafa',
-    surfaceContainer: dark ? '#202020' : '#f5f5f5',
+    surfaceContainerLow: dark ? '#191919' : '#ffffff',
+    surfaceContainer: dark ? '#202020' : '#e7e7e7',
     surfaceContainerHigh: container,
     surfaceContainerHighest: dark ? '#303030' : '#e4e4e4',
     onSurface: ink,

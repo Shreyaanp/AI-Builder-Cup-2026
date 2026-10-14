@@ -24,8 +24,8 @@ in `tests/stories/` that the overnight loop runs.
 **Connects to:** S3 (customers see it), S5 (Google flow reuses the details and photos).
 
 Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s1.spec.ts`.
-Gaps: [A2, A6, A8, A10, A11](docs/stories/AUDIT.md) — international offline pins, existing-shop
-photo GPS, photo reuse, accessible extraction disclosure and phone polish. Sign-in, recognition,
+Gaps: [A2, A10](docs/stories/AUDIT.md) — international offline pins and accessible extraction
+disclosure. A6, A8 and A11 are fixed locally. Sign-in, recognition,
 physical camera/GPS and hosted validation remain live-only.
 
 ## S2 · Daily upkeep in seconds (text or voice)
@@ -41,8 +41,8 @@ physical camera/GPS and hosted validation remain live-only.
 **Connects to:** S3 and S4.
 
 Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s2.spec.ts`.
-Gaps: [A1, A3, A9, A12](docs/stories/AUDIT.md) — conversational edits lack an offline fixture,
-already-open customer pages need Refresh, daily checks hide in existing conversations, motion.
+Gaps: [A1](docs/stories/AUDIT.md) — conversational edits lack an offline fixture.
+A3, A9 and A12 are fixed locally; visible public pages poll within about five seconds.
 **Known:** the live voice model must actually call the tools (it said "I can't access your menu").
 Reviewed manual edits and CSV import are verified fallbacks, not live voice/photo/PDF evidence.
 
@@ -60,8 +60,8 @@ Reviewed manual edits and CSV import are verified fallbacks, not live voice/phot
 **Connects to:** S1/S2 (owner data), S6 (personalisation, later).
 
 Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s3.spec.ts`.
-Gaps: [A2–A5, A8, A11, A12](docs/stories/AUDIT.md) — typed-city fixtures, live menu propagation,
-halal answer fixture, required customer sign-in, customer photos and phone/motion polish.
+Gaps: [A2, A5](docs/stories/AUDIT.md) — typed-city fixtures and required customer sign-in.
+A3, A4, A8, A11 and A12 are fixed locally.
 Messages/replies, QR stamps and both themes are exercised. Confirmed-halal discovery filtering,
 unavailable-page recovery and Indian date formatting are fixed locally; real Places/GPS remain live-only.
 
@@ -86,7 +86,7 @@ official links.
 Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s5.spec.ts`.
 Details → photo upload → INR profile preview → honest Google waiting state and official links
 are exercised. Copied weekly hours are fixed locally.
-Gaps: [A8, A11, A12](docs/stories/AUDIT.md) — coach-photo reuse, preview affordances and motion.
+A8, A11 and A12 are fixed locally: coach-photo reuse, preview affordances and motion.
 Hosted validation, Google API access, verification and publication remain separate, live-only.
 
 ## S6 · Business identity and privacy
@@ -104,8 +104,8 @@ Status ☐ · the user tests the face scan on a phone
 3. Demo shops exist in 8 cities.
 
 Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s7.spec.ts`.
-Gaps: [A2, A7, A11](docs/stories/AUDIT.md) — eight-city discoverability, multilingual offline
-replies/15-language coverage and Tamil text clipping. INR/UPI, Tamil UI, speech locale dispatch
+Gaps: [A2, A7](docs/stories/AUDIT.md) — eight-city discoverability and multilingual offline
+replies/15-language coverage. A11 Tamil text metrics are fixed locally. INR/UPI, Tamil UI, speech locale dispatch
 and eight labelled catalogue fixture pages are exercised; audible/live speech is unvalidated.
 Indian languages remain in progress with the locale worker; their files were not edited.
 
@@ -131,3 +131,24 @@ Every cycle:
 4. File gaps here and in `BUGS.md`.
 5. Assign fixes to the workers.
 6. Ship when green (`scripts/ship.ps1`). The user approved overnight releases.
+
+## Story polish 1 · local evidence
+
+A3 fixed locally: customer pages update within about five seconds while visible and pause polling
+when hidden. Cross-context phone test passed; [proof and screenshots](docs/stories/AUDIT.md).
+All story statuses retain their hosted/live validation requirements.
+
+A4 fixed locally: owner-stated halal answers agree with public chips and disclose the lack of
+certification/verification. Four phone cases and English/Tamil backend cases passed.
+
+A6 fixed locally: GPS on an existing-shop menu photo offers a separate pin review, with stale
+approval rejection and explicit renewed review. Phone and backend location cases passed.
+
+A8 fixed locally: explicit coach-photo gallery reuse, first-photo customer/discovery rendering,
+and category-art fallback passed three phone cases and the gallery backend suite.
+
+A9 fixed locally: the daily check remains reachable in continuing conversations and can be
+dismissed for this tab/day, separately per shop. Strict phone isolation/next-day case passed.
+
+A11 fixed locally: clearly labelled Google preview text, truthful Call availability, Tamil
+composer/navigation metrics and distinct customer light surfaces passed four phone cases.
