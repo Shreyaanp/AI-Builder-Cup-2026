@@ -266,7 +266,8 @@ for (const [locale, t] of Object.entries({ en: rewardCardEnglish, ...rewardCardT
       locale,
     )
     await page.goto(`/explore/s/${id}?source=qr`)
-    await expect(page.getByText(t.phone, { exact: true })).toBeVisible()
+    // One short line on the card: the QR rule plus where the card is stored.
+    await expect(page.getByText(t.phone, { exact: false })).toBeVisible()
     await expect(
       page.getByText(t.more.replace('{count}', '7').replace('{reward}', shop.reward_text), {
         exact: true,
