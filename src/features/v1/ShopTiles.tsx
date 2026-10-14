@@ -41,6 +41,7 @@ import { PendingCard } from './PendingCard'
 import { MenuSheet } from '../shop/MenuSheet'
 import { FreshnessCard, RecapTile } from '../sales/ShopInsights'
 import { PrepPlanTile } from '../forecast/PrepPlan'
+import { CloseDayTile } from '../closeday/CloseDay'
 import { OrdersTile } from '../sourcing/Orders'
 import { Sheet } from './Sheet'
 import { ShopQr } from './ShopQr'
@@ -284,6 +285,7 @@ export function ShopTiles({
       >
         {soldOut > 0 && <Supporting>{soldOutNames.join(' · ')}</Supporting>}
       </Tile>
+      <CloseDayTile />
       <PrepPlanTile key={shop.id} />
       <Tile
         icon={<Globe size={20} />}
