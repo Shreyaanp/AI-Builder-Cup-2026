@@ -1,6 +1,7 @@
 import asyncio
 import re
 from typing import Any, cast
+from uuid import UUID
 
 import anyio
 import httpx
@@ -25,6 +26,7 @@ from .merchant import (
 from .money import DEFAULT_CURRENCY, to_minor
 from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected
 from .sales import daily_sales
+from .stock_alerts import StockAlertInput, StockAlertReceipt
 from .streaming import APP_NAME
 from .threads import thread_signals
 
@@ -202,6 +204,22 @@ async def public_shop(business_id: str, request: Request) -> dict[str, Any]:
 
     shop["open_now"] = open_now(shop["hours"], shop.get("timezone", "Asia/Singapore"))
     return shop
+
+
+@router.post("/public/shops/{business_id}/stock-alerts")
+async def subscribe_stock(
+    business_id: str, body: StockAlertInput, request: Request
+) -> StockAlertReceipt:
+    await enforce_limits(
+        request, [("stock:ip", client_ip(request)), ("stock:shop", business_id)], anonymous=True
+    )
+    return await anyio.to_thread.run_sync(store(request).subscribe_stock, business_id, body)
+
+
+@router.get("/public/shops/{business_id}/stock-alerts")
+async def stock_alerts(business_id: str, device_id: UUID, request: Request) -> list[dict[str, Any]]:
+    await enforce_limits(request, [("stock:read", client_ip(request))], anonymous=True)
+    return await anyio.to_thread.run_sync(store(request).stock_alerts, business_id, str(device_id))
 
 
 @router.post("/photos")

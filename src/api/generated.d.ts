@@ -202,6 +202,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/shops/{business_id}/stock-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stock Alerts */
+        get: operations["stock_alerts_api_v1_public_shops__business_id__stock_alerts_get"];
+        put?: never;
+        /** Subscribe Stock */
+        post: operations["subscribe_stock_api_v1_public_shops__business_id__stock_alerts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/photos": {
         parameters: {
             query?: never;
@@ -987,6 +1005,11 @@ export interface components {
              */
             phone: string;
             /**
+             * Reward Text
+             * @default
+             */
+            reward_text: string;
+            /**
              * Currency
              * @default SGD
              */
@@ -1604,6 +1627,28 @@ export interface components {
              */
             language: string;
         };
+        /** StockAlertInput */
+        StockAlertInput: {
+            /**
+             * Device Id
+             * Format: uuid
+             */
+            device_id: string;
+            /** Name */
+            name: string;
+            /** Unit */
+            unit: string;
+        };
+        /** StockAlertReceipt */
+        StockAlertReceipt: {
+            /** Expires */
+            expires: number;
+            /**
+             * Delivery
+             * @default in_page
+             */
+            delivery: string;
+        };
         /** ThreadMessage */
         ThreadMessage: {
             /** Text */
@@ -2060,6 +2105,76 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stock_alerts_api_v1_public_shops__business_id__stock_alerts_get: {
+        parameters: {
+            query: {
+                device_id: string;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    subscribe_stock_api_v1_public_shops__business_id__stock_alerts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StockAlertInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockAlertReceipt"];
                 };
             };
             /** @description Validation Error */

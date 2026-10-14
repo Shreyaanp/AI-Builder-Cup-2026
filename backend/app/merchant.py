@@ -26,6 +26,14 @@ from pydantic import (
 from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
 from .shop_time import shop_timezone
+from .stock_alerts import (
+    ALERT_SECONDS,
+    MAX_ALERTS,
+    StockAlertInput,
+    StockAlertReceipt,
+    alert_key,
+    check_item,
+)
 from .threads import change_thread, contact_hash, new_thread
 
 Halal = Literal["yes", "no", "muslim_owned", "not_stated"]
@@ -67,6 +75,7 @@ class BusinessFields(BaseModel):
     timezone: str = Field(default="Asia/Singapore", max_length=100)
     hours: str = Field(default="", max_length=180)
     phone: str = Field(default="", max_length=40)
+    reward_text: str = Field(default="", max_length=80)
     # ISO 4217; prices of this shop are stored in this currency's minor unit (see money.py).
     currency: str = Field(default="SGD", pattern=r"^[A-Z]{3}$")
     halal: Halal | None = None
@@ -105,6 +114,7 @@ class BusinessFields(BaseModel):
             and not (key == "pin_demo" and value is False)
             and not (key == "timezone" and value == "Asia/Singapore")
             and not (key == "custom_facts" and value == [])
+            and not (key == "reward_text" and value == "")
         }
 
     @model_validator(mode="after")
@@ -221,6 +231,9 @@ class MerchantRepository(Protocol):
 
     def shared_shops(self) -> list[dict[str, Any]]: ...
 
+    def subscribe_stock(self, bid: str, body: StockAlertInput) -> StockAlertReceipt: ...
+    def stock_alerts(self, bid: str, device_id: str) -> list[dict[str, Any]]: ...
+
     def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt: ...
     def inquiries(self, uid: str, bid: str) -> list[Inquiry]: ...
     def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry: ...
@@ -246,6 +259,7 @@ def public_projection(
         "hours": fields.get("hours", ""),
         "phone": fields.get("phone", ""),
         "currency": fields.get("currency") or "SGD",
+        **({"reward_text": fields["reward_text"]} if fields.get("reward_text") else {}),
         # Only facts the owner confirmed; customer Q&A grounds on these too.
         "facts": customer_facts(fields),
         "products": [
@@ -311,6 +325,9 @@ class MerchantStore:
             CREATE TABLE IF NOT EXISTS consents(uid TEXT PRIMARY KEY, version TEXT NOT NULL,
                 accepted REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS shares(business_id TEXT PRIMARY KEY);
+            CREATE TABLE IF NOT EXISTS stock_alerts(business_id TEXT, id TEXT, device_id TEXT,
+              name TEXT, unit TEXT, expires REAL, ready INTEGER,
+              PRIMARY KEY(business_id,id));
             CREATE TABLE IF NOT EXISTS google_sim(uid TEXT NOT NULL, business_id TEXT NOT NULL,
                 state TEXT NOT NULL, PRIMARY KEY(uid,business_id));
             CREATE TABLE IF NOT EXISTS planning(business_id TEXT, product_id TEXT, fields TEXT,
@@ -595,6 +612,7 @@ class MerchantStore:
                 )
             ]
             for bid in owned:
+                db.execute("DELETE FROM stock_alerts WHERE business_id=?", (bid,))
                 for table in ("sales_days", "sales_imports", "recaps", "sold_out_days"):
                     db.execute(f"DELETE FROM {table} WHERE business_id=?", (bid,))  # noqa: S608
                 db.execute("DELETE FROM inquiries WHERE business_id=?", (bid,))
@@ -620,6 +638,12 @@ class MerchantStore:
             if not row:
                 raise HTTPException(404, "Product not found.")
             fields = {**json.loads(row[0]), "available": available}
+            db.execute("DELETE FROM stock_alerts WHERE expires<=?", (time.time(),))
+            if available and not json.loads(row[0]).get("available", True):
+                db.execute(
+                    "UPDATE stock_alerts SET ready=1 WHERE business_id=? AND name=? AND unit=?",
+                    (bid, fields["name"], fields["unit"]),
+                )
             if not available and json.loads(row[0]).get("available", True):
                 day = today_for(json.loads(business["fields"])).isoformat()
                 db.execute(
@@ -663,6 +687,54 @@ class MerchantStore:
                 )
             ]
         return {**public_projection(bid, json.loads(row[0]), products), "last_confirmed": row[1]}
+
+    def subscribe_stock(self, bid: str, body: StockAlertInput) -> StockAlertReceipt:
+        now = time.time()
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT b.fields FROM businesses b JOIN shares s ON s.business_id=b.id "
+                "WHERE b.id=?",
+                (bid,),
+            ).fetchone()
+            products = [
+                json.loads(p[0])
+                for p in db.execute("SELECT fields FROM inventory WHERE business_id=?", (bid,))
+            ]
+            check_item({"products": products} if row else None, body)
+            db.execute("DELETE FROM stock_alerts WHERE expires<=?", (now,))
+            key = alert_key(body)
+            prior = db.execute(
+                "SELECT expires FROM stock_alerts WHERE business_id=? AND id=?", (bid, key)
+            ).fetchone()
+            if prior:
+                return StockAlertReceipt(expires=prior[0])
+            count = db.execute(
+                "SELECT count(*) FROM stock_alerts WHERE business_id=?", (bid,)
+            ).fetchone()[0]
+            if count >= MAX_ALERTS:
+                raise HTTPException(429, "Too many reminders. Try again later.")
+            expires = now + ALERT_SECONDS
+            db.execute(
+                "INSERT INTO stock_alerts VALUES(?,?,?,?,?,?,0)",
+                (bid, key, str(body.device_id), body.name, body.unit, expires),
+            )
+            return StockAlertReceipt(expires=expires)
+
+    def stock_alerts(self, bid: str, device_id: str) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            if not db.execute("SELECT 1 FROM shares WHERE business_id=?", (bid,)).fetchone():
+                raise HTTPException(404, "Shop not available.")
+            db.execute("DELETE FROM stock_alerts WHERE expires<=?", (time.time(),))
+            return [
+                {"name": row[0], "unit": row[1], "expires": row[2], "ready": bool(row[3])}
+                for row in db.execute(
+                    "SELECT name,unit,expires,ready FROM stock_alerts "
+                    "WHERE business_id=? AND device_id=?",
+                    (bid, device_id),
+                )
+            ]
 
     def sales_history(self, uid: str, bid: str) -> list[dict[str, Any]]:
         with self.connect() as db:
