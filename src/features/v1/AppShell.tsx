@@ -41,7 +41,7 @@ import { isLanguagePref, LOCALE_NAMES, LOCALES, systemLocale } from '../../i18n/
 import { useWorkspace } from './workspaceContext'
 import type { Destination } from './workspaceContext'
 import { CoachScreen } from './screens/CoachScreen'
-import { ShopScreen, ShopSummary } from './screens/ShopScreen'
+import { ShopScreen } from './screens/ShopScreen'
 import { GoogleScreen } from './screens/GoogleScreen'
 import { PrivacyScreen } from './screens/PrivacyScreen'
 
@@ -70,7 +70,6 @@ export function AppShell() {
   useEffect(() => {
     document.documentElement.style.setProperty('--nav-offset', showNavBar ? '84px' : '0px')
   }, [showNavBar])
-  const supporting = useMediaQuery(`(min-width:${windowClass.large}px)`)
   const destinations: { id: Destination; label: string; icon: ReactNode }[] = [
     { id: 'coach', label: t.navCoach, icon: <MessageCircle size={22} /> },
     { id: 'shop', label: t.navShop, icon: <Store size={22} /> },
@@ -83,7 +82,6 @@ export function AppShell() {
       : { shop: <ShopScreen />, google: <GoogleScreen />, privacy: <PrivacyScreen /> }[
           ws.destination
         ]
-  const showPane = supporting && ws.destination === 'coach' && ws.active
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: roles.surface }}>
@@ -144,28 +142,6 @@ export function AppShell() {
             </Box>
             {screen}
           </Box>
-          {showPane && (
-            <Box
-              component="aside"
-              aria-label={t.navShop}
-              sx={{
-                width: 380,
-                flexShrink: 0,
-                m: 2,
-                ml: 0,
-                p: 3,
-                borderRadius: `${shape.xl}px`,
-                bgcolor: roles.surfaceContainer,
-                alignSelf: 'flex-start',
-                position: 'sticky',
-                top: 80,
-                maxHeight: 'calc(100dvh - 96px)',
-                overflowY: 'auto',
-              }}
-            >
-              <ShopSummary compact />
-            </Box>
-          )}
         </Box>
       </Box>
       {showNavBar && (

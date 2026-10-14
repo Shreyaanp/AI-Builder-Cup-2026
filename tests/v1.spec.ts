@@ -98,6 +98,8 @@ test('switching shops never shows the other shop’s products or conversation', 
   await open(page)
   await addShop(page, 'Alpha Tea')
   await page.getByRole('button', { name: 'My shop' }).click()
+  // My shop is tiles; the menu and its Add product live in the Menu sheet.
+  await page.getByRole('button', { name: /^Menu/ }).click()
   await page.getByRole('button', { name: 'Add product' }).click()
   await page.getByLabel('Product name').fill('Alpha Chai')
   await page.getByLabel(/^Price/).fill('15')
@@ -106,8 +108,12 @@ test('switching shops never shows the other shop’s products or conversation', 
     .getByRole('dialog', { name: 'Check before saving' })
     .getByRole('button', { name: 'Confirm and save' })
     .click()
-  // The saved row (the closing review sheet and desktop panes can also show the name).
+  // The saved row in the Menu sheet (the closing review sheet can also show the name).
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: /^Menu/ }).click()
   await expect(page.getByRole('button', { name: /^Edit Alpha Chai/ })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Coach' }).click()
   await page.getByLabel('Message').fill('Hello from Alpha')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
@@ -131,7 +137,11 @@ test('Google handoff shows readiness and only official Google links', async ({ p
   await open(page)
   await addShop(page, 'Morning Crumb')
   await page.getByRole('button', { name: 'Google' }).click()
-  await expect(page.getByText('1 of 6 ready')).toBeVisible()
+  // The coach's shop card (kept mounted while hidden) shows the same readiness.
+  await expect(page.getByRole('region', { name: 'Google' }).getByText('1 of 6 ready')).toBeVisible()
+  await expect(page.getByText('Chalkboard never publishes to Google for you.')).toBeVisible()
+  // The official handoff links live in the "Finish on Google" sheet.
+  await page.getByRole('button', { name: /^Finish on Google/ }).click()
   await expect(page.getByRole('link', { name: 'Add on Google' })).toHaveAttribute(
     'href',
     'https://business.google.com/add',
@@ -140,7 +150,6 @@ test('Google handoff shows readiness and only official Google links', async ({ p
     'href',
     /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=Morning%20Crumb/,
   )
-  await expect(page.getByText('Chalkboard never publishes to Google for you.')).toBeVisible()
 })
 
 test('delete all my data erases shops and asks for consent again', async ({ page }) => {

@@ -1,26 +1,12 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import {
-  Alert,
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  Drawer,
-  Stack,
-  Typography,
-  useMediaQuery,
-  useTheme,
-} from '@mui/material'
+import { Alert, Box, Button, Divider, Stack, Typography } from '@mui/material'
 import { ShieldCheck } from 'lucide-react'
 import type { Proposal } from './api'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { formatPrice, shopCurrency } from './format'
-import { shape, windowClass } from '../../design/theme'
+import { Sheet } from './Sheet'
 
 /**
  * The only place a change is saved: the owner confirms the exact digest the server sealed.
@@ -37,8 +23,6 @@ export function ReviewDialog({
 }) {
   const t = useCopy()
   const { api, businesses } = useWorkspace()
-  const roles = useTheme().material
-  const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const snapshot = proposal?.snapshot
@@ -149,58 +133,15 @@ export function ReviewDialog({
     </>
   )
 
-  if (compact)
-    return (
-      <Drawer
-        anchor="bottom"
-        open={open}
-        onClose={close}
-        slotProps={{
-          paper: {
-            role: 'dialog',
-            'aria-modal': true,
-            'aria-labelledby': 'review-title',
-            sx: {
-              borderTopLeftRadius: shape.xl,
-              borderTopRightRadius: shape.xl,
-              bgcolor: roles.surfaceContainerLow,
-              maxHeight: '90dvh',
-              pb: 'env(safe-area-inset-bottom)',
-            },
-          },
-        }}
-      >
-        <Box
-          aria-hidden="true"
-          sx={{
-            width: 32,
-            height: 4,
-            borderRadius: 2,
-            bgcolor: roles.onSurfaceVariant,
-            opacity: 0.4,
-            mx: 'auto',
-            mt: 1.5,
-          }}
-        />
-        <Typography
-          id="review-title"
-          component="h2"
-          variant="headlineSmall"
-          sx={{ px: 3, pt: 2, pb: 1 }}
-        >
-          {t.reviewTitle}
-        </Typography>
-        <Box sx={{ px: 3, pb: 2, overflowY: 'auto' }}>{body}</Box>
-        <Stack direction="row" sx={{ justifyContent: 'flex-end', gap: 1, px: 3, pb: 3, pt: 1 }}>
-          {actions}
-        </Stack>
-      </Drawer>
-    )
   return (
-    <Dialog open={open} onClose={close} aria-labelledby="review-title">
-      <DialogTitle id="review-title">{t.reviewTitle}</DialogTitle>
-      <DialogContent>{body}</DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3 }}>{actions}</DialogActions>
-    </Dialog>
+    <Sheet
+      open={open}
+      onClose={close}
+      titleId="review-title"
+      title={t.reviewTitle}
+      actions={actions}
+    >
+      {body}
+    </Sheet>
   )
 }

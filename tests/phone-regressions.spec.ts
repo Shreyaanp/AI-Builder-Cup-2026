@@ -229,6 +229,8 @@ test('PHONE-2: every shop and product Add entry opens its form; coach plus opens
   await page.getByRole('button', { name: 'Coach', exact: true }).tap()
   await saveShop(page)
   await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  // My shop tiles: Add product lives in the Menu sheet.
+  await page.getByRole('button', { name: /^Menu/ }).tap()
   await page.getByRole('button', { name: 'Add product', exact: true }).tap()
   await expect(page.getByRole('dialog', { name: 'Add product' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
@@ -245,7 +247,8 @@ test('PHONE-2: every shop and product Add entry opens its form; coach plus opens
   await page.getByLabel(/^Price/).fill('1.80')
   await page.getByRole('button', { name: 'Review', exact: true }).tap()
   await page.getByRole('button', { name: 'Confirm and save' }).tap()
-  await page.getByRole('button', { name: 'Add now', exact: true }).tap()
+  // The shop card's next step (UI-1 folded the old "Add now" card into it).
+  await page.getByRole('button', { name: 'Add your opening hours', exact: true }).tap()
   await expect(page.getByRole('dialog', { name: 'Edit details' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
   const picker = page.waitForEvent('filechooser')
@@ -267,6 +270,8 @@ test('PHONE-3: Maps handoff is visibly Live and opens the exact shop query witho
   await enter(page)
   await saveShop(page)
   await page.getByRole('button', { name: 'Google', exact: true }).tap()
+  // The official handoff links live in the "Finish on Google" sheet.
+  await page.getByRole('button', { name: /^Finish on Google/ }).tap()
   const maps = page.getByRole('link', { name: 'Find & claim on Maps', exact: true })
   await expect(page.getByText('Live — opens Google Maps', { exact: true })).toBeVisible()
   await expect(maps).toHaveAttribute(
