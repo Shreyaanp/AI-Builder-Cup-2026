@@ -17,6 +17,7 @@ import { CURRENCIES, currencySymbol, shopCurrency, toMajor, toMinor } from './fo
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { windowClass } from '../../design/theme'
+import { useRewardCopy } from '../rewards/strings'
 
 const EMPTY: Business['fields'] = { name: '', category: '', location: '', hours: '', phone: '' }
 
@@ -43,6 +44,7 @@ export function BusinessDialog() {
 
 function BusinessForm({ initial }: { initial: Business['fields'] }) {
   const t = useCopy()
+  const rewards = useRewardCopy()
   const { api, active, editor, openEditor, review } = useWorkspace()
   const compact = useCompact()
   const [fields, setFields] = useState(initial)
@@ -106,6 +108,14 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
               slotProps={{ htmlInput: { maxLength: key === 'location' ? 300 : 180 } }}
             />
           ))}
+          <TextField
+            label={rewards.reward}
+            name="reward_text"
+            value={fields.reward_text ?? ''}
+            helperText={rewards.rewardHelp}
+            slotProps={{ htmlInput: { maxLength: 80 } }}
+            onChange={(event) => setFields({ ...fields, reward_text: event.target.value })}
+          />
           <TextField
             select
             label={t.currency}
