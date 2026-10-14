@@ -96,8 +96,15 @@ export const ASK_ORDER = [
 ] as const
 export type AskFact = (typeof ASK_ORDER)[number]
 
-export function missingFacts(fields: ShopFacts): AskFact[] {
+// Mirrors FOOD in backend/app/business_profile.py: food facts only for food and drink shops.
+const FOOD =
+  /food|kopi|coffee|cafe|café|tea|bakery|bake|cake|hawker|stall|restaurant|eat|kitchen|noodle|rice|bar|drink|juice|dessert/i
+const FOOD_ONLY: AskFact[] = ['halal', 'vegetarian_options', 'delivery', 'preorders']
+
+export function missingFacts(fields: ShopFacts & { category?: string; name?: string }): AskFact[] {
+  const food = FOOD.test(`${fields.category ?? ''} ${fields.name ?? ''}`)
   return ASK_ORDER.filter((key) => {
+    if (!food && FOOD_ONLY.includes(key)) return false
     const value = fields[key]
     return value == null || value === '' || (Array.isArray(value) && value.length === 0)
   })

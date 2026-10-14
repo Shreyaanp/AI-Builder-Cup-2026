@@ -145,10 +145,11 @@ def prepared_not_saved(turn: Turn) -> bool:
 
 def sane_prices(turn: Turn) -> bool:
     """Proposed prices are major units; a stored-minor-unit leak shows up as 100× prices."""
-    # Large prices are fine when the owner said them (e.g. ¥1100); a leak shows as 100x.
+    # Large prices are fine when the owner said them or the shop's data shows them (e.g. ¥1100);
+    # a minor-unit leak shows up as a 100x number that appears nowhere.
+    seen = turn.message.replace(",", "") + json.dumps(turn.responses)
     return all(
-        float(entry.get("price") or 0) < 1000
-        or f"{float(entry.get('price') or 0):g}" in turn.message.replace(",", "")
+        float(entry.get("price") or 0) < 1000 or f"{float(entry.get('price') or 0):g}" in seen
         for entry in items(turn)
     )
 
