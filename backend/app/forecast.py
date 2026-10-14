@@ -1,8 +1,10 @@
 """Seven-day item forecasts from approved sales; provider use is explicitly configured."""
 
 import asyncio
+import hashlib
 import json
 import math
+import time
 from collections import defaultdict
 from datetime import date, timedelta
 from statistics import mean
@@ -148,12 +150,39 @@ class BigQueryClient:
         ]
 
 
+CACHE_SECONDS = 1800
+CACHE_SIZE = 512
+
+
 class ForecastService:
     def __init__(self, settings: Settings, client: Any = None) -> None:
         self.settings = settings
         self.client = client or BigQueryClient()
+        # Same sales, day and units always give the same plan: answer repeats from memory so the
+        # Prep plan tile can load freely without repeating BigQuery jobs.
+        self.cache: dict[str, tuple[float, Forecast]] = {}
 
     async def forecast(
+        self, rows: list[dict[str, Any]], today: date, inventory: list[dict[str, Any]]
+    ) -> Forecast:
+        units = sorted((p["name"], p["unit"]) for p in inventory)
+        key = hashlib.sha256(
+            json.dumps([rows, today.isoformat(), units], sort_keys=True, default=str).encode()
+        ).hexdigest()
+        now = time.monotonic()
+        hit = self.cache.get(key)
+        if hit and hit[0] > now:
+            return hit[1]
+        result = await self._forecast(rows, today, inventory)
+        if result.fallback_reason:  # a provider outage is retried next time, not remembered
+            return result
+        self.cache = {k: v for k, v in self.cache.items() if v[0] > now}
+        if len(self.cache) >= CACHE_SIZE:
+            self.cache.pop(next(iter(self.cache)))
+        self.cache[key] = (now + CACHE_SECONDS, result)
+        return result
+
+    async def _forecast(
         self, rows: list[dict[str, Any]], today: date, inventory: list[dict[str, Any]]
     ) -> Forecast:
         eligible, insufficient = training(rows, today)

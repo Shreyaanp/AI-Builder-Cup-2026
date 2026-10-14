@@ -88,6 +88,34 @@ async def test_insufficient_history_never_calls_bigquery_and_failures_fall_back(
 
 
 @pytest.mark.asyncio
+async def test_repeat_loads_reuse_the_plan_but_outages_are_retried():
+    fake = AsyncMock()
+    fake.query.return_value = [
+        {
+            "item": "Kopi",
+            "forecast_date": (TODAY + timedelta(days=i)).isoformat(),
+            "forecast_value": 25,
+        }
+        for i in range(1, 8)
+    ]
+    service = ForecastService(Settings(_env_file=None, forecast_backend="bigquery"), fake)
+    first = await service.forecast(history(), TODAY, [])
+    for _ in range(5):  # the Prep plan tile reloading with My shop
+        assert await service.forecast(history(), TODAY, []) == first
+    fake.query.assert_awaited_once()
+    # New sales change the inputs, so the plan is recomputed.
+    await service.forecast(history(days=35), TODAY, [])
+    assert fake.query.await_count == 2
+    # A provider failure falls back but is not remembered.
+    failing = AsyncMock()
+    failing.query.side_effect = RuntimeError("fixture")
+    service = ForecastService(Settings(_env_file=None, forecast_backend="bigquery"), failing)
+    await service.forecast(history(), TODAY, [])
+    await service.forecast(history(), TODAY, [])
+    assert failing.query.await_count == 2
+
+
+@pytest.mark.asyncio
 async def test_partial_bigquery_output_falls_back_with_truthful_label():
     fake = AsyncMock()
     fake.query.return_value = [
