@@ -304,6 +304,50 @@ def test_offline_coach_halal_answer_is_reviewed_then_published(app) -> None:
         assert public["facts"] == {"halal": "yes"}
 
 
+def test_offline_coach_prepares_daily_price_and_sold_out_change(app) -> None:
+    with TestClient(app) as client:
+        join(client)
+        receipt = approve(client, propose_business(client))
+        bid = receipt["business_id"]
+        products = [
+            {"name": "Kopi", "price": 180, "unit": "cup", "stock": 10},
+            {"name": "Kaya Toast", "price": 250, "unit": "plate", "stock": 5},
+        ]
+        approve(
+            client,
+            client.post(
+                "/api/v1/proposals",
+                json={
+                    "kind": "inventory",
+                    "business_id": bid,
+                    "revision": receipt["revision"],
+                    "products": products,
+                },
+            ).json(),
+        )
+        events = stream_events(
+            client,
+            {"message": "Kopi is two dollars now, kaya toast sold out", "business_id": bid},
+        )
+        proposal = next(event["data"] for event in events if event["kind"] == "proposal")
+        assert isinstance(proposal, dict)
+        changed = {p["name"]: p for p in proposal["snapshot"]["products"]}
+        assert changed["Kopi"]["price"] == 200
+        assert changed["Kaya Toast"]["available"] is False
+        # Prepared only: the saved menu is unchanged until the owner confirms.
+        saved = {p["name"]: p for p in client.get(f"/api/v1/businesses/{bid}/inventory").json()}
+        assert saved["Kopi"]["price"] == 180
+        assert saved["Kaya Toast"]["available"] is True
+        # A price in another currency is never converted or guessed for this SGD shop.
+        events = stream_events(client, {"message": "Kopi is 20 rupees now", "business_id": bid})
+        assert not any(event["kind"] == "proposal" for event in events)
+        # A forecast question about a menu item is not mistaken for a price change.
+        events = stream_events(
+            client, {"message": "How many kopi for 20 people?", "business_id": bid}
+        )
+        assert not any(event["kind"] == "proposal" for event in events)
+
+
 def test_proposal_accepts_custom_names_and_rejects_oversized_facts(app) -> None:
     with TestClient(app) as client:
         join(client)
