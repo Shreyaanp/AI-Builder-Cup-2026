@@ -122,7 +122,7 @@ jobs:
             --service-account=ogoogle-face-runtime@ichiropractic.iam.gserviceaccount.com \
             --set-secrets=FACE_WORKER_TOKEN=ogoogle-face-token:1 \
             --set-env-vars=FACE_REQUIRE_MODELS=true \
-            --no-allow-unauthenticated --min=0 --max=2 --concurrency=1 \
+            --no-allow-unauthenticated --min=0 --max=1 --concurrency=1 \
             --cpu=1 --memory=2Gi --timeout=60 --cpu-boost --quiet
           url=$(gcloud run services describe ogoogle-face --project=ichiropractic --region=asia-south1 --format='value(status.url)')
           test -n "$url"
