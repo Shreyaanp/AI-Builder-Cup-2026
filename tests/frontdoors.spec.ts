@@ -88,7 +88,13 @@ test('marketing has two paths, all sections, no splash or auth bootstrap', async
     'href',
     'https://business.chalkboard.shreyaan.work',
   )
-  await expect(page.getByText(/Social proof placeholder/)).toBeVisible()
+  // The scroll story and bento are part of the page (visible immediately with reduced motion).
+  await expect(
+    page.getByRole('heading', { name: 'From chalkboard to every phone, in three moves.' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Everything a corner shop needs. Nothing it doesn’t.' }),
+  ).toBeVisible()
   expect(await page.locator('[data-testid="brand-splash"]').count()).toBe(0)
   expect(await page.locator('link[rel="manifest"]').count()).toBe(0)
   expect(
