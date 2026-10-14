@@ -29,6 +29,7 @@ from .customer import CustomerAnswers
 from .customer_routes import router as customer_router
 from .discover import MapsService
 from .discover import router as discover_router
+from .discover_ask import router as discover_ask_router
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .forecast import ForecastService
 from .forecast_routes import router as forecast_router
@@ -188,6 +189,7 @@ def create_app(
     app.include_router(forecast_router)
     app.include_router(customer_router)
     app.include_router(discover_router)
+    app.include_router(discover_ask_router)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,

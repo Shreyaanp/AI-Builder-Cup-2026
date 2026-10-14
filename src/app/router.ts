@@ -12,7 +12,8 @@ export function resolveApp(url: URL): AppKind {
 }
 
 export function canonicalCustomerPath(path: string): string {
-  if (/^\/discover\/?$/.test(path)) return '/explore/'
+  // The old list link opens the list; /explore/ itself is the AI-first front door.
+  if (/^\/discover\/?$/.test(path)) return '/explore/browse'
   if (path.startsWith('/s/')) return '/explore' + path
   return path
 }

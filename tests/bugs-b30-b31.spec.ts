@@ -48,7 +48,7 @@ async function axe(page: Page) {
 for (const mode of ['light', 'dark'] as const) {
   test(`B30 ${mode}: customer theme covers explore, shop and chat`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: mode })
-    await page.goto('/explore/')
+    await page.goto('/explore/browse')
     await expect(
       page.getByRole('heading', { name: 'What’s around me?', exact: true }),
     ).toBeVisible()

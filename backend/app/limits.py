@@ -23,6 +23,8 @@ JSON_BODY_BYTES = 16_384
 LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "discover": ((30, 60),),
     "discover:place": ((10, 60), (100, 86_400)),
+    # Customer AI entry: one model call per ask.
+    "discover:ask": ((15, 60), (300, 86_400)),
     "stock:ip": ((30, 86_400),),
     "stock:shop": ((300, 86_400),),
     "stock:read": ((60, 60),),

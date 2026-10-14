@@ -24,6 +24,7 @@ import { currentPath, subscribePath } from './navigation'
 import './frontdoors.css'
 
 const Discover = lazy(() => import('../discover/Discover'))
+const AskHome = lazy(() => import('../discover/AskHome'))
 const PublicShop = lazy(() => import('../public/PublicShop'))
 const journeyKey = 'chalkboard.customer.journey'
 export type CustomerLocation = { gps: [number, number] | null; place: FoundPlace | null }
@@ -69,6 +70,12 @@ function CustomerPages() {
   const t = useFrontCopy()
   // Shop IDs are server UUIDs, or the fixed `demo-…` IDs of seeded demo shops.
   const id = /^\/explore\/s\/([0-9a-f-]{36}|demo-[a-z0-9-]{1,40})\/?$/i.exec(path)?.[1]
+  // The full list: its own path, or any shared list link with filters (?category=, ?area=…).
+  const browse =
+    /^\/explore\/browse\/?$/.test(path) ||
+    ['q', 'category', 'area', 'open', 'halal', 'budget', 'view'].some((key) =>
+      new URLSearchParams(location.search).has(key),
+    )
   useEffect(() => {
     const restore = () =>
       requestAnimationFrame(() =>
@@ -101,7 +108,7 @@ function CustomerPages() {
       <a href="#customer-content" className="skip-link">
         {t.skip}
       </a>
-      {coachmark && !id && (
+      {coachmark && browse && (
         <Box sx={{ maxWidth: 1100, mx: 'auto', px: 4, pt: 4 }}>
           <Alert action={<Button onClick={() => setCoachmark(false)}>{t.gotIt}</Button>}>
             {t.coachmark}
@@ -112,8 +119,11 @@ function CustomerPages() {
         <Suspense fallback={<BrandSplash />}>
           {id ? (
             <PublicShop key={id} id={id} />
-          ) : (
+          ) : browse ? (
             <Discover initialLocation={locationChoice} interests={interests} />
+          ) : (
+            // AI-first front door (user decision, Oct 15); the full list is one tap away.
+            <AskHome initialLocation={locationChoice} />
           )}
         </Suspense>
       </div>
