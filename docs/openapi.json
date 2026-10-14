@@ -720,6 +720,43 @@
         }
       }
     },
+    "/api/v1/tts": {
+      "post": {
+        "summary": "Speak",
+        "description": "A coach reply as natural speech (MP3); 204 means use the phone's own voice.",
+        "operationId": "speak_api_v1_tts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpeakRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/google-sim": {
       "get": {
         "summary": "State",
@@ -2256,6 +2293,52 @@
         }
       }
     },
+    "/api/v1/place-photo": {
+      "get": {
+        "summary": "Place Photo",
+        "operationId": "place_photo_api_v1_place_photo_get",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "title": "Name"
+            }
+          },
+          {
+            "name": "width",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 800,
+              "minimum": 64,
+              "default": 800,
+              "title": "Width"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "summary": "Health",
@@ -3026,6 +3109,25 @@
             "type": "boolean",
             "title": "Demo",
             "default": false
+          },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          },
+          "photo_authors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Photo Authors",
+            "default": []
           }
         },
         "type": "object",
@@ -4034,6 +4136,28 @@
           "facts"
         ],
         "title": "SimState"
+      },
+      "SpeakRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Language",
+            "default": "en"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "SpeakRequest"
       },
       "ThreadMessage": {
         "properties": {

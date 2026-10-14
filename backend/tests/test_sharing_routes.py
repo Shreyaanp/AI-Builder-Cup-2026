@@ -73,6 +73,8 @@ def test_public_shop_requires_sharing_but_no_workspace(app) -> None:
                 "hours": "",
                 "phone": "",
                 "currency": "SGD",
+                "open_now": None,
+                "last_confirmed": None,
                 "facts": {},
                 "products": [{"name": "Chai", "price": 1500, "unit": "cup", "available": True}],
             }

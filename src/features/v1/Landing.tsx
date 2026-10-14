@@ -19,6 +19,7 @@ import { LegalDialog } from './LegalDialog'
 import type { LegalDocument } from './LegalDialog'
 import { useCopy } from './strings'
 import { formatPrice } from './format'
+import { JourneyProgress } from '../frontdoors/OwnerJourney'
 
 /** Public landing page (signed-out). Phone-first; two-column hero with a live-preview mock on wide screens. */
 export function Landing({ onPreview }: { onPreview: () => void }) {
@@ -62,6 +63,7 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
           }}
         >
           <Stack spacing={3}>
+            <JourneyProgress step={1} />
             <Typography variant="labelLarge" sx={{ color: roles.primary }}>
               {t.landingEyebrow}
             </Typography>

@@ -270,6 +270,8 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
 export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> = {
   'zh-Hans': {
     ...chatTranslations['zh-Hans'],
+    chatTitle: '和店家聊聊',
+    chatIntro: '根据店铺公开的信息即时回答，或留言给店主，店主会回复你。',
     askTitle: '询问这家店',
     question: '你的问题',
     questionHint: '可用任何语言提问…',
@@ -319,6 +321,9 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   ms: {
     ...chatTranslations['ms'],
+    chatTitle: 'Sembang dengan kedai',
+    chatIntro:
+      'Dapatkan jawapan segera daripada butiran kedai, atau hantar mesej yang akan dibalas oleh pemilik.',
     askTitle: 'Tanya tentang kedai ini',
     question: 'Soalan anda',
     questionHint: 'Tanya dalam apa-apa bahasa…',
@@ -369,6 +374,9 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   ta: {
     ...chatTranslations['ta'],
+    chatTitle: 'கடையுடன் பேசுங்கள்',
+    chatIntro:
+      'கடையின் விவரங்களிலிருந்து உடனடி பதில் பெறுங்கள், அல்லது உரிமையாளர் பதிலளிக்கும் செய்தியை அனுப்புங்கள்.',
     askTitle: 'இந்தக் கடையைப் பற்றிக் கேளுங்கள்',
     question: 'உங்கள் கேள்வி',
     questionHint: 'எந்த மொழியிலும் கேட்கலாம்…',
@@ -420,6 +428,8 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   ja: {
     ...chatTranslations['ja'],
+    chatTitle: 'お店とチャット',
+    chatIntro: 'お店の掲載情報からすぐに回答します。オーナーに直接メッセージを送ることもできます。',
     askTitle: 'このお店に質問する',
     question: '質問',
     questionHint: 'どの言語でも質問できます…',
@@ -470,6 +480,8 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   ko: {
     ...chatTranslations['ko'],
+    chatTitle: '가게와 채팅',
+    chatIntro: '가게 정보로 바로 답해 드려요. 사장님께 메시지를 보낼 수도 있어요.',
     askTitle: '이 가게에 물어보기',
     question: '질문',
     questionHint: '어떤 언어로든 물어보세요…',
@@ -519,6 +531,9 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   id: {
     ...chatTranslations['id'],
+    chatTitle: 'Chat dengan toko',
+    chatIntro:
+      'Dapatkan jawaban instan dari detail toko, atau kirim pesan yang akan dibalas pemilik.',
     askTitle: 'Tanya tentang toko ini',
     question: 'Pertanyaan Anda',
     questionHint: 'Tanya dalam bahasa apa pun…',
@@ -568,6 +583,8 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   th: {
     ...chatTranslations['th'],
+    chatTitle: 'แชตกับร้าน',
+    chatIntro: 'รับคำตอบทันทีจากข้อมูลของร้าน หรือส่งข้อความถึงเจ้าของร้านเพื่อให้ตอบกลับ',
     askTitle: 'สอบถามร้านนี้',
     question: 'คำถามของคุณ',
     questionHint: 'ถามเป็นภาษาใดก็ได้…',
@@ -617,6 +634,9 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   vi: {
     ...chatTranslations['vi'],
+    chatTitle: 'Trò chuyện với cửa hàng',
+    chatIntro:
+      'Nhận câu trả lời ngay từ thông tin của cửa hàng, hoặc nhắn tin để chủ cửa hàng trả lời.',
     askTitle: 'Hỏi về cửa hàng này',
     question: 'Câu hỏi của bạn',
     questionHint: 'Hỏi bằng bất kỳ ngôn ngữ nào…',
@@ -667,6 +687,9 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   fil: {
     ...chatTranslations['fil'],
+    chatTitle: 'Makipag-chat sa tindahan',
+    chatIntro:
+      'Makakuha ng agarang sagot mula sa detalye ng tindahan, o magpadala ng mensahe na sasagutin ng may-ari.',
     askTitle: 'Magtanong tungkol sa tindahang ito',
     question: 'Ang tanong mo',
     questionHint: 'Magtanong sa kahit anong wika…',

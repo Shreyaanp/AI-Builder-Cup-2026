@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Alert, Box, Typography } from '@mui/material'
+import { Alert, Box, Typography, useTheme } from '@mui/material'
 import type { Place } from './types'
 
 type Marker = {
@@ -70,6 +70,7 @@ export default function DiscoverMap({
   loading: string
   demoLabel: string
 }) {
+  const roles = useTheme().material
   const container = useRef<HTMLDivElement>(null)
   const onOpenRef = useRef(onOpen)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -115,7 +116,7 @@ export default function DiscoverMap({
             marker.addListener('click', () => {
               onOpenRef.current(place)
               if (place.source === 'chalkboard')
-                location.assign('/s/' + encodeURIComponent(place.id))
+                location.assign('/explore/s/' + encodeURIComponent(place.id))
             }),
           )
           markers.push(marker)
@@ -135,7 +136,40 @@ export default function DiscoverMap({
       node?.replaceChildren()
     }
   }, [lat, lng, places, demo])
-  if (demo) return <Alert severity="info">{demoLabel}</Alert>
+  if (demo)
+    return (
+      <Box>
+        <Alert severity="info">{demoLabel}</Alert>
+        <Box
+          component="svg"
+          viewBox="0 0 400 300"
+          aria-hidden="true"
+          sx={{
+            width: '100%',
+            display: 'block',
+            mt: 3,
+            borderRadius: 4,
+            bgcolor: roles.surfaceContainerHigh,
+          }}
+        >
+          <path
+            d="M0 100h400M0 200h400M100 0v300M260 0v300"
+            stroke={roles.outlineVariant}
+            strokeWidth="16"
+            fill="none"
+          />
+          {places.map((place) => (
+            <g
+              key={place.id}
+              transform={`translate(${Math.max(32, Math.min(360, 200 + (place.lng - lng) * 10000))}, ${Math.max(32, Math.min(260, 150 - (place.lat - lat) * 10000))})`}
+            >
+              <circle r="18" fill={roles.primary} />
+              <circle r="6" fill={roles.onPrimary} />
+            </g>
+          ))}
+        </Box>
+      </Box>
+    )
   return (
     <Box>
       {state === 'error' ? (
