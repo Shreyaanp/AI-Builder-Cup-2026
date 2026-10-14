@@ -181,6 +181,8 @@ export const vi: Copy = {
     muslim_owned: 'Chủ là người Hồi giáo',
     not_stated: 'Chưa nêu',
   },
+  factInputHelp: 'Chọn gợi ý hoặc nhập tên bất kỳ. Tối đa 8 cách thanh toán, mỗi tên 40 ký tự.',
+  deliveryInputHelp: 'Chọn gợi ý hoặc nhập tên dịch vụ giao hàng (40 ký tự).',
   deliveryValues: {
     none: 'Không giao hàng',
     own: 'Tự giao hàng',

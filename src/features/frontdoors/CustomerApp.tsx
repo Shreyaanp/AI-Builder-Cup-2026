@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } fro
 import { Alert, Box, Button, Chip, LinearProgress, Stack, Typography } from '@mui/material'
 import { useLocale } from '../../state/hooks'
 import { discoverCopy } from '../discover/strings'
+import { categories } from '../discover/categories'
 import { PlaceSearch } from '../discover/PlaceSearch'
 import type { FoundPlace } from '../discover/PlaceSearch'
 import { useFrontCopy } from './strings'
@@ -12,7 +13,6 @@ import './frontdoors.css'
 const Discover = lazy(() => import('../discover/Discover'))
 const PublicShop = lazy(() => import('../public/PublicShop'))
 const journeyKey = 'chalkboard.customer.journey'
-const categories = ['kopi', 'hawker', 'bakery', 'cafe', 'grocery', 'catering'] as const
 export type CustomerLocation = { gps: [number, number] | null; place: FoundPlace | null }
 function firstRun() {
   try {

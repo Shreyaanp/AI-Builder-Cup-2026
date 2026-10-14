@@ -256,8 +256,8 @@ def get_business_context() -> dict[str, Any]:
 
 COMMON_QUESTIONS = {
     "halal": "Is your food halal?",
-    "payment_methods": "Which payments do you accept (cash, PayNow, card…)?",
-    "delivery": "Do you deliver, for example by Grab or foodpanda?",
+    "payment_methods": "Which payment methods do you accept? Any local method, card or cash.",
+    "delivery": "Do you deliver? If so, what is the service name, or do you deliver yourself?",
     "vegetarian_options": "Do you have vegetarian options?",
     "preorders": "Can customers order ahead?",
     "busy_hours": "When are you busiest?",
@@ -372,11 +372,15 @@ def _propose_shop(
     facts: dict[str, Any] = {
         "halal": (halal or "").strip().lower() or None,
         "vegetarian_options": vegetarian_options,
-        "delivery": (delivery or "").strip().lower() or None,
+        "delivery": _known_fact_name(delivery, {"none", "own", "grab", "foodpanda", "other"})
+        or None,
         "delivery_note": (delivery_note or "").strip() or None,
         "preorders": preorders,
         "preorder_lead_time": (preorder_lead_time or "").strip() or None,
-        "payment_methods": [m.strip().lower() for m in payment_methods]
+        "payment_methods": [
+            _known_fact_name(m, {"cash", "paynow", "card", "grabpay", "nets", "other"})
+            for m in payment_methods
+        ]
         if payment_methods
         else None,
         "busy_hours": (busy_hours or "").strip() or None,
@@ -468,6 +472,11 @@ def propose_business(
     )
 
 
+def _known_fact_name(value: str, known: set[str]) -> str:
+    value = value.strip()
+    return value.lower() if value.lower() in known else value
+
+
 def propose_customer_facts(
     halal: str = "",
     vegetarian_options: bool | None = None,
@@ -481,9 +490,11 @@ def propose_customer_facts(
 ) -> dict[str, Any]:
     """Prepare facts customers ask about for the owner to review, only as the owner states
     them; pass just the facts that changed. halal: yes, no, muslim_owned or not_stated.
-    vegetarian_options, preorders: true/false. delivery: none, own, grab, foodpanda or other
+    vegetarian_options, preorders: true/false. delivery: any service name, max 40 characters;
+    use none for no delivery, own for the shop's delivery. Existing grab/foodpanda keys work
     (delivery_note up to 80 characters, e.g. "within 3 km"). preorder_lead_time e.g. "1 day
-    ahead". payment_methods from cash, paynow, card, grabpay, nets, other. busy_hours e.g.
+    ahead". payment_methods: up to 8 names, each max 40 characters, exactly as the owner says
+    (e.g. UPI, PayPay, GCash, card, cash). Known keys remain compatible. busy_hours e.g.
     "12:00-13:30". custom_facts: answers to get_question_plan questions (key, label, value)."""
     ctx = current.get()
     if not ctx or not ctx.business_id:

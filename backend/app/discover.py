@@ -36,13 +36,35 @@ PLACES_MASK = ",".join(
     )
 )
 CATEGORIES = {
-    "kopi": ("cafe", ("kopi", "coffee", "tea", "teh")),
-    "hawker": ("food_court", ("hawker", "food_court", "market", "food")),
-    "bakery": ("bakery", ("bakery", "bake", "bread")),
-    "café": ("cafe", ("café", "cafe", "coffee")),
-    "grocery": ("grocery_store", ("grocery", "supermarket")),
-    "catering": ("restaurant", ("catering", "caterer")),
+    "coffee": (("cafe",), ("kopi", "coffee", "tea", "teh", "cafe", "café")),
+    "food": (
+        ("restaurant", "food_court", "meal_takeaway"),
+        ("restaurant", "food", "hawker", "cater", "eatery", "dhaba", "tiffin"),
+    ),
+    "bakery": (("bakery",), ("bakery", "bake", "bread")),
+    "grocery": (
+        ("grocery_store", "supermarket"),
+        ("grocer", "supermarket", "minimart", "convenience"),
+    ),
+    "pharmacy": (("pharmacy",), ("pharmacy", "chemist", "drugstore")),
+    "hardware": (("hardware_store",), ("hardware", "tools", "building supplies")),
+    "fashion": (
+        ("clothing_store", "shoe_store"),
+        ("clothing", "fashion", "apparel", "boutique", "shoe"),
+    ),
+    "beauty": (("beauty_salon", "hair_care"), ("beauty", "salon", "hair", "barber", "nail", "spa")),
+    "services": (("laundry",), ("service", "laundry", "repair", "plumb", "electric", "tailor")),
+    "other": (("store",), ("store", "shop", "retail", "florist")),
 }
+# Existing query values stay valid; the UI presents only the generic categories.
+CATEGORY_ALIASES = {
+    "kopi": "coffee",
+    "hawker": "food",
+    "cafe": "coffee",
+    "café": "coffee",
+    "catering": "food",
+}
+CATEGORIES.update({alias: CATEGORIES[key] for alias, key in CATEGORY_ALIASES.items()})
 # Google Places (New) types for "what's around me": small local businesses, food and non-food.
 LOCAL_SHOP_TYPES = [
     *("restaurant", "cafe", "bakery", "food_court", "meal_takeaway"),
@@ -322,7 +344,7 @@ class MapsService:
                     "pageSize": 20,
                 }
                 if category:
-                    payload["includedType"] = CATEGORIES[category][0]
+                    payload["includedType"] = CATEGORIES[category][0][0]
             else:
                 method = "searchNearby"
                 # Nearest first, and every kind of local shop, not only food.
@@ -330,7 +352,9 @@ class MapsService:
                     "locationRestriction": {"circle": circle},
                     "maxResultCount": 20,
                     "rankPreference": "DISTANCE",
-                    "includedTypes": [CATEGORIES[category][0]] if category else LOCAL_SHOP_TYPES,
+                    "includedTypes": list(CATEGORIES[category][0])
+                    if category
+                    else LOCAL_SHOP_TYPES,
                 }
             try:
                 response = await self.client.post(
@@ -395,7 +419,7 @@ def matches(place: DiscoveryPlace, q: str, category: str, only_open: bool) -> bo
     query = re.sub(r"\b(near me|open now|nearby)\b", "", q, flags=re.I).strip()
     if query and not all(word in text for word in re.findall(r"\w+", query.casefold())):
         return False
-    if category and not any(term in text for term in CATEGORIES[category][1]):
+    if category and not any(term in place.category.casefold() for term in CATEGORIES[category][1]):
         return False
     return not only_open or place.open_now is True
 

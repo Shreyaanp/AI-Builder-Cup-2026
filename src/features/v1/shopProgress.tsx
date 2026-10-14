@@ -4,6 +4,7 @@ import type { ShopFacts } from './api'
 import type { Copy } from './strings'
 import type { Workspace } from './workspaceContext'
 import { hasHours, weekdays, type DayHours } from '../shop/hoursModel'
+import { factName } from './factNames'
 
 export interface Step {
   id: string
@@ -139,7 +140,7 @@ export type AskFact = (typeof ASK_ORDER)[number]
 
 // Mirrors FOOD in backend/app/business_profile.py: food facts only for food and drink shops.
 const FOOD =
-  /food|kopi|coffee|cafe|café|tea|bakery|bake|cake|hawker|stall|restaurant|eat|kitchen|noodle|rice|bar|drink|juice|dessert/i
+  /food|kopi|coffee|cafe|café|tea|bakery|bake|cake|hawker|stall|restaurant|eat|kitchen|noodle|rice|bar|drink|juice|dessert|食|餐|咖啡|面包|茶|อาหาร|กาแฟ|ขนมปัง|ชา|カフェ|パン|コーヒー|レストラン|음식|카페|커피|식당|빵|makan|kedai kopi|warung|restoran|roti|minuman|nhà hàng|quán|cà phê|trà|bánh mì|kainan|karinderya|pagkain|kape|panaderya|tsaa|உணவு|காபி|தேநீர்|பேக்கரி|dhaba|mess|tiffin|chai|भोजन|खाना|चाय|ढाबा|मिठाई|टिफिन|नाश्ता/i
 const FOOD_ONLY: AskFact[] = ['halal', 'vegetarian_options', 'delivery', 'preorders']
 
 export function missingFacts(fields: ShopFacts & { category?: string; name?: string }): AskFact[] {
@@ -169,12 +170,14 @@ export function factEntries(
   if (fields.payment_methods?.length)
     entries.push({
       key: 'payment_methods',
-      value: fields.payment_methods.map((method) => t.paymentValues[method]).join(', '),
+      value: fields.payment_methods.map((method) => factName(method, t.paymentValues)).join(', '),
     })
   if (fields.delivery)
     entries.push({
       key: 'delivery',
-      value: [t.deliveryValues[fields.delivery], fields.delivery_note].filter(Boolean).join(' · '),
+      value: [factName(fields.delivery, t.deliveryValues), fields.delivery_note]
+        .filter(Boolean)
+        .join(' · '),
     })
   if (fields.vegetarian_options != null)
     entries.push({ key: 'vegetarian_options', value: yesNo(fields.vegetarian_options) })
