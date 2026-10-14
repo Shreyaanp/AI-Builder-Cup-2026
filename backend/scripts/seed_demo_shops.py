@@ -1,6 +1,6 @@
-"""Seed six clearly labelled demo shops (fixed `demo-*` IDs) for /explore and customer pages.
+"""Seed labelled fictional shops, six weeks of sales and sample customer activity.
 
-Every shop is fictional: invented names, fictional +65 6000 00xx numbers, approximate pins, and
+Every shop is fictional: invented names, non-contactable sample numbers, approximate pins, and
 the "Demo shop" label on every customer-facing surface. Re-running is safe (idempotent).
 
 Usage (from backend/):
@@ -15,27 +15,19 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from dataclasses import dataclass
+from collections import Counter
+from datetime import date, datetime, time, timedelta
+from random import Random
 from typing import Any
+from uuid import NAMESPACE_URL, uuid5
+from zoneinfo import ZoneInfo
 
-from app.merchant import BusinessFields, MerchantRepository, ProductFields
+from app.customer import Inquiry, ThreadMessage
+from app.merchant import MerchantRepository
+from app.sales import today_for
+from scripts.demo_catalogue import INTERNATIONAL_SHOPS, DemoShop, item, shop
 
 EMULATOR_PROJECT = "demo-ogoogle-local"
-
-
-@dataclass(frozen=True)
-class DemoShop:
-    id: str
-    fields: BusinessFields
-    products: list[ProductFields]
-
-
-def item(name: str, cents: int, unit: str = "item", available: bool = True) -> ProductFields:
-    return ProductFields(name=name, price=cents, unit=unit, available=available)
-
-
-def shop(bid: str, products: list[ProductFields], **fields: Any) -> DemoShop:
-    return DemoShop(bid, BusinessFields(demo=True, currency="SGD", **fields), products)
 
 
 SHOPS = [
@@ -192,12 +184,114 @@ SHOPS = [
             item("Graduation bouquet", 5500, "bouquet"),
         ],
     ),
+    *INTERNATIONAL_SHOPS,
 ]
 
 
-def seed(store: MerchantRepository, owner_uid: str) -> list[tuple[str, bool]]:
-    """Seed every demo shop; returns (id, changed) pairs. Safe to run repeatedly."""
-    return [(s.id, store.seed_demo_shop(owner_uid, s.id, s.fields, s.products)) for s in SHOPS]
+def sales_history(demo: DemoShop, today: date) -> list[dict[str, Any]]:
+    """Stable per date/item: weekly seasonality, a small trend, and bounded noise.
+
+    End yesterday in the shop's timezone; today's trading is never invented as a full day.
+    Stable absolute dates also keep overlapping days identical when rerun tomorrow.
+    """
+    rows = []
+    for offset in range(42, 0, -1):
+        day = today - timedelta(days=offset)
+        for index, product in enumerate(demo.products):
+            rng = Random(f"{demo.id}/{product.name}/{day}")
+            base = 10 + (len(demo.products) - index) * 3
+            if product.unit == "service":
+                base = 3 + index % 3
+            pattern = (0.85, 0.90, 0.95, 1.0, 1.10, 1.35, 1.20)[day.weekday()]
+            trend = 1 + (day - date(2026, 1, 1)).days * 0.0002
+            quantity = max(1, round(base * pattern * max(0.5, trend) * rng.uniform(0.90, 1.10)))
+            rows.append(
+                {
+                    "date": day.isoformat(),
+                    "item": product.name,
+                    "quantity": quantity,
+                    "revenue": product.price * quantity,
+                }
+            )
+    return rows
+
+
+def customer_activity(demo: DemoShop, today: date) -> list[Inquiry]:
+    """Two questions last week and one today, visibly fictional, with stable IDs."""
+    monday = today - timedelta(days=today.weekday())
+    days = [monday - timedelta(days=5), monday - timedelta(days=2), today]
+    messages = [
+        f"[Demo] Can I collect two {demo.products[0].name} tomorrow?",
+        "[Demo] Which payment methods do you accept?",
+        "[Demo] Are you open this afternoon? This is a sample inquiry.",
+    ]
+    return [
+        Inquiry(
+            id=str(uuid5(NAMESPACE_URL, f"chalkboard-demo/{demo.id}/inquiry/{i}")),
+            name=f"Demo customer {i + 1}",
+            contact=f"demo-customer-{i + 1}@example.invalid",
+            message=message,
+            created=(
+                stamp := datetime.combine(
+                    day, time.min if day == today else time(10, 15), ZoneInfo(demo.fields.timezone)
+                ).timestamp()
+            ),
+            messages=[
+                ThreadMessage(
+                    id=str(uuid5(NAMESPACE_URL, f"chalkboard-demo/{demo.id}/message/{i}")),
+                    author="customer",
+                    text=message,
+                    created=stamp,
+                )
+            ],
+        )
+        for i, (day, message) in enumerate(zip(days, messages, strict=True))
+    ]
+
+
+def seed(
+    store: MerchantRepository,
+    seed_owner_uid: str = "demo-world-owner",
+    *,
+    owner_uid: str | None = None,
+    city: str | None = None,
+    today: date | None = None,
+) -> list[tuple[str, bool]]:
+    """Use normal sealed sales imports. Reruns preserve revisions and customer replies.
+
+    The seed owner retains access; the optional real account gets one shop per city.
+    Existing demo IDs owned by someone else are still rejected by seed_demo_shop.
+    """
+    attached: set[str] = set()
+    results = []
+    for demo in SHOPS:
+        if city and demo.city != city:
+            continue
+        day = today or today_for(demo.fields.model_dump())
+        changed = store.seed_demo_shop(seed_owner_uid, demo.id, demo.fields, demo.products)
+        existing = store.sales_history(seed_owner_uid, demo.id)
+        expected = sales_history(demo, day)
+        # Only changed/new days go through import approval. No duplicate receipts/revisions.
+        previous = {r["date"]: [] for r in existing}
+        for row in existing:
+            previous[row["date"]].append(row)
+        incoming: dict[str, list[dict[str, Any]]] = {}
+        for row in expected:
+            incoming.setdefault(row["date"], []).append(row)
+        pending = [r for d, rows in incoming.items() if previous.get(d) != rows for r in rows]
+        if pending:
+            proposal = store.prepare_sales(seed_owner_uid, demo.id, pending)
+            store.save_sales(seed_owner_uid, demo.id, proposal["id"], proposal["digest"])
+            changed = True
+        changed = (
+            store.seed_demo_inquiries(seed_owner_uid, demo.id, customer_activity(demo, day))
+            or changed
+        )
+        if owner_uid and demo.city not in attached:
+            changed = store.attach_demo_owner(seed_owner_uid, demo.id, owner_uid) or changed
+            attached.add(demo.city)
+        results.append((demo.id, changed))
+    return results
 
 
 def open_store(args: argparse.Namespace) -> MerchantRepository:
@@ -220,7 +314,11 @@ def open_store(args: argparse.Namespace) -> MerchantRepository:
 
 def parse(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    parser.add_argument("--owner-uid", required=True, help="Account that owns the demo shops")
+    parser.add_argument("--owner-uid", help="Also attach one demo shop per city to this account")
+    parser.add_argument(
+        "--seed-owner-uid", default="demo-world-owner", help="Owner of all fixtures"
+    )
+    parser.add_argument("--city", type=str.casefold, choices=sorted({s.city for s in SHOPS}))
     parser.add_argument("--dry-run", action="store_true", help="Print the plan; write nothing")
     parser.add_argument("--namespace", default="ogoogle_ai_v1", help="App Firestore namespace")
     parser.add_argument("--sqlite", help="Seed a local SQLite merchant database instead")
@@ -234,8 +332,10 @@ def parse(argv: list[str] | None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse(argv)
-    if not args.owner_uid.strip():
-        print("--owner-uid must not be empty.", file=sys.stderr)
+    if not args.seed_owner_uid.strip() or (
+        args.owner_uid is not None and not args.owner_uid.strip()
+    ):
+        print("Owner UIDs must not be empty.", file=sys.stderr)
         return 2
     target = (
         f"SQLite {args.sqlite}"
@@ -244,7 +344,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.project
         else f"Firestore emulator {os.getenv('FIRESTORE_EMULATOR_HOST')} / {args.namespace}"
     )
-    if not args.sqlite and not args.project and not os.getenv("FIRESTORE_EMULATOR_HOST"):
+    if (
+        not args.dry_run
+        and not args.sqlite
+        and not args.project
+        and not os.getenv("FIRESTORE_EMULATOR_HOST")
+    ):
         print(
             "Refusing: FIRESTORE_EMULATOR_HOST is not set. Start the emulator, use --sqlite, or "
             "pass --project explicitly to seed a real project.",
@@ -252,13 +357,25 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
     print(f"Target: {target}")
-    for demo in SHOPS:
+    selected = [s for s in SHOPS if not args.city or s.city == args.city]
+    print(f"Demo shops per city: {dict(Counter(s.city for s in selected))}")
+    attached: set[str] = set()
+    for demo in selected:
         sold_out = sum(not p.available for p in demo.products)
         print(f"  {demo.id}: {demo.fields.name} · {len(demo.products)} items, {sold_out} sold out")
+        print("    42 days of demo sales; 3 demo customer inquiries; recap uses saved records")
+        if args.owner_uid and demo.city not in attached:
+            print(f"    Also attach this demo shop to owner {args.owner_uid}")
+            attached.add(demo.city)
     if args.dry_run:
         print("Dry run: nothing written.")
         return 0
-    for bid, changed in seed(open_store(args), args.owner_uid.strip()):
+    for bid, changed in seed(
+        open_store(args),
+        args.seed_owner_uid.strip(),
+        owner_uid=args.owner_uid.strip() if args.owner_uid else None,
+        city=args.city,
+    ):
         print(f"  {bid}: {'seeded' if changed else 'already up to date'}")
     return 0
 
