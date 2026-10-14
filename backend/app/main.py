@@ -360,6 +360,14 @@ def create_app(
             raise HTTPException(404, "Conversation not found.")
         messages = []
         for event in session.events:
+            # Voice turns are stored as transcripts, not text parts: show the finished ones too.
+            for name, role in (
+                ("input_transcription", "user"),
+                ("output_transcription", "assistant"),
+            ):
+                spoken = getattr(event, name, None)
+                if spoken and spoken.finished and (spoken.text or "").strip():
+                    messages.append({"role": role, "text": spoken.text.strip()[:4000]})
             if event.content and event.content.role in {"model", "user"}:
                 text = "".join(
                     part.text or "" for part in event.content.parts or [] if not part.thought
