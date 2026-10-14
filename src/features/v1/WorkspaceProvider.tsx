@@ -10,7 +10,6 @@ import type { Destination, Editor, Workspace } from './workspaceContext'
 import { ReviewDialog } from './ReviewDialog'
 import { BusinessDialog, ProductDialog } from './EditDialogs'
 import { FaceDialog } from './FaceDialog'
-import { useLocale } from '../../state/hooks'
 
 function readSpeak() {
   try {
@@ -29,7 +28,6 @@ export function WorkspaceProvider({
   me: Me
   children: ReactNode
 }) {
-  const language = useLocale()
   const t = useCopy()
   const theme = useTheme()
   const [installOffer, setInstallOffer] = useState(false)
@@ -269,7 +267,6 @@ export function WorkspaceProvider({
           open={faceOpen}
           businessId={value.active.id}
           api={api}
-          language={language}
           onClose={() => setFaceOpen(false)}
           onResult={() => {
             void reload()

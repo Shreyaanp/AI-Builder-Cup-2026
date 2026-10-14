@@ -10,16 +10,19 @@ import {
   Typography,
   useMediaQuery,
 } from '@mui/material'
-import { LEGAL_VERSION, PRIVACY, TERMS } from './legal'
+import { LEGAL_VERSION, LEGAL } from './legal'
 import { useCopy } from './strings'
+import { useLocale } from '../../state/hooks'
 import { windowClass } from '../../design/theme'
 
 export type LegalDocument = 'terms' | 'privacy' | null
 
 export function LegalDialog({ open, onClose }: { open: LegalDocument; onClose: () => void }) {
   const t = useCopy()
+  const locale = useLocale()
   const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
-  const sections = open === 'privacy' ? PRIVACY : TERMS
+  const document = LEGAL[locale] ?? LEGAL.en!
+  const sections = open === 'privacy' ? document.PRIVACY : document.TERMS
   return (
     <Dialog
       open={open !== null}
@@ -34,8 +37,9 @@ export function LegalDialog({ open, onClose }: { open: LegalDocument; onClose: (
           <Alert severity="warning">
             {t.draftLegal} · v{LEGAL_VERSION}
           </Alert>
+          {locale !== 'en' && <Typography variant="bodyMedium">{t.legalTranslation}</Typography>}
           {sections.map((section) => (
-            <Box key={section.heading} lang="en">
+            <Box key={section.heading} lang={LEGAL[locale] ? locale : 'en'}>
               <Typography component="h3" variant="titleMedium" sx={{ mb: 1 }}>
                 {section.heading}
               </Typography>

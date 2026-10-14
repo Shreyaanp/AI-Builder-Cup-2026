@@ -14,6 +14,9 @@ import {
   Typography,
 } from '@mui/material'
 import type { Api } from './api'
+import { useCopy } from './strings'
+import { useLocale } from '../../state/hooks'
+import { LEGAL } from './legal'
 
 interface Challenge {
   id: string
@@ -29,27 +32,27 @@ interface Capture {
   abort: AbortController
   chunks: Blob[]
 }
-const PROMPT_LABELS: Record<'turn_left' | 'turn_right' | 'look_up', { en: string; hi: string }> = {
-  turn_left: { en: 'Slowly turn your head left', hi: 'धीरे बाईं ओर देखें' },
-  turn_right: { en: 'Slowly turn your head right', hi: 'धीरे दाईं ओर देखें' },
-  look_up: { en: 'Slowly look up', hi: 'धीरे ऊपर देखें' },
-}
 export function FaceDialog({
   open,
   businessId,
   api,
-  language,
   onClose,
   onResult,
 }: {
   open: boolean
   businessId: string
   api: Api
-  /** Face check is 'coming soon'; its copy is English until it moves into the shared strings. */
-  language: string
   onClose: () => void
   onResult: () => void
 }) {
+  const t = useCopy()
+  const locale = useLocale()
+  const legal = LEGAL[locale] ?? LEGAL.en!
+  const promptLabels: Record<string, string> = {
+    turn_left: t.faceLeft,
+    turn_right: t.faceRight,
+    look_up: t.faceUp,
+  }
   const [consent, setConsent] = useState(false)
   const [state, setState] = useState<'consent' | 'capturing' | 'processing' | 'result'>('consent')
   const [notice, setNotice] = useState('')
@@ -57,7 +60,6 @@ export function FaceDialog({
   const [progress, setProgress] = useState(0)
   const video = useRef<HTMLVideoElement>(null)
   const live = useRef<Capture | null>(null)
-  const hi = language === 'hi'
   function release() {
     const capture = live.current
     live.current = null
@@ -105,21 +107,8 @@ export function FaceDialog({
         if (event.data.kind === 'ready') ready = true
         detecting = false
         if (event.data.kind === 'guidance')
-          setGuidance(
-            event.data.faces === 1
-              ? hi
-                ? 'एक चेहरा दिख रहा है'
-                : 'One face visible'
-              : hi
-                ? 'केवल अपना चेहरा दिखाएँ'
-                : 'Keep exactly one face visible',
-          )
-        if (event.data.kind === 'unavailable')
-          setGuidance(
-            hi
-              ? 'कैमरा मार्गदर्शन उपलब्ध नहीं; सर्वर जाँच करेगा'
-              : 'Camera guidance unavailable; server evaluation still applies',
-          )
+          setGuidance(event.data.faces === 1 ? t.faceOneVisible : t.faceOnlyOne)
+        if (event.data.kind === 'unavailable') setGuidance(t.faceGuidanceUnavailable)
       }
       worker.postMessage({ kind: 'init' })
       const mime = ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'].find((type) =>
@@ -140,8 +129,7 @@ export function FaceDialog({
         elapsed += 500
         setProgress(Math.min(100, elapsed / 80))
         const prompt = challenge.prompts[Math.min(1, Math.floor(elapsed / 4000))] ?? 'turn_left'
-        const label = PROMPT_LABELS[prompt as keyof typeof PROMPT_LABELS] ?? PROMPT_LABELS.turn_left
-        setNotice(hi ? label.hi : label.en)
+        setNotice(promptLabels[prompt] ?? t.faceLeft)
         if (ready && !detecting && video.current?.readyState === 4) {
           detecting = true
           void createImageBitmap(video.current)
@@ -161,11 +149,7 @@ export function FaceDialog({
       if (live.current === capture) {
         release()
         setState('result')
-        setNotice(
-          hi
-            ? 'कैमरा उपलब्ध नहीं। आपका ड्राफ्ट सुरक्षित है; बाद में फिर जाँचें।'
-            : 'Camera unavailable. Your draft is safe; you can retry later.',
-        )
+        setNotice(t.faceCameraUnavailable)
       }
     }
   }
@@ -194,21 +178,14 @@ export function FaceDialog({
       })
       if (live.current === capture) {
         setNotice(
-          (hi
-            ? 'जाँच लंबित है। ड्राफ्ट और उत्पाद जोड़ना जारी रख सकते हैं। '
-            : 'Verification pending. You can continue your draft and inventory. ') +
-            `${result.reason} · Liveness: ${result.liveness} · 1:1: ${result.one_to_one} · 1:N: ${result.one_to_many}`,
+          `${t.facePending} ${t.faceResult(result.reason, result.liveness, result.one_to_one, result.one_to_many)}`,
         )
         setState('result')
         onResult()
       }
     } catch {
       if (live.current === capture) {
-        setNotice(
-          hi
-            ? 'जाँच पूरी नहीं हुई। ड्राफ्ट सुरक्षित है।'
-            : 'Evaluation did not finish. Your draft is preserved.',
-        )
+        setNotice(t.faceFailed)
         setState('result')
       }
     } finally {
@@ -221,30 +198,20 @@ export function FaceDialog({
   }
   return (
     <Dialog open={open} onClose={close} fullWidth maxWidth="sm" aria-labelledby="face-title">
-      <DialogTitle id="face-title">{hi ? 'चेहरा पंजीकरण' : 'Face registration'}</DialogTitle>
+      <DialogTitle id="face-title">{t.faceTitle}</DialogTitle>
       <DialogContent>
         <Stack spacing={3}>
           {state === 'consent' && (
             <>
-              <Typography>
-                {hi
-                  ? 'हम पहचान मिलान के लिए चेहरे का वेक्टर रखते हैं। फोटो/वीडियो प्रक्रिया के बाद हटा दिए जाते हैं। यह व्यवसाय के मालिक होने का प्रमाण नहीं है।'
-                  : 'We retain a face template for matching, not your capture photos or video. Media is discarded after processing. A face match does not establish business ownership.'}
-              </Typography>
-              <Alert severity="info">
-                {hi
-                  ? 'जाँच अभी मूल्यांकन चरण में है। स्वतः पहचान प्रमाणित नहीं होती।'
-                  : 'Verification is under evaluation. Automatic identity approval is disabled.'}
-              </Alert>
+              {legal.BIOMETRIC_NOTICE.map((paragraph) => (
+                <Typography key={paragraph}>{paragraph}</Typography>
+              ))}
+              <Alert severity="info">{t.faceEvaluation}</Alert>
               <FormControlLabel
                 control={
                   <Checkbox checked={consent} onChange={(_, checked) => setConsent(checked)} />
                 }
-                label={
-                  hi
-                    ? 'मैं चेहरे का वेक्टर बनाने और दोहराए पंजीकरण की जाँच के लिए सहमत हूँ'
-                    : 'I consent to a face template and repeat-enrollment matching'
-                }
+                label={t.faceConsent}
               />
             </>
           )}
@@ -268,20 +235,16 @@ export function FaceDialog({
                 value={progress}
               />
               <Typography role="status">
-                {state === 'processing'
-                  ? hi
-                    ? 'निजी जाँच चल रही है…'
-                    : 'Evaluating privately…'
-                  : notice}
+                {state === 'processing' ? t.faceProcessing : notice}
               </Typography>
-              <Typography variant="body2">{guidance}</Typography>
+              <Typography variant="bodyMedium">{guidance}</Typography>
             </>
           )}
           {state === 'result' && <Alert severity="info">{notice}</Alert>}
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={close}>{hi ? 'ड्राफ्ट पर लौटें' : 'Return to draft'}</Button>
+        <Button onClick={close}>{t.faceReturn}</Button>
         {state === 'consent' && (
           <Button
             variant="contained"
@@ -290,7 +253,7 @@ export function FaceDialog({
               void begin()
             }}
           >
-            {hi ? 'कैमरा खोलें' : 'Open camera'}
+            {t.faceCamera}
           </Button>
         )}
         {state === 'result' && (
@@ -300,7 +263,7 @@ export function FaceDialog({
               setNotice('')
             }}
           >
-            {hi ? 'फिर जाँचें' : 'Try again'}
+            {t.retry}
           </Button>
         )}
       </DialogActions>
