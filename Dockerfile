@@ -6,7 +6,8 @@ COPY src ./src
 COPY public ./public
 COPY scripts ./scripts
 COPY index.html tsconfig*.json vite.config.ts ./
-RUN npm run build
+# Face-scan engine + model are gitignored (large binaries); fetch them into the image.
+RUN node scripts/prepare-face-assets.mjs && npm run build
 
 FROM ghcr.io/astral-sh/uv:0.13.0 AS uv
 FROM python:3.13-slim-bookworm AS runtime

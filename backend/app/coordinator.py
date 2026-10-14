@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import HTTPException
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 from .merchant import BusinessFields, MerchantRepository, ProductFields, ProposalRequest
 from .money import DEFAULT_CURRENCY, to_major, to_minor
@@ -41,7 +41,11 @@ class ProductInput(BaseModel):
     """One menu or catalogue item as the owner described it."""
 
     name: str = Field(description="Item name exactly as the owner uses it")
-    price: float = Field(description="Price in the shop's currency, major units (e.g. 15 or 12.5)")
+    price: float | None = Field(
+        default=None,
+        description="Price in the shop's currency, major units (e.g. 15 or 12.5). Leave empty "
+        "to keep the saved price of an existing item, e.g. when only marking it sold out.",
+    )
     unit: str = Field(default="item", description="Selling unit: cup, plate, kg, piece, item…")
     stock: int | None = Field(default=None, description="Units in stock, only if the owner said")
     available: bool = Field(default=True, description="False when the owner says it is sold out")
@@ -175,17 +179,31 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
             "instruction": "Ask for the shop name first and use propose_business.",
         }
     try:
+        # The model sometimes sends bare strings; validation turns that into a repairable error
+        # instead of a crash that ends the owner's turn with no reply.
+        items = TypeAdapter(list[ProductInput]).validate_python(items)
         context = ctx.store.context(ctx.uid, ctx.business_id)
         currency = shop_currency(context["business"])
         saved = {(p["name"].casefold(), p["unit"].casefold()): p for p in context["inventory"]}
+        by_name: dict[str, list[dict[str, Any]]] = {}
+        for p in context["inventory"]:
+            by_name.setdefault(p["name"].casefold(), []).append(p)
         products = []
         for item in items:
-            known = saved.get((item.name.strip().casefold(), item.unit.strip().casefold()))
+            name = item.name.strip().casefold()
+            known = saved.get((name, item.unit.strip().casefold()))
+            if not known and len(by_name.get(name, [])) == 1:
+                # "Kaya toast is sold out" names the item but rarely its unit.
+                known = by_name[name][0]
+            if item.price is None and not known:
+                raise ValueError(f"{item.name}: a new item needs a price")
             products.append(
                 ProductFields(
                     # Keep the saved spelling so a correction updates the same item.
                     name=known["name"] if known else item.name,
-                    price=to_minor(item.price, currency),
+                    price=known["price"]
+                    if item.price is None and known
+                    else to_minor(item.price or 0, currency),
                     unit=known["unit"] if known else item.unit,
                     stock=item.stock if item.stock is not None else (known or {}).get("stock"),
                     available=item.available,
