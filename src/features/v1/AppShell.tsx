@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box,
   Button,
   ButtonBase,
   Divider,
+  FormControlLabel,
   IconButton,
   ListItemIcon,
   ListItemText,
   ListSubheader,
   Menu,
   MenuItem,
+  Popover,
   Switch,
   TextField,
   ToggleButton,
@@ -23,6 +25,7 @@ import {
 import {
   Check,
   ChevronDown,
+  Download,
   Globe,
   Leaf,
   LogOut,
@@ -46,6 +49,8 @@ import { ShopOverview } from './ShopTiles'
 import { GoogleScreen } from './screens/GoogleScreen'
 import { PrivacyScreen } from './screens/PrivacyScreen'
 import { DiscardPrompt } from './DiscardPrompt'
+import { Sheet } from './Sheet'
+import { installState, offerInstall, subscribeInstall } from '../../app/pwa'
 
 export function AppShell() {
   const t = useCopy()
@@ -281,6 +286,17 @@ function TopBar() {
   const roles = useTheme().material
   const [shopMenu, setShopMenu] = useState<HTMLElement | null>(null)
   const [settings, setSettings] = useState<HTMLElement | null>(null)
+  // B36: share the banner's deferred prompt; dismissal only suppresses the banner.
+  const installation = useSyncExternalStore(subscribeInstall, installState)
+  const [installHelp, setInstallHelp] = useState(false)
+  const settingsButton = useRef<HTMLButtonElement>(null)
+  const returnInstallFocus = useRef(false)
+  useEffect(() => {
+    if (!installHelp && returnInstallFocus.current) {
+      settingsButton.current?.focus()
+      returnInstallFocus.current = false
+    }
+  }, [installHelp])
   return (
     <Box
       component="header"
@@ -323,8 +339,11 @@ function TopBar() {
       )}
       <Tooltip title={t.settings}>
         <IconButton
+          ref={settingsButton}
           aria-label={t.settings}
-          aria-haspopup="menu"
+          aria-haspopup="dialog"
+          aria-expanded={Boolean(settings)}
+          aria-controls={settings ? 'settings-panel' : undefined}
           onClick={(event) => setSettings(event.currentTarget)}
         >
           <Settings size={22} />
@@ -364,8 +383,24 @@ function TopBar() {
         </MenuItem>
       </Menu>
 
-      <Menu anchorEl={settings} open={Boolean(settings)} onClose={() => setSettings(null)}>
-        <ListSubheader sx={{ bgcolor: 'transparent', lineHeight: '36px' }}>
+      <Popover
+        anchorEl={settings}
+        open={Boolean(settings)}
+        onClose={() => setSettings(null)}
+        disableRestoreFocus={installHelp}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{
+          paper: {
+            id: 'settings-panel',
+            role: 'dialog',
+            'aria-modal': true,
+            'aria-label': t.settings,
+            sx: { py: 1, maxWidth: 'calc(100vw - 32px)' },
+          },
+        }}
+      >
+        <ListSubheader component="div" sx={{ bgcolor: 'transparent', lineHeight: '36px' }}>
           {t.language}
         </ListSubheader>
         <Box sx={{ px: 2, pb: 1, minWidth: 240 }}>
@@ -391,7 +426,9 @@ function TopBar() {
             ))}
           </TextField>
         </Box>
-        <ListSubheader sx={{ bgcolor: 'transparent', lineHeight: '36px' }}>{t.theme}</ListSubheader>
+        <ListSubheader component="div" sx={{ bgcolor: 'transparent', lineHeight: '36px' }}>
+          {t.theme}
+        </ListSubheader>
         <Box sx={{ px: 2, pb: 1 }}>
           <ToggleButtonGroup
             exclusive
@@ -401,35 +438,79 @@ function TopBar() {
               value && dispatch({ type: 'appearance', appearance: value })
             }
             aria-label={t.theme}
+            sx={{ '& .MuiToggleButton-root': { color: roles.onSurface, minHeight: 48 } }}
           >
             <ToggleButton value="system">{t.themeSystem}</ToggleButton>
             <ToggleButton value="light">{t.themeLight}</ToggleButton>
             <ToggleButton value="dark">{t.themeDark}</ToggleButton>
           </ToggleButtonGroup>
         </Box>
-        <MenuItem onClick={() => ws.setSpeakReplies(!ws.speakReplies)}>
-          <ListItemText primary={t.readAloud} />
-          <Switch
-            edge="end"
-            checked={ws.speakReplies}
-            tabIndex={-1}
-            slotProps={{ input: { 'aria-label': t.readAloud } }}
+        <Box sx={{ px: 2 }}>
+          <FormControlLabel
+            label={t.readAloud}
+            labelPlacement="start"
+            sx={{ m: 0, minHeight: 48, width: '100%', justifyContent: 'space-between' }}
+            control={
+              <Switch
+                checked={ws.speakReplies}
+                onChange={(_, checked) => ws.setSpeakReplies(checked)}
+              />
+            }
           />
-        </MenuItem>
+        </Box>
+        {installation !== 'installed' && (
+          <ButtonBase
+            sx={{
+              minHeight: 48,
+              width: '100%',
+              px: 2,
+              textAlign: 'left',
+              justifyContent: 'flex-start',
+              '&:hover': { bgcolor: roles.surfaceContainerHigh },
+              '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: -3 },
+            }}
+            onClick={() => {
+              setSettings(null)
+              if (installation === 'prompt') {
+                void offerInstall().catch(() => {
+                  returnInstallFocus.current = true
+                  setInstallHelp(true)
+                })
+              } else {
+                returnInstallFocus.current = true
+                setInstallHelp(true)
+              }
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <Download size={18} />
+            </ListItemIcon>
+            <ListItemText primary={t.installApp} />
+          </ButtonBase>
+        )}
         {identity.mode === 'firebase' && [
           <Divider key="divider" />,
-          <MenuItem
+          <ButtonBase
             key="signout"
+            sx={{
+              width: '100%',
+              minHeight: 48,
+              px: 2,
+              textAlign: 'left',
+              justifyContent: 'flex-start',
+              '&:hover': { bgcolor: roles.surfaceContainerHigh },
+              '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: -3 },
+            }}
             onClick={() => {
               setSettings(null)
               void identity.signOut()
             }}
           >
-            <ListItemIcon>
+            <ListItemIcon sx={{ minWidth: 36 }}>
               <LogOut size={18} />
             </ListItemIcon>
             <ListItemText primary={t.signOut} />
-          </MenuItem>,
+          </ButtonBase>,
         ]}
         <Typography
           variant="bodySmall"
@@ -438,7 +519,22 @@ function TopBar() {
         >
           {t.independent}
         </Typography>
-      </Menu>
+      </Popover>
+      <Sheet
+        open={installHelp}
+        onClose={() => setInstallHelp(false)}
+        titleId="settings-install-title"
+        title={t.installApp}
+        onEntered={() => {
+          document
+            .querySelector<HTMLButtonElement>('[aria-labelledby="settings-install-title"] button')
+            ?.focus()
+        }}
+      >
+        <Typography variant="bodyLarge">
+          {installation === 'ios' ? t.installIos : t.installUnavailable}
+        </Typography>
+      </Sheet>
     </Box>
   )
 }
