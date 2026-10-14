@@ -1,6 +1,10 @@
 import type { Copy } from '../strings'
 
 export const ja: Copy = {
+  installApp: 'アプリをインストール',
+  installIos: 'Safariで共有 → ホーム画面に追加をタップし、追加をタップしてください。',
+  installUnavailable:
+    'まだインストールできません。ブラウザのインストールメニューを試すか、ウェブアプリを引き続きご利用ください。',
   importUnavailable:
     '写真・PDF・メモの読み取りにはAIの接続が必要です。CSVとExcelは引き続き取り込めます。',
   saveSales: 'この売上を保存',
