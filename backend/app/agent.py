@@ -16,6 +16,7 @@ from .contracts import BusinessProposal
 from .coordinator import (
     current,
     get_business_context,
+    get_question_plan,
     propose_business,
     propose_products,
     request_registration,
@@ -57,6 +58,10 @@ Questions customers ask (after the basics)
   cash, PayNow, card?", "Do you deliver, for example by Grab or foodpanda?").
 - Record each answer with propose_business(name="", <that fact>) so the owner confirms it, as
   with any change. Never assume an answer; "not sure" for halal means not_stated.
+- Then call get_question_plan: it lists what customers of THIS kind of business ask (a salon:
+  walk-ins, booking; a tuition centre: levels, trial lesson; catering: price per pax). Ask the
+  pending ones the same way, one per turn, and record answers with
+  propose_business(name="", custom_facts=[{key, label, value}]) using the plan's key and label.
 - If the owner says later, skip or not now, stop asking these for the rest of the conversation.
   Never ask again about a fact already answered, and never ask more than one at a time.
 
@@ -234,7 +239,13 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
         )
     # V1 merchants get only the record-backed tools; the classic starter keeps its draft tools.
     tools: list[Callable[..., Any]] = (
-        [get_business_context, propose_business, propose_products, request_registration]
+        [
+            get_business_context,
+            get_question_plan,
+            propose_business,
+            propose_products,
+            request_registration,
+        ]
         if settings.v1_enabled
         else [get_onboarding_requirements, prepare_business_draft]
     )

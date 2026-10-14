@@ -852,6 +852,8 @@ export interface components {
              * @default
              */
             busy_hours: string;
+            /** Custom Facts */
+            custom_facts?: components["schemas"]["CustomFact"][];
         };
         /** ChallengeRequest */
         ChallengeRequest: {
@@ -884,6 +886,18 @@ export interface components {
             terms: boolean;
             /** Privacy */
             privacy: boolean;
+        };
+        /**
+         * CustomFact
+         * @description A fact this kind of business's customers ask about (e.g. a salon's walk-in policy).
+         */
+        CustomFact: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
         };
         /** CustomerThread */
         CustomerThread: {
