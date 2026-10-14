@@ -41,8 +41,8 @@ jobs:
                   socket.create_connection(("127.0.0.1",8085),timeout=1).close();ready=True;break
               except OSError: time.sleep(.2)
           assert ready, "Firestore emulator did not start"'
-      - run: uv run ruff check app tests scripts server.py run.py
-      - run: uv run ruff format --check app tests scripts server.py run.py
+      - run: uv run ruff check app tests scripts server.py run.py face_worker.py
+      - run: uv run ruff format --check app tests scripts server.py run.py face_worker.py
       - run: uv run mypy
       - run: uv run pytest -q
         env:
