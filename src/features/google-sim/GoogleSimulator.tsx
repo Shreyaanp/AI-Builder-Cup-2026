@@ -17,6 +17,7 @@ import {
 import type { components } from '../../api/generated'
 import { layout, shape } from '../../design/theme'
 import type { Api, Business } from '../v1/api'
+import { useBackClose } from '../v1/backStack'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useSimCopy } from './strings'
 import { mapsSearch, OWNER_URL } from './links'
@@ -158,6 +159,7 @@ function Wizard({
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const path = `/businesses/${shop.id}/google-sim`
+  useBackClose(true, close)
 
   useEffect(() => {
     const controller = new AbortController()

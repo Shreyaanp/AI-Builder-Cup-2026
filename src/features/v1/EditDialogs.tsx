@@ -14,6 +14,7 @@ import {
 } from '@mui/material'
 import type { Business, Product, Proposal } from './api'
 import { CURRENCIES, currencySymbol, shopCurrency, toMajor, toMinor } from './format'
+import { useBackClose } from './backStack'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { windowClass } from '../../design/theme'
@@ -52,6 +53,9 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
   // One request at a time: repeated taps must not create competing proposals.
   const [busy, setBusy] = useState(false)
   const editing = editor.kind === 'business' && editor.fields !== null
+  const close = () => openEditor({ kind: 'none' })
+  // Back closes the form; typed changes ask "Discard changes?" first.
+  useBackClose(true, close, JSON.stringify(fields) !== JSON.stringify(initial))
   async function submit() {
     if (busy) return
     if (!fields.name.trim()) {
@@ -78,12 +82,7 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
     }
   }
   return (
-    <Dialog
-      open
-      fullScreen={compact}
-      onClose={() => openEditor({ kind: 'none' })}
-      aria-labelledby="business-form-title"
-    >
+    <Dialog open fullScreen={compact} onClose={close} aria-labelledby="business-form-title">
       <DialogTitle id="business-form-title">{editing ? t.editDetails : t.addShop}</DialogTitle>
       <DialogContent>
         <Stack
@@ -123,6 +122,10 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
             // Stored prices are in this currency's minor units, so it is fixed once saved.
             disabled={editing}
             helperText={editing ? t.currencyLocked : undefined}
+            // The reason it is locked must stay readable (AA), not greyed out like the field.
+            slotProps={{
+              formHelperText: { sx: { '&.Mui-disabled': { color: 'text.secondary' } } },
+            }}
             onChange={(event) => setFields({ ...fields, currency: event.target.value })}
           >
             {currencyOptions(fields.currency ?? 'SGD').map((code) => (
@@ -136,7 +139,7 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={() => openEditor({ kind: 'none' })}>{t.cancel}</Button>
+        <Button onClick={close}>{t.cancel}</Button>
         <Button variant="contained" disabled={busy} onClick={() => void submit()}>
           {t.reviewFirst}
         </Button>
@@ -156,12 +159,15 @@ function ProductForm({ product }: { product: Product | null }) {
   const { api, active, openEditor, review } = useWorkspace()
   const compact = useCompact()
   const currency = shopCurrency(active)
-  const [item, setItem] = useState({
+  const [initial] = useState(() => ({
     name: product?.name ?? '',
     price: product ? String(toMajor(product.price, currency)) : '',
     unit: product?.unit ?? 'item',
     stock: product?.stock == null ? '' : String(product.stock),
-  })
+  }))
+  const [item, setItem] = useState(initial)
+  const close = () => openEditor({ kind: 'none' })
+  useBackClose(true, close, JSON.stringify(item) !== JSON.stringify(initial))
   const [error, setError] = useState('')
   // One request at a time: repeated taps must not create competing proposals.
   const [busy, setBusy] = useState(false)
@@ -197,12 +203,7 @@ function ProductForm({ product }: { product: Product | null }) {
     }
   }
   return (
-    <Dialog
-      open
-      fullScreen={compact}
-      onClose={() => openEditor({ kind: 'none' })}
-      aria-labelledby="product-form-title"
-    >
+    <Dialog open fullScreen={compact} onClose={close} aria-labelledby="product-form-title">
       <DialogTitle id="product-form-title">{product ? t.editProduct : t.addProduct}</DialogTitle>
       <DialogContent>
         <Stack
@@ -254,7 +255,7 @@ function ProductForm({ product }: { product: Product | null }) {
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={() => openEditor({ kind: 'none' })}>{t.cancel}</Button>
+        <Button onClick={close}>{t.cancel}</Button>
         <Button variant="contained" disabled={busy} onClick={() => void submit()}>
           {t.reviewFirst}
         </Button>
