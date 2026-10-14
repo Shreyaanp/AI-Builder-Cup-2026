@@ -14,11 +14,16 @@ from pydantic import ValidationError
 
 from .contracts import BusinessProposal
 from .coordinator import (
+    cancel_order,
     current,
+    find_suppliers,
     get_business_context,
     get_forecast,
     get_insights,
+    get_orders,
     get_question_plan,
+    message_supplier,
+    prepare_order,
     propose_business,
     propose_customer_facts,
     propose_products,
@@ -26,6 +31,7 @@ from .coordinator import (
     request_registration,
 )
 from .settings import Settings
+from .sourcing_offline import sourcing_call, sourcing_reply
 
 # The owner's app language (BCP 47) for this turn; set by the runtime, read by the instruction.
 ui_language: ContextVar[str] = ContextVar("ui_language", default="en")
@@ -89,6 +95,35 @@ Memory and insights
   and mention prediction intervals when provided. If insufficient, ask for four weeks of sales
   via Excel, photo, PDF or pasted notes. Never invent a forecast or save a preparation plan.
 
+Sourcing supplies (find suppliers, order, talk to them)
+- When the owner says a supply is running low, finished or needed ("my flour is running low",
+  "I need 20 kg flour by tomorrow", "where can I buy cups?"), call find_suppliers in that turn
+  with the item, plus quantity and unit only if said. If a forecast shows an item will run
+  short, offer to find suppliers. The app shows the results as cards: in one or two lines name
+  the best one or two (rank number, distance, price per unit) and ask which to order from.
+- Several items in one message: find suppliers for the main one, then put every item the owner
+  named in one prepare_order call. Keep units as said; the tool converts g↔kg and ml↔litre.
+- "The second one", "number 3": the rank on the cards. "The cheapest one" → cheapest_id;
+  "the nearest one" → nearest_id. "Order the same as last time": call get_orders and reuse the
+  last order's supplier_id and lines.
+- prepare_order only prepares. Say you've prepared the request (supplier, items, estimated
+  total, delivery) and that they tap Send to confirm. Never say it was sent or ordered.
+- "Change the quantity to 15": if the order is still a draft, call prepare_order again with
+  replaces_order_id; if it was already sent, use message_supplier ("Please make the flour
+  15 kg"). "Cancel that order": cancel_order. "Ask them if they deliver on Sunday" or "can you
+  deliver by 8?": message_supplier on the latest sent order (get_orders gives its id).
+- If the item is unclear ("I need stuff"), ask once, briefly, which item. If a supplier lacks an
+  item (not_stocked), say so and offer another supplier.
+- If generated_demo_suppliers is true or a supplier is demo, say plainly that these are demo
+  suppliers created for the demo, not real businesses. Never invent suppliers, prices or
+  replies yourself; only the tools' results count. No payments: deals are agreed in the chat.
+- When the owner asks whether a supplier replied, call get_orders and read the last message.
+
+Voice
+- In a voice conversation you have exactly the same tools and must call them the same way:
+  shop details, menu, prices, forecasts, suppliers and orders. Never say you can't access the
+  menu, the shop or suppliers; call the tool. Keep spoken replies to one or two sentences.
+
 When something goes wrong (self-repair)
 - If a tool returns status "invalid", fix exactly the listed fields from what the owner said and
   call the tool again. If it returns "ask_owner", stop and ask one short question.
@@ -149,7 +184,17 @@ class OfflineCoachModel(BaseLlm):
             question = ctx.message if ctx else text
             if responses:
                 prediction = next((r.response for r in responses if r.name == "get_forecast"), None)
-                if prediction is not None:
+                sourced = next(
+                    (
+                        sourcing_reply(r.name or "", dict(r.response or {}))
+                        for r in responses
+                        if sourcing_reply(r.name or "", dict(r.response or {}))
+                    ),
+                    None,
+                )
+                if sourced:
+                    reply = sourced
+                elif prediction is not None:
                     rows = prediction.get("predictions", [])
                     tomorrow = rows[0]["date"] if rows else ""
                     matching = [r for r in rows if r["date"] == tomorrow]
@@ -179,6 +224,14 @@ class OfflineCoachModel(BaseLlm):
                         "Your draft stays private."
                     )
             else:
+                sourcing = (
+                    sourcing_call(question, list(llm_request.contents), ctx)
+                    if ctx and ctx.business_id
+                    else None
+                )
+                if sourcing is not None:
+                    yield LlmResponse(content=types.Content(role="model", parts=[sourcing]))
+                    return
                 if ctx and ctx.business_id and re.search(r"\b(?:prep|forecast)\b", question, re.I):
                     yield LlmResponse(
                         content=types.Content(
@@ -339,6 +392,11 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
             propose_customer_facts,
             propose_products,
             request_registration,
+            find_suppliers,
+            prepare_order,
+            get_orders,
+            message_supplier,
+            cancel_order,
         ]
         if settings.v1_enabled
         else [get_onboarding_requirements, prepare_business_draft]

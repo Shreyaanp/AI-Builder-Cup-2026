@@ -354,6 +354,7 @@ class FirestoreMerchantStore:
                 "recaps",
                 "sold_out_days",
                 "stock_alerts",
+                "supplier_orders",
             ):
                 refs += [
                     item.reference for item in snapshot.reference.collection(collection).stream()
@@ -734,6 +735,31 @@ class FirestoreMerchantStore:
         return run(self.client.transaction())
 
     # Contact records never enter public projections, ADK tools or merchant revisions.
+    def supplier_orders(self, uid: str, bid: str) -> list[dict[str, Any]]:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        self.owned(ref.get(), uid)
+        rows = [s.to_dict() or {} for s in ref.collection("supplier_orders").limit(200).stream()]
+        rows.sort(key=lambda row: row.get("created", 0), reverse=True)
+        return rows[:100]
+
+    def save_supplier_order(self, uid: str, bid: str, order: dict[str, Any]) -> dict[str, Any]:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        item = ref.collection("supplier_orders").document(
+            document_id(order["id"], "Order not found.")
+        )
+
+        @firestore.transactional
+        def run(transaction: Any) -> dict[str, Any]:
+            self.owned(ref.get(transaction=transaction), uid)
+            snapshot = item.get(transaction=transaction)
+            stored = (snapshot.to_dict() or {}).get("version", 0) if snapshot.exists else 0
+            if order["version"] != stored + 1:
+                raise HTTPException(409, "This order changed. Reload it.")
+            transaction.set(item, order)
+            return order
+
+        return cast(dict[str, Any], run(self.client.transaction()))
+
     def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt:
         business = self.businesses.document(document_id(bid, "Shop not found."))
         data, token = new_thread(body)

@@ -31,6 +31,7 @@ from .money import DEFAULT_CURRENCY, to_major, to_minor
 from .product_categories import suggest_category
 from .product_units import UNITS, normalize_unit
 from .recap import recap_facts
+from .sourcing import OrderItem, SupplierGenerator
 
 MAX_REPAIRS = 2
 # Customer facts the coach asks about after the basics are saved, most asked first.
@@ -56,6 +57,8 @@ class MerchantContext:
     repairs: int = 0
     # Full proposals for the review UI; the model only ever sees ids, readable changes, warnings.
     proposals: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # Supplier results and order cards for the chat, keyed by the card_id the model sees.
+    cards: dict[str, tuple[str, dict[str, Any]]] = field(default_factory=dict)
 
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)
@@ -637,4 +640,201 @@ def request_registration() -> dict[str, Any]:
         "status": "verification_required",
         "business_id": ctx.business_id,
         "person_verification": data["person_verification"],
+    }
+
+
+# --- Sourcing: find suppliers, prepare order requests, talk to suppliers (sourcing.py) -------
+
+supplier_generator: SupplierGenerator | None = None
+# Owner of every generated demo supplier; no person signs in as this account.
+DEMO_OWNER_UID = "chalkboard-demo-supplier-owner"
+
+
+def _generator() -> SupplierGenerator:
+    global supplier_generator
+    if supplier_generator is None:
+        from .settings import Settings
+
+        supplier_generator = SupplierGenerator(Settings(_env_file=None))  # type: ignore[call-arg]
+    return supplier_generator
+
+
+def _card(ctx: MerchantContext, kind: str, data: dict[str, Any]) -> str:
+    card_id = uuid4().hex[:10]
+    ctx.cards[card_id] = (kind, data)
+    return card_id
+
+
+async def find_suppliers(
+    item: str, quantity: float | None = None, unit: str = ""
+) -> dict[str, Any]:
+    """Find suppliers near the shop for a supply that is running low (flour, sugar, milk,
+    packaging…), ranked by distance, price and availability. Call it when the owner says an
+    item is running low, needs restocking or asks where to buy it, or when a forecast shows a
+    shortage. item: one supply in plain words. quantity and unit (kg, g, litre, ml, pack, dozen)
+    only if the owner said them. The app shows the suppliers as cards; describe them briefly
+    (rank number, name, distance, price) and ask which one to order from. If
+    generated_demo_suppliers is true, say honestly that these are demo suppliers."""
+    from . import sourcing
+
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {"status": "needs_business"}
+    if not (item or "").strip():
+        return {"status": "invalid", "instruction": "Ask the owner which item they need."}
+    result = await sourcing.find(
+        ctx.store,
+        ctx.uid,
+        ctx.business_id,
+        item.strip()[:80],
+        quantity,
+        unit,
+        _generator(),
+        DEMO_OWNER_UID,
+    )
+    if not result["suppliers"]:
+        return {
+            "status": "none_found",
+            "instruction": "Tell the owner no supplier near them stocks this item and ask if "
+            "another name or a related item would work.",
+        }
+    return {"status": "found", "card_id": _card(ctx, "suppliers", result), **result}
+
+
+def prepare_order(
+    supplier_id: str,
+    items: list[OrderItem],
+    note: str = "",
+    delivery: str = "",
+    replaces_order_id: str = "",
+) -> dict[str, Any]:
+    """Prepare an order request to one supplier for the owner to confirm with one tap. Nothing is
+    sent until they tap Send. supplier_id comes from find_suppliers (rank 1 = first card) or
+    get_orders ("the same as last time"). items: every item the owner named, each with quantity
+    and unit exactly as said (20 kg flour, 500 g yeast, 2 litre oil). note: anything to tell the
+    supplier. delivery: only if the owner asked for a time. To change a draft that is not sent
+    yet (e.g. "change the quantity to 15"), call again with replaces_order_id."""
+    import time as clock
+
+    from . import sourcing
+
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {"status": "needs_business"}
+    try:
+        items = TypeAdapter(list[OrderItem]).validate_python(items)
+        if not items:
+            raise ValueError("items: name at least one item with a quantity")
+        shop = ctx.store.public_shop(supplier_id) if supplier_id else None
+        if not shop:
+            raise ValueError("supplier_id: use an id returned by find_suppliers or get_orders")
+    except (ValidationError, ValueError) as error:
+        return _invalid(error, ctx)
+    own_fields = ctx.store.context(ctx.uid, ctx.business_id)["business"]["fields"]
+    pin = sourcing.shop_pin(own_fields)
+    distance = (
+        round(sourcing.haversine(pin.lat, pin.lng, shop["lat"], shop["lng"]), 1)
+        if shop.get("lat") is not None and shop.get("lng") is not None
+        else None
+    )
+    now = clock.time()
+    order = sourcing.new_order(shop, pin, items, note, delivery, distance, now)
+    if replaces_order_id:
+        order["replaces"] = replaces_order_id
+    ctx.store.save_supplier_order(ctx.uid, ctx.business_id, order)
+    missing = [line["name"] for line in order["lines"] if line["price"] is None]
+    return {
+        **sourcing.summary(order),
+        "card_id": _card(ctx, "order", sourcing.public_order(order)),
+        "status": "needs_owner_tap",
+        **(
+            {
+                "not_stocked": missing,
+                "instruction": "Tell the owner these items are not stocked by this supplier "
+                "and offer to find another supplier for them.",
+            }
+            if missing
+            else {}
+        ),
+    }
+
+
+def get_orders() -> dict[str, Any]:
+    """The shop's recent order requests to suppliers, newest first, with status (draft, sent,
+    confirmed, needs_reply, cancelled) and the supplier's last message. Use it for "order the
+    same as last time", "did they reply?", "change the quantity", "cancel that order" or before
+    messaging a supplier."""
+    from . import sourcing
+
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {"status": "needs_business"}
+    found = sourcing.orders(ctx.store, ctx.uid, ctx.business_id)
+    return {"orders": [sourcing.summary(order) for order in found[:8]]}
+
+
+def message_supplier(order_id: str, text: str) -> dict[str, Any]:
+    """Prepare a message to the supplier of a sent order ("ask them if they deliver on Sunday",
+    "can you deliver by 8?", "please make the flour 15 kg"). Write it as the owner would, short
+    and polite, in English unless the owner asks otherwise. The owner taps Send to deliver it."""
+    import time as clock
+
+    from . import sourcing
+
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {"status": "needs_business"}
+    text = " ".join((text or "").split())[:500]
+    try:
+        order = sourcing.get_order(ctx.store, ctx.uid, ctx.business_id, order_id)
+    except HTTPException as error:
+        return _invalid(error, ctx)
+    if not text:
+        return {"status": "invalid", "instruction": "Pass the message text."}
+    if order["status"] in {"draft", "replaced", "cancelled"}:
+        return {
+            "status": "not_sent",
+            "instruction": "This order is not sent (or is cancelled). For a draft, call "
+            "prepare_order again with replaces_order_id instead.",
+        }
+    now = clock.time()
+    order["pending"] = {"kind": "text", "text": text, "created": now}
+    order = sourcing.save(ctx.store, ctx.uid, ctx.business_id, order, now)
+    return {
+        "status": "needs_owner_tap",
+        "card_id": _card(ctx, "order", sourcing.public_order(order)),
+        "message": text,
+    }
+
+
+def cancel_order(order_id: str) -> dict[str, Any]:
+    """Cancel an order request. A draft that was never sent is dropped at once; for a sent order
+    a cancellation message is prepared and the owner taps Send."""
+    import time as clock
+
+    from . import sourcing
+
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {"status": "needs_business"}
+    try:
+        order = sourcing.get_order(ctx.store, ctx.uid, ctx.business_id, order_id)
+    except HTTPException as error:
+        return _invalid(error, ctx)
+    now = clock.time()
+    if order["status"] == "draft":
+        order["status"] = "replaced"
+        sourcing.save(ctx.store, ctx.uid, ctx.business_id, order, now)
+        return {"status": "dropped", "instruction": "Say the draft is discarded; nothing was sent."}
+    if order["status"] in {"replaced", "cancelled"}:
+        return {"status": "already_cancelled"}
+    order["pending"] = {
+        "kind": "cancel",
+        "text": "Sorry, please cancel this order.",
+        "created": now,
+    }
+    order = sourcing.save(ctx.store, ctx.uid, ctx.business_id, order, now)
+    return {
+        "status": "needs_owner_tap",
+        "card_id": _card(ctx, "order", sourcing.public_order(order)),
     }
