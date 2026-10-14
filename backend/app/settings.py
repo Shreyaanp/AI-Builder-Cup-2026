@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     google_cloud_location: str = "global"
     # Gemini Live (voice) models are regional on Vertex; `global` returns "model not found".
     google_live_location: str = "us-central1"
+    google_embedding_location: str = "global"
     max_turn_seconds: int = Field(default=30, ge=1, le=120)
     max_voice_seconds: int = Field(default=120, ge=1, le=600)
     max_active_runs: int = Field(default=8, ge=1, le=32)
