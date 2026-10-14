@@ -1,0 +1,1340 @@
+[
+  {
+    "city": "singapore",
+    "shop": {
+      "name": "Sunny Side Kopitiam (Demo)",
+      "category": "Kopitiam",
+      "location": "East Coast Road, Katong (demo)",
+      "lat": 1.3052,
+      "lng": 103.9045,
+      "pin_label": "Near Katong (approximate) · Demo",
+      "pin_demo": true,
+      "demo": true,
+      "hours": "06:30–15:00",
+      "weekly_hours": [
+        {
+          "day": "mon",
+          "closed": false,
+          "open": "06:30",
+          "close": "15:00"
+        },
+        {
+          "day": "tue",
+          "closed": false,
+          "open": "06:30",
+          "close": "15:00"
+        },
+        {
+          "day": "wed",
+          "closed": false,
+          "open": "06:30",
+          "close": "15:00"
+        },
+        {
+          "day": "thu",
+          "closed": false,
+          "open": "06:30",
+          "close": "15:00"
+        },
+        {
+          "day": "fri",
+          "closed": false,
+          "open": "06:30",
+          "close": "15:00"
+        },
+        {
+          "day": "sat",
+          "closed": false,
+          "open": "06:30",
+          "close": "15:00"
+        },
+        {
+          "day": "sun",
+          "closed": false,
+          "open": "06:30",
+          "close": "15:00"
+        }
+      ],
+      "phone": "+65 6000 0001",
+      "currency": "SGD",
+      "halal": "not_stated",
+      "delivery": "none",
+      "payment_methods": ["cash", "paynow", "nets"],
+      "busy_hours": "07:30–09:30",
+      "custom_facts": [
+        {
+          "key": "demo_data",
+          "label": "Demo data",
+          "value": "Fictional shop, menu, sales and customer activity for this prototype."
+        }
+      ],
+      "id": "demo-katong-kopitiam",
+      "facts": {
+        "halal": "not_stated",
+        "payment_methods": ["cash", "paynow", "nets"],
+        "delivery": "none",
+        "custom_facts": [
+          {
+            "key": "demo_data",
+            "label": "Demo data",
+            "value": "Fictional shop, menu, sales and customer activity for this prototype."
+          }
+        ]
+      },
+      "products": [
+        {
+          "name": "Kopi",
+          "category": "Drinks",
+          "price": 170,
+          "unit": "cup",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Kopi O",
+          "category": "Drinks",
+          "price": 150,
+          "unit": "cup",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Teh",
+          "category": "Drinks",
+          "price": 170,
+          "unit": "cup",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Milo dinosaur",
+          "category": "Drinks",
+          "price": 300,
+          "unit": "cup",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Kaya toast set",
+          "category": "Kopitiam",
+          "price": 520,
+          "unit": "set",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Soft-boiled eggs",
+          "category": "Kopitiam",
+          "price": 180,
+          "unit": "set",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Mee siam",
+          "category": "Kopitiam",
+          "price": 450,
+          "unit": "plate",
+          "stock": null,
+          "available": false
+        },
+        {
+          "name": "Curry puff",
+          "category": "Kopitiam",
+          "price": 180,
+          "unit": "piece",
+          "stock": null,
+          "available": true
+        }
+      ]
+    }
+  },
+  {
+    "city": "bengaluru",
+    "shop": {
+      "name": "Courtyard Filter House (Demo)",
+      "category": "Cafe",
+      "location": "11 Imaginary Courtyard, Indiranagar, Bengaluru (fictional demo address)",
+      "lat": 12.9718,
+      "lng": 77.6412,
+      "pin_label": "Near Indiranagar, Bengaluru (approximate) · Demo",
+      "pin_demo": true,
+      "demo": true,
+      "timezone": "Asia/Kolkata",
+      "hours": "09:00–20:00",
+      "weekly_hours": [
+        {
+          "day": "mon",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "tue",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "wed",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "thu",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "fri",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sat",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sun",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        }
+      ],
+      "phone": "+91 00000 00000",
+      "currency": "INR",
+      "delivery": "Swiggy",
+      "delivery_note": "Demo option only; no ordering or delivery service connected",
+      "preorders": true,
+      "preorder_lead_time": "Ask one day ahead (demo)",
+      "payment_methods": ["cash", "UPI", "PhonePe"],
+      "busy_hours": "12:00–14:00",
+      "custom_facts": [
+        {
+          "key": "pickup",
+          "label": "Collection",
+          "value": "Counter pickup (demo)"
+        },
+        {
+          "key": "access",
+          "label": "Access",
+          "value": "Ground floor entrance (demo)"
+        },
+        {
+          "key": "demo_data",
+          "label": "Demo data",
+          "value": "Fictional shop, menu, sales and customer activity for this prototype."
+        }
+      ],
+      "id": "demo-bengaluru-indiranagar-coffee",
+      "facts": {
+        "payment_methods": ["cash", "UPI", "PhonePe"],
+        "delivery": "Swiggy",
+        "custom_facts": [
+          {
+            "key": "pickup",
+            "label": "Collection",
+            "value": "Counter pickup (demo)"
+          },
+          {
+            "key": "access",
+            "label": "Access",
+            "value": "Ground floor entrance (demo)"
+          },
+          {
+            "key": "demo_data",
+            "label": "Demo data",
+            "value": "Fictional shop, menu, sales and customer activity for this prototype."
+          }
+        ]
+      },
+      "products": [
+        {
+          "name": "Filter coffee",
+          "category": "Drinks",
+          "price": 6000,
+          "unit": "cup",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Masala chai",
+          "category": "Drinks",
+          "price": 3500,
+          "unit": "cup",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Lime soda",
+          "category": "Drinks",
+          "price": 7000,
+          "unit": "glass",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Idli breakfast",
+          "category": "Breakfast",
+          "price": 9000,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Vegetable sandwich",
+          "category": "Snacks",
+          "price": 13000,
+          "unit": "piece",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Ragi cookie",
+          "category": "Bakes",
+          "price": 4000,
+          "unit": "piece",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Banana bread",
+          "category": "Bakes",
+          "price": 11000,
+          "unit": "slice",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Masala dosa",
+          "category": "Breakfast",
+          "price": 12000,
+          "unit": "plate",
+          "stock": null,
+          "available": false
+        }
+      ]
+    }
+  },
+  {
+    "city": "delhi",
+    "shop": {
+      "name": "Tamarind Corner (Demo)",
+      "category": "Street food",
+      "location": "11 Imaginary Courtyard, Hauz Khas, Delhi (fictional demo address)",
+      "lat": 28.5494,
+      "lng": 77.2001,
+      "pin_label": "Near Hauz Khas, Delhi (approximate) · Demo",
+      "pin_demo": true,
+      "demo": true,
+      "timezone": "Asia/Kolkata",
+      "hours": "09:00–20:00",
+      "weekly_hours": [
+        {
+          "day": "mon",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "tue",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "wed",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "thu",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "fri",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sat",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sun",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        }
+      ],
+      "phone": "+91 00000 00000",
+      "currency": "INR",
+      "delivery": "Zomato",
+      "delivery_note": "Demo option only; no ordering or delivery service connected",
+      "preorders": true,
+      "preorder_lead_time": "Ask one day ahead (demo)",
+      "payment_methods": ["cash", "UPI", "Paytm"],
+      "busy_hours": "12:00–14:00",
+      "custom_facts": [
+        {
+          "key": "pickup",
+          "label": "Collection",
+          "value": "Counter pickup (demo)"
+        },
+        {
+          "key": "access",
+          "label": "Access",
+          "value": "Ground floor entrance (demo)"
+        },
+        {
+          "key": "demo_data",
+          "label": "Demo data",
+          "value": "Fictional shop, menu, sales and customer activity for this prototype."
+        }
+      ],
+      "id": "demo-delhi-chaat",
+      "facts": {
+        "payment_methods": ["cash", "UPI", "Paytm"],
+        "delivery": "Zomato",
+        "custom_facts": [
+          {
+            "key": "pickup",
+            "label": "Collection",
+            "value": "Counter pickup (demo)"
+          },
+          {
+            "key": "access",
+            "label": "Access",
+            "value": "Ground floor entrance (demo)"
+          },
+          {
+            "key": "demo_data",
+            "label": "Demo data",
+            "value": "Fictional shop, menu, sales and customer activity for this prototype."
+          }
+        ]
+      },
+      "products": [
+        {
+          "name": "Aloo tikki",
+          "category": "Chaat",
+          "price": 7000,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Papdi chaat",
+          "category": "Chaat",
+          "price": 9000,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Chole kulche",
+          "category": "Meals",
+          "price": 10000,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Paneer kathi roll",
+          "category": "Rolls",
+          "price": 14000,
+          "unit": "piece",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Sweet lassi",
+          "category": "Drinks",
+          "price": 8000,
+          "unit": "glass",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Jaljeera",
+          "category": "Drinks",
+          "price": 4000,
+          "unit": "glass",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Samosa",
+          "category": "Snacks",
+          "price": 2500,
+          "unit": "piece",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Dahi bhalla",
+          "category": "Chaat",
+          "price": 9500,
+          "unit": "plate",
+          "stock": null,
+          "available": false
+        }
+      ]
+    }
+  },
+  {
+    "city": "mumbai",
+    "shop": {
+      "name": "Monsoon Snack Window (Demo)",
+      "category": "Street food",
+      "location": "11 Imaginary Courtyard, Bandra, Mumbai (fictional demo address)",
+      "lat": 19.0596,
+      "lng": 72.8295,
+      "pin_label": "Near Bandra, Mumbai (approximate) · Demo",
+      "pin_demo": true,
+      "demo": true,
+      "timezone": "Asia/Kolkata",
+      "hours": "09:00–20:00",
+      "weekly_hours": [
+        {
+          "day": "mon",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "tue",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "wed",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "thu",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "fri",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sat",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sun",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        }
+      ],
+      "phone": "+91 00000 00000",
+      "currency": "INR",
+      "delivery": "Swiggy",
+      "delivery_note": "Demo option only; no ordering or delivery service connected",
+      "preorders": true,
+      "preorder_lead_time": "Ask one day ahead (demo)",
+      "payment_methods": ["cash", "UPI", "PhonePe"],
+      "busy_hours": "12:00–14:00",
+      "custom_facts": [
+        {
+          "key": "pickup",
+          "label": "Collection",
+          "value": "Counter pickup (demo)"
+        },
+        {
+          "key": "access",
+          "label": "Access",
+          "value": "Ground floor entrance (demo)"
+        },
+        {
+          "key": "demo_data",
+          "label": "Demo data",
+          "value": "Fictional shop, menu, sales and customer activity for this prototype."
+        }
+      ],
+      "id": "demo-mumbai-snacks",
+      "facts": {
+        "payment_methods": ["cash", "UPI", "PhonePe"],
+        "delivery": "Swiggy",
+        "custom_facts": [
+          {
+            "key": "pickup",
+            "label": "Collection",
+            "value": "Counter pickup (demo)"
+          },
+          {
+            "key": "access",
+            "label": "Access",
+            "value": "Ground floor entrance (demo)"
+          },
+          {
+            "key": "demo_data",
+            "label": "Demo data",
+            "value": "Fictional shop, menu, sales and customer activity for this prototype."
+          }
+        ]
+      },
+      "products": [
+        {
+          "name": "Vada pav",
+          "category": "Snacks",
+          "price": 2500,
+          "unit": "piece",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Misal pav",
+          "category": "Meals",
+          "price": 9000,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Pav bhaji",
+          "category": "Meals",
+          "price": 13000,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Bhel puri",
+          "category": "Chaat",
+          "price": 6000,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Sev puri",
+          "category": "Chaat",
+          "price": 6500,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Cutting chai",
+          "category": "Drinks",
+          "price": 2000,
+          "unit": "cup",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Nimbu pani",
+          "category": "Drinks",
+          "price": 3500,
+          "unit": "glass",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Sabudana vada",
+          "category": "Snacks",
+          "price": 5000,
+          "unit": "plate",
+          "stock": null,
+          "available": false
+        }
+      ]
+    }
+  },
+  {
+    "city": "kuala-lumpur",
+    "shop": {
+      "name": "Morning Fern Kopi (Demo)",
+      "category": "Cafe",
+      "location": "11 Imaginary Courtyard, Bangsar, Kuala Lumpur (fictional demo address)",
+      "lat": 3.1302,
+      "lng": 101.671,
+      "pin_label": "Near Bangsar, Kuala Lumpur (approximate) · Demo",
+      "pin_demo": true,
+      "demo": true,
+      "timezone": "Asia/Kuala_Lumpur",
+      "hours": "09:00–20:00",
+      "weekly_hours": [
+        {
+          "day": "mon",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "tue",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "wed",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "thu",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "fri",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sat",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sun",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        }
+      ],
+      "phone": "+60 00 000 0000",
+      "currency": "MYR",
+      "delivery": "GrabFood",
+      "delivery_note": "Demo option only; no ordering or delivery service connected",
+      "preorders": true,
+      "preorder_lead_time": "Ask one day ahead (demo)",
+      "payment_methods": ["cash", "DuitNow", "Touch 'n Go"],
+      "busy_hours": "12:00–14:00",
+      "custom_facts": [
+        {
+          "key": "pickup",
+          "label": "Collection",
+          "value": "Counter pickup (demo)"
+        },
+        {
+          "key": "access",
+          "label": "Access",
+          "value": "Ground floor entrance (demo)"
+        },
+        {
+          "key": "demo_data",
+          "label": "Demo data",
+          "value": "Fictional shop, menu, sales and customer activity for this prototype."
+        }
+      ],
+      "id": "demo-kuala-lumpur-kopi",
+      "facts": {
+        "payment_methods": ["cash", "DuitNow", "Touch 'n Go"],
+        "delivery": "GrabFood",
+        "custom_facts": [
+          {
+            "key": "pickup",
+            "label": "Collection",
+            "value": "Counter pickup (demo)"
+          },
+          {
+            "key": "access",
+            "label": "Access",
+            "value": "Ground floor entrance (demo)"
+          },
+          {
+            "key": "demo_data",
+            "label": "Demo data",
+            "value": "Fictional shop, menu, sales and customer activity for this prototype."
+          }
+        ]
+      },
+      "products": [
+        {
+          "name": "Kopi ais",
+          "category": "Drinks",
+          "price": 500,
+          "unit": "glass",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Teh tarik",
+          "category": "Drinks",
+          "price": 400,
+          "unit": "glass",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "White coffee",
+          "category": "Drinks",
+          "price": 600,
+          "unit": "cup",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Kaya toast",
+          "category": "Breakfast",
+          "price": 600,
+          "unit": "set",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Nasi lemak",
+          "category": "Meals",
+          "price": 900,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Curry puff",
+          "category": "Snacks",
+          "price": 300,
+          "unit": "piece",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Pandan cake",
+          "category": "Bakes",
+          "price": 700,
+          "unit": "slice",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Roti bakar",
+          "category": "Breakfast",
+          "price": 500,
+          "unit": "set",
+          "stock": null,
+          "available": false
+        }
+      ]
+    }
+  },
+  {
+    "city": "jakarta",
+    "shop": {
+      "name": "Warung Daun Kecil (Demo)",
+      "category": "Street food",
+      "location": "11 Imaginary Courtyard, Kemang, Jakarta (fictional demo address)",
+      "lat": -6.2604,
+      "lng": 106.813,
+      "pin_label": "Near Kemang, Jakarta (approximate) · Demo",
+      "pin_demo": true,
+      "demo": true,
+      "timezone": "Asia/Jakarta",
+      "hours": "09:00–20:00",
+      "weekly_hours": [
+        {
+          "day": "mon",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "tue",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "wed",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "thu",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "fri",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sat",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sun",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        }
+      ],
+      "phone": "+62 000 0000 0000",
+      "currency": "IDR",
+      "delivery": "GoFood",
+      "delivery_note": "Demo option only; no ordering or delivery service connected",
+      "preorders": true,
+      "preorder_lead_time": "Ask one day ahead (demo)",
+      "payment_methods": ["cash", "GoPay", "QRIS", "OVO"],
+      "busy_hours": "12:00–14:00",
+      "custom_facts": [
+        {
+          "key": "pickup",
+          "label": "Collection",
+          "value": "Counter pickup (demo)"
+        },
+        {
+          "key": "access",
+          "label": "Access",
+          "value": "Ground floor entrance (demo)"
+        },
+        {
+          "key": "demo_data",
+          "label": "Demo data",
+          "value": "Fictional shop, menu, sales and customer activity for this prototype."
+        }
+      ],
+      "id": "demo-jakarta-warung",
+      "facts": {
+        "payment_methods": ["cash", "GoPay", "QRIS", "OVO"],
+        "delivery": "GoFood",
+        "custom_facts": [
+          {
+            "key": "pickup",
+            "label": "Collection",
+            "value": "Counter pickup (demo)"
+          },
+          {
+            "key": "access",
+            "label": "Access",
+            "value": "Ground floor entrance (demo)"
+          },
+          {
+            "key": "demo_data",
+            "label": "Demo data",
+            "value": "Fictional shop, menu, sales and customer activity for this prototype."
+          }
+        ]
+      },
+      "products": [
+        {
+          "name": "Nasi goreng",
+          "category": "Meals",
+          "price": 28000,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Mie goreng",
+          "category": "Meals",
+          "price": 26000,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Gado-gado",
+          "category": "Meals",
+          "price": 24000,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Tempe goreng",
+          "category": "Sides",
+          "price": 12000,
+          "unit": "portion",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Es teh manis",
+          "category": "Drinks",
+          "price": 7000,
+          "unit": "glass",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Es jeruk",
+          "category": "Drinks",
+          "price": 12000,
+          "unit": "glass",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Bakwan",
+          "category": "Snacks",
+          "price": 5000,
+          "unit": "piece",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Soto ayam",
+          "category": "Meals",
+          "price": 30000,
+          "unit": "bowl",
+          "stock": null,
+          "available": false
+        }
+      ]
+    }
+  },
+  {
+    "city": "tokyo",
+    "shop": {
+      "name": "Pocket Vinyl Coffee (Demo)",
+      "category": "Cafe",
+      "location": "11 Imaginary Courtyard, Shimokitazawa, Tokyo (fictional demo address)",
+      "lat": 35.6615,
+      "lng": 139.6669,
+      "pin_label": "Near Shimokitazawa, Tokyo (approximate) · Demo",
+      "pin_demo": true,
+      "demo": true,
+      "timezone": "Asia/Tokyo",
+      "hours": "09:00–20:00",
+      "weekly_hours": [
+        {
+          "day": "mon",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "tue",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "wed",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "thu",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "fri",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sat",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sun",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        }
+      ],
+      "phone": "+81 00 0000 0000",
+      "currency": "JPY",
+      "delivery": "Uber Eats",
+      "delivery_note": "Demo option only; no ordering or delivery service connected",
+      "preorders": true,
+      "preorder_lead_time": "Ask one day ahead (demo)",
+      "payment_methods": ["cash", "PayPay", "Suica"],
+      "busy_hours": "12:00–14:00",
+      "custom_facts": [
+        {
+          "key": "pickup",
+          "label": "Collection",
+          "value": "Counter pickup (demo)"
+        },
+        {
+          "key": "access",
+          "label": "Access",
+          "value": "Ground floor entrance (demo)"
+        },
+        {
+          "key": "demo_data",
+          "label": "Demo data",
+          "value": "Fictional shop, menu, sales and customer activity for this prototype."
+        }
+      ],
+      "id": "demo-tokyo-coffee",
+      "facts": {
+        "payment_methods": ["cash", "PayPay", "Suica"],
+        "delivery": "Uber Eats",
+        "custom_facts": [
+          {
+            "key": "pickup",
+            "label": "Collection",
+            "value": "Counter pickup (demo)"
+          },
+          {
+            "key": "access",
+            "label": "Access",
+            "value": "Ground floor entrance (demo)"
+          },
+          {
+            "key": "demo_data",
+            "label": "Demo data",
+            "value": "Fictional shop, menu, sales and customer activity for this prototype."
+          }
+        ]
+      },
+      "products": [
+        {
+          "name": "Hand drip coffee",
+          "category": "Coffee",
+          "price": 480,
+          "unit": "cup",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Cafe latte",
+          "category": "Coffee",
+          "price": 550,
+          "unit": "cup",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Matcha latte",
+          "category": "Tea",
+          "price": 600,
+          "unit": "cup",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Hojicha",
+          "category": "Tea",
+          "price": 400,
+          "unit": "cup",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Egg toast",
+          "category": "Toast",
+          "price": 650,
+          "unit": "set",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Cheesecake",
+          "category": "Cakes",
+          "price": 520,
+          "unit": "slice",
+          "stock": null,
+          "available": false
+        }
+      ]
+    }
+  },
+  {
+    "city": "bangkok",
+    "shop": {
+      "name": "Baan Little Basil (Demo)",
+      "category": "Street food",
+      "location": "11 Imaginary Courtyard, Ari, Bangkok (fictional demo address)",
+      "lat": 13.7797,
+      "lng": 100.5447,
+      "pin_label": "Near Ari, Bangkok (approximate) · Demo",
+      "pin_demo": true,
+      "demo": true,
+      "timezone": "Asia/Bangkok",
+      "hours": "09:00–20:00",
+      "weekly_hours": [
+        {
+          "day": "mon",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "tue",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "wed",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "thu",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "fri",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sat",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        },
+        {
+          "day": "sun",
+          "closed": false,
+          "open": "09:00",
+          "close": "20:00"
+        }
+      ],
+      "phone": "+66 00 000 0000",
+      "currency": "THB",
+      "delivery": "LINE MAN",
+      "delivery_note": "Demo option only; no ordering or delivery service connected",
+      "preorders": true,
+      "preorder_lead_time": "Ask one day ahead (demo)",
+      "payment_methods": ["cash", "PromptPay", "TrueMoney"],
+      "busy_hours": "12:00–14:00",
+      "custom_facts": [
+        {
+          "key": "pickup",
+          "label": "Collection",
+          "value": "Counter pickup (demo)"
+        },
+        {
+          "key": "access",
+          "label": "Access",
+          "value": "Ground floor entrance (demo)"
+        },
+        {
+          "key": "demo_data",
+          "label": "Demo data",
+          "value": "Fictional shop, menu, sales and customer activity for this prototype."
+        }
+      ],
+      "id": "demo-bangkok-kitchen",
+      "facts": {
+        "payment_methods": ["cash", "PromptPay", "TrueMoney"],
+        "delivery": "LINE MAN",
+        "custom_facts": [
+          {
+            "key": "pickup",
+            "label": "Collection",
+            "value": "Counter pickup (demo)"
+          },
+          {
+            "key": "access",
+            "label": "Access",
+            "value": "Ground floor entrance (demo)"
+          },
+          {
+            "key": "demo_data",
+            "label": "Demo data",
+            "value": "Fictional shop, menu, sales and customer activity for this prototype."
+          }
+        ]
+      },
+      "products": [
+        {
+          "name": "Pad krapao tofu",
+          "category": "Meals",
+          "price": 6500,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Chicken rice",
+          "category": "Meals",
+          "price": 6000,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Som tam",
+          "category": "Salads",
+          "price": 5500,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Sticky rice",
+          "category": "Sides",
+          "price": 1500,
+          "unit": "portion",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Thai iced tea",
+          "category": "Drinks",
+          "price": 3500,
+          "unit": "glass",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Lemongrass tea",
+          "category": "Drinks",
+          "price": 3000,
+          "unit": "glass",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Mango sticky rice",
+          "category": "Desserts",
+          "price": 8500,
+          "unit": "plate",
+          "stock": null,
+          "available": true
+        },
+        {
+          "name": "Coconut pudding",
+          "category": "Desserts",
+          "price": 3000,
+          "unit": "box",
+          "stock": null,
+          "available": false
+        }
+      ]
+    }
+  }
+]

@@ -7,7 +7,7 @@ export default defineConfig({
   workers: process.env.CI ? 3 : 4,
   // One retry on CI absorbs a random failure; the list reporter still marks it "flaky".
   retries: process.env.CI ? 1 : 0,
-  reporter: 'list',
+  reporter: [['list'], ['./tests/stories/audit-reporter.ts']],
   use: {
     baseURL: 'http://127.0.0.1:3200',
     // Singapore demo market: English UI, SGD prices, SG formats.
@@ -15,6 +15,10 @@ export default defineConfig({
     timezoneId: 'Asia/Singapore',
     screenshot: 'only-on-failure',
     launchOptions: {
+      args:
+        process.env.PLAYWRIGHT_LOCAL_ONLY === 'true'
+          ? ['--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost, EXCLUDE 127.0.0.1']
+          : [],
       executablePath:
         process.env.CHROME_PATH ||
         (process.platform === 'win32'

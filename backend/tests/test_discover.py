@@ -1,6 +1,7 @@
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 import httpx
 import pytest
@@ -100,7 +101,13 @@ def settings(tmp_path: Path, *, live: bool = False) -> Settings:
     )
 
 
-def shared_shop(repository: MerchantRepository, *, shared: bool = True, lat: float = 1.2847) -> str:
+def shared_shop(
+    repository: MerchantRepository,
+    *,
+    shared: bool = True,
+    lat: float = 1.2847,
+    halal: Literal["yes", "no", "muslim_owned", "not_stated"] | None = None,
+) -> str:
     proposal = repository.propose(
         "fixture-owner",
         ProposalRequest(
@@ -113,6 +120,7 @@ def shared_shop(repository: MerchantRepository, *, shared: bool = True, lat: flo
                 lng=103.832,
                 hours="7am–3pm",
                 currency="SGD",
+                halal=halal,
             ),
             products=[
                 ProductFields(name="Teh tarik", price=220, unit="cup", available=False),
@@ -125,6 +133,19 @@ def shared_shop(repository: MerchantRepository, *, shared: bool = True, lat: flo
     bid = repository.commit("fixture-owner", proposal["id"], proposal["digest"])["business_id"]
     repository.share("fixture-owner", bid, shared)
     return str(bid)
+
+
+@pytest.mark.parametrize(
+    ("halal", "expected"),
+    [("yes", True), ("no", False), ("muslim_owned", None), ("not_stated", None), (None, None)],
+)
+def test_discovery_preserves_confirmed_halal(store, tmp_path: Path, halal, expected) -> None:
+    bid = shared_shop(store, halal=halal)
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        app.state.merchant = store
+        places = client.get("/api/v1/discover?lat=1.2847&lng=103.832").json()["places"]
+        assert next(place for place in places if place["id"] == bid)["halal"] is expected
 
 
 def test_public_discovery_both_stores(
