@@ -313,6 +313,9 @@ class MerchantRepository(Protocol):
         False when the stored shop already matches. Refuses a non-demo ID or someone else's shop."""
         ...
 
+    def attach_demo_owner(self, uid: str, bid: str, owner_uid: str) -> bool: ...
+    def seed_demo_inquiries(self, uid: str, bid: str, inquiries: list[Inquiry]) -> bool: ...
+
     def subscribe_stock(self, bid: str, body: StockAlertInput) -> StockAlertReceipt: ...
     def stock_alerts(self, bid: str, device_id: str) -> list[dict[str, Any]]: ...
 
@@ -836,6 +839,41 @@ class MerchantStore:
             )
             db.execute("INSERT INTO shares VALUES(?) ON CONFLICT DO NOTHING", (bid,))
         return True
+
+    def attach_demo_owner(self, uid: str, bid: str, owner_uid: str) -> bool:
+        """Add access to a labelled sample without replacing anyone's membership."""
+        if not owner_uid.strip():
+            raise ValueError("Demo owner UID must not be empty.")
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = self.owned(db, uid, bid)
+            check_demo_seed(bid, BusinessFields.model_validate_json(row["fields"]))
+            db.execute(
+                "INSERT INTO people VALUES(?,?) ON CONFLICT DO NOTHING",
+                (owner_uid, "not_enrolled"),
+            )
+            return (
+                db.execute(
+                    "INSERT INTO memberships VALUES(?,?,'owner') ON CONFLICT DO NOTHING",
+                    (owner_uid, bid),
+                ).rowcount
+                > 0
+            )
+
+    def seed_demo_inquiries(self, uid: str, bid: str, inquiries: list[Inquiry]) -> bool:
+        """Insert stable sample threads; retain replies/read/closed state on reruns."""
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = self.owned(db, uid, bid)
+            check_demo_seed(bid, BusinessFields.model_validate_json(row["fields"]))
+            changed = False
+            for inquiry in inquiries:
+                inserted = db.execute(
+                    "INSERT INTO inquiries VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING",
+                    (inquiry.id, bid, "", inquiry.created, inquiry.model_dump_json()),
+                ).rowcount
+                changed = bool(inserted) or changed
+            return changed
 
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         with self.connect() as db:
