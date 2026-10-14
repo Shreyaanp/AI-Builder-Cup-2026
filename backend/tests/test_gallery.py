@@ -66,6 +66,10 @@ def test_gallery_is_owner_only_moderated_stripped_and_public_only_when_shared(ap
         assert served.status_code == 200
         assert "immutable" in served.headers["cache-control"]
         assert client.get(f"/api/v1/public/shops/{bid}").json()["gallery"] == [photo]
+        # Its first photo becomes the shop's picture in discovery (the shop's pin is Katong).
+        found = client.get("/api/v1/discover", params={"lat": 1.305, "lng": 103.905}).json()
+        mine = next(p for p in found["places"] if p["id"] == bid)
+        assert mine["photo_url"] == public
     # Another owner can neither add to nor read this gallery.
     with TestClient(app) as stranger:
         join(stranger)
