@@ -4,8 +4,13 @@ import {
   Alert,
   Avatar,
   Box,
+  Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   InputBase,
   ListItemText,
@@ -62,6 +67,7 @@ export function CoachScreen() {
   const [mode, setMode] = useState<'offline' | 'gemini' | null>(null)
   const [history, setHistory] = useState<Conversation[]>([])
   const [historyAnchor, setHistoryAnchor] = useState<HTMLElement | null>(null)
+  const [actionsOpen, setActionsOpen] = useState(false)
   const session = useRef<string | null>(null)
   const controller = useRef<AbortController | null>(null)
   const photoInput = useRef<HTMLInputElement>(null)
@@ -169,8 +175,9 @@ export function CoachScreen() {
         utterance.lang = language
         speechSynthesis.speak(utterance)
       }
-      const items = await api<Conversation[]>('/conversations')
-      if (controller.current === abort) setHistory(items)
+      // History is supplemental; a failed refresh must never roll back a completed turn.
+      const items = await api<Conversation[]>('/conversations').catch(() => null)
+      if (items && controller.current === abort) setHistory(items)
     } catch {
       if (!abort.signal.aborted) {
         setError(t.replyFailed)
@@ -282,10 +289,58 @@ export function CoachScreen() {
           </Typography>
         )}
         <Tooltip title={t.newChat}>
-          <IconButton aria-label={t.newChat} onClick={resetThread} disabled={empty}>
+          <IconButton
+            aria-label={t.newChat}
+            aria-haspopup="dialog"
+            onClick={() => setActionsOpen(true)}
+          >
             <Plus size={20} />
           </IconButton>
         </Tooltip>
+        <Dialog
+          open={actionsOpen}
+          onClose={() => setActionsOpen(false)}
+          aria-labelledby="coach-actions-title"
+          fullWidth
+          maxWidth="xs"
+          transitionDuration={0}
+        >
+          <DialogTitle id="coach-actions-title">{t.newChat}</DialogTitle>
+          <DialogContent>
+            <Stack spacing={1}>
+              <Button
+                onClick={() => {
+                  setActionsOpen(false)
+                  ws.openEditor({ kind: 'business', fields: null })
+                }}
+              >
+                {t.addShop}
+              </Button>
+              {ws.active && (
+                <Button
+                  onClick={() => {
+                    setActionsOpen(false)
+                    ws.openEditor({ kind: 'product', product: null })
+                  }}
+                >
+                  {t.addProduct}
+                </Button>
+              )}
+              <Button
+                disabled={empty}
+                onClick={() => {
+                  setActionsOpen(false)
+                  resetThread()
+                }}
+              >
+                {t.newChat}
+              </Button>
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setActionsOpen(false)}>{t.cancel}</Button>
+          </DialogActions>
+        </Dialog>
         <Tooltip title={t.history}>
           <span>
             <IconButton
