@@ -210,7 +210,7 @@ class MapsService:
             try:
                 response = await self.client.get(
                     "https://maps.googleapis.com/maps/api/geocode/json",
-                    params={"address": location, "region": "sg", "key": self.key},
+                    params={"address": location, "key": self.key},
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -241,9 +241,9 @@ class MapsService:
             circle = {"center": {"latitude": lat, "longitude": lng}, "radius": float(radius)}
             if q:
                 method = "searchText"
+                # Global: the search circle around the customer decides the region.
                 payload: dict[str, Any] = {
-                    "textQuery": q + " Singapore",
-                    "regionCode": "SG",
+                    "textQuery": q,
                     "locationBias": {"circle": circle},
                     "pageSize": 20,
                 }
@@ -327,6 +327,21 @@ def matches(place: DiscoveryPlace, q: str, category: str, only_open: bool) -> bo
 
 
 router = APIRouter(prefix="/api/v1")
+
+
+class PlaceMatch(BaseModel):
+    lat: float
+    lng: float
+    label: str
+
+
+@router.get("/discover/place", response_model=PlaceMatch)
+async def find_place(request: Request, q: str = Query(min_length=2, max_length=180)) -> PlaceMatch:
+    """A typed city or area anywhere in the world, as the centre for discovery."""
+    await enforce_limits(request, [("discover:place", client_ip(request))], anonymous=True)
+    maps: MapsService = request.app.state.maps
+    pin = await maps.geocode(q.strip())
+    return PlaceMatch(lat=pin["lat"], lng=pin["lng"], label=pin["pin_label"] or q.strip())
 
 
 @router.get("/discover", response_model=DiscoveryResponse)
