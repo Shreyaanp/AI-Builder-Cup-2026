@@ -11,6 +11,7 @@ import json
 import re
 import secrets
 import time
+from threading import Lock
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -18,6 +19,7 @@ from fastapi import HTTPException
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
+from .customer import Inquiry, InquiryInput, InquiryReceipt, inquiry_key
 from .merchant import (
     CHALLENGE_SECONDS,
     PROPOSAL_SECONDS,
@@ -49,6 +51,9 @@ class FirestoreMerchantStore:
         self.businesses = root.collection("businesses")
         self.proposals = root.collection("proposals")
         self.challenges = root.collection("challenges")
+        # Avoid competing local read-lock upgrades on one dedupe document. Transactions
+        # still enforce deduplication and sharing across independent server processes.
+        self.inquiry_lock = Lock()
 
     def person_ref(self, uid: str) -> Any:
         return self.people.document(hashlib.sha256(uid.encode()).hexdigest())
@@ -300,6 +305,10 @@ class FirestoreMerchantStore:
                 item.reference for item in snapshot.reference.collection("google_sim").stream()
             ]
             refs += [item.reference for item in snapshot.reference.collection("planning").stream()]
+            for collection in ("inquiries", "inquiry_dedupe"):
+                refs += [
+                    item.reference for item in snapshot.reference.collection(collection).stream()
+                ]
             refs.append(snapshot.reference)
         for collection in (self.proposals, self.challenges):
             refs += [
@@ -352,6 +361,55 @@ class FirestoreMerchantStore:
         rows = [s.to_dict() or {} for s in ref.collection("inventory").limit(500).stream()]
         rows.sort(key=lambda row: row.get("created", 0))
         return public_projection(ref.id, data["fields"], [row["fields"] for row in rows])
+
+    # Contact records never enter public projections, ADK tools or merchant revisions.
+    def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt:
+        business = self.businesses.document(document_id(bid, "This shop page is not available."))
+        dedupe = business.collection("inquiry_dedupe").document(inquiry_key(body))
+        ref = business.collection("inquiries").document(str(uuid4()))
+
+        @firestore.transactional
+        def run(transaction: Any) -> InquiryReceipt:
+            shop = business.get(transaction=transaction).to_dict() or {}
+            if not shop.get("public"):
+                raise HTTPException(404, "This shop page is not available.")
+            prior = dedupe.get(transaction=transaction).to_dict() or {}
+            now = time.time()
+            if prior.get("created", 0) > now - 120:
+                return InquiryReceipt(id=prior["id"])
+            record = Inquiry(id=ref.id, **body.model_dump(), created=now)
+            transaction.create(ref, record.model_dump())
+            transaction.set(dedupe, {"id": ref.id, "created": now})
+            return InquiryReceipt(id=ref.id)
+
+        with self.inquiry_lock:
+            return run(self.client.transaction())
+
+    def inquiries(self, uid: str, bid: str) -> list[Inquiry]:
+        self.owned_business(uid, bid)
+        query = (
+            self.businesses.document(document_id(bid, "Business not found."))
+            .collection("inquiries")
+            .order_by("created", direction=firestore.Query.DESCENDING)
+            .limit(100)
+        )
+        return [Inquiry.model_validate(snapshot.to_dict()) for snapshot in query.stream()]
+
+    def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry:
+        business = self.businesses.document(document_id(bid, "Business not found."))
+        ref = business.collection("inquiries").document(document_id(iid, "Message not found."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> Inquiry:
+            self.owned(business.get(transaction=transaction), uid)
+            snapshot = ref.get(transaction=transaction)
+            if not snapshot.exists:
+                raise HTTPException(404, "Message not found.")
+            record = Inquiry.model_validate(snapshot.to_dict()).model_copy(update={"done": True})
+            transaction.update(ref, {"done": True})
+            return record
+
+        return run(self.client.transaction())
 
     def planning(
         self, uid: str, bid: str, pid: str, action: str, payload: dict[str, Any]

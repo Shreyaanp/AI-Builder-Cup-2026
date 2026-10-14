@@ -106,7 +106,8 @@ test('switching shops never shows the other shop’s products or conversation', 
     .getByRole('dialog', { name: 'Check before saving' })
     .getByRole('button', { name: 'Confirm and save' })
     .click()
-  await expect(page.getByText('Alpha Chai')).toBeVisible()
+  // The saved row (the closing review sheet and desktop panes can also show the name).
+  await expect(page.getByRole('button', { name: /^Edit Alpha Chai/ })).toBeVisible()
   await page.getByRole('button', { name: 'Coach' }).click()
   await page.getByLabel('Message').fill('Hello from Alpha')
   await page.getByRole('button', { name: 'Send', exact: true }).click()

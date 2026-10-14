@@ -25,6 +25,8 @@ from .auth import IdentityService
 from .boundary import RequestBoundary
 from .contracts import CoachTurn, StreamEvent
 from .coordinator import MerchantContext, current
+from .customer import CustomerAnswers, PublicLimiter
+from .customer_routes import router as customer_router
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .frontend import serve_frontend
 from .google_sim_routes import router as google_sim_router
@@ -114,6 +116,8 @@ def create_app(
             merchant_services, settings
         )
         app.state.photos = PhotoPipeline(settings) if settings.v1_enabled else None
+        app.state.customer_answers = CustomerAnswers(settings)
+        app.state.customer_limiter = PublicLimiter()
         app.state.services = Services(
             identity,
             CoachRuntime(settings, session_service),
@@ -129,6 +133,7 @@ def create_app(
         try:
             yield
         finally:
+            await app.state.customer_answers.close()
             identity.close()
             if app.state.recall:
                 await anyio.to_thread.run_sync(app.state.recall.close)
@@ -144,6 +149,7 @@ def create_app(
     app.include_router(merchant_router)
     app.include_router(google_sim_router)
     app.include_router(planning_router)
+    app.include_router(customer_router)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,

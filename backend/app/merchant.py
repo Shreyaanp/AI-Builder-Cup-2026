@@ -14,6 +14,8 @@ from uuid import uuid4
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from .customer import Inquiry, InquiryInput, InquiryReceipt, inquiry_key
+
 
 class BusinessFields(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -102,6 +104,10 @@ class MerchantRepository(Protocol):
         """Customer-facing projection of a shared shop, or None when not shared."""
         ...
 
+    def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt: ...
+    def inquiries(self, uid: str, bid: str) -> list[Inquiry]: ...
+    def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry: ...
+
 
 def public_projection(
     bid: str, fields: dict[str, Any], products: list[dict[str, Any]]
@@ -182,6 +188,9 @@ class MerchantStore:
                 state TEXT NOT NULL, PRIMARY KEY(uid,business_id));
             CREATE TABLE IF NOT EXISTS planning(business_id TEXT, product_id TEXT, fields TEXT,
                 PRIMARY KEY(business_id, product_id));
+            CREATE TABLE IF NOT EXISTS inquiries(id TEXT PRIMARY KEY, business_id TEXT NOT NULL,
+                dedupe TEXT NOT NULL, created REAL NOT NULL, fields TEXT NOT NULL);
+            CREATE INDEX IF NOT EXISTS inquiry_lookup ON inquiries(business_id, dedupe, created);
             """)
 
     def connect(self) -> sqlite3.Connection:
@@ -441,6 +450,7 @@ class MerchantStore:
                 )
             ]
             for bid in owned:
+                db.execute("DELETE FROM inquiries WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM planning WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM inventory WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM memberships WHERE business_id=?", (bid,))
@@ -494,6 +504,51 @@ class MerchantStore:
         return public_projection(bid, json.loads(row[0]), products)
 
     # Private planning records do not change catalog revisions or public projections.
+    def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt:
+        now, key = time.time(), inquiry_key(body)
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            if not db.execute("SELECT 1 FROM shares WHERE business_id=?", (bid,)).fetchone():
+                raise HTTPException(404, "This shop page is not available.")
+            prior = db.execute(
+                "SELECT id FROM inquiries WHERE business_id=? AND dedupe=? AND created>? "
+                "ORDER BY created DESC LIMIT 1",
+                (bid, key, now - 120),
+            ).fetchone()
+            if prior:
+                return InquiryReceipt(id=prior[0])
+            record = Inquiry(id=str(uuid4()), **body.model_dump(), created=now)
+            db.execute(
+                "INSERT INTO inquiries VALUES(?,?,?,?,?)",
+                (record.id, bid, key, now, record.model_dump_json()),
+            )
+        return InquiryReceipt(id=record.id)
+
+    def inquiries(self, uid: str, bid: str) -> list[Inquiry]:
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            return [
+                Inquiry.model_validate_json(row[0])
+                for row in db.execute(
+                    "SELECT fields FROM inquiries WHERE business_id=? "
+                    "ORDER BY created DESC LIMIT 100",
+                    (bid,),
+                )
+            ]
+
+    def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self.owned(db, uid, bid)
+            row = db.execute(
+                "SELECT fields FROM inquiries WHERE business_id=? AND id=?", (bid, iid)
+            ).fetchone()
+            if not row:
+                raise HTTPException(404, "Message not found.")
+            record = Inquiry.model_validate_json(row[0]).model_copy(update={"done": True})
+            db.execute("UPDATE inquiries SET fields=? WHERE id=?", (record.model_dump_json(), iid))
+            return record
+
     def planning(
         self, uid: str, bid: str, pid: str, action: str, payload: dict[str, Any]
     ) -> dict[str, Any]:
