@@ -196,6 +196,10 @@ async def public_shop(business_id: str, request: Request) -> dict[str, Any]:
     shop = await anyio.to_thread.run_sync(store(request).public_shop, business_id)
     if shop is None:
         raise HTTPException(404, "This shop page is not available.")
+    # Display-only status uses the same conservative parser/timezone as discovery.
+    from .discover import open_now
+
+    shop["open_now"] = open_now(shop["hours"], shop.get("timezone", "Asia/Singapore"))
     return shop
 
 

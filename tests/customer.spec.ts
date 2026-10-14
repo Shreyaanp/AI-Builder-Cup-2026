@@ -8,6 +8,12 @@ async function localOnly(page: Page) {
   })
 }
 
+/** Ask and Message live together in the Chat with the shop sheet. */
+async function openChat(page: Page) {
+  await page.getByRole('button', { name: 'Chat with the shop' }).click()
+  await expect(page.getByRole('dialog', { name: 'Chat with the shop' })).toBeVisible()
+}
+
 async function sharedShop(page: Page, phone = '+65 6123 4567') {
   await localOnly(page)
   await page.goto('/')
@@ -58,6 +64,21 @@ test('Anonymous customer and owner have a live two-way conversation', async ({ p
     await customer.goto(`http://127.0.0.1:3200/s/${id}`)
     await expect(customer.getByRole('heading', { name: 'Tiong Bahru Kopi' })).toBeVisible()
     await expect(customer.getByRole('button', { name: /sign in/i })).toHaveCount(0)
+    // Header actions: call and WhatsApp the shop (one place, not on every menu row).
+    await expect(customer.getByRole('link', { name: 'Call', exact: true })).toHaveAttribute(
+      'href',
+      'tel:+6561234567',
+    )
+    const whatsapp = await customer
+      .getByRole('link', { name: 'WhatsApp', exact: true })
+      .getAttribute('href')
+    const link = new URL(whatsapp!)
+    expect(link.hostname).toBe('wa.me')
+    expect(link.pathname).toBe('/6561234567')
+    expect(link.searchParams.get('text')).toBe(
+      'Hello Tiong Bahru Kopi, I would like to ask about your menu.',
+    )
+    await openChat(customer)
     const question = customer.getByLabel('Your question')
     await question.fill('How much is kopi?')
     await question.press('Enter')
@@ -73,19 +94,7 @@ test('Anonymous customer and owner have a live two-way conversation', async ({ p
     await expect(customer.getByRole('status').filter({ hasText: 'Not listed' })).toContainText(
       'Please contact the shop',
     )
-    await expect(customer.getByRole('link', { name: 'Call', exact: true })).toHaveAttribute(
-      'href',
-      'tel:+6561234567',
-    )
-    const whatsapp = await customer
-      .getByRole('link', { name: 'Ask about Kopi on WhatsApp' })
-      .getAttribute('href')
-    const link = new URL(whatsapp!)
-    expect(link.hostname).toBe('wa.me')
-    expect(link.pathname).toBe('/6561234567')
-    expect(link.searchParams.get('text')).toBe(
-      'Hello Tiong Bahru Kopi, I would like to ask about Kopi.',
-    )
+
     // No name is required; plain text must remain plain text in both interfaces.
     await customer.getByLabel('Phone or email').fill('customer@example.test')
     await customer
@@ -136,6 +145,7 @@ test('Anonymous customer and owner have a live two-way conversation', async ({ p
     await expect(chat.getByLabel('Reply', { exact: true })).toHaveCount(0)
     await chat.getByRole('button', { name: 'Back', exact: true }).click()
     await customer.reload()
+    await openChat(customer)
     await customer.getByRole('button', { name: 'Open conversation', exact: true }).click()
     await expect(customer.getByRole('dialog', { name: 'Conversation', exact: true })).toContainText(
       'Thank you!',
@@ -162,6 +172,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
     const id = await sharedShop(page)
     await page.goto(`/s/${id}`)
+    await openChat(page)
     await page.getByLabel('Your question').fill('How much is kopi?')
     await page.getByRole('button', { name: 'Ask the shop assistant' }).click()
     await expect(page.getByText("Answer based on the shop's listed details")).toBeVisible()
@@ -190,6 +201,7 @@ test('H09: changed facts clear an old answer; errors preserve input and offer re
   await page.goto(`/s/${id}`)
   await expect(page.getByRole('link', { name: 'Call', exact: true })).toHaveCount(0)
   await expect(page.getByRole('link', { name: /WhatsApp/ })).toHaveCount(0)
+  await openChat(page)
   const question = page.getByLabel('Your question')
   await question.fill('How much is kopi?')
   await page.getByRole('button', { name: 'Ask the shop assistant' }).click()
@@ -199,7 +211,10 @@ test('H09: changed facts clear an old answer; errors preserve input and offer re
   await page.request.post(`/api/v1/businesses/${id}/inventory/${kopi.id}/availability`, {
     data: { available: false },
   })
+  // Refresh lives on the page behind the sheet; the sheet keeps the typed question.
+  await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+  await openChat(page)
   await expect(page.getByText("Answer based on the shop's listed details")).toHaveCount(0)
   await expect(question).toHaveValue('How much is kopi?')
   await page.getByRole('button', { name: 'Ask the shop assistant' }).click()
@@ -243,6 +258,7 @@ test('Polling recovers when SSE fails and blocked contacts cannot create another
       route.fulfill({ status: 503, body: '{}' }),
     )
     await customer.goto(`http://127.0.0.1:3200/s/${id}`)
+    await openChat(customer)
     await customer.getByLabel('Phone or email').fill('blocked@example.test')
     await customer
       .getByRole('textbox', { name: 'Message', exact: true })

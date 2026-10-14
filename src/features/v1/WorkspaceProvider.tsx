@@ -10,6 +10,7 @@ import type { Destination, Editor, Workspace } from './workspaceContext'
 import { ReviewDialog } from './ReviewDialog'
 import { BusinessDialog, ProductDialog } from './EditDialogs'
 import { FaceDialog } from './FaceDialog'
+import { customerShopLink, safeCustomerOrigin } from '../../app/router'
 
 function readSpeak() {
   try {
@@ -52,6 +53,16 @@ export function WorkspaceProvider({
   const [faceOpen, setFaceOpen] = useState(false)
   const [editor, setEditor] = useState<Editor>({ kind: 'none' })
   const [speakReplies, setSpeak] = useState(readSpeak)
+  const [customerOrigin, setCustomerOrigin] = useState<string | null>(null)
+  useEffect(() => {
+    const abort = new AbortController()
+    void api<{ customer_origin?: string }>('/bootstrap', { signal: abort.signal })
+      .then((config) => {
+        if (!abort.signal.aborted) setCustomerOrigin(safeCustomerOrigin(config.customer_origin))
+      })
+      .catch(() => undefined)
+    return () => abort.abort()
+  }, [api])
 
   const loadProducts = useCallback(
     async (id: string | null, signal?: AbortSignal) => {
@@ -178,7 +189,7 @@ export function WorkspaceProvider({
       reload,
       setAvailability,
       setShared,
-      shareUrl: activeId ? `${location.origin}/s/${activeId}` : null,
+      shareUrl: activeId && customerOrigin ? customerShopLink(activeId, customerOrigin) : null,
       review: setProposal,
       notify: setToast,
       requestPhoto: () => {
@@ -200,6 +211,7 @@ export function WorkspaceProvider({
     }),
     [
       api,
+      customerOrigin,
       me,
       businesses,
       loading,
