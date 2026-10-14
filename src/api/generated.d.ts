@@ -427,6 +427,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/shops/{business_id}/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask */
+        post: operations["ask_api_v1_public_shops__business_id__ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/shops/{business_id}/inquiries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inquire */
+        post: operations["inquire_api_v1_public_shops__business_id__inquiries_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/inquiries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inquiries */
+        get: operations["inquiries_api_v1_businesses__business_id__inquiries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/inquiries/{inquiry_id}/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Done */
+        post: operations["done_api_v1_businesses__business_id__inquiries__inquiry_id__done_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -516,6 +584,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Answer */
+        Answer: {
+            /** Answer */
+            answer: string;
+            /** Price */
+            price?: number | null;
+            /** Unit */
+            unit?: string | null;
+            /**
+             * Mode
+             * @default gemini
+             * @enum {string}
+             */
+            mode: "fixture" | "gemini";
+        };
         /** Approval */
         Approval: {
             /** Digest */
@@ -617,6 +700,47 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** Inquiry */
+        Inquiry: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Contact */
+            contact: string;
+            /** Message */
+            message: string;
+            /** Created */
+            created: number;
+            /**
+             * Done
+             * @default false
+             */
+            done: boolean;
+        };
+        /** InquiryInput */
+        InquiryInput: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Contact */
+            contact: string;
+            /** Message */
+            message: string;
+        };
+        /** InquiryReceipt */
+        InquiryReceipt: {
+            /** Id */
+            id: string;
+            /**
+             * Status
+             * @default pending
+             * @constant
+             */
+            status: "pending";
+        };
         /** Match */
         Match: {
             /** Id */
@@ -709,6 +833,16 @@ export interface components {
             business?: components["schemas"]["BusinessFields"] | null;
             /** Products */
             products?: components["schemas"]["ProductFields"][];
+        };
+        /** Question */
+        Question: {
+            /** Question */
+            question: string;
+            /**
+             * Language
+             * @default en
+             */
+            language: string;
         };
         /** ShareRequest */
         ShareRequest: {
@@ -1811,6 +1945,139 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ask_api_v1_public_shops__business_id__ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Question"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Answer"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inquire_api_v1_public_shops__business_id__inquiries_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InquiryInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InquiryReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inquiries_api_v1_businesses__business_id__inquiries_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inquiry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    done_api_v1_businesses__business_id__inquiries__inquiry_id__done_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                inquiry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inquiry"];
                 };
             };
             /** @description Validation Error */
