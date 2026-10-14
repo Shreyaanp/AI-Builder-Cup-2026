@@ -173,6 +173,9 @@ def step(state: SimState, action: SimAction, scenario: Scenario) -> SimState:
     if s.removal != "connected" and kind != "confirm_removal":
         raise ValueError("disconnected")
     if kind == "start" and phase == "goal":
+        # The owner-facing find entry must produce match fixtures without reviewer controls.
+        if action.value == "find" and s.scenario == "new-store-success":
+            s.scenario = "ambiguous-match"
         s.phase = "type"
     elif kind == "type" and phase == "type" and action.value in {"store", "service", "online"}:
         s.business_type = action.value  # type: ignore[assignment]
