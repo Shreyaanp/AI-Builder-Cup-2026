@@ -1,4 +1,6 @@
 import { useContext } from 'react'
+import { resolveLocale } from '../i18n/locales'
+import type { Locale } from '../i18n/locales'
 import {
   BusinessContext,
   BusinessDispatchContext,
@@ -25,4 +27,9 @@ export function usePreferencesDispatch() {
   const dispatch = useContext(PreferencesDispatchContext)
   if (dispatch === null) throw new Error('usePreferencesDispatch requires AppProviders')
   return dispatch
+}
+
+/** The UI locale in effect: the phone's language unless the owner chose one in Settings. */
+export function useLocale(): Locale {
+  return resolveLocale(usePreferences().language)
 }

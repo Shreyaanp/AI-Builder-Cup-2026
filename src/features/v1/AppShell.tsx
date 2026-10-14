@@ -12,6 +12,7 @@ import {
   Menu,
   MenuItem,
   Switch,
+  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
@@ -36,6 +37,7 @@ import { usePreferences, usePreferencesDispatch } from '../../state/hooks'
 import { shape, windowClass } from '../../design/theme'
 import type { ColorMode } from '../../design/theme'
 import { useCopy } from './strings'
+import { isLanguagePref, LOCALE_NAMES, LOCALES, systemLocale } from '../../i18n/locales'
 import { useWorkspace } from './workspaceContext'
 import type { Destination } from './workspaceContext'
 import { CoachScreen } from './screens/CoachScreen'
@@ -328,23 +330,28 @@ function TopBar() {
         <ListSubheader sx={{ bgcolor: 'transparent', lineHeight: '36px' }}>
           {t.language}
         </ListSubheader>
-        <Box sx={{ px: 2, pb: 1 }}>
-          <ToggleButtonGroup
-            exclusive
+        <Box sx={{ px: 2, pb: 1, minWidth: 240 }}>
+          {/* Default follows the phone's language setting; owners can pin a language here. */}
+          <TextField
+            select
+            fullWidth
             size="small"
+            label={t.language}
             value={preferences.language}
-            onChange={(_, value: 'en' | 'hi' | null) =>
-              value && dispatch({ type: 'language', language: value })
+            onChange={(event) =>
+              isLanguagePref(event.target.value) &&
+              dispatch({ type: 'language', language: event.target.value })
             }
-            aria-label={t.language}
           >
-            <ToggleButton value="en" sx={{ px: 2 }}>
-              English
-            </ToggleButton>
-            <ToggleButton value="hi" sx={{ px: 2 }} lang="hi">
-              हिन्दी
-            </ToggleButton>
-          </ToggleButtonGroup>
+            <MenuItem value="system">
+              {t.languageSystem} ({LOCALE_NAMES[systemLocale()]})
+            </MenuItem>
+            {LOCALES.map((code) => (
+              <MenuItem key={code} value={code} lang={code}>
+                {LOCALE_NAMES[code]}
+              </MenuItem>
+            ))}
+          </TextField>
         </Box>
         <ListSubheader sx={{ bgcolor: 'transparent', lineHeight: '36px' }}>{t.theme}</ListSubheader>
         <Box sx={{ px: 2, pb: 1 }}>

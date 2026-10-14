@@ -10,11 +10,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  FormControl,
   IconButton,
-  InputLabel,
-  MenuItem,
-  Select,
   Snackbar,
   Stack,
   TextField,
@@ -64,7 +60,8 @@ export default function App() {
   const roles = activeTheme.material
   const isLight = activeTheme.palette.mode === 'light'
   const online = useOnline()
-  const t = copy[preferences.language]
+  // Legacy starter screen (?classic=1) is English-only; the product UI is localized in features/v1.
+  const t = copy.en
   const [dialog, setDialog] = useState<DialogState>(null)
   const [notice, setNotice] = useState('')
   const navigation = [
@@ -117,7 +114,7 @@ export default function App() {
               component="span"
               sx={{ fontSize: '1.5rem', fontWeight: 600, letterSpacing: '-.06em' }}
             >
-              oGoogle AI
+              Chalkboard
             </Typography>
           </Stack>
           <Box
@@ -145,24 +142,6 @@ export default function App() {
             ))}
           </Box>
           <Stack direction="row" sx={{ gap: 1, alignItems: 'center' }}>
-            <FormControl size="small" sx={{ minWidth: 100 }}>
-              <InputLabel id="language-label">{t.language}</InputLabel>
-              <Select
-                labelId="language-label"
-                label={t.language}
-                value={preferences.language}
-                onChange={(event) =>
-                  preferenceDispatch({
-                    type: 'language',
-                    language: event.target.value === 'hi' ? 'hi' : 'en',
-                  })
-                }
-                sx={{ minHeight: 48 }}
-              >
-                <MenuItem value="en">English</MenuItem>
-                <MenuItem value="hi">हिन्दी</MenuItem>
-              </Select>
-            </FormControl>
             <IconButton
               aria-label={isLight ? t.dark : t.light}
               onClick={() =>

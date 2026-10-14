@@ -1,6 +1,7 @@
 import { alpha, createTheme } from '@mui/material/styles'
 import type { CSSProperties } from 'react'
 import generatedRoles from './material-roles.generated.json'
+import { FONT_STACK } from '../i18n/fonts'
 
 export type Appearance = 'light' | 'dark'
 /** The user's choice; `system` follows prefers-color-scheme. */
@@ -64,7 +65,7 @@ function role(size: number, line: number, weight: number, tracking: number): Typ
   }
 }
 
-/** M3 type scale (baseline). Google Sans Flex, Roboto fallback; Devanagari falls back cleanly. */
+/** M3 type scale (baseline). Google Sans Flex, Roboto fallback; CJK/Thai/Tamil script fonts load per locale. */
 const typeScale: Record<TypeRole, TypeStyle> = {
   displaySmall: role(36, 44, 400, 0),
   headlineLarge: role(32, 40, 400, 0),
@@ -104,8 +105,7 @@ export function nivaTheme(mode: Appearance) {
       },
     },
     typography: {
-      fontFamily:
-        '"Google Sans Flex Variable", "Roboto Variable", "Noto Sans Devanagari", sans-serif',
+      fontFamily: FONT_STACK,
       ...typeScale,
       // Legacy starter roles (classic screen) remain unchanged.
       h1: {

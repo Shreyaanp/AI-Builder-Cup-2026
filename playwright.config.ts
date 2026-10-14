@@ -7,6 +7,9 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: 'http://127.0.0.1:3200',
+    // Singapore demo market: English UI, SGD prices, SG formats.
+    locale: 'en-SG',
+    timezoneId: 'Asia/Singapore',
     screenshot: 'only-on-failure',
     launchOptions: {
       executablePath:

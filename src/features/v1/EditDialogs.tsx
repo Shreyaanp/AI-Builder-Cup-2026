@@ -12,6 +12,7 @@ import {
   useMediaQuery,
 } from '@mui/material'
 import type { Business, Product, Proposal } from './api'
+import { currencySymbol } from './format'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { windowClass } from '../../design/theme'
@@ -191,7 +192,11 @@ function ProductForm({ product }: { product: Product | null }) {
             inputMode="decimal"
             onChange={(event) => setItem({ ...item, price: event.target.value })}
             slotProps={{
-              input: { startAdornment: <InputAdornment position="start">₹</InputAdornment> },
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">{currencySymbol()}</InputAdornment>
+                ),
+              },
               htmlInput: { inputMode: 'decimal' },
             }}
           />
