@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from .imports import ColumnMapper
 from .shop_time import shop_timezone
 
-LANGUAGES = "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil)$"
+LANGUAGES = "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil|hi|bn|te|mr|kn)$"
 
 
 class RecapItem(BaseModel):
@@ -95,6 +95,31 @@ def recap_facts(week: str, sales: list[dict[str, Any]], signals: dict[str, Any])
 
 # Offline fixtures in every owner language; these never establish live Gemini quality.
 TEMPLATES = {
+    "hi": (
+        "इस सार में {days} दिनों की सहेजी बिक्री है; पिछले हफ़्ते {previous} दिन थे।",
+        "{sold} बार सामान खत्म होने और {questions} ग्राहक संदेश दर्ज हुए।",
+        "इस हफ़्ते बिक्री सहेजी नहीं गई। सार देखने के लिए बिक्री आयात करके सहेजें।",
+    ),
+    "bn": (
+        "এই সারাংশে {days} দিনের সেভ করা বিক্রি আছে; আগের সপ্তাহে {previous} দিন।",
+        "{sold} বার পণ্য ফুরোনো ও {questions}টি ক্রেতার বার্তা নথিভুক্ত হয়েছে।",
+        "এই সপ্তাহে বিক্রি সেভ হয়নি। সারাংশ দেখতে বিক্রি এনে সেভ করুন।",
+    ),
+    "te": (
+        "ఈ సారాంశంలో {days} రోజుల సేవ్ చేసిన అమ్మకాలు ఉన్నాయి; గత వారం {previous} రోజులు.",
+        "{sold} సరుకు అయిపోయిన మార్పులు, {questions} కస్టమర్ సందేశాలు నమోదయ్యాయి.",
+        "ఈ వారం అమ్మకాలు సేవ్ కాలేదు. సారాంశం కోసం అమ్మకాలు దిగుమతి చేసి సేవ్ చేయండి.",
+    ),
+    "mr": (
+        "या आढाव्यात {days} दिवसांची जतन केलेली विक्री आहे; मागील आठवड्यात {previous} दिवस.",
+        "माल संपल्याचे {sold} बदल आणि {questions} ग्राहक संदेश नोंदवले.",
+        "या आठवड्याची विक्री जतन नाही. आढाव्यासाठी विक्री आयात करून जतन करा.",
+    ),
+    "kn": (
+        "ಈ ಸಾರಾಂಶದಲ್ಲಿ {days} ದಿನಗಳ ಉಳಿಸಿದ ಮಾರಾಟ ಇದೆ; ಹಿಂದಿನ ವಾರ {previous} ದಿನಗಳು.",
+        "{sold} ಸರಕು ಮುಗಿದ ಬದಲಾವಣೆ ಮತ್ತು {questions} ಗ್ರಾಹಕರ ಸಂದೇಶ ದಾಖಲಾಗಿವೆ.",
+        "ಈ ವಾರದ ಮಾರಾಟ ಉಳಿಸಿಲ್ಲ. ಸಾರಾಂಶಕ್ಕಾಗಿ ಮಾರಾಟ ಆಮದು ಮಾಡಿ ಉಳಿಸಿ.",
+    ),
     "en": (
         "This recap uses {days} saved sales days; the previous week has {previous}.",
         "There were {sold} recorded sold-out switches and {questions} customer messages.",
