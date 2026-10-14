@@ -134,6 +134,7 @@ export function CoachScreen() {
     setMessages((items) => [...items, { role: 'user' as const, text: message }].slice(-40))
     setNote('')
     let finalReply = ''
+    let proposed = false
     try {
       const token = await identity.getToken()
       await streamCoach(
@@ -143,13 +144,18 @@ export function CoachScreen() {
           receive(event)
           if (event.kind === 'delta') finalReply += event.text ?? ''
           if (event.kind === 'reply') finalReply = event.text ?? ''
+          if (event.kind === 'proposal') proposed = true
         },
         token,
       )
       if (controller.current !== abort) return
-      setMessages((items) =>
-        [...items, { role: 'assistant' as const, text: finalReply }].slice(-40),
-      )
+      // The model occasionally returns an empty turn; treat it like a failed reply so the
+      // owner sees why and can resend, instead of an empty bubble.
+      if (!finalReply.trim() && !proposed) throw new Error('EMPTY_REPLY')
+      if (finalReply.trim())
+        setMessages((items) =>
+          [...items, { role: 'assistant' as const, text: finalReply }].slice(-40),
+        )
       setReply('')
       if (speakReplies && finalReply) {
         speechSynthesis.cancel()
