@@ -34,6 +34,10 @@ LOCALE_LANGUAGE = {
     "vi": "vi-VN",
     "fil": "fil-PH",
     "hi": "hi-IN",
+    "bn": "bn-IN",
+    "te": "te-IN",
+    "mr": "mr-IN",
+    "kn": "kn-IN",
 }
 # Script detection wins over the app language: replies follow the owner's language.
 SCRIPTS = [
@@ -42,6 +46,9 @@ SCRIPTS = [
     (re.compile(r"[一-鿿]"), "cmn-CN"),
     (re.compile(r"[฀-๿]"), "th-TH"),
     (re.compile(r"[஀-௿]"), "ta-IN"),
+    (re.compile(r"[\u0980-\u09ff]"), "bn-IN"),
+    (re.compile(r"[\u0c00-\u0c7f]"), "te-IN"),
+    (re.compile(r"[\u0c80-\u0cff]"), "kn-IN"),
     (re.compile(r"[ऀ-ॿ]"), "hi-IN"),
 ]
 TIERS = ("Chirp3-HD", "Chirp-HD", "Neural2", "Wavenet", "Standard")
@@ -50,8 +57,11 @@ TIERS = ("Chirp3-HD", "Chirp-HD", "Neural2", "Wavenet", "Standard")
 def language_for(text: str, locale: str) -> str:
     for pattern, language in SCRIPTS:
         if pattern.search(text):
+            # Hindi and Marathi share Devanagari; preserve the owner's Marathi preference.
+            if language == "hi-IN" and locale.split("-")[0] == "mr":
+                return "mr-IN"
             return language
-    return LOCALE_LANGUAGE.get(locale, "en-US")
+    return LOCALE_LANGUAGE.get(locale, LOCALE_LANGUAGE.get(locale.split("-")[0], "en-US"))
 
 
 def best_voice(voices: list[tuple[str, list[str]]], language: str) -> str | None:

@@ -1826,7 +1826,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "pattern": "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil)$",
+              "pattern": "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil|hi|bn|te|mr|kn)$",
               "default": "en",
               "title": "Language"
             }
@@ -2802,6 +2802,44 @@
         }
       }
     },
+    "/api/v1/discover/ask": {
+      "post": {
+        "summary": "Ask",
+        "operationId": "ask_api_v1_discover_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/orders": {
       "get": {
         "summary": "List Orders",
@@ -3396,6 +3434,77 @@
           "digest"
         ],
         "title": "Approval"
+      },
+      "AskRequest": {
+        "properties": {
+          "q": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Q"
+          },
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lng"
+          },
+          "radius": {
+            "type": "integer",
+            "maximum": 30000.0,
+            "minimum": 200.0,
+            "title": "Radius",
+            "default": 4000
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 16,
+            "title": "Language",
+            "default": "en"
+          }
+        },
+        "type": "object",
+        "required": [
+          "q",
+          "lat",
+          "lng"
+        ],
+        "title": "AskRequest"
+      },
+      "AskResponse": {
+        "properties": {
+          "intent": {
+            "$ref": "#/components/schemas/Intent"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "keywords"
+            ],
+            "title": "Mode"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/Group"
+            },
+            "type": "array",
+            "title": "Groups"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent",
+          "mode",
+          "groups"
+        ],
+        "title": "AskResponse"
       },
       "AvailabilityRequest": {
         "properties": {
@@ -4190,6 +4299,32 @@
         ],
         "title": "Forecast"
       },
+      "Group": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "best",
+              "open",
+              "more"
+            ],
+            "title": "Id"
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/Pick"
+            },
+            "type": "array",
+            "title": "Places"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "places"
+        ],
+        "title": "Group"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -4310,6 +4445,67 @@
           "token"
         ],
         "title": "InquiryReceipt"
+      },
+      "Intent": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "maxLength": 160,
+            "title": "Summary",
+            "default": ""
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Keywords"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "default": ""
+          },
+          "max_price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Price"
+          },
+          "halal": {
+            "type": "boolean",
+            "title": "Halal",
+            "default": false
+          },
+          "vegetarian": {
+            "type": "boolean",
+            "title": "Vegetarian",
+            "default": false
+          },
+          "open_now": {
+            "type": "boolean",
+            "title": "Open Now",
+            "default": false
+          },
+          "followups": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Followups"
+          }
+        },
+        "type": "object",
+        "title": "Intent",
+        "description": "What the customer asked for. Prices are in the local currency's major units."
       },
       "Match": {
         "properties": {
@@ -4451,6 +4647,189 @@
           "version"
         ],
         "title": "OrderVersion"
+      },
+      "Pick": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "chalkboard",
+              "google"
+            ],
+            "title": "Source"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "distance_m": {
+            "type": "integer",
+            "title": "Distance M"
+          },
+          "open_now": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Now"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TopItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "sold_out": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sold Out"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "user_rating_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Rating Count"
+          },
+          "price_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Level"
+          },
+          "google_maps_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Google Maps Uri"
+          },
+          "halal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Halal"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          },
+          "demo_shop": {
+            "type": "boolean",
+            "title": "Demo Shop",
+            "default": false
+          },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          },
+          "photo_authors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Photo Authors",
+            "default": []
+          },
+          "matched": {
+            "items": {
+              "$ref": "#/components/schemas/TopItem"
+            },
+            "type": "array",
+            "title": "Matched",
+            "default": []
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "source",
+          "category",
+          "lat",
+          "lng",
+          "distance_m",
+          "open_now",
+          "items",
+          "sold_out"
+        ],
+        "title": "Pick"
       },
       "PlaceMatch": {
         "properties": {
@@ -5439,7 +5818,7 @@
         "properties": {
           "language": {
             "type": "string",
-            "pattern": "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil)$",
+            "pattern": "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil|hi|bn|te|mr|kn)$",
             "title": "Language"
           }
         },

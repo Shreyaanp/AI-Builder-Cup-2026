@@ -307,12 +307,18 @@ class OfflineCoachModel(BaseLlm):
                 )
                 return
             # Otherwise fall through to the shared scripted reply.
-        reply = (
-            "ऑफ़लाइन नमूना: आपकी बात मिली। आपके व्यवसाय का नाम क्या है? "
-            "यह Gemini का उत्तर नहीं है और कुछ प्रकाशित नहीं हुआ।"
-            if ui_language.get().startswith("hi")
-            else "Offline demo: I received your note. What is your business called? "
-            "This is a scripted reply; nothing has been published."
+        reply = {
+            "hi": "ऑफ़लाइन नमूना: आपकी बात मिली। आपके व्यवसाय का नाम क्या है? "
+            "यह Gemini का उत्तर नहीं है और कुछ प्रकाशित नहीं हुआ।",
+            "bn": "অফলাইন নমুনা: আপনার কথা পেয়েছি। আপনার ব্যবসার নাম কী? এটি আগে লেখা উত্তর; কিছু প্রকাশ হয়নি।",
+            "te": "ఆఫ్‌లైన్ నమూనా: మీ సందేశం అందింది. మీ వ్యాపారం పేరు ఏమిటి? ఇది ముందే రాసిన సమాధానం; ఏదీ ప్రచురించలేదు.",
+            "mr": "ऑफलाइन नमुना: तुमचा संदेश मिळाला. तुमच्या व्यवसायाचे नाव काय? "
+            "हे आधी लिहिलेले उत्तर आहे; काहीही प्रसिद्ध झाले नाही.",
+            "kn": "ಆಫ್‌ಲೈನ್ ಮಾದರಿ: ನಿಮ್ಮ ಸಂದೇಶ ಬಂದಿದೆ. ನಿಮ್ಮ ವ್ಯಾಪಾರದ ಹೆಸರು ಏನು? ಇದು ಮೊದಲೇ ಬರೆದ ಉತ್ತರ; ಏನೂ ಪ್ರಕಟಿಸಿಲ್ಲ.",
+        }.get(
+            ui_language.get().split("-")[0],
+            "Offline demo: I received your note. What is your business called? "
+            "This is a scripted reply; nothing has been published.",
         )
         if stream:
             for word in reply.split(" "):
