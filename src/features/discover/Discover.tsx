@@ -337,14 +337,12 @@ export default function Discover({
             {
               label: front.today,
               action: () =>
-                document
-                  .getElementById('trending-row')
-                  ?.scrollIntoView({
-                    block: 'center',
-                    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
-                      ? 'instant'
-                      : 'smooth',
-                  }),
+                document.getElementById('trending-row')?.scrollIntoView({
+                  block: 'center',
+                  behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+                    ? 'instant'
+                    : 'smooth',
+                }),
               active: false,
               image: 'hawker',
             },

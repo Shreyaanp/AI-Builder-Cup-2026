@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  IconButton,
   List,
   ListItem,
   ListItemText,
@@ -11,17 +12,16 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { Clock, Leaf, MapPin, Phone, RefreshCw } from 'lucide-react'
-import { Fragment } from 'react'
+import { Leaf, MapPin, MessageCircle, Phone, RefreshCw } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { type Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
 import { BrandSplash } from '../frontdoors/Splash'
 import { PlaceImage } from '../frontdoors/PlaceImage'
-import { useFrontCopy } from '../frontdoors/strings'
 import { discoverCopy } from '../discover/strings'
 import { loadScriptFont } from '../../i18n/fonts'
 import { formatPrice } from '../v1/format'
+import { Sheet } from '../v1/Sheet'
 import type { ShopFacts } from '../v1/api'
 import { shape } from '../../design/theme'
 import { CustomerInquiry, CustomerQuestions } from './CustomerQuestions'
@@ -273,7 +273,6 @@ const publicTranslations: Record<Locale, Omit<typeof en, keyof CustomerCopy>> = 
 /** Customer-facing, read-only page for a shop the owner chose to share. No sign-in. */
 export default function PublicShop({ id }: { id: string }) {
   const locale = useLocale()
-  const front = useFrontCopy()
   const discovery = discoverCopy(locale)
   const t = {
     ...en,
@@ -286,6 +285,7 @@ export default function PublicShop({ id }: { id: string }) {
   // Data shown may be older than the last attempt when a refresh failed (network/server).
   const [stale, setStale] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
   useEffect(() => {
     document.documentElement.lang = locale
     void loadScriptFont(locale)
@@ -363,198 +363,163 @@ export default function PublicShop({ id }: { id: string }) {
       </Stack>
     )
 
-  const facts: { icon: ReactNode; text: string }[] = [
-    shop.hours && { icon: <Clock size={20} />, text: shop.hours },
-    shop.location && { icon: <MapPin size={20} />, text: shop.location },
-    shop.phone && { icon: <Phone size={20} />, text: shop.phone },
-  ].filter(Boolean) as { icon: ReactNode; text: string }[]
-  const chips = factChips(shop.facts ?? {}, t)
+  const currency = shop.currency ?? 'SGD'
+  const chips = [
+    ...factChips(shop.facts ?? {}, t),
+    // Type-specific facts the owner confirmed (e.g. a salon's walk-ins), label: value.
+    ...(shop.facts?.custom_facts ?? []).map((fact) => `${fact.label}: ${fact.value}`),
+  ]
+  // Available items first; sold-out items stay listed (customers ask about them) but last.
+  const menu = [...shop.products].sort((a, b) => Number(b.available) - Number(a.available))
+  const openLabel = shop.open_now == null ? null : shop.open_now ? discovery.open : discovery.closed
+  const actions = [
+    shop.location && {
+      label: t.directions,
+      icon: <MapPin size={20} />,
+      href:
+        'https://www.google.com/maps/search/?api=1&query=' +
+        encodeURIComponent(`${shop.name} ${shop.location}`),
+    },
+    shop.phone && {
+      label: t.call,
+      icon: <Phone size={20} />,
+      href: `tel:${shop.phone.replace(/[^\d+]/g, '')}`,
+    },
+    shop.phone && {
+      label: t.whatsapp,
+      icon: <MessageCircle size={20} />,
+      href: whatsappUrl(shop.phone, shop.name, t.whatsappMessage),
+    },
+  ].filter(Boolean) as { label: string; icon: ReactNode; href: string }[]
 
   return (
     <Box
       component="main"
       sx={{
-        maxWidth: 1000,
+        maxWidth: 720,
         mx: 'auto',
         px: { xs: 2, sm: 3 },
-        pt: 'calc(24px + env(safe-area-inset-top))',
-        pb: 'calc(32px + env(safe-area-inset-bottom))',
+        pt: 'calc(16px + env(safe-area-inset-top))',
+        // Room for the pinned chat bar.
+        pb: 'calc(104px + env(safe-area-inset-bottom))',
       }}
     >
-      <Box
-        sx={{ borderRadius: `${shape.xl}px`, overflow: 'hidden', mb: 4, maxHeight: { md: 480 } }}
-      >
-        <PlaceImage id={id} category={shop.category} eager transition />
-      </Box>
-      <Box
-        sx={{
-          bgcolor: roles.primaryContainer,
-          color: roles.onPrimaryContainer,
-          borderRadius: `${shape.xl}px`,
-          p: 3,
-        }}
-      >
-        <Typography component="h1" variant="headlineMedium" sx={{ overflowWrap: 'anywhere' }}>
-          {shop.name}
-        </Typography>
-        {shop.category && (
-          <Typography variant="bodyLarge" sx={{ mt: 0.5 }}>
-            {shop.category}
-          </Typography>
-        )}
+      {/* Compact header: who, open or not, how to get there. The menu is the page. */}
+      <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
         <Box
-          component="dl"
           sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: 3,
-            mt: 4,
-            mb: 0,
+            width: 72,
+            height: 72,
+            flexShrink: 0,
+            borderRadius: `${shape.lg}px`,
+            overflow: 'hidden',
+            bgcolor: roles.surfaceContainerHigh,
           }}
         >
-          {[
-            [
-              discovery.open,
-              shop.open_now == null
-                ? discovery.unknown
-                : shop.open_now
-                  ? discovery.open
-                  : discovery.closed,
-            ],
-            [
-              front.price,
-              shop.products.length
-                ? `${formatPrice(Math.min(...shop.products.map((p) => p.price)), shop.currency ?? 'SGD', locale)} – ${formatPrice(Math.max(...shop.products.map((p) => p.price)), shop.currency ?? 'SGD', locale)}`
-                : front.notListed,
-            ],
-            [
-              t.factHalal,
-              shop.facts?.halal === 'yes'
-                ? t.factHalal
-                : shop.facts?.halal === 'no'
-                  ? t.factNotHalal
-                  : shop.facts?.halal === 'muslim_owned'
-                    ? t.factMuslimOwned
-                    : front.notListed,
-            ],
-            [
-              t.factsLabel,
-              factChips({ payment_methods: shop.facts?.payment_methods }, t).join(' · ') ||
-                front.notListed,
-            ],
-          ].map(([label, value]) => (
+          <PlaceImage id={id} category={shop.category} eager transition />
+        </Box>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography component="h1" variant="titleLarge" sx={{ overflowWrap: 'anywhere' }}>
+            {shop.name}
+          </Typography>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            {openLabel && (
+              <Typography
+                variant="labelLarge"
+                sx={{ color: shop.open_now ? roles.primary : roles.error, fontWeight: 600 }}
+              >
+                {openLabel}
+              </Typography>
+            )}
+            {[shop.category, shop.hours].filter(Boolean).map((text) => (
+              <Typography key={text} variant="bodyMedium" color="text.secondary" noWrap>
+                · {text}
+              </Typography>
+            ))}
+          </Stack>
+        </Box>
+      </Stack>
+      {actions.length > 0 && (
+        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+          {actions.map((action) => (
+            <Button
+              key={action.label}
+              variant="outlined"
+              size="small"
+              startIcon={action.icon}
+              href={action.href}
+              target={action.href.startsWith('http') ? '_blank' : undefined}
+              rel={action.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+              sx={{ minHeight: 40, flex: { xs: 1, sm: 'none' } }}
+            >
+              {action.label}
+            </Button>
+          ))}
+        </Stack>
+      )}
+      {shop.location && (
+        <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1.5 }}>
+          {shop.location}
+        </Typography>
+      )}
+      {chips.length > 0 && (
+        <Box
+          component="ul"
+          aria-label={t.factsLabel}
+          sx={{
+            listStyle: 'none',
+            m: 0,
+            p: 0,
+            mt: 2,
+            display: 'flex',
+            gap: 1,
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+          }}
+        >
+          {chips.map((chip) => (
             <Box
-              key={label}
+              component="li"
+              key={chip}
               sx={{
-                m: 0,
-                p: 3,
-                borderRadius: `${shape.lg}px`,
-                bgcolor: roles.surface,
-                color: roles.onSurface,
+                flexShrink: 0,
+                px: 1.5,
+                py: 0.75,
+                borderRadius: `${shape.sm}px`,
+                bgcolor: roles.secondaryContainer,
+                color: roles.onSecondaryContainer,
+                typography: 'labelLarge',
+                whiteSpace: 'nowrap',
               }}
             >
-              <Typography component="dt" variant="labelMedium" color="text.secondary">
-                {label}
-              </Typography>
-              <Typography
-                component="dd"
-                variant="titleMedium"
-                sx={{ m: 0, mt: 1, overflowWrap: 'anywhere' }}
-              >
-                {value}
-              </Typography>
+              {chip}
             </Box>
           ))}
         </Box>
-        <Stack spacing={1} sx={{ mt: 2 }}>
-          {facts.map((fact) => (
-            <Stack key={fact.text} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-              <Box aria-hidden="true" sx={{ display: 'flex' }}>
-                {fact.icon}
-              </Box>
-              <Typography variant="bodyMedium">{fact.text}</Typography>
-            </Stack>
-          ))}
-        </Stack>
-        {chips.length > 0 && (
-          <Box
-            component="ul"
-            aria-label={t.factsLabel}
-            sx={{ listStyle: 'none', m: 0, p: 0, mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}
-          >
-            {chips.map((chip) => (
-              <Box
-                component="li"
-                key={chip}
-                sx={{
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: `${shape.sm}px`,
-                  border: `1px solid ${roles.onPrimaryContainer}`,
-                  typography: 'labelLarge',
-                }}
-              >
-                {chip}
-              </Box>
-            ))}
-          </Box>
-        )}
-        <Stack direction="row" spacing={1} sx={{ mt: 2.5, flexWrap: 'wrap', gap: 1 }}>
-          <Button variant="contained" href="#shop-ask">
-            {front.ask}
-          </Button>
-          <Button
-            variant="outlined"
-            href="#shop-message"
-            sx={{ color: roles.onPrimaryContainer, borderColor: roles.onPrimaryContainer }}
-          >
-            {front.message}
-          </Button>
-          {shop.location && (
-            <Button
-              variant="outlined"
-              startIcon={<MapPin size={18} />}
-              href={
-                'https://www.google.com/maps/search/?api=1&query=' +
-                encodeURIComponent(`${shop.name} ${shop.location}`)
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ color: roles.onPrimaryContainer, borderColor: roles.onPrimaryContainer }}
-            >
-              {t.directions}
-            </Button>
-          )}
-          {shop.phone && (
-            <Button
-              variant="outlined"
-              startIcon={<Phone size={18} />}
-              href={`tel:${shop.phone.replace(/[^\d+]/g, '')}`}
-              sx={{ borderColor: roles.onPrimaryContainer, color: roles.onPrimaryContainer }}
-            >
-              {t.call}
-            </Button>
-          )}
-          {shop.phone && (
-            <Button
-              variant="outlined"
-              href={whatsappUrl(shop.phone, shop.name, t.whatsappMessage)}
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ borderColor: roles.onPrimaryContainer, color: roles.onPrimaryContainer }}
-            >
-              {t.whatsapp}
-            </Button>
-          )}
-        </Stack>
-      </Box>
+      )}
 
-      <Stack direction="row" sx={{ alignItems: 'center', mt: 4, mb: 1 }}>
-        <Typography component="h2" variant="titleLarge" sx={{ flex: 1 }}>
+      {/* Menu: dense, aligned prices, readable at a glance. */}
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: 'center',
+          mt: 3,
+          py: 1,
+          position: 'sticky',
+          top: 'env(safe-area-inset-top)',
+          zIndex: 1,
+          bgcolor: 'background.default',
+        }}
+      >
+        <Typography component="h2" variant="titleMedium" sx={{ flex: 1 }}>
           {t.menu}
+          <Typography component="span" variant="bodyMedium" color="text.secondary">
+            {' '}
+            · {shop.products.length}
+          </Typography>
         </Typography>
-        <Button
-          startIcon={refreshing ? <CircularProgress size={16} /> : <RefreshCw size={16} />}
+        <IconButton
+          aria-label={t.refresh}
           onClick={() => {
             setRefreshing(true)
             void fetchShop()
@@ -563,8 +528,8 @@ export default function PublicShop({ id }: { id: string }) {
               .finally(() => setRefreshing(false))
           }}
         >
-          {t.refresh}
-        </Button>
+          {refreshing ? <CircularProgress size={18} /> : <RefreshCw size={18} />}
+        </IconButton>
       </Stack>
       {stale && (
         <Alert severity="warning" sx={{ mb: 2 }}>
@@ -576,82 +541,113 @@ export default function PublicShop({ id }: { id: string }) {
       ) : (
         <List
           disablePadding
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
-            gap: 3,
-          }}
+          sx={{ bgcolor: roles.surfaceContainerLow, borderRadius: `${shape.lg}px` }}
         >
-          {shop.products.map((product) => (
-            <Fragment key={product.name + product.unit}>
-              {/* Sold-out rows use colour + strike-through + label, not opacity (contrast). */}
-              <ListItem
-                sx={{
-                  py: 3,
-                  px: 4,
-                  flexWrap: 'wrap',
-                  bgcolor: roles.surfaceContainerLow,
-                  borderRadius: `${shape.lg}px`,
-                  border: `1px solid ${roles.outlineVariant}`,
+          {menu.map((product, index) => (
+            <ListItem
+              key={product.name + product.unit}
+              divider={index < menu.length - 1}
+              sx={{ py: 1.5, px: 2, gap: 2 }}
+            >
+              <ListItemText
+                primary={product.name}
+                secondary={product.available ? `/ ${product.unit}` : null}
+                slotProps={{
+                  primary: {
+                    variant: 'bodyLarge',
+                    sx: product.available ? undefined : { color: 'text.secondary' },
+                  },
+                  secondary: { variant: 'bodySmall' },
                 }}
-              >
-                <ListItemText
-                  primary={product.name}
-                  secondary={product.available ? null : t.soldOut}
-                  slotProps={{
-                    primary: {
-                      variant: 'bodyLarge',
-                      sx: product.available ? undefined : { textDecoration: 'line-through' },
-                    },
-                    secondary: { variant: 'labelMedium', color: 'error' },
-                  }}
-                />
-                <Typography variant="titleMedium" sx={{ whiteSpace: 'nowrap', ml: 2 }}>
-                  {formatPrice(product.price, shop.currency ?? 'SGD', locale)}
-                  <Typography component="span" variant="bodyMedium" color="text.secondary">
-                    {' '}
-                    / {product.unit}
-                  </Typography>
+              />
+              {product.available ? (
+                <Typography
+                  variant="titleMedium"
+                  sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {formatPrice(product.price, currency, locale)}
                 </Typography>
-                {shop.phone && (
-                  <Button
-                    href={whatsappUrl(shop.phone, shop.name, t.whatsappItemMessage, product.name)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{ width: '100%', justifyContent: 'flex-start' }}
-                  >
-                    {t.whatsappItem.replace('{item}', product.name)}
-                  </Button>
-                )}
-              </ListItem>
-            </Fragment>
+              ) : (
+                // Sold out: label + muted text, not colour alone.
+                <Box
+                  component="span"
+                  sx={{
+                    px: 1,
+                    py: 0.25,
+                    borderRadius: `${shape.xs}px`,
+                    bgcolor: roles.errorContainer,
+                    color: roles.onErrorContainer,
+                    typography: 'labelMedium',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {t.soldOut}
+                </Box>
+              )}
+            </ListItem>
           ))}
         </List>
       )}
-      {/* Public customer inputs stay local; neither uses the owner's coach/session. */}
-      <Box id="shop-ask" sx={{ scrollMarginTop: 24 }}>
-        <CustomerQuestions
-          key={`ask-${id}`}
-          id={id}
-          facts={stale ? '' : JSON.stringify(shop)}
-          item={shop.products[0]?.name}
-          currency={shop.currency ?? 'SGD'}
-          copy={t}
-        />
-      </Box>
-      <Box id="shop-message" sx={{ scrollMarginTop: 24 }}>
-        <CustomerInquiry key={`contact-${id}`} id={id} copy={t} />
-      </Box>
       <Stack
         direction="row"
         spacing={1}
-        sx={{ mt: 4, alignItems: 'center', color: 'text.secondary', justifyContent: 'center' }}
+        sx={{ mt: 3, alignItems: 'center', color: 'text.secondary', justifyContent: 'center' }}
       >
         <Leaf size={14} aria-hidden="true" />
         <Typography variant="bodySmall" sx={{ textAlign: 'center' }}>
           {t.footer}
         </Typography>
       </Stack>
+
+      {/* One way to reach the shop: instant answers first, the owner when needed. */}
+      <Box
+        sx={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          px: 2,
+          pt: 1.5,
+          pb: 'calc(12px + env(safe-area-inset-bottom))',
+          bgcolor: roles.surfaceContainer,
+          borderTop: `1px solid ${roles.outlineVariant}`,
+          zIndex: 2,
+        }}
+      >
+        <Button
+          fullWidth
+          variant="contained"
+          size="large"
+          startIcon={<MessageCircle size={20} />}
+          onClick={() => setChatOpen(true)}
+          sx={{ maxWidth: 720, mx: 'auto', display: 'flex', minHeight: 52 }}
+        >
+          {t.chatTitle}
+        </Button>
+      </Box>
+      <Sheet
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        titleId="shop-chat-title"
+        title={t.chatTitle}
+      >
+        <Typography variant="bodyMedium" color="text.secondary">
+          {t.chatIntro}
+        </Typography>
+        <Box id="shop-ask">
+          <CustomerQuestions
+            key={`ask-${id}`}
+            id={id}
+            facts={stale ? '' : JSON.stringify(shop)}
+            item={menu[0]?.name}
+            currency={currency}
+            copy={t}
+          />
+        </Box>
+        <Box id="shop-message">
+          <CustomerInquiry key={`contact-${id}`} id={id} copy={t} />
+        </Box>
+      </Sheet>
     </Box>
   )
 }
