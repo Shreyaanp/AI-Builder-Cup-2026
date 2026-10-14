@@ -82,6 +82,8 @@ export const zhHans: Copy = {
   draftLegal: '原型草案，尚待法律审阅。',
   legalTranslation: '译文仅供参考，以英文版本为准。',
   close: '关闭',
+  photoTake: '拍照',
+  photoUpload: '上传照片',
   setupDone: '设置完成',
   discardTitle: '放弃更改？',
   discardBody: '你输入或正在确认的内容还没有保存。',

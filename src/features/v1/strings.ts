@@ -94,6 +94,8 @@ export const en = {
   discard: 'Discard',
   keepEditing: 'Keep editing',
   setupDone: 'Setup complete',
+  photoTake: 'Take photo',
+  photoUpload: 'Upload photo',
   // Navigation
   navCoach: 'Coach',
   navShop: 'My shop',
