@@ -163,12 +163,15 @@ test('delete all my data erases shops and asks for consent again', async ({ page
 
 test('customer facts: the card starts the chat, the owner confirms, customers see a chip', async ({
   page,
+  isMobile,
 }) => {
   // Outside busy hours, so the facts card (not the sold-out sweep) is the pending item.
   await page.clock.setFixedTime(new Date('2026-10-14T09:00:00+08:00'))
   await open(page)
   await addShop(page, 'Halal Corner')
   await page.getByRole('button', { name: 'Coach', exact: true }).click()
+  // Phones show one coach card at a time; today's menu check comes first.
+  if (isMobile) await page.getByRole('button', { name: 'Yes, all good' }).click()
   const card = page.getByRole('region', { name: 'Customers ask: halal? payment?' })
   await expect(card).toBeVisible()
   await card.getByRole('button', { name: 'Answer' }).click()
@@ -202,7 +205,10 @@ test('customer facts: the card starts the chat, the owner confirms, customers se
   await expect(page.getByRole('list', { name: 'Good to know' })).toContainText('Halal')
 })
 
-test('busy-hours sweep asks about top items; Sold out uses the owner switch', async ({ page }) => {
+test('busy-hours sweep asks about top items; Sold out uses the owner switch', async ({
+  page,
+  isMobile,
+}) => {
   await page.clock.setFixedTime(new Date('2026-10-14T12:30:00+08:00'))
   await open(page)
   const proposal = await (
@@ -224,6 +230,8 @@ test('busy-hours sweep asks about top items; Sold out uses the owner switch', as
   ).json()
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
+  // Phones show one coach card at a time; today's menu check comes first.
+  if (isMobile) await page.getByRole('button', { name: 'Yes, all good' }).click()
   const kopi = page.getByRole('region', { name: 'Still have Kopi?' })
   await expect(kopi).toBeVisible()
   await kopi.getByRole('button', { name: 'Sold out' }).click()

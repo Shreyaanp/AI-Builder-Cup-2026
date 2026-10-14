@@ -14,6 +14,7 @@ import {
 } from '@mui/material'
 import { X } from 'lucide-react'
 import { motion, shape, windowClass } from '../../design/theme'
+import { useBackClose } from './backStack'
 import { useCopy } from './strings'
 
 const timing = { enter: motion.duration.enter, exit: motion.duration.exit }
@@ -21,7 +22,8 @@ const timing = { enter: motion.duration.enter, exit: motion.duration.exit }
 /**
  * M3 modal bottom sheet on compact windows (drag handle, scrim, swipe down / Esc / scrim to
  * close, focus trapped by the modal); a dialog on wider windows. Used by every coach sheet so
- * they share one shape and motion.
+ * they share one shape and motion. The phone's Back button closes it first; with `dirty`, Back
+ * asks "Discard changes?" instead.
  */
 export function Sheet({
   open,
@@ -32,6 +34,7 @@ export function Sheet({
   actions,
   onEntered,
   keepMounted = false,
+  dirty = false,
 }: {
   open: boolean
   onClose: () => void
@@ -43,10 +46,13 @@ export function Sheet({
   onEntered?: () => void
   /** Keep content (and typed drafts) mounted while closed. */
   keepMounted?: boolean
+  /** Unsaved input inside: Back asks before closing. */
+  dirty?: boolean
 }) {
   const roles = useTheme().material
   const t = useCopy()
   const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
+  useBackClose(open, onClose, dirty)
   // Swipe, Esc and the scrim also close; the button makes it obvious and works for everyone.
   const close = (
     <IconButton
@@ -84,7 +90,9 @@ export function Sheet({
               pb: 'env(safe-area-inset-bottom)',
               display: 'flex',
               flexDirection: 'column',
-              position: 'relative',
+              // The paper stays position: fixed at the bottom edge (MUI's own rule). It is
+              // already the containing block for the close button; overriding it to
+              // relative put the sheet in normal flow at the top of the screen (B1).
             },
           },
         }}
@@ -114,7 +122,17 @@ export function Sheet({
             {title}
           </Typography>
         )}
-        <Box sx={{ px: 6, pb: 4, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+        {/* Only the content scrolls; the title and actions stay put inside the 90dvh cap. */}
+        <Box
+          sx={{
+            flex: '1 1 auto',
+            minHeight: 0,
+            px: 6,
+            pb: 4,
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+          }}
+        >
           {children}
         </Box>
         {actions && (

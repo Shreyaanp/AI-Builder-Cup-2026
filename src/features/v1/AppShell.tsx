@@ -45,29 +45,15 @@ import { ShopScreen } from './screens/ShopScreen'
 import { ShopOverview } from './ShopTiles'
 import { GoogleScreen } from './screens/GoogleScreen'
 import { PrivacyScreen } from './screens/PrivacyScreen'
+import { DiscardPrompt } from './DiscardPrompt'
 
 export function AppShell() {
   const t = useCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   const rail = useMediaQuery(`(min-width:${windowClass.medium}px)`)
-  // While the on-screen keyboard is up (a text field is focused on a phone), hide the bottom
-  // navigation so the composer sits directly on the keyboard.
-  const [typing, setTyping] = useState(false)
-  useEffect(() => {
-    const isText = (node: EventTarget | null) =>
-      node instanceof HTMLTextAreaElement ||
-      (node instanceof HTMLInputElement && !['checkbox', 'radio', 'file'].includes(node.type))
-    const onIn = (event: FocusEvent) => setTyping(isText(event.target))
-    const onOut = () => setTyping(false)
-    document.addEventListener('focusin', onIn)
-    document.addEventListener('focusout', onOut)
-    return () => {
-      document.removeEventListener('focusin', onIn)
-      document.removeEventListener('focusout', onOut)
-    }
-  }, [])
-  const showNavBar = !rail && !typing
+  const keyboard = useKeyboardOpen()
+  const showNavBar = !rail && !keyboard
   // Large windows: My shop tiles beside the coach (phones keep the coach to one card).
   const supporting = useMediaQuery(`(min-width:${windowClass.large}px)`)
   useEffect(() => {
@@ -193,8 +179,50 @@ export function AppShell() {
           ))}
         </Box>
       )}
+      <DiscardPrompt />
     </Box>
   )
+}
+
+/**
+ * True while the on-screen keyboard is up, so the bottom navigation can make room for the
+ * composer. Focus alone is not enough: a field keeps focus after the owner dismisses the
+ * keyboard (or after "Something changed" focuses the composer), which left the navigation
+ * hidden for good (B2). The page uses interactive-widget=resizes-content, so the keyboard
+ * shows up as the window getting clearly shorter than its full height at the same width.
+ */
+function useKeyboardOpen() {
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    let width = window.innerWidth
+    let full = window.innerHeight
+    const isText = (node: Element | null) =>
+      node instanceof HTMLTextAreaElement ||
+      (node instanceof HTMLInputElement && !['checkbox', 'radio', 'file'].includes(node.type))
+    const update = () => {
+      const height = window.visualViewport?.height ?? window.innerHeight
+      if (window.innerWidth !== width) {
+        // Rotation or a resized window: start measuring again.
+        width = window.innerWidth
+        full = height
+      }
+      full = Math.max(full, height)
+      setOpen(isText(document.activeElement) && full - height > 120)
+    }
+    // Focus moves before the keyboard animates; resize events report the result.
+    const later = () => window.setTimeout(update, 0)
+    window.visualViewport?.addEventListener('resize', update)
+    window.addEventListener('resize', update)
+    document.addEventListener('focusin', later)
+    document.addEventListener('focusout', later)
+    return () => {
+      window.visualViewport?.removeEventListener('resize', update)
+      window.removeEventListener('resize', update)
+      document.removeEventListener('focusin', later)
+      document.removeEventListener('focusout', later)
+    }
+  }, [])
+  return open
 }
 
 function NavItem({
@@ -281,6 +309,18 @@ function TopBar() {
         </Typography>
       </Button>
       <Box sx={{ flex: 1 }} />
+      {/* New chat and the other coach actions, next to settings (only where the coach is). */}
+      {ws.destination === 'coach' && (
+        <Tooltip title={t.newChat}>
+          <IconButton
+            aria-label={t.newChat}
+            aria-haspopup="dialog"
+            onClick={() => ws.setCoachActions(true)}
+          >
+            <Plus size={22} />
+          </IconButton>
+        </Tooltip>
+      )}
       <Tooltip title={t.settings}>
         <IconButton
           aria-label={t.settings}

@@ -89,6 +89,13 @@ export const en = {
   draftLegal: 'Draft for the prototype — pending legal review.',
   legalTranslation: 'Translation for convenience — the English version applies.',
   close: 'Close',
+  discardTitle: 'Discard changes?',
+  discardBody: 'What you typed or are reviewing has not been saved.',
+  discard: 'Discard',
+  keepEditing: 'Keep editing',
+  setupDone: 'Setup complete',
+  photoTake: 'Take photo',
+  photoUpload: 'Upload photo',
   // Navigation
   navCoach: 'Coach',
   navShop: 'My shop',
@@ -110,7 +117,6 @@ export const en = {
   saved: 'Saved',
   // Coach
   coachGreeting: 'What shall we work on today?',
-  coachGreetingShop: (name: string) => `What’s new at ${name}?`,
   coachHint: 'Send a photo of your shop board, or tell me your shop’s name.',
   suggestPhoto: 'Send a shop photo',
   suggestAdd: 'Add my shop',
