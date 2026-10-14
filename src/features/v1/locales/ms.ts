@@ -1,6 +1,10 @@
 import type { Copy } from '../strings'
 
 export const ms: Copy = {
+  connectionOffline: 'Luar talian',
+  connectionReconnecting: 'Menyambung semula…',
+  voiceFailed: 'Sambungan suara tamat. Cuba lagi atau gunakan teks.',
+  voiceRestarted: 'Suara disambung semula. Sila sebut sekali lagi.',
   appName: 'Chalkboard',
   independent: 'Prototaip bebas · bukan produk Google',
   loading: 'Menyediakan kedai anda…',

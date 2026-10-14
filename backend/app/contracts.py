@@ -27,7 +27,7 @@ class CoachTurn(StrictModel):
 
 
 class VoiceControl(StrictModel):
-    kind: Literal["text", "audio_end", "close", "ping"]
+    kind: Literal["text", "audio_end", "close", "ping", "pong"]
     text: str = Field(default="", max_length=2000)
 
 
@@ -49,6 +49,7 @@ class StreamEvent(StrictModel):
         "output_transcript",
         "audio_format",
         "pong",
+        "ping",
         "proposal",
         "workflow",
     ]

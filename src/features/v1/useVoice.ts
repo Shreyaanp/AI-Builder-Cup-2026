@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useIdentity } from '../../auth/useIdentity'
+import { reconnectDelay, waitOnline } from '../../api/stream'
 import type { CoachEvent } from '../../api/stream'
+import { useCopy } from './strings'
 
 interface VoiceRuntime {
   socket: WebSocket
@@ -9,11 +11,17 @@ interface VoiceRuntime {
   node?: AudioWorkletNode
   deadline?: ReturnType<typeof setTimeout>
   next: number
+  cleanup: () => void
+  complete: boolean
 }
 
 export function useVoice(businessId: string | null, onEvent: (event: CoachEvent) => void) {
   const identity = useIdentity()
-  const [state, setState] = useState<'idle' | 'connecting' | 'recording' | 'replying'>('idle')
+  const t = useCopy()
+  const owner = useRef<AbortController | null>(null)
+  const [state, setState] = useState<
+    'idle' | 'connecting' | 'reconnecting' | 'recording' | 'replying'
+  >('idle')
   const [error, setError] = useState('')
   const [muted, setMuted] = useState(false)
   const mutedRef = useRef(false)
@@ -23,10 +31,11 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
   useEffect(() => {
     eventRef.current = onEvent
   }, [onEvent])
-  function stop() {
+  const release = useCallback(() => {
     const current = runtime.current
     runtime.current = null
     if (current) {
+      current.cleanup()
       clearTimeout(current.deadline)
       current.node?.disconnect()
       current.stream?.getTracks().forEach((track) => track.stop())
@@ -34,15 +43,20 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
       void current.audio.close()
     }
     speechSynthesis.cancel()
+  }, [])
+  const stop = useCallback(() => {
+    owner.current?.abort()
+    owner.current = null
+    release()
     if (mounted.current) setState('idle')
-  }
+  }, [release])
   useEffect(() => {
     mounted.current = true
     return () => {
       mounted.current = false
       stop()
     }
-  }, [businessId])
+  }, [businessId, identity.scope, stop])
   function toggleMute() {
     mutedRef.current = !mutedRef.current
     setMuted(mutedRef.current)
@@ -58,24 +72,76 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
     setState('replying')
   }
   async function start() {
-    if (runtime.current) return
+    if (owner.current) return
+    const operation = new AbortController()
+    owner.current = operation
     setError('')
-    setState('connecting')
-    const token = await identity.getToken().catch(() => null)
-    if (!mounted.current) return
+    await connect(operation, false)
+  }
+  async function connect(operation: AbortController, retry: boolean, sid?: string) {
+    if (operation.signal.aborted) return
+    setError('')
+    setState(retry ? 'reconnecting' : 'connecting')
+    let token: string | null
+    try {
+      if (retry) {
+        const recovery = AbortSignal.any([operation.signal, AbortSignal.timeout(45_000)])
+        await waitOnline(recovery)
+        await reconnectDelay(500, recovery)
+      }
+      token = await identity.getToken()
+    } catch {
+      if (!operation.signal.aborted) {
+        setError(t.voiceFailed)
+        stop()
+      }
+      return
+    }
+    if (!mounted.current || operation.signal.aborted) return
     const url = new URL('/api/v1/voice', location.href)
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
     if (businessId) url.searchParams.set('business_id', businessId)
+    if (sid) url.searchParams.set('session_id', sid)
     const socket = new WebSocket(url)
     socket.binaryType = 'arraybuffer'
     const audio = new AudioContext()
-    const current: VoiceRuntime = { socket, audio, next: 0 }
+    let sessionId = sid
+    let lastMessage = 0
+    const offline = () => socket.close(4000, 'Connection interrupted')
+    const watchdog = setInterval(() => {
+      if (lastMessage && performance.now() - lastMessage > 45_000)
+        socket.close(4000, 'Heartbeat missed')
+    }, 5_000)
+    const foreground = () => {
+      if (document.visibilityState === 'visible' && performance.now() - lastMessage > 45_000)
+        socket.close(4000, 'Heartbeat missed')
+    }
+    window.addEventListener('offline', offline)
+    document.addEventListener('visibilitychange', foreground)
+    const current: VoiceRuntime = {
+      socket,
+      audio,
+      next: 0,
+      complete: false,
+      cleanup: () => {
+        clearInterval(watchdog)
+        window.removeEventListener('offline', offline)
+        document.removeEventListener('visibilitychange', foreground)
+        socket.onclose = null
+        socket.onerror = null
+        socket.onmessage = null
+        socket.onopen = null
+      },
+    }
     runtime.current = current
+    current.deadline = setTimeout(() => socket.close(4000, 'Connection timeout'), 45_000)
     socket.onopen = () => {
+      lastMessage = performance.now()
       if (token) socket.send(JSON.stringify({ kind: 'authenticate', token }))
     }
     socket.onmessage = async (message: MessageEvent<string | ArrayBuffer>) => {
       if (runtime.current !== current) return
+      lastMessage = performance.now()
       try {
         if (typeof message.data !== 'string') {
           if (mutedRef.current) return
@@ -92,10 +158,16 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
           return
         }
         const event: CoachEvent = JSON.parse(message.data)
-        if (event.kind === 'error')
-          throw new Error('Voice connection unavailable. Use text or retry.')
+        if (event.kind === 'ping') {
+          if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ kind: 'pong' }))
+          return
+        }
+        if (event.kind === 'error') throw new Error('VOICE_UNAVAILABLE')
         eventRef.current(event)
         if (event.kind === 'ready') {
+          clearTimeout(current.deadline)
+          sessionId = event.session_id ?? undefined
+          if (retry) setError(t.voiceRestarted)
           await audio.resume()
           await audio.audioWorklet.addModule('/audio-capture.worklet.js')
           const stream = await navigator.mediaDevices.getUserMedia({
@@ -126,6 +198,7 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
           await audio.resume()
         }
         if (event.kind === 'turn_complete') {
+          current.complete = true
           clearTimeout(current.deadline)
           current.deadline = setTimeout(
             stop,
@@ -133,16 +206,24 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
           )
         }
       } catch {
-        setError('Microphone or voice service unavailable. Your text conversation stays available.')
+        if (runtime.current !== current) return
+        setError(t.voiceFailed)
         stop()
       }
     }
-    socket.onerror = () => {
-      setError('Voice connection failed. Retry or use text.')
-      stop()
-    }
-    socket.onclose = () => {
-      if (runtime.current === current) stop()
+    // Browsers follow an error with close; one handler owns recovery and teardown.
+    socket.onerror = () => {}
+    socket.onclose = (event) => {
+      if (runtime.current !== current) return
+      release()
+      if (current.complete) {
+        stop()
+      } else if (!retry && ![1000, 1001, 1008].includes(event.code)) {
+        void connect(operation, true, sessionId)
+      } else {
+        setError(t.voiceFailed)
+        stop()
+      }
     }
   }
   return { state, error, muted, start, stop, finishRecording, toggleMute }

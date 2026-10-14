@@ -2608,6 +2608,7 @@
               "output_transcript",
               "audio_format",
               "pong",
+              "ping",
               "proposal",
               "workflow"
             ],
@@ -2706,7 +2707,8 @@
               "text",
               "audio_end",
               "close",
-              "ping"
+              "ping",
+              "pong"
             ],
             "title": "Kind",
             "type": "string"
