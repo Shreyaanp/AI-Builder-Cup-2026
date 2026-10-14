@@ -43,6 +43,14 @@ test('demo: photo, price correction, customer page and availability', async ({ p
   await expect(review).not.toBeVisible()
 
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  // My shop is tiles; the menu, sold-out switches and customer page each open a sheet.
+  const menu = page.getByRole('button', { name: /^Menu/ })
+  const sheet = (name: string) => page.getByRole('dialog', { name })
+  const closeSheet = async () => {
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  }
+  await menu.click()
   const chai = page.getByRole('button', { name: /^Edit Chai/ })
   await expect(chai).toContainText('Chai')
   await chai.click()
@@ -50,13 +58,16 @@ test('demo: photo, price correction, customer page and availability', async ({ p
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await expect(review).toContainText('$12.00 / cup')
   await review.getByRole('button', { name: 'Confirm and save' }).click()
-  await expect(review).not.toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await menu.click()
   await expect(chai).toContainText('$12.00')
+  await closeSheet()
 
+  await page.getByRole('button', { name: /^Customer page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   await sharing.click()
   await expect(sharing).toBeChecked()
-  const section = page.getByRole('region', { name: 'Customer page' })
+  const section = sheet('Customer page')
   const shownLink = section.getByText(/^http:\/\/127\.0\.0\.1:3200\/s\//)
   await expect(shownLink).toBeVisible()
   const url = (await shownLink.innerText()).trim()
@@ -70,14 +81,20 @@ test('demo: photo, price correction, customer page and availability', async ({ p
     await expect(product).toContainText('$12.00')
     await expect(customer.getByText('Sold out', { exact: true })).toHaveCount(0)
 
+    await closeSheet()
+    await page.getByRole('button', { name: /^Sold out today/ }).click()
     const available = page.getByRole('switch', { name: 'Available: Chai' })
     await available.click()
     await expect(available).not.toBeChecked()
+    await closeSheet()
     // The saved owner row establishes that the availability request has completed.
+    await menu.click()
     await expect(chai).toContainText('Sold out')
+    await closeSheet()
     await customer.reload()
     await expect(product).toContainText('Sold out')
 
+    await page.getByRole('button', { name: /^Customer page/ }).click()
     await sharing.click()
     await expect(sharing).not.toBeChecked()
     await expect(section.getByRole('link', { name: 'Open page' })).toHaveCount(0)
