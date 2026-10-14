@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Alert, Box, Button, Divider, Stack, Typography } from '@mui/material'
 import { ShieldCheck } from 'lucide-react'
 import type { Proposal } from './api'
+import { ApiError } from './api'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { formatPrice, shopCurrency } from './format'
@@ -32,7 +33,7 @@ export function ReviewDialog({
   const rewards = useRewardCopy()
   const shopCopy = useShopCopy()
   const pinCopy = discoverCopy(useLocale())
-  const { api, businesses, review } = useWorkspace()
+  const { api, businesses, review, reload } = useWorkspace()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const snapshot = proposal?.snapshot
@@ -79,6 +80,7 @@ export function ReviewDialog({
       await onSaved(receipt.business_id)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t.actionFailed)
+      if (cause instanceof ApiError && cause.status === 409) await reload().catch(() => undefined)
     } finally {
       setBusy(false)
     }

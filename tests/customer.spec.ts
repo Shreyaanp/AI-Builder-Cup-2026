@@ -67,7 +67,7 @@ test('Anonymous customer and owner have a live two-way conversation', async ({ p
   try {
     const customer = await anonymous.newPage()
     await localOnly(customer)
-    await customer.goto(`http://127.0.0.1:3200/s/${id}`)
+    await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/s/${id}`)
     await expect(customer.getByRole('heading', { name: 'Tiong Bahru Kopi' })).toBeVisible()
     await expect(customer.getByRole('button', { name: /sign in/i })).toHaveCount(0)
     // Header actions: call and WhatsApp the shop (one place, not on every menu row).
@@ -265,7 +265,7 @@ test('Polling recovers when SSE fails and blocked contacts cannot create another
     await customer.route('**/inquiries/*/stream', (route) =>
       route.fulfill({ status: 503, body: '{}' }),
     )
-    await customer.goto(`http://127.0.0.1:3200/s/${id}`)
+    await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/s/${id}`)
     await openChat(customer)
     await toOwner(customer)
     await customer.getByLabel('Phone or email').fill('blocked@example.test')

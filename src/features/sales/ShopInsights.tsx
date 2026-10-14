@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
   Chip,
+  IconButton,
   List,
   ListItem,
   ListItemText,
@@ -12,7 +13,9 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { BarChart3 } from 'lucide-react'
+import { BarChart3, X } from 'lucide-react'
+import { useIdentity } from '../../auth/useIdentity'
+import { readDismissal, dismissFreshness, subscribeDismissal } from './freshnessDismissal'
 import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
@@ -85,6 +88,13 @@ export function FreshnessCard({ compact = false }: { compact?: boolean }) {
   const { value, error, retry } = useFreshness()
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
+  const { scope } = useIdentity()
+  const dismissalKey = `chalkboard.freshness.${scope}.${ws.active?.id ?? ''}`
+  const dismissed = useSyncExternalStore(
+    subscribeDismissal,
+    () => readDismissal(dismissalKey),
+    () => null,
+  )
   if (!ws.active) return null
   if (error)
     return (
@@ -92,7 +102,7 @@ export function FreshnessCard({ compact = false }: { compact?: boolean }) {
         {t.actionFailed}
       </Alert>
     )
-  if (!value || value.last_confirmed === value.today) return null
+  if (!value || value.last_confirmed === value.today || dismissed === value.today) return null
   async function confirm() {
     if (!ws.active || busy) return
     setBusy(true)
@@ -117,9 +127,22 @@ export function FreshnessCard({ compact = false }: { compact?: boolean }) {
         color: roles.onSurface,
       }}
     >
-      <Typography component="h2" variant={compact ? 'bodyMedium' : 'titleMedium'}>
-        {t.freshnessTitle}
-      </Typography>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+        <Typography
+          component="h2"
+          variant={compact ? 'bodyMedium' : 'titleMedium'}
+          sx={{ flex: 1 }}
+        >
+          {t.freshnessTitle}
+        </Typography>
+        <IconButton
+          aria-label={t.dismiss}
+          onClick={() => dismissFreshness(dismissalKey, value.today)}
+          sx={{ width: 48, height: 48 }}
+        >
+          <X size={18} />
+        </IconButton>
+      </Stack>
       {failed && <Alert severity="error">{t.actionFailed}</Alert>}
       <Stack
         direction={compact ? 'row' : { xs: 'column', sm: 'row' }}
