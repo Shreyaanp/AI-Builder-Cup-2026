@@ -7,6 +7,7 @@ how to fix it, so the model can correct itself. After MAX_REPAIRS failed attempt
 the tool returns `ask_owner` and the model must ask instead of guessing again.
 """
 
+import re
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
@@ -35,6 +36,7 @@ class MerchantContext:
 
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)
+ui_currency: ContextVar[str | None] = ContextVar("ui_currency", default=None)
 
 
 class ProductInput(BaseModel):
@@ -141,7 +143,8 @@ def propose_business(
         }
         # Saved prices are minor units of the saved currency, so it never changes on edit.
         given["currency"] = shop_currency(existing)
-    given["currency"] = given["currency"] or DEFAULT_CURRENCY
+    elif not re.fullmatch(r"[A-Z]{3}", given["currency"]):
+        given["currency"] = ui_currency.get() or DEFAULT_CURRENCY
     try:
         fields = BusinessFields(**given)
         proposal = ctx.store.propose(

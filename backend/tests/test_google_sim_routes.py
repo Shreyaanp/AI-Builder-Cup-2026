@@ -61,3 +61,40 @@ def test_owner_consent_reset_isolation_and_pending_restore(app) -> None:
         assert stranger.get(path).status_code == 404
         assert stranger.post(path, json={"kind": "start", "version": 0}).status_code == 404
         assert stranger.post(path + "/reset", json={"version": 0}).status_code == 404
+
+
+def test_find_entry_claim_outcome_is_saved_without_changing_shop(app) -> None:
+    with TestClient(app) as client:
+        join(client)
+        bid = shop(client, "Katong Kopi")
+        path = f"/api/v1/businesses/{bid}/google-sim"
+        original = client.get("/api/v1/businesses").json()
+        s = client.get(path).json()
+        for body in [
+            {"kind": "start", "value": "find"},
+            {"kind": "type", "value": "store"},
+            {
+                "kind": "facts",
+                "facts": {
+                    "name": "Katong Kopi",
+                    "location": "Katong, Singapore",
+                    "hours": "09:00–18:00",
+                    "phone": "Fictional contact",
+                    "category_id": "hawker_stall",
+                },
+            },
+            {"kind": "authorize", "value": "demo-owner"},
+        ]:
+            response = client.post(path, json={**body, "version": s["version"]})
+            assert response.status_code == 200
+            s = response.json()
+        assert len(s["matches"]) == 2
+        s = client.post(
+            path, json={"kind": "select", "value": s["matches"][0]["id"], "version": s["version"]}
+        ).json()
+        assert s["phase"] == "claim"
+        s = client.post(path, json={"kind": "claim", "version": s["version"]}).json()
+        assert s["ownership"] == "pending"
+        assert s["publication"] == "not_submitted" and s["verification"] == "unverified"
+        assert client.get(path).json() == s
+        assert client.get("/api/v1/businesses").json() == original

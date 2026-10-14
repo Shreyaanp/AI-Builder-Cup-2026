@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Auth } from 'firebase/auth'
 import { IdentityContext } from './context'
@@ -118,12 +118,13 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       setState((current) => ({ ...current, error: 'Sign-out did not finish. Please try again.' }))
     }
   }
-  async function getToken(): Promise<string | null> {
+  // Token refreshes for the same account must not recreate API clients and abort conversations.
+  const getToken = useCallback(async (): Promise<string | null> => {
     if (state.mode === 'local' && state.status === 'ready') return null
     const user = operations.current?.auth.currentUser
     if (!user) throw new Error('Sign in with Google to use your private conversations.')
     return user.getIdToken()
-  }
+  }, [state.mode, state.status])
   return (
     <IdentityContext value={{ ...state, getToken, signIn, signOut }}>{children}</IdentityContext>
   )

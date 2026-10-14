@@ -7,6 +7,9 @@ const dialog = (page: Page) =>
 
 async function labelled(page: Page) {
   await expect(dialog(page).getByText(banner, { exact: true })).toBeVisible()
+  await expect(
+    dialog(page).getByText('Simulated — not connected to Google', { exact: true }),
+  ).toBeVisible()
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -41,7 +44,7 @@ async function open(page: Page, scenario = 'new-store-success', type = 'Customer
   await dialog(page).getByLabel('Hours', { exact: true }).fill('09:00–18:00')
   await dialog(page).getByLabel('Contact', { exact: true }).fill('Fictional contact')
   if (type === 'I visit customers (service area)') {
-    await dialog(page).getByLabel('Public service area').fill('Demo Pune area')
+    await dialog(page).getByLabel('Public service area').fill('Demo Katong area')
   }
   await dialog(page).getByLabel('Google category fixture').click()
   await page.getByRole('option', { name: 'Hawker stall', exact: true }).click()
@@ -172,9 +175,12 @@ test('service-area preview hides private address and scenario reset preserves re
   await open(page, 'service-area', 'I visit customers (service area)')
   await review(page)
   await expect(
-    dialog(page).getByText('Public service area: Demo Pune area', { exact: true }),
+    dialog(page).getByText('Public service area: Demo Katong area', { exact: true }),
   ).toBeVisible()
   await expect(dialog(page).getByText('Address: Demo Market Road', { exact: true })).toHaveCount(0)
+  await expect(
+    dialog(page).getByRole('link', { name: 'Open shop search on Google Maps' }),
+  ).toHaveAttribute('href', /query=Simulator%20Tea%20Demo%20Katong%20area$/)
   await expect(
     dialog(page).getByText(
       'Private address hidden — only the service area appears in the simulated public preview.',

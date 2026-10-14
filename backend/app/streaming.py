@@ -13,7 +13,7 @@ from google.genai import types
 from .agent import make_agent, ui_language
 from .auth import Principal
 from .contracts import StreamEvent
-from .coordinator import current
+from .coordinator import current, ui_currency
 from .settings import Settings
 
 APP_NAME = "ogoogle_ai"
@@ -111,6 +111,7 @@ class CoachRuntime:
         session_id: str,
         text: str,
         language: str,
+        currency: str | None = None,
     ) -> AsyncIterator[StreamEvent]:
         # The app language reaches the instruction via a context variable, never the owner's
         # message (models echo bracketed prefixes back into replies).
@@ -127,6 +128,7 @@ class CoachRuntime:
         async def produce() -> None:
             # A raw asyncio task isolates ADK/SQLAlchemy cleanup from the SSE
             # task group's repeated (level) cancellation on browser disconnect.
+            currency_token = ui_currency.set(currency)
             try:
                 try:
                     async for event in run:
@@ -140,6 +142,8 @@ class CoachRuntime:
                 await queue.put(error)
             else:
                 await queue.put(None)
+            finally:
+                ui_currency.reset(currency_token)
 
         task = asyncio.create_task(produce(), name="adk-text-producer")
         try:
