@@ -278,7 +278,6 @@ export const id: Copy = {
   stockOptional: 'Stok (opsional)',
   enterPrice: 'Masukkan harga yang valid.',
   enterName: 'Masukkan nama.',
-  draft: 'Draf',
   verificationPending: 'Menunggu pemeriksaan',
   customerPage: 'Halaman pelanggan',
   customerPageOff: 'Aktifkan untuk mendapatkan tautan menu, harga, dan jam buka bagi pelanggan.',

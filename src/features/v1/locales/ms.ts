@@ -278,7 +278,6 @@ export const ms: Copy = {
   stockOptional: 'Stok (pilihan)',
   enterPrice: 'Masukkan harga yang sah.',
   enterName: 'Masukkan nama.',
-  draft: 'Draf',
   verificationPending: 'Semakan belum selesai',
   customerPage: 'Halaman pelanggan',
   customerPageOff:
