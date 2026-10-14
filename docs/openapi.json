@@ -5168,7 +5168,8 @@
               "audio_end",
               "close",
               "ping",
-              "pong"
+              "pong",
+              "client_error"
             ],
             "title": "Kind",
             "type": "string"
