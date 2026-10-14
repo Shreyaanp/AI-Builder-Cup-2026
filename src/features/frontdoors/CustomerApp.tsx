@@ -72,7 +72,10 @@ export default function CustomerApp() {
         {t.skip}
       </a>
       {id && (
-        <Box sx={{ maxWidth: 1000, mx: 'auto', px: 4, pt: 'max(16px, env(safe-area-inset-top))' }}>
+        <Box
+          component="nav"
+          sx={{ maxWidth: 1000, mx: 'auto', px: 4, pt: 'max(16px, env(safe-area-inset-top))' }}
+        >
           <Button component="a" href="/explore/" onClick={customerNavigate}>
             {t.back} · <span translate="no">Chalkboard</span>
           </Button>
@@ -88,7 +91,7 @@ export default function CustomerApp() {
       <div id="customer-content" tabIndex={-1}>
         <Suspense fallback={<BrandSplash />}>
           {id ? (
-            <PublicShop id={id} />
+            <PublicShop key={id} id={id} />
           ) : (
             <Discover initialLocation={locationChoice} interests={interests} />
           )}
