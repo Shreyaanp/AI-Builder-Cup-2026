@@ -33,6 +33,7 @@ from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .frontend import serve_frontend
 from .google_profile import BusinessProfileAdapter, SimulatedBusinessProfile
 from .google_sim_routes import router as google_sim_router
+from .imports import ColumnMapper
 from .limits import Lease, RunRegistry, client_ip, enforce_limits, rate_limiter
 from .memory_vectors import (
     ConversationRecall,
@@ -128,6 +129,7 @@ def create_app(
         app.state.photos = PhotoPipeline(settings) if settings.v1_enabled else None
         app.state.customer_answers = CustomerAnswers(settings)
         coordinator.question_planner = QuestionPlanner(settings)
+        app.state.column_mapper = ColumnMapper(settings)
         app.state.maps = maps_service or MapsService(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
         app.state.services = Services(
@@ -151,6 +153,7 @@ def create_app(
             await asyncio.gather(maintenance, return_exceptions=True)
             await app.state.services.replay.close()
             await app.state.customer_answers.close()
+        await app.state.column_mapper.close()
         if coordinator.question_planner is not None:
             await coordinator.question_planner.close()
             await app.state.maps.close()
