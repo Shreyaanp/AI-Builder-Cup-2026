@@ -129,9 +129,12 @@ def test_public_shop_exposes_only_customer_fields(store: MerchantRepository) -> 
         "hours",
         "phone",
         "currency",
+        "facts",
         "products",
     }
-    assert {key: value for key, value in shop.items() if key != "products"} == {
+    # A shop that never stated customer facts publishes none.
+    assert shop["facts"] == {}
+    assert {key: value for key, value in shop.items() if key not in ("products", "facts")} == {
         "id": bid,
         "name": "Ram Tea Stall",
         "category": "Tea",
@@ -370,3 +373,55 @@ def test_simulator_persistence_isolation_erasure_and_inventory(store: MerchantRe
             )
     else:
         assert list(store.businesses.document(bid).collection("google_sim").stream()) == []
+
+
+def test_customer_facts_are_sealed_saved_and_published(store: MerchantRepository) -> None:
+    bid = create_with_products(store)
+    saved = store.context("alice", bid)["business"]["fields"]
+    # Shops without facts keep exactly the original record shape (and therefore digests).
+    assert set(saved) == {"name", "category", "location", "hours", "phone", "currency"}
+    proposal = store.propose(
+        "alice",
+        ProposalRequest(
+            kind="business",
+            business_id=bid,
+            revision=1,
+            business=BusinessFields(
+                **saved,
+                halal="muslim_owned",
+                payment_methods=["paynow", "cash", "paynow"],
+                delivery="grab",
+                delivery_note="within 3 km",
+            ),
+        ),
+    )
+    business = proposal["snapshot"]["business"]
+    assert business["payment_methods"] == ["paynow", "cash"]
+    assert "preorders" not in business and "busy_hours" not in business
+    store.commit("alice", proposal["id"], proposal["digest"])
+    assert store.context("alice", bid)["business"]["fields"]["halal"] == "muslim_owned"
+    store.share("alice", bid, True)
+    shop = store.public_shop(bid)
+    assert shop is not None
+    assert shop["facts"] == {
+        "halal": "muslim_owned",
+        "payment_methods": ["paynow", "cash"],
+        "delivery": "grab",
+        "delivery_note": "within 3 km",
+    }
+
+
+@pytest.mark.parametrize(
+    "fact",
+    [
+        {"halal": "maybe"},
+        {"delivery": "drone"},
+        {"payment_methods": ["bitcoin"]},
+        {"busy_hours": "x" * 81},
+        {"delivery_note": "x" * 81},
+        {"preorder_lead_time": "x" * 81},
+    ],
+)
+def test_customer_facts_are_validated(fact: dict[str, object]) -> None:
+    with pytest.raises(ValueError):
+        BusinessFields(name="Tea", **fact)  # type: ignore[arg-type]

@@ -42,6 +42,7 @@ import { useWorkspace } from './workspaceContext'
 import type { Destination } from './workspaceContext'
 import { CoachScreen } from './screens/CoachScreen'
 import { ShopScreen } from './screens/ShopScreen'
+import { ShopOverview } from './ShopTiles'
 import { GoogleScreen } from './screens/GoogleScreen'
 import { PrivacyScreen } from './screens/PrivacyScreen'
 
@@ -67,6 +68,8 @@ export function AppShell() {
     }
   }, [])
   const showNavBar = !rail && !typing
+  // Large windows: My shop tiles beside the coach (phones keep the coach to one card).
+  const supporting = useMediaQuery(`(min-width:${windowClass.large}px)`)
   useEffect(() => {
     document.documentElement.style.setProperty('--nav-offset', showNavBar ? '84px' : '0px')
   }, [showNavBar])
@@ -142,6 +145,25 @@ export function AppShell() {
             </Box>
             {screen}
           </Box>
+          {supporting && ws.destination === 'coach' && ws.active && (
+            <Box
+              component="aside"
+              aria-label={t.navShop}
+              sx={{
+                width: 400,
+                flexShrink: 0,
+                m: 4,
+                ml: 0,
+                alignSelf: 'flex-start',
+                position: 'sticky',
+                top: 80,
+                maxHeight: 'calc(100dvh - 96px)',
+                overflowY: 'auto',
+              }}
+            >
+              <ShopOverview key={ws.active.id} narrow />
+            </Box>
+          )}
         </Box>
       </Box>
       {showNavBar && (

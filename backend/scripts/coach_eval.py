@@ -110,6 +110,16 @@ def item(name: str, **expected: Any) -> Callable[[Turn], bool]:
     return check
 
 
+def fact(turn: Turn, key: str) -> Any:
+    """The last value the model passed for one propose_business argument, if any."""
+    values = [call["args"].get(key) for call in turn.tools if call["name"] == "propose_business"]
+    return values[-1] if values else None
+
+
+def proposed_fact(key: str, value: Any) -> Callable[[Turn], bool]:
+    return lambda turn: str(fact(turn, key) or "").casefold() == str(value).casefold()
+
+
 def reply_matches(pattern: re.Pattern[str] | str) -> Callable[[Turn], bool]:
     regex = re.compile(pattern, re.I) if isinstance(pattern, str) else pattern
     return lambda turn: bool(regex.search(turn.reply))
@@ -275,6 +285,32 @@ SCENARIOS = [
             ("proposes kopi 20", item("kopi", price=20)),
             ("tool warned", lambda t: any(r.get("warnings") for r in t.responses)),
             ("asks the owner to confirm", reply_matches(r"confirm|sure|check|correct|\?")),
+        ],
+    ),
+    # Customer facts (UI-3): after the basics, ask one short question; record answers for review.
+    Scenario(
+        "asks_one_customer_fact",
+        "Thanks, the menu is done for now. What else should I add?",
+        seed=kopi_menu,
+        checks=[
+            ("no record changes", not_called("propose_products", "propose_business")),
+            ("reads the shop first", called("get_business_context")),
+            ("asks about halal first", reply_matches(r"halal")),
+            ("one question only", lambda t: t.reply.count("?") == 1),
+        ],
+    ),
+    Scenario(
+        "records_halal_and_payment",
+        "Yes, everything we sell is halal. We take cash and PayNow only.",
+        seed=kopi_menu,
+        checks=[
+            ("proposes shop facts", called("propose_business")),
+            ("halal yes", proposed_fact("halal", "yes")),
+            (
+                "cash and PayNow",
+                lambda t: set(fact(t, "payment_methods") or []) == {"cash", "paynow"},
+            ),
+            ("keeps the shop", lambda t: fact(t, "name") in ("", None)),
         ],
     ),
     Scenario(

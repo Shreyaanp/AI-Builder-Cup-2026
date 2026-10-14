@@ -6,6 +6,7 @@ import type { Proposal } from './api'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { formatPrice, shopCurrency } from './format'
+import { FactList } from './FactList'
 import { Sheet } from './Sheet'
 
 /**
@@ -85,6 +86,7 @@ export function ReviewDialog({
                 </Box>
               ))}
           </Stack>
+          <FactList fields={snapshot.business} />
         </>
       )}
       {snapshot.products.length > 0 && (

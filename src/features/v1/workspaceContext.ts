@@ -32,6 +32,10 @@ export interface Workspace {
   requestPhoto: () => void
   photoPending: boolean
   consumePhotoRequest: () => void
+  /** Open the Coach with a started message in the composer (the owner finishes and sends). */
+  startCoachDraft: (text: string) => void
+  coachDraft: string | null
+  consumeCoachDraft: () => void
   /** Opens the optional duplicate-owner check (Privacy). */
   faceOpen: boolean
   setFaceOpen: (open: boolean) => void

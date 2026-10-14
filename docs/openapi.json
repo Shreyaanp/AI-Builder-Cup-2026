@@ -1593,6 +1593,97 @@
             "pattern": "^[A-Z]{3}$",
             "title": "Currency",
             "default": "SGD"
+          },
+          "halal": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "yes",
+                  "no",
+                  "muslim_owned",
+                  "not_stated"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Halal"
+          },
+          "vegetarian_options": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vegetarian Options"
+          },
+          "delivery": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "own",
+                  "grab",
+                  "foodpanda",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery"
+          },
+          "delivery_note": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Delivery Note",
+            "default": ""
+          },
+          "preorders": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preorders"
+          },
+          "preorder_lead_time": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Preorder Lead Time",
+            "default": ""
+          },
+          "payment_methods": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "cash",
+                "paynow",
+                "card",
+                "grabpay",
+                "nets",
+                "other"
+              ]
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Payment Methods"
+          },
+          "busy_hours": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Busy Hours",
+            "default": ""
           }
         },
         "additionalProperties": false,

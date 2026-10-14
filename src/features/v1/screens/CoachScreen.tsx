@@ -48,6 +48,7 @@ import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
 import { Sheet } from '../Sheet'
 import { ShopCard, ShopSheet, StartCard } from '../ShopCard'
+import { PendingCard } from '../PendingCard'
 import { ShopSheets } from '../ShopTiles'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
@@ -136,6 +137,18 @@ export function CoachScreen() {
       photoInput.current?.click()
     }
   }, [photoPending, consumePhotoRequest])
+  // A chat starter from My shop ("Customers ask: halal?") lands in the composer once.
+  const { coachDraft, consumeCoachDraft } = ws
+  const [seenDraft, setSeenDraft] = useState<string | null>(null)
+  if (coachDraft !== seenDraft) {
+    setSeenDraft(coachDraft)
+    if (coachDraft !== null) setNote(coachDraft)
+  }
+  useEffect(() => {
+    if (coachDraft === null) return
+    consumeCoachDraft()
+    messageInput.current?.focus()
+  }, [coachDraft, consumeCoachDraft])
 
   function resetThread() {
     controller.current?.abort()
@@ -276,7 +289,8 @@ export function CoachScreen() {
   const shop = ws.active
   const rules: [Suggestion, boolean][] = shop
     ? [
-        ['reply', Boolean(unread)],
+        // On an empty thread the pending card already says customers are waiting.
+        ['reply', Boolean(unread) && !empty],
         ['menu', ws.products.length === 0],
         ['soldOut', ws.products.length > 0],
         ['price', ws.products.length > 0],
@@ -433,6 +447,16 @@ export function CoachScreen() {
               {ws.active ? t.coachGreetingShop(ws.active.fields.name) : t.coachGreeting}
             </Typography>
             {ws.active ? <ShopCard onOpen={openSheet} /> : <StartCard />}
+            {ws.active && (
+              <PendingCard
+                unread={unread}
+                onMessages={() => setShopSheet('messages')}
+                onAnswer={(fact) => {
+                  setNote(`${t.factNames[fact]}: `)
+                  messageInput.current?.focus()
+                }}
+              />
+            )}{' '}
             {/* Before a shop exists the start card is the only thing shown. */}
             {ws.active && chips}
           </Stack>
@@ -481,6 +505,10 @@ export function CoachScreen() {
         open={sheet !== null}
         focusProduct={sheet !== null && sheet >= 0 ? sheet : null}
         onClose={() => setSheet(null)}
+        onAnswer={(fact) => {
+          setNote(`${t.factNames[fact]}: `)
+          messageInput.current?.focus()
+        }}
       />
       <ShopSheets
         kind={shopSheet}
@@ -655,7 +683,11 @@ export function CoachScreen() {
           {busy === 'reply' ? (
             <IconButton
               aria-label={t.stop}
+              // A blur on press would bring back the nav bar and move this button before the tap
+              // lands; keep focus until the click, then let go so the nav returns.
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
+                messageInput.current?.blur()
                 controller.current?.abort()
                 setBusy('idle')
               }}
@@ -670,6 +702,9 @@ export function CoachScreen() {
           ) : (
             <IconButton
               type="submit"
+              onMouseDown={(event) => event.preventDefault()}
+              // The form still submits after this click; the nav comes back once it has landed.
+              onClick={() => messageInput.current?.blur()}
               aria-label={t.send}
               disabled={!canSend}
               sx={{
