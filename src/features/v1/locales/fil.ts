@@ -185,6 +185,9 @@ export const fil: Copy = {
     muslim_owned: 'Pag-aari ng Muslim',
     not_stated: 'Hindi sinabi',
   },
+  factInputHelp:
+    'Pumili ng mungkahi o maglagay ng pangalan. Hanggang 8 paraan ng bayad, tig-40 character.',
+  deliveryInputHelp: 'Pumili ng mungkahi o maglagay ng pangalan ng delivery (40 character).',
   deliveryValues: {
     none: 'Walang delivery',
     own: 'Sariling delivery',

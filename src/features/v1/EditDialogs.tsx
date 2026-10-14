@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Alert,
+  Autocomplete,
   Button,
   Dialog,
   DialogActions,
@@ -21,6 +22,7 @@ import { windowClass } from '../../design/theme'
 import { useRewardCopy } from '../rewards/strings'
 import { HoursEditor } from '../shop/Hours'
 import { useShopCopy } from '../shop/strings'
+import { factName, factSuggestions } from './factNames'
 
 const EMPTY: Business['fields'] = { name: '', category: '', location: '', hours: '', phone: '' }
 
@@ -52,6 +54,14 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
   const { api, active, editor, openEditor, review } = useWorkspace()
   const compact = useCompact()
   const [fields, setFields] = useState(initial)
+  const paymentInput = useRef<HTMLInputElement>(null)
+  const deliveryInput = useRef<HTMLInputElement>(null)
+  const suggestions = factSuggestions()
+  const invalidPayments =
+    (fields.payment_methods ?? []).some((name) => !name.trim() || [...name.trim()].length > 40) ||
+    (fields.payment_methods?.length ?? 0) > 8
+  const invalidDelivery =
+    fields.delivery != null && (!fields.delivery.trim() || [...fields.delivery.trim()].length > 40)
   const [error, setError] = useState('')
   // One request at a time: repeated taps must not create competing proposals.
   const [busy, setBusy] = useState(false)
@@ -63,6 +73,11 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
     if (busy) return
     if (!fields.name.trim()) {
       setError(t.enterName)
+      return
+    }
+    if (invalidPayments || invalidDelivery) {
+      setError(invalidPayments ? t.factInputHelp : t.deliveryInputHelp)
+      ;(invalidPayments ? paymentInput : deliveryInput).current?.focus()
       return
     }
     setBusy(true)
@@ -153,6 +168,49 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
               </MenuItem>
             ))}
           </TextField>
+          <Autocomplete
+            multiple
+            freeSolo
+            autoSelect
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.preventDefault()
+            }}
+            options={suggestions.payment}
+            value={fields.payment_methods ?? []}
+            getOptionLabel={(value) => factName(value, t.paymentValues)}
+            onChange={(_, payment_methods) => setFields({ ...fields, payment_methods })}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                name="payment_methods"
+                inputRef={paymentInput}
+                label={t.factNames.payment_methods}
+                error={invalidPayments}
+                helperText={t.factInputHelp}
+              />
+            )}
+          />
+          <Autocomplete
+            freeSolo
+            autoSelect
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.preventDefault()
+            }}
+            options={suggestions.delivery}
+            value={fields.delivery ?? null}
+            getOptionLabel={(value) => factName(value, t.deliveryValues)}
+            onChange={(_, delivery) => setFields({ ...fields, delivery })}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                name="delivery"
+                inputRef={deliveryInput}
+                label={t.factNames.delivery}
+                error={invalidDelivery}
+                helperText={t.deliveryInputHelp}
+              />
+            )}
+          />
           {error && <Alert severity="error">{error}</Alert>}
           <button type="submit" hidden />
         </Stack>

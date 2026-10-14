@@ -8,7 +8,7 @@ import secrets
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from typing import Annotated, Any, Literal, Protocol
 from uuid import uuid4
 from zoneinfo import ZoneInfoNotFoundError
 
@@ -37,8 +37,8 @@ from .stock_alerts import (
 from .threads import change_thread, contact_hash, new_thread
 
 Halal = Literal["yes", "no", "muslim_owned", "not_stated"]
-Delivery = Literal["none", "own", "grab", "foodpanda", "other"]
-Payment = Literal["cash", "paynow", "card", "grabpay", "nets", "other"]
+Delivery = Annotated[str, Field(min_length=1, max_length=40)]
+Payment = Annotated[str, Field(min_length=1, max_length=40)]
 # Optional facts customers ask about. Unset facts are left out of the record entirely, so shops
 # saved before these existed (and their sealed digests) are unchanged.
 FACT_KEYS = (
@@ -101,7 +101,7 @@ class BusinessFields(BaseModel):
     delivery_note: str = Field(default="", max_length=80)
     preorders: bool | None = None
     preorder_lead_time: str = Field(default="", max_length=80)
-    payment_methods: list[Payment] = Field(default_factory=list, max_length=6)
+    payment_methods: list[Payment] = Field(default_factory=list, max_length=8)
     busy_hours: str = Field(default="", max_length=80)
     # Type-specific facts from the question plan; owner-confirmed like every other field.
     custom_facts: list[CustomFact] = Field(default_factory=list, max_length=30)
