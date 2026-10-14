@@ -278,6 +278,111 @@ async def run_scenario(scenario: Scenario, settings: Settings, root: Path) -> di
     }
 
 
+@dataclass
+class Step:
+    message: str
+    checks: list[tuple[str, Callable[[Turn], bool]]]
+    confirm: bool = True  # the owner confirms every proposal from this turn
+
+
+CONVERSATION = [
+    Step(
+        "Hi! I run Sunrise Tea on MG Road, Bengaluru. Open 7 am to 9 pm.",
+        [("proposes the shop", called("propose_business"))],
+    ),
+    Step(
+        "Menu: masala chai 15 rupees per cup, bun maska 30 per piece",
+        [
+            ("proposes both items", item("chai", price=15, unit="cup")),
+            ("bun 30 per piece", item("bun", price=30, unit="piece")),
+        ],
+    ),
+    Step(
+        "Actually chai is 12 now",
+        [("corrects chai only", item("chai", price=12, unit="cup"))],
+    ),
+    Step(
+        "bun maska khatam ho gaya",
+        [("marks bun sold out", item("bun", available=False))],
+    ),
+    Step(
+        "By the way, what's a good name for a cat?",
+        [("no record changes off-topic", not_called("propose_products", "propose_business"))],
+        confirm=False,
+    ),
+    Step(
+        "Ok back to the menu - add samosa 10 rupees per piece",
+        [
+            ("continues the right shop", item("samosa", price=10, unit="piece")),
+            ("does not recreate the shop", not_called("propose_business")),
+        ],
+    ),
+]
+
+
+async def run_conversation(settings: Settings, root: Path) -> dict[str, Any]:
+    """One ADK session, many turns; the owner confirms proposals between turns (as in the UI)."""
+    store = MerchantStore(str(root / "conversation.sqlite3"))
+    uid = "eval-owner"
+    sessions = InMemorySessionService()
+    runner = Runner(app_name="coach_eval", agent=make_agent(settings), session_service=sessions)
+    session = await sessions.create_session(
+        app_name="coach_eval", user_id=uid, state={"business_id": None}
+    )
+    bid: str | None = None
+    turns = []
+    ui_language.set("en")
+    for step in CONVERSATION:
+        context = MerchantContext(store, uid, bid, [], step.message)
+        token = current.set(context)
+        turn = Turn()
+        started = time.perf_counter()
+        try:
+            async for event in runner.run_async(
+                user_id=uid,
+                session_id=session.id,
+                new_message=types.Content(role="user", parts=[types.Part(text=step.message)]),
+            ):
+                for call in event.get_function_calls():
+                    turn.tools.append({"name": call.name, "args": dict(call.args or {})})
+                for response in event.get_function_responses():
+                    turn.responses.append(dict(response.response or {}))
+                if event.content and event.content.role == "model" and not event.partial:
+                    text = "".join(
+                        part.text or "" for part in event.content.parts or [] if not part.thought
+                    )
+                    if text.strip():
+                        turn.reply = text.strip()
+        finally:
+            current.reset(token)
+        if step.confirm:
+            for proposal in context.proposals.values():
+                receipt = store.commit(uid, proposal["id"], proposal["digest"])
+                bid = str(receipt["business_id"])
+        results = [(label, bool(check(turn))) for label, check in [*step.checks, *GLOBAL_CHECKS]]
+        turns.append(
+            {
+                "message": step.message,
+                "passed": all(ok for _, ok in results),
+                "checks": dict(results),
+                "tools": [call["name"] for call in turn.tools],
+                "tool_args": turn.tools,
+                "reply": turn.reply,
+                "seconds": round(time.perf_counter() - started, 2),
+            }
+        )
+    final = store.inventory(uid, bid) if bid else []
+    expected = {("masala chai", 1200, True), ("bun maska", 3000, False), ("samosa", 1000, True)}
+    actual = {(p["name"].casefold(), p["price"], p.get("available", True)) for p in final}
+    return {
+        "scenario": "multi_turn_conversation",
+        "passed": all(t["passed"] for t in turns) and expected <= actual,
+        "final_inventory_matches": expected <= actual,
+        "final_inventory": final,
+        "turns": turns,
+    }
+
+
 async def main() -> list[dict[str, Any]]:
     model = os.environ.get("COACH_EVAL_MODEL", "gemini-3.5-flash-lite")
     settings = Settings(  # type: ignore[call-arg]  # pydantic-settings runtime option
@@ -299,6 +404,23 @@ async def main() -> list[dict[str, Any]]:
             mark = "PASS" if row["passed"] else "FAIL"
             detail = row.get("checks", row.get("error"))
             print(f"{mark} {row['scenario']}: {detail} tools={row.get('tools')}")
+        try:
+            conversation = await run_conversation(settings, Path(directory))
+        except Exception as error:
+            conversation = {
+                "scenario": "multi_turn_conversation",
+                "passed": False,
+                "error": repr(error),
+            }
+        rows.append(conversation)
+        for index, turn in enumerate(conversation.get("turns", []), 1):
+            mark = "PASS" if turn["passed"] else "FAIL"
+            print(f"  turn {index} {mark}: {turn['checks']} tools={turn['tools']}")
+        print(
+            f"{'PASS' if conversation['passed'] else 'FAIL'} multi_turn_conversation "
+            f"final_inventory_matches={conversation.get('final_inventory_matches')}"
+            f" {conversation.get('error', '')}"
+        )
     passed = sum(row["passed"] for row in rows)
     print(f"\n{passed}/{len(rows)} scenarios passed with {model}")
     return rows
