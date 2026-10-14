@@ -40,20 +40,17 @@ test('coach, editing and independent review share state across destinations', as
   await expect(page.getByRole('button', { name: 'Google publishing: not connected' })).toBeVisible()
 })
 
-test('Hindi, large text and narrow viewport retain usable controls', async ({ page }) => {
+test('large text and narrow viewport retain usable controls', async ({ page }) => {
   await page.goto('/?classic=1')
-  await page.getByRole('combobox', { name: 'Language' }).click()
-  await page.getByRole('option', { name: 'हिन्दी' }).click()
-  await expect(page.getByRole('heading', { name: 'आपके व्यवसाय का अगला कदम।' })).toBeVisible()
   await page.setViewportSize({ width: 320, height: 640 })
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '200%'
   })
   await page
-    .getByRole('textbox', { name: 'आपकी बात', exact: true })
-    .fill('मेरी दुकान में चाय मिलती है।')
-  await page.getByRole('button', { name: 'बात जोड़ें' }).click()
-  await expect(page.getByText('मेरी दुकान में चाय मिलती है।', { exact: true })).toBeVisible()
+    .getByRole('textbox', { name: 'Your note', exact: true })
+    .fill('We sell kopi and kaya toast.')
+  await page.getByRole('button', { name: 'Add note', exact: true }).click()
+  await expect(page.getByText('We sell kopi and kaya toast.', { exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   const result = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])

@@ -45,7 +45,8 @@ export function FaceDialog({
   open: boolean
   businessId: string
   api: Api
-  language: 'en' | 'hi'
+  /** Face check is 'coming soon'; its copy is English until it moves into the shared strings. */
+  language: string
   onClose: () => void
   onResult: () => void
 }) {

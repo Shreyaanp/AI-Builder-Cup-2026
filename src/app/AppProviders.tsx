@@ -12,6 +12,8 @@ import { businessReducer, initialBusiness, preferencesReducer } from '../state/m
 import type { Preferences } from '../state/model'
 import { IdentityProvider } from '../auth/IdentityProvider'
 import { useIdentity } from '../auth/useIdentity'
+import { isLanguagePref, resolveLocale } from '../i18n/locales'
+import { loadScriptFont } from '../i18n/fonts'
 
 function readPreferences(): Preferences {
   let saved: Partial<Preferences> = {}
@@ -23,7 +25,7 @@ function readPreferences(): Preferences {
     /* Storage may be disabled. */
   }
   return {
-    language: saved?.language === 'hi' ? 'hi' : 'en',
+    language: isLanguagePref(saved?.language) ? saved.language : 'system',
     appearance:
       saved?.appearance === 'dark' || saved?.appearance === 'light' ? saved.appearance : 'system',
     destination: 'coach',
@@ -62,7 +64,9 @@ function Providers({ children }: { children: ReactNode }) {
       ?.setAttribute('content', theme.material.surface)
   }, [theme])
   useEffect(() => {
-    document.documentElement.lang = preferences.language
+    const locale = resolveLocale(preferences.language)
+    document.documentElement.lang = locale
+    void loadScriptFont(locale)
     try {
       localStorage.setItem(
         'niva.starter.preferences',

@@ -3,7 +3,7 @@ import type { CoachEvent } from '../src/api/stream.js'
 
 test('real Python stream completes without changing reviewed business facts', async ({ page }) => {
   await page.goto('/?classic=1')
-  await expect(page).toHaveTitle(/oGoogle AI/)
+  await expect(page).toHaveTitle(/Chalkboard/)
   await page.getByRole('textbox', { name: 'Your note', exact: true }).fill('I run a tea stall')
   const response = page.waitForResponse((item) => item.url().endsWith('/api/v1/coach/stream'))
   await page.getByRole('button', { name: 'Add note', exact: true }).click()

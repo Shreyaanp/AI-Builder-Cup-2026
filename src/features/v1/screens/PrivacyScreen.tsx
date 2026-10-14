@@ -14,7 +14,7 @@ import {
 } from '@mui/material'
 import { FileText, ScanFace, ShieldCheck, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { usePreferences } from '../../../state/hooks'
+import { useLocale } from '../../../state/hooks'
 import { formatDate } from '../format'
 import { LegalDialog } from '../LegalDialog'
 import type { LegalDocument } from '../LegalDialog'
@@ -52,7 +52,7 @@ function Section({
 
 export function PrivacyScreen() {
   const t = useCopy()
-  const { language } = usePreferences()
+  const language = useLocale()
   const ws = useWorkspace()
   const [legal, setLegal] = useState<LegalDocument>(null)
   // Destructive actions always confirm first.

@@ -7,14 +7,11 @@ import {
   Checkbox,
   CircularProgress,
   FormControlLabel,
-  Link,
   Stack,
   Typography,
   useTheme,
 } from '@mui/material'
-import { Camera, Check, Leaf, Lock, Mic, ShieldCheck, Trash2 } from 'lucide-react'
-import { useIdentity } from '../../auth/useIdentity'
-import { usePreferences, usePreferencesDispatch } from '../../state/hooks'
+import { Check, Leaf, Lock, Trash2 } from 'lucide-react'
 import { shape } from '../../design/theme'
 import { LegalDialog } from './LegalDialog'
 import type { LegalDocument } from './LegalDialog'
@@ -57,21 +54,6 @@ function Mark() {
     >
       <Leaf size={30} />
     </Box>
-  )
-}
-
-function LanguageSwitch() {
-  const { language } = usePreferences()
-  const dispatch = usePreferencesDispatch()
-  return (
-    <Button
-      size="small"
-      onClick={() => dispatch({ type: 'language', language: language === 'hi' ? 'en' : 'hi' })}
-      lang={language === 'hi' ? 'en' : 'hi'}
-      sx={{ alignSelf: 'flex-end', mb: -2 }}
-    >
-      {language === 'hi' ? 'English' : 'हिन्दी'}
-    </Button>
   )
 }
 
@@ -120,107 +102,6 @@ export function AccountError({ onSignOut }: { onSignOut: () => void | Promise<vo
   )
 }
 
-export function Welcome({ onPreview }: { onPreview: () => void }) {
-  const t = useCopy()
-  const identity = useIdentity()
-  const roles = useTheme().material
-  const [legal, setLegal] = useState<LegalDocument>(null)
-  const features = [
-    { icon: <Camera size={22} />, title: t.featurePhoto, body: t.featurePhotoBody },
-    { icon: <Mic size={22} />, title: t.featureVoice, body: t.featureVoiceBody },
-    { icon: <ShieldCheck size={22} />, title: t.featureControl, body: t.featureControlBody },
-  ]
-  return (
-    <Frame>
-      <LanguageSwitch />
-      <Mark />
-      <Box>
-        <Typography component="h1" variant="displaySmall">
-          {t.welcomeTitle}
-        </Typography>
-        <Typography variant="bodyLarge" color="text.secondary" sx={{ mt: 2 }}>
-          {t.welcomeBody}
-        </Typography>
-      </Box>
-      <Stack component="ul" spacing={2.5} sx={{ m: 0, p: 0, listStyle: 'none' }}>
-        {features.map((feature) => (
-          <Stack
-            component="li"
-            key={feature.title}
-            direction="row"
-            spacing={2}
-            sx={{ alignItems: 'flex-start' }}
-          >
-            <Box
-              aria-hidden="true"
-              sx={{
-                width: 44,
-                height: 44,
-                flexShrink: 0,
-                borderRadius: `${shape.md}px`,
-                display: 'grid',
-                placeItems: 'center',
-                bgcolor: roles.secondaryContainer,
-                color: roles.onSecondaryContainer,
-              }}
-            >
-              {feature.icon}
-            </Box>
-            <Box>
-              <Typography variant="titleMedium">{feature.title}</Typography>
-              <Typography variant="bodyMedium" color="text.secondary">
-                {feature.body}
-              </Typography>
-            </Box>
-          </Stack>
-        ))}
-      </Stack>
-      {identity.error && <Alert severity="error">{identity.error}</Alert>}
-      <Stack spacing={1.5}>
-        {identity.mode === 'local' ? (
-          <>
-            <Button variant="contained" size="large" onClick={onPreview}>
-              {t.continuePreview}
-            </Button>
-            <Typography variant="bodySmall" color="text.secondary" sx={{ textAlign: 'center' }}>
-              {t.previewNote}
-            </Typography>
-          </>
-        ) : identity.status === 'error' ? (
-          <Button variant="contained" size="large" onClick={() => location.reload()}>
-            {t.retry}
-          </Button>
-        ) : (
-          <Button variant="contained" size="large" onClick={() => void identity.signIn()}>
-            {t.signIn}
-          </Button>
-        )}
-      </Stack>
-      <Typography variant="bodySmall" color="text.secondary" sx={{ textAlign: 'center' }}>
-        {t.independent} ·{' '}
-        <Link
-          component="button"
-          type="button"
-          onClick={() => setLegal('terms')}
-          variant="bodySmall"
-        >
-          {t.viewTerms}
-        </Link>{' '}
-        ·{' '}
-        <Link
-          component="button"
-          type="button"
-          onClick={() => setLegal('privacy')}
-          variant="bodySmall"
-        >
-          {t.viewPrivacy}
-        </Link>
-      </Typography>
-      <LegalDialog open={legal} onClose={() => setLegal(null)} />
-    </Frame>
-  )
-}
-
 export function ConsentScreen({
   onAccept,
   onDecline,
@@ -242,7 +123,6 @@ export function ConsentScreen({
   ]
   return (
     <Frame>
-      <LanguageSwitch />
       <Mark />
       <Box>
         <Typography component="h1" variant="headlineMedium">

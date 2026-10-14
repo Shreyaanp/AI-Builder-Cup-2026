@@ -1,6 +1,6 @@
 import { Box, Button, LinearProgress, Stack, Typography, useTheme } from '@mui/material'
 import { ArrowRight, Check, Clock3, MapPin, Pencil, Store } from 'lucide-react'
-import { useBusiness, usePreferences } from '../../state/hooks'
+import { useBusiness } from '../../state/hooks'
 import { copy } from '../../design/copy'
 import { layout } from '../../design/theme'
 
@@ -14,8 +14,8 @@ export function BusinessCard({
   onReview: () => void
 }) {
   const { fields, revision, reviewedRevision } = useBusiness()
-  const { language } = usePreferences()
-  const t = copy[language]
+  // Legacy starter (English-only).
+  const t = copy.en
   const theme = useTheme()
   const roles = theme.material
   const count = Object.values(fields).filter((value) => value.trim()).length

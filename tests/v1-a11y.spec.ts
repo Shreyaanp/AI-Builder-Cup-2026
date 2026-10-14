@@ -46,14 +46,14 @@ async function sharedShop(page: Page) {
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
   await page.getByRole('button', { name: 'Add product', exact: true }).click()
   await page.getByLabel('Product name').fill('Chai')
-  await page.getByLabel('Price (₹)').fill('15')
+  await page.getByLabel(/^Price/).fill('15')
   await page.getByLabel('Unit (cup, kg, piece…)').fill('cup')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('Chai')
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(review).not.toBeVisible()
-  await expect(page.getByRole('button', { name: /^Edit Chai/ })).toContainText('₹15')
+  await expect(page.getByRole('button', { name: /^Edit Chai/ })).toContainText('$15.00')
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   await sharing.click()
   await expect(sharing).toBeChecked()
@@ -132,7 +132,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
               page.getByRole('heading', { name: 'Accessibility Tea Stall' }),
             ).toBeVisible()
             await expect(page.getByRole('listitem').filter({ hasText: 'Chai' })).toContainText(
-              '₹15',
+              '$15.00',
             )
           }
       }

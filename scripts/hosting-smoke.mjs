@@ -11,7 +11,7 @@ assert.equal(health.auth_mode, authMode)
 assert.equal(health.session_backend, authMode === 'firebase' ? 'firestore' : 'sqlite')
 if (process.env.RELEASE_SHA) assert.equal(health.release_commit, process.env.RELEASE_SHA)
 const home = await request('/')
-assert.ok(home.ok && (await home.text()).includes('oGoogle AI'))
+assert.ok(home.ok && (await home.text()).includes('<div id="root">'))
 assert.equal((await request('/api/missing')).status, 404)
 assert.equal((await request('/.env')).status, 404)
 assert.equal(

@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
 import {
   Alert,
@@ -34,7 +34,7 @@ import { visuallyHidden } from '@mui/utils'
 import { streamCoach } from '../../../api/stream'
 import type { CoachEvent } from '../../../api/stream'
 import { useIdentity } from '../../../auth/useIdentity'
-import { usePreferences } from '../../../state/hooks'
+import { useLocale } from '../../../state/hooks'
 import { ApiError } from '../api'
 import type { Conversation, PhotoResult, Proposal } from '../api'
 import { useCopy } from '../strings'
@@ -51,7 +51,7 @@ export function CoachScreen() {
   const theme = useTheme()
   const roles = theme.material
   const identity = useIdentity()
-  const { language } = usePreferences()
+  const language = useLocale()
   const ws = useWorkspace()
   const [messages, setMessages] = useState<Message[]>([])
   const [reply, setReply] = useState('')
@@ -153,7 +153,7 @@ export function CoachScreen() {
       if (speakReplies && finalReply) {
         speechSynthesis.cancel()
         const utterance = new SpeechSynthesisUtterance(finalReply)
-        utterance.lang = language === 'hi' ? 'hi-IN' : 'en-IN'
+        utterance.lang = language
         speechSynthesis.speak(utterance)
       }
       const items = await api<Conversation[]>('/conversations')
@@ -289,10 +289,10 @@ export function CoachScreen() {
           {shopHistory.map((entry) => (
             <MenuItem key={entry.session_id} onClick={() => void restore(entry.session_id)}>
               <ListItemText
-                primary={new Date(entry.updated * 1000).toLocaleString(
-                  language === 'hi' ? 'hi-IN' : 'en-IN',
-                  { dateStyle: 'medium', timeStyle: 'short' },
-                )}
+                primary={new Date(entry.updated * 1000).toLocaleString(language, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                })}
               />
             </MenuItem>
           ))}

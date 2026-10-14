@@ -14,7 +14,8 @@ import {
 import { Clock, Leaf, MapPin, Phone, RefreshCw } from 'lucide-react'
 import { Fragment } from 'react'
 import type { ReactNode } from 'react'
-import { usePreferences } from '../../state/hooks'
+import { useLocale } from '../../state/hooks'
+import type { Locale } from '../../i18n/locales'
 import { formatPrice } from '../v1/format'
 import { shape } from '../../design/theme'
 
@@ -28,50 +29,34 @@ interface PublicShopData {
   products: { name: string; price: number; unit: string; available: boolean }[]
 }
 
-const copy = {
-  en: {
-    menu: 'Menu & prices',
-    soldOut: 'Sold out',
-    available: 'Available',
-    directions: 'Directions',
-    call: 'Call',
-    refresh: 'Refresh',
-    updated: 'Updated just now',
-    missing: 'This shop page isn’t available.',
-    missingBody: 'The owner may have stopped sharing it.',
-    footer:
-      'Prepared by the shop owner with oGoogle AI · independent prototype, not a Google product',
-    loading: 'Loading shop…',
-    empty: 'The owner hasn’t added prices yet.',
-    error: 'We couldn’t load this shop right now.',
-    errorBody: 'Check your connection and try again.',
-    retry: 'Try again',
-    stale: 'Couldn’t refresh — showing the last menu we loaded.',
-  },
-  hi: {
-    menu: 'मेनू और दाम',
-    soldOut: 'खत्म',
-    available: 'उपलब्ध',
-    directions: 'रास्ता',
-    call: 'कॉल करें',
-    refresh: 'ताज़ा करें',
-    updated: 'अभी अपडेट हुआ',
-    missing: 'यह दुकान पेज उपलब्ध नहीं है।',
-    missingBody: 'हो सकता है मालिक ने इसे साझा करना बंद कर दिया हो।',
-    footer: 'दुकान मालिक द्वारा oGoogle AI से तैयार · स्वतंत्र प्रोटोटाइप, Google का उत्पाद नहीं',
-    loading: 'दुकान लोड हो रही है…',
-    empty: 'मालिक ने अभी दाम नहीं जोड़े हैं।',
-    error: 'यह दुकान अभी लोड नहीं हो सकी।',
-    errorBody: 'कनेक्शन जाँचें और फिर कोशिश करें।',
-    retry: 'फिर कोशिश करें',
-    stale: 'ताज़ा नहीं हो सका — पिछला लोड किया गया मेनू दिख रहा है।',
-  },
+/** English source; customer-page translations override keys (missing keys fall back). */
+const en = {
+  menu: 'Menu & prices',
+  soldOut: 'Sold out',
+  available: 'Available',
+  directions: 'Directions',
+  call: 'Call',
+  refresh: 'Refresh',
+  updated: 'Updated just now',
+  missing: 'This shop page isn’t available.',
+  missingBody: 'The owner may have stopped sharing it.',
+  footer:
+    'Prepared by the shop owner with Chalkboard · independent prototype, not a Google product',
+  loading: 'Loading shop…',
+  empty: 'The owner hasn’t added prices yet.',
+  error: 'We couldn’t load this shop right now.',
+  errorBody: 'Check your connection and try again.',
+  retry: 'Try again',
+  stale: 'Couldn’t refresh — showing the last menu we loaded.',
 }
+
+/** Native customer-page translations per locale (filled per language; English fallback). */
+const publicTranslations: Partial<Record<Locale, Partial<typeof en>>> = {}
 
 /** Customer-facing, read-only page for a shop the owner chose to share. No sign-in. */
 export default function PublicShop({ id }: { id: string }) {
-  const { language } = usePreferences()
-  const t = copy[language]
+  const locale = useLocale()
+  const t = { ...en, ...publicTranslations[locale] }
   const roles = useTheme().material
   const [shop, setShop] = useState<PublicShopData | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')

@@ -38,7 +38,7 @@ test('demo: photo, price correction, customer page and availability', async ({ p
   await expect(review).toBeVisible()
   await expect(review).toContainText('Offline Fixture Tea Stall')
   await expect(review).toContainText('Chai')
-  await expect(review).toContainText('₹15 / cup')
+  await expect(review).toContainText('$15.00 / cup')
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(review).not.toBeVisible()
 
@@ -46,12 +46,12 @@ test('demo: photo, price correction, customer page and availability', async ({ p
   const chai = page.getByRole('button', { name: /^Edit Chai/ })
   await expect(chai).toContainText('Chai')
   await chai.click()
-  await page.getByLabel('Price (₹)').fill('12')
+  await page.getByLabel(/^Price/).fill('12')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await expect(review).toContainText('₹12 / cup')
+  await expect(review).toContainText('$12.00 / cup')
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(review).not.toBeVisible()
-  await expect(chai).toContainText('₹12')
+  await expect(chai).toContainText('$12.00')
 
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   await sharing.click()
@@ -67,7 +67,7 @@ test('demo: photo, price correction, customer page and availability', async ({ p
     await expect(customer.getByRole('heading', { name: 'Offline Fixture Tea Stall' })).toBeVisible()
     const product = customer.getByRole('listitem').filter({ hasText: 'Chai' })
     await expect(product).toContainText('Chai')
-    await expect(product).toContainText('₹12')
+    await expect(product).toContainText('$12.00')
     await expect(customer.getByText('Sold out', { exact: true })).toHaveCount(0)
 
     const available = page.getByRole('switch', { name: 'Available: Chai' })
