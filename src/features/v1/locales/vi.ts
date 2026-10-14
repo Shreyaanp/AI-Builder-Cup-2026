@@ -1,6 +1,10 @@
 import type { Copy } from '../strings'
 
 export const vi: Copy = {
+  installApp: 'Cài ứng dụng',
+  installIos: 'Trong Safari, chạm Chia sẻ → Thêm vào Màn hình chính, rồi chạm Thêm.',
+  installUnavailable:
+    'Chưa thể cài đặt. Hãy thử menu cài đặt của trình duyệt hoặc tiếp tục dùng ứng dụng web.',
   importUnavailable: 'Đọc ảnh, PDF và ghi chú cần kết nối AI. Bạn vẫn có thể nhập CSV và Excel.',
   saveSales: 'Lưu doanh số này',
   salesSaved: 'Đã lưu doanh số',

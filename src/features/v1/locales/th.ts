@@ -1,6 +1,9 @@
 import type { Copy } from '../strings'
 
 export const th: Copy = {
+  installApp: 'ติดตั้งแอป',
+  installIos: 'ใน Safari แตะแชร์ → เพิ่มไปยังหน้าจอโฮม แล้วแตะเพิ่ม',
+  installUnavailable: 'ยังติดตั้งไม่ได้ ลองใช้เมนูติดตั้งของเบราว์เซอร์ หรือใช้เว็บแอปต่อไป',
   importUnavailable: 'การอ่านรูปภาพ PDF และบันทึกต้องเชื่อมต่อ AI ยังนำเข้า CSV และ Excel ได้',
   saveSales: 'บันทึกยอดขายนี้',
   salesSaved: 'บันทึกยอดขายแล้ว',

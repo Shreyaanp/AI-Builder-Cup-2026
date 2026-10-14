@@ -1,6 +1,10 @@
 import type { Copy } from '../strings'
 
 export const id: Copy = {
+  installApp: 'Instal aplikasi',
+  installIos: 'Di Safari, ketuk Bagikan → Tambahkan ke Layar Utama, lalu ketuk Tambah.',
+  installUnavailable:
+    'Instalasi belum tersedia. Coba menu instalasi browser atau tetap gunakan aplikasi web.',
   importUnavailable:
     'Membaca foto, PDF, dan catatan memerlukan AI yang terhubung. Impor CSV dan Excel tetap berfungsi.',
   saveSales: 'Simpan penjualan ini',
