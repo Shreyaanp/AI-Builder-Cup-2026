@@ -14,6 +14,12 @@ async function openChat(page: Page) {
   await expect(page.getByRole('dialog', { name: 'Chat with the shop' })).toBeVisible()
 }
 
+/** In the chat, contact details are asked only when the customer chooses the owner. */
+async function toOwner(page: Page) {
+  await page.getByRole('button', { name: 'Ask the owner' }).last().click()
+  await expect(page.getByLabel('Phone or email')).toBeVisible()
+}
+
 async function sharedShop(page: Page, phone = '+65 6123 4567') {
   await localOnly(page)
   await page.goto('/')
@@ -96,6 +102,7 @@ test('Anonymous customer and owner have a live two-way conversation', async ({ p
     )
 
     // No name is required; plain text must remain plain text in both interfaces.
+    await toOwner(customer)
     await customer.getByLabel('Phone or email').fill('customer@example.test')
     await customer
       .getByRole('textbox', { name: 'Message', exact: true })
@@ -155,7 +162,7 @@ test('Anonymous customer and owner have a live two-way conversation', async ({ p
       .getByRole('group', { name: 'Delete this conversation permanently?' })
       .getByRole('button', { name: 'Delete this conversation', exact: true })
       .click()
-    await expect(customer.getByLabel('Phone or email')).toBeVisible()
+    await expect(customer.getByRole('button', { name: 'Ask the owner' })).toBeVisible()
     await customer.reload()
     await expect(
       customer.getByRole('button', { name: 'Open conversation', exact: true }),
@@ -186,11 +193,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     ).toBeTruthy()
-    await page.getByLabel('Your question').focus()
-    await page.keyboard.press('Tab')
-    await expect(page.getByRole('button', { name: 'Price', exact: true })).toBeFocused()
-    await page.keyboard.press('Enter')
-    await expect(page.getByLabel('Your question')).toHaveValue('How much is Kopi?')
+    // After an answer, the person behind the shop is one tap away.
+    await expect(page.getByRole('button', { name: 'Ask the owner' })).toBeVisible()
   })
 }
 
@@ -211,20 +215,24 @@ test('H09: changed facts clear an old answer; errors preserve input and offer re
   await page.request.post(`/api/v1/businesses/${id}/inventory/${kopi.id}/availability`, {
     data: { available: false },
   })
-  // Refresh lives on the page behind the sheet; the sheet keeps the typed question.
+  // Refresh lives on the page behind the sheet; changed facts clear the old answer.
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Refresh', exact: true }).click()
   await openChat(page)
   await expect(page.getByText("Answer based on the shop's listed details")).toHaveCount(0)
-  await expect(question).toHaveValue('How much is kopi?')
+  // Like a messenger, a sent question leaves the box; ask again.
+  await question.fill('How much is kopi?')
   await page.getByRole('button', { name: 'Ask the shop assistant' }).click()
   await expect(page.getByText('Sold out as shown', { exact: false })).toBeVisible()
   await page.route('**/ask', (route) =>
     route.fulfill({ status: 429, contentType: 'application/json', body: '{}' }),
   )
+  await question.fill('How much is kopi?')
   await page.getByRole('button', { name: 'Ask the shop assistant' }).click()
   await expect(page.getByRole('alert')).toContainText('Please wait a minute')
+  // A failed question stays in the box to retry.
   await expect(question).toHaveValue('How much is kopi?')
+  await toOwner(page)
   await page.getByRole('button', { name: 'Send message', exact: true }).click()
   await expect(page.getByLabel('Phone or email')).toBeFocused()
   await expect(
@@ -259,6 +267,7 @@ test('Polling recovers when SSE fails and blocked contacts cannot create another
     )
     await customer.goto(`http://127.0.0.1:3200/s/${id}`)
     await openChat(customer)
+    await toOwner(customer)
     await customer.getByLabel('Phone or email').fill('blocked@example.test')
     await customer
       .getByRole('textbox', { name: 'Message', exact: true })
@@ -287,6 +296,7 @@ test('Polling recovers when SSE fails and blocked contacts cannot create another
       .getByRole('group', { name: 'Delete this conversation permanently?' })
       .getByRole('button', { name: 'Delete this conversation', exact: true })
       .click()
+    await toOwner(customer)
     await customer.getByLabel('Phone or email').fill('BLOCKED@example.test')
     await customer.getByRole('textbox', { name: 'Message', exact: true }).fill('Try again')
     await customer.getByRole('button', { name: 'Send message', exact: true }).click()
