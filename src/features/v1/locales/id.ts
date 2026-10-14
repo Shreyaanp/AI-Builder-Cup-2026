@@ -292,7 +292,22 @@ export const id: Copy = {
   googleTitle: 'Hadir di Google',
   googleBody:
     'Setelah info siap, selesaikan di halaman resmi Google. Google memverifikasi kepemilikan toko.',
-  googleHonest: 'Chalkboard tidak memublikasikan ke Google untuk Anda.',
+  googleHonest:
+    'Chalkboard menyiapkan detail Anda. Google memverifikasi dan memublikasikannya — kami tidak dapat memublikasikan ke Google untuk Anda.',
+  stepDetails: 'Periksa detail Anda',
+  seeChecks: 'Lihat semua pemeriksaan',
+  stepCopy: 'Salin detail Anda',
+  stepCopyHint: 'Tempel ke formulir Google agar semuanya sama.',
+  copyField: (field: string) => `Salin ${field}`,
+  stepAdd: 'Tambah atau klaim di Google',
+  stepAddHint: 'Membuka halaman resmi Google. Cari toko Anda dulu — jika sudah ada, klaim.',
+  stepVerify: 'Terverifikasi di Google?',
+  stepVerifyHint:
+    'Google memastikan kepemilikan lewat telepon, SMS, email, atau video. Beri tahu kami jika sudah selesai.',
+  verifiedYes: 'Google sudah memverifikasi toko saya',
+  verifiedOwner: 'Terverifikasi — menurut Anda. Chalkboard tidak bisa mengeceknya ke Google.',
+  verifiedUndo: 'Belum terverifikasi',
+  practiceSteps: 'Latihan langkah-langkahnya (simulasi)',
   readiness: (done: number, total: number) => `${done} dari ${total} siap`,
   checkName: 'Nama toko',
   checkCategory: 'Kategori',

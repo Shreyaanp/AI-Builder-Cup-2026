@@ -139,9 +139,7 @@ test('Google handoff shows readiness and only official Google links', async ({ p
   await page.getByRole('button', { name: 'Google' }).click()
   // The coach's shop card (kept mounted while hidden) shows the same readiness.
   await expect(page.getByRole('region', { name: 'Google' }).getByText('1 of 6 ready')).toBeVisible()
-  await expect(page.getByText('Chalkboard never publishes to Google for you.')).toBeVisible()
-  // The official handoff links live in the "Finish on Google" sheet.
-  await page.getByRole('button', { name: /^Finish on Google/ }).click()
+  await expect(page.getByText(/we can’t publish to Google for you/)).toBeVisible()
   await expect(page.getByRole('link', { name: 'Add on Google' })).toHaveAttribute(
     'href',
     'https://business.google.com/add',

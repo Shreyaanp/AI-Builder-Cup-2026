@@ -286,7 +286,22 @@ export const th: Copy = {
   googleTitle: 'เพิ่มร้านบน Google',
   googleBody:
     'เมื่อข้อมูลพร้อม ให้ดำเนินการบนหน้าของ Google เอง โดย Google จะตรวจสอบว่าคุณเป็นเจ้าของร้าน',
-  googleHonest: 'Chalkboard ไม่เผยแพร่ไปยัง Google แทนคุณ',
+  googleHonest:
+    'Chalkboard เตรียมข้อมูลของคุณ Google เป็นผู้ยืนยันและเผยแพร่ — เราเผยแพร่ไปยัง Google แทนคุณไม่ได้',
+  stepDetails: 'ตรวจข้อมูลของคุณ',
+  seeChecks: 'ดูรายการตรวจทั้งหมด',
+  stepCopy: 'คัดลอกข้อมูลของคุณ',
+  stepCopyHint: 'วางลงในแบบฟอร์มของ Google เพื่อให้ข้อมูลตรงกัน',
+  copyField: (field: string) => `คัดลอก${field}`,
+  stepAdd: 'เพิ่มหรืออ้างสิทธิ์บน Google',
+  stepAddHint: 'เปิดหน้าของ Google เอง ค้นหาร้านของคุณก่อน — ถ้ามีอยู่แล้ว ให้อ้างสิทธิ์',
+  stepVerify: 'ยืนยันบน Google แล้วหรือยัง',
+  stepVerifyHint:
+    'Google ยืนยันว่าคุณเป็นเจ้าของผ่านโทรศัพท์ SMS อีเมล หรือวิดีโอ บอกเราเมื่อเสร็จแล้ว',
+  verifiedYes: 'Google ยืนยันร้านของฉันแล้ว',
+  verifiedOwner: 'ยืนยันแล้ว — ตามที่คุณแจ้ง Chalkboard ตรวจสอบกับ Google ไม่ได้',
+  verifiedUndo: 'ยังไม่ได้ยืนยัน',
+  practiceSteps: 'ฝึกขั้นตอน (จำลอง)',
   readiness: (done: number, total: number) => `พร้อม ${done} จาก ${total} รายการ`,
   checkName: 'ชื่อร้าน',
   checkCategory: 'หมวดหมู่',

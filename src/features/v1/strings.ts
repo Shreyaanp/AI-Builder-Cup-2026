@@ -306,7 +306,22 @@ export const en = {
   googleTitle: 'Get on Google',
   googleBody:
     'When your details are ready, finish on Google’s own page. Google verifies that you own the shop.',
-  googleHonest: 'Chalkboard never publishes to Google for you.',
+  googleHonest:
+    'Chalkboard prepares your details. Google verifies and publishes them — we can’t publish to Google for you.',
+  stepDetails: 'Check your details',
+  seeChecks: 'See all checks',
+  stepCopy: 'Copy your details',
+  stepCopyHint: 'Paste these into Google’s form so everything matches.',
+  copyField: (field: string) => `Copy ${field}`,
+  stepAdd: 'Add or claim on Google',
+  stepAddHint: 'Opens Google’s own page. Search for your shop first — if it’s there, claim it.',
+  stepVerify: 'Verified on Google?',
+  stepVerifyHint:
+    'Google confirms you own the shop by call, text, email or video. Tell us when it’s done.',
+  verifiedYes: 'Google verified my shop',
+  verifiedOwner: 'Verified — you told us. Chalkboard can’t check this with Google.',
+  verifiedUndo: 'Not verified yet',
+  practiceSteps: 'Practice the steps (simulation)',
   readiness: (done: number, total: number) => `${done} of ${total} ready`,
   checkName: 'Shop name',
   checkCategory: 'Category',
