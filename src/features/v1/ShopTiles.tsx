@@ -33,7 +33,11 @@ import {
   ZapOff,
 } from 'lucide-react'
 import { formatPrice, shopCurrency } from './format'
+import { FactList } from './FactList'
+import { PendingCard } from './PendingCard'
 import { Sheet } from './Sheet'
+import { ShopQr } from './ShopQr'
+import { useUnread } from './useUnread'
 import { openNow, readiness } from './shopProgress'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
@@ -121,13 +125,47 @@ export function Supporting({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * Tiles + their sheets + the one pending card: My shop, and the desktop pane beside the coach.
+ */
+export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
+  // The pane beside the coach skips the pending card: the coach shows it there.
+  const t = useCopy()
+  const ws = useWorkspace()
+  const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
+  const { unread, refresh } = useUnread()
+  return (
+    <Stack spacing={4}>
+      {!narrow && (
+        <PendingCard
+          unread={unread}
+          onMessages={() => setSheet('messages')}
+          onAnswer={(fact) => ws.startCoachDraft(`${t.factNames[fact]}: `)}
+        />
+      )}
+      <ShopTiles unread={unread} onSheet={setSheet} narrow={narrow} />
+      <ShopSheets
+        kind={sheet}
+        onClose={() => {
+          // Marking messages done changes the tile's count.
+          if (sheet === 'messages') refresh()
+          setSheet(null)
+        }}
+      />
+    </Stack>
+  )
+}
+
 /** My shop: a grid of tiles; each opens a bottom sheet with the full list and actions. */
 export function ShopTiles({
   unread,
   onSheet,
+  narrow = false,
 }: {
   unread: number | null
   onSheet: (kind: ShopSheetKind) => void
+  /** Always two columns (the desktop side pane). */
+  narrow?: boolean
 }) {
   const t = useCopy()
   const plan = usePlanCopy()
@@ -143,7 +181,10 @@ export function ShopTiles({
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' },
+        gridTemplateColumns: {
+          xs: 'repeat(2, minmax(0, 1fr))',
+          md: narrow ? undefined : 'repeat(3, minmax(0, 1fr))',
+        },
         gap: 3,
       }}
     >
@@ -315,6 +356,12 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
                 </Typography>
               </Box>
             ))}
+          </Box>
+          <Box sx={{ mt: 6 }}>
+            <FactList
+              fields={shop.fields}
+              onAnswer={(fact) => then(() => ws.startCoachDraft(`${t.factNames[fact]}: `))()}
+            />
           </Box>
         </Sheet>
       )
@@ -568,6 +615,9 @@ function CustomerPage() {
               {t.openPage}
             </Button>
           </Stack>
+          <Box sx={{ mt: 6 }}>
+            <ShopQr url={url} name={shop.fields.name} />
+          </Box>
         </>
       )}
     </Box>

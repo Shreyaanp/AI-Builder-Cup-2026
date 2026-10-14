@@ -79,6 +79,14 @@ def test_context_exposes_only_readable_shop_and_major_unit_products(saved_shop, 
             {"name": "Chai", "price": 15.0, "unit": "cup", "stock": 10, "available": True}
         ],
         "relevant_history": ctx.recalled,
+        "customer_facts_to_ask": [
+            "halal",
+            "payment_methods",
+            "delivery",
+            "vegetarian_options",
+            "preorders",
+            "busy_hours",
+        ],
     }
     assert isinstance(result["products"][0]["price"], float)
     serialized = json.dumps(result)
@@ -360,3 +368,58 @@ def test_eval_prices_are_major_units(ctx, price, sane):
         tools=[{"name": "propose_products", "args": {"items": [{"name": "Chai", "price": price}]}}]
     )
     assert sane_prices(turn) is sane
+
+
+def commit(ctx: MerchantContext, result: dict[str, Any]) -> None:
+    proposal = ctx.proposals[result["proposal_id"]]
+    ctx.store.commit("alice", proposal["id"], proposal["digest"])
+
+
+def test_customer_fact_is_a_reviewed_edit_that_keeps_everything_else(saved_shop):
+    result = propose_business(name="", halal="Yes", payment_methods=["cash", "PayNow"])
+    assert result["status"] == "needs_review"
+    assert result["changes"] == [
+        "halal: (empty) → yes",
+        "payment_methods: (empty) → ['cash', 'paynow']",
+    ]
+    proposal = saved_shop.proposals[result["proposal_id"]]
+    assert proposal["snapshot"]["business"] == {
+        "name": "Ram Tea Stall",
+        "category": "Tea",
+        "location": "Market Road",
+        "hours": "7–21",
+        "phone": "",
+        "currency": "SGD",
+        "halal": "yes",
+        "payment_methods": ["cash", "paynow"],
+    }
+    assert_sealed(proposal)
+    # Nothing is saved until the owner confirms.
+    assert "halal" not in get_business_context()["shop"]
+    commit(saved_shop, result)
+    context = get_business_context()
+    assert context["shop"]["halal"] == "yes"
+    assert context["customer_facts_to_ask"] == [
+        "delivery",
+        "vegetarian_options",
+        "preorders",
+        "busy_hours",
+    ]
+    # A later basics edit (or another fact) never wipes confirmed facts.
+    edit = propose_business(name="", hours="8–20", vegetarian_options=False)
+    business = saved_shop.proposals[edit["proposal_id"]]["snapshot"]["business"]
+    assert business["halal"] == "yes"
+    assert business["payment_methods"] == ["cash", "paynow"]
+    assert business["vegetarian_options"] is False
+    assert business["hours"] == "8–20"
+
+
+@pytest.mark.parametrize("fact", [{"halal": "maybe"}, {"delivery": "drone"}])
+def test_unknown_fact_value_is_repairable(saved_shop, fact):
+    result = propose_business(name="", **fact)
+    assert result["status"] == "invalid"
+    assert saved_shop.proposals == {}
+
+
+def test_no_facts_to_ask_without_a_shop(ctx):
+    assert get_business_context()["customer_facts_to_ask"] == []

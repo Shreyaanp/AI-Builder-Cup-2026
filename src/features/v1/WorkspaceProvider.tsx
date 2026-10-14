@@ -46,6 +46,9 @@ export function WorkspaceProvider({
   const [toast, setToast] = useState('')
   const [photoPending, setPhotoPending] = useState(false)
   const consumePhotoRequest = useCallback(() => setPhotoPending(false), [])
+  // A chat starter from another screen (e.g. My shop's "Customers ask" card).
+  const [coachDraft, setCoachDraft] = useState<string | null>(null)
+  const consumeCoachDraft = useCallback(() => setCoachDraft(null), [])
   const [faceOpen, setFaceOpen] = useState(false)
   const [editor, setEditor] = useState<Editor>({ kind: 'none' })
   const [speakReplies, setSpeak] = useState(readSpeak)
@@ -184,6 +187,12 @@ export function WorkspaceProvider({
       },
       photoPending,
       consumePhotoRequest,
+      startCoachDraft: (text: string) => {
+        setDestination('coach')
+        setCoachDraft(text)
+      },
+      coachDraft,
+      consumeCoachDraft,
       faceOpen,
       setFaceOpen,
       editor,
@@ -204,6 +213,8 @@ export function WorkspaceProvider({
       setShared,
       photoPending,
       consumePhotoRequest,
+      coachDraft,
+      consumeCoachDraft,
       faceOpen,
       editor,
     ],

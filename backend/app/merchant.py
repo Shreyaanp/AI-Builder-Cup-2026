@@ -8,13 +8,36 @@ import secrets
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 from uuid import uuid4
 
 from fastapi import HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+)
 
 from .customer import Inquiry, InquiryInput, InquiryReceipt, inquiry_key
+
+Halal = Literal["yes", "no", "muslim_owned", "not_stated"]
+Delivery = Literal["none", "own", "grab", "foodpanda", "other"]
+Payment = Literal["cash", "paynow", "card", "grabpay", "nets", "other"]
+# Optional facts customers ask about. Unset facts are left out of the record entirely, so shops
+# saved before these existed (and their sealed digests) are unchanged.
+FACT_KEYS = (
+    "halal",
+    "vegetarian_options",
+    "delivery",
+    "delivery_note",
+    "preorders",
+    "preorder_lead_time",
+    "payment_methods",
+    "busy_hours",
+)
 
 
 class BusinessFields(BaseModel):
@@ -26,6 +49,33 @@ class BusinessFields(BaseModel):
     phone: str = Field(default="", max_length=40)
     # ISO 4217; prices of this shop are stored in this currency's minor unit (see money.py).
     currency: str = Field(default="SGD", pattern=r"^[A-Z]{3}$")
+    halal: Halal | None = None
+    vegetarian_options: bool | None = None
+    delivery: Delivery | None = None
+    delivery_note: str = Field(default="", max_length=80)
+    preorders: bool | None = None
+    preorder_lead_time: str = Field(default="", max_length=80)
+    payment_methods: list[Payment] = Field(default_factory=list, max_length=6)
+    busy_hours: str = Field(default="", max_length=80)
+
+    @field_validator("payment_methods")
+    @classmethod
+    def unique_methods(cls, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(value))
+
+    @model_serializer(mode="wrap")
+    def drop_unset_facts(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data: dict[str, Any] = handler(self)
+        return {
+            key: value
+            for key, value in data.items()
+            if key not in FACT_KEYS or value not in (None, "", [])
+        }
+
+
+def customer_facts(fields: dict[str, Any]) -> dict[str, Any]:
+    """The facts a shop has stated, for customers (unset facts are simply absent)."""
+    return {key: fields[key] for key in FACT_KEYS if fields.get(key) not in (None, "", [])}
 
 
 class ProductFields(BaseModel):
@@ -121,6 +171,8 @@ def public_projection(
         "hours": fields.get("hours", ""),
         "phone": fields.get("phone", ""),
         "currency": fields.get("currency") or "SGD",
+        # Only facts the owner confirmed; customer Q&A grounds on these too.
+        "facts": customer_facts(fields),
         "products": [
             {
                 "name": product["name"],

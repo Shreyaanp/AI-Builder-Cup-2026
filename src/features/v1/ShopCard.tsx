@@ -28,8 +28,10 @@ import {
 } from 'lucide-react'
 import { formatPrice, shopCurrency } from './format'
 import { LoadError } from './LoadError'
+import { FactList } from './FactList'
 import { Sheet } from './Sheet'
 import { nextStep, readiness } from './shopProgress'
+import type { AskFact } from './shopProgress'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { enterRise, fieldFade, shape } from '../../design/theme'
@@ -344,10 +346,13 @@ export function ShopSheet({
   open,
   focusProduct,
   onClose,
+  onAnswer,
 }: {
   open: boolean
   focusProduct: number | null
   onClose: () => void
+  /** Start a chat answer for a missing customer fact. */
+  onAnswer?: (fact: AskFact) => void
 }) {
   const t = useCopy()
   const ws = useWorkspace()
@@ -425,6 +430,10 @@ export function ShopSheet({
             </Box>
           ))}
         </Box>
+        <FactList
+          fields={shop.fields}
+          onAnswer={onAnswer && ((fact) => edit(() => onAnswer(fact)))}
+        />
         <Box>
           <Stack direction="row" sx={{ alignItems: 'center', mb: 1 }}>
             <Typography component="h3" variant="titleSmall" color="text.secondary" sx={{ flex: 1 }}>
