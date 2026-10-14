@@ -1,6 +1,8 @@
 name: oGoogle AI checks
 on:
+  # Main only: fix branches are merged locally, so a branch push would just duplicate the run.
   push:
+    branches: [main]
   pull_request:
   workflow_call:
     inputs:
@@ -9,6 +11,10 @@ on:
         required: false
 permissions:
   contents: read
+# A newer push supersedes an older run on the same ref.
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -73,13 +79,14 @@ jobs:
       - run: npm run build
       - run: npm run test:hooks
       - run: npm run format:check
-  # Browser tests run per device project in parallel jobs (phone and desktop).
+  # Browser tests run per device project, each split into parallel shards.
   browser:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         project: [phone, desktop]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -102,11 +109,11 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --project=${{ matrix.project }}
+      - run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/3
       - uses: actions/upload-artifact@v6
         if: failure()
         with:
-          name: browser-failures-${{ matrix.project }}
+          name: browser-failures-${{ matrix.project }}-${{ matrix.shard }}
           path: test-results
           retention-days: 3
   # Runs alongside the tests; it only checks that the packaged app starts and serves.

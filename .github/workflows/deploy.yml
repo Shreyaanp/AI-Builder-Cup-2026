@@ -6,6 +6,11 @@ on:
         description: Commit SHA on main (blank uses current main)
         type: string
         required: false
+  # Every green main commit releases automatically: no waiting for someone to press release.
+  workflow_run:
+    workflows: [oGoogle AI checks]
+    types: [completed]
+    branches: [main]
 permissions:
   contents: read
 concurrency:
@@ -13,7 +18,11 @@ concurrency:
   cancel-in-progress: false
 jobs:
   revision:
-    if: github.ref == 'refs/heads/main'
+    # Manual runs from main, or a main push whose checks passed (never a pull request's run).
+    if: >-
+      github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'))
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.select.outputs.sha }}
@@ -23,7 +32,7 @@ jobs:
           fetch-depth: 0
       - id: select
         env:
-          REQUESTED_SHA: ${{ inputs.revision }}
+          REQUESTED_SHA: ${{ inputs.revision || github.event.workflow_run.head_sha }}
         run: |
           revision="${REQUESTED_SHA:-$GITHUB_SHA}"
           [[ "$revision" =~ ^[a-f0-9]{40}$ ]]
@@ -105,20 +114,36 @@ jobs:
           echo "$GOOGLE_ACCESS_TOKEN" | docker login -u oauth2accesstoken --password-stdin https://asia-south1-docker.pkg.dev
           image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA"
           docker push "$image"
+      # The face worker only changes with its own inputs; skip ~2 minutes when it is current.
+      - name: Check face worker inputs
+        id: face
+        run: |
+          inputs=$(cat backend/face.Dockerfile backend/face_worker.py backend/scripts/fetch_face_models.py backend/pyproject.toml backend/uv.lock | sha256sum | cut -c1-16)
+          echo "tag=inputs-$inputs" >> "$GITHUB_OUTPUT"
+          current=$(gcloud run services describe ogoogle-face --project=ichiropractic --region=asia-south1 --format='value(spec.template.spec.containers[0].image)' 2>/dev/null || true)
+          if [[ "$current" == *":inputs-$inputs" ]]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+            echo "Face worker already runs inputs-$inputs; skipping its build and release."
+            echo "FACE_WORKER_URL=$(gcloud run services describe ogoogle-face --project=ichiropractic --region=asia-south1 --format='value(status.url)')" >> "$GITHUB_ENV"
+          fi
       - name: Build private face worker
+        if: steps.face.outputs.current != 'true'
         uses: docker/build-push-action@v7.4.0
         with:
           context: .
           file: backend/face.Dockerfile
           push: true
           platforms: linux/amd64
-          tags: asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/face:${{ needs.revision.outputs.sha }}
+          tags: asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/face:${{ steps.face.outputs.tag }}
           cache-from: type=gha,scope=face
           cache-to: type=gha,scope=face,mode=max
       - name: Release private face worker
+        if: steps.face.outputs.current != 'true'
+        env:
+          FACE_TAG: ${{ steps.face.outputs.tag }}
         run: |
           gcloud run deploy ogoogle-face --project=ichiropractic --region=asia-south1 \
-            --image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/face:$RELEASE_SHA" \
+            --image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/face:$FACE_TAG" \
             --service-account=ogoogle-face-runtime@ichiropractic.iam.gserviceaccount.com \
             --set-secrets=FACE_WORKER_TOKEN=ogoogle-face-token:1 \
             --set-env-vars=FACE_REQUIRE_MODELS=true \
