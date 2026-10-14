@@ -125,12 +125,9 @@ export function StampCard({
             : t.more.replace('{count}', number(target - count)).replace('{reward}', reward)
           : t.noReward}
       </Typography>
-      <Typography variant="bodySmall" sx={{ mt: 2 }}>
-        {t.qr}
-      </Typography>
-      <Typography variant="bodySmall">{t.phone}</Typography>
+      {/* One short line; the full "not proof of purchase" note is on the claim screen. */}
       <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
-        {t.local} {t.honesty}
+        {t.qr} {t.phone}
       </Typography>
       {claimed > 0 && (
         <Typography variant="labelLarge" component="p" sx={{ mt: 2 }}>
