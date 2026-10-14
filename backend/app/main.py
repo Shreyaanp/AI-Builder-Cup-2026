@@ -40,6 +40,7 @@ from .merchant import MerchantRepository, MerchantStore
 from .merchant_firestore import FirestoreMerchantStore
 from .merchant_routes import router as merchant_router
 from .photos import PhotoPipeline
+from .planning_routes import router as planning_router
 from .settings import Settings
 from .streaming import CoachRuntime
 from .voice import serve_voice
@@ -142,6 +143,7 @@ def create_app(
     app = FastAPI(title="oGoogle AI streaming API", version="0.1.0", lifespan=lifespan)
     app.include_router(merchant_router)
     app.include_router(google_sim_router)
+    app.include_router(planning_router)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
