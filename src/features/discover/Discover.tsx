@@ -794,7 +794,6 @@ export default function Discover({
         onClose={() => setSelected(null)}
         titleId="discover-place-title"
         title={selected?.name}
-        actions={<Button onClick={() => setSelected(null)}>{t.close}</Button>}
       >
         <Stack spacing={4}>
           <Typography variant="labelLarge">{t.google}</Typography>
