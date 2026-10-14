@@ -23,8 +23,9 @@ from pydantic import (
     model_validator,
 )
 
-from .customer import Inquiry, InquiryInput, InquiryReceipt, inquiry_key
+from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .shop_time import shop_timezone
+from .threads import change_thread, contact_hash, new_thread
 
 Halal = Literal["yes", "no", "muslim_owned", "not_stated"]
 Delivery = Literal["none", "own", "grab", "foodpanda", "other"]
@@ -185,6 +186,9 @@ class MerchantRepository(Protocol):
     def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt: ...
     def inquiries(self, uid: str, bid: str) -> list[Inquiry]: ...
     def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry: ...
+    def thread_action(
+        self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""
+    ) -> Inquiry: ...
 
 
 def public_projection(
@@ -275,6 +279,8 @@ class MerchantStore:
                 PRIMARY KEY(business_id, product_id));
             CREATE TABLE IF NOT EXISTS inquiries(id TEXT PRIMARY KEY, business_id TEXT NOT NULL,
                 dedupe TEXT NOT NULL, created REAL NOT NULL, fields TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS inquiry_blocks(business_id TEXT NOT NULL,
+                key TEXT NOT NULL, PRIMARY KEY(business_id, key));
             CREATE INDEX IF NOT EXISTS inquiry_lookup ON inquiries(business_id, dedupe, created);
             """)
 
@@ -536,6 +542,7 @@ class MerchantStore:
             ]
             for bid in owned:
                 db.execute("DELETE FROM inquiries WHERE business_id=?", (bid,))
+                db.execute("DELETE FROM inquiry_blocks WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM planning WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM inventory WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM memberships WHERE business_id=?", (bid,))
@@ -595,48 +602,72 @@ class MerchantStore:
 
     # Private planning records do not change catalog revisions or public projections.
     def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt:
-        now, key = time.time(), inquiry_key(body)
+        data, token = new_thread(body)
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             if not db.execute("SELECT 1 FROM shares WHERE business_id=?", (bid,)).fetchone():
                 raise HTTPException(404, "This shop page is not available.")
-            prior = db.execute(
-                "SELECT id FROM inquiries WHERE business_id=? AND dedupe=? AND created>? "
-                "ORDER BY created DESC LIMIT 1",
-                (bid, key, now - 120),
-            ).fetchone()
-            if prior:
-                return InquiryReceipt(id=prior[0])
-            record = Inquiry(id=str(uuid4()), **body.model_dump(), created=now)
+            if db.execute(
+                "SELECT 1 FROM inquiry_blocks WHERE business_id=? AND key=?",
+                (bid, contact_hash(body.contact)),
+            ).fetchone():
+                raise HTTPException(409, "This conversation is closed.")
             db.execute(
                 "INSERT INTO inquiries VALUES(?,?,?,?,?)",
-                (record.id, bid, key, now, record.model_dump_json()),
+                (data["id"], bid, "", data["created"], json.dumps(data)),
             )
-        return InquiryReceipt(id=record.id)
+        return InquiryReceipt(id=data["id"], token=token)
 
     def inquiries(self, uid: str, bid: str) -> list[Inquiry]:
         with self.connect() as db:
             self.owned(db, uid, bid)
-            return [
+            records = [
                 Inquiry.model_validate_json(row[0])
                 for row in db.execute(
-                    "SELECT fields FROM inquiries WHERE business_id=? "
-                    "ORDER BY created DESC LIMIT 100",
-                    (bid,),
+                    "SELECT fields FROM inquiries WHERE business_id=? ORDER BY created DESC", (bid,)
                 )
             ]
+        return sorted(
+            records,
+            key=lambda r: (
+                not (r.unread and not r.done),
+                -r.messages[-1].created if r.messages else -r.created,
+            ),
+        )[:100]
 
     def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry:
+        return self.thread_action(uid, bid, iid, "", "close")
+
+    def thread_action(
+        self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""
+    ) -> Inquiry:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            self.owned(db, uid, bid)
+            if uid is not None:
+                self.owned(db, uid, bid)
             row = db.execute(
                 "SELECT fields FROM inquiries WHERE business_id=? AND id=?", (bid, iid)
             ).fetchone()
             if not row:
-                raise HTTPException(404, "Message not found.")
-            record = Inquiry.model_validate_json(row[0]).model_copy(update={"done": True})
-            db.execute("UPDATE inquiries SET fields=? WHERE id=?", (record.model_dump_json(), iid))
+                raise HTTPException(404, "Conversation not found.")
+            data = json.loads(row[0])
+            blocked = bool(
+                db.execute(
+                    "SELECT 1 FROM inquiry_blocks WHERE business_id=? AND key=?",
+                    (bid, contact_hash(data["contact"])),
+                ).fetchone()
+            )
+            record = change_thread(data, uid, token, action, text, blocked)
+            if action == "delete":
+                db.execute("DELETE FROM inquiries WHERE business_id=? AND id=?", (bid, iid))
+            elif action != "get":
+                db.execute(
+                    "UPDATE inquiries SET fields=? WHERE business_id=? AND id=?",
+                    (json.dumps({**data, **record.model_dump()}), bid, iid),
+                )
+                if action == "block":
+                    for key in (contact_hash(record.contact), data.get("token_hash", "")):
+                        db.execute("INSERT OR IGNORE INTO inquiry_blocks VALUES(?,?)", (bid, key))
             return record
 
     def planning(

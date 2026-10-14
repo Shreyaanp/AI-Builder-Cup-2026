@@ -142,13 +142,12 @@ def test_public_inquiry_limits(app: FastAPI) -> None:
         app.state.merchant.share("alice", bid, True)
         path = f"/api/v1/public/shops/{bid}/inquiries"
         body = {"contact": "customer@example.test", "message": "Hours?"}
-        fill(app, "inquire:ip", "testclient", remaining=1)
+        # Inquiries are limited per shop and IP (30/day); other IPs are unaffected.
+        fill(app, "inquire:ip", f"{bid}:testclient", remaining=1)
         assert client.post(path, json=body).status_code == 200
-        assert_limited(client.post(path, json=body), 600)
-        fill(app, "inquire:shop", bid, remaining=1)
-        assert_limited(
-            client.post(path, json=body, headers={"X-Forwarded-For": "192.0.2.3"}), 86_400
-        )
+        assert_limited(client.post(path, json=body), 86_400)
+        other = client.post(path, json=body, headers={"X-Forwarded-For": "192.0.2.3"})
+        assert other.status_code == 200
 
 
 @pytest.mark.parametrize("action", ["bootstrap", "consent", "me"])

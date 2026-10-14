@@ -19,7 +19,7 @@ from fastapi import HTTPException
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
-from .customer import Inquiry, InquiryInput, InquiryReceipt, inquiry_key
+from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .merchant import (
     CHALLENGE_SECONDS,
     PROPOSAL_SECONDS,
@@ -29,6 +29,7 @@ from .merchant import (
     seal_proposal,
     validate_proposal,
 )
+from .threads import change_thread, contact_hash, new_thread
 
 
 def document_id(value: str | None, missing: str) -> str:
@@ -81,7 +82,7 @@ class FirestoreMerchantStore:
     @staticmethod
     def owned(snapshot: Any, uid: str) -> dict[str, Any]:
         data = snapshot.to_dict() if snapshot.exists else None
-        if not data or uid not in data.get("owners", []):
+        if not data or data.get("deleting") or uid not in data.get("owners", []):
             raise HTTPException(404, "Business not found.")
         return dict(data)
 
@@ -299,13 +300,16 @@ class FirestoreMerchantStore:
         owned = []
         query = self.businesses.where(filter=FieldFilter("owners", "array_contains", uid))
         for snapshot in query.stream():
+            # Seal the parent before enumerating children: racing transactions either commit
+            # before this update (and are enumerated) or retry against the deletion marker.
+            snapshot.reference.update({"deleting": True, "public": False})
             owned.append(snapshot.id)
             refs += [item.reference for item in snapshot.reference.collection("inventory").stream()]
             refs += [
                 item.reference for item in snapshot.reference.collection("google_sim").stream()
             ]
             refs += [item.reference for item in snapshot.reference.collection("planning").stream()]
-            for collection in ("inquiries", "inquiry_dedupe"):
+            for collection in ("inquiries", "inquiry_dedupe", "inquiry_blocks"):
                 refs += [
                     item.reference for item in snapshot.reference.collection(collection).stream()
                 ]
@@ -370,52 +374,76 @@ class FirestoreMerchantStore:
 
     # Contact records never enter public projections, ADK tools or merchant revisions.
     def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt:
-        business = self.businesses.document(document_id(bid, "This shop page is not available."))
-        dedupe = business.collection("inquiry_dedupe").document(inquiry_key(body))
-        ref = business.collection("inquiries").document(str(uuid4()))
+        business = self.businesses.document(document_id(bid, "Shop not found."))
+        data, token = new_thread(body)
+        ref = business.collection("inquiries").document(data["id"])
+        block = business.collection("inquiry_blocks").document(contact_hash(body.contact))
 
         @firestore.transactional
         def run(transaction: Any) -> InquiryReceipt:
             shop = business.get(transaction=transaction).to_dict() or {}
+            blocked = block.get(transaction=transaction).exists
             if not shop.get("public"):
                 raise HTTPException(404, "This shop page is not available.")
-            prior = dedupe.get(transaction=transaction).to_dict() or {}
-            now = time.time()
-            if prior.get("created", 0) > now - 120:
-                return InquiryReceipt(id=prior["id"])
-            record = Inquiry(id=ref.id, **body.model_dump(), created=now)
-            transaction.create(ref, record.model_dump())
-            transaction.set(dedupe, {"id": ref.id, "created": now})
-            return InquiryReceipt(id=ref.id)
+            if blocked:
+                raise HTTPException(409, "This conversation is closed.")
+            transaction.create(ref, data)
+            return InquiryReceipt(id=ref.id, token=token)
 
         with self.inquiry_lock:
             return run(self.client.transaction())
 
     def inquiries(self, uid: str, bid: str) -> list[Inquiry]:
         self.owned_business(uid, bid)
-        query = (
-            self.businesses.document(document_id(bid, "Business not found."))
-            .collection("inquiries")
-            .order_by("created", direction=firestore.Query.DESCENDING)
-            .limit(100)
+        query = self.businesses.document(document_id(bid, "Business not found.")).collection(
+            "inquiries"
         )
-        return [Inquiry.model_validate(snapshot.to_dict()) for snapshot in query.stream()]
+        records = [Inquiry.model_validate(snapshot.to_dict()) for snapshot in query.stream()]
+        return sorted(
+            records,
+            key=lambda r: (
+                not (r.unread and not r.done),
+                -r.messages[-1].created if r.messages else -r.created,
+            ),
+        )[:100]
 
     def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry:
+        return self.thread_action(uid, bid, iid, "", "close")
+
+    def thread_action(
+        self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""
+    ) -> Inquiry:
         business = self.businesses.document(document_id(bid, "Business not found."))
-        ref = business.collection("inquiries").document(document_id(iid, "Message not found."))
+        ref = business.collection("inquiries").document(document_id(iid, "Conversation not found."))
 
         @firestore.transactional
         def run(transaction: Any) -> Inquiry:
-            self.owned(business.get(transaction=transaction), uid)
-            snapshot = ref.get(transaction=transaction)
-            if not snapshot.exists:
-                raise HTTPException(404, "Message not found.")
-            record = Inquiry.model_validate(snapshot.to_dict()).model_copy(update={"done": True})
-            transaction.update(ref, {"done": True})
+            shop = business.get(transaction=transaction)
+            if uid is not None:
+                self.owned(shop, uid)
+            elif not shop.exists or (shop.to_dict() or {}).get("deleting"):
+                raise HTTPException(404, "Conversation not found.")
+            data = ref.get(transaction=transaction).to_dict()
+            if data is None:
+                raise HTTPException(404, "Conversation not found.")
+            block = business.collection("inquiry_blocks").document(contact_hash(data["contact"]))
+            blocked = block.get(transaction=transaction).exists
+            record = change_thread(data, uid, token, action, text, blocked)
+            if action == "delete":
+                transaction.delete(ref)
+            elif action != "get":
+                transaction.set(ref, {**data, **record.model_dump()})
+                if action == "block":
+                    transaction.set(block, {"blocked": True})
+                    if data.get("token_hash"):
+                        transaction.set(
+                            business.collection("inquiry_blocks").document(data["token_hash"]),
+                            {"blocked": True},
+                        )
             return record
 
-        return run(self.client.transaction())
+        with self.inquiry_lock:
+            return run(self.client.transaction())
 
     def planning(
         self, uid: str, bid: str, pid: str, action: str, payload: dict[str, Any]

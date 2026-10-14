@@ -1,3 +1,6 @@
+import { CustomerConversation } from './CustomerConversation'
+import { accessKey, readAccess } from './threadAccess'
+import type { ThreadAccess } from './threadAccess'
 import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
@@ -199,6 +202,8 @@ export function CustomerInquiry({ id, copy: t }: { id: string; copy: CustomerCop
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
+  const [access, setAccess] = useState<ThreadAccess | null>(() => readAccess(id))
+  const [storageError, setStorageError] = useState(false)
   const nameInput = useRef<HTMLInputElement>(null)
   const contactInput = useRef<HTMLInputElement>(null)
   const messageInput = useRef<HTMLTextAreaElement>(null)
@@ -213,7 +218,7 @@ export function CustomerInquiry({ id, copy: t }: { id: string; copy: CustomerCop
     const next = {
       name: name.trim().length > 100 ? t.nameInvalid : '',
       contact: (!phone && !email) || contact.trim().length > 254 ? t.contactInvalid : '',
-      message: !message.trim() || message.trim().length > 500 ? t.messageInvalid : '',
+      message: !message.trim() || Array.from(message.trim()).length > 500 ? t.messageInvalid : '',
     }
     setErrors(next)
     if (next.name || next.contact || next.message) {
@@ -226,20 +231,30 @@ export function CustomerInquiry({ id, copy: t }: { id: string; copy: CustomerCop
     const abort = new AbortController()
     request.current = abort
     try {
-      await send<components['schemas']['InquiryReceipt']>(
+      const receipt = await send<components['schemas']['InquiryReceipt']>(
         id,
         'inquiries',
         { name: name.trim(), contact: contact.trim(), message: message.trim() },
         abort.signal,
       )
       if (!abort.signal.aborted) {
+        const saved = { id: receipt.id, token: receipt.token }
+        setAccess(saved)
+        try {
+          localStorage.setItem(accessKey(id), JSON.stringify(saved))
+        } catch {
+          setStorageError(true)
+        }
         setSent(true)
         setName('')
         setContact('')
         setMessage('')
       }
     } catch (failure) {
-      if (!abort.signal.aborted) setError(errorCopy(failure, t))
+      if (!abort.signal.aborted)
+        setError(
+          failure instanceof Error && failure.message === '409' ? t.closed : errorCopy(failure, t),
+        )
     } finally {
       if (!abort.signal.aborted) setBusy(false)
     }
@@ -253,65 +268,85 @@ export function CustomerInquiry({ id, copy: t }: { id: string; copy: CustomerCop
       <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
         {t.contactHint}
       </Typography>
-      <Stack
-        component="form"
-        noValidate
-        spacing={2}
-        onSubmit={(event) => {
-          event.preventDefault()
-          void submit()
-        }}
-      >
-        <TextField
-          label={t.customerName}
-          name="name"
-          autoComplete="name"
-          inputRef={nameInput}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          error={!!errors.name}
-          helperText={errors.name || undefined}
-        />
-        <TextField
-          label={t.customerContact}
-          name="contact"
-          autoComplete="email"
-          inputRef={contactInput}
-          value={contact}
-          onChange={(event) => setContact(event.target.value)}
-          required
-          error={!!errors.contact}
-          helperText={errors.contact || t.customerContactHint}
-        />
-        <TextField
-          label={t.customerMessage}
-          name="message"
-          autoComplete="off"
-          inputRef={messageInput}
-          value={message}
-          onChange={(event) => setMessage(event.target.value)}
-          required
-          multiline
-          minRows={3}
-          error={!!errors.message}
-          helperText={errors.message || `${message.length}/500`}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-              event.preventDefault()
-              void submit()
+      {!access && (
+        <Stack
+          component="form"
+          noValidate
+          spacing={2}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void submit()
+          }}
+        >
+          <TextField
+            label={t.customerName}
+            name="name"
+            autoComplete="name"
+            inputRef={nameInput}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            error={!!errors.name}
+            helperText={errors.name || undefined}
+          />
+          <TextField
+            label={t.customerContact}
+            name="contact"
+            autoComplete="email"
+            inputRef={contactInput}
+            value={contact}
+            onChange={(event) => setContact(event.target.value)}
+            required
+            error={!!errors.contact}
+            helperText={errors.contact || t.customerContactHint}
+          />
+          <TextField
+            label={t.customerMessage}
+            name="message"
+            autoComplete="off"
+            inputRef={messageInput}
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            required
+            multiline
+            minRows={3}
+            error={!!errors.message}
+            helperText={errors.message || `${Array.from(message).length}/500`}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault()
+                void submit()
+              }
+            }}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={busy}
+            sx={{ alignSelf: 'flex-start' }}
+            startIcon={busy ? <CircularProgress size={18} color="inherit" /> : undefined}
+          >
+            {t.sendMessage}
+          </Button>
+        </Stack>
+      )}
+      {storageError && <Alert severity="warning">{t.storage}</Alert>}
+      {access && (
+        <CustomerConversation
+          key={access.id}
+          shop={id}
+          access={access}
+          copy={t}
+          onDeleted={() => {
+            try {
+              localStorage.removeItem(accessKey(id))
+            } catch {
+              /* Browser storage may be unavailable. */
             }
+            setAccess(null)
+            setSent(false)
           }}
         />
-        <Button
-          type="submit"
-          variant="contained"
-          disabled={busy}
-          sx={{ alignSelf: 'flex-start' }}
-          startIcon={busy ? <CircularProgress size={18} color="inherit" /> : undefined}
-        >
-          {t.sendMessage}
-        </Button>
-      </Stack>
+      )}
       {error && (
         <Alert severity="error" sx={{ mt: 2 }}>
           {error}

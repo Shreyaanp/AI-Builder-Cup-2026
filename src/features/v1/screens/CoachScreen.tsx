@@ -1,3 +1,4 @@
+import { chatBubbleStyle } from '../../coach/bubbleStyle'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
 import {
@@ -729,16 +730,7 @@ function Bubble({ message, you, coach }: { message: Message; you: string; coach:
   if (message.role === 'user')
     return (
       <Box component="li" sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Box
-          sx={{
-            maxWidth: '85%',
-            bgcolor: roles.surfaceContainerHigh,
-            color: roles.onSurface,
-            px: 2.5,
-            py: 1.5,
-            borderRadius: `${shape.xl}px ${shape.xs}px ${shape.xl}px ${shape.xl}px`,
-          }}
-        >
+        <Box sx={chatBubbleStyle(roles)}>
           <Typography component="span" sx={visuallyHidden}>
             {you}:{' '}
           </Typography>

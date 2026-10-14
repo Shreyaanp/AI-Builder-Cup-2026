@@ -1,3 +1,4 @@
+import { followInquiries } from '../../api/inquiryStream'
 import { useCallback, useEffect, useState } from 'react'
 import type { components } from '../../api/generated'
 import { useWorkspace } from './workspaceContext'
@@ -12,14 +13,35 @@ export function useUnread(): { unread: number | null; refresh: () => void } {
   useEffect(() => {
     if (!activeId) return
     const abort = new AbortController()
-    api<Inquiry[]>(`/businesses/${encodeURIComponent(activeId)}/inquiries`, {
-      signal: AbortSignal.any([abort.signal, AbortSignal.timeout(25_000)]),
-    })
-      .then((items) => {
-        if (!abort.signal.aborted) setUnread(items.filter((item) => !item.done).length)
+    const path = `/businesses/${encodeURIComponent(activeId)}/inquiries`
+    const load = () =>
+      api<Inquiry[]>(path, {
+        signal: AbortSignal.any([abort.signal, AbortSignal.timeout(25_000)]),
       })
-      .catch(() => undefined)
-    return () => abort.abort()
+        .then((items) => {
+          if (!abort.signal.aborted)
+            setUnread(items.filter((item) => item.unread && !item.done).length)
+        })
+        .catch(() => undefined)
+    let timer: ReturnType<typeof setInterval> | undefined
+    void load()
+    void followInquiries(
+      (init) => api<Response>(`${path}/stream`, { ...init, raw: true }),
+      abort.signal,
+      () => {
+        void load()
+      },
+    ).catch(() => {
+      if (abort.signal.aborted) return
+      void load()
+      timer = setInterval(() => {
+        void load()
+      }, 15_000)
+    })
+    return () => {
+      abort.abort()
+      clearInterval(timer)
+    }
   }, [api, activeId, version])
   const refresh = useCallback(() => setVersion((value) => value + 1), [])
   return { unread: activeId ? unread : null, refresh }
