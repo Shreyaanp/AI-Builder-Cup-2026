@@ -355,7 +355,7 @@ export function CoachScreen() {
         sx={{
           position: 'sticky',
           // Sits directly above the compact navigation bar (84dp + safe area).
-          bottom: { xs: 'calc(84px + env(safe-area-inset-bottom))', sm: 0 },
+          bottom: { xs: 'calc(var(--nav-offset, 84px) + env(safe-area-inset-bottom))', sm: 0 },
           pb: 2,
           pt: 1,
           bgcolor: 'background.default',
@@ -390,7 +390,14 @@ export function CoachScreen() {
             value={note}
             onChange={(event) => setNote(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+              // Desktop: Enter sends (Shift+Enter = new line). Touch keyboards: Enter is a new
+              // line and the Send button sends, so half-typed messages aren't sent by accident.
+              if (
+                event.key === 'Enter' &&
+                !event.shiftKey &&
+                !event.nativeEvent.isComposing &&
+                !matchMedia('(pointer: coarse)').matches
+              ) {
                 event.preventDefault()
                 void send()
               }
