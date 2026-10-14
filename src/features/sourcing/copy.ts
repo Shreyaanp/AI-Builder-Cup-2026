@@ -51,6 +51,7 @@ const en = {
   addPhone: 'Add your shop phone number first so the supplier can reach you.',
   sendFailed: 'Couldn’t send. Try again.',
   choose: 'Choose',
+  sendTo: (name: string) => `Send to ${name}`,
   // Starts the owner's order in the composer; they add what and how much.
   chooseDraft: (rank: number, item: string) => `Order from number ${rank}: ${item}`,
 }
