@@ -44,6 +44,7 @@ class Turn:
     tools: list[dict[str, Any]] = field(default_factory=list)
     responses: list[dict[str, Any]] = field(default_factory=list)
     reply: str = ""
+    message: str = ""
 
 
 @dataclass
@@ -142,7 +143,12 @@ def prepared_not_saved(turn: Turn) -> bool:
 
 def sane_prices(turn: Turn) -> bool:
     """Proposed prices are major units; a stored-minor-unit leak shows up as 100× prices."""
-    return all(float(entry.get("price") or 0) < 1000 for entry in items(turn))
+    # Large prices are fine when the owner said them (e.g. ¥1100); a leak shows as 100x.
+    return all(
+        float(entry.get("price") or 0) < 1000
+        or f"{float(entry.get('price') or 0):g}" in turn.message.replace(",", "")
+        for entry in items(turn)
+    )
 
 
 GLOBAL_CHECKS: list[tuple[str, Callable[[Turn], bool]]] = [
@@ -336,7 +342,7 @@ async def run_scenario(scenario: Scenario, settings: Settings, root: Path) -> di
     )
     token = current.set(MerchantContext(store, uid, bid, [], scenario.message))
     ui_language.set(scenario.language)
-    turn = Turn()
+    turn = Turn(message=scenario.message)
     started = time.perf_counter()
     try:
         async for event in runner.run_async(
@@ -484,16 +490,35 @@ async def main() -> list[dict[str, Any]]:
     )
     # Windows keeps SQLite files locked briefly; leftover temp files are harmless.
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as directory:
-        rows = []
-        for scenario in SCENARIOS:
-            try:
-                row = await run_scenario(scenario, settings, Path(directory))
-            except Exception as error:  # Report and continue; one provider hiccup ≠ failed eval.
-                row = {"scenario": scenario.name, "passed": False, "error": type(error).__name__}
-            rows.append(row)
+        scenarios = SCENARIOS
+        if os.environ.get("COACH_EVAL_SET") == "matrix":
+            from scripts.eval_matrix import MATRIX
+
+            scenarios = MATRIX
+        if only := os.environ.get("COACH_EVAL_FILTER"):
+            scenarios = [s for s in scenarios if any(part in s.name for part in only.split(","))]
+        gate = asyncio.Semaphore(int(os.environ.get("COACH_EVAL_CONCURRENCY", "6")))
+
+        async def one(scenario: Scenario) -> dict[str, Any]:
+            async with gate:
+                try:
+                    return await run_scenario(scenario, settings, Path(directory))
+                except Exception as error:  # One provider hiccup ≠ failed eval.
+                    return {"scenario": scenario.name, "passed": False, "error": repr(error)}
+
+        rows = list(await asyncio.gather(*(one(scenario) for scenario in scenarios)))
+        for row in rows:
             mark = "PASS" if row["passed"] else "FAIL"
             detail = row.get("checks", row.get("error"))
             print(f"{mark} {row['scenario']}: {detail} tools={row.get('tools')}")
+        if "." in rows[0]["scenario"]:
+            for index, label in ((0, "segment"), (1, "task")):
+                groups: dict[str, list[bool]] = {}
+                for row in rows:
+                    groups.setdefault(row["scenario"].split(".")[index], []).append(row["passed"])
+                print(f"\nBy {label}:")
+                for name, results in sorted(groups.items()):
+                    print(f"  {name:18} {sum(results)}/{len(results)}")
         try:
             conversation = await run_conversation(settings, Path(directory))
         except Exception as error:
