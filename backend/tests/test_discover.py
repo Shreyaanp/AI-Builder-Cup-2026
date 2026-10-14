@@ -205,8 +205,13 @@ def test_place_search_works_anywhere_and_text_search_has_no_country(tmp_path: Pa
     def fixture(request: httpx.Request) -> httpx.Response:
         seen.append(request)
         if request.url.host == "places.googleapis.com":
-            assert "Singapore" not in json.loads(request.content)["textQuery"]
-            assert "regionCode" not in json.loads(request.content)
+            payload = json.loads(request.content)
+            assert "regionCode" not in payload
+            assert payload["rankPreference"] == "DISTANCE"  # nearest first, wherever you are
+            if "textQuery" in payload:
+                assert "Singapore" not in payload["textQuery"]
+            else:  # every kind of local shop, not only food
+                assert {"pharmacy", "hardware_store", "restaurant"} <= set(payload["includedTypes"])
             return httpx.Response(200, json={"places": []})
         assert "region" not in request.url.params
         return httpx.Response(
@@ -237,7 +242,8 @@ def test_place_search_works_anywhere_and_text_search_has_no_country(tmp_path: Pa
             "label": "Indiranagar, Bengaluru, Karnataka, India",
         }
         client.get("/api/v1/discover", params={"lat": 12.9719, "lng": 77.6412, "q": "dosa"})
-        assert any(r.url.host == "places.googleapis.com" for r in seen)
+        client.get("/api/v1/discover", params={"lat": 12.9719, "lng": 77.6412})
+        assert sum(r.url.host == "places.googleapis.com" for r in seen) == 2
         assert client.get("/api/v1/discover/place", params={"q": "x"}).status_code == 422
 
 
