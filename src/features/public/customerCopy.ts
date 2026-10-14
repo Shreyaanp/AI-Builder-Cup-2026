@@ -55,6 +55,9 @@ export const customerEnglish = {
   factCard: 'Card',
   factOtherPayment: 'Other payment',
   factBusy: 'Busy {hours}',
+  // Seeded sample shops are always labelled.
+  demoShop: 'Demo shop',
+  demoShopNote: 'Sample shop for this prototype — not a real business.',
 }
 
 export type CustomerCopy = typeof customerEnglish
