@@ -48,6 +48,7 @@ def public_events(event: Event) -> list[StreamEvent]:
             response = part.function_response
             if response and response.name in {
                 "propose_business",
+                "propose_customer_facts",
                 "propose_products",
                 "request_registration",
             }:

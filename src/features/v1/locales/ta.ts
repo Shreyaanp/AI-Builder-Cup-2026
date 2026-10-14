@@ -258,6 +258,8 @@ export const ta: Copy = {
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} நாட்கள் · ${from} – ${to}` : 'கோப்பில் தேதிகள் இல்லை',
   topItems: 'அதிகம் விற்பவை',
+  coachMemory: 'பயிற்சியாளர் நினைவில் வைத்திருப்பவை',
+  forgetNote: 'மறந்துவிடு',
   currencyLocked: 'கடை சேமிக்கப்பட்ட பின் மாற்ற முடியாது',
   unit: 'அலகு (கோப்பை, கிலோ, ஒன்று…)',
   stockOptional: 'இருப்பு (விருப்பம்)',

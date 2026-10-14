@@ -263,6 +263,8 @@ export const en = {
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} days · ${from} – ${to}` : 'No dates in the file',
   topItems: 'Top sellers',
+  coachMemory: 'What the coach remembers',
+  forgetNote: 'Forget',
   currencyLocked: 'Fixed once the shop is saved',
   unit: 'Unit (cup, kg, piece…)',
   stockOptional: 'Stock (optional)',

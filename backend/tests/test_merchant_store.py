@@ -435,3 +435,14 @@ def test_customer_facts_are_sealed_saved_and_published(store: MerchantRepository
 def test_customer_facts_are_validated(fact: dict[str, object]) -> None:
     with pytest.raises(ValueError):
         BusinessFields(name="Tea", **fact)  # type: ignore[arg-type]
+
+
+def test_coach_notes_round_trip_and_are_private(store: MerchantRepository) -> None:
+    bid = create_with_products(store)
+    note = {"id": "n1", "text": "Closed Mondays", "created": "2026-10-14"}
+    assert store.set_notes("alice", bid, [note]) == [note]
+    assert store.context("alice", bid)["business"]["coach_notes"] == [note]
+    store.share("alice", bid, True)
+    assert "Closed Mondays" not in str(store.public_shop(bid))
+    with pytest.raises(HTTPException):
+        store.set_notes("mallory", bid, [])

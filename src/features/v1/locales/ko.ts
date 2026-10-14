@@ -245,6 +245,8 @@ export const ko: Copy = {
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days}일 · ${from} – ${to}` : '파일에 날짜가 없어요',
   topItems: '인기 상품',
+  coachMemory: '코치가 기억하는 것',
+  forgetNote: '잊기',
   currencyLocked: '가게를 저장한 뒤에는 바꿀 수 없어요',
   unit: '단위 (잔, kg, 개…)',
   stockOptional: '재고 (선택)',

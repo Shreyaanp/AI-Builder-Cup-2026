@@ -181,6 +181,10 @@ class MerchantRepository(Protocol):
     def save_sales(self, uid: str, bid: str, iid: str, digest: str) -> dict[str, Any]: ...
     def confirm_menu(self, uid: str, bid: str) -> dict[str, Any]: ...
     def recap_signals(self, uid: str, bid: str) -> dict[str, Any]: ...
+    def set_notes(self, uid: str, bid: str, notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Replace the coach's private notes for a shop (owner-only, never public)."""
+        ...
+
     def recap_cache(
         self, uid: str, bid: str, key: str, value: dict[str, Any] | None = None
     ) -> dict[str, Any] | None: ...
@@ -329,6 +333,8 @@ class MerchantStore:
                 row[1] for row in db.execute("PRAGMA table_info(businesses)")
             }:
                 db.execute("ALTER TABLE businesses ADD COLUMN last_confirmed TEXT")
+            if "coach_notes" not in {row[1] for row in db.execute("PRAGMA table_info(businesses)")}:
+                db.execute("ALTER TABLE businesses ADD COLUMN coach_notes TEXT")
 
     def connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10)
@@ -389,6 +395,7 @@ class MerchantStore:
             "fields": json.loads(row["fields"]),
             "revision": row["revision"],
             "last_confirmed": row["last_confirmed"],
+            "coach_notes": json.loads(row["coach_notes"] or "[]"),
             "registration": row["status"],
             "public": bool(shared),
             "google_publication": "not_connected",
@@ -728,6 +735,13 @@ class MerchantStore:
             day = today_for(json.loads(business["fields"])).isoformat()
             db.execute("UPDATE businesses SET last_confirmed=? WHERE id=?", (day, bid))
             return {"business_id": bid, "last_confirmed": day}
+
+    def set_notes(self, uid: str, bid: str, notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self.owned(db, uid, bid)
+            db.execute("UPDATE businesses SET coach_notes=? WHERE id=?", (json.dumps(notes), bid))
+            return notes
 
     def recap_signals(self, uid: str, bid: str) -> dict[str, Any]:
         with self.connect() as db:
