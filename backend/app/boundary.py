@@ -7,6 +7,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .limits import JSON_BODY_BYTES
+from .shop_time import client_timezone, valid_timezone
 
 # Browsers ignore HSTS over plain http, so local dev is unaffected. The popup sign-in needs
 # same-origin-allow-popups; camera, microphone and location stay first-party only.
@@ -43,6 +44,7 @@ class RequestBoundary:
             await JSONResponse({"code": code}, status_code=status)(scope, receive, send_headers)
 
         headers = Headers(scope=scope)
+        client_timezone.set(valid_timezone(headers.get("x-client-timezone")))
         origin = headers.get("origin")
         if origin and origin not in self.allowed_origins:
             await reject("ORIGIN_BLOCKED", 403)
