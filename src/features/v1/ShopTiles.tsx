@@ -36,6 +36,7 @@ import {
 import { formatPrice, shopCurrency } from './format'
 import { FactList } from './FactList'
 import { PendingCard } from './PendingCard'
+import { ImportMenu } from './ImportMenu'
 import { Sheet } from './Sheet'
 import { ShopQr } from './ShopQr'
 import { useUnread } from './useUnread'
@@ -372,7 +373,17 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
       )
     case 'menu':
       return (
-        <Sheet {...common} titleId="menu-sheet-title" title={t.menu} actions={addProduct}>
+        <Sheet
+          {...common}
+          titleId="menu-sheet-title"
+          title={t.menu}
+          actions={
+            <>
+              <ImportMenu onBeforeReview={onClose} />
+              {addProduct}
+            </>
+          }
+        >
           {ws.products.length === 0 ? (
             <Typography variant="bodyMedium" color="text.secondary">
               {t.productsEmpty}

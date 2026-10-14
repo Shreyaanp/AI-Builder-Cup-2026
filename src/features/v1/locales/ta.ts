@@ -223,6 +223,15 @@ export const ta: Copy = {
   productName: 'பொருளின் பெயர்',
   price: 'விலை',
   currency: 'நாணயம்',
+  importMenu: 'POS அல்லது Excel-இலிருந்து இறக்குமதி',
+  importing: 'உங்கள் கோப்பைப் படிக்கிறது…',
+  importFailed:
+    'அந்தக் கோப்பைப் படிக்க முடியவில்லை. பொருள் பெயர்களும் விலைகளும் உள்ள CSV அல்லது Excel கோப்பை அனுப்புங்கள்.',
+  salesSummary: 'விற்பனைச் சுருக்கம்',
+  salesNotSaved: 'உங்கள் கோப்பிலிருந்து. எதுவும் சேமிக்கப்படவில்லை.',
+  salesRange: (days: number, from: string, to: string) =>
+    days ? `${days} நாட்கள் · ${from} – ${to}` : 'கோப்பில் தேதிகள் இல்லை',
+  topItems: 'அதிகம் விற்பவை',
   currencyLocked: 'கடை சேமிக்கப்பட்ட பின் மாற்ற முடியாது',
   unit: 'அலகு (கோப்பை, கிலோ, ஒன்று…)',
   stockOptional: 'இருப்பு (விருப்பம்)',

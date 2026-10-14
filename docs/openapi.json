@@ -678,6 +678,48 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/import": {
+      "post": {
+        "summary": "Import Table",
+        "description": "Menu or sales export from any POS or spreadsheet (CSV / Excel), mapped by AI.\n\nA menu becomes a sealed inventory proposal for review; sales come back as a summary only.",
+        "operationId": "import_table_api_v1_businesses__business_id__import_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Import Table Api V1 Businesses  Business Id  Import Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/google-sim": {
       "get": {
         "summary": "State",
