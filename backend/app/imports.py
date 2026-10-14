@@ -18,6 +18,8 @@ from typing import Any, Literal
 import structlog
 from pydantic import BaseModel, Field
 
+from .product_categories import suggest_category
+from .product_units import normalize_unit
 from .settings import Settings
 
 log = structlog.get_logger()
@@ -166,7 +168,7 @@ def menu_items(rows: list[list[str]], mapping: ColumnMap) -> tuple[list[dict[str
         if not name or price is None or price < 0:
             skipped += 1
             continue
-        unit = (cell(row, mapping.unit) or "item")[:40]
+        unit = normalize_unit(cell(row, mapping.unit))
         stock = number(cell(row, mapping.stock))
         items[(name.casefold(), unit.casefold())] = {
             "name": name,
@@ -214,6 +216,16 @@ def sales_summary(rows: list[list[str]], mapping: ColumnMap) -> dict[str, Any]:
     }
 
 
+class Sections(BaseModel):
+    sections: list[str] = Field(description="One short menu section per item, in the same order")
+
+
+CATEGORY_PROMPT = """You sort a small shop's items into the short sections a customer would see
+on its menu or price list (for example Drinks, Mains, Desserts; Tools, Paint; Bouquets,
+Plants). Use 2 to 8 sections, written in the language of the item names. Return exactly one
+section per item, in the same order as the items."""
+
+
 class ColumnMapper:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -258,6 +270,37 @@ class ColumnMapper:
                 return mapped
         except Exception:
             log.warning("column_map_failed")
+        return fallback
+
+    async def categorise(self, names: list[str], shop: str = "") -> list[str]:
+        """One menu section per item, in order. Gemini groups the menu the way a customer would
+        read it; offline (or on any failure) the keyword suggestion is used. Owner-reviewed."""
+        fallback = [suggest_category(name) for name in names]
+        if self.settings.coach_mode != "gemini" or not names:
+            return fallback
+        try:
+            from google.genai import types
+
+            listing = "\n".join(name[:180] for name in names[:200])
+            response = await self.client().aio.models.generate_content(
+                model=self.settings.google_text_model,
+                contents=f"Shop type: {shop[:180] or 'unknown'}\nItems:\n{listing}",
+                config=types.GenerateContentConfig(
+                    system_instruction=CATEGORY_PROMPT,
+                    response_mime_type="application/json",
+                    response_schema=Sections,
+                    temperature=0,
+                    max_output_tokens=4000,
+                ),
+            )
+            parsed = response.parsed
+            if isinstance(parsed, Sections) and len(parsed.sections) == len(names):
+                return [
+                    suggest_category(name, section)
+                    for name, section in zip(names, parsed.sections, strict=True)
+                ]
+        except Exception:
+            log.warning("categorise_failed")
         return fallback
 
     async def close(self) -> None:
