@@ -66,6 +66,7 @@ export function PrepPlanTile() {
     <>
       <Tile
         wide
+        tour="prep"
         icon={<CalendarClock size={20} />}
         label={t.prepPlan}
         value={

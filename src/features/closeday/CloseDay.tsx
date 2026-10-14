@@ -65,6 +65,7 @@ export function CloseDayTile() {
     <>
       <Tile
         span="full"
+        tour="closeday"
         icon={<Moon size={20} />}
         label={t.title}
         value={evening ? t.tileEvening : t.tileValue}
