@@ -380,6 +380,16 @@ export default function PublicShop({ id }: { id: string }) {
         <Typography variant="bodyLarge" color="text.secondary">
           {t.missingBody}
         </Typography>
+        <Button
+          component="a"
+          href="/explore/"
+          onClick={customerNavigate}
+          variant="contained"
+          startIcon={<ArrowLeft size={20} />}
+          sx={{ alignSelf: 'center' }}
+        >
+          {t.back}
+        </Button>
       </Stack>
     )
 

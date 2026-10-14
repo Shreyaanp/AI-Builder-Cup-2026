@@ -23,7 +23,10 @@ in `tests/stories/` that the overnight loop runs.
 
 **Connects to:** S3 (customers see it), S5 (Google flow reuses the details and photos).
 
-Status ☐ · Gaps: _audit pending_
+Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s1.spec.ts`.
+Gaps: [A2, A6, A8, A10, A11](docs/stories/AUDIT.md) — international offline pins, existing-shop
+photo GPS, photo reuse, accessible extraction disclosure and phone polish. Sign-in, recognition,
+physical camera/GPS and hosted validation remain live-only.
 
 ## S2 · Daily upkeep in seconds (text or voice)
 
@@ -37,8 +40,11 @@ Status ☐ · Gaps: _audit pending_
 
 **Connects to:** S3 and S4.
 
-Status ☐ · Gaps: _audit pending_ · **Known:** the voice model must actually call the tools (it said
-"I can't access your menu").
+Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s2.spec.ts`.
+Gaps: [A1, A3, A9, A12](docs/stories/AUDIT.md) — conversational edits lack an offline fixture,
+already-open customer pages need Refresh, daily checks hide in existing conversations, motion.
+**Known:** the live voice model must actually call the tools (it said "I can't access your menu").
+Reviewed manual edits and CSV import are verified fallbacks, not live voice/photo/PDF evidence.
 
 ## S3 · A customer finds a shop nearby and talks to it
 
@@ -53,7 +59,11 @@ Status ☐ · Gaps: _audit pending_ · **Known:** the voice model must actually 
 
 **Connects to:** S1/S2 (owner data), S6 (personalisation, later).
 
-Status ☐ · Gaps: _audit pending_
+Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s3.spec.ts`.
+Gaps: [A2–A5, A8, A11, A12](docs/stories/AUDIT.md) — typed-city fixtures, live menu propagation,
+halal answer fixture, required customer sign-in, customer photos and phone/motion polish.
+Messages/replies, QR stamps and both themes are exercised. Confirmed-halal discovery filtering,
+unavailable-page recovery and Indian date formatting are fixed locally; real Places/GPS remain live-only.
 
 ## S4 · Forecast → Source → Sell (merchant to merchant)
 
@@ -73,7 +83,11 @@ Status ◐ · in progress: account 2, branch `feat/sourcing`
 Details, then photos, then profile preview, then an honest "waiting for Google API access" with the
 official links.
 
-Status ◐ · live since Oct 15 · Gaps: _audit pending_
+Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s5.spec.ts`.
+Details → photo upload → INR profile preview → honest Google waiting state and official links
+are exercised. Copied weekly hours are fixed locally.
+Gaps: [A8, A11, A12](docs/stories/AUDIT.md) — coach-photo reuse, preview affordances and motion.
+Hosted validation, Google API access, verification and publication remain separate, live-only.
 
 ## S6 · Business identity and privacy
 
@@ -89,7 +103,11 @@ Status ☐ · the user tests the face scan on a phone
 2. Prices show in the local currency.
 3. Demo shops exist in 8 cities.
 
-Status ◐ · Indian languages in progress (Codex)
+Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s7.spec.ts`.
+Gaps: [A2, A7, A11](docs/stories/AUDIT.md) — eight-city discoverability, multilingual offline
+replies/15-language coverage and Tamil text clipping. INR/UPI, Tamil UI, speech locale dispatch
+and eight labelled catalogue fixture pages are exercised; audible/live speech is unvalidated.
+Indian languages remain in progress with the locale worker; their files were not edited.
 
 ## Later (after S1–S7 are ☑): customer AI entry and community
 
