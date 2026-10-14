@@ -2391,6 +2391,48 @@
         }
       }
     },
+    "/api/v1/discover/place": {
+      "get": {
+        "summary": "Find Place",
+        "description": "A typed city or area anywhere in the world, as the centre for discovery.",
+        "operationId": "find_place_api_v1_discover_place_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 180,
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceMatch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/discover": {
       "get": {
         "summary": "Discover",
@@ -3739,6 +3781,29 @@
           "status"
         ],
         "title": "Observation"
+      },
+      "PlaceMatch": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lng",
+          "label"
+        ],
+        "title": "PlaceMatch"
       },
       "PlanningInput": {
         "properties": {
