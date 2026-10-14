@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 from typing import Any, Literal, Protocol
 from uuid import uuid4
+from zoneinfo import ZoneInfoNotFoundError
 
 from fastapi import HTTPException
 from pydantic import (
@@ -19,9 +20,11 @@ from pydantic import (
     SerializerFunctionWrapHandler,
     field_validator,
     model_serializer,
+    model_validator,
 )
 
 from .customer import Inquiry, InquiryInput, InquiryReceipt, inquiry_key
+from .shop_time import shop_timezone
 
 Halal = Literal["yes", "no", "muslim_owned", "not_stated"]
 Delivery = Literal["none", "own", "grab", "foodpanda", "other"]
@@ -45,6 +48,12 @@ class BusinessFields(BaseModel):
     name: str = Field(min_length=1, max_length=180)
     category: str = Field(default="", max_length=180)
     location: str = Field(default="", max_length=300)
+    lat: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
+    lng: float | None = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
+    place_id: str | None = Field(default=None, max_length=300)
+    pin_label: str | None = Field(default=None, max_length=300)
+    pin_demo: bool = False
+    timezone: str = Field(default="Asia/Singapore", max_length=100)
     hours: str = Field(default="", max_length=180)
     phone: str = Field(default="", max_length=40)
     # ISO 4217; prices of this shop are stored in this currency's minor unit (see money.py).
@@ -66,16 +75,31 @@ class BusinessFields(BaseModel):
     @model_serializer(mode="wrap")
     def drop_unset_facts(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data: dict[str, Any] = handler(self)
+        # Unset optional facts and an unset map pin are omitted, so older shops keep their shape.
+        pin_defaults = {"lat": None, "lng": None, "place_id": None, "pin_label": None}
         return {
             key: value
             for key, value in data.items()
-            if key not in FACT_KEYS or value not in (None, "", [])
+            if (key not in FACT_KEYS or value not in (None, "", []))
+            and not (key in pin_defaults and value is None)
+            and not (key == "pin_demo" and value is False)
+            and not (key == "timezone" and value == "Asia/Singapore")
         }
 
 
 def customer_facts(fields: dict[str, Any]) -> dict[str, Any]:
     """The facts a shop has stated, for customers (unset facts are simply absent)."""
     return {key: fields[key] for key in FACT_KEYS if fields.get(key) not in (None, "", [])}
+
+    @model_validator(mode="after")
+    def validate_location(self) -> BusinessFields:
+        if (self.lat is None) != (self.lng is None):
+            raise ValueError("Provide both latitude and longitude.")
+        try:
+            shop_timezone(self.timezone)
+        except (ZoneInfoNotFoundError, ValueError) as error:
+            raise ValueError("Use an IANA timezone.") from error
+        return self
 
 
 class ProductFields(BaseModel):
@@ -104,6 +128,8 @@ class ProposalRequest(BaseModel):
     kind: str = Field(pattern="^(business|inventory)$")
     business_id: str | None = None
     revision: int = Field(default=0, ge=0)
+    # Separate consent to look up a pin; never inferred from approval to save.
+    geocode_confirmed: bool = False
     business: BusinessFields | None = None
     products: list[ProductFields] = Field(default_factory=list, max_length=30)
 
@@ -154,6 +180,8 @@ class MerchantRepository(Protocol):
         """Customer-facing projection of a shared shop, or None when not shared."""
         ...
 
+    def shared_shops(self) -> list[dict[str, Any]]: ...
+
     def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt: ...
     def inquiries(self, uid: str, bid: str) -> list[Inquiry]: ...
     def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry: ...
@@ -168,6 +196,11 @@ def public_projection(
         "name": fields["name"],
         "category": fields.get("category", ""),
         "location": fields.get("location", ""),
+        "lat": fields.get("lat"),
+        "lng": fields.get("lng"),
+        "place_id": fields.get("place_id"),
+        "timezone": fields.get("timezone") or "Asia/Singapore",
+        **({"pin_demo": True} if fields.get("pin_demo") else {}),
         "hours": fields.get("hours", ""),
         "phone": fields.get("phone", ""),
         "currency": fields.get("currency") or "SGD",
@@ -537,6 +570,11 @@ class MerchantStore:
             else:
                 db.execute("DELETE FROM shares WHERE business_id=?", (bid,))
         return {"business_id": bid, "public": public}
+
+    def shared_shops(self) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            bids = [row[0] for row in db.execute("SELECT business_id FROM shares").fetchall()]
+        return [shop for bid in bids if (shop := self.public_shop(bid)) is not None]
 
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         with self.connect() as db:

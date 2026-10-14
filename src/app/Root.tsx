@@ -3,10 +3,17 @@ import App from './App'
 
 const V1App = lazy(() => import('../features/v1/V1App'))
 const PublicShop = lazy(() => import('../features/public/PublicShop'))
+const Discover = lazy(() => import('../features/discover/Discover'))
 
 const fallback = <div role="status">Loading…</div>
 
 export default function Root() {
+  if (/^\/discover\/?$/.test(location.pathname))
+    return (
+      <Suspense fallback={fallback}>
+        <Discover />
+      </Suspense>
+    )
   // Customer page: /s/<shop id>, public and read-only.
   const sharedId = /^\/s\/([0-9a-f-]{36})\/?$/i.exec(location.pathname)?.[1]
   if (sharedId)

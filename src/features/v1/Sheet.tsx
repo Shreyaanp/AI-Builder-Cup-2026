@@ -60,8 +60,8 @@ export function Sheet({
             'aria-modal': true,
             'aria-labelledby': titleId,
             sx: {
-              borderTopLeftRadius: shape.xl,
-              borderTopRightRadius: shape.xl,
+              borderTopLeftRadius: `${shape.xl}px`,
+              borderTopRightRadius: `${shape.xl}px`,
               bgcolor: roles.surfaceContainerLow,
               maxHeight: '90dvh',
               pb: 'env(safe-area-inset-bottom)',

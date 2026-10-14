@@ -267,6 +267,16 @@
               "default": 0,
               "title": "Revision"
             }
+          },
+          {
+            "name": "geocode_confirmed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Geocode Confirmed"
+            }
           }
         ],
         "requestBody": {
@@ -1332,6 +1342,102 @@
         }
       }
     },
+    "/api/v1/discover": {
+      "get": {
+        "summary": "Discover",
+        "operationId": "discover_api_v1_discover_get",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "radius",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50000,
+              "minimum": 100,
+              "default": 3000,
+              "title": "Radius"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 180,
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 30,
+              "default": "",
+              "title": "Category"
+            }
+          },
+          {
+            "name": "open_now",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Open Now"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "summary": "Health",
@@ -1575,6 +1681,67 @@
             "maxLength": 300,
             "title": "Location",
             "default": ""
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lng": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lng"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id"
+          },
+          "pin_label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pin Label"
+          },
+          "pin_demo": {
+            "type": "boolean",
+            "title": "Pin Demo",
+            "default": false
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Timezone",
+            "default": "Asia/Singapore"
           },
           "hours": {
             "type": "string",
@@ -1843,6 +2010,182 @@
           "quantity"
         ],
         "title": "Decision"
+      },
+      "DiscoveryPlace": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "chalkboard",
+              "google"
+            ],
+            "title": "Source"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "distance_m": {
+            "type": "integer",
+            "title": "Distance M"
+          },
+          "open_now": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Now"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TopItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "sold_out": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sold Out"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "user_rating_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Rating Count"
+          },
+          "price_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Level"
+          },
+          "google_maps_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Google Maps Uri"
+          },
+          "halal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Halal"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "source",
+          "category",
+          "lat",
+          "lng",
+          "distance_m",
+          "open_now",
+          "items",
+          "sold_out"
+        ],
+        "title": "DiscoveryPlace"
+      },
+      "DiscoveryResponse": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "demo",
+              "live"
+            ],
+            "title": "Mode"
+          },
+          "google_unavailable": {
+            "type": "boolean",
+            "title": "Google Unavailable",
+            "default": false
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryPlace"
+            },
+            "type": "array",
+            "title": "Places"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "places"
+        ],
+        "title": "DiscoveryResponse"
       },
       "HTTPValidationError": {
         "properties": {
@@ -2139,6 +2482,11 @@
             "minimum": 0.0,
             "title": "Revision",
             "default": 0
+          },
+          "geocode_confirmed": {
+            "type": "boolean",
+            "title": "Geocode Confirmed",
+            "default": false
           },
           "business": {
             "anyOf": [
@@ -2643,6 +2991,34 @@
           "facts"
         ],
         "title": "SimState"
+      },
+      "TopItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "price": {
+            "type": "integer",
+            "title": "Price"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "price",
+          "unit",
+          "available"
+        ],
+        "title": "TopItem"
       },
       "ValidationError": {
         "properties": {

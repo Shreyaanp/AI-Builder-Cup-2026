@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     session_signing_secret: SecretStr = SecretStr("")
     allowed_origins: list[str] = ["http://127.0.0.1:3200", "http://localhost:3200"]
     google_api_key: SecretStr = SecretStr("")
+    maps_server_key: SecretStr | None = None
+    maps_browser_key: SecretStr | None = None
     google_text_model: str = ""
     google_live_model: str = ""
     google_cloud_project: str = ""

@@ -17,10 +17,11 @@ from google.cloud import firestore
 from .settings import Settings
 
 log = structlog.get_logger()
-JSON_BODY_BYTES = 65_536
+JSON_BODY_BYTES = 16_384
 
 # (maximum, window seconds). Windows align to Unix time, including UTC days.
 LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
+    "discover": ((30, 60),),
     "coach": ((20, 60), (300, 86_400)),
     "voice": ((10, 3600),),
     "photo": ((10, 60), (60, 86_400)),
