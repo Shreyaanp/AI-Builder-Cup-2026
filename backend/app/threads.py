@@ -71,6 +71,21 @@ def change_thread(
             )
         )
         record.unread = uid is None
+    elif action in ("ai_answer", "demo_reply"):
+        # Shop-side automatic messages on a customer's own thread; never from an owner token.
+        if uid is not None or record.done or record.blocked or contact_blocked:
+            raise HTTPException(409, "This conversation is closed.")
+        if len(record.messages) >= 400:
+            raise HTTPException(409, "Conversation limit reached.")
+        record.messages.append(
+            ThreadMessage(
+                id=str(uuid4()),
+                author="owner",
+                text=text,
+                created=time.time(),
+                kind="ai" if action == "ai_answer" else "demo",
+            )
+        )
     elif action == "read":
         record.unread = False
     elif action in ("close", "block"):
