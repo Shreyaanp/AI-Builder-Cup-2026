@@ -262,3 +262,47 @@ def test_businesses_unavailable_when_v1_disabled(settings: Settings) -> None:
         assert bootstrap.status_code == 200
         assert bootstrap.json()["v1_enabled"] is False
         assert client.get("/api/v1/businesses").status_code == 503
+
+
+def stream_events(client: TestClient, body: dict[str, object]) -> list[dict[str, object]]:
+    response = client.post("/api/v1/coach/stream", json=body)
+    assert response.status_code == 200
+    return [
+        json.loads(line.removeprefix("data: "))
+        for line in response.text.splitlines()
+        if line.startswith("data: ")
+    ]
+
+
+def test_offline_coach_halal_answer_is_reviewed_then_published(app) -> None:
+    with TestClient(app) as client:
+        join(client)
+        bid = approve(client, propose_business(client))["business_id"]
+        events = stream_events(client, {"message": "halal yes", "business_id": bid})
+        proposal = next(event["data"] for event in events if event["kind"] == "proposal")
+        assert isinstance(proposal, dict)
+        assert proposal["snapshot"]["business"] == {
+            "name": "Test Tea Stall",
+            "category": "",
+            "location": "",
+            "hours": "",
+            "phone": "",
+            "currency": "SGD",
+            "halal": "yes",
+        }
+        # The coach only prepared it; nothing changed yet.
+        assert "halal" not in client.get("/api/v1/businesses").json()[0]["fields"]
+        approve(client, proposal)
+        client.post(f"/api/v1/businesses/{bid}/share", json={"public": True})
+        public = client.get(f"/api/v1/public/shops/{bid}").json()
+        assert public["facts"] == {"halal": "yes"}
+
+
+def test_proposal_rejects_unknown_fact_values(app) -> None:
+    with TestClient(app) as client:
+        join(client)
+        response = client.post(
+            "/api/v1/proposals",
+            json={"kind": "business", "business": {"name": "Tea", "payment_methods": ["iou"]}},
+        )
+        assert response.status_code == 422

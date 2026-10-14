@@ -32,6 +32,21 @@ export const customerEnglish = {
   whatsappItem: 'Ask about {item} on WhatsApp',
   whatsappMessage: 'Hello {shop}, I would like to ask about your menu.',
   whatsappItemMessage: 'Hello {shop}, I would like to ask about {item}.',
+  // Owner-confirmed shop facts, shown as small chips.
+  factsLabel: 'Good to know',
+  factHalal: 'Halal',
+  factMuslimOwned: 'Muslim-owned',
+  factNotHalal: 'Not halal',
+  factVegetarian: 'Vegetarian options',
+  factDelivery: 'Delivery',
+  factDeliveryVia: 'Delivery via {name}',
+  factNoDelivery: 'No delivery',
+  factPreorders: 'Pre-orders',
+  factPreordersLead: 'Pre-orders · {lead}',
+  factCash: 'Cash',
+  factCard: 'Card',
+  factOtherPayment: 'Other payment',
+  factBusy: 'Busy {hours}',
 }
 
 export type CustomerCopy = typeof customerEnglish

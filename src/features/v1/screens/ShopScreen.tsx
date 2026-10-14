@@ -1,12 +1,9 @@
-import { useState } from 'react'
 import { Box, Button, Chip, Skeleton, Stack, Typography, useTheme } from '@mui/material'
 import { Camera, Store } from 'lucide-react'
 import { useCopy } from '../strings'
 import { LoadError } from '../LoadError'
 import { useWorkspace } from '../workspaceContext'
-import { ShopSheets, ShopTiles } from '../ShopTiles'
-import type { ShopSheetKind } from '../ShopTiles'
-import { useUnread } from '../useUnread'
+import { ShopOverview } from '../ShopTiles'
 import { shape } from '../../../design/theme'
 
 export function ShopScreen() {
@@ -38,8 +35,6 @@ function ShopHome() {
   const t = useCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
-  const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
-  const { unread, refresh } = useUnread()
   const shop = ws.active
   if (!shop) return null
   return (
@@ -54,15 +49,7 @@ function ShopHome() {
           sx={{ mt: 2, bgcolor: roles.secondaryContainer, color: roles.onSecondaryContainer }}
         />
       </Box>
-      <ShopTiles unread={unread} onSheet={setSheet} />
-      <ShopSheets
-        kind={sheet}
-        onClose={() => {
-          // Marking messages done changes the tile's count.
-          if (sheet === 'messages') refresh()
-          setSheet(null)
-        }}
-      />
+      <ShopOverview />
     </Stack>
   )
 }

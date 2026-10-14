@@ -1,5 +1,6 @@
 import { Camera, Globe, PencilLine, Share2 } from 'lucide-react'
 import type { ReactElement } from 'react'
+import type { ShopFacts } from './api'
 import type { Copy } from './strings'
 import type { Workspace } from './workspaceContext'
 
@@ -75,18 +76,104 @@ export function openNow(hours: string, now = new Date()): boolean | null {
   if (!match) return null
   const rest = hours.replace(match[0], '').replace(/\b(daily|every\s*day)\b/gi, '')
   if (/[\p{L}\d]/u.test(rest)) return null
-  const minutes = (hour = '0', minute: string | undefined, half: string | undefined) => {
-    let h = Number(hour) % (half ? 12 : 24)
-    if (half?.toLowerCase() === 'pm') h += 12
-    return h * 60 + Number(minute ?? 0)
-  }
   // "7-3pm": the first time borrows the second's am/pm only when that keeps it before close.
-  const close = minutes(match[4], match[5], match[6])
-  let start = minutes(match[1], match[2], match[3] ?? match[6])
-  if (!match[3] && match[6] && start > close) start = minutes(match[1], match[2], 'am')
+  const close = toMinutes(match[4], match[5], match[6])
+  let start = toMinutes(match[1], match[2], match[3] ?? match[6])
+  if (!match[3] && match[6] && start > close) start = toMinutes(match[1], match[2], 'am')
   if (start > 24 * 60 || close > 24 * 60 || start === close) return null
   const current = now.getHours() * 60 + now.getMinutes()
   return start < close ? current >= start && current < close : current >= start || current < close
+}
+
+/** Customer facts in the order the coach asks about them (matches backend ASK_ORDER). */
+export const ASK_ORDER = [
+  'halal',
+  'payment_methods',
+  'delivery',
+  'vegetarian_options',
+  'preorders',
+  'busy_hours',
+] as const
+export type AskFact = (typeof ASK_ORDER)[number]
+
+export function missingFacts(fields: ShopFacts): AskFact[] {
+  return ASK_ORDER.filter((key) => {
+    const value = fields[key]
+    return value == null || value === '' || (Array.isArray(value) && value.length === 0)
+  })
+}
+
+/** Stated facts as owner-facing label/value pairs (unset facts are skipped). */
+export function factEntries(
+  fields: ShopFacts,
+  t: Copy,
+): { key: AskFact; label: string; value: string }[] {
+  const yesNo = (value: boolean) => (value ? t.yes : t.no)
+  const entries: { key: AskFact; value: string }[] = []
+  // Under the "Halal" label a plain Yes / No reads better than repeating "Halal".
+  if (fields.halal)
+    entries.push({
+      key: 'halal',
+      value:
+        fields.halal === 'yes' ? t.yes : fields.halal === 'no' ? t.no : t.halalValues[fields.halal],
+    })
+  if (fields.payment_methods?.length)
+    entries.push({
+      key: 'payment_methods',
+      value: fields.payment_methods.map((method) => t.paymentValues[method]).join(', '),
+    })
+  if (fields.delivery)
+    entries.push({
+      key: 'delivery',
+      value: [t.deliveryValues[fields.delivery], fields.delivery_note].filter(Boolean).join(' · '),
+    })
+  if (fields.vegetarian_options != null)
+    entries.push({ key: 'vegetarian_options', value: yesNo(fields.vegetarian_options) })
+  if (fields.preorders != null)
+    entries.push({
+      key: 'preorders',
+      value: [yesNo(fields.preorders), fields.preorders && fields.preorder_lead_time]
+        .filter(Boolean)
+        .join(' · '),
+    })
+  if (fields.busy_hours) entries.push({ key: 'busy_hours', value: fields.busy_hours })
+  return entries.map((entry) => ({ ...entry, label: t.factNames[entry.key] }))
+}
+
+/** Every "HH[:MM][am|pm]–HH[:MM][am|pm]" range in free text, as minutes since midnight. */
+export function timeRanges(text: string): [number, number][] {
+  const range =
+    /(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*(?:-|–|—|to)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?/gi
+  const ranges: [number, number][] = []
+  for (const match of text.matchAll(range)) {
+    const close = toMinutes(match[4], match[5], match[6])
+    let start = toMinutes(match[1], match[2], match[3] ?? match[6])
+    if (!match[3] && match[6] && start > close) start = toMinutes(match[1], match[2], 'am')
+    if (start < close && close <= 24 * 60) ranges.push([start, close])
+  }
+  return ranges
+}
+
+function toMinutes(hour = '0', minute: string | undefined, half: string | undefined) {
+  let h = Number(hour) % (half ? 12 : 24)
+  if (half?.toLowerCase() === 'pm') h += 12
+  return h * 60 + Number(minute ?? 0)
+}
+
+/** Default lunch and dinner rushes when the owner has not said when the shop is busy. */
+const DEFAULT_BUSY: [number, number][] = [
+  [11 * 60, 14 * 60],
+  [17 * 60, 20 * 60],
+]
+
+/** The busy window the shop is in right now ("start-end" key), or null outside busy hours. */
+export function busyWindow(busyHours: string | undefined, now = new Date()): string | null {
+  const parsed = timeRanges(busyHours ?? '')
+  const current = now.getHours() * 60 + now.getMinutes()
+  const window = (parsed.length ? parsed : DEFAULT_BUSY).find(
+    ([start, end]) => current >= start && current < end,
+  )
+  return window ? `${window[0]}-${window[1]}` : null
 }
 
 /** Same six checks as the Google readiness list. */
