@@ -163,7 +163,7 @@ function PlanningCard({
       }}
     >
       <Stack spacing={2}>
-        <Typography component="h2" variant="titleLarge">
+        <Typography id="plan-title" component="h2" variant="titleLarge">
           {t.title}
         </Typography>
         <Typography variant="bodyMedium">
