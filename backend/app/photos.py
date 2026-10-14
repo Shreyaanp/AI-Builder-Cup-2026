@@ -87,6 +87,27 @@ def sanitize(data: bytes) -> bytes:
     return output.getvalue()
 
 
+def read_gps(data: bytes) -> tuple[float, float] | None:
+    """The photo's EXIF location, read before ``sanitize`` drops it. Only ever proposed."""
+
+    def degrees(value: Any, ref: Any) -> float:
+        d, m, s = (float(part) for part in value)
+        sign = -1 if str(ref).upper() in {"S", "W"} else 1
+        return sign * (d + m / 60 + s / 3600)
+
+    try:
+        with Image.open(io.BytesIO(data)) as source:
+            gps = source.getexif().get_ifd(0x8825)
+        if not all(key in gps for key in (1, 2, 3, 4)):
+            return None
+        lat, lng = degrees(gps[2], gps[1]), degrees(gps[4], gps[3])
+    except Exception:  # noqa: BLE001 - malformed metadata simply means "no location"
+        return None
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180) or (lat == 0 and lng == 0):
+        return None
+    return round(lat, 6), round(lng, 6)
+
+
 class PhotoPipeline:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -187,6 +208,7 @@ class PhotoPipeline:
 
     # --- pipeline ---------------------------------------------------------------------
     async def process(self, uid: str, bid: str | None, data: bytes) -> dict[str, Any]:
+        gps = await anyio.to_thread.run_sync(read_gps, data)
         image = await anyio.to_thread.run_sync(sanitize, data)
         scores = await anyio.to_thread.run_sync(self.moderate_sync, image)
         if self.blocked(scores):
@@ -197,4 +219,4 @@ class PhotoPipeline:
             log.info("photo_rejected", code="NOT_BUSINESS")
             raise PhotoRejected(422, "NOT_BUSINESS_PHOTO")
         photo_id = await anyio.to_thread.run_sync(self.store_sync, uid, bid, image)
-        return {"photo_id": photo_id, "extraction": extraction}
+        return {"photo_id": photo_id, "extraction": extraction, "gps": gps}
