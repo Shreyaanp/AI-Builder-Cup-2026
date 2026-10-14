@@ -1,6 +1,11 @@
 import type { Copy } from '../strings'
 
 export const fil: Copy = {
+  installApp: 'I-install ang app',
+  installIos:
+    'Sa Safari, i-tap ang Ibahagi → Idagdag sa Home Screen, pagkatapos ay i-tap ang Idagdag.',
+  installUnavailable:
+    'Hindi pa maaaring mag-install. Subukan ang menu ng browser para sa pag-install o patuloy na gamitin ang web app.',
   importUnavailable:
     'Kailangan ng nakakonektang AI para basahin ang larawan, PDF at tala. Gumagana pa rin ang CSV at Excel import.',
   saveSales: 'I-save ang mga bentang ito',

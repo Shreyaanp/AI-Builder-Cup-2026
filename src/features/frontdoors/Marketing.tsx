@@ -261,9 +261,6 @@ export default function Marketing() {
             <div className="lp-blob a" aria-hidden="true" />
             <div className="lp-blob b" aria-hidden="true" />
             <div className="lp-hero-copy">
-              <Typography className="lp-eyebrow" variant="labelLarge">
-                {t.eyebrow}
-              </Typography>
               <Typography component="h1" className="lp-title">
                 {t.hero}
               </Typography>

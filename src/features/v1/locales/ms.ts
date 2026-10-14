@@ -1,6 +1,10 @@
 import type { Copy } from '../strings'
 
 export const ms: Copy = {
+  installApp: 'Pasang aplikasi',
+  installIos: 'Dalam Safari, ketik Kongsi → Tambah ke Skrin Utama, kemudian ketik Tambah.',
+  installUnavailable:
+    'Pemasangan belum tersedia. Cuba menu pemasangan pelayar atau terus gunakan aplikasi web.',
   importUnavailable:
     'Membaca foto, PDF dan nota memerlukan AI yang disambungkan. Import CSV dan Excel masih berfungsi.',
   saveSales: 'Simpan jualan ini',

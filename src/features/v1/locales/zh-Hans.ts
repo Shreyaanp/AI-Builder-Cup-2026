@@ -1,6 +1,9 @@
 import type { Copy } from '../strings'
 
 export const zhHans: Copy = {
+  installApp: '安装应用',
+  installIos: '在 Safari 中，点按“分享” → “添加到主屏幕”，然后点按“添加”。',
+  installUnavailable: '暂时无法安装。请尝试浏览器的安装菜单，或继续使用网页版。',
   importUnavailable: '读取照片、PDF和笔记需要连接AI。仍可导入CSV和Excel。',
   saveSales: '保存这些销售记录',
   salesSaved: '销售记录已保存',
