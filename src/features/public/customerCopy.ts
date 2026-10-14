@@ -1,7 +1,9 @@
 import { conversationEnglish } from '../inquiries/conversationCopy'
+import { rewardCardEnglish } from '../rewards/cardCopy'
 /** Added to PublicShop's English source and its per-locale fallback registry. */
 export const customerEnglish = {
   ...conversationEnglish,
+  ...rewardCardEnglish,
   chatTitle: 'Chat with the shop',
   instantAnswer: 'Instant answer',
   askOwner: 'Ask the owner',

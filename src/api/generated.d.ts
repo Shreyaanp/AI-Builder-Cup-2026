@@ -1054,6 +1054,11 @@ export interface components {
              */
             reward_text: string;
             /**
+             * Stamps Needed
+             * @default 8
+             */
+            stamps_needed: number;
+            /**
              * Currency
              * @default SGD
              */

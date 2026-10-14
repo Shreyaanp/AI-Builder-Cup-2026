@@ -130,8 +130,7 @@ const responsiveScale = Object.fromEntries(
   ]),
 ) as Record<TypeRole, CSSProperties>
 
-export function nivaTheme(mode: Appearance) {
-  const roles = materialRoles(mode)
+export function nivaTheme(mode: Appearance, roles = materialRoles(mode)) {
   return createTheme({
     material: roles,
     spacing: 4,
