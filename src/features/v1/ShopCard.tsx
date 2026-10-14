@@ -85,7 +85,16 @@ function Live({ value, children }: { value: string; children: ReactNode }) {
     setChanges(changes + 1)
   }
   return (
-    <Box component="span" key={changes} sx={{ display: 'block', ...(changes ? fieldFade : {}) }}>
+    <Box
+      component="span"
+      key={changes}
+      sx={{
+        display: 'block',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        ...(changes ? fieldFade : {}),
+      }}
+    >
       {children}
     </Box>
   )
