@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -41,6 +41,7 @@ import { unitLabel } from '../shop/units'
 
 interface PublicShopData {
   id: string
+  gallery?: string[]
   last_confirmed?: string | null
   timezone?: string
   name: string
@@ -306,6 +307,8 @@ export default function PublicShop({ id }: { id: string }) {
   const [stale, setStale] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
+  const previous = useRef<PublicShopData | null>(null)
+  const [changedPrices, setChangedPrices] = useState<string[]>([])
   useEffect(() => {
     document.documentElement.lang = locale
     void loadScriptFont(locale)
@@ -322,6 +325,19 @@ export default function PublicShop({ id }: { id: string }) {
     [id],
   )
   const apply = useCallback((data: PublicShopData) => {
+    const old = previous.current
+    const changed = data.products.filter(
+      (product) =>
+        old?.id === data.id &&
+        old.products.some(
+          (before) =>
+            before.name === product.name &&
+            before.unit === product.unit &&
+            before.price !== product.price,
+        ),
+    )
+    if (changed.length) setChangedPrices(changed.map((product) => product.name + product.unit))
+    previous.current = data
     setShop(data)
     setStale(false)
     setState('ready')
@@ -337,24 +353,54 @@ export default function PublicShop({ id }: { id: string }) {
     void fetchShop(abort.signal)
       .then((data) => {
         if (abort.signal.aborted) return
-        setShop(data)
-        setState('ready')
+        apply(data)
         document.title = `${data.name} · ${t.menu}`
       })
       .catch((error: unknown) => {
         if (!abort.signal.aborted)
           setState(error instanceof Error && error.message === 'missing' ? 'missing' : 'error')
       })
-    // Customers returning to the tab see fresh availability.
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void fetchShop().then(apply).catch(failRefresh)
-    }
-    document.addEventListener('visibilitychange', onVisible)
     return () => {
       abort.abort()
-      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [fetchShop, t.menu, apply, failRefresh])
+  useEffect(() => {
+    let pending: AbortController | null = null
+    const refresh = () => {
+      if (document.visibilityState !== 'visible' || pending) return
+      const abort = new AbortController()
+      pending = abort
+      void fetchShop(AbortSignal.any([abort.signal, AbortSignal.timeout(10_000)]))
+        .then((data) => {
+          if (!abort.signal.aborted) apply(data)
+        })
+        .catch((error: unknown) => {
+          if (!abort.signal.aborted) failRefresh(error)
+        })
+        .finally(() => {
+          if (pending === abort) pending = null
+        })
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh()
+      else {
+        pending?.abort()
+        pending = null
+      }
+    }
+    const timer = window.setInterval(refresh, 4000)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.clearInterval(timer)
+      pending?.abort()
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [fetchShop, apply, failRefresh])
+  useEffect(() => {
+    if (!changedPrices.length) return
+    const timer = window.setTimeout(() => setChangedPrices([]), 1800)
+    return () => window.clearTimeout(timer)
+  }, [changedPrices])
 
   if (state === 'loading') return <BrandSplash />
   if (state === 'error')
@@ -451,7 +497,18 @@ export default function PublicShop({ id }: { id: string }) {
             bgcolor: roles.surfaceContainerHigh,
           }}
         >
-          <PlaceImage id={id} category={shop.category} eager transition compact />
+          <PlaceImage
+            id={id}
+            category={shop.category}
+            photo={
+              shop.gallery?.[0]
+                ? `/api/v1/public/shops/${id}/photos/${shop.gallery[0]}.jpg`
+                : undefined
+            }
+            eager
+            transition
+            compact
+          />
         </Box>
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography component="h1" variant="titleLarge" sx={{ overflowWrap: 'anywhere' }}>
@@ -640,7 +697,14 @@ export default function PublicShop({ id }: { id: string }) {
       ) : (
         <CategoryGroups products={shop.products}>
           {(items) => (
-            <List disablePadding>
+            <List
+              disablePadding
+              sx={{
+                bgcolor: roles.surfaceContainerLow,
+                borderRadius: `${shape.md}px`,
+                border: `1px solid ${roles.outlineVariant}`,
+              }}
+            >
               {items.map((product, index) => (
                 <ListItem
                   key={product.name + product.unit}
@@ -666,8 +730,31 @@ export default function PublicShop({ id }: { id: string }) {
                   />
                   {product.available ? (
                     <Typography
+                      key={product.price}
+                      data-price-changed={
+                        changedPrices.includes(product.name + product.unit) || undefined
+                      }
                       variant="titleMedium"
-                      sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+                      sx={{
+                        whiteSpace: 'nowrap',
+                        fontVariantNumeric: 'tabular-nums',
+                        position: 'relative',
+                        '&[data-price-changed]::before': {
+                          content: '""',
+                          position: 'absolute',
+                          inset: -4,
+                          borderRadius: 1,
+                          bgcolor: roles.primaryContainer,
+                          zIndex: -1,
+                          animation: 'price-change 1.8s ease-out both',
+                          '@media (prefers-reduced-motion: reduce)': {
+                            animation: 'none',
+                            opacity: 1,
+                          },
+                        },
+                        isolation: 'isolate',
+                        '@keyframes price-change': { from: { opacity: 1 }, to: { opacity: 0 } },
+                      }}
                     >
                       {/* The phone's full locale (en-SG → $15.00), not just the UI language. */}
                       {formatPrice(product.price, currency)}

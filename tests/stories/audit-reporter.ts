@@ -18,7 +18,8 @@ export default class StoryReporter implements Reporter {
   }
 
   onTestEnd(test: TestCase, result: TestResult) {
-    if (!/^S[12357] ·/.test(test.title) || result.status === 'skipped') return
+    if (!/^(S[12357]|A(?:3|4|6|8|9|11|12)) ·/.test(test.title) || result.status === 'skipped')
+      return
     this.stories.push({
       story: test.title,
       project: test.parent.project()?.name,
@@ -33,7 +34,9 @@ export default class StoryReporter implements Reporter {
     if (!this.stories.length) return
     mkdirSync('docs/stories', { recursive: true })
     writeFileSync(
-      'docs/stories/RESULTS.json',
+      process.env.STORY_STRICT === 'true'
+        ? 'docs/stories/STRICT-RESULTS.json'
+        : 'docs/stories/RESULTS.json',
       JSON.stringify(
         {
           capturedAt: new Date().toISOString(),
