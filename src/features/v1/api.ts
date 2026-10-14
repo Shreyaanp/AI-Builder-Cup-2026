@@ -30,6 +30,8 @@ export interface Business {
     currency?: string
   } & ShopFacts
   revision: number
+  /** Private notes the coach keeps for this shop (owner can delete them). */
+  coach_notes?: { id: string; text: string; created: string }[]
   registration: string
   public: boolean
   google_publication: string

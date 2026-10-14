@@ -254,6 +254,8 @@ export const fil: Copy = {
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} araw · ${from} – ${to}` : 'Walang petsa sa file',
   topItems: 'Pinakamabenta',
+  coachMemory: 'Mga tinatandaan ng coach',
+  forgetNote: 'Kalimutan',
   currencyLocked: 'Hindi na mababago kapag na-save na ang tindahan',
   unit: 'Yunit (tasa, kg, piraso…)',
   stockOptional: 'Stock (opsyonal)',

@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   ButtonBase,
+  IconButton,
   LinearProgress,
   List,
   ListItem,
@@ -30,6 +31,7 @@ import {
   Plus,
   Share2,
   Store,
+  Trash2,
   UtensilsCrossed,
   ZapOff,
 } from 'lucide-react'
@@ -371,6 +373,46 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
               fields={shop.fields}
               onAnswer={(fact) => then(() => ws.startCoachDraft(`${t.factNames[fact]}: `))()}
             />
+            {(shop.coach_notes ?? []).length > 0 && (
+              <Box component="section" aria-labelledby="coach-memory-title" sx={{ mt: 4 }}>
+                <Typography
+                  id="coach-memory-title"
+                  component="h3"
+                  variant="titleSmall"
+                  color="text.secondary"
+                >
+                  {t.coachMemory}
+                </Typography>
+                <List disablePadding>
+                  {(shop.coach_notes ?? []).map((note) => (
+                    <ListItem
+                      key={note.id}
+                      disableGutters
+                      divider
+                      secondaryAction={
+                        <IconButton
+                          edge="end"
+                          aria-label={`${t.forgetNote}: ${note.text}`}
+                          onClick={() =>
+                            void ws
+                              .api(
+                                `/businesses/${encodeURIComponent(shop.id)}/notes/${encodeURIComponent(note.id)}`,
+                                { method: 'DELETE' },
+                              )
+                              .then(() => ws.reload())
+                              .catch(() => ws.notify(t.actionFailed))
+                          }
+                        >
+                          <Trash2 size={18} />
+                        </IconButton>
+                      }
+                    >
+                      <ListItemText primary={note.text} sx={{ pr: 6 }} />
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            )}
           </Box>
         </Sheet>
       )

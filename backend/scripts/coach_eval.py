@@ -45,6 +45,7 @@ class Turn:
     responses: list[dict[str, Any]] = field(default_factory=list)
     reply: str = ""
     message: str = ""
+    finish: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -112,8 +113,9 @@ def item(name: str, **expected: Any) -> Callable[[Turn], bool]:
 
 
 def fact(turn: Turn, key: str) -> Any:
-    """The last value the model passed for one propose_business argument, if any."""
-    values = [call["args"].get(key) for call in turn.tools if call["name"] == "propose_business"]
+    """The last value the model passed for one shop-detail or customer-fact argument, if any."""
+    tools = {"propose_business", "propose_customer_facts"}
+    values = [call["args"].get(key) for call in turn.tools if call["name"] in tools]
     return values[-1] if values else None
 
 
@@ -166,6 +168,24 @@ def no_false_publish(turn: Turn) -> bool:
 
 
 SCENARIOS = [
+    Scenario(
+        "memory_note",
+        "Please remember: we are closed every Monday during Ramadan.",
+        seed=kopi_menu,
+        checks=[
+            ("saves a note", called("remember_note")),
+            ("no record changes", not_called("propose_products")),
+        ],
+    ),
+    Scenario(
+        "insights_no_sales",
+        "How is business this week? What should I do next?",
+        seed=kopi_menu,
+        checks=[
+            ("checks insights", called("get_insights")),
+            ("suggests importing sales", reply_matches(r"import|POS|Excel|spreadsheet|sales")),
+        ],
+    ),
     Scenario(
         "mandarin_new_shop",
         "我的店叫阿明咖啡店，在新加坡 Tiong Bahru，是一家 kopitiam，每天早上7点开到晚上9点",
@@ -310,7 +330,7 @@ SCENARIOS = [
         "Yes, everything we sell is halal. We take cash and PayNow only.",
         seed=kopi_menu,
         checks=[
-            ("proposes shop facts", called("propose_business")),
+            ("proposes shop facts", called("propose_customer_facts")),
             ("halal yes", proposed_fact("halal", "yes")),
             (
                 "cash and PayNow",
@@ -443,6 +463,8 @@ async def run_conversation(settings: Settings, root: Path) -> dict[str, Any]:
                     turn.tools.append({"name": call.name, "args": dict(call.args or {})})
                 for response in event.get_function_responses():
                     turn.responses.append(dict(response.response or {}))
+                if event.finish_reason or event.error_code:
+                    turn.finish.append(str(event.error_code or event.finish_reason))
                 if event.content and event.content.role == "model" and not event.partial:
                     text = "".join(
                         part.text or "" for part in event.content.parts or [] if not part.thought
@@ -464,6 +486,7 @@ async def run_conversation(settings: Settings, root: Path) -> dict[str, Any]:
                 "tools": [call["name"] for call in turn.tools],
                 "tool_args": turn.tools,
                 "reply": turn.reply,
+                "finish": turn.finish,
                 "seconds": round(time.perf_counter() - started, 2),
             }
         )

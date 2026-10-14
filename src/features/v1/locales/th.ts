@@ -245,6 +245,8 @@ export const th: Copy = {
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} วัน · ${from} – ${to}` : 'ไม่มีวันที่ในไฟล์',
   topItems: 'ขายดี',
+  coachMemory: 'สิ่งที่โค้ชจำไว้',
+  forgetNote: 'ลืม',
   currencyLocked: 'เปลี่ยนไม่ได้หลังบันทึกร้านแล้ว',
   unit: 'หน่วย (แก้ว, กก., ชิ้น…)',
   stockOptional: 'สต็อก (ไม่บังคับ)',

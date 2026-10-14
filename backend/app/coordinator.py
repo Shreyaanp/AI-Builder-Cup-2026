@@ -10,7 +10,9 @@ the tool returns `ask_owner` and the model must ask instead of guessing again.
 import re
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Any
+from uuid import uuid4
 
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
@@ -24,6 +26,7 @@ from .merchant import (
     ProposalRequest,
 )
 from .money import DEFAULT_CURRENCY, to_major, to_minor
+from .recap import recap_facts
 
 MAX_REPAIRS = 2
 # Customer facts the coach asks about after the basics are saved, most asked first.
@@ -80,7 +83,7 @@ async def get_question_plan() -> dict[str, Any]:
     """List what customers of this kind of business usually ask that the shop has not answered
     yet. Call it once the shop's name and category are saved. Then ask the owner ONE pending
     question at a time, in their language, and record each answer with
-    propose_business(name="", custom_facts=[{key, label, value}]). The owner may skip any."""
+    propose_customer_facts(custom_facts=[{key, label, value}]). The owner may skip any."""
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {
@@ -182,6 +185,8 @@ def get_business_context() -> dict[str, Any]:
             for product in data["inventory"]
         ],
         "relevant_history": ctx.recalled,
+        # Durable notes the owner asked the coach to keep (visible and deletable in My shop).
+        "remembered_notes": [note["text"] for note in (shop or {}).get("coach_notes") or []],
         # Customer facts not stated yet, in the order the coach should ask about them.
         "customer_facts_to_ask": [
             key for key in ASK_ORDER if shop and shop["fields"].get(key) in (None, "", [])
@@ -189,7 +194,74 @@ def get_business_context() -> dict[str, Any]:
     }
 
 
-def propose_business(
+NOTE_LIMIT = 30
+
+
+def remember_note(note: str) -> dict[str, Any]:
+    """Save one short, durable fact the owner wants you to remember about the shop or how to work
+    with them (e.g. "closed on Mondays during Ramadan", "reply to me in Hindi", "supplier delivers
+    on Tuesdays"). Only what the owner said. Never passwords, card numbers, IDs or customers'
+    personal details. Tell the owner you'll remember it; they can delete notes in My shop."""
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {"status": "needs_business"}
+    text = " ".join((note or "").split())[:200]
+    if not text:
+        return {"status": "invalid", "instruction": "Pass the note as a short sentence."}
+    shop = ctx.store.context(ctx.uid, ctx.business_id)["business"]
+    notes = list((shop or {}).get("coach_notes") or [])
+    if any(saved["text"].casefold() == text.casefold() for saved in notes):
+        return {"status": "already_remembered"}
+    notes.append({"id": uuid4().hex[:8], "text": text, "created": date.today().isoformat()})
+    ctx.store.set_notes(ctx.uid, ctx.business_id, notes[-NOTE_LIMIT:])
+    return {"status": "remembered", "notes": len(notes[-NOTE_LIMIT:])}
+
+
+def get_insights() -> dict[str, Any]:
+    """How the shop is doing this week, from its own data: imported sales (top sellers, slow
+    movers, revenue vs last week), sold-out count, customer questions and unanswered messages,
+    and when the menu was last confirmed. Call it when the owner asks how business is going or
+    what to do next, then give 2-3 short, concrete suggestions grounded only in these numbers.
+    If has_sales_data is false, suggest importing a POS or Excel sales export."""
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {"status": "needs_business"}
+    signals = ctx.store.recap_signals(ctx.uid, ctx.business_id)
+    sales = ctx.store.sales_history(ctx.uid, ctx.business_id)
+    year, week, _ = date.today().isocalendar()
+    facts = recap_facts(f"{year}-W{week:02d}", sales, signals)
+    currency = facts["currency"]
+    for key in ("revenue", "previous_revenue", "revenue_change"):
+        facts[key] = to_major(int(facts[key]), currency)
+    for group in ("top_sellers", "slow_movers"):
+        facts[group] = [
+            {**row, "revenue": to_major(int(row["revenue"]), currency)} for row in facts[group]
+        ]
+    open_threads = [
+        thread
+        for thread in signals["questions"]
+        if not thread.get("done") and thread.get("status") != "closed"
+    ]
+    waiting = [
+        thread
+        for thread in open_threads
+        if (thread.get("messages") or [{"author": "customer"}])[-1]["author"] == "customer"
+    ]
+    recent = [
+        str((thread.get("messages") or [{"text": thread.get("message", "")}])[-1]["text"])[:100]
+        for thread in waiting[-5:]
+    ]
+    shop = ctx.store.context(ctx.uid, ctx.business_id)["business"] or {}
+    return {
+        **facts,
+        "has_sales_data": bool(sales),
+        "unanswered_customer_messages": len(waiting),
+        "recent_customer_questions": recent,
+        "menu_last_confirmed": shop.get("last_confirmed"),
+    }
+
+
+def _propose_shop(
     name: str,
     category: str = "",
     location: str = "",
@@ -206,16 +278,7 @@ def propose_business(
     busy_hours: str = "",
     custom_facts: list[FactInput] | None = None,
 ) -> dict[str, Any]:
-    """Prepare the shop's details (new shop, or edits to the active shop) for the owner to review.
-    Nothing is saved until the owner confirms. Leave a field empty if the owner did not say it.
-    currency is the ISO 4217 code (SGD, JPY, MYR…) for a new shop, only when the owner states
-    or clearly implies it; an existing shop keeps its currency.
-    Customer facts, only as the owner states them: halal is yes, no, muslim_owned or not_stated;
-    vegetarian_options and preorders are true/false; delivery is none, own, grab, foodpanda or
-    other (delivery_note: up to 80 characters, e.g. "within 3 km"); preorder_lead_time e.g.
-    "1 day ahead"; payment_methods from cash, paynow, card, grabpay, nets, other; busy_hours
-    e.g. "12:00-13:30". custom_facts: answers to get_question_plan questions (key, label,
-    value). For an existing shop pass name="" and only the facts that changed."""
+    """Shared sealed-proposal logic for shop basics and customer facts."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}
@@ -296,6 +359,60 @@ def propose_business(
         else [f"New shop: {fields.name}"]
     )
     return {"status": "needs_review", "proposal_id": proposal["id"], "changes": changes}
+
+
+def propose_business(
+    name: str,
+    category: str = "",
+    location: str = "",
+    hours: str = "",
+    phone: str = "",
+    currency: str = "",
+) -> dict[str, Any]:
+    """Prepare the shop's basic details (new shop, or edits to the active shop) for the owner to
+    review. Nothing is saved until the owner confirms. Leave a field empty if the owner did not
+    say it; for an existing shop pass name="" and only what changed. currency is the ISO 4217
+    code (SGD, JPY, MYR…) for a new shop, only when the owner states or clearly implies it."""
+    return _propose_shop(
+        name=name, category=category, location=location, hours=hours, phone=phone, currency=currency
+    )
+
+
+def propose_customer_facts(
+    halal: str = "",
+    vegetarian_options: bool | None = None,
+    delivery: str = "",
+    delivery_note: str = "",
+    preorders: bool | None = None,
+    preorder_lead_time: str = "",
+    payment_methods: list[str] | None = None,
+    busy_hours: str = "",
+    custom_facts: list[FactInput] | None = None,
+) -> dict[str, Any]:
+    """Prepare facts customers ask about for the owner to review, only as the owner states
+    them; pass just the facts that changed. halal: yes, no, muslim_owned or not_stated.
+    vegetarian_options, preorders: true/false. delivery: none, own, grab, foodpanda or other
+    (delivery_note up to 80 characters, e.g. "within 3 km"). preorder_lead_time e.g. "1 day
+    ahead". payment_methods from cash, paynow, card, grabpay, nets, other. busy_hours e.g.
+    "12:00-13:30". custom_facts: answers to get_question_plan questions (key, label, value)."""
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {
+            "status": "needs_business",
+            "instruction": "Ask for the shop name first and use propose_business.",
+        }
+    return _propose_shop(
+        name="",
+        halal=halal,
+        vegetarian_options=vegetarian_options,
+        delivery=delivery,
+        delivery_note=delivery_note,
+        preorders=preorders,
+        preorder_lead_time=preorder_lead_time,
+        payment_methods=payment_methods,
+        busy_hours=busy_hours,
+        custom_facts=custom_facts,
+    )
 
 
 def propose_products(items: list[ProductInput]) -> dict[str, Any]:

@@ -16,9 +16,12 @@ from .contracts import BusinessProposal
 from .coordinator import (
     current,
     get_business_context,
+    get_insights,
     get_question_plan,
     propose_business,
+    propose_customer_facts,
     propose_products,
+    remember_note,
     request_registration,
 )
 from .settings import Settings
@@ -58,14 +61,25 @@ Questions customers ask (after the basics)
   When the owner has nothing else pending, ask about the first one: one short question per turn,
   in the owner's language, in plain words ("Is your food halal?", "Which payments do you take —
   cash, PayNow, card?", "Do you deliver, for example by Grab or foodpanda?").
-- Record each answer with propose_business(name="", <that fact>) so the owner confirms it, as
+- Record each answer with propose_customer_facts(<that fact>) so the owner confirms it, as
   with any change. Never assume an answer; "not sure" for halal means not_stated.
 - Then call get_question_plan: it lists what customers of THIS kind of business ask (a salon:
   walk-ins, booking; a tuition centre: levels, trial lesson; catering: price per pax). Ask the
   pending ones the same way, one per turn, and record answers with
-  propose_business(name="", custom_facts=[{key, label, value}]) using the plan's key and label.
+  propose_customer_facts(custom_facts=[{key, label, value}]) using the plan's key and label.
 - If the owner says later, skip or not now, stop asking these for the rest of the conversation.
   Never ask again about a fact already answered, and never ask more than one at a time.
+
+Memory and insights
+- get_business_context returns remembered_notes: things the owner asked you to remember.
+  Follow them (for example a reply language or regular closing days) without being asked again.
+- When the owner states a lasting preference or recurring fact about the shop or how to work with
+  them ("remember…", "we always…", "every Monday…"), call remember_note once and say only
+  "I'll remember that" (never "saved": notes are private memory, not shop changes).
+  Never store passwords, card numbers, IDs or customers' personal details.
+- When the owner asks how business is going, what to do next, or for a weekly summary, call
+  get_insights and give 2-3 short, concrete suggestions based only on its numbers (never invent
+  figures). If there is no sales data, suggest importing a POS or Excel sales export.
 
 When something goes wrong (self-repair)
 - If a tool returns status "invalid", fix exactly the listed fields from what the owner said and
@@ -161,8 +175,8 @@ class OfflineCoachModel(BaseLlm):
                             parts=[
                                 types.Part(
                                     function_call=types.FunctionCall(
-                                        name="propose_business",
-                                        args={"name": "", "halal": halal.group(1).lower()},
+                                        name="propose_customer_facts",
+                                        args={"halal": halal.group(1).lower()},
                                     )
                                 )
                             ],
@@ -244,7 +258,10 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
         [
             get_business_context,
             get_question_plan,
+            get_insights,
+            remember_note,
             propose_business,
+            propose_customer_facts,
             propose_products,
             request_registration,
         ]
@@ -256,5 +273,11 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
         model=model,
         instruction=instruction,
         tools=list(tools),
-        generate_content_config=types.GenerateContentConfig(max_output_tokens=768, temperature=0.3),
+        # Thinking shares the output budget: a small cap left some turns completely empty.
+        # Low temperature keeps tool calls for reported changes consistent.
+        generate_content_config=types.GenerateContentConfig(
+            max_output_tokens=2048,
+            temperature=0.1,
+            thinking_config=types.ThinkingConfig(thinking_budget=512),
+        ),
     )

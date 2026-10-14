@@ -250,6 +250,8 @@ export const vi: Copy = {
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} ngày · ${from} – ${to}` : 'Tệp không có ngày',
   topItems: 'Bán chạy',
+  coachMemory: 'Những điều trợ lý ghi nhớ',
+  forgetNote: 'Quên',
   currencyLocked: 'Không thể đổi sau khi đã lưu cửa hàng',
   unit: 'Đơn vị (cốc, kg, cái…)',
   stockOptional: 'Tồn kho (không bắt buộc)',

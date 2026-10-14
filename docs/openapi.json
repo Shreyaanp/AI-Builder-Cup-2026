@@ -757,6 +757,57 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/notes/{note_id}": {
+      "delete": {
+        "summary": "Delete Note",
+        "description": "Owner removes something the coach remembered.",
+        "operationId": "delete_note_api_v1_businesses__business_id__notes__note_id__delete",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Note Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Note Api V1 Businesses  Business Id  Notes  Note Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/google-sim": {
       "get": {
         "summary": "State",

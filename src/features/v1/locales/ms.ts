@@ -251,6 +251,8 @@ export const ms: Copy = {
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} hari · ${from} – ${to}` : 'Tiada tarikh dalam fail',
   topItems: 'Paling laris',
+  coachMemory: 'Perkara yang diingati jurulatih',
+  forgetNote: 'Lupakan',
   currencyLocked: 'Tidak boleh diubah selepas kedai disimpan',
   unit: 'Unit (cawan, kg, biji…)',
   stockOptional: 'Stok (pilihan)',
