@@ -29,7 +29,7 @@ config = {
     "GOOGLE_CLOUD_PROJECT": target["projectId"],
     "FIRESTORE_DATABASE": target["firestoreDatabase"],
     "FIRESTORE_NAMESPACE": target["firestoreNamespace"],
-    "ALLOWED_ORIGINS": json.dumps([origin, "https://chalkboard.shreyaan.work"]),
+    "ALLOWED_ORIGINS": json.dumps([origin, "https://chalkboard.shreyaan.work", "https://business.chalkboard.shreyaan.work"]),
     "FIREBASE_WEB_API_KEY": os.environ["FIREBASE_WEB_API_KEY"].strip(),
     "FIREBASE_WEB_APP_ID": os.environ["FIREBASE_WEB_APP_ID"].strip(),
     "FIREBASE_AUTH_DOMAIN": f"{target['projectId']}.firebaseapp.com",
