@@ -1,5 +1,6 @@
 import os
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,6 +17,7 @@ class Settings(BaseSettings):
     firestore_namespace: str = Field(default="ogoogle_ai_v1", pattern=r"^ogoogle_ai_[a-zA-Z0-9_]+$")
     frontend_dist: str = ""
     release_commit: str = "local"
+    customer_origin: str = ""
     v1_enabled: bool = False
     merchant_backend: Literal["sqlite", "firestore"] = "sqlite"
     embedding_model: str = "gemini-embedding-2"
@@ -51,6 +53,24 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def reject_unsafe_configuration(self) -> "Settings":
+        if self.customer_origin:
+            origin = urlsplit(self.customer_origin)
+            local = origin.hostname in {"127.0.0.1", "localhost"}
+            if (
+                not origin.hostname
+                or origin.username
+                or origin.password
+                or origin.path not in {"", "/"}
+                or origin.query
+                or origin.fragment
+                or not (
+                    origin.scheme == "https"
+                    or (local and origin.scheme == "http" and self.app_env != "production")
+                )
+            ):
+                raise ValueError(
+                    "Customer origin must be an HTTPS origin (HTTP only for local development)."
+                )
         if self.session_backend == "firestore" and not self.google_cloud_project:
             raise ValueError("Firestore requires an explicit project.")
         if self.coach_mode == "gemini":

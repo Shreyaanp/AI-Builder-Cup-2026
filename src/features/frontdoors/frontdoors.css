@@ -1,0 +1,239 @@
+.marketing {
+  background: var(--front-surface);
+  color: var(--front-ink);
+}
+.front-header,
+.front-hero,
+.front-block,
+.front-footer {
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: 32px max(24px, env(safe-area-inset-left));
+}
+.front-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: max(24px, env(safe-area-inset-top));
+}
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.front-hero {
+  display: grid;
+  gap: 32px;
+  align-items: center;
+  padding-block: 48px 80px;
+}
+.marketing .editorial-title {
+  font-size: clamp(2.75rem, 6vw, 5.5rem);
+  line-height: 1.04;
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+.front-block {
+  padding-block: 64px;
+  scroll-margin-top: 24px;
+}
+.section-title {
+  max-width: 20ch;
+  text-wrap: balance;
+}
+.tonal {
+  background: var(--front-tonal);
+  color: var(--front-on-tonal);
+  border-radius: 28px;
+}
+.story-steps {
+  list-style: none;
+  display: grid;
+  gap: 40px;
+  padding: 0;
+  margin: 48px 0;
+}
+.story-number {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 24px;
+}
+.two-columns {
+  display: grid;
+  gap: 40px;
+  align-items: center;
+}
+.product-preview {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  border: 1px solid currentColor;
+  border-radius: 20px;
+  padding: 24px;
+}
+.product-preview img {
+  width: 28%;
+  height: auto;
+  border-radius: 16px;
+}
+.preview-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.preview-tiles img {
+  width: 100%;
+  height: auto;
+  border-radius: 20px;
+}
+.language-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  list-style: none;
+  padding: 0;
+  font-size: 1.5rem;
+}
+.proof {
+  border-block: 1px dashed currentColor;
+}
+.front-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+  padding-bottom: max(32px, env(safe-area-inset-bottom));
+}
+.scene-frame {
+  aspect-ratio: 1;
+  position: relative;
+  max-width: 600px;
+  width: 100%;
+}
+.scene-static {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.chalk-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  background: var(--front-tonal);
+  border-radius: 28px;
+  cursor: pointer;
+  perspective: 900px;
+  padding: 0;
+}
+.chalk-object {
+  display: block;
+  transform-style: preserve-3d;
+  transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.chalk-object img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.chalk-scene:focus-visible,
+.wordmark:focus-visible,
+.skip-link:focus-visible {
+  outline: 3px solid var(--front-primary, currentColor);
+  outline-offset: 4px;
+}
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  padding: 16px;
+  background: var(--front-surface, Canvas);
+  color: var(--front-ink, CanvasText);
+  z-index: 1500;
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: none;
+}
+@keyframes story-reveal {
+  from {
+    opacity: 0.3;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    [data-reveal] {
+      animation: story-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 25%;
+    }
+  }
+}
+@supports not (animation-timeline: view()) {
+  .revealed {
+    animation: story-reveal 400ms ease-out both;
+  }
+}
+@view-transition {
+  navigation: auto;
+}
+.customer-tile {
+  animation: tile-pop 400ms var(--customer-spring) both;
+  animation-delay: calc(var(--tile-index, 0) * 40ms);
+}
+@keyframes tile-pop {
+  from {
+    transform: translateY(12px) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+}
+@media (min-width: 840px) {
+  .front-hero {
+    grid-template-columns: 1.1fr 1fr;
+  }
+  .story-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .two-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .front-block {
+    padding-block: 88px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .customer-tile,
+  [data-reveal],
+  .revealed {
+    animation: none !important;
+  }
+  .chalk-object {
+    transition: none;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

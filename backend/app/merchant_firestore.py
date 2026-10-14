@@ -413,7 +413,9 @@ class FirestoreMerchantStore:
         def run(transaction: Any) -> dict[str, Any]:
             business = self.owned(ref.get(transaction=transaction), uid)
             proposal = prepare_import({"id": bid, **business}, rows)
-            transaction.set(pending, {"uid": uid, "proposal": json.dumps(proposal, ensure_ascii=False)})
+            transaction.set(
+                pending, {"uid": uid, "proposal": json.dumps(proposal, ensure_ascii=False)}
+            )
             return proposal
 
         return run(self.client.transaction())
@@ -449,7 +451,9 @@ class FirestoreMerchantStore:
             transaction.update(ref, {"revision": business["revision"] + 1})
             receipt = {"business_id": bid, "import_id": iid, "saved": True, "days": len(incoming)}
             proposal["receipt"] = receipt
-            transaction.set(pending, {"uid": uid, "proposal": json.dumps(proposal, ensure_ascii=False)})
+            transaction.set(
+                pending, {"uid": uid, "proposal": json.dumps(proposal, ensure_ascii=False)}
+            )
             return receipt
 
         return run(self.client.transaction())
