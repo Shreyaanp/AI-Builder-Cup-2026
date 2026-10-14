@@ -89,6 +89,7 @@ export function CoachScreen() {
   const session = useRef<string | null>(null)
   const controller = useRef<AbortController | null>(null)
   const photoInput = useRef<HTMLInputElement>(null)
+  const speaking = useRef<HTMLAudioElement | null>(null)
   const end = useRef<HTMLDivElement>(null)
   const { api, activeId, review, setFaceOpen, go, speakReplies } = ws
 
@@ -125,6 +126,7 @@ export function CoachScreen() {
     return () => {
       abort.abort()
       speechSynthesis.cancel()
+      speaking.current?.pause()
     }
   }, [api, activeId])
   useEffect(() => {
@@ -157,6 +159,32 @@ export function CoachScreen() {
     setMessages([])
     setReply('')
     setError('')
+  }
+
+  // Natural Google voice for replies; the phone's own voice if that isn't available.
+  async function speakReply(text: string) {
+    speechSynthesis.cancel()
+    speaking.current?.pause()
+    try {
+      const response = await api<Response>('/tts', {
+        method: 'POST',
+        body: JSON.stringify({ text, language }),
+        raw: true,
+      })
+      if (response.status === 200) {
+        const url = URL.createObjectURL(await response.blob())
+        const audio = new Audio(url)
+        audio.onended = () => URL.revokeObjectURL(url)
+        speaking.current = audio
+        await audio.play()
+        return
+      }
+    } catch {
+      // Fall through to on-device speech.
+    }
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = language
+    speechSynthesis.speak(utterance)
   }
 
   async function send(text = note) {
@@ -199,12 +227,7 @@ export function CoachScreen() {
           [...items, { role: 'assistant' as const, text: finalReply }].slice(-40),
         )
       setReply('')
-      if (speakReplies && finalReply) {
-        speechSynthesis.cancel()
-        const utterance = new SpeechSynthesisUtterance(finalReply)
-        utterance.lang = language
-        speechSynthesis.speak(utterance)
-      }
+      if (speakReplies && finalReply) void speakReply(finalReply)
       // History is supplemental; a failed refresh must never roll back a completed turn.
       const items = await api<Conversation[]>('/conversations').catch(() => null)
       if (items && controller.current === abort) setHistory(items)

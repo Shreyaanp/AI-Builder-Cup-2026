@@ -4,8 +4,8 @@ from typing import Any, cast
 
 import anyio
 import httpx
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, ConfigDict
+from fastapi import APIRouter, HTTPException, Request, Response
+from pydantic import BaseModel, ConfigDict, Field
 
 from .discover import prepare_pin
 from .face_transport import worker_headers
@@ -451,3 +451,20 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
         "skipped": skipped,
         "proposal": proposal,
     }
+
+
+class SpeakRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(min_length=1, max_length=2_000)
+    language: str = Field(default="en", max_length=10)
+
+
+@router.post("/tts", response_model=None)
+async def speak(body: SpeakRequest, request: Request) -> Response:
+    """A coach reply as natural speech (MP3); 204 means use the phone's own voice."""
+    uid = await consented_owner(request)
+    await enforce_limits(request, [("tts", uid)])
+    audio = await request.app.state.speech.speak(body.text, body.language)
+    if audio is None:
+        return Response(status_code=204)
+    return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
