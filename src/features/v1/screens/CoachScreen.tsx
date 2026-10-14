@@ -28,6 +28,8 @@ import {
   History,
   ImagePlus,
   ImageUp,
+  FileSpreadsheet,
+  Paperclip,
   Leaf,
   MessageSquare,
   MessageSquarePlus,
@@ -52,6 +54,8 @@ import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
 import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
+import { SalesImportSheet } from '../ImportMenu'
+import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
 import { ShopCard, ShopSheet, StartCard } from '../ShopCard'
 import { PendingCard } from '../PendingCard'
 import { ShopSheets } from '../ShopTiles'
@@ -96,20 +100,27 @@ export function CoachScreen() {
   const controller = useRef<AbortController | null>(null)
   const photoInput = useRef<HTMLInputElement>(null)
   const photoButton = useRef<HTMLButtonElement>(null)
-  // Phones choose between the camera and the gallery; a desktop goes straight to the file
-  // picker (it has no camera capture).
+  // One attach button: Take photo (phones: there is no camera capture on a desktop), Photo
+  // library, and Document (PDF/Excel/CSV, once there is a shop to import into).
   const touch = useMediaQuery('(pointer: coarse)')
   const [photoMenu, setPhotoMenu] = useState<HTMLElement | null>(null)
+  const [sales, setSales] = useState<SalesImport | null>(null)
+  const importer = useImport({ onSales: setSales })
+  const picking = useRef<'photo' | 'document'>('photo')
+  const choices = touch || Boolean(ws.active)
   function choosePhoto(anchor: HTMLElement | null) {
-    if (touch && anchor) setPhotoMenu(anchor)
-    else pickPhoto(false)
+    if (choices && anchor) setPhotoMenu(anchor)
+    else pick('library')
   }
-  // One input for both: `capture` asks the phone to open the rear camera directly.
-  function pickPhoto(camera: boolean) {
+  // One file input for every choice (`capture` opens the rear camera directly, `accept` picks
+  // photos or documents), so the page keeps a single picker.
+  function pick(kind: 'camera' | 'library' | 'document') {
     setPhotoMenu(null)
     const input = photoInput.current
     if (!input) return
-    if (camera) input.setAttribute('capture', 'environment')
+    picking.current = kind === 'document' ? 'document' : 'photo'
+    input.accept = kind === 'document' ? DOCUMENT_ACCEPT : PHOTO_TYPES.join(',')
+    if (kind === 'camera') input.setAttribute('capture', 'environment')
     else input.removeAttribute('capture')
     input.click()
   }
@@ -175,12 +186,12 @@ export function CoachScreen() {
   useEffect(() => {
     if (!photoPending) return
     consumePhotoRequest()
-    if (touch && photoButton.current) setPhotoMenu(photoButton.current)
+    if (choices && photoButton.current) setPhotoMenu(photoButton.current)
     else {
       photoInput.current?.removeAttribute('capture')
       photoInput.current?.click()
     }
-  }, [photoPending, consumePhotoRequest, touch])
+  }, [photoPending, consumePhotoRequest, choices])
   // A chat starter from My shop ("Customers ask: halal?") lands in the composer once.
   const { coachDraft, consumeCoachDraft } = ws
   const [seenDraft, setSeenDraft] = useState<string | null>(null)
@@ -625,6 +636,7 @@ export function CoachScreen() {
           messageInput.current?.focus()
         }}
       />
+      <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
       <ShopSheets
         kind={shopSheet}
         onClose={() => {
@@ -694,19 +706,19 @@ export function CoachScreen() {
               {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </IconButton>
           ) : (
-            <Tooltip title={t.photo} disableTouchListener>
+            <Tooltip title={t.attach} disableTouchListener>
               <span>
                 <IconButton
-                  aria-label={t.photo}
-                  disabled={busy !== 'idle'}
+                  aria-label={t.attach}
+                  disabled={busy !== 'idle' || importer.busy}
                   ref={photoButton}
-                  aria-haspopup={touch ? 'menu' : undefined}
+                  aria-haspopup={choices ? 'menu' : undefined}
                   onClick={(event) => choosePhoto(event.currentTarget)}
                 >
-                  {busy === 'photo' ? (
+                  {busy === 'photo' || importer.busy ? (
                     <CircularProgress size={20} aria-label={t.checkingPhoto} />
                   ) : (
-                    <ImagePlus size={22} />
+                    <Paperclip size={22} />
                   )}
                 </IconButton>
               </span>
@@ -720,8 +732,18 @@ export function CoachScreen() {
             aria-hidden="true"
             tabIndex={-1}
             onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) void uploadPhoto(file)
+              const input = event.currentTarget
+              const file = input.files?.[0]
+              const document = picking.current === 'document'
+              // Back to photos for the next pick (and for anything that reads the input).
+              picking.current = 'photo'
+              input.accept = PHOTO_TYPES.join(',')
+              if (!file) return
+              if (document)
+                void importer.upload(file).finally(() => {
+                  input.value = ''
+                })
+              else void uploadPhoto(file)
             }}
           />
           <Menu
@@ -731,18 +753,28 @@ export function CoachScreen() {
             anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
             transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
           >
-            <MenuItem onClick={() => pickPhoto(true)} sx={{ minHeight: 48 }}>
-              <ListItemIcon>
-                <Camera size={20} />
-              </ListItemIcon>
-              <ListItemText primary={t.photoTake} />
-            </MenuItem>
-            <MenuItem onClick={() => pickPhoto(false)} sx={{ minHeight: 48 }}>
+            {touch && (
+              <MenuItem onClick={() => pick('camera')} sx={{ minHeight: 48 }}>
+                <ListItemIcon>
+                  <Camera size={20} />
+                </ListItemIcon>
+                <ListItemText primary={t.photoTake} />
+              </MenuItem>
+            )}
+            <MenuItem onClick={() => pick('library')} sx={{ minHeight: 48 }}>
               <ListItemIcon>
                 <ImageUp size={20} />
               </ListItemIcon>
               <ListItemText primary={t.photoUpload} />
             </MenuItem>
+            {ws.active && (
+              <MenuItem onClick={() => pick('document')} sx={{ minHeight: 48 }}>
+                <ListItemIcon>
+                  <FileSpreadsheet size={20} />
+                </ListItemIcon>
+                <ListItemText primary={t.photoDocument} />
+              </MenuItem>
+            )}
           </Menu>
           {voiceText ? (
             <Typography

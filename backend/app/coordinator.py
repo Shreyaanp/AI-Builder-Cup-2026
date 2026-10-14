@@ -15,7 +15,7 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import HTTPException
-from pydantic import BaseModel, Field, TypeAdapter, ValidationError
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError, field_validator
 
 from .business_profile import FOOD, QuestionPlanner
 from .forecast import ForecastService
@@ -29,6 +29,7 @@ from .merchant import (
 )
 from .money import DEFAULT_CURRENCY, to_major, to_minor
 from .product_categories import suggest_category
+from .product_units import UNITS, normalize_unit
 from .recap import recap_facts
 
 MAX_REPAIRS = 2
@@ -156,14 +157,24 @@ class ProductInput(BaseModel):
         description="Price in the shop's currency, major units (e.g. 15 or 12.5). Leave empty "
         "to keep the saved price of an existing item, e.g. when only marking it sold out.",
     )
-    unit: str = Field(default="item", description="Selling unit: cup, plate, kg, piece, item…")
+    unit: str = Field(
+        default="item",
+        description="Selling unit, one of: " + ", ".join(UNITS) + ". Pick the closest one.",
+    )
     stock: int | None = Field(default=None, description="Units in stock, only if the owner said")
     available: bool = Field(default=True, description="False when the owner says it is sold out")
     category: str | None = Field(
         default=None,
         max_length=80,
-        description="Item category; omit to keep the saved category, empty to clear it",
+        description="Menu section for the item (e.g. Drinks, Mains, Desserts), in the owner's "
+        "language. Always give one for a new item; omit to keep a saved item's category.",
     )
+
+    @field_validator("unit", mode="before")
+    @classmethod
+    def known_unit(cls, value: object) -> object:
+        # Plurals and abbreviations ("pcs", "plates") map to the fixed list.
+        return normalize_unit(value) if isinstance(value, str) else value
 
 
 def _invalid(
@@ -520,7 +531,8 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
     """Prepare additions or corrections to the active shop's products and prices, including
     marking items sold out (available=false), for the owner to review. Use one call for all
     items mentioned together. Prices are in the shop's currency (major units). category is
-    the owner's menu section, or a suggested group for a new item; empty clears it."""
+    the owner's menu section, or a suggested section for a new item. unit is one of the fixed
+    selling units."""
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {
@@ -558,11 +570,10 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
                     available=item.available
                     if "available" in item.model_fields_set or not known
                     else known.get("available", True),
-                    category=item.category
-                    if item.category is not None
-                    else known.get("category", "")
-                    if known
-                    else suggest_category(item.name),
+                    # Every new item gets a category (given, else suggested; reviewed with the
+                    # rest). A saved item keeps its own; uncategorised ones use "Sort my menu".
+                    category=(item.category or "").strip()
+                    or (known.get("category", "") if known else suggest_category(item.name)),
                 )
             )
         proposal = ctx.store.propose(
