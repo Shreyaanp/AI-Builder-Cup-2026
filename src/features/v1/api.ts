@@ -36,6 +36,8 @@ export interface Business {
   revision: number
   /** Private notes the coach keeps for this shop (owner can delete them). */
   coach_notes?: { id: string; text: string; created: string }[]
+  /** Photo IDs the owner chose to show customers (public once the page is shared). */
+  gallery?: string[]
   registration: string
   public: boolean
   google_publication: string
