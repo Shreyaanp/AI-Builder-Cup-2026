@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 import httpx
+import structlog
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
@@ -16,6 +17,8 @@ from .merchant import MerchantRepository, ProposalRequest
 from .place_photos import PlacesPhotos
 from .settings import Settings
 from .shop_time import shop_timezone
+
+log = structlog.get_logger()
 
 PLACES_MASK = ",".join(
     "places." + field
@@ -231,6 +234,37 @@ class MapsService:
                 raise HTTPException(503, "PIN_UNAVAILABLE") from error
 
         return dict(await self.cached(("pin", location.casefold()), lookup))
+
+    async def reverse(self, lat: float, lng: float) -> dict[str, Any]:
+        """A photo's coordinates as a pin. The point itself is the evidence, so if the address
+        lookup is unavailable the pin keeps the coordinates with a plain label."""
+
+        async def lookup() -> dict[str, Any]:
+            pin: dict[str, Any] = {
+                "lat": lat,
+                "lng": lng,
+                "place_id": None,
+                "pin_label": f"{lat:.5f}, {lng:.5f}",
+                "pin_demo": False,
+            }
+            if self.demo:
+                return pin
+            try:
+                response = await self.client.get(
+                    "https://maps.googleapis.com/maps/api/geocode/json",
+                    params={"latlng": f"{lat},{lng}", "key": self.key},
+                )
+                response.raise_for_status()
+                data = response.json()
+                if data.get("status") == "OK" and data.get("results"):
+                    result = data["results"][0]
+                    pin["place_id"] = result.get("place_id")
+                    pin["pin_label"] = result.get("formatted_address") or pin["pin_label"]
+            except (httpx.HTTPError, KeyError, ValueError, IndexError):
+                log.warning("reverse_geocode_unavailable")
+            return pin
+
+        return dict(await self.cached(("reverse", round(lat, 5), round(lng, 5)), lookup))
 
     async def places(
         self, lat: float, lng: float, radius: int, q: str, category: str
