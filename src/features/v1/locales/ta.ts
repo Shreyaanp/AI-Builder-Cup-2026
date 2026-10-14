@@ -337,7 +337,7 @@ export const ta: Copy = {
   verifiedOwner:
     'சரிபார்க்கப்பட்டது — நீங்கள் சொன்னபடி. Chalkboard இதை Google-இல் சரிபார்க்க முடியாது.',
   verifiedUndo: 'இன்னும் சரிபார்க்கவில்லை',
-  practiceSteps: 'படிகளைப் பயிற்சி செய்யுங்கள் (உருவகம்)',
+  practiceSteps: 'படிகளைப் பயிற்சி செய்யுங்கள்',
   readiness: (done: number, total: number) => `${total}-இல் ${done} தயார்`,
   checkName: 'கடைப் பெயர்',
   checkCategory: 'வகை',

@@ -47,6 +47,7 @@ class ColumnMap(BaseModel):
     total: int | None = Field(default=None, description="Line total / revenue column (sales)")
     date: int | None = Field(default=None, description="Date or time of sale column (sales)")
     stock: int | None = Field(default=None, description="Stock on hand column (menu)")
+    category: int | None = Field(default=None, description="Item category or menu section column")
 
 
 PROMPT = """You map a spreadsheet exported by a shop's POS or written by the owner. Given the
@@ -55,6 +56,7 @@ transactions export (kind "sales"), and give the 0-based column index for each r
 for roles that are not present. Never guess a column whose contents don't fit the role."""
 
 HEADER_HINTS: dict[str, tuple[str, ...]] = {
+    "category": ("category", "group", "section", "department"),
     "name": ("item", "product", "name", "description", "menu", "dish", "sku name", "article"),
     "price": ("price", "unit price", "selling price", "rate", "cost", "amount"),
     "unit": ("unit", "uom", "size", "per"),
@@ -117,7 +119,7 @@ def heuristic_map(headers: list[str]) -> ColumnMap:
     used: set[int] = set()
     # Exact header matches win, a column serves one role, and "unit" goes last so that a
     # "Unit Price" column is taken as the price rather than the unit.
-    for role in ("name", "price", "quantity", "total", "date", "stock", "unit"):
+    for role in ("name", "price", "quantity", "total", "date", "stock", "category", "unit"):
         hints = HEADER_HINTS[role]
         free = [(index, header) for index, header in enumerate(lowered) if index not in used]
         match = next((index for index, header in free if header in hints), None)
@@ -171,6 +173,11 @@ def menu_items(rows: list[list[str]], mapping: ColumnMap) -> tuple[list[dict[str
             "price": price,
             "unit": unit,
             "stock": int(stock) if stock is not None and stock >= 0 else None,
+            **(
+                {"category": cell(row, mapping.category)[:80]}
+                if cell(row, mapping.category)
+                else {}
+            ),
         }
     return list(items.values())[:200], skipped
 

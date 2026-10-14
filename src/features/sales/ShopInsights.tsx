@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  Chip,
   List,
   ListItem,
   ListItemText,
@@ -28,6 +29,22 @@ interface Freshness {
   last_confirmed: string | null
 }
 type Recap = components['schemas']['Recap']
+
+/** ISO weeks are Monday–Sunday; UTC keeps date-only boundaries stable on every device. */
+function weekRange(week: string) {
+  const year = Number(week.slice(0, 4))
+  const january4 = new Date(Date.UTC(year, 0, 4))
+  const monday = new Date(january4)
+  monday.setUTCDate(4 - ((january4.getUTCDay() + 6) % 7) + (Number(week.slice(-2)) - 1) * 7)
+  const sunday = new Date(monday)
+  sunday.setUTCDate(monday.getUTCDate() + 6)
+  return new Intl.DateTimeFormat(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: monday.getUTCFullYear() !== sunday.getUTCFullYear() ? 'numeric' : undefined,
+    timeZone: 'UTC',
+  }).formatRange(monday, sunday)
+}
 
 function useFreshness() {
   const { api, active } = useWorkspace()
@@ -61,7 +78,7 @@ function useFreshness() {
   return { value, error, retry: () => retry((n) => n + 1) }
 }
 
-export function FreshnessCard() {
+export function FreshnessCard({ compact = false }: { compact?: boolean }) {
   const ws = useWorkspace()
   const t = useCopy()
   const roles = useTheme().material
@@ -92,19 +109,23 @@ export function FreshnessCard() {
   }
   return (
     <Stack
-      spacing={2}
+      spacing={compact ? 0 : 2}
       sx={{
-        p: 3,
+        p: compact ? 2 : 3,
         borderRadius: `${shape.lg}px`,
         bgcolor: roles.surfaceContainer,
         color: roles.onSurface,
       }}
     >
-      <Typography component="h2" variant="titleMedium">
+      <Typography component="h2" variant={compact ? 'bodyMedium' : 'titleMedium'}>
         {t.freshnessTitle}
       </Typography>
       {failed && <Alert severity="error">{t.actionFailed}</Alert>}
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+      <Stack
+        direction={compact ? 'row' : { xs: 'column', sm: 'row' }}
+        spacing={1}
+        sx={{ flexWrap: 'wrap' }}
+      >
         <Button
           variant="contained"
           disabled={busy}
@@ -138,7 +159,7 @@ export function RecapTile({ mondayOnly = false }: { mondayOnly?: boolean }) {
         wide
         icon={<BarChart3 size={20} />}
         label={t.recapTitle}
-        value={value.recap_week}
+        value={weekRange(value.recap_week)}
         onClick={() => setOpen(true)}
       >
         <Supporting>{t.recapHint}</Supporting>
@@ -184,23 +205,24 @@ function RecapDetails({ week }: { week: string }) {
     )
   if (!recap) return <CircularProgress aria-label={t.loading} />
   return (
-    <Stack spacing={3}>
-      <Typography variant="titleMedium">{week}</Typography>
-      <Typography variant="bodyMedium">
-        {t.recapCoverage(recap.sales_days, recap.previous_sales_days)}
+    <Stack spacing={recap.sales_days ? 3 : 2}>
+      <Typography component="p" variant="titleMedium">
+        {weekRange(week)}
       </Typography>
       {!recap.sales_days && <Alert severity="info">{t.recapEmpty}</Alert>}
-      <Box>
-        <Typography variant="labelMedium">{t.writtenByAi}</Typography>
-        {recap.mode === 'offline' && (
-          <Typography variant="labelMedium" color="text.secondary">
-            {t.offlineRecap}
+      {recap.sales_days > 0 && (
+        <>
+          <Typography variant="bodyMedium">
+            {t.recapCoverage(recap.sales_days, recap.previous_sales_days)}
           </Typography>
-        )}
-        <Typography variant="bodyLarge" sx={{ mt: 1, overflowWrap: 'anywhere' }}>
-          {recap.summary}
-        </Typography>
-      </Box>
+          <Box>
+            <Chip size="small" label={recap.mode === 'gemini' ? t.writtenByAi : t.offlineRecap} />
+            <Typography variant="bodyLarge" sx={{ mt: 1, overflowWrap: 'anywhere' }}>
+              {recap.summary}
+            </Typography>
+          </Box>
+        </>
+      )}
       {recap.sales_days > 0 && (
         <Box sx={{ fontVariantNumeric: 'tabular-nums' }}>
           <Typography component="h3" variant="titleSmall">
@@ -221,26 +243,30 @@ function RecapDetails({ week }: { week: string }) {
           )}
         </Box>
       )}
-      {[
-        [t.topItems, recap.top_sellers],
-        [t.slowMovers, recap.slow_movers],
-      ].map(([label, items]) => (
-        <Box key={label as string}>
-          <Typography component="h3" variant="titleSmall">
-            {label as string}
-          </Typography>
-          <List disablePadding>
-            {(items as Recap['top_sellers']).map((item) => (
-              <ListItem key={item.item} disableGutters divider>
-                <ListItemText
-                  primary={item.item}
-                  secondary={`${item.quantity} · ${formatPrice(item.revenue, recap.currency)}`}
-                />
-              </ListItem>
-            ))}
-          </List>
-        </Box>
-      ))}
+      {(
+        [
+          [t.topItems, recap.top_sellers],
+          [t.slowMovers, recap.slow_movers],
+        ] as const
+      )
+        .filter(([, items]) => recap.sales_days > 0 && items.length > 0)
+        .map(([label, items]) => (
+          <Box key={label}>
+            <Typography component="h3" variant="titleSmall">
+              {label}
+            </Typography>
+            <List disablePadding>
+              {items.map((item) => (
+                <ListItem key={item.item} disableGutters divider>
+                  <ListItemText
+                    primary={item.item}
+                    secondary={`${item.quantity} · ${formatPrice(item.revenue, recap.currency)}`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+        ))}
       <Typography variant="bodyMedium">
         {t.soldOutEvents}: {recap.sold_out_count}
       </Typography>

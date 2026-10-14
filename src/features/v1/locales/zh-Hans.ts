@@ -316,7 +316,7 @@ export const zhHans: Copy = {
   verifiedYes: 'Google 已验证我的店铺',
   verifiedOwner: '已验证——由您告知。Chalkboard 无法向 Google 核实。',
   verifiedUndo: '尚未验证',
-  practiceSteps: '练习这些步骤（模拟）',
+  practiceSteps: '练习这些步骤',
   readiness: (done: number, total: number) => `已备妥 ${done} / ${total} 项`,
   checkName: '店铺名称',
   checkCategory: '类别',

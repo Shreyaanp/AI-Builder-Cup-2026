@@ -32,6 +32,8 @@ import { GoogleSimulator } from '../../google-sim/GoogleSimulator'
 import { mapsSearch, OWNER_URL } from '../../google-sim/links'
 import { useSimCopy } from '../../google-sim/strings'
 import { shape } from '../../../design/theme'
+import { HoursList } from '../../shop/Hours'
+import { hasHours } from '../../shop/hoursModel'
 
 // Owner-reported only: Chalkboard cannot read verification status from Google.
 const verifiedKey = (id: string) => `chalkboard.googleVerified.${id}`
@@ -134,7 +136,7 @@ export function GoogleScreen() {
     { label: t.checkName, done: Boolean(f.name.trim()) },
     { label: t.checkCategory, done: Boolean(f.category.trim()) },
     { label: t.checkLocation, done: Boolean(f.location.trim()) },
-    { label: t.checkHours, done: Boolean(f.hours.trim()) },
+    { label: t.checkHours, done: hasHours(f) },
     { label: t.checkPhone, done: Boolean(f.phone.trim()) },
     { label: t.checkProducts, done: ws.products.length > 0 },
   ]
@@ -259,6 +261,7 @@ export function GoogleScreen() {
             >
               {t.copyListing}
             </Button>
+            <HoursList hours={f.weekly_hours} />
           </Step>
 
           <Step n={3} done={isVerified} title={t.stepAdd}>
@@ -339,6 +342,9 @@ export function GoogleScreen() {
           >
             {t.practiceSteps}
           </Button>
+          <Typography variant="bodySmall" color="text.secondary" sx={{ px: 2 }}>
+            {sim.banner}
+          </Typography>
           <Collapse in={practice} unmountOnExit>
             <Box
               id="google-practice"

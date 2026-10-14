@@ -61,10 +61,6 @@ export function GoogleSimulator() {
   if (!ws.active) return null
   return (
     <Stack spacing={3}>
-      <Alert severity="info">
-        <Typography variant="labelLarge">{t.connectionFlag}</Typography>
-        <Typography variant="bodyMedium">{t.banner}</Typography>
-      </Alert>
       <Button
         variant="outlined"
         onClick={() => {
@@ -265,12 +261,6 @@ function Wizard({
       <DialogTitle id="sim-title" variant="titleLarge">
         {t.title}
       </DialogTitle>
-      <Box sx={{ px: 6, pb: 3 }}>
-        <Alert severity="info">
-          <Typography variant="labelLarge">{t.connectionFlag}</Typography>
-          <Typography variant="bodyMedium">{t.banner}</Typography>
-        </Alert>
-      </Box>
       <DialogContent aria-busy={busy}>
         <Stack spacing={4}>
           <Typography variant="titleMedium">{shop.fields.name}</Typography>

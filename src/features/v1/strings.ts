@@ -341,7 +341,7 @@ export const en = {
   verifiedYes: 'Google verified my shop',
   verifiedOwner: 'Verified — you told us. Chalkboard can’t check this with Google.',
   verifiedUndo: 'Not verified yet',
-  practiceSteps: 'Practice the steps (simulation)',
+  practiceSteps: 'Practice the steps',
   readiness: (done: number, total: number) => `${done} of ${total} ready`,
   checkName: 'Shop name',
   checkCategory: 'Category',

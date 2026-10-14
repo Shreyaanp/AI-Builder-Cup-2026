@@ -23,6 +23,7 @@ class ExtractedRow(BaseModel):
     name: str = Field(default="", max_length=180)
     price: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     unit: str = Field(default="item", max_length=40)
+    category: str = Field(default="", max_length=80)
     confidence: float = Field(default=0, ge=0, le=1)
 
 
@@ -34,6 +35,7 @@ class Extraction(BaseModel):
 PROMPT = """Extract a menu or sales record from the owner's photo, PDF, or pasted notes.
 Sales rows: date, item, quantity, revenue (line total in major currency units).
 Menu rows: name, price (major currency units), unit. Copy only visible information.
+For menu categories, copy the section heading or suggest drinks, food, desserts, services or other.
 Keep totals/subtotals as rows so deterministic cleaning can remove them. Never invent missing
 dates, quantities, prices, or units. Use empty/null for missing fields. Dates use ISO YYYY-MM-DD
 only when unambiguous; otherwise preserve the visible date. Confidence is 0 to 1 per row.
@@ -95,7 +97,7 @@ async def extract(
 
 
 def as_table(extracted: Extraction) -> tuple[list[str], list[list[str]], ColumnMap, list[int]]:
-    headers = ["date", "item", "quantity", "revenue", "price", "unit"]
+    headers = ["date", "item", "quantity", "revenue", "price", "unit", "category"]
     rows = [
         [
             r.date,
@@ -104,10 +106,13 @@ def as_table(extracted: Extraction) -> tuple[list[str], list[list[str]], ColumnM
             str(r.revenue) if r.revenue is not None else "",
             str(r.price) if r.price is not None else "",
             r.unit,
+            r.category,
         ]
         for r in extracted.rows
     ]
-    mapping = ColumnMap(kind=extracted.kind, name=1, date=0, quantity=2, total=3, price=4, unit=5)
+    mapping = ColumnMap(
+        kind=extracted.kind, name=1, date=0, quantity=2, total=3, price=4, unit=5, category=6
+    )
     return (
         headers,
         rows,

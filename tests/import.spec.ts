@@ -63,7 +63,7 @@ test('a POS sales export waits for confirmation then appears in the weekly recap
   await expect(summary).not.toBeVisible()
   await page.getByRole('button', { name: /^Weekly recap/ }).click()
   const recap = page.getByRole('dialog', { name: 'Weekly recap' })
-  await expect(recap).toContainText('Written by AI')
+  await expect(recap.getByText('Written by AI', { exact: true })).toHaveCount(0)
   await expect(recap).toContainText('Offline template')
   await expect(recap).toContainText('$99.00')
   await expect(recap).toContainText('1 sales days saved')

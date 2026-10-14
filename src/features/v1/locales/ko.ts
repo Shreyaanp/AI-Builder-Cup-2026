@@ -320,7 +320,7 @@ export const ko: Copy = {
   verifiedYes: 'Google에서 가게 인증을 마쳤어요',
   verifiedOwner: '인증됨 — 직접 알려 주신 내용이에요. Chalkboard는 Google에서 확인할 수 없어요.',
   verifiedUndo: '아직 인증 안 됨',
-  practiceSteps: '단계 연습하기(시뮬레이션)',
+  practiceSteps: '단계 연습하기',
   readiness: (done: number, total: number) => `${total}개 중 ${done}개 준비됐어요`,
   checkName: '가게 이름',
   checkCategory: '업종',

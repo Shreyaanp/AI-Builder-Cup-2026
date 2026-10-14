@@ -48,6 +48,7 @@ class ExtractedProduct(BaseModel):
     name: str
     price: float | None = Field(default=None, ge=0, le=100_000_000)
     unit: str = "item"
+    category: str = Field(default="", max_length=80)
 
 
 class PhotoExtraction(BaseModel):
@@ -62,6 +63,8 @@ Classify photo_kind. Use "other" for anything that is not a signboard, menu, pri
 product or storefront (for example selfies, people, documents, screenshots or scenery).
 Copy only text that is clearly visible; never guess. Keep the original language/script.
 Prices: a plain number in the local currency, only when printed next to the item.
+Use a visible menu section as each product's category; otherwise suggest a short category
+based on the item (drinks, food, desserts, services, other). Categories are suggestions.
 List every field or item you are unsure about in "uncertain"."""
 
 
