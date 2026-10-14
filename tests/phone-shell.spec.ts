@@ -118,7 +118,8 @@ test('B3: the composer is one line (even with a long translated hint), grows for
   await page.getByRole('option', { name: 'தமிழ்' }).tap()
   await page.keyboard.press('Escape')
   await expect(field).toHaveAttribute('placeholder', /கடை/)
-  expect(await height()).toBe(56)
+  // Tamil needs a 32px line box plus padding for ascenders and descenders.
+  expect(await height()).toBe(64)
   await page.getByRole('button', { name: 'அமைப்புகள்' }).tap()
   await page.getByRole('combobox').tap()
   await page.getByRole('option', { name: 'English', exact: true }).tap()
