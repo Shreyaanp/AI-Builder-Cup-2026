@@ -93,6 +93,7 @@ export const en = {
   discardBody: 'What you typed or are reviewing has not been saved.',
   discard: 'Discard',
   keepEditing: 'Keep editing',
+  setupDone: 'Setup complete',
   // Navigation
   navCoach: 'Coach',
   navShop: 'My shop',
