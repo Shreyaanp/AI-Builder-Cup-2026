@@ -29,13 +29,34 @@ jobs:
           [[ "$revision" =~ ^[a-f0-9]{40}$ ]]
           git merge-base --is-ancestor "$revision" origin/main
           echo "sha=$revision" >> "$GITHUB_OUTPUT"
-  checks:
+  # Skip re-testing when the push checks already passed for this exact commit.
+  gate:
     needs: revision
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      tested: ${{ steps.find.outputs.tested }}
+    steps:
+      - id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.revision.outputs.sha }}
+        run: |
+          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/checks.yml/runs?head_sha=$SHA&status=success&per_page=1" --jq '.total_count')
+          if [[ "$passed" -gt 0 ]]; then echo "tested=true" >> "$GITHUB_OUTPUT"; else echo "tested=false" >> "$GITHUB_OUTPUT"; fi
+          echo "Successful checks runs for $SHA: $passed"
+  checks:
+    needs: [revision, gate]
+    if: needs.gate.outputs.tested != 'true'
     uses: ./.github/workflows/checks.yml
     with:
       revision: ${{ needs.revision.outputs.sha }}
   release:
-    needs: [revision, checks]
+    needs: [revision, gate, checks]
+    if: >-
+      always() && needs.revision.result == 'success' && needs.gate.result == 'success' &&
+      (needs.gate.outputs.tested == 'true' || needs.checks.result == 'success')
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -59,8 +80,14 @@ jobs:
               exit 1
             fi
           done
+      - uses: docker/setup-buildx-action@v4.4.1
       - name: Build immutable image
-        run: docker build -t "asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA" .
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          load: true
+          tags: asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:${{ needs.revision.outputs.sha }}
+          cache-from: type=gha
       - id: google
         uses: google-github-actions/auth@v3
         with:
