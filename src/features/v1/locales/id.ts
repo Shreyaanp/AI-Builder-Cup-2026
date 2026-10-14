@@ -223,7 +223,7 @@ export const id: Copy = {
   photoRefused:
     'Foto ini tidak dapat digunakan. Kirim hanya papan toko, menu, daftar harga, produk, atau tampak depan toko.',
   photoFailed: 'Foto tidak dapat diperiksa. Coba lagi.',
-  photoType: 'Pilih foto JPEG, PNG, atau WebP maksimal 5 MB.',
+  photoType: 'Pilih foto JPEG, PNG, atau WebP maksimal 20 MB.',
   reviewTitle: 'Periksa sebelum menyimpan',
   reviewNote: 'Hanya catatan pribadi yang berubah. Tidak dipublikasikan ke Google.',
   reviewNotePublic:

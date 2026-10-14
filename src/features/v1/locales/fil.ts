@@ -226,7 +226,7 @@ export const fil: Copy = {
   photoRefused:
     'Hindi puwedeng gamitin ang litrato. Magpadala lang ng karatula, menu, listahan ng presyo, produkto o harapan ng tindahan.',
   photoFailed: 'Hindi masuri ang litrato. Subukan muli.',
-  photoType: 'Pumili ng JPEG, PNG o WebP na litrato hanggang 5 MB.',
+  photoType: 'Pumili ng JPEG, PNG o WebP na litrato hanggang 20 MB.',
   reviewTitle: 'Suriin bago i-save',
   reviewNote: 'Pribadong tala lang ang babaguhin. Walang ipo-post sa Google.',
   reviewNotePublic:

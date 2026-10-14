@@ -12,6 +12,7 @@ from .coordinator import MerchantContext, ProductInput, current, propose_product
 from .discover import prepare_pin
 from .face_transport import worker_headers
 from .imports import MAX_BYTES as MAX_IMPORT_BYTES
+from .imports import MAX_MEDIA_BYTES as MAX_IMPORT_MEDIA_BYTES
 from .imports import SAMPLE_ROWS, ImportRejected, menu_items, parse_table, sales_summary
 from .ingestion import IMAGE_TYPES, alias, as_table, clean, extract
 from .limits import client_ip, enforce_limits
@@ -242,7 +243,7 @@ async def photo(
     limit = request.app.state.v1_settings.max_photo_bytes
     buffer = bytearray()
     try:
-        async with asyncio.timeout(20):
+        async with asyncio.timeout(120):  # big phone photos on mobile data
             async for chunk in request.stream():
                 if len(buffer) + len(chunk) > limit:
                     raise HTTPException(413, "Photo is too large.")
@@ -452,11 +453,14 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
     if not business:
         raise HTTPException(404, "Business not found.")
     content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    media = content_type in IMAGE_TYPES | {"application/pdf"}
+    limit = MAX_IMPORT_MEDIA_BYTES if media else MAX_IMPORT_BYTES
     buffer = bytearray()
     try:
-        async with asyncio.timeout(20):
+        # Big phone photos on mobile data need time to arrive.
+        async with asyncio.timeout(120):
             async for chunk in request.stream():
-                if len(buffer) + len(chunk) > MAX_IMPORT_BYTES:
+                if len(buffer) + len(chunk) > limit:
                     raise HTTPException(413, "FILE_TOO_LARGE")
                 buffer.extend(chunk)
         try:

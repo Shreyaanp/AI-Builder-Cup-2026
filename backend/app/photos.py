@@ -22,7 +22,10 @@ from .settings import Settings
 log = structlog.get_logger()
 
 MAX_SIDE = 1600
-MAX_PIXELS = 40_000_000
+# JPEGs (every phone camera) decode at a reduced scale, so even 200 MP photos stay cheap.
+# Other formats decode in full, so they keep a tighter bound.
+MAX_PIXELS = 200_000_000
+MAX_FULL_DECODE_PIXELS = 50_000_000
 # Fixture moderation only: an image exactly this wide is treated as explicit content.
 FIXTURE_BLOCK_WIDTH = 13
 # SafeSearch likelihood: 0 unknown, 1 very unlikely, 2 unlikely, 3 possible, 4 likely, 5 very.
@@ -81,6 +84,10 @@ def sanitize(data: bytes) -> bytes:
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             Image.MAX_IMAGE_PIXELS = MAX_PIXELS
             with Image.open(io.BytesIO(data)) as source:
+                if source.format == "JPEG":
+                    source.draft("RGB", (MAX_SIDE, MAX_SIDE))
+                elif source.width * source.height > MAX_FULL_DECODE_PIXELS:
+                    raise ValueError("Too many pixels to decode in full")
                 image = ImageOps.exif_transpose(source).convert("RGB")
     except (OSError, ValueError, Image.DecompressionBombError, Image.DecompressionBombWarning):
         raise PhotoRejected(415, "UNREADABLE_IMAGE") from None
