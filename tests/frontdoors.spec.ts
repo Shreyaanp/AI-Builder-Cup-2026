@@ -231,3 +231,75 @@ test('all new copy has nine complete locale translations', async ({ page }) => {
       expect(translations[locale]?.[key], `${locale}.${key}`).toEqual(expect.any(String))
   }
 })
+
+for (const width of [360, 390, 412]) {
+  test(`B35 landing fits ${width}px with readable cards and a vertical story`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto('/?app=landing')
+    await expect(page.locator('.lp-eyebrow')).toHaveCount(0)
+    const business = page.locator('.lp-nav').getByRole('link', { name: 'For businesses' })
+    await expect(business).toBeInViewport()
+    const button = await business.boundingBox()
+    expect(button!.height).toBeGreaterThanOrEqual(48)
+    expect(button!.x + button!.width).toBeLessThanOrEqual(width)
+    await expect(page.locator('.lp-steps li')).toHaveCount(3)
+    for (const step of await page.locator('.lp-steps li').all()) await expect(step).toBeVisible()
+    expect(
+      await page.locator('.lp-story-pin').evaluate((el) => getComputedStyle(el).position),
+    ).toBe('static')
+    expect(await page.locator('.lp-fan-pin').evaluate((el) => getComputedStyle(el).position)).toBe(
+      'static',
+    )
+    for (const card of await page.locator('.lp-tile, .lp-card').all()) {
+      await card.scrollIntoViewIfNeeded()
+      await expect(card).toBeVisible()
+      expect(await card.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+      const box = await card.boundingBox()
+      expect(box!.x).toBeGreaterThanOrEqual(0)
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+    }
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    expect(
+      (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
+        .violations,
+    ).toEqual([])
+    if (width === 390) {
+      // Reload with reduced motion so the typed illustration is complete in the proof.
+      await page.reload()
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+      await page.evaluate(() => scrollTo(0, 0))
+      await page.screenshot({ path: 'docs/bugs/B35-hero.png' })
+      await page.screenshot({ path: 'docs/bugs/B35-business-button.png' })
+      await page
+        .locator('.lp-tile.sold')
+        .evaluate((el) => scrollTo(0, el.getBoundingClientRect().top + scrollY - 100))
+      await page.screenshot({ path: 'docs/bugs/B35-bento.png' })
+    }
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '24px'
+    })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    for (const card of await page.locator('.lp-tile, .lp-card, .lp-steps li').all())
+      expect(await card.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+  })
+}
+
+test('B35 desktop keeps its hero columns, bento and pinned story', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/?app=landing')
+  expect(
+    await page
+      .locator('.lp-hero')
+      .evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length),
+  ).toBe(2)
+  expect(
+    await page
+      .locator('.lp-bento')
+      .evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length),
+  ).toBe(4)
+  expect(await page.locator('.lp-story-pin').evaluate((el) => getComputedStyle(el).position)).toBe(
+    'sticky',
+  )
+  await page.screenshot({ path: 'docs/bugs/B35-desktop.png' })
+})

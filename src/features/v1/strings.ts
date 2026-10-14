@@ -2,6 +2,10 @@ import { useLocale } from '../../state/hooks'
 import { translations } from './locales'
 
 export const en = {
+  installApp: 'Install app',
+  installIos: 'In Safari, tap Share → Add to Home Screen, then tap Add.',
+  installUnavailable:
+    'Installation is not available yet. Try your browser’s install menu, or keep using the web app.',
   importUnavailable:
     'Photo, PDF and note reading needs connected AI. CSV and Excel imports still work.',
   saveSales: 'Save these sales',
