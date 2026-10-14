@@ -469,6 +469,107 @@
         }
       }
     },
+    "/api/v1/public/shops/{business_id}/stock-alerts": {
+      "post": {
+        "summary": "Subscribe Stock",
+        "operationId": "subscribe_stock_api_v1_public_shops__business_id__stock_alerts_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StockAlertInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockAlertReceipt"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Stock Alerts",
+        "operationId": "stock_alerts_api_v1_public_shops__business_id__stock_alerts_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Stock Alerts Api V1 Public Shops  Business Id  Stock Alerts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/photos": {
       "post": {
         "summary": "Photo",
@@ -2707,6 +2808,12 @@
             "title": "Phone",
             "default": ""
           },
+          "reward_text": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Reward Text",
+            "default": ""
+          },
           "currency": {
             "type": "string",
             "pattern": "^[A-Z]{3}$",
@@ -4209,6 +4316,53 @@
           "text"
         ],
         "title": "SpeakRequest"
+      },
+      "StockAlertInput": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Device Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Unit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "device_id",
+          "name",
+          "unit"
+        ],
+        "title": "StockAlertInput"
+      },
+      "StockAlertReceipt": {
+        "properties": {
+          "expires": {
+            "type": "number",
+            "title": "Expires"
+          },
+          "delivery": {
+            "type": "string",
+            "title": "Delivery",
+            "default": "in_page"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expires"
+        ],
+        "title": "StockAlertReceipt"
       },
       "ThreadMessage": {
         "properties": {

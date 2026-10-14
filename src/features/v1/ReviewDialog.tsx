@@ -10,6 +10,7 @@ import { FactList } from './FactList'
 import { Sheet } from './Sheet'
 import { useLocale } from '../../state/hooks'
 import { discoverCopy } from '../discover/strings'
+import { useRewardCopy } from '../rewards/strings'
 
 /**
  * The only place a change is saved: the owner confirms the exact digest the server sealed.
@@ -25,6 +26,7 @@ export function ReviewDialog({
   onSaved: (businessId: string) => Promise<void>
 }) {
   const t = useCopy()
+  const rewards = useRewardCopy()
   const pinCopy = discoverCopy(useLocale())
   const { api, businesses, review } = useWorkspace()
   const [busy, setBusy] = useState(false)
@@ -91,6 +93,14 @@ export function ReviewDialog({
       {snapshot.business && (
         <>
           <Divider />
+          <Box>
+            <Typography variant="labelMedium" color="text.secondary">
+              {rewards.reward}
+            </Typography>
+            <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
+              {snapshot.business.reward_text || '—'}
+            </Typography>
+          </Box>
           <Stack component="dl" spacing={2} sx={{ m: 0 }}>
             {(Object.keys(t.fields) as (keyof typeof t.fields)[])
               .filter((key) => snapshot.business?.[key])
