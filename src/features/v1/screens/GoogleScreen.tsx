@@ -218,7 +218,7 @@ export function GoogleScreen() {
               {t.stepCopyHint}
             </Typography>
             <Box
-              component="dl"
+              component="div"
               sx={{ m: 0, borderRadius: `${shape.md}px`, bgcolor: roles.surface, px: 3 }}
             >
               {rows.map((row) => (
@@ -234,11 +234,11 @@ export function GoogleScreen() {
                   }}
                 >
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography component="dt" variant="labelMedium" color="text.secondary">
+                    <Typography component="div" variant="labelMedium" color="text.secondary">
                       {row.label}
                     </Typography>
                     <Typography
-                      component="dd"
+                      component="div"
                       variant="bodyMedium"
                       sx={{ m: 0, overflowWrap: 'anywhere' }}
                     >
