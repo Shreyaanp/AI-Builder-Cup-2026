@@ -78,3 +78,14 @@ async def read_order_messages(business_id: str, order_id: str, request: Request)
     return await anyio.to_thread.run_sync(
         sourcing.mark_read, store(request), uid, business_id, order_id
     )
+
+
+@router.post("/businesses/{business_id}/orders/{order_id}/received")
+async def order_received(
+    business_id: str, order_id: str, body: OrderVersion, request: Request
+) -> dict[str, Any]:
+    """Returns the received order and, when menu items match, a stock proposal to review."""
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        sourcing.receive, store(request), uid, business_id, order_id, body.version
+    )

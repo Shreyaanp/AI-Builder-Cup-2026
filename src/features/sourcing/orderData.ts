@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useWorkspace } from '../v1/workspaceContext'
+import type { Proposal } from '../v1/api'
 import type { Order } from './types'
 
 const POLL_MS = 2000
@@ -40,4 +41,28 @@ export function deliveryLabel(order: Order, locale: string): string {
     hour: 'numeric',
     minute: '2-digit',
   }).format(when)
+}
+
+/**
+ * "Mark as received": the order is marked received and, when menu items match, the stock update
+ * opens in the usual review so the owner confirms it before the customer page changes.
+ */
+export function useReceiveOrder() {
+  const { api, activeId, review, notify } = useWorkspace()
+  return useCallback(
+    async (order: Order): Promise<Order | null> => {
+      try {
+        const result = await api<{ order: Order; proposal: Proposal | null }>(
+          `/businesses/${encodeURIComponent(activeId ?? '')}/orders/${encodeURIComponent(order.id)}/received`,
+          { method: 'POST', body: JSON.stringify({ version: order.version }) },
+        )
+        if (result.proposal) review(result.proposal)
+        return result.order
+      } catch (cause) {
+        notify(cause instanceof Error ? cause.message : String(cause))
+        return null
+      }
+    },
+    [api, activeId, review, notify],
+  )
 }

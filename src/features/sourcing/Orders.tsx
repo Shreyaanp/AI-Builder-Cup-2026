@@ -13,7 +13,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { ArrowLeft, ArrowUp, Truck } from 'lucide-react'
+import { ArrowLeft, ArrowUp, PackageCheck, Truck } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { enterRise, shape } from '../../design/theme'
 import { formatPrice } from '../v1/format'
@@ -21,7 +21,7 @@ import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useSourcingCopy } from './copy'
-import { deliveryLabel, useOrders } from './orderData'
+import { deliveryLabel, useOrders, useReceiveOrder } from './orderData'
 import { DemoChip, StatusChip } from './SourcingCards'
 import type { Order } from './types'
 
@@ -59,6 +59,7 @@ export function OrdersTile() {
           setOpen(false)
           void refresh()
         }}
+        onChanged={() => void refresh()}
       />
     </>
   )
@@ -69,10 +70,13 @@ export function OrdersSheet({
   open,
   onClose,
   orderId = null,
+  onChanged,
 }: {
   open: boolean
   onClose: () => void
   orderId?: string | null
+  /** An order changed after the sheet closed (e.g. marked received). */
+  onChanged?: () => void
 }) {
   const s = useSourcingCopy()
   const locale = useLocale()
@@ -86,14 +90,16 @@ export function OrdersSheet({
     setPicked(orderId)
   }
   const selected = orders?.find((order) => order.id === picked) ?? null
+  const receiveOrder = useReceiveOrder()
+  function close() {
+    setPicked(null)
+    setSeen(null)
+    onClose()
+  }
   return (
     <Sheet
       open={open}
-      onClose={() => {
-        setPicked(null)
-        setSeen(null)
-        onClose()
-      }}
+      onClose={close}
       titleId="orders-sheet-title"
       title={
         selected ? (
@@ -112,7 +118,16 @@ export function OrdersSheet({
       }
     >
       {selected ? (
-        <Thread key={selected.id} order={selected} onChange={refresh} />
+        <Thread
+          key={selected.id}
+          order={selected}
+          onChange={refresh}
+          onReceived={(order) => {
+            // The stock review is its own dialog; close this sheet first so modals never stack.
+            close()
+            void receiveOrder(order).then(() => onChanged?.())
+          }}
+        />
       ) : orders && orders.length === 0 ? (
         <Typography variant="bodyLarge" color="text.secondary">
           {s.ordersEmpty}
@@ -179,7 +194,15 @@ export function OrdersSheet({
 }
 
 /** One supplier conversation: the structured request, replies, and a composer. */
-function Thread({ order, onChange }: { order: Order; onChange: () => Promise<void> }) {
+function Thread({
+  order,
+  onChange,
+  onReceived,
+}: {
+  order: Order
+  onChange: () => Promise<void>
+  onReceived: (order: Order) => void
+}) {
   const { api, activeId } = useWorkspace()
   const s = useSourcingCopy()
   const locale = useLocale()
@@ -215,7 +238,8 @@ function Thread({ order, onChange }: { order: Order; onChange: () => Promise<voi
       setBusy(false)
     }
   }
-  const closed = order.status === 'cancelled' || order.status === 'replaced'
+  const closed =
+    order.status === 'cancelled' || order.status === 'replaced' || order.status === 'received'
   return (
     <Stack spacing={3}>
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
@@ -279,6 +303,18 @@ function Thread({ order, onChange }: { order: Order; onChange: () => Promise<voi
         )}
       </Stack>
       <div ref={end} />
+      {(order.status === 'confirmed' ||
+        order.status === 'needs_reply' ||
+        order.status === 'sent') && (
+        <Button
+          variant="outlined"
+          startIcon={<PackageCheck size={18} />}
+          onClick={() => onReceived(order)}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          {s.markReceived}
+        </Button>
+      )}
       {!closed && (
         <Box
           component="form"

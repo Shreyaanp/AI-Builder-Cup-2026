@@ -54,5 +54,11 @@ test('running low → demo suppliers → one-tap order → supplier reply → Or
   const tile = page.getByRole('button', { name: /^Orders/ })
   await expect(tile).toContainText('1 open')
   await tile.click()
-  await expect(page.getByRole('dialog', { name: 'Orders' })).toContainText('Confirmed')
+  const orders = page.getByRole('dialog', { name: 'Orders' })
+  await expect(orders).toContainText('Confirmed')
+  // Delivered: no menu item matches the flour, so there is no stock review, only the status.
+  await orders.getByRole('button', { name: /Lakshmi|Kallang|Cash & Carry/ }).click()
+  await page.getByRole('button', { name: 'Mark as received' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(tile).toContainText('None open')
 })

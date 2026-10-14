@@ -61,9 +61,10 @@ export function StatusChip({ status }: { status: OrderStatus }) {
     needs_reply: [roles.tertiaryContainer, roles.onTertiaryContainer],
     cancelled: [roles.surfaceContainerHighest, roles.onSurfaceVariant],
     replaced: [roles.surfaceContainerHighest, roles.onSurfaceVariant],
+    received: [roles.primaryContainer, roles.onPrimaryContainer],
   }
   const icon =
-    status === 'confirmed' ? (
+    status === 'confirmed' || status === 'received' ? (
       <Check size={14} />
     ) : status === 'needs_reply' ? (
       <CircleAlert size={14} />
@@ -359,11 +360,13 @@ export function OrderCard({
   onSend,
   onDiscard,
   onOpen,
+  onReceived,
 }: {
   order: Order
   onSend: (order: Order) => Promise<boolean>
   onDiscard: (order: Order) => Promise<void>
   onOpen: (order: Order) => void
+  onReceived: (order: Order) => void
 }) {
   const roles = useTheme().material
   const s = useSourcingCopy()
@@ -570,13 +573,18 @@ export function OrderCard({
                 {waiting && <CircularProgress size={16} aria-hidden="true" />}
               </Stack>
             )}
-            <Button
-              startIcon={<MessageSquare size={18} />}
-              onClick={() => onOpen(order)}
-              sx={{ mt: 2, ml: -2 }}
-            >
-              {s.openThread}
-            </Button>
+            <Stack direction="row" sx={{ mt: 2, ml: -2, flexWrap: 'wrap', gap: 1 }}>
+              <Button startIcon={<MessageSquare size={18} />} onClick={() => onOpen(order)}>
+                {s.openThread}
+              </Button>
+              {(order.status === 'confirmed' ||
+                order.status === 'sent' ||
+                order.status === 'needs_reply') && (
+                <Button startIcon={<PackageCheck size={18} />} onClick={() => onReceived(order)}>
+                  {s.markReceived}
+                </Button>
+              )}
+            </Stack>
           </Box>
         )}
       </Box>

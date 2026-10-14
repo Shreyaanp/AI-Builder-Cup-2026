@@ -313,3 +313,31 @@ def test_end_to_end_running_low_to_supplier_reply_over_http(settings, monkeypatc
         assert answered["messages"][-1]["text"].startswith("Yes, we can deliver by 8")
         # Demo wholesalers are kept out of the customer Explore listing.
         assert client.post(f"/api/v1/businesses/{bid}/orders/{order['id']}/read").status_code == 200
+
+
+def test_received_order_prepares_a_stock_update_for_review(ctx) -> None:
+    store: MerchantStore = ctx.store
+    proposal = store.propose(
+        "alice",
+        ProposalRequest(
+            kind="inventory",
+            business_id=ctx.business_id,
+            revision=store.context("alice", ctx.business_id)["business"]["revision"],
+            products=[ProductFields(name="Flour", price=6000, unit="kg", stock=2, available=False)],
+        ),
+    )
+    store.commit("alice", proposal["id"], proposal["digest"])
+    found = asyncio.run(find_suppliers("flour"))
+    made = prepare_order(
+        found["suppliers"][0]["id"], [{"name": "flour", "quantity": 20000, "unit": "g"}]
+    )
+    order = ctx.cards[made["card_id"]][1]
+    sent = sourcing.confirm(store, "alice", ctx.business_id, order["id"], order["version"])
+    result = sourcing.receive(store, "alice", ctx.business_id, sent["id"], sent["version"])
+    assert result["order"]["status"] == "received"
+    [flour] = result["proposal"]["snapshot"]["products"]
+    assert flour["stock"] == 22 and flour["available"] is True and flour["price"] == 6000
+    # Nothing changes until the owner confirms the review.
+    assert store.inventory("alice", ctx.business_id)[0]["stock"] == 2
+    store.commit("alice", result["proposal"]["id"], result["proposal"]["digest"])
+    assert store.inventory("alice", ctx.business_id)[0]["stock"] == 22
