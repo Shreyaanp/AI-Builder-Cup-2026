@@ -24,6 +24,7 @@ dependencies = [
   "google-cloud-storage>=3,<4",
   "pillow>=11,<13",
   "openpyxl==3.1.5",
+  "google-cloud-texttospeech==2.38.0",
 ]
 
 [project.optional-dependencies]
