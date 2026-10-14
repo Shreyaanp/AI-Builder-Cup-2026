@@ -31,6 +31,7 @@ import { Fragment, useState } from 'react'
 import type { ReactNode } from 'react'
 import { formatPrice } from '../format'
 import { useCopy } from '../strings'
+import { LoadError } from '../LoadError'
 import { useWorkspace } from '../workspaceContext'
 import { shape } from '../../../design/theme'
 
@@ -43,6 +44,12 @@ export function ShopScreen() {
         <Skeleton variant="text" width="60%" height={48} />
         <Skeleton variant="rounded" height={220} />
       </Stack>
+    )
+  if (ws.loadError)
+    return (
+      <Box sx={{ maxWidth: 760, mx: 'auto', pt: 4 }}>
+        <LoadError />
+      </Box>
     )
   if (!ws.active) return <EmptyShop />
   return (

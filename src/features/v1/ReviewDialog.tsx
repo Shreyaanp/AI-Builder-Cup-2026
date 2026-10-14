@@ -36,12 +36,14 @@ export function ReviewDialog({
   onSaved: (businessId: string) => Promise<void>
 }) {
   const t = useCopy()
-  const { api } = useWorkspace()
+  const { api, businesses } = useWorkspace()
   const roles = useTheme().material
   const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const snapshot = proposal?.snapshot
+  // Honest visibility: shared shops show confirmed changes to customers immediately.
+  const shared = businesses.some((shop) => shop.id === snapshot?.business_id && shop.public)
   const open = proposal !== null
   function close() {
     if (busy) return
@@ -72,7 +74,7 @@ export function ReviewDialog({
           <ShieldCheck size={20} />
         </Box>
         <Typography variant="bodyMedium" color="text.secondary">
-          {t.reviewNote}
+          {shared ? t.reviewNotePublic : t.reviewNote}
         </Typography>
       </Stack>
       {snapshot.business && (

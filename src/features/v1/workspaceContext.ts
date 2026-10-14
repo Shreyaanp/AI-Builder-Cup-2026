@@ -8,6 +8,9 @@ export interface Workspace {
   me: Me
   businesses: Business[]
   loading: boolean
+  /** Shops could not be loaded; show recovery, never the empty "add your shop" state. */
+  loadError: boolean
+  retryLoad: () => Promise<void>
   activeId: string | null
   active: Business | null
   products: Product[]

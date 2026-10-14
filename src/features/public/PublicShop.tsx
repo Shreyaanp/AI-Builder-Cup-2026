@@ -43,6 +43,10 @@ const copy = {
       'Prepared by the shop owner with oGoogle AI · independent prototype, not a Google product',
     loading: 'Loading shop…',
     empty: 'The owner hasn’t added prices yet.',
+    error: 'We couldn’t load this shop right now.',
+    errorBody: 'Check your connection and try again.',
+    retry: 'Try again',
+    stale: 'Couldn’t refresh — showing the last menu we loaded.',
   },
   hi: {
     menu: 'मेनू और दाम',
@@ -57,6 +61,10 @@ const copy = {
     footer: 'दुकान मालिक द्वारा oGoogle AI से तैयार · स्वतंत्र प्रोटोटाइप, Google का उत्पाद नहीं',
     loading: 'दुकान लोड हो रही है…',
     empty: 'मालिक ने अभी दाम नहीं जोड़े हैं।',
+    error: 'यह दुकान अभी लोड नहीं हो सकी।',
+    errorBody: 'कनेक्शन जाँचें और फिर कोशिश करें।',
+    retry: 'फिर कोशिश करें',
+    stale: 'ताज़ा नहीं हो सका — पिछला लोड किया गया मेनू दिख रहा है।',
   },
 }
 
@@ -66,17 +74,32 @@ export default function PublicShop({ id }: { id: string }) {
   const t = copy[language]
   const roles = useTheme().material
   const [shop, setShop] = useState<PublicShopData | null>(null)
-  const [state, setState] = useState<'loading' | 'ready' | 'missing'>('loading')
+  const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
+  // Data shown may be older than the last attempt when a refresh failed (network/server).
+  const [stale, setStale] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   const fetchShop = useCallback(
     (signal?: AbortSignal) =>
       fetch(`/api/v1/public/shops/${encodeURIComponent(id)}`, { signal }).then(async (response) => {
-        if (!response.ok) throw new Error('missing')
+        // 404 = owner stopped sharing; anything else is a transient failure.
+        if (response.status === 404) throw new Error('missing')
+        if (!response.ok) throw new Error('error')
         return (await response.json()) as PublicShopData
       }),
     [id],
   )
+  const apply = useCallback((data: PublicShopData) => {
+    setShop(data)
+    setStale(false)
+    setState('ready')
+  }, [])
+  const failRefresh = useCallback((error: unknown) => {
+    if (error instanceof Error && error.message === 'missing') {
+      setShop(null)
+      setState('missing')
+    } else setStale(true)
+  }, [])
   useEffect(() => {
     const abort = new AbortController()
     void fetchShop(abort.signal)
@@ -86,28 +109,40 @@ export default function PublicShop({ id }: { id: string }) {
         setState('ready')
         document.title = `${data.name} · ${t.menu}`
       })
-      .catch(() => {
-        if (!abort.signal.aborted) setState('missing')
+      .catch((error: unknown) => {
+        if (!abort.signal.aborted)
+          setState(error instanceof Error && error.message === 'missing' ? 'missing' : 'error')
       })
     // Customers returning to the tab see fresh availability.
     const onVisible = () => {
-      if (document.visibilityState === 'visible')
-        void fetchShop()
-          .then(setShop)
-          .catch(() => undefined)
+      if (document.visibilityState === 'visible') void fetchShop().then(apply).catch(failRefresh)
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       abort.abort()
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [fetchShop, t.menu])
+  }, [fetchShop, t.menu, apply, failRefresh])
 
   if (state === 'loading')
     return (
       <Box role="status" sx={{ minHeight: '100dvh', display: 'grid', placeItems: 'center' }}>
         <CircularProgress aria-label={t.loading} />
       </Box>
+    )
+  if (state === 'error')
+    return (
+      <Stack spacing={2} sx={{ maxWidth: 480, mx: 'auto', px: 3, pt: 12, textAlign: 'center' }}>
+        <Typography component="h1" variant="headlineSmall">
+          {t.error}
+        </Typography>
+        <Typography variant="bodyLarge" color="text.secondary">
+          {t.errorBody}
+        </Typography>
+        <Button variant="contained" onClick={() => location.reload()} sx={{ alignSelf: 'center' }}>
+          {t.retry}
+        </Button>
+      </Stack>
     )
   if (state === 'missing' || !shop)
     return (
@@ -201,14 +236,19 @@ export default function PublicShop({ id }: { id: string }) {
           onClick={() => {
             setRefreshing(true)
             void fetchShop()
-              .then(setShop)
-              .catch(() => setState('missing'))
+              .then(apply)
+              .catch(failRefresh)
               .finally(() => setRefreshing(false))
           }}
         >
           {t.refresh}
         </Button>
       </Stack>
+      {stale && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {t.stale}
+        </Alert>
+      )}
       {shop.products.length === 0 ? (
         <Alert severity="info">{t.empty}</Alert>
       ) : (

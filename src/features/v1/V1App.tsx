@@ -4,7 +4,7 @@ import { makeApi } from './api'
 import type { Me } from './api'
 import { AppShell } from './AppShell'
 import { LEGAL_VERSION } from './legal'
-import { ConsentScreen, Splash, Welcome } from './Onboarding'
+import { AccountError, ConsentScreen, Splash, Welcome } from './Onboarding'
 import { WorkspaceProvider } from './WorkspaceProvider'
 
 /** First run: splash → welcome/sign-in → consent → workspace. */
@@ -40,7 +40,8 @@ function Account({ onLeave }: { onLeave: () => void }) {
       })
     return () => abort.abort()
   }, [api])
-  if (failed) return <Welcome onPreview={() => location.reload()} />
+  if (failed)
+    return <AccountError onSignOut={identity.mode === 'firebase' ? identity.signOut : onLeave} />
   if (!me) return <Splash />
   if (!me.consent_current)
     return (
