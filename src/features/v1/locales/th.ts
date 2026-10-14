@@ -267,7 +267,6 @@ export const th: Copy = {
   coachMemory: 'สิ่งที่โค้ชจำไว้',
   forgetNote: 'ลืม',
   currencyLocked: 'เปลี่ยนไม่ได้หลังบันทึกร้านแล้ว',
-  unit: 'หน่วย (แก้ว, กก., ชิ้น…)',
   stockOptional: 'สต็อก (ไม่บังคับ)',
   enterPrice: 'กรุณาระบุราคาที่ถูกต้อง',
   enterName: 'กรุณาระบุชื่อ',

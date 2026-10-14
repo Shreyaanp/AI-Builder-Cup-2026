@@ -277,7 +277,6 @@ export const fil: Copy = {
   coachMemory: 'Mga tinatandaan ng coach',
   forgetNote: 'Kalimutan',
   currencyLocked: 'Hindi na mababago kapag na-save na ang tindahan',
-  unit: 'Yunit (tasa, kg, piraso…)',
   stockOptional: 'Stock (opsyonal)',
   enterPrice: 'Maglagay ng wastong presyo.',
   enterName: 'Maglagay ng pangalan.',

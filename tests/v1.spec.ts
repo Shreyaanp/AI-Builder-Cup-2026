@@ -49,7 +49,9 @@ test('a shop is saved only after reviewing the exact proposal, and persists', as
   await open(page)
   await addShop(page, 'Ram Tea Stall')
   await page.getByRole('button', { name: 'My shop' }).click()
-  await expect(page.getByRole('heading', { name: 'Ram Tea Stall' })).toBeVisible()
+  // The top bar names the shop; My shop starts with its tiles (B26).
+  await expect(page.getByRole('button', { name: /^Shop details/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Choose shop: Ram Tea Stall' })).toBeVisible()
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   // Consent is remembered for this workspace; the shop is restored.

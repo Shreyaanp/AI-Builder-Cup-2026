@@ -56,8 +56,12 @@ async function seedShop(page: Page) {
 async function axe(page: Page) {
   await page.evaluate(async () => {
     await document.fonts.ready
+    // Finite animations only: a focused button's focus ripple pulses forever.
     await Promise.all(
-      document.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => undefined)),
     )
   })
   const result = await new AxeBuilder({ page })
@@ -178,5 +182,196 @@ test('B27: the tile grid sizes to its content at 390, 600 and desktop widths', a
     }
   }
   await page.setViewportSize({ width: 390, height: 844 })
+  await axe(page)
+})
+
+const omit = (item: Record<string, unknown>, key: string) =>
+  Object.fromEntries(Object.entries(item).filter(([name]) => name !== key))
+
+async function openMenu(page: Page) {
+  await page.getByRole('button', { name: /^Menu/ }).tap()
+  const sheet = page.getByRole('dialog', { name: 'Menu' })
+  await expect(sheet).toBeVisible()
+  return sheet
+}
+
+test('B28: every item lands in a category; sections are grids of 2 per row with sold-out marked', async ({
+  page,
+}) => {
+  await enter(page)
+  await seedShop(page)
+  await myShop(page)
+  const sheet = await openMenu(page)
+  await expect(sheet.getByText('Uncategorised')).toHaveCount(0)
+  await expect(sheet.getByRole('heading', { level: 3 })).toHaveText(['Drinks', 'Food', 'Desserts'])
+  const food = sheet.getByRole('region', { name: 'Food' })
+  const cards = food.getByRole('listitem')
+  await expect(cards).toHaveCount(3)
+  const [a, b, c] = await Promise.all(
+    [0, 1, 2].map(async (i) => (await cards.nth(i).boundingBox())!),
+  )
+  // Two per row on a phone, the third on the next row; names and prices fit.
+  expect(Math.abs(a.y - b.y)).toBeLessThan(1)
+  expect(c.y).toBeGreaterThan(a.y + a.height - 1)
+  expect(b.x).toBeGreaterThan(a.x + a.width - 1)
+  const eggs = cards.filter({ hasText: 'Soft-boiled eggs' })
+  await expect(eggs.getByText('Sold out', { exact: true })).toBeVisible()
+  await expect(cards.filter({ hasText: 'Kaya toast' })).toContainText('$2.50')
+  await axe(page)
+})
+
+test('B28: Sort my menu turns uncategorised items into a reviewed proposal', async ({ page }) => {
+  await enter(page)
+  const id = await seedShop(page)
+  // Simulate a menu saved before categories existed: the inventory comes back without them
+  // until the owner confirms the sort.
+  let legacy = true
+  await page.route(`**/api/v1/businesses/${id}/inventory`, async (route) => {
+    const response = await route.fetch()
+    const items = await response.json()
+    await route.fulfill({
+      response,
+      json: legacy ? items.map((item: Record<string, unknown>) => omit(item, 'category')) : items,
+    })
+  })
+  let sorted = 0
+  await page.route(`**/api/v1/businesses/${id}/sort-menu`, async (route) => {
+    sorted += 1
+    // The real endpoint's answer for this menu: one sealed inventory proposal.
+    const items = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
+    const shops = await (await page.request.get('/api/v1/businesses')).json()
+    const proposal = await page.request.post('/api/v1/proposals', {
+      data: {
+        kind: 'inventory',
+        business_id: id,
+        revision: shops[0].revision,
+        products: items.map((item: Record<string, unknown>) => omit(item, 'id')),
+      },
+    })
+    await route.fulfill({ json: await proposal.json() })
+  })
+  await myShop(page)
+  const sheet = await openMenu(page)
+  await expect(sheet.getByText('7 items have no category yet.')).toBeVisible()
+  await expect(sheet.getByRole('heading', { name: 'Uncategorised' })).toBeVisible()
+  await axe(page)
+  await sheet.getByRole('button', { name: 'Sort my menu' }).tap()
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
+  await expect(review).toBeVisible()
+  expect(sorted).toBe(1)
+  // Nothing is saved until the owner confirms.
+  legacy = false
+  await review.getByRole('button', { name: 'Confirm and save' }).tap()
+  await expect(review).toBeHidden()
+  const again = await openMenu(page)
+  await expect(again.getByText(/have no category yet/)).toHaveCount(0)
+  await expect(again.getByRole('heading', { name: 'Drinks' })).toBeVisible()
+})
+
+test('B28: tap a price to change it in place; Enter prepares it, one tap saves, Esc cancels', async ({
+  page,
+}) => {
+  await enter(page)
+  const id = await seedShop(page)
+  await myShop(page)
+  const sheet = await openMenu(page)
+  await sheet.getByRole('button', { name: 'Edit price: Kopi, $1.80' }).tap()
+  const field = sheet.getByRole('textbox', { name: 'Edit price: Kopi' })
+  await expect(field).toBeFocused()
+  await expect(field).toHaveAttribute('inputmode', 'decimal')
+  await field.fill('2.2')
+  await field.press('Enter')
+  // Prepared, not saved: the owner confirms the exact change with one tap.
+  const save = sheet.getByRole('button', { name: 'Save $2.20' })
+  await expect(save).toBeVisible()
+  const kopi = async () =>
+    (await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()).find(
+      (item: { name: string }) => item.name === 'Kopi',
+    )
+  expect((await kopi()).price).toBe(180)
+  await axe(page)
+  await save.tap()
+  await expect(sheet.getByRole('button', { name: 'Edit price: Kopi, $2.20' })).toBeVisible()
+  expect((await kopi()).price).toBe(220)
+  expect((await kopi()).category).toBe('drinks')
+  // Esc cancels the edit and keeps the sheet open; nothing is prepared.
+  await sheet.getByRole('button', { name: 'Edit price: Teh tarik, $2.00' }).tap()
+  const teh = sheet.getByRole('textbox', { name: 'Edit price: Teh tarik' })
+  await teh.fill('9')
+  await teh.press('Escape')
+  await expect(sheet).toBeVisible()
+  await expect(sheet.getByRole('button', { name: 'Edit price: Teh tarik, $2.00' })).toBeVisible()
+  // A price that isn't a number stays in the field with a hint.
+  await sheet.getByRole('button', { name: 'Edit price: Mee siam, $4.50' }).tap()
+  const mee = sheet.getByRole('textbox', { name: 'Edit price: Mee siam' })
+  await mee.fill('abc')
+  await mee.press('Enter')
+  await expect(sheet.getByText('Enter a price, e.g. 2.50')).toBeVisible()
+  await expect(mee).toHaveAttribute('aria-invalid', 'true')
+})
+
+test('B28: units are a fixed dropdown; legacy units show until replaced, without duplicates', async ({
+  page,
+}) => {
+  await enter(page)
+  const id = await seedShop(page)
+  await myShop(page)
+  let sheet = await openMenu(page)
+  // "pcs" is shown as the fixed unit it means.
+  await expect(
+    sheet
+      .getByRole('listitem')
+      .filter({ hasText: 'Kaya toast' })
+      .getByText('piece', { exact: true }),
+  ).toBeVisible()
+  // Free text no unit matches stays exactly as saved.
+  const kueh = sheet.getByRole('listitem').filter({ hasText: 'Kueh lapis' })
+  await expect(kueh.getByText('tray', { exact: true })).toBeVisible()
+  await kueh.getByRole('button', { name: 'Edit Kueh lapis' }).tap()
+  const form = page.getByRole('dialog', { name: 'Edit' })
+  const unit = form.getByRole('combobox', { name: 'Unit' })
+  await expect(unit).toHaveText('tray (current)')
+  await unit.tap()
+  await expect(page.getByRole('option')).toHaveCount(20)
+  await page.getByRole('option', { name: 'box', exact: true }).tap()
+  await form.getByRole('button', { name: 'Review', exact: true }).tap()
+  await page.getByRole('button', { name: 'Confirm and save' }).tap()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const items = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
+  expect(
+    items
+      .filter((item: { name: string }) => item.name === 'Kueh lapis')
+      .map((item: { unit: string }) => item.unit),
+  ).toEqual(['box'])
+  sheet = await openMenu(page)
+  await expect(
+    sheet.getByRole('listitem').filter({ hasText: 'Kueh lapis' }).getByText('box', { exact: true }),
+  ).toBeVisible()
+  // A new item offers only the fixed list.
+  await sheet.getByRole('button', { name: 'Add product' }).tap()
+  await page.getByRole('combobox', { name: 'Unit' }).tap()
+  await expect(page.getByRole('option')).toHaveCount(19)
+})
+
+test('B28: the menu sheet actions are one compact, aligned row on a phone', async ({ page }) => {
+  await enter(page)
+  await seedShop(page)
+  await myShop(page)
+  const sheet = await openMenu(page)
+  const importButton = sheet.getByRole('button', {
+    name: 'Import sales or menu (Excel, photo, notes)',
+  })
+  const add = sheet.getByRole('button', { name: 'Add product' })
+  await expect(importButton).toHaveText('Import')
+  const [a, b] = [(await importButton.boundingBox())!, (await add.boundingBox())!]
+  expect(Math.abs(a.y - b.y)).toBeLessThan(1)
+  expect(a.height).toBe(b.height)
+  expect(a.height).toBeLessThanOrEqual(48)
+  expect(b.x + b.width).toBeLessThanOrEqual(390)
+  // Its choices open in the sheet, not in the action row.
+  await importButton.tap()
+  await expect(importButton).toHaveAttribute('aria-expanded', 'true')
+  await expect(sheet.getByRole('button', { name: 'Upload file' })).toBeVisible()
+  expect((await importButton.boundingBox())!.y).toBeCloseTo(a.y, 0)
   await axe(page)
 })

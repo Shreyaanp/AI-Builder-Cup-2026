@@ -274,7 +274,6 @@ export const id: Copy = {
   coachMemory: 'Yang diingat pelatih',
   forgetNote: 'Lupakan',
   currencyLocked: 'Tidak bisa diubah setelah toko disimpan',
-  unit: 'Satuan (cangkir, kg, buah…)',
   stockOptional: 'Stok (opsional)',
   enterPrice: 'Masukkan harga yang valid.',
   enterName: 'Masukkan nama.',

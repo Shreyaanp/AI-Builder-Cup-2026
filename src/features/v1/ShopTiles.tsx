@@ -10,7 +10,6 @@ import {
   LinearProgress,
   List,
   ListItem,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
   Stack,
@@ -39,7 +38,7 @@ import {
 import { formatPrice, shopCurrency } from './format'
 import { FactList } from './FactList'
 import { PendingCard } from './PendingCard'
-import { ImportMenu, SalesImportSheet, type SalesImport } from './ImportMenu'
+import { MenuSheet } from '../shop/MenuSheet'
 import { FreshnessCard, RecapTile } from '../sales/ShopInsights'
 import { PrepPlanTile } from '../forecast/PrepPlan'
 import { Sheet } from './Sheet'
@@ -308,8 +307,8 @@ export function ShopTiles({
         onClick={() => onSheet('plan')}
       />
       <Tile
-        // Its progress bar wants width; done, it is one short line.
-        span={done < total ? 2 : 1}
+        // Its progress bar wants width; done, it is one thin row across the grid.
+        span={done < total ? 2 : 'full'}
         icon={<Gauge size={20} />}
         compact={done === total}
         label={t.readinessTitle}
@@ -349,11 +348,9 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
   const roles = useTheme().material
   // Keep the last sheet's content while it slides away.
   const [last, setLast] = useState(kind)
-  const [sales, setSales] = useState<SalesImport | null>(null)
   if (kind !== null && kind !== last) setLast(kind)
   const shop = ws.active
   if (!shop) return null
-  const currency = shopCurrency(shop)
   // Editors are their own dialogs; close the sheet first so modals never stack.
   const then = (run: () => void) => () => {
     onClose()
@@ -475,69 +472,7 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
         </Sheet>
       )
     case 'menu':
-      return (
-        <>
-          <Sheet
-            {...common}
-            titleId="menu-sheet-title"
-            title={t.menu}
-            actions={
-              <>
-                <ImportMenu onBeforeReview={onClose} onSales={setSales} />
-                {addProduct}
-              </>
-            }
-          >
-            {ws.products.length === 0 ? (
-              <Typography variant="bodyMedium" color="text.secondary">
-                {t.productsEmpty}
-              </Typography>
-            ) : (
-              <CategoryGroups products={ws.products}>
-                {(items) => (
-                  <List disablePadding>
-                    {items.map((product, index) => {
-                      const available = product.available !== false
-                      return (
-                        <ListItem key={product.id ?? product.name} disablePadding>
-                          <ListItemButton
-                            key={product.id ?? product.name}
-                            divider={index < items.length - 1}
-                            aria-label={`${t.editProduct} ${product.name}`}
-                            onClick={then(() => ws.openEditor({ kind: 'product', product }))}
-                            sx={{ borderRadius: 0, minHeight: 56, gap: 2 }}
-                          >
-                            <ListItemText
-                              primary={product.name}
-                              secondary={
-                                available ? product.unit : `${t.soldOut} · ${product.unit}`
-                              }
-                              slotProps={{
-                                primary: { variant: 'bodyLarge', noWrap: true },
-                                secondary: {
-                                  variant: 'bodySmall',
-                                  color: available ? 'text.secondary' : 'error',
-                                },
-                              }}
-                            />
-                            <Typography
-                              variant="titleSmall"
-                              sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
-                            >
-                              {formatPrice(product.price, currency)}
-                            </Typography>
-                          </ListItemButton>
-                        </ListItem>
-                      )
-                    })}
-                  </List>
-                )}
-              </CategoryGroups>
-            )}
-          </Sheet>
-          <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
-        </>
-      )
+      return <MenuSheet {...common} />
     case 'soldOut':
       return (
         <Sheet {...common} titleId="soldout-sheet-title" title={t.soldOutToday}>

@@ -35,6 +35,8 @@ import type { AskFact } from './shopProgress'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { enterRise, fieldFade, shape } from '../../design/theme'
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 
 /** Before any shop exists: one start card, nothing else. */
 export function StartCard() {
@@ -373,6 +375,7 @@ export function ShopSheet({
   onAnswer?: (fact: AskFact) => void
 }) {
   const t = useCopy()
+  const shopCopy = useShopCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   const shop = ws.active
@@ -492,7 +495,7 @@ export function ShopSheet({
                       primary={product.name}
                       secondary={
                         (available ? '' : `${t.soldOut} · `) +
-                        `${formatPrice(product.price, currency)} / ${product.unit}`
+                        `${formatPrice(product.price, currency)} / ${unitLabel(product.unit, shopCopy)}`
                       }
                       slotProps={{
                         primary: { variant: 'bodyLarge' },

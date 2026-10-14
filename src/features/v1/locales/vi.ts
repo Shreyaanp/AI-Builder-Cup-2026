@@ -272,7 +272,6 @@ export const vi: Copy = {
   coachMemory: 'Những điều trợ lý ghi nhớ',
   forgetNote: 'Quên',
   currencyLocked: 'Không thể đổi sau khi đã lưu cửa hàng',
-  unit: 'Đơn vị (cốc, kg, cái…)',
   stockOptional: 'Tồn kho (không bắt buộc)',
   enterPrice: 'Nhập giá hợp lệ.',
   enterName: 'Nhập tên.',
