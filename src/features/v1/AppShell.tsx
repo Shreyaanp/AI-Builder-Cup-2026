@@ -43,7 +43,7 @@ import { useCopy } from './strings'
 import { isLanguagePref, LOCALE_NAMES, LOCALES, systemLocale } from '../../i18n/locales'
 import { useWorkspace } from './workspaceContext'
 import type { Destination } from './workspaceContext'
-import { CoachScreen } from './screens/CoachScreen'
+import { CoachWorkspace } from './screens/CoachScreen'
 import { ShopScreen } from './screens/ShopScreen'
 import { ShopOverview } from './ShopTiles'
 import { GoogleScreen } from './screens/GoogleScreen'
@@ -132,7 +132,7 @@ export function AppShell() {
             {/* Coach stays mounted while hidden so drafts, replies and voice survive tab
                 changes; keyed by shop so each shop has its own thread. */}
             <Box hidden={ws.destination !== 'coach'} sx={{ height: '100%' }}>
-              <CoachScreen key={ws.activeId ?? 'no-shop'} />
+              <CoachWorkspace />
             </Box>
             {screen}
           </Box>
@@ -270,7 +270,15 @@ function NavItem({
       >
         {item.icon}
       </Box>
-      <Typography variant="labelMedium" sx={{ fontWeight: selected ? 700 : 500 }}>
+      <Typography
+        variant="labelMedium"
+        sx={{
+          fontWeight: selected ? 700 : 500,
+          lineHeight: 1.8,
+          py: 0.5,
+          'html[lang="ta"] &': { fontFamily: '"Noto Sans Tamil", sans-serif' },
+        }}
+      >
         {item.label}
       </Typography>
     </ButtonBase>

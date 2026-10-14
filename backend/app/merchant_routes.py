@@ -387,12 +387,29 @@ async def photo(
                 current.reset(token)
 
         proposal = await anyio.to_thread.run_sync(propose_menu)
+    pin_proposal = None
+    if business is not None and products and pin and business["fields"].get("lat") is None:
+        # Linked to this photo's menu review, but sealed/approved independently. Approving
+        # either makes the other stale; the owner must explicitly review it again.
+        allowed = BusinessFields.model_fields
+        fields = {k: v for k, v in business["fields"].items() if k in allowed} | pin
+        pin_proposal = await anyio.to_thread.run_sync(
+            service.propose,
+            uid,
+            ProposalRequest(
+                kind="business",
+                business_id=business["id"],
+                revision=business["revision"],
+                business=BusinessFields.model_validate(fields),
+            ),
+        )
     return {
         "status": "needs_review" if proposal else "nothing_to_propose",
         "photo_id": outcome["photo_id"],
         "photo_kind": extraction.photo_kind,
         "extraction": extraction.model_dump(),
         "proposal": proposal,
+        "pin_proposal": pin_proposal,
         "google_publication": "not_connected",
     }
 

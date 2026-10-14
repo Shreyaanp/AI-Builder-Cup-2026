@@ -69,3 +69,52 @@ def test_storefront_photo_proposes_a_pin_for_a_shop_without_one(app, monkeypatch
         assert (business["lat"], business["lng"]) == (1.305, 103.905)
         # A photo without location changes nothing.
         assert upload(client, located_jpeg(None), f"?business_id={bid}").json()["proposal"] is None
+
+
+def test_existing_menu_photo_links_separate_pin_approval_and_rejects_stale(app) -> None:  # noqa: F811
+    with TestClient(app) as client:
+        join(client)
+        first = upload(client, located_jpeg(None)).json()["proposal"]
+        bid = client.post(
+            f"/api/v1/proposals/{first['id']}/approve", json={"digest": first["digest"]}
+        ).json()["business_id"]
+        body = upload(client, located_jpeg(), f"?business_id={bid}").json()
+        menu, pin = body["proposal"], body["pin_proposal"]
+        assert menu["snapshot"]["kind"] == "inventory"
+        assert pin["snapshot"]["kind"] == "business"
+        assert menu["snapshot"]["business_id"] == pin["snapshot"]["business_id"] == bid
+        assert (pin["snapshot"]["business"]["lat"], pin["snapshot"]["business"]["lng"]) == (
+            1.305,
+            103.905,
+        )
+        assert client.get("/api/v1/businesses").json()[0]["fields"].get("lat") is None
+        assert (
+            client.post(
+                f"/api/v1/proposals/{menu['id']}/approve", json={"digest": menu["digest"]}
+            ).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                f"/api/v1/proposals/{pin['id']}/approve", json={"digest": pin["digest"]}
+            ).status_code
+            == 409
+        )
+        # Explicit new review at the current revision, never a silent rebase/commit.
+        current = client.get("/api/v1/businesses").json()[0]
+        revised = client.post(
+            "/api/v1/proposals",
+            json={
+                **pin["snapshot"],
+                "revision": current["revision"],
+            },
+        ).json()
+        assert client.get("/api/v1/businesses").json()[0]["fields"].get("lat") is None
+        assert (
+            client.post(
+                f"/api/v1/proposals/{revised['id']}/approve", json={"digest": revised["digest"]}
+            ).status_code
+            == 200
+        )
+        assert client.get("/api/v1/businesses").json()[0]["fields"]["lat"] == 1.305
+        assert upload(client, located_jpeg(), f"?business_id={bid}").json()["pin_proposal"] is None

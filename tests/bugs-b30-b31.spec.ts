@@ -62,7 +62,7 @@ for (const mode of ['light', 'dark'] as const) {
       '/explore/',
     )
     expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(
-      mode === 'light' ? 'rgb(255, 255, 255)' : 'rgb(17, 17, 17)',
+      mode === 'light' ? 'rgb(243, 243, 243)' : 'rgb(17, 17, 17)',
     )
     const button = page.getByRole('button', { name: 'Chat with the shop' })
     expect(await button.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(
@@ -76,13 +76,13 @@ for (const mode of ['light', 'dark'] as const) {
     await axe(page)
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
       'content',
-      mode === 'light' ? '#ffffff' : '#111111',
+      mode === 'light' ? '#f3f3f3' : '#111111',
     )
     const opposite = mode === 'light' ? 'dark' : 'light'
     await page.emulateMedia({ colorScheme: opposite })
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
       'content',
-      opposite === 'light' ? '#ffffff' : '#111111',
+      opposite === 'light' ? '#f3f3f3' : '#111111',
     )
   })
 }

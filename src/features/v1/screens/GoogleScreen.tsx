@@ -63,9 +63,8 @@ const motionKeyframes = {
     to: { opacity: 1, transform: 'none' },
   },
   '@keyframes cbPulse': {
-    '0%': { boxShadow: '0 0 0 0 currentColor' },
-    '70%': { boxShadow: '0 0 0 10px transparent' },
-    '100%': { boxShadow: '0 0 0 0 transparent' },
+    from: { opacity: 0.7, transform: 'scale(1)' },
+    to: { opacity: 0, transform: 'scale(1.8)' },
   },
 }
 
@@ -193,7 +192,7 @@ export function GoogleScreen() {
           tabIndex={-1}
           component="h2"
           variant="titleLarge"
-          sx={{ mt: 1, outline: 'none' }}
+          sx={{ mt: 1, '&:focus': { outline: `3px solid ${roles.primary}`, outlineOffset: 4 } }}
         >
           {titles[step]}
         </Typography>
@@ -658,13 +657,33 @@ function ProfilePreview({
             </Typography>
           )}
         </Box>
-        <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+        <Stack
+          component="ul"
+          aria-label={g.previewLabel}
+          sx={{ m: 0, p: 0, gap: 1, listStyle: 'none' }}
+        >
           {[
             { icon: <Navigation size={16} />, label: g.directions },
-            { icon: <Phone size={16} />, label: g.call },
+            ...(phone ? [{ icon: <Phone size={16} />, label: g.call }] : []),
             { icon: <Utensils size={16} />, label: g.menu },
           ].map((action) => (
-            <Chip key={action.label} icon={action.icon} label={action.label} variant="outlined" />
+            <Box
+              component="li"
+              key={action.label}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                color: roles.onSurfaceVariant,
+                typography: 'bodySmall',
+                cursor: 'default',
+              }}
+            >
+              <Box component="span" aria-hidden="true" sx={{ display: 'flex' }}>
+                {action.icon}
+              </Box>
+              {action.label} · {g.previewLabel}
+            </Box>
           ))}
         </Stack>
         {location && (
@@ -748,6 +767,7 @@ function Status({
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Box
           aria-hidden="true"
+          data-google-waiting={pending || undefined}
           sx={{
             width: 24,
             height: 24,
@@ -758,7 +778,19 @@ function Status({
             color,
             border: `2px solid ${color}`,
             bgcolor: done ? color : 'transparent',
-            animation: pending ? 'cbPulse 1.8s ease-out infinite' : undefined,
+            position: 'relative',
+            ...(pending && {
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                inset: -2,
+                borderRadius: '50%',
+                border: '2px solid currentColor',
+                opacity: 0,
+                animation: 'cbPulse 1.5s ease-out 3',
+                '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+              },
+            }),
           }}
         >
           {done && <Check size={14} color={roles.onPrimary} />}

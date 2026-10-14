@@ -225,7 +225,43 @@ FACT_COPY = {
 }
 
 
+HALAL_COPY = {
+    "en": (
+        "Halal, according to the owner.",
+        "Not halal, according to the owner.",
+        "Muslim-owned, according to the owner. Halal status is not stated.",
+        "Halal status is not listed. Please contact the shop.",
+        "Not certified or verified by Chalkboard; ask the shop about certification.",
+    ),
+    "ta": (
+        "உரிமையாளர் கூறியபடி ஹலால்.",
+        "உரிமையாளர் கூறியபடி ஹலால் இல்லை.",
+        "உரிமையாளர் கூறியபடி முஸ்லிம் உரிமையாளர். ஹலால் நிலை குறிப்பிடப்படவில்லை.",
+        "ஹலால் நிலை குறிப்பிடப்படவில்லை. கடையைத் தொடர்புகொள்ளவும்.",
+        "Chalkboard சான்றளிக்கவோ சரிபார்க்கவோ இல்லை; சான்றிதழைப் பற்றி கடையிடம் கேளுங்கள்.",
+    ),
+}
+
+
+def halal_answer(shop: dict[str, Any], question: Question) -> Answer | None:
+    # Public facts have the same authority in offline and provider/fallback modes.
+    # Match a fact question only, never instructions or a mixed safety question.
+    if not re.fullmatch(
+        r"[\s?？.!]*(?:is (?:it |this (?:shop )?)?)?(?:halal|ஹலால்|清真|ハラール|할랄|ฮาลาล)"
+        r"(?:[\s?？.!]|certified|certification|சான்றிதழ்)*",
+        question.question.casefold(),
+    ):
+        return None
+    yes, no, muslim, unknown, disclaimer = HALAL_COPY.get(question.language, HALAL_COPY["en"])
+    state = str((shop.get("facts") or {}).get("halal") or "")
+    text = {"yes": yes, "no": no, "muslim_owned": muslim}.get(state, unknown)
+    return Answer(answer=f"{text} {disclaimer}", mode="fixture")
+
+
 def fixture_answer(shop: dict[str, Any], question: Question) -> Answer:
+    halal = halal_answer(shop, question)
+    if halal:
+        return halal
     missing, price_label, hours, location, available, sold_out = FIXTURE_COPY.get(
         question.language, FIXTURE_COPY["en"]
     )
@@ -360,6 +396,9 @@ class CustomerAnswers:
         self.active = asyncio.Semaphore(4)
 
     async def answer(self, shop: dict[str, Any], question: Question) -> Answer:
+        halal = halal_answer(shop, question)
+        if halal:
+            return halal
         if self.settings.coach_mode != "gemini":
             return fixture_answer(shop, question)
         from google import genai
