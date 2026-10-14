@@ -270,7 +270,6 @@ export const zhHans: Copy = {
   stockOptional: '库存（选填）',
   enterPrice: '请输入有效价格。',
   enterName: '请输入名称。',
-  draft: '草稿',
   verificationPending: '待检查',
   customerPage: '顾客页面',
   customerPageOff: '开启后获取链接，顾客可查看菜单、价格和营业时间。',

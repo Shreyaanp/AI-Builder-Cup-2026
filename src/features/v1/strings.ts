@@ -290,7 +290,6 @@ export const en = {
   stockOptional: 'Stock (optional)',
   enterPrice: 'Enter a valid price.',
   enterName: 'Enter a name.',
-  draft: 'Draft',
   verificationPending: 'Check pending',
   customerPage: 'Customer page',
   customerPageOff: 'Turn on to get a link customers can open to see your menu, prices and hours.',

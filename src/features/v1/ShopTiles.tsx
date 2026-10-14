@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   ButtonBase,
+  Chip,
   IconButton,
   LinearProgress,
   List,
@@ -305,6 +306,16 @@ export function ShopTiles({
         value={t.readiness(done, total)}
         onClick={() => onSheet('readiness')}
       >
+        {shop.registration === 'verification_pending' && (
+          <Box component="span">
+            <Chip
+              component="span"
+              size="small"
+              label={t.verificationPending}
+              sx={{ bgcolor: roles.secondaryContainer, color: roles.onSecondaryContainer }}
+            />
+          </Box>
+        )}
         {done < total && (
           <LinearProgress
             variant="determinate"

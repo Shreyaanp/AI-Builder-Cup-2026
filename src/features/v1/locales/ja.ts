@@ -274,7 +274,6 @@ export const ja: Copy = {
   stockOptional: '在庫（任意）',
   enterPrice: '有効な価格を入力してください。',
   enterName: '名前を入力してください。',
-  draft: '下書き',
   verificationPending: '確認待ち',
   customerPage: 'お客様向けページ',
   customerPageOff: '有効にすると、メニュー、価格、営業時間を見られるリンクが作成されます。',
