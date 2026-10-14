@@ -1,6 +1,32 @@
 import type { Copy } from '../strings'
 
 export const ta: Copy = {
+  saveSales: 'இந்த விற்பனையைச் சேமிக்கவும்',
+  salesSaved: 'விற்பனை சேமிக்கப்பட்டது',
+  salesReplace:
+    'சேமித்தால் இந்தத் தேதிகளின் அனைத்து விற்பனையும் மாற்றப்படும். மற்ற நாட்கள் மாறாது.',
+  salesDaily: 'சேமிக்க வேண்டிய தினசரி விற்பனை',
+  fromSales: 'உங்கள் விற்பனையிலிருந்து',
+  salesMethod: 'கடந்த 4 வாரங்களில் அதே கிழமையின் சராசரி, முழு எண்ணாக்கப்பட்டது.',
+  recapTitle: 'வாரச் சுருக்கம்',
+  recapHint: 'சேமித்த விற்பனையையும் வாடிக்கையாளர் செயல்பாட்டையும் பார்க்கவும்.',
+  recapEmpty: 'இந்த வார விற்பனை சேமிக்கப்படவில்லை. விற்பனைக் கோப்பை இறக்குமதி செய்து சேமிக்கவும்.',
+  recapPrevious: 'முந்தைய வாரம்',
+  revenue: 'வருவாய்',
+  soldOutEvents: 'பதிவான விற்றுத் தீர்ந்த மாற்றங்கள்',
+  customerQuestionCount: 'வாடிக்கையாளர் செய்திகள்',
+  slowMovers: 'மெதுவாக விற்கும் பொருட்கள்',
+  writtenByAi: 'AI எழுதியது',
+  offlineRecap: 'ஆஃப்லைன் வார்ப்புரு',
+  freshnessTitle: 'இன்றும் அதே உணவுப் பட்டியலா?',
+  freshnessYes: 'ஆம், எல்லாம் சரி',
+  freshnessChanged: 'ஏதோ மாறியுள்ளது',
+  todayDraft: 'இன்று: ',
+  updatedToday: 'இன்று புதுப்பிக்கப்பட்டது',
+  menuUnconfirmed: 'பட்டியல் இன்னும் உறுதிப்படுத்தப்படவில்லை',
+  updatedDays: (n: number) => `${n} நாட்களுக்கு முன் புதுப்பிக்கப்பட்டது`,
+  recapCoverage: (days: number, previous: number) =>
+    `${days} நாள் விற்பனை சேமிப்பு · முந்தைய வாரம் ${previous}`,
   rateLimited: 'அதிகமான கோரிக்கைகள். ஒரு நிமிடம் கழித்து மீண்டும் முயலுங்கள்.',
   connectionOffline: 'இணைய இணைப்பு இல்லை',
   connectionReconnecting: 'மீண்டும் இணைக்கிறது…',

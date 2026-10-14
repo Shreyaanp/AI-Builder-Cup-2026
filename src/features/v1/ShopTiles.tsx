@@ -36,7 +36,8 @@ import {
 import { formatPrice, shopCurrency } from './format'
 import { FactList } from './FactList'
 import { PendingCard } from './PendingCard'
-import { ImportMenu } from './ImportMenu'
+import { ImportMenu, SalesImportSheet, type SalesImport } from './ImportMenu'
+import { FreshnessCard, RecapTile } from '../sales/ShopInsights'
 import { Sheet } from './Sheet'
 import { ShopQr } from './ShopQr'
 import { useUnread } from './useUnread'
@@ -95,7 +96,6 @@ export function Tile({
         <Typography
           component="span"
           variant="labelLarge"
-          noWrap
           sx={{ flex: 1, color: roles.onSurfaceVariant }}
         >
           {label}
@@ -146,6 +146,7 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
         />
       )}
       <ShopTiles unread={unread} onSheet={setSheet} narrow={narrow} />
+      {!narrow && <FreshnessCard />}
       <ShopSheets
         kind={sheet}
         onClose={() => {
@@ -288,6 +289,7 @@ export function ShopTiles({
           sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
         />
       </Tile>
+      <RecapTile />
     </Box>
   )
 }
@@ -300,6 +302,7 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
   const roles = useTheme().material
   // Keep the last sheet's content while it slides away.
   const [last, setLast] = useState(kind)
+  const [sales, setSales] = useState<SalesImport | null>(null)
   if (kind !== null && kind !== last) setLast(kind)
   const shop = ws.active
   if (!shop) return null
@@ -373,56 +376,59 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
       )
     case 'menu':
       return (
-        <Sheet
-          {...common}
-          titleId="menu-sheet-title"
-          title={t.menu}
-          actions={
-            <>
-              <ImportMenu onBeforeReview={onClose} />
-              {addProduct}
-            </>
-          }
-        >
-          {ws.products.length === 0 ? (
-            <Typography variant="bodyMedium" color="text.secondary">
-              {t.productsEmpty}
-            </Typography>
-          ) : (
-            <List disablePadding sx={list}>
-              {ws.products.map((product, index) => {
-                const available = product.available !== false
-                return (
-                  <ListItemButton
-                    key={product.id ?? product.name}
-                    divider={index < ws.products.length - 1}
-                    aria-label={`${t.editProduct} ${product.name}`}
-                    onClick={then(() => ws.openEditor({ kind: 'product', product }))}
-                    sx={{ borderRadius: 0, minHeight: 56, gap: 2 }}
-                  >
-                    <ListItemText
-                      primary={product.name}
-                      secondary={available ? product.unit : `${t.soldOut} · ${product.unit}`}
-                      slotProps={{
-                        primary: { variant: 'bodyLarge', noWrap: true },
-                        secondary: {
-                          variant: 'bodySmall',
-                          color: available ? 'text.secondary' : 'error',
-                        },
-                      }}
-                    />
-                    <Typography
-                      variant="titleSmall"
-                      sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+        <>
+          <Sheet
+            {...common}
+            titleId="menu-sheet-title"
+            title={t.menu}
+            actions={
+              <>
+                <ImportMenu onBeforeReview={onClose} onSales={setSales} />
+                {addProduct}
+              </>
+            }
+          >
+            {ws.products.length === 0 ? (
+              <Typography variant="bodyMedium" color="text.secondary">
+                {t.productsEmpty}
+              </Typography>
+            ) : (
+              <List disablePadding sx={list}>
+                {ws.products.map((product, index) => {
+                  const available = product.available !== false
+                  return (
+                    <ListItemButton
+                      key={product.id ?? product.name}
+                      divider={index < ws.products.length - 1}
+                      aria-label={`${t.editProduct} ${product.name}`}
+                      onClick={then(() => ws.openEditor({ kind: 'product', product }))}
+                      sx={{ borderRadius: 0, minHeight: 56, gap: 2 }}
                     >
-                      {formatPrice(product.price, currency)}
-                    </Typography>
-                  </ListItemButton>
-                )
-              })}
-            </List>
-          )}
-        </Sheet>
+                      <ListItemText
+                        primary={product.name}
+                        secondary={available ? product.unit : `${t.soldOut} · ${product.unit}`}
+                        slotProps={{
+                          primary: { variant: 'bodyLarge', noWrap: true },
+                          secondary: {
+                            variant: 'bodySmall',
+                            color: available ? 'text.secondary' : 'error',
+                          },
+                        }}
+                      />
+                      <Typography
+                        variant="titleSmall"
+                        sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        {formatPrice(product.price, currency)}
+                      </Typography>
+                    </ListItemButton>
+                  )
+                })}
+              </List>
+            )}
+          </Sheet>
+          <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
+        </>
       )
     case 'soldOut':
       return (
