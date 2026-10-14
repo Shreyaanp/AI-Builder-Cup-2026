@@ -113,7 +113,7 @@ def test_pin_consent_sealed_review_and_changed_location_both_stores(
     def fixture(request: httpx.Request) -> httpx.Response:
         calls.append(request)
         assert request.url.host == "maps.googleapis.com"
-        assert request.url.params["region"] == "sg"
+        assert "region" not in request.url.params  # global: no country bias
         return httpx.Response(
             200,
             json={
@@ -197,6 +197,68 @@ def test_pin_consent_sealed_review_and_changed_location_both_stores(
             == 404
         )
         assert len(calls) == 1
+
+
+def test_place_search_works_anywhere_and_text_search_has_no_country(tmp_path: Path) -> None:
+    seen: list[httpx.Request] = []
+
+    def fixture(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if request.url.host == "places.googleapis.com":
+            assert "Singapore" not in json.loads(request.content)["textQuery"]
+            assert "regionCode" not in json.loads(request.content)
+            return httpx.Response(200, json={"places": []})
+        assert "region" not in request.url.params
+        return httpx.Response(
+            200,
+            json={
+                "status": "OK",
+                "results": [
+                    {
+                        "place_id": "fixture-bengaluru",
+                        "formatted_address": "Indiranagar, Bengaluru, Karnataka, India",
+                        "geometry": {"location": {"lat": 12.9719, "lng": 77.6412}},
+                    }
+                ],
+            },
+        )
+
+    config = settings(tmp_path, live=True)
+    app = create_app(
+        config,
+        InMemorySessionService(),
+        maps_service=MapsService(config, httpx.MockTransport(fixture)),
+    )
+    with TestClient(app) as client:
+        found = client.get("/api/v1/discover/place", params={"q": "Indiranagar"}).json()
+        assert found == {
+            "lat": 12.9719,
+            "lng": 77.6412,
+            "label": "Indiranagar, Bengaluru, Karnataka, India",
+        }
+        client.get("/api/v1/discover", params={"lat": 12.9719, "lng": 77.6412, "q": "dosa"})
+        assert any(r.url.host == "places.googleapis.com" for r in seen)
+        assert client.get("/api/v1/discover/place", params={"q": "x"}).status_code == 422
+
+
+def test_new_shop_opens_in_the_owners_own_timezone(tmp_path: Path) -> None:
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        join(client)
+
+        def zone(header: str | None, business: dict) -> str:
+            headers = {"X-Client-Timezone": header} if header else {}
+            body = {"kind": "business", "business": business}
+            proposal = client.post("/api/v1/proposals", json=body, headers=headers).json()
+            # The default zone is omitted from stored records.
+            return str(proposal["snapshot"]["business"].get("timezone", "Asia/Singapore"))
+
+        assert zone("Asia/Kolkata", {"name": "Dosa Corner"}) == "Asia/Kolkata"
+        assert zone("Europe/London", {"name": "Cafe"}) == "Europe/London"
+        assert zone(None, {"name": "Kopi"}) == "Asia/Singapore"  # no header: demo default
+        assert zone("Not/AZone", {"name": "Kopi"}) == "Asia/Singapore"  # invalid: ignored
+        # An explicit timezone from the owner always wins over the phone's.
+        assert zone("Asia/Kolkata", {"name": "Kopi", "timezone": "Asia/Tokyo"}) == "Asia/Tokyo"
 
 
 def test_fixture_pin_and_missing_one_key(tmp_path: Path) -> None:

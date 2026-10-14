@@ -25,7 +25,7 @@ from pydantic import (
 
 from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
-from .shop_time import shop_timezone
+from .shop_time import client_timezone, shop_timezone
 from .stock_alerts import (
     ALERT_SECONDS,
     MAX_ALERTS,
@@ -324,6 +324,15 @@ def validate_proposal(request: ProposalRequest) -> None:
     if request.kind == "business" and request.business_id and request.products:
         # A new shop may arrive with its menu (one review); edits keep products separate.
         raise HTTPException(422, "Update products separately from business details.")
+    if (
+        request.kind == "business"
+        and request.business
+        and not request.business_id
+        and "timezone" not in request.business.model_fields_set
+        and (zone := client_timezone.get())
+    ):
+        # A new shop opens in its owner's own timezone, wherever they are.
+        request.business.timezone = zone
 
 
 def seal_proposal(request: ProposalRequest) -> tuple[dict[str, Any], str, str]:
