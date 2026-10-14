@@ -5,6 +5,7 @@ India.** Default UI language is English; the UI follows the phone's language set
 (`src/i18n/locales.ts`: `systemLocale`, `LOCALES`), with a manual override only in Settings.
 
 ## 1. Owner app translations (`src/features/v1/strings.ts` is the English source)
+
 Create one file per locale in `src/features/v1/locales/`: `zh-Hans.ts`, `ms.ts`, `ta.ts`, `ja.ts`,
 `ko.ts`, `id.ts`, `th.ts`, `vi.ts`, `fil.ts`, each `export const <name>: Copy = { ... }` covering
 **every key** of `en` (typed as `Copy` so missing keys fail type-checking), and register them in
@@ -12,6 +13,7 @@ Create one file per locale in `src/features/v1/locales/`: `zh-Hans.ts`, `ms.ts`,
 `readiness(done, total)`); arrays (e.g. `googleSteps`) keep the same length.
 
 Translation quality bar — "native", not literal:
+
 - Written as a native speaker in Singapore/Malaysia (zh-Hans, ms, ta) or the home market (ja, ko,
   id, th, vi, fil) would write a friendly, clear consumer app. Short labels for buttons (fit 48dp
   buttons on a 360px screen). Use the conventional terms of each market for shop, menu, sold out,
@@ -27,19 +29,23 @@ Translation quality bar — "native", not literal:
   Kaya toast sold out) using `formatPrice`.
 
 ## 2. Customer page (`src/features/public/PublicShop.tsx`)
+
 Fill `publicTranslations` for the same 9 locales (every key of `en`). The customer page follows the
 **customer's** phone language.
 
 ## 3. Legal texts (`src/features/v1/legal.ts`)
+
 Add translations of `TERMS`, `PRIVACY`, `BIOMETRIC_NOTICE` per locale (new structure:
 `LEGAL[locale]` with English fallback) and show a one-line note in `LegalDialog` for non-English:
 "Translation for convenience — the English version applies" (translated). Keep `LEGAL_VERSION`.
 
 ## 4. FaceDialog
+
 Move its inline English/Hindi strings into `strings.ts` keys (then translated like the rest) and
 delete the Hindi branches; the dialog uses `useCopy()`.
 
 ## 5. Coach evals in APAC languages (`backend/scripts/coach_eval.py`)
+
 Replace India fixtures with Singapore/APAC ones and add scenarios so every target language is
 covered at least once: Mandarin (new shop: 阿明咖啡店 kopitiam in Tiong Bahru), Malay (menu items:
 nasi lemak, teh tarik with prices), Tamil (Singapore Tamil price correction), Japanese (sold out:
@@ -49,6 +55,7 @@ for Latin-script languages a small keyword set). Keep all GLOBAL_CHECKS. Do not 
 CI — this script is run manually.
 
 ## 6. Tests
+
 - Playwright `tests/i18n.spec.ts`: with `locale: 'ja-JP'` the owner app renders Japanese (consent
   title), with `ms-MY` Malay, with `en-SG` English; Settings override switches language and
   persists after reload; the customer page follows the browser locale; no horizontal overflow on

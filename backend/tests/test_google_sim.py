@@ -11,7 +11,7 @@ FACTS = SimFacts(
     location="Private home",
     hours="09–18",
     phone="Demo contact",
-    category_id="tea_shop",
+    category_id="hawker_stall",
     service_area="Demo Pune",
 )
 
@@ -83,7 +83,7 @@ def test_saved_facts_category_region_account_and_service_privacy() -> None:
     s = initial(FACTS, "service-area")
     assert s.facts == FACTS and s.facts is not FACTS
     s = act(act(s, "start"), "type", value="service")
-    unsupported = FACTS.model_copy(update={"region": "GB"})
+    unsupported = FACTS.model_copy(update={"region": "JP"})
     rejected = act(s, "facts", facts=unsupported)
     assert rejected.error == "category" and rejected.facts == FACTS
     for value in ("arbitrary category", ""):

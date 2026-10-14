@@ -39,7 +39,10 @@ const scenarios: Scenario[] = [
   'reauthorization-required',
   'ineligible',
 ]
-const categories = { IN: ['tea_shop', 'bakery', 'grocery'], GB: ['bakery', 'grocery'] } as const
+const categories = {
+  SG: ['hawker_stall', 'cafe', 'bakery', 'grocery'],
+  JP: ['cafe', 'bakery', 'grocery'],
+} as const
 const requestedScenario = new URLSearchParams(window.location.search).get('sim')
 
 export function GoogleSimulator() {
@@ -531,7 +534,7 @@ function FactsForm({
   const t = useSimCopy()
   const [facts, setFacts] = useState(state.facts)
   const [editing, setEditing] = useState(state.selected != null)
-  const region = facts.region ?? 'IN'
+  const region = facts.region ?? 'SG'
   const fields = ['name', 'location', 'service_area', 'hours', 'phone', 'website'] as const
   return (
     <Stack
@@ -583,7 +586,7 @@ function FactsForm({
           setFacts({ ...facts, region: event.target.value as Facts['region'], category_id: '' })
         }
       >
-        {(['IN', 'GB'] as const).map((value) => (
+        {(['SG', 'JP'] as const).map((value) => (
           <MenuItem key={value} value={value}>
             {t.regions[value]}
           </MenuItem>
