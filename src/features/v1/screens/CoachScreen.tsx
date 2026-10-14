@@ -37,6 +37,7 @@ import { useIdentity } from '../../../auth/useIdentity'
 import { useLocale } from '../../../state/hooks'
 import { ApiError } from '../api'
 import type { Conversation, PhotoResult, Proposal } from '../api'
+import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
 import { NextAction } from '../NextAction'
 import { useVoice } from '../useVoice'
@@ -182,7 +183,10 @@ export function CoachScreen() {
     }
     setBusy('photo')
     try {
-      const query = activeId ? `?business_id=${encodeURIComponent(activeId)}` : ''
+      // A new shop takes the phone region's currency; an existing shop keeps its own.
+      const query = activeId
+        ? `?business_id=${encodeURIComponent(activeId)}`
+        : `?currency=${defaultCurrency()}`
       const result = await api<PhotoResult>(`/photos${query}`, {
         method: 'POST',
         body: file,

@@ -94,6 +94,25 @@ def test_clean_photo_becomes_a_reviewable_proposal_only(app) -> None:
         assert upload(stranger, jpeg(), f"?business_id={bid}").status_code == 404
 
 
+def test_zero_decimal_currency_stores_whole_units(app) -> None:
+    with TestClient(app) as client:
+        join(client)
+        proposal = upload(client, jpeg(), "?currency=jpy").json()["proposal"]
+        assert proposal["snapshot"]["business"]["currency"] == "JPY"
+        saved = client.post(
+            f"/api/v1/proposals/{proposal['id']}/approve", json={"digest": proposal["digest"]}
+        ).json()
+        # The shop's saved currency wins over the query once the shop exists.
+        priced = upload(client, jpeg(), f"?business_id={saved['business_id']}&currency=SGD")
+        assert priced.json()["proposal"]["snapshot"]["products"][0]["price"] == 15
+        assert (
+            upload(client, jpeg(), "?currency=S%24").json()["proposal"]["snapshot"]["business"][
+                "currency"
+            ]
+            == "SGD"
+        )
+
+
 def test_oversized_photo_is_rejected(app) -> None:
     with TestClient(app) as client:
         join(client)

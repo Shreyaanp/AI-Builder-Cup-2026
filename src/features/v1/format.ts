@@ -28,15 +28,42 @@ export function defaultCurrency(languages: readonly string[] = navigator.languag
   return 'SGD'
 }
 
-/** Prices are stored in minor units (cents/sen/paise; whole units for zero-decimal currencies). */
+/** A saved shop's currency; shops saved before currencies existed are SGD. */
+export function shopCurrency(shop: { fields: { currency?: string } } | null | undefined): string {
+  return shop ? (shop.fields.currency ?? 'SGD') : defaultCurrency()
+}
+
+/** Currencies offered when setting up a shop (APAC first). */
+export const CURRENCIES = [...new Set(Object.values(REGION_CURRENCY))]
+
+/** Mirrors `backend/app/money.py` — keep both tables in sync. */
+const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'IDR', 'CLP', 'ISK', 'UGX', 'XAF', 'XOF'])
+
+export function exponent(currency: string): number {
+  return ZERO_DECIMAL.has(currency.toUpperCase()) ? 0 : 2
+}
+
+export function toMinor(amount: number, currency: string): number {
+  return Math.round(amount * 10 ** exponent(currency))
+}
+
+export function toMajor(minor: number, currency: string): number {
+  return minor / 10 ** exponent(currency)
+}
+
+/** Prices are stored in minor units (cents/sen; whole units for zero-decimal currencies). */
 export function formatPrice(
   minor: number,
   currency: string = defaultCurrency(),
   locale?: string,
 ): string {
-  const format = new Intl.NumberFormat(locale, { style: 'currency', currency })
-  const digits = format.resolvedOptions().maximumFractionDigits ?? 2
-  return format.format(minor / 10 ** digits)
+  const digits = exponent(currency)
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(toMajor(minor, currency))
 }
 
 /** The local symbol for a currency, e.g. "$" for SGD in en-SG, "¥" for JPY. */

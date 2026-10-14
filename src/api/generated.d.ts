@@ -211,7 +211,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Photo */
+        /**
+         * Photo
+         * @description ``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own.
+         */
         post: operations["photo_api_v1_photos_post"];
         delete?: never;
         options?: never;
@@ -547,6 +550,11 @@ export interface components {
              * @default
              */
             phone: string;
+            /**
+             * Currency
+             * @default SGD
+             */
+            currency: string;
         };
         /** ChallengeRequest */
         ChallengeRequest: {
@@ -671,7 +679,7 @@ export interface components {
             name: string;
             /**
              * Price
-             * @description INR paise; integer, never a float
+             * @description Minor units of the shop currency; integer, never a float
              */
             price: number;
             /**
@@ -1342,6 +1350,7 @@ export interface operations {
         parameters: {
             query?: {
                 business_id?: string | null;
+                currency?: string | null;
             };
             header?: never;
             path?: never;

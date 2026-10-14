@@ -12,7 +12,7 @@ import {
   useTheme,
 } from '@mui/material'
 import { CheckCircle2, Circle, Copy, ExternalLink, Info, MapPinned } from 'lucide-react'
-import { formatPrice } from '../format'
+import { formatPrice, shopCurrency } from '../format'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
 import { shape } from '../../../design/theme'
@@ -58,7 +58,9 @@ export function GoogleScreen() {
     f.phone && `${t.fields.phone}: ${f.phone}`,
     ws.products.length > 0 &&
       `${t.products}: ` +
-        ws.products.map((p) => `${p.name} ${formatPrice(p.price)}/${p.unit}`).join(', '),
+        ws.products
+          .map((p) => `${p.name} ${formatPrice(p.price, shopCurrency(ws.active))}/${p.unit}`)
+          .join(', '),
   ]
     .filter(Boolean)
     .join('\n')

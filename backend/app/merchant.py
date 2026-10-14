@@ -22,12 +22,16 @@ class BusinessFields(BaseModel):
     location: str = Field(default="", max_length=300)
     hours: str = Field(default="", max_length=180)
     phone: str = Field(default="", max_length=40)
+    # ISO 4217; prices of this shop are stored in this currency's minor unit (see money.py).
+    currency: str = Field(default="SGD", pattern=r"^[A-Z]{3}$")
 
 
 class ProductFields(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=180)
-    price: int = Field(ge=0, le=100_000_000, description="INR paise; integer, never a float")
+    price: int = Field(
+        ge=0, le=100_000_000, description="Minor units of the shop currency; integer, never a float"
+    )
     unit: str = Field(default="item", min_length=1, max_length=40)
     stock: int | None = Field(default=None, ge=0, le=1_000_000)
     available: bool = True
@@ -110,6 +114,7 @@ def public_projection(
         "location": fields.get("location", ""),
         "hours": fields.get("hours", ""),
         "phone": fields.get("phone", ""),
+        "currency": fields.get("currency") or "SGD",
         "products": [
             {
                 "name": product["name"],

@@ -462,6 +462,7 @@
     "/api/v1/photos": {
       "post": {
         "summary": "Photo",
+        "description": "``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own.",
         "operationId": "photo_api_v1_photos_post",
         "parameters": [
           {
@@ -478,6 +479,22 @@
                 }
               ],
               "title": "Business Id"
+            }
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Currency"
             }
           }
         ],
@@ -1333,6 +1350,12 @@
             "maxLength": 40,
             "title": "Phone",
             "default": ""
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "default": "SGD"
           }
         },
         "additionalProperties": false,
@@ -1631,7 +1654,7 @@
             "maximum": 100000000.0,
             "minimum": 0.0,
             "title": "Price",
-            "description": "INR paise; integer, never a float"
+            "description": "Minor units of the shop currency; integer, never a float"
           },
           "unit": {
             "type": "string",
