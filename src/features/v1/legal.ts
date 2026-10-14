@@ -1,10 +1,9 @@
-/**
- * DRAFT legal texts for the AI Builder Cup prototype. They are written to follow India's Digital
- * Personal Data Protection Act, 2023 and DPDP Rules, 2025, but have NOT been reviewed by a lawyer.
- * Bump LEGAL_VERSION (and the backend's LEGAL_VERSION) whenever the text changes.
- */
+import type { Locale } from '../../i18n/locales'
+import { legalTranslations } from './locales/legal'
+
+/** DRAFT prototype legal texts for the APAC demo; not reviewed by a lawyer. */
 export const LEGAL_VERSION = '2026-10-14'
-export const GRIEVANCE_CONTACT = 'Grievance contact: to be published before public launch'
+export const GRIEVANCE_CONTACT = 'Privacy contact: to be published before public launch'
 
 export interface LegalSection {
   heading: string
@@ -71,7 +70,7 @@ export const PRIVACY: LegalSection[] = [
   {
     heading: 'Your rights',
     body: [
-      'You can access, correct and erase your data, withdraw consent at any time (this does not affect processing already done), nominate someone to act for you, and raise a grievance with us and then with the Data Protection Board of India.',
+      'You can access, correct and erase your data, withdraw consent at any time (this does not affect processing already done), and contact us about privacy concerns.',
       GRIEVANCE_CONTACT,
     ],
   },
@@ -83,3 +82,15 @@ export const BIOMETRIC_NOTICE = [
   'The video is processed in memory and discarded. A match is never proof that you own a business; it only sends the case for human review.',
   'You can delete your face data at any time from the Privacy tab.',
 ]
+
+export interface LegalCopy {
+  TERMS: LegalSection[]
+  PRIVACY: LegalSection[]
+  BIOMETRIC_NOTICE: string[]
+}
+
+/** Translations are for convenience; English remains the applicable version. */
+export const LEGAL: Partial<Record<Locale, LegalCopy>> = {
+  en: { TERMS, PRIVACY, BIOMETRIC_NOTICE },
+  ...legalTranslations,
+}
