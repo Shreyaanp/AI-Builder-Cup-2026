@@ -1984,7 +1984,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "text" | "audio_end" | "close" | "ping" | "pong";
+            kind: "text" | "audio_end" | "close" | "ping" | "pong" | "client_error";
             /**
              * Text
              * @default

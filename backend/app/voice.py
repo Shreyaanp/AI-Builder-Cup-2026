@@ -4,6 +4,7 @@ from contextlib import suppress
 from typing import Any
 
 import anyio
+import structlog
 from fastapi import HTTPException, WebSocket, WebSocketDisconnect
 from google.adk.agents.run_config import RunConfig
 from google.adk.live.live_request_queue import LiveRequestQueue
@@ -13,6 +14,8 @@ from pydantic import ValidationError
 from .auth import Principal
 from .contracts import StreamEvent, VoiceControl
 from .streaming import CoachRuntime, public_events
+
+log = structlog.get_logger()
 
 VOICE_PING_SECONDS = 20
 VOICE_IDLE_SECONDS = 45
@@ -103,6 +106,9 @@ async def gemini_voice(
             command = VoiceControl.model_validate_json(raw)
             if command.kind == "close":
                 return
+            if command.kind == "client_error":
+                log.warning("voice_client_error", reason=command.text[:200])
+                return
             if command.kind == "ping":
                 await websocket.send_json(StreamEvent(kind="pong").payload())
             if command.kind == "text":
@@ -130,6 +136,12 @@ async def gemini_voice(
         )
         try:
             async for event in events:
+                if event.error_code:
+                    log.warning(
+                        "voice_provider_error",
+                        code=str(event.error_code),
+                        message=(event.error_message or "")[:300],
+                    )
                 for visible in public_events(event):
                     await websocket.send_json(visible.payload())
                     if visible.kind == "error":
@@ -199,6 +211,7 @@ async def serve_voice(
         with suppress(RuntimeError, WebSocketDisconnect):
             await websocket.send_json(StreamEvent(kind="error", code="INVALID_FRAME").payload())
     except Exception:
+        log.exception("voice_session_failed")
         code, reason = 1011, "PROVIDER_UNAVAILABLE"
         with suppress(RuntimeError, WebSocketDisconnect):
             await websocket.send_json(
