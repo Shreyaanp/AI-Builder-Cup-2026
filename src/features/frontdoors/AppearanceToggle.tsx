@@ -5,6 +5,11 @@ import { useLocale, usePreferencesDispatch } from '../../state/hooks'
 
 const labels: Record<Locale, { light: string; dark: string }> = {
   en: { light: 'Switch to light mode', dark: 'Switch to dark mode' },
+  hi: { light: 'हल्का मोड चुनें', dark: 'गहरा मोड चुनें' },
+  bn: { light: 'হালকা মোড করুন', dark: 'গাঢ় মোড করুন' },
+  te: { light: 'లైట్ మోడ్ ఎంచుకోండి', dark: 'డార్క్ మోడ్ ఎంచుకోండి' },
+  mr: { light: 'फिकट मोड निवडा', dark: 'गडद मोड निवडा' },
+  kn: { light: 'ತಿಳಿ ಮೋಡ್ ಆಯ್ಕೆಮಾಡಿ', dark: 'ಗಾಢ ಮೋಡ್ ಆಯ್ಕೆಮಾಡಿ' },
   'zh-Hans': { light: '切换到浅色模式', dark: '切换到深色模式' },
   ms: { light: 'Tukar ke mod cerah', dark: 'Tukar ke mod gelap' },
   ta: { light: 'ஒளி பயன்முறைக்கு மாற்று', dark: 'இருள் பயன்முறைக்கு மாற்று' },
