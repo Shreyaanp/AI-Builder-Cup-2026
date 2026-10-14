@@ -24,6 +24,7 @@ export const motion = {
     emphasizedDecelerate: 'cubic-bezier(0.05, 0.7, 0.1, 1)',
     emphasizedAccelerate: 'cubic-bezier(0.3, 0, 0.8, 0.15)',
     standard: 'cubic-bezier(0.2, 0, 0, 1)',
+    spring: 'cubic-bezier(0.16, 1, 0.3, 1)',
   },
   duration: { short: 200, medium: 300, enter: 400, exit: 200 },
 }

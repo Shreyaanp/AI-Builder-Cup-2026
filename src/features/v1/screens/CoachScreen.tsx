@@ -56,6 +56,7 @@ import { useUnread } from '../useUnread'
 import { useVoice } from '../useVoice'
 import { useOnline } from '../useOnline'
 import { useWorkspace } from '../workspaceContext'
+import { OwnerJourney } from '../../frontdoors/OwnerJourney'
 import { enterRise, shape } from '../../../design/theme'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -394,6 +395,7 @@ export function CoachScreen() {
         mx: 'auto',
       }}
     >
+      <OwnerJourney />
       {/* One quiet row: which coach is answering, and every other action behind one "+".
           On an empty chat the + sits beside the greeting instead of taking its own row. */}
       {!empty && (

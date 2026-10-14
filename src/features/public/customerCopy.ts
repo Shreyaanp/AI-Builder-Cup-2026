@@ -2,6 +2,9 @@ import { conversationEnglish } from '../inquiries/conversationCopy'
 /** Added to PublicShop's English source and its per-locale fallback registry. */
 export const customerEnglish = {
   ...conversationEnglish,
+  chatTitle: 'Chat with the shop',
+  chatIntro:
+    'Get an instant answer from the shop’s listed details, or send a message the owner replies to.',
   askTitle: 'Ask about this shop',
   question: 'Your question',
   questionHint: 'Ask in any language…',

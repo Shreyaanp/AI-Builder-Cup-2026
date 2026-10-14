@@ -16,9 +16,14 @@ import {
   useTheme,
 } from '@mui/material'
 import { MapPin, Search } from 'lucide-react'
-import { systemLocale } from '../../i18n/locales'
+import { useLocale } from '../../state/hooks'
 import { loadScriptFont } from '../../i18n/fonts'
-import { enterRise, shape } from '../../design/theme'
+import { enterRise, motion, shape } from '../../design/theme'
+import { BrandSplash } from '../frontdoors/Splash'
+import { PlaceImage } from '../frontdoors/PlaceImage'
+import { useFrontCopy } from '../frontdoors/strings'
+import { customerNavigate } from '../frontdoors/navigation'
+import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { Sheet } from '../v1/Sheet'
 import { formatPrice } from '../v1/format'
 import { discoverCopy } from './strings'
@@ -104,22 +109,43 @@ function readUsuals(): Usual[] {
   return []
 }
 
-export default function Discover() {
+export default function Discover({
+  initialLocation,
+  interests = [],
+}: {
+  initialLocation?: CustomerLocation | null
+  interests?: string[]
+}) {
   // Public customers follow their phone language independently of owner preferences.
-  const locale = systemLocale()
+  const locale = useLocale()
   const t = discoverCopy(locale)
+  const front = useFrontCopy()
   const roles = useTheme().material
-  const [filters, setFilters] = useState(readFilters)
+  const [filters, setFilters] = useState(() => ({
+    ...readFilters(),
+    ...(initialLocation ? { area: initialLocation.area as Area } : {}),
+  }))
   const [query, setQuery] = useState(filters.q)
-  const [gps, setGps] = useState<[number, number] | null>(null)
+  const [gps, setGps] = useState<[number, number] | null>(initialLocation?.gps ?? null)
   const [gpsBusy, setGpsBusy] = useState(false)
   const [gpsError, setGpsError] = useState(false)
   const [result, setResult] = useState<Discovery | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [retry, setRetry] = useState(0)
-  const [map, setMap] = useState(false)
+  const [map, setMapOpen] = useState(
+    () => new URLSearchParams(location.search).get('view') === 'map',
+  )
+  function setMap(open: boolean) {
+    const url = new URL(location.href)
+    if (open) url.searchParams.set('view', 'map')
+    else url.searchParams.delete('view')
+    history.pushState(history.state, '', url)
+    setMapOpen(open)
+  }
   const [selected, setSelected] = useState<Usual | null>(null)
   const [usuals, setUsuals] = useState(readUsuals)
+  const [interestsActive, setInterestsActive] = useState(interests.length > 0)
+  const [scarcityNote, setScarcityNote] = useState(false)
   const [lat, lng] = gps ?? areas[filters.area]
   useEffect(() => {
     document.title = t.title + ' · Chalkboard'
@@ -142,7 +168,7 @@ export default function Discover() {
       budget: filters.budget ? '1' : '0',
     }))
       url.searchParams.set(key, value)
-    history.replaceState(null, '', url)
+    history.replaceState(history.state, '', url)
   }, [filters])
   useEffect(() => {
     const restore = () => {
@@ -150,6 +176,7 @@ export default function Discover() {
       setFilters(restored)
       setQuery(restored.q)
       setGps(null)
+      setMapOpen(new URLSearchParams(location.search).get('view') === 'map')
     }
     window.addEventListener('popstate', restore)
     return () => window.removeEventListener('popstate', restore)
@@ -235,12 +262,19 @@ export default function Discover() {
       (result?.places ?? []).filter(
         (place) =>
           (!filters.halal || place.halal === true) &&
+          (!interestsActive ||
+            interests.some(
+              (interest) =>
+                interest === place.category.toLowerCase() ||
+                categoryLabels[place.category.toLowerCase()] ===
+                  (interest === 'café' ? 'cafe' : interest),
+            )) &&
           (!filters.budget ||
             place.price_level === 'PRICE_LEVEL_INEXPENSIVE' ||
             (place.currency === 'SGD' &&
               place.items.some((item) => item.available && item.price <= 1000))),
       ),
-    [result, filters.halal, filters.budget],
+    [result, filters.halal, filters.budget, interests, interestsActive],
   )
   const details = result?.places.find((place) => place.id === selected?.id)
   const link = mapsLink(selected?.google_maps_uri)
@@ -265,6 +299,7 @@ export default function Discover() {
     '& .MuiChip-label': { py: 2, whiteSpace: 'normal' },
   }
 
+  if (status === 'loading' && !result) return <BrandSplash />
   return (
     <Box
       component="main"
@@ -275,12 +310,142 @@ export default function Discover() {
         pt: 6,
         pb: 'max(24px, env(safe-area-inset-bottom))',
         color: roles.onSurface,
+        '--customer-spring': motion.easing.spring,
       }}
     >
       <Stack spacing={5}>
         <Typography variant="headlineLarge" component="h1">
           {t.title}
         </Typography>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: 'repeat(2, minmax(0, 1fr))',
+              md: 'repeat(4, minmax(0, 1fr))',
+            },
+            gap: 3,
+          }}
+        >
+          {[
+            {
+              label: front.openNear,
+              action: () => setFilters({ ...filters, open: !filters.open }),
+              active: filters.open,
+              image: 'kopi',
+            },
+            {
+              label: front.today,
+              action: () =>
+                document.getElementById('trending-row')?.scrollIntoView({
+                  block: 'center',
+                  behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+                    ? 'instant'
+                    : 'smooth',
+                }),
+              active: false,
+              image: 'hawker',
+            },
+            {
+              label: front.soon,
+              action: () => setScarcityNote(!scarcityNote),
+              active: scarcityNote,
+              image: 'grocery',
+            },
+            {
+              label: `${t.bakery} · ${front.all}`,
+              action: () =>
+                setFilters({ ...filters, category: filters.category === 'bakery' ? '' : 'bakery' }),
+              active: filters.category === 'bakery',
+              image: 'bakery',
+            },
+          ].map((tile, i) => (
+            <Button
+              className="customer-tile"
+              key={tile.label}
+              aria-pressed={tile.active}
+              onClick={tile.action}
+              sx={{
+                '--tile-index': i,
+                aspectRatio: '1',
+                minWidth: 0,
+                p: 4,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                borderRadius: `${i === 0 ? shape.xl : shape.lg}px`,
+                bgcolor: tile.active ? roles.primaryContainer : roles.surfaceContainerHigh,
+                color: tile.active ? roles.onPrimaryContainer : roles.onSurface,
+                textAlign: 'start',
+              }}
+            >
+              <Box
+                component="img"
+                src={`/art/category-${tile.image}.svg`}
+                alt=""
+                width={56}
+                height={56}
+                sx={{ width: '40%', height: 'auto', maxWidth: 80, borderRadius: `${shape.md}px` }}
+              />
+              <Typography component="span" variant="titleMedium" sx={{ mt: 2 }}>
+                {tile.label}
+              </Typography>
+            </Button>
+          ))}
+        </Box>
+        {scarcityNote && <Alert severity="info">{front.soonNote}</Alert>}
+        <Box id="trending-row" sx={{ scrollMarginTop: 90 }}>
+          <Typography component="h2" variant="titleLarge">
+            {front.trending}
+          </Typography>
+          <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 3 }}>
+            {front.trendingNote}
+          </Typography>
+          <Box
+            role="region"
+            aria-label={front.trending}
+            tabIndex={0}
+            sx={{
+              display: 'flex',
+              gap: 3,
+              overflowX: 'auto',
+              scrollSnapType: 'x proximity',
+              pb: 3,
+            }}
+          >
+            {places.slice(0, 6).map((place) => (
+              <Card
+                key={place.id}
+                variant="outlined"
+                sx={{ flex: '0 0 240px', borderRadius: `${shape.lg}px`, scrollSnapAlign: 'start' }}
+              >
+                <CardActionArea
+                  {...(place.source === 'chalkboard'
+                    ? { component: 'a', href: `/explore/s/${encodeURIComponent(place.id)}` }
+                    : {})}
+                  onClick={(event: React.MouseEvent<HTMLElement>) => {
+                    if (place.source === 'chalkboard') {
+                      remember(place)
+                      customerNavigate(event)
+                    } else openPlace(place)
+                  }}
+                  aria-label={`${front.trending} · ${place.name}`}
+                >
+                  <PlaceImage
+                    id={place.id}
+                    category={place.category}
+                    photo={place.photo_url}
+                    authors={place.photo_authors}
+                  />
+                  <Typography component="p" variant="titleMedium" sx={{ p: 3 }}>
+                    {place.name}
+                  </Typography>
+                </CardActionArea>
+              </Card>
+            ))}
+          </Box>
+        </Box>
         <Stack
           component="form"
           direction="row"
@@ -310,7 +475,28 @@ export default function Discover() {
             <Search aria-hidden size={22} />
           </Button>
         </Stack>
-        <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2 }}>
+        <Stack
+          direction="row"
+          sx={{
+            gap: 2,
+            overflowX: 'auto',
+            py: 2,
+            position: 'sticky',
+            top: 'env(safe-area-inset-top)',
+            zIndex: 2,
+            bgcolor: roles.surface,
+          }}
+        >
+          <Chip
+            label={front.all}
+            clickable
+            aria-pressed={!filters.category && !interestsActive}
+            sx={{ ...controlSx, flexShrink: 0 }}
+            onClick={() => {
+              setInterestsActive(false)
+              setFilters({ ...filters, category: '' })
+            }}
+          />
           {Object.entries(categories).map(([key, category]) => (
             <Chip
               key={key}
@@ -318,10 +504,11 @@ export default function Discover() {
               clickable
               aria-pressed={filters.category === category}
               color={filters.category === category ? 'primary' : 'default'}
-              sx={controlSx}
-              onClick={() =>
+              sx={{ ...controlSx, flexShrink: 0 }}
+              onClick={() => {
+                setInterestsActive(false)
                 setFilters({ ...filters, category: filters.category === category ? '' : category })
-              }
+              }}
             />
           ))}
         </Stack>
@@ -409,9 +596,12 @@ export default function Discover() {
                   <Button
                     key={place.id}
                     component="a"
-                    href={`/s/${encodeURIComponent(place.id)}`}
+                    href={`/explore/s/${encodeURIComponent(place.id)}`}
                     variant="outlined"
-                    onClick={() => remember(place)}
+                    onClick={(event: React.MouseEvent<HTMLAnchorElement>) => {
+                      remember(place)
+                      customerNavigate(event)
+                    }}
                   >
                     {place.name}
                   </Button>
@@ -446,19 +636,54 @@ export default function Discover() {
           )}
           {status === 'ready' && places.length === 0 && <Typography>{t.empty}</Typography>}
         </Box>
-        {map && status === 'ready' && (
+        <Sheet
+          open={map}
+          onClose={() => setMap(false)}
+          titleId="customer-map-title"
+          title={t.map}
+          actions={<Button onClick={() => setMap(false)}>{t.list}</Button>}
+        >
           <Suspense fallback={<Typography role="status">{t.loading}</Typography>}>
             <DiscoverMap
               places={places}
               center={{ lat, lng }}
               demo={result?.mode === 'demo'}
-              onOpen={openPlace}
+              onOpen={(place) => {
+                if (place.source === 'google') {
+                  setMap(false)
+                  openPlace(place)
+                }
+              }}
               unavailable={t.mapError}
               loading={t.loading}
               demoLabel={t.demoNote}
             />
           </Suspense>
-        )}
+          <Stack spacing={2} sx={{ mt: 3 }}>
+            {places.map((place) =>
+              place.source === 'chalkboard' ? (
+                <Button
+                  key={place.id}
+                  component="a"
+                  href={`/explore/s/${encodeURIComponent(place.id)}`}
+                  onClick={customerNavigate}
+                >
+                  {place.name}
+                </Button>
+              ) : (
+                <Button
+                  key={place.id}
+                  onClick={() => {
+                    setMap(false)
+                    openPlace(place)
+                  }}
+                >
+                  {place.name}
+                </Button>
+              ),
+            )}
+          </Stack>
+        </Sheet>
         {status === 'ready' && (
           <Box
             component="ul"
@@ -484,12 +709,24 @@ export default function Discover() {
               >
                 <CardActionArea
                   {...(place.source === 'chalkboard'
-                    ? { component: 'a', href: `/s/${encodeURIComponent(place.id)}` }
+                    ? { component: 'a', href: `/explore/s/${encodeURIComponent(place.id)}` }
                     : {})}
-                  onClick={() => openPlace(place)}
-                  sx={{ p: 4, height: '100%', display: 'block', textAlign: 'start' }}
+                  onClick={(event: React.MouseEvent<HTMLElement>) => {
+                    if (place.source === 'chalkboard') {
+                      remember(place)
+                      customerNavigate(event)
+                    } else openPlace(place)
+                  }}
+                  sx={{ height: '100%', display: 'block', textAlign: 'start' }}
                 >
-                  <Stack spacing={3}>
+                  <PlaceImage
+                    id={place.id}
+                    category={place.category}
+                    photo={place.photo_url}
+                    authors={place.photo_authors}
+                    transition
+                  />
+                  <Stack spacing={3} sx={{ p: 4 }}>
                     <Typography
                       component="h2"
                       variant="titleLarge"
@@ -557,7 +794,6 @@ export default function Discover() {
         onClose={() => setSelected(null)}
         titleId="discover-place-title"
         title={selected?.name}
-        actions={<Button onClick={() => setSelected(null)}>{t.close}</Button>}
       >
         <Stack spacing={4}>
           <Typography variant="labelLarge">{t.google}</Typography>
