@@ -15,8 +15,9 @@ from uuid import uuid4
 import anyio
 import structlog
 from PIL import Image, ImageOps
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
+from .product_units import UNITS, normalize_unit
 from .settings import Settings
 
 log = structlog.get_logger()
@@ -27,6 +28,9 @@ MAX_PIXELS = 40_000_000
 FIXTURE_BLOCK_WIDTH = 13
 # SafeSearch likelihood: 0 unknown, 1 very unlikely, 2 unlikely, 3 possible, 4 likely, 5 very.
 BLOCK_AT = {"adult": 3, "racy": 4, "violence": 4}
+
+
+Unit = Literal[UNITS]  # type: ignore[valid-type]
 
 
 class PhotoRejected(Exception):
@@ -47,8 +51,15 @@ class ExtractedBusiness(BaseModel):
 class ExtractedProduct(BaseModel):
     name: str
     price: float | None = Field(default=None, ge=0, le=100_000_000)
-    unit: str = "item"
-    category: str = Field(default="", max_length=80)
+    # The model picks from the fixed list (an enum in the response schema).
+    unit: Unit = "item"
+    # Defaults keep a reply missing a field readable; the route fills a suggested category.
+    category: str = Field(default="", max_length=80, description="Menu section; always set")
+
+    @field_validator("unit", mode="before")
+    @classmethod
+    def known_unit(cls, value: object) -> object:
+        return normalize_unit(value) if isinstance(value, str) else value
 
 
 class PhotoExtraction(BaseModel):
@@ -63,8 +74,10 @@ Classify photo_kind. Use "other" for anything that is not a signboard, menu, pri
 product or storefront (for example selfies, people, documents, screenshots or scenery).
 Copy only text that is clearly visible; never guess. Keep the original language/script.
 Prices: a plain number in the local currency, only when printed next to the item.
-Use a visible menu section as each product's category; otherwise suggest a short category
-based on the item (drinks, food, desserts, services, other). Categories are suggestions.
+Give every product a category: the visible menu section it sits under, otherwise a short
+section a customer would expect (for example Drinks, Mains, Desserts, Services), in the
+board's language. Categories are suggestions the owner reviews.
+Give every product a unit from the allowed list; use "item" when none fits.
 List every field or item you are unsure about in "uncertain"."""
 
 
@@ -144,7 +157,7 @@ class PhotoPipeline:
             return PhotoExtraction(
                 photo_kind="signboard",
                 business=ExtractedBusiness(name="Offline Fixture Tea Stall", category="Tea stall"),
-                products=[ExtractedProduct(name="Chai", price=15, unit="cup")],
+                products=[ExtractedProduct(name="Chai", price=15, unit="cup", category="drinks")],
                 uncertain=["Offline fixture: no model read this photo."],
             )
         from google import genai

@@ -193,6 +193,48 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/sort-menu": {
+      "post": {
+        "summary": "Sort Menu",
+        "description": "\"Sort my menu\": a category for every uncategorised item, sealed for owner review.\n\nNothing changes until the owner confirms the proposal; prices, units and stock stay as saved.",
+        "operationId": "sort_menu_api_v1_businesses__business_id__sort_menu_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Sort Menu Api V1 Businesses  Business Id  Sort Menu Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/proposals/{proposal_id}/approve": {
       "post": {
         "summary": "Approve",
@@ -3934,6 +3976,19 @@
             "type": "boolean",
             "title": "Available",
             "default": true
+          },
+          "previous_unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Unit"
           }
         },
         "additionalProperties": false,

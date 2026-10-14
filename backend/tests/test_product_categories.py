@@ -39,8 +39,12 @@ def test_categories_persist_in_both_adapters_and_coach_preserves_them(store: Mer
             ctx.proposals[preserve["proposal_id"]]["snapshot"]["products"][0]["category"]
             == "House specials"
         )
-        clear = propose_products([ProductInput(name="Kopi", category="")])
-        assert "category" not in ctx.proposals[clear["proposal_id"]]["snapshot"]["products"][0]
+        # An empty category keeps the saved one: no item is ever left uncategorised (B28).
+        keep = propose_products([ProductInput(name="Kopi", category="")])
+        assert (
+            ctx.proposals[keep["proposal_id"]]["snapshot"]["products"][0]["category"]
+            == "House specials"
+        )
     finally:
         current.reset(token)
 

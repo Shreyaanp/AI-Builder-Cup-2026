@@ -109,6 +109,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/sort-menu": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sort Menu
+         * @description "Sort my menu": a category for every uncategorised item, sealed for owner review.
+         *
+         *     Nothing changes until the owner confirms the proposal; prices, units and stock stay as saved.
+         */
+        post: operations["sort_menu_api_v1_businesses__business_id__sort_menu_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/proposals/{proposal_id}/approve": {
         parameters: {
             query?: never;
@@ -1458,6 +1480,8 @@ export interface components {
              * @default true
              */
             available: boolean;
+            /** Previous Unit */
+            previous_unit?: string | null;
         };
         /** ProposalRequest */
         ProposalRequest: {
@@ -2032,6 +2056,39 @@ export interface operations {
                 "application/json": components["schemas"]["ProposalRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sort_menu_api_v1_businesses__business_id__sort_menu_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
