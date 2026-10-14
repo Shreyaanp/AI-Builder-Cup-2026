@@ -66,7 +66,7 @@ export function PlaceSearch({
             endAdornment: (
               <InputAdornment position="end">
                 <IconButton
-                  aria-label={t.submit}
+                  aria-label={`${t.submit}: ${t.place}`}
                   edge="end"
                   disabled={busy || query.trim().length < 2}
                   onClick={() => void search()}
