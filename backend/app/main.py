@@ -48,7 +48,7 @@ from .merchant_routes import router as merchant_router
 from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
 from .recap import RecapWriter
-from .replay import ReplayStore, TurnReplay
+from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
 from .sales_routes import router as sales_router
 from .settings import Settings
 from .streaming import CoachRuntime
@@ -148,7 +148,7 @@ def create_app(
             )
             if client
             else RunRegistry(settings.max_active_runs),
-            ReplayStore(),
+            ReplayStore(FirestoreTurns(client, settings.firestore_namespace) if client else None),
         )
         maintenance = asyncio.create_task(app.state.services.replay.maintain())
         try:
@@ -262,7 +262,9 @@ def create_app(
             # Resume only the owned, retained turn; never fall through to a new model call.
             if not body.session_id:
                 raise HTTPException(409, "RESUME_UNAVAILABLE")
-            turn, after = services.replay.resume(principal.uid, str(body.session_id), bid, cursor)
+            turn, after = await services.replay.resume(
+                principal.uid, str(body.session_id), bid, cursor
+            )
             return stream_response(turn, after)
         await enforce_limits(request, [("coach", principal.uid)])
         sid = await services.runtime.session(
@@ -311,7 +313,7 @@ def create_app(
             raise
         return stream_response(turn)
 
-    def stream_response(turn: TurnReplay, after: int = 0) -> EventSourceResponse:
+    def stream_response(turn: TurnReplay | RemoteTurn, after: int = 0) -> EventSourceResponse:
         return EventSourceResponse(
             turn.follow(after),
             ping=SSE_HEARTBEAT_SECONDS,
