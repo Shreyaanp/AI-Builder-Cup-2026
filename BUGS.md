@@ -50,17 +50,8 @@ Each fix lives on the owner's branch. Account 1 (Claude lead) reviews, merges to
 | B34 | Voice: "Voice connection ended" at once — Live model rejects custom thinking level                                                                                                                                           | Account 1             | `fix/voice-face`        | merged — releasing |
 | B35 | Landing page on phones: remove humanStack/LOCAL LIFE pill; broken For business button; too-large fonts; badly sized cards                                                                                                    | Codex                 | `fix/landing-mobile`    | open               |
 | B36 | Install app should be in Settings                                                                                                                                                                                            | Codex                 | `fix/landing-mobile`    | open               |
-| B37 | Google tab means nothing today: one end-to-end onboarding flow (details → photos → profile on our side → last step "Verified by Google: waiting for Google API access"), no practice simulator, less text                    | —                     | —                       | to plan            |
+| B37 | Google tab means nothing today: one end-to-end onboarding flow (details → photos → profile on our side → last step "Verified by Google: waiting for Google API access"), no practice simulator, less text                    | Account 1             | `fix/google-flow`       | in progress        |
 | B38 | Customer pages (explore, shop page, menu) need a light/dark switch                                                                                                                                                           | Codex                 | `fix/customer-page`     | merged — releasing |
-
-## Customer page batch (local fixes awaiting review)
-
-| ID  | Bug                                                                           | Owner | Status                                                                                    |
-| --- | ----------------------------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------- |
-| B30 | Customer monochrome theme and removal of the full-width back bar              | Codex | Local implementation; proof in `docs/bugs/B30-light.png` and `B30-dark.png`; uncommitted  |
-| B31 | Configurable stamp target, daily QR earning and local reward redemption/reset | Codex | Local implementation; proof in `docs/bugs/B31-card.png` and `B31-redeem.png`; uncommitted |
-
-The menu/products section of `PublicShop.tsx` was preserved. These entries are not closed: the current task's final rules prohibit committing, and user sign-off is pending. See `docs/bugs/B30-B31.md` for validation evidence and limitations.
 
 ## Parked until the freeze ends
 
