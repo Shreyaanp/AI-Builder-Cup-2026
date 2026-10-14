@@ -16,7 +16,15 @@ export function FactList({
 }) {
   const t = useCopy()
   const titleId = useId()
-  const entries = factEntries(fields, t)
+  const entries = [
+    ...factEntries(fields, t),
+    // Type-specific answers (e.g. a salon's walk-ins) are shown with the owner's own label.
+    ...(fields.custom_facts ?? []).map((fact) => ({
+      key: `custom:${fact.key}`,
+      label: fact.label,
+      value: fact.value,
+    })),
+  ]
   const next = missingFacts(fields)[0]
   if (!entries.length && !(onAnswer && next)) return null
   return (

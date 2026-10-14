@@ -8,6 +8,8 @@ export interface ShopFacts {
   preorder_lead_time?: string
   payment_methods?: ('cash' | 'paynow' | 'card' | 'grabpay' | 'nets' | 'other')[]
   busy_hours?: string
+  /** Answers to the business-type question plan, in the owner's words. */
+  custom_facts?: { key: string; label: string; value: string }[]
 }
 export interface Business {
   id: string

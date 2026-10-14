@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import json
 from collections.abc import Iterator
@@ -13,10 +14,12 @@ from app.agent import instruction, ui_language
 from app.coordinator import (
     MAX_REPAIRS,
     SUSPICIOUS_PRICE_RATIO,
+    FactInput,
     MerchantContext,
     ProductInput,
     current,
     get_business_context,
+    get_question_plan,
     propose_business,
     propose_products,
     request_registration,
@@ -372,7 +375,9 @@ def test_eval_prices_are_major_units(ctx, price, sane):
 
 def commit(ctx: MerchantContext, result: dict[str, Any]) -> None:
     proposal = ctx.proposals[result["proposal_id"]]
-    ctx.store.commit("alice", proposal["id"], proposal["digest"])
+    receipt = ctx.store.commit("alice", proposal["id"], proposal["digest"])
+    # A newly created shop becomes the active one, as in the app.
+    ctx.business_id = ctx.business_id or receipt["business_id"]
 
 
 def test_customer_fact_is_a_reviewed_edit_that_keeps_everything_else(saved_shop):
@@ -423,3 +428,59 @@ def test_unknown_fact_value_is_repairable(saved_shop, fact):
 
 def test_no_facts_to_ask_without_a_shop(ctx):
     assert get_business_context()["customer_facts_to_ask"] == []
+
+
+def test_question_plan_fits_the_business_type(ctx):
+    created = propose_business(name="Glow Hair Studio", category="Hair salon", location="Bugis")
+    commit(ctx, created)
+    plan = asyncio.run(get_question_plan())
+    assert plan["business_type"] == "beauty salon"
+    keys = [question["key"] for question in plan["pending"]]
+    assert "walk_ins" in keys and "booking" in keys
+    # Food facts with dedicated fields are never re-asked through the plan.
+    assert not {"halal", "payment_methods", "delivery"} & set(keys)
+
+
+def test_custom_fact_answers_merge_by_key_and_leave_the_plan(ctx):
+    commit(ctx, propose_business(name="Glow Hair Studio", category="Hair salon"))
+    first = propose_business(
+        name="",
+        custom_facts=[FactInput(key="walk_ins", label="Walk-ins", value="Appointments only")],
+    )
+    assert first["changes"] == ["Walk-ins: (empty) → Appointments only"]
+    commit(ctx, first)
+    second = propose_business(
+        name="",
+        custom_facts=[
+            {"key": "walk_ins", "label": "Walk-ins", "value": "Walk-ins welcome"},
+            {"key": "booking", "label": "How to book", "value": "WhatsApp"},
+        ],
+    )
+    assert second["changes"] == [
+        "Walk-ins: Appointments only → Walk-ins welcome",
+        "How to book: (empty) → WhatsApp",
+    ]
+    commit(ctx, second)
+    saved = get_business_context()["shop"]["custom_facts"]
+    assert [fact["key"] for fact in saved] == ["walk_ins", "booking"]
+    pending = [q["key"] for q in asyncio.run(get_question_plan())["pending"]]
+    assert "walk_ins" not in pending and "booking" not in pending
+    bid = ctx.business_id
+    ctx.store.share("alice", bid, True)
+    public = ctx.store.public_shop(bid)
+    assert public is not None
+    assert {"key": "booking", "label": "How to book", "value": "WhatsApp"} in public["facts"][
+        "custom"
+    ]
+
+
+def test_question_plan_needs_a_shop_first(ctx):
+    assert asyncio.run(get_question_plan())["status"] == "needs_business"
+
+
+def test_location_validation_runs():
+    # Regression: a merge once made this validator unreachable.
+    with pytest.raises(ValueError):
+        BusinessFields(name="Pin", lat=1.28)
+    with pytest.raises(ValueError):
+        BusinessFields(name="Zone", timezone="Not/AZone")
