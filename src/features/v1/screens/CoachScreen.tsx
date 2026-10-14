@@ -159,7 +159,12 @@ export function CoachScreen() {
     session.current = null
     void api<Conversation[]>('/conversations', { signal: abort.signal })
       .then((items) => {
-        if (!abort.signal.aborted) setHistory(items)
+        if (abort.signal.aborted) return
+        setHistory(items)
+        // Coming back (reload, another day) continues this shop's latest conversation instead of
+        // a blank screen. Once per visit: "New chat" still starts fresh.
+        const latest = items.find((entry) => (entry.business_id ?? null) === activeId)
+        if (latest && !session.current) void restore(latest.session_id)
       })
       .catch(() => undefined)
     return () => {
@@ -167,6 +172,8 @@ export function CoachScreen() {
       speechSynthesis.cancel()
       speaking.current?.pause()
     }
+    // `restore` is a plain function re-created each render; this runs once per shop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, activeId])
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
