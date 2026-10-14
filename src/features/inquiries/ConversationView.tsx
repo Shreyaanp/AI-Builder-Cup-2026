@@ -122,6 +122,7 @@ function MessageBubble({
 }) {
   const roles = useTheme().material
   const locale = useLocale()
+  const dateLocale = navigator.language.split('-')[0] === locale ? navigator.language : locale
   const [translation, setTranslation] = useState<Translation | null>(null)
   const [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -142,7 +143,7 @@ function MessageBubble({
           {visible ? translation.text : message.text}
         </Typography>
         <Typography variant="bodySmall" color="text.secondary">
-          {new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(
+          {new Intl.DateTimeFormat(dateLocale, { dateStyle: 'short', timeStyle: 'short' }).format(
             new Date(message.created * 1000),
           )}
         </Typography>

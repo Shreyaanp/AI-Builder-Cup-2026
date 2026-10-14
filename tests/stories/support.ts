@@ -1,0 +1,210 @@
+import { expect, test, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
+export const gpsBoard = new URL('./fixtures/bengaluru-board.jpg', import.meta.url)
+export const gpsBoardPath = fileURLToPath(gpsBoard)
+// One real catalogue sample per city, exported without seeding the shared test database.
+export const catalogue = JSON.parse(
+  readFileSync(new URL('./fixtures/catalogue.json', import.meta.url), 'utf8'),
+) as { city: string; shop: { id: string; name: string; currency: string } }[]
+
+export async function voiceFixture(page: Page) {
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      const audio = new AudioContext()
+      const destination = audio.createMediaStreamDestination()
+      audio.createOscillator().connect(destination)
+      return destination.stream
+    }
+  })
+  await page.routeWebSocket('**/api/v1/voice*', (socket) => {
+    // This UI-only fixture creates no backend session; do not hand a fictitious session to text chat.
+    socket.send(JSON.stringify({ kind: 'ready', mode: 'offline' }))
+    socket.onMessage((message) => {
+      if (typeof message !== 'string' || JSON.parse(message).kind !== 'audio_end') return
+      socket.send(JSON.stringify({ kind: 'input_transcript', text: 'Fixture voice note' }))
+      socket.send(
+        JSON.stringify({ kind: 'output_transcript', text: 'Offline voice fixture received.' }),
+      )
+      socket.send(JSON.stringify({ kind: 'turn_complete' }))
+    })
+  })
+}
+
+export async function tryVoice(page: Page, story: number) {
+  await page.getByRole('button', { name: 'Press to talk', exact: true }).click()
+  const finish = page.getByRole('button', { name: 'Finish speaking', exact: true })
+  await expect(finish).toHaveAttribute('aria-pressed', 'true')
+  await shot(page, story, '1-voice')
+  await finish.click()
+  await expect(page.getByRole('log')).toContainText('Offline voice fixture received.')
+  await expect(page.getByRole('button', { name: 'Press to talk', exact: true })).toBeVisible()
+}
+
+export const reviewName = 'Check before saving'
+export const shopName = 'Courtyard Chai · Bengaluru'
+
+export async function localOnly(page: Page) {
+  await page.route('**/*', (route) =>
+    ['127.0.0.1', 'localhost'].includes(new URL(route.request().url()).hostname)
+      ? route.fallback()
+      : route.abort(),
+  )
+}
+
+export function gap(description: string) {
+  test.info().annotations.push({ type: 'gap', description })
+  if (process.env.STORY_STRICT === 'true') expect.soft(false, description).toBe(true)
+}
+
+export function liveOnly(description: string) {
+  test.info().annotations.push({ type: 'live-only', description })
+}
+
+export async function shot(page: Page, story: number, step: string | number) {
+  await page.evaluate(async () => {
+    await document.fonts.ready
+  })
+  await page.screenshot({ path: `docs/stories/S${story}-${step}.png`, animations: 'disabled' })
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+    `S${story}/${step}: horizontal overflow at 390px`,
+  ).toBe(true)
+}
+
+export async function enter(page: Page) {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await page.getByLabel('I agree to the Terms').check()
+  await page.getByLabel('I have read the Privacy Notice').check()
+  await page.getByRole('button', { name: 'Agree and continue' }).click()
+  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+}
+
+export async function confirm(page: Page) {
+  const review = page.getByRole('dialog', { name: reviewName })
+  await review.getByRole('button', { name: 'Confirm and save' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+}
+
+export async function closeSheet(page: Page) {
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+}
+
+export async function image(page: Page) {
+  const data = await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 160
+    canvas.height = 120
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = '#f0c878'
+    ctx.fillRect(0, 0, 160, 120)
+    ctx.fillStyle = '#242424'
+    ctx.font = '16px sans-serif'
+    ctx.fillText('Fixture Chai 15', 10, 60)
+    return canvas.toDataURL('image/png').split(',')[1]
+  })
+  return { name: 'fixture-board.png', mimeType: 'image/png', buffer: Buffer.from(data, 'base64') }
+}
+
+/** Arrange an owned shop in the same SQLite preview as existing specs; story actions use UI. */
+export async function seedShop(page: Page, withPhotoPin = false, name = shopName) {
+  let pinned: { id: string; revision: number } | null = null
+  if (withPhotoPin) {
+    // Only the new-shop photo path can currently review GPS. Keep its empty address while
+    // adding the rest of this setup fixture; S1 audits the existing-shop GPS gap separately.
+    const photo = await (
+      await page.request.post('/api/v1/photos?currency=INR', {
+        headers: { 'Content-Type': 'image/jpeg' },
+        data: readFileSync(gpsBoard),
+      })
+    ).json()
+    expect(
+      (
+        await page.request.post(`/api/v1/proposals/${photo.proposal.id}/approve`, {
+          data: { digest: photo.proposal.digest },
+        })
+      ).ok(),
+    ).toBe(true)
+    pinned = (await (await page.request.get('/api/v1/businesses')).json())[0]
+  }
+  const products = [
+    { name: 'Kopi', price: 1800, unit: 'cup', category: 'Drinks' },
+    {
+      name: 'Kaya toast',
+      price: 2500,
+      unit: 'set',
+      category: 'Breakfast',
+      available: !withPhotoPin,
+    },
+  ]
+  const prepared = await page.request.post('/api/v1/proposals', {
+    data: {
+      kind: 'business',
+      business_id: pinned?.id,
+      revision: pinned?.revision ?? 0,
+      business: {
+        name,
+        category: 'Cafe',
+        location: pinned ? '' : 'Indiranagar, Bengaluru',
+        currency: 'INR',
+        timezone: 'Asia/Kolkata',
+        halal: 'yes',
+        phone: '',
+        payment_methods: ['UPI', 'cash'],
+        delivery: 'Swiggy',
+        weekly_hours: [{ day: 'thu', open: '07:00', close: '20:00', closed: false }],
+        reward_text: 'Your eighth chai is free',
+        stamps_needed: 8,
+      },
+      products: pinned ? [] : products,
+    },
+  })
+  expect(prepared.ok()).toBe(true)
+  const proposal = await prepared.json()
+  const approved = await page.request.post(`/api/v1/proposals/${proposal.id}/approve`, {
+    data: { digest: proposal.digest },
+  })
+  expect(approved.ok()).toBe(true)
+  if (pinned) {
+    const { business_id: id } = await approved.json()
+    const current = (await (await page.request.get('/api/v1/businesses')).json()).find(
+      (shop: { id: string }) => shop.id === id,
+    )
+    const restored = await (
+      await page.request.post('/api/v1/proposals', {
+        data: { kind: 'inventory', business_id: id, revision: current.revision, products },
+      })
+    ).json()
+    expect(
+      (
+        await page.request.post(`/api/v1/proposals/${restored.id}/approve`, {
+          data: { digest: restored.digest },
+        })
+      ).ok(),
+    ).toBe(true)
+  }
+  await page.reload()
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
+}
+
+export async function share(page: Page) {
+  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: /^Customer page/ }).click()
+  const sharing = page.getByRole('switch', { name: 'Share customer page' })
+  if (!(await sharing.isChecked())) await sharing.click()
+  await expect(sharing).toBeChecked()
+  const href = await page.getByRole('link', { name: 'Open page' }).getAttribute('href')
+  expect(href).toBeTruthy()
+  await expect(page.getByRole('img', { name: /QR code for/ })).toBeVisible()
+  return new URL(href!, page.url()).toString()
+}
+
+export const phone = {
+  viewport: { width: 390, height: 844 },
+  locale: 'en-IN',
+  timezoneId: 'Asia/Kolkata',
+}
