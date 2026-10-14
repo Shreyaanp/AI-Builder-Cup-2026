@@ -84,7 +84,9 @@ export function Sheet({
               pb: 'env(safe-area-inset-bottom)',
               display: 'flex',
               flexDirection: 'column',
-              position: 'relative',
+              // The paper stays position: fixed at the bottom edge (MUI's own rule). It is
+              // already the containing block for the close button; overriding it to
+              // relative put the sheet in normal flow at the top of the screen (B1).
             },
           },
         }}
@@ -114,7 +116,17 @@ export function Sheet({
             {title}
           </Typography>
         )}
-        <Box sx={{ px: 6, pb: 4, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+        {/* Only the content scrolls; the title and actions stay put inside the 90dvh cap. */}
+        <Box
+          sx={{
+            flex: '1 1 auto',
+            minHeight: 0,
+            px: 6,
+            pb: 4,
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+          }}
+        >
           {children}
         </Box>
         {actions && (
