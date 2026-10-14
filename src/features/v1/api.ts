@@ -1,3 +1,4 @@
+import { clientTimezoneHeader } from '../../api/timezone'
 /** Optional facts customers ask about; absent until the owner confirms them. */
 export interface ShopFacts {
   halal?: 'yes' | 'no' | 'muslim_owned' | 'not_stated' | null
@@ -97,6 +98,7 @@ export function makeApi(getToken: () => Promise<string | null>): Api {
       headers: {
         ...(typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: 'Bearer ' + token } : {}),
+        ...clientTimezoneHeader(),
         ...init.headers,
       },
     })

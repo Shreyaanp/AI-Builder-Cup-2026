@@ -5,13 +5,13 @@ import {
   Button,
   Chip,
   LinearProgress,
-  MenuItem,
   Stack,
-  TextField,
   Typography,
 } from '@mui/material'
 import { useLocale } from '../../state/hooks'
 import { discoverCopy } from '../discover/strings'
+import { PlaceSearch } from '../discover/PlaceSearch'
+import type { FoundPlace } from '../discover/PlaceSearch'
 import { useFrontCopy } from './strings'
 import { BrandSplash } from './Splash'
 import { currentPath, customerNavigate, subscribePath } from './navigation'
@@ -20,9 +20,8 @@ import './frontdoors.css'
 const Discover = lazy(() => import('../discover/Discover'))
 const PublicShop = lazy(() => import('../public/PublicShop'))
 const journeyKey = 'chalkboard.customer.journey'
-const areas = ['Tiong Bahru', 'Chinatown', 'Bugis', 'Orchard', 'Jurong East', 'Tampines']
 const categories = ['kopi', 'hawker', 'bakery', 'cafe', 'grocery', 'catering'] as const
-export type CustomerLocation = { area: string; gps: [number, number] | null }
+export type CustomerLocation = { gps: [number, number] | null; place: FoundPlace | null }
 function firstRun() {
   try {
     return localStorage.getItem(journeyKey) !== 'done'
@@ -110,7 +109,7 @@ function CustomerWelcome({
   const d = discoverCopy(locale)
   const t = useFrontCopy()
   const [step, setStep] = useState(1)
-  const [area, setArea] = useState('Tiong Bahru')
+  const [place, setPlace] = useState<FoundPlace | null>(null)
   const [gps, setGps] = useState<[number, number] | null>(null)
   const [picks, setPicks] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
@@ -179,22 +178,16 @@ function CustomerWelcome({
             <Button variant="contained" disabled={busy} onClick={locate}>
               {d.gps}
             </Button>
-            <TextField
-              select
-              label={d.area}
-              value={area}
-              onChange={(event) => {
-                setArea(event.target.value)
+            <PlaceSearch
+              value={place?.label}
+              onFound={(found) => {
+                setPlace(found)
                 setGps(null)
+                setDenied(false)
+                setStep(2)
               }}
-            >
-              {areas.map((name) => (
-                <MenuItem key={name} value={name}>
-                  {name}
-                </MenuItem>
-              ))}
-            </TextField>
-            <Button variant="outlined" disabled={busy} onClick={() => setStep(2)}>
+            />
+            <Button variant="text" disabled={busy} onClick={() => setStep(2)}>
               {t.continue}
             </Button>
           </>
@@ -223,7 +216,7 @@ function CustomerWelcome({
               variant="contained"
               onClick={() =>
                 onComplete(
-                  { area, gps },
+                  { gps, place },
                   picks.map((pick) => (pick === 'cafe' ? 'café' : pick)),
                 )
               }

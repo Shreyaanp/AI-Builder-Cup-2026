@@ -43,6 +43,9 @@ export const english = {
   cafe: 'Café',
   grocery: 'Grocery',
   catering: 'Catering',
+  place: 'City or area',
+  placeHint: 'Search any city or neighbourhood',
+  placeError: 'Couldn’t find that place. Try a city or neighbourhood name.',
 }
 type Copy = typeof english
 const keys = Object.keys(english) as (keyof Copy)[]
@@ -91,6 +94,9 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     '咖啡馆',
     '杂货店',
     '餐饮外烩',
+    '城市或地区',
+    '搜索任意城市或街区',
+    '找不到这个地方。请输入城市或街区名称。',
   ],
   ms: [
     'Apa yang berdekatan?',
@@ -135,6 +141,9 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'Kafe',
     'Kedai runcit',
     'Katering',
+    'Bandar atau kawasan',
+    'Cari mana-mana bandar atau kawasan',
+    'Tempat itu tidak ditemui. Cuba nama bandar atau kawasan.',
   ],
   ta: [
     'அருகில் என்ன இருக்கிறது?',
@@ -179,6 +188,9 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'கஃபே',
     'மளிகைக் கடை',
     'உணவு வழங்கல்',
+    'நகரம் அல்லது பகுதி',
+    'எந்த நகரம் அல்லது பகுதியையும் தேடுங்கள்',
+    'அந்த இடம் கிடைக்கவில்லை. நகரம் அல்லது பகுதியின் பெயரை முயற்சிக்கவும்.',
   ],
   ja: [
     '近くには何がある？',
@@ -223,6 +235,9 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'カフェ',
     '食料品店',
     'ケータリング',
+    '都市またはエリア',
+    '世界中の都市や地域を検索',
+    '場所が見つかりません。都市名や地域名で試してください。',
   ],
   ko: [
     '주변에 무엇이 있나요?',
@@ -267,6 +282,9 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     '카페',
     '식료품점',
     '케이터링',
+    '도시 또는 지역',
+    '어느 도시나 동네든 검색',
+    '장소를 찾을 수 없어요. 도시나 동네 이름으로 다시 시도해 주세요.',
   ],
   id: [
     'Ada apa di sekitar saya?',
@@ -311,6 +329,9 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'Kafe',
     'Toko kelontong',
     'Katering',
+    'Kota atau area',
+    'Cari kota atau lingkungan mana pun',
+    'Tempat tidak ditemukan. Coba nama kota atau lingkungan.',
   ],
   th: [
     'รอบตัวมีอะไรบ้าง?',
@@ -355,6 +376,9 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'คาเฟ่',
     'ร้านขายของชำ',
     'จัดเลี้ยง',
+    'เมืองหรือย่าน',
+    'ค้นหาเมืองหรือย่านใดก็ได้',
+    'ไม่พบสถานที่นั้น ลองใช้ชื่อเมืองหรือย่าน',
   ],
   vi: [
     'Quanh tôi có gì?',
@@ -399,6 +423,9 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'Quán cà phê',
     'Tạp hóa',
     'Dịch vụ tiệc',
+    'Thành phố hoặc khu vực',
+    'Tìm bất kỳ thành phố hoặc khu phố nào',
+    'Không tìm thấy địa điểm. Hãy thử tên thành phố hoặc khu phố.',
   ],
   fil: [
     'Ano ang malapit sa akin?',
@@ -443,6 +470,9 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'Kapihan',
     'Grocery',
     'Catering',
+    'Lungsod o lugar',
+    'Hanapin ang anumang lungsod o lugar',
+    'Hindi nahanap ang lugar. Subukan ang pangalan ng lungsod o lugar.',
   ],
 }
 

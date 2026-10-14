@@ -8,7 +8,6 @@ import {
   Chip,
   CircularProgress,
   FormControlLabel,
-  MenuItem,
   Stack,
   Switch,
   TextField,
@@ -29,6 +28,8 @@ import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { Sheet } from '../v1/Sheet'
 import { formatPrice } from '../v1/format'
 import { discoverCopy } from './strings'
+import { PlaceSearch } from './PlaceSearch'
+import type { FoundPlace } from './PlaceSearch'
 import { mapsLink } from './types'
 import type { Discovery, Place, Usual } from './types'
 
@@ -70,6 +71,17 @@ type Filters = {
   halal: boolean
   budget: boolean
   area: Area
+  /** A typed city or neighbourhood anywhere in the world; wins over the demo areas. */
+  place: FoundPlace | null
+}
+function validPlace(value: unknown): FoundPlace | null {
+  const place = value as FoundPlace | null
+  return place &&
+    typeof place.label === 'string' &&
+    Number.isFinite(place.lat) &&
+    Number.isFinite(place.lng)
+    ? { lat: place.lat, lng: place.lng, label: place.label.slice(0, 180) }
+    : null
 }
 const preferenceKey = 'chalkboard.discover.filters'
 const usualsKey = 'chalkboard.discover.usuals'
@@ -90,6 +102,7 @@ function readFilters(): Filters {
     halal: url.has('halal') ? url.get('halal') === '1' : saved?.halal === true,
     budget: url.has('budget') ? url.get('budget') === '1' : saved?.budget === true,
     area: typeof area === 'string' && Object.hasOwn(areas, area) ? (area as Area) : 'Tiong Bahru',
+    place: validPlace(saved?.place),
   }
 }
 function readUsuals(): Usual[] {
@@ -126,7 +139,7 @@ export default function Discover({
   const roles = useTheme().material
   const [filters, setFilters] = useState(() => ({
     ...readFilters(),
-    ...(initialLocation ? { area: initialLocation.area as Area } : {}),
+    ...(initialLocation?.place ? { place: initialLocation.place } : {}),
   }))
   const [query, setQuery] = useState(filters.q)
   const [gps, setGps] = useState<[number, number] | null>(initialLocation?.gps ?? null)
@@ -149,7 +162,8 @@ export default function Discover({
   const [usuals, setUsuals] = useState(readUsuals)
   const [interestsActive, setInterestsActive] = useState(interests.length > 0)
   const [scarcityNote, setScarcityNote] = useState(false)
-  const [lat, lng] = gps ?? areas[filters.area]
+  const [lat, lng] =
+    gps ?? (filters.place ? [filters.place.lat, filters.place.lng] : areas[filters.area])
   useEffect(() => {
     document.title = t.title + ' · Chalkboard'
     document.documentElement.lang = locale
@@ -541,31 +555,22 @@ export default function Discover({
                 onChange={(_, budget) => setFilters({ ...filters, budget })}
               />
             }
-            label={`${t.budget} · ${formatPrice(1000, 'SGD', locale)}`}
+            label={t.budget}
           />
         </Stack>
         <Typography variant="bodyMedium" color="text.secondary">
           {t.reason}
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
-          <TextField
-            select
-            fullWidth
-            label={t.area}
-            value={gps ? '' : filters.area}
-            onChange={(event) => {
+          <PlaceSearch
+            key={gps ? 'gps' : (filters.place?.label ?? filters.area)}
+            value={gps ? t.current : (filters.place?.label ?? filters.area)}
+            onFound={(place) => {
               setGps(null)
               setGpsError(false)
-              setFilters({ ...filters, area: event.target.value as Area })
+              setFilters({ ...filters, place })
             }}
-          >
-            {gps && <MenuItem value="">{t.current}</MenuItem>}
-            {Object.keys(areas).map((area) => (
-              <MenuItem key={area} value={area}>
-                {area}
-              </MenuItem>
-            ))}
-          </TextField>
+          />
           <Button
             variant="outlined"
             disabled={gpsBusy}

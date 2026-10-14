@@ -114,11 +114,12 @@ test('Google sheet, live directions link, lazy fixture map, area and known-only 
   await page.getByRole('switch', { name: 'Halal if known' }).check()
   await expect(page.getByText('No matches. Try another area or clear your filters.')).toBeVisible()
   await page.getByRole('switch', { name: 'Halal if known' }).uncheck()
-  await page.getByRole('combobox', { name: 'Choose an area' }).click()
-  await page.getByRole('option', { name: 'Tampines', exact: true }).click()
+  // Any city or neighbourhood worldwide; demo mode knows the fixture areas.
+  await page.getByRole('textbox', { name: 'City or area' }).fill('Tampines')
+  await page.getByRole('textbox', { name: 'City or area' }).press('Enter')
   await expect(page.getByText('No matches. Try another area or clear your filters.')).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('combobox', { name: 'Choose an area' })).toContainText('Tampines')
+  await expect(page.getByRole('textbox', { name: 'City or area' })).toHaveValue('Tampines')
   await page.route('**/api/v1/discover?**', (route) =>
     route.fulfill({ json: { mode: 'live', places: [] } }),
   )
