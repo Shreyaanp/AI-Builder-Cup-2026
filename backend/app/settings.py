@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     app_env: Literal["local", "test", "production"] = "local"
     coach_mode: Literal["offline", "gemini"] = "offline"
+    forecast_backend: Literal["weekday_average", "bigquery"] = "weekday_average"
     auth_mode: Literal["local", "firebase"] = "local"
     session_database_url: str = "sqlite+aiosqlite:///./data/sessions.sqlite3"
     session_backend: Literal["sqlite", "firestore"] = "sqlite"
