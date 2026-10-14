@@ -52,6 +52,7 @@ from .replay import ReplayStore, TurnReplay
 from .sales_routes import router as sales_router
 from .settings import Settings
 from .streaming import CoachRuntime
+from .tts import Speech
 from .voice import serve_voice
 
 log = structlog.get_logger()
@@ -133,6 +134,7 @@ def create_app(
         coordinator.question_planner = QuestionPlanner(settings)
         app.state.column_mapper = ColumnMapper(settings)
         app.state.recap_writer = RecapWriter(settings)
+        app.state.speech = Speech(settings)
         app.state.maps = maps_service or MapsService(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
         app.state.services = Services(
@@ -224,6 +226,12 @@ def create_app(
         return {
             **get_services(request).identity.bootstrap(request, response),
             "v1_enabled": settings.v1_enabled,
+            "customer_origin": settings.customer_origin
+            or (
+                "https://chalkboard.shreyaan.work"
+                if settings.app_env == "production"
+                else "http://127.0.0.1:3200"
+            ),
             "coach_mode": settings.coach_mode,
             "maps_browser_key": (
                 settings.maps_browser_key.get_secret_value() if settings.maps_browser_key else ""

@@ -68,7 +68,7 @@ test('demo: photo, price correction, customer page and availability', async ({ p
   await sharing.click()
   await expect(sharing).toBeChecked()
   const section = sheet('Customer page')
-  const shownLink = section.getByText(/^http:\/\/127\.0\.0\.1:3200\/s\//)
+  const shownLink = section.getByText(/^http:\/\/127\.0\.0\.1:3200\/(explore\/)?s\//)
   await expect(shownLink).toBeVisible()
   const url = (await shownLink.innerText()).trim()
   expect(url).toContain('/s/')

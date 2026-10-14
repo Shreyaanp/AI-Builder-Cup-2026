@@ -16,6 +16,8 @@ import { shape } from '../../design/theme'
 import { LegalDialog } from './LegalDialog'
 import type { LegalDocument } from './LegalDialog'
 import { useCopy } from './strings'
+import { BrandSplash } from '../frontdoors/Splash'
+import { JourneyProgress } from '../frontdoors/OwnerJourney'
 
 function Frame({ children }: { children: ReactNode }) {
   return (
@@ -58,26 +60,7 @@ function Mark() {
 }
 
 export function Splash() {
-  const t = useCopy()
-  return (
-    <Box
-      role="status"
-      sx={{
-        minHeight: '100dvh',
-        display: 'grid',
-        placeContent: 'center',
-        justifyItems: 'center',
-        gap: 3,
-      }}
-    >
-      <Mark />
-      <Typography variant="titleLarge">{t.appName}</Typography>
-      <CircularProgress aria-label={t.loading} />
-      <Typography variant="bodyMedium" color="text.secondary">
-        {t.loading}
-      </Typography>
-    </Box>
-  )
+  return <BrandSplash business />
 }
 
 /** Signed in, but the account could not be loaded: recover without showing marketing again. */
@@ -124,6 +107,7 @@ export function ConsentScreen({
   return (
     <Frame>
       <Mark />
+      <JourneyProgress step={2} />
       <Box>
         <Typography component="h1" variant="headlineMedium">
           {t.consentTitle}
@@ -192,6 +176,7 @@ export function ConsentScreen({
           variant="contained"
           size="large"
           disabled={!terms || !privacy || busy}
+          startIcon={busy ? <CircularProgress size={18} /> : undefined}
           onClick={() => {
             setBusy(true)
             setError('')
