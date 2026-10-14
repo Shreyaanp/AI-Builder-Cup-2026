@@ -1,6 +1,7 @@
 import type { Copy } from '../strings'
 
 export const ko: Copy = {
+  rateLimited: '요청이 너무 많아요. 1분 뒤에 다시 시도해 주세요.',
   connectionOffline: '오프라인',
   connectionReconnecting: '다시 연결 중…',
   voiceFailed: '음성 연결이 종료되었습니다. 다시 시도하거나 텍스트를 사용하세요.',

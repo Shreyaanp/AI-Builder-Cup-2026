@@ -4,9 +4,6 @@ import asyncio
 import hashlib
 import json
 import re
-import time
-from collections import deque
-from collections.abc import Callable
 from typing import Any, Literal
 
 from fastapi import HTTPException
@@ -63,34 +60,6 @@ class InquiryReceipt(BaseModel):
 
 def inquiry_key(body: InquiryInput) -> str:
     return hashlib.sha256(json.dumps(body.model_dump(), sort_keys=True).encode()).hexdigest()
-
-
-class PublicLimiter:
-    """50/min per shop, 10/min per shop/client; bounded memory. Ignore forwarded headers."""
-
-    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
-        self.clock = clock
-        self.windows: dict[tuple[str, str], deque[float]] = {}
-
-    def take(self, action: str, bid: str, ip: str) -> None:
-        now = self.clock()
-        for key in list(self.windows):
-            window = self.windows[key]
-            while window and window[0] <= now - 60:
-                window.popleft()
-            if not window:
-                del self.windows[key]
-        limits = [((action + ":shop", bid), 50), ((action + ":ip", f"{bid}\0{ip}"), 10)]
-        if any(len(self.windows.get(key, ())) >= maximum for key, maximum in limits) or (
-            len(self.windows) + sum(key not in self.windows for key, _ in limits) > 2048
-        ):
-            raise HTTPException(
-                429,
-                "Too many requests. Please wait a minute and try again.",
-                headers={"Retry-After": "60"},
-            )
-        for key, _ in limits:
-            self.windows.setdefault(key, deque()).append(now)
 
 
 # Deterministic fixtures, not language recognition or live-model accuracy evidence.

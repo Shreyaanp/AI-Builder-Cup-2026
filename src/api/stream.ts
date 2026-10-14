@@ -43,6 +43,8 @@ function decodeEvent(data: string): CoachEvent {
 
 class StreamFailure extends Error {}
 
+export class RateLimitError extends StreamFailure {}
+
 export function reconnectDelay(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     signal.throwIfAborted()
@@ -92,6 +94,7 @@ export async function streamCoach(
   // Overall recovery is bounded; each silent connection has its own watchdog.
   signal = AbortSignal.any([signal, AbortSignal.timeout(175_000)])
   const bootstrap = await fetch('/api/v1/bootstrap', { credentials: 'same-origin', signal })
+  if (bootstrap.status === 429) throw new RateLimitError('RATE_LIMITED')
   if (!bootstrap.ok) throw new Error('Could not establish a local coach session.')
   let lastId = ''
   let sessionId = turn.session_id
@@ -128,12 +131,9 @@ export async function streamCoach(
         body: JSON.stringify({ ...turn, session_id: sessionId }),
       })
       if (!response.ok) {
+        if (response.status === 429) throw new RateLimitError('RATE_LIMITED')
         if (response.status >= 500) throw new Error('Coach connection unavailable.')
-        throw new StreamFailure(
-          response.status === 429
-            ? 'The coach is busy. Please try again shortly.'
-            : 'The reply did not finish. Your note is still here.',
-        )
+        throw new StreamFailure('The reply did not finish. Your note is still here.')
       }
       if (!response.body || !response.headers.get('content-type')?.includes('text/event-stream'))
         throw new StreamFailure('The coach did not return a stream.')

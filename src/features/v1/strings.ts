@@ -2,6 +2,7 @@ import { useLocale } from '../../state/hooks'
 import { translations } from './locales'
 
 export const en = {
+  rateLimited: 'Too many requests. Please wait a minute and try again.',
   appName: 'Chalkboard',
   independent: 'Independent prototype · not a Google product',
   connectionOffline: 'Offline',

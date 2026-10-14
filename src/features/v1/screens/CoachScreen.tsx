@@ -38,7 +38,7 @@ import {
   ZapOff,
 } from 'lucide-react'
 import { visuallyHidden } from '@mui/utils'
-import { streamCoach } from '../../../api/stream'
+import { RateLimitError, streamCoach } from '../../../api/stream'
 import type { CoachEvent } from '../../../api/stream'
 import { useIdentity } from '../../../auth/useIdentity'
 import { useLocale } from '../../../state/hooks'
@@ -194,9 +194,9 @@ export function CoachScreen() {
       // History is supplemental; a failed refresh must never roll back a completed turn.
       const items = await api<Conversation[]>('/conversations').catch(() => null)
       if (items && controller.current === abort) setHistory(items)
-    } catch {
+    } catch (cause) {
       if (!abort.signal.aborted) {
-        setError(t.replyFailed)
+        setError(cause instanceof RateLimitError ? t.rateLimited : t.replyFailed)
         // Keep the unsent message available for a retry.
         setMessages((items) => items.slice(0, -1))
         setNote(message)
@@ -243,7 +243,11 @@ export function CoachScreen() {
     } catch (cause) {
       const code = cause instanceof ApiError ? cause.code : ''
       setError(
-        code === 'PHOTO_BLOCKED' || code === 'NOT_BUSINESS_PHOTO' ? t.photoRefused : t.photoFailed,
+        cause instanceof ApiError && cause.status === 429
+          ? t.rateLimited
+          : code === 'PHOTO_BLOCKED' || code === 'NOT_BUSINESS_PHOTO'
+            ? t.photoRefused
+            : t.photoFailed,
       )
     } finally {
       setBusy('idle')
@@ -498,7 +502,13 @@ export function CoachScreen() {
         }}
       >
         {error && (
-          <Alert severity="error" onClose={() => setError('')} sx={{ mb: 1.5 }}>
+          <Alert
+            severity="error"
+            role="status"
+            aria-live="polite"
+            onClose={() => setError('')}
+            sx={{ mb: 1.5 }}
+          >
             {error}
           </Alert>
         )}

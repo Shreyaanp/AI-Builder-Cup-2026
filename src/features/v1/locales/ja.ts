@@ -1,6 +1,7 @@
 import type { Copy } from '../strings'
 
 export const ja: Copy = {
+  rateLimited: 'リクエストが多すぎます。1 分ほど待ってから再試行してください。',
   connectionOffline: 'オフライン',
   connectionReconnecting: '再接続中…',
   voiceFailed: '音声接続が終了しました。もう一度試すか、文字で入力してください。',
