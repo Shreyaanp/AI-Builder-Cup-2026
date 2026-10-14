@@ -67,7 +67,9 @@ def merchant_services(settings: Settings) -> tuple[MerchantRepository | None, Re
     )
     embed = (
         gemini_embedder(
-            settings.google_cloud_project, settings.google_cloud_location, settings.embedding_model
+            settings.google_cloud_project,
+            settings.google_embedding_location,
+            settings.embedding_model,
         )
         if settings.coach_mode == "gemini" and settings.gemini_backend == "vertex"
         else padded_lexical
