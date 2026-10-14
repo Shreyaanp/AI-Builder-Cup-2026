@@ -1,6 +1,7 @@
 # Account 2 brief: phone UI/UX polish (do this BEFORE demo shops)
 
 Same ground rules as `account2-demo-shops.md`:
+
 - work on your own worktree and branch (`ui/phone-polish` from `origin/main`) and push the branch;
 - don't release;
 - never add AI co-author trailers to commits.
@@ -22,10 +23,11 @@ The user reported each item below on a real phone.
    - the price changes from $2.00 to $1.80;
    - Kaya toast gets struck through and the "Sold out" chip pops in;
    - the Confirm button is pressed (ripple), a "Saved ✓" snackbar appears, then the loop resets.
-   
+
    Fill the empty lower half of the phone: add a composer bar at the bottom and a status bar at the
    top. Respect `prefers-reduced-motion` by showing the final state. Animate with transform and
    opacity only.
+
 2. **Coach composer on phone**:
    - make it a single-line input that grows only when typing multiple lines;
    - fix the glitchy press-to-talk, which shows too much and jumps the layout. Hold-to-talk should
@@ -33,8 +35,9 @@ The user reported each item below on a real phone.
 3. **Bottom sheets on phone are broken**:
    - the slide-in sheet is mispositioned;
    - after tapping "Something changed" (freshness card), the bottom navigation disappears for good.
-   
+
    Fix the root cause in `src/features/v1/Sheet.tsx` and the navigation layout.
+
 4. **Back and quit**:
    - the Android or browser back button should close an open sheet or dialog first, using history
      state;
@@ -66,6 +69,7 @@ The user reported each item below on a real phone.
     never mistaken for real. Update the tests accordingly and keep the honesty intact.
 
 Testing:
+
 - run targeted Playwright (phone project) and axe for the screens you touch, plus a backend test
   for items 9 and 10;
 - take before and after phone screenshots and save them to `docs/handoff/shots/`;
