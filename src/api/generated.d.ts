@@ -638,6 +638,31 @@ export interface components {
              * @default SGD
              */
             currency: string;
+            /** Halal */
+            halal?: ("yes" | "no" | "muslim_owned" | "not_stated") | null;
+            /** Vegetarian Options */
+            vegetarian_options?: boolean | null;
+            /** Delivery */
+            delivery?: ("none" | "own" | "grab" | "foodpanda" | "other") | null;
+            /**
+             * Delivery Note
+             * @default
+             */
+            delivery_note: string;
+            /** Preorders */
+            preorders?: boolean | null;
+            /**
+             * Preorder Lead Time
+             * @default
+             */
+            preorder_lead_time: string;
+            /** Payment Methods */
+            payment_methods?: ("cash" | "paynow" | "card" | "grabpay" | "nets" | "other")[];
+            /**
+             * Busy Hours
+             * @default
+             */
+            busy_hours: string;
         };
         /** ChallengeRequest */
         ChallengeRequest: {

@@ -1,3 +1,14 @@
+/** Optional facts customers ask about; absent until the owner confirms them. */
+export interface ShopFacts {
+  halal?: 'yes' | 'no' | 'muslim_owned' | 'not_stated' | null
+  vegetarian_options?: boolean | null
+  delivery?: 'none' | 'own' | 'grab' | 'foodpanda' | 'other' | null
+  delivery_note?: string
+  preorders?: boolean | null
+  preorder_lead_time?: string
+  payment_methods?: ('cash' | 'paynow' | 'card' | 'grabpay' | 'nets' | 'other')[]
+  busy_hours?: string
+}
 export interface Business {
   id: string
   fields: {
@@ -8,7 +19,7 @@ export interface Business {
     phone: string
     /** ISO 4217; shops saved before currencies existed have none (treated as SGD). */
     currency?: string
-  }
+  } & ShopFacts
   revision: number
   registration: string
   public: boolean
