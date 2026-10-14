@@ -32,7 +32,8 @@ export function Sheet({
   open: boolean
   onClose: () => void
   titleId: string
-  title: ReactNode
+  /** Omit when the content brings its own heading with id `titleId`. */
+  title?: ReactNode
   children: ReactNode
   actions?: ReactNode
   onEntered?: () => void
@@ -84,14 +85,16 @@ export function Sheet({
             mb: 2,
           }}
         />
-        <Typography
-          id={titleId}
-          component="h2"
-          variant="headlineSmall"
-          sx={{ px: 6, pt: 2, pb: 4 }}
-        >
-          {title}
-        </Typography>
+        {title && (
+          <Typography
+            id={titleId}
+            component="h2"
+            variant="headlineSmall"
+            sx={{ px: 6, pt: 2, pb: 4 }}
+          >
+            {title}
+          </Typography>
+        )}
         <Box sx={{ px: 6, pb: 4, overflowY: 'auto', overscrollBehavior: 'contain' }}>
           {children}
         </Box>
@@ -113,7 +116,7 @@ export function Sheet({
       transitionDuration={timing}
       slotProps={{ transition: { onEntered } }}
     >
-      <DialogTitle id={titleId}>{title}</DialogTitle>
+      {title && <DialogTitle id={titleId}>{title}</DialogTitle>}
       <DialogContent>{children}</DialogContent>
       {actions && <DialogActions sx={{ px: 6, pb: 6 }}>{actions}</DialogActions>}
     </Dialog>

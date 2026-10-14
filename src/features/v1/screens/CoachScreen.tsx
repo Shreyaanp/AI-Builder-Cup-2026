@@ -21,19 +21,21 @@ import {
 } from '@mui/material'
 import {
   ArrowUp,
-  Clock,
   History,
   ImagePlus,
   Leaf,
+  MessageSquare,
   MessageSquarePlus,
   Mic,
   PackagePlus,
   Plus,
+  Share2,
   Square,
   Store,
   Tag,
   Volume2,
   VolumeX,
+  ZapOff,
 } from 'lucide-react'
 import { visuallyHidden } from '@mui/utils'
 import { streamCoach } from '../../../api/stream'
@@ -46,9 +48,12 @@ import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
 import { Sheet } from '../Sheet'
 import { ShopCard, ShopSheet, StartCard } from '../ShopCard'
+import { ShopSheets } from '../ShopTiles'
+import type { ShopSheetKind } from '../ShopTiles'
+import { useUnread } from '../useUnread'
 import { useVoice } from '../useVoice'
 import { useWorkspace } from '../workspaceContext'
-import { shape } from '../../../design/theme'
+import { enterRise, shape } from '../../../design/theme'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 type Message = { role: 'user' | 'assistant'; text: string }
@@ -72,6 +77,10 @@ export function CoachScreen() {
   // Shop details sheet: null = closed, -1 = open, n = open on product n.
   const [sheet, setSheet] = useState<number | null>(null)
   const openSheet = (product?: number) => setSheet(product ?? -1)
+  // My shop sheets opened from suggestion chips.
+  const [shopSheet, setShopSheet] = useState<ShopSheetKind | null>(null)
+  const { unread, refresh: refreshUnread } = useUnread()
+  const messageInput = useRef<HTMLTextAreaElement>(null)
   const session = useRef<string | null>(null)
   const controller = useRef<AbortController | null>(null)
   const photoInput = useRef<HTMLInputElement>(null)
@@ -253,12 +262,66 @@ export function CoachScreen() {
 
   const shopHistory = history.filter((entry) => (entry.business_id ?? null) === activeId)
   const empty = messages.length === 0 && !reply
-  // Quick starts once a shop exists. Photos live on the composer and the shop card's next
-  // step; before a shop exists the start card carries every action.
-  const suggestions: { label: string; icon: ReactElement }[] = [
-    { label: t.suggestPrice, icon: <Tag size={18} /> },
-    { label: t.suggestHours, icon: <Clock size={18} /> },
-  ]
+  // Suggestion chips are rules only (no AI): they come from the current shop state, never a
+  // fixed list, and at most three show. Each one either opens the right sheet or starts a note.
+  type Suggestion = 'reply' | 'menu' | 'soldOut' | 'price' | 'share' | 'photo' | 'name'
+  const shop = ws.active
+  const rules: [Suggestion, boolean][] = shop
+    ? [
+        ['reply', Boolean(unread)],
+        ['menu', ws.products.length === 0],
+        ['soldOut', ws.products.length > 0],
+        ['price', ws.products.length > 0],
+        ['share', !shop.public],
+      ]
+    : [
+        ['photo', true],
+        ['name', true],
+      ]
+  const chipCopy: Record<Suggestion, { label: string; icon: ReactElement }> = {
+    reply: { label: t.chipReply(unread ?? 0), icon: <MessageSquare size={18} /> },
+    menu: { label: t.chipAddMenu, icon: <ImagePlus size={18} /> },
+    soldOut: { label: t.chipSoldOut, icon: <ZapOff size={18} /> },
+    price: { label: t.chipPrice, icon: <Tag size={18} /> },
+    share: { label: t.chipShare, icon: <Share2 size={18} /> },
+    photo: { label: t.chipBoardPhoto, icon: <ImagePlus size={18} /> },
+    name: { label: t.chipShopName, icon: <Store size={18} /> },
+  }
+  const suggestions = rules
+    .filter(([, applies]) => applies)
+    .slice(0, 3)
+    .map(([id]) => ({ id, ...chipCopy[id] }))
+  function suggest(id: Suggestion) {
+    if (id === 'reply') setShopSheet('messages')
+    else if (id === 'soldOut') setShopSheet('soldOut')
+    else if (id === 'share') setShopSheet('customer')
+    else if (id === 'menu' || id === 'photo') photoInput.current?.click()
+    else {
+      setNote(`${id === 'price' ? t.chipPrice : t.fields.name}: `)
+      messageInput.current?.focus()
+    }
+  }
+  const chips = (
+    <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2 }}>
+      {suggestions.map((item) => (
+        <Chip
+          key={item.label}
+          icon={item.icon}
+          label={item.label}
+          variant="outlined"
+          onClick={() => suggest(item.id)}
+          sx={{
+            height: 40,
+            px: 1,
+            borderColor: roles.outlineVariant,
+            '& .MuiChip-icon': { color: roles.primary },
+            ...enterRise,
+          }}
+        />
+      ))}
+    </Stack>
+  )
+  const lastIsReply = messages.at(-1)?.role === 'assistant' && !reply && busy === 'idle'
   const canSend = Boolean(note.trim()) && busy === 'idle' && voice.state === 'idle'
 
   return (
@@ -362,25 +425,8 @@ export function CoachScreen() {
               {ws.active ? t.coachGreetingShop(ws.active.fields.name) : t.coachGreeting}
             </Typography>
             {ws.active ? <ShopCard onOpen={openSheet} /> : <StartCard />}
-            {ws.active && (
-              <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2 }}>
-                {suggestions.map((item) => (
-                  <Chip
-                    key={item.label}
-                    icon={item.icon}
-                    label={item.label}
-                    variant="outlined"
-                    onClick={() => setNote(item.label + ': ')}
-                    sx={{
-                      height: 40,
-                      px: 1,
-                      borderColor: roles.outlineVariant,
-                      '& .MuiChip-icon': { color: roles.primary },
-                    }}
-                  />
-                ))}
-              </Stack>
-            )}
+            {/* Before a shop exists the start card is the only thing shown. */}
+            {ws.active && chips}
           </Stack>
         ) : (
           <>
@@ -418,6 +464,7 @@ export function CoachScreen() {
                 </Box>
               )}
             </Stack>
+            {lastIsReply && <Box sx={{ pt: 4, pl: 10 }}>{chips}</Box>}
           </>
         )}
         <div ref={end} />
@@ -426,6 +473,13 @@ export function CoachScreen() {
         open={sheet !== null}
         focusProduct={sheet !== null && sheet >= 0 ? sheet : null}
         onClose={() => setSheet(null)}
+      />
+      <ShopSheets
+        kind={shopSheet}
+        onClose={() => {
+          if (shopSheet === 'messages') refreshUnread()
+          setShopSheet(null)
+        }}
       />
 
       <Box
@@ -528,6 +582,7 @@ export function CoachScreen() {
             maxRows={6}
             fullWidth
             disabled={voice.state !== 'idle'}
+            inputRef={messageInput}
             inputProps={{ 'aria-label': t.message, maxLength: 2000 }}
             // 16px keeps iOS from zooming on focus; 12 + 24 + 12 matches the 48dp buttons.
             sx={{ flex: 1, px: 1, py: 3, fontSize: '1rem', lineHeight: '1.5rem' }}

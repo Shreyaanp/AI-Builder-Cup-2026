@@ -106,6 +106,8 @@ test('D02–D04, D07, F07: anonymous ask and pending inquiry reach only the owne
     await page.reload()
     await page.getByRole('button', { name: 'Continue local preview' }).click()
     await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    // The Messages tile shows the unread count and opens the inbox sheet.
+    await page.getByRole('button', { name: /^Messages 1/ }).click()
     const messages = page.getByRole('region', { name: /Messages \(1\)/ })
     await expect(messages).toContainText('customer@example.test')
     await expect(messages).toContainText('Could I ask about kopi? <script>hello</script>')
