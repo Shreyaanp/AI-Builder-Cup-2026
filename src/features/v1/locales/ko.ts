@@ -179,6 +179,8 @@ export const ko: Copy = {
     muslim_owned: '무슬림 운영',
     not_stated: '밝히지 않음',
   },
+  factInputHelp: '추천을 선택하거나 이름을 입력하세요. 결제 수단 최대 8개, 각각 40자 이내.',
+  deliveryInputHelp: '추천을 선택하거나 배달 서비스 이름을 입력하세요(40자 이내).',
   deliveryValues: {
     none: '배달 안 함',
     own: '자체 배달',

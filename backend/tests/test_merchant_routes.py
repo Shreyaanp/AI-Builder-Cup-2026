@@ -298,11 +298,24 @@ def test_offline_coach_halal_answer_is_reviewed_then_published(app) -> None:
         assert public["facts"] == {"halal": "yes"}
 
 
-def test_proposal_rejects_unknown_fact_values(app) -> None:
+def test_proposal_accepts_custom_names_and_rejects_oversized_facts(app) -> None:
     with TestClient(app) as client:
         join(client)
         response = client.post(
             "/api/v1/proposals",
             json={"kind": "business", "business": {"name": "Tea", "payment_methods": ["iou"]}},
         )
-        assert response.status_code == 422
+        assert response.status_code == 200
+        assert response.json()["snapshot"]["business"]["payment_methods"] == ["iou"]
+        for facts in [
+            {"payment_methods": ["x" * 41]},
+            {"payment_methods": [str(n) for n in range(9)]},
+            {"delivery": "x" * 41},
+        ]:
+            assert (
+                client.post(
+                    "/api/v1/proposals",
+                    json={"kind": "business", "business": {"name": "Tea", **facts}},
+                ).status_code
+                == 422
+            )

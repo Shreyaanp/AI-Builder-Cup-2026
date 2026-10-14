@@ -2944,13 +2944,8 @@
             "anyOf": [
               {
                 "type": "string",
-                "enum": [
-                  "none",
-                  "own",
-                  "grab",
-                  "foodpanda",
-                  "other"
-                ]
+                "maxLength": 40,
+                "minLength": 1
               },
               {
                 "type": "null"
@@ -2984,17 +2979,11 @@
           "payment_methods": {
             "items": {
               "type": "string",
-              "enum": [
-                "cash",
-                "paynow",
-                "card",
-                "grabpay",
-                "nets",
-                "other"
-              ]
+              "maxLength": 40,
+              "minLength": 1
             },
             "type": "array",
-            "maxItems": 6,
+            "maxItems": 8,
             "title": "Payment Methods"
           },
           "busy_hours": {

@@ -21,6 +21,7 @@ import { PlaceImage } from '../frontdoors/PlaceImage'
 import { discoverCopy } from '../discover/strings'
 import { loadScriptFont } from '../../i18n/fonts'
 import { formatPrice } from '../v1/format'
+import { factName } from '../v1/factNames'
 import { Sheet } from '../v1/Sheet'
 import type { ShopFacts } from '../v1/api'
 import { en as ownerEnglish } from '../v1/strings'
@@ -54,7 +55,7 @@ interface PublicShopData {
 }
 
 const PAYMENT_BRANDS = { paynow: 'PayNow', grabpay: 'GrabPay', nets: 'NETS' } as const
-const DELIVERY_BRANDS = { grab: 'Grab', foodpanda: 'foodpanda' } as const
+const DELIVERY_BRANDS = { grab: 'GrabFood', foodpanda: 'foodpanda' } as const
 
 /** Small, plain chips for what customers ask most (halal, payment, delivery…). */
 function factChips(facts: ShopFacts, t: CustomerCopy): string[] {
@@ -64,9 +65,9 @@ function factChips(facts: ShopFacts, t: CustomerCopy): string[] {
   if (facts.halal === 'no') chips.push(t.factNotHalal)
   if (facts.vegetarian_options) chips.push(t.factVegetarian)
   if (facts.delivery === 'none') chips.push(t.factNoDelivery)
-  else if (facts.delivery === 'grab' || facts.delivery === 'foodpanda')
-    chips.push(t.factDeliveryVia.replace('{name}', DELIVERY_BRANDS[facts.delivery]))
-  else if (facts.delivery) chips.push(t.factDelivery)
+  else if (facts.delivery === 'own' || facts.delivery === 'other') chips.push(t.factDelivery)
+  else if (facts.delivery)
+    chips.push(t.factDeliveryVia.replace('{name}', factName(facts.delivery, DELIVERY_BRANDS)))
   if (facts.preorders)
     chips.push(
       facts.preorder_lead_time
@@ -81,7 +82,7 @@ function factChips(facts: ShopFacts, t: CustomerCopy): string[] {
           ? t.factCard
           : method === 'other'
             ? t.factOtherPayment
-            : PAYMENT_BRANDS[method],
+            : factName(method, PAYMENT_BRANDS),
     )
   if (facts.busy_hours) chips.push(t.factBusy.replace('{hours}', facts.busy_hours))
   return chips

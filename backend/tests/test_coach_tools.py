@@ -426,11 +426,22 @@ def test_customer_fact_is_a_reviewed_edit_that_keeps_everything_else(saved_shop)
     assert business["halal"] == "yes"
 
 
-@pytest.mark.parametrize("fact", [{"halal": "maybe"}, {"delivery": "drone"}])
+@pytest.mark.parametrize("fact", [{"halal": "maybe"}, {"delivery": "x" * 41}])
 def test_unknown_fact_value_is_repairable(saved_shop, fact):
     result = propose_customer_facts(**fact)
     assert result["status"] == "invalid"
     assert saved_shop.proposals == {}
+
+
+def test_coach_preserves_global_fact_names(saved_shop):
+    result = propose_customer_facts(payment_methods=["UPI", "PhonePe"], delivery="Swiggy")
+    assert result["status"] == "needs_review"
+    proposal = saved_shop.proposals[result["proposal_id"]]
+    assert proposal["snapshot"]["business"]["payment_methods"] == ["UPI", "PhonePe"]
+    assert proposal["snapshot"]["business"]["delivery"] == "Swiggy"
+    assert "payment_methods" not in get_business_context()["shop"]
+    commit(saved_shop, result)
+    assert get_business_context()["shop"]["delivery"] == "Swiggy"
 
 
 def test_no_facts_to_ask_without_a_shop(ctx):
