@@ -53,7 +53,7 @@ class ExtractedProduct(BaseModel):
 class PhotoExtraction(BaseModel):
     photo_kind: Literal["signboard", "menu", "price_list", "product", "storefront", "other"]
     business: ExtractedBusiness = Field(default_factory=ExtractedBusiness)
-    products: list[ExtractedProduct] = Field(default_factory=list, max_length=30)
+    products: list[ExtractedProduct] = Field(default_factory=list, max_length=200)
     uncertain: list[str] = Field(default_factory=list, max_length=20)
 
 
@@ -143,7 +143,7 @@ class PhotoPipeline:
                 response_mime_type="application/json",
                 response_schema=PhotoExtraction,
                 temperature=0,
-                max_output_tokens=1024,
+                max_output_tokens=16000,
             ),
         )
         feedback = getattr(response, "prompt_feedback", None)

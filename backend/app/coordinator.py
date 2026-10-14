@@ -18,6 +18,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 from .business_profile import FOOD, QuestionPlanner
+from .forecast import ForecastService
 from .merchant import (
     FACT_KEYS,
     BusinessFields,
@@ -68,6 +69,28 @@ class FactInput(BaseModel):
 
 # Set at startup (main.py); tests and offline runs fall back to the deterministic catalogue.
 question_planner: QuestionPlanner | None = None
+forecaster: ForecastService | None = None
+
+
+async def get_forecast() -> dict[str, Any]:
+    """Forecast next seven days per item from approved sales. Use for 'how much kopi should I
+    prep tomorrow?'. Explain the method and intervals, and ask for bulk imports if insufficient.
+    Quantities are demand estimates, not an automatic stock or preparation change."""
+    import anyio
+
+    from .sales import today_for
+    from .settings import Settings
+
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {"status": "needs_business"}
+    context = await anyio.to_thread.run_sync(ctx.store.context, ctx.uid, ctx.business_id)
+    rows = await anyio.to_thread.run_sync(ctx.store.sales_history, ctx.uid, ctx.business_id)
+    service = forecaster or ForecastService(Settings(_env_file=None))  # type: ignore[call-arg]
+    result = await service.forecast(
+        rows, today_for(context["business"]["fields"]), context["inventory"]
+    )
+    return result.model_dump(mode="json")
 
 
 def _planner() -> QuestionPlanner:

@@ -111,7 +111,7 @@ def test_import_rejections_and_owner_scope(app) -> None:  # noqa: F811
     with TestClient(app) as client:
         join(client)
         bid = make_shop(client)
-        assert upload(client, bid, b"%PDF-1.7", "application/pdf").status_code == 415
+        assert upload(client, bid, b"not a pdf", "application/pdf").status_code == 415
         assert upload(client, bid, b"Item\n").status_code == 422
         assert upload(client, bid, b"x" * 2_000_001).status_code == 413
         no_price = upload(client, bid, b"Item,Notes\nKopi,hot\n")

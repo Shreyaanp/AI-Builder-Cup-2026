@@ -80,6 +80,11 @@ export function ReviewDialog({
 
   const body: ReactNode = snapshot && (
     <Stack spacing={3}>
+      {Boolean(proposal?.import_flags?.length) && (
+        <Alert severity="warning">
+          {t.importReviewFlags}: {proposal?.import_flags?.map((flag) => flag.item).join(', ')}
+        </Alert>
+      )}
       <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
         <Box sx={{ color: 'primary.main', pt: 0.25, display: 'flex' }} aria-hidden="true">
           <ShieldCheck size={20} />

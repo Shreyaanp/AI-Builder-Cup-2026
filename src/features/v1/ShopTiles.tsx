@@ -40,6 +40,7 @@ import { FactList } from './FactList'
 import { PendingCard } from './PendingCard'
 import { ImportMenu, SalesImportSheet, type SalesImport } from './ImportMenu'
 import { FreshnessCard, RecapTile } from '../sales/ShopInsights'
+import { PrepPlanTile } from '../forecast/PrepPlan'
 import { Sheet } from './Sheet'
 import { ShopQr } from './ShopQr'
 import { useUnread } from './useUnread'
@@ -255,6 +256,7 @@ export function ShopTiles({
           </Supporting>
         )}
       </Tile>
+      <PrepPlanTile key={shop.id} />
       <Tile
         icon={<Globe size={20} />}
         label={t.customerPage}

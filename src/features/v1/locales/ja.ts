@@ -1,6 +1,8 @@
 import type { Copy } from '../strings'
 
 export const ja: Copy = {
+  importUnavailable:
+    '写真・PDF・メモの読み取りにはAIの接続が必要です。CSVとExcelは引き続き取り込めます。',
   saveSales: 'この売上を保存',
   salesSaved: '売上を保存しました',
   salesReplace: '保存すると対象日の売上がすべて置き換わります。他の日は変わりません。',
@@ -238,7 +240,19 @@ export const ja: Copy = {
   productName: '商品名',
   price: '価格',
   currency: '通貨',
-  importMenu: 'POS や Excel から取り込む',
+  importMenu: '売上やメニューを取り込む（Excel・写真・メモ）',
+  importUpload: 'ファイルをアップロード',
+  importTakePhoto: '写真を撮る',
+  importNotes: '売上やメニューのメモを貼り付け',
+  importReviewNotes: 'メモを確認',
+  importReviewFlags: '不確かな行をよく確認してください',
+  prepPlan: '仕込み計画',
+  prepTomorrow: '明日',
+  prepLoading: '予測を準備中…',
+  prepEmpty: '商品ごとに4週間以上の売上を取り込み、保存してください。',
+  prepTimesfm: 'TimesFM',
+  prepWeekday: '同じ曜日の平均 · 季節性と傾向',
+  prepQuestion: '明日はどのくらい仕込めばいいですか？',
   importing: 'ファイルを読み込んでいます…',
   importFailed:
     'ファイルを読み込めませんでした。商品名と価格を含む CSV または Excel を送ってください。',
