@@ -530,13 +530,7 @@ export function CoachScreen() {
         }}
       >
         {error && (
-          <Alert
-            severity="error"
-            role="status"
-            aria-live="polite"
-            onClose={() => setError('')}
-            sx={{ mb: 1.5 }}
-          >
+          <Alert severity="error" onClose={() => setError('')} sx={{ mb: 1.5 }}>
             {error}
           </Alert>
         )}
