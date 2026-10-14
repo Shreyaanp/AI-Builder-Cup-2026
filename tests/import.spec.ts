@@ -34,13 +34,60 @@ test('a POS menu export becomes a proposal the owner reviews', async ({ page }) 
   await expect(review).toContainText('$2.50')
 })
 
-test('a POS sales export shows a summary that is not saved', async ({ page }) => {
+test('a POS sales export waits for confirmation then appears in the weekly recap', async ({
+  page,
+}) => {
   await shopWithoutMenu(page)
+  const businesses = await page.request.get('/api/v1/businesses').then((r) => r.json())
+  const bid = businesses[0].id as string
+  const freshness = await page.request
+    .get(`/api/v1/businesses/${bid}/freshness`)
+    .then((r) => r.json())
+  const [year, week] = (freshness.recap_week as string).split('-W').map(Number)
+  const fourth = new Date(Date.UTC(year!, 0, 4))
+  const day = fourth.getUTCDay() || 7
+  fourth.setUTCDate(fourth.getUTCDate() - day + 1 + (week! - 1) * 7)
+  const saleDate = fourth.toISOString().slice(0, 10)
   await page
     .locator('input[type="file"][accept*=".xlsx"]')
-    .setInputFiles(csv('Date,Item,Qty,Net Sales\n2026-10-12,Kopi,30,54\n2026-10-13,Kopi,25,45\n'))
+    .setInputFiles(csv(`Date,Item,Qty,Net Sales\n${saleDate},Kopi,30,54\n${saleDate},Kopi,25,45\n`))
   const summary = page.getByRole('dialog', { name: 'Sales summary' })
   await expect(summary).toContainText('Nothing was saved')
   await expect(summary).toContainText('$99.00')
   await expect(summary).toContainText('Kopi')
+  await expect(summary).toContainText('Saving replaces all sales on these dates')
+  expect(await page.request.get(`/api/v1/businesses/${bid}/sales`).then((r) => r.json())).toEqual(
+    [],
+  )
+  await summary.getByRole('button', { name: 'Save these sales' }).click()
+  await expect(summary).not.toBeVisible()
+  await page.getByRole('button', { name: /^Weekly recap/ }).click()
+  const recap = page.getByRole('dialog', { name: 'Weekly recap' })
+  await expect(recap).toContainText('Written by AI')
+  await expect(recap).toContainText('Offline template')
+  await expect(recap).toContainText('$99.00')
+  await expect(recap).toContainText('1 sales days saved')
+  await recap.getByRole('button', { name: 'Close' }).click()
+  await page.reload()
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await page.getByRole('button', { name: 'My shop' }).click()
+  await page.getByRole('button', { name: /^Weekly recap/ }).click()
+  await expect(page.getByRole('dialog', { name: 'Weekly recap' })).toContainText('$99.00')
+})
+
+test('daily menu confirmation is an owner switch and changes the customer freshness label', async ({
+  page,
+}) => {
+  await shopWithoutMenu(page)
+  await page.getByRole('dialog', { name: 'Menu' }).getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: 'Something changed' }).click()
+  await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('Today: ')
+  const coach = page.getByRole('region', { name: 'Coach', exact: true })
+  await coach.getByRole('button', { name: 'Yes, all good' }).click()
+  await expect(coach.getByText('Still the same menu today?')).not.toBeVisible()
+  const businesses = await page.request.get('/api/v1/businesses').then((r) => r.json())
+  const bid = businesses[0].id as string
+  await page.request.post(`/api/v1/businesses/${bid}/share`, { data: { public: true } })
+  await page.goto(`/s/${bid}`)
+  await expect(page.getByText('Updated today', { exact: true })).toBeVisible()
 })

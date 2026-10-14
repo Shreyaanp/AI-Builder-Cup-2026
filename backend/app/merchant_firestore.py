@@ -29,6 +29,7 @@ from .merchant import (
     seal_proposal,
     validate_proposal,
 )
+from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
 from .threads import change_thread, contact_hash, new_thread
 
 
@@ -96,6 +97,7 @@ class FirestoreMerchantStore:
             "id": bid,
             "fields": data["fields"],
             "revision": data["revision"],
+            "last_confirmed": data.get("last_confirmed"),
             "registration": data["status"],
             "public": bool(data.get("public")),
             "google_publication": "not_connected",
@@ -309,7 +311,15 @@ class FirestoreMerchantStore:
                 item.reference for item in snapshot.reference.collection("google_sim").stream()
             ]
             refs += [item.reference for item in snapshot.reference.collection("planning").stream()]
-            for collection in ("inquiries", "inquiry_dedupe", "inquiry_blocks"):
+            for collection in (
+                "inquiries",
+                "inquiry_dedupe",
+                "inquiry_blocks",
+                "sales_days",
+                "sales_imports",
+                "recaps",
+                "sold_out_days",
+            ):
                 refs += [
                     item.reference for item in snapshot.reference.collection(collection).stream()
                 ]
@@ -341,6 +351,11 @@ class FirestoreMerchantStore:
             if not item.exists:
                 raise HTTPException(404, "Product not found.")
             fields = {**(item.to_dict() or {})["fields"], "available": available}
+            day = today_for(business["fields"]).isoformat()
+            signal_ref = business_ref.collection("sold_out_days").document(day)
+            signal = signal_ref.get(transaction=transaction).to_dict() or {}
+            if not available and (item.to_dict() or {})["fields"].get("available", True):
+                transaction.set(signal_ref, {"count": signal.get("count", 0) + 1})
             transaction.update(item_ref, {"fields": fields, "updated": time.time()})
             transaction.update(business_ref, {"revision": business["revision"] + 1})
             return {"id": product_id, **fields, "revision": business["revision"] + 1}
@@ -370,7 +385,127 @@ class FirestoreMerchantStore:
             return None
         rows = [s.to_dict() or {} for s in ref.collection("inventory").limit(500).stream()]
         rows.sort(key=lambda row: row.get("created", 0))
-        return public_projection(ref.id, data["fields"], [row["fields"] for row in rows])
+        return {
+            **public_projection(ref.id, data["fields"], [row["fields"] for row in rows]),
+            "last_confirmed": data.get("last_confirmed"),
+        }
+
+    def sales_history(self, uid: str, bid: str) -> list[dict[str, Any]]:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> list[dict[str, Any]]:
+            self.owned(ref.get(transaction=transaction), uid)
+            days = list(ref.collection("sales_days").stream(transaction=transaction))
+            return [
+                sale
+                for day in sorted(days, key=lambda d: d.id)
+                for sale in (day.to_dict() or {})["sales"]
+            ]
+
+        return run(self.client.transaction())
+
+    def prepare_sales(self, uid: str, bid: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        pending = ref.collection("sales_imports").document(hashlib.sha256(uid.encode()).hexdigest())
+
+        @firestore.transactional
+        def run(transaction: Any) -> dict[str, Any]:
+            business = self.owned(ref.get(transaction=transaction), uid)
+            proposal = prepare_import({"id": bid, **business}, rows)
+            transaction.set(
+                pending, {"uid": uid, "proposal": json.dumps(proposal, ensure_ascii=False)}
+            )
+            return proposal
+
+        return run(self.client.transaction())
+
+    def save_sales(self, uid: str, bid: str, iid: str, digest: str) -> dict[str, Any]:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        iid = document_id(iid, "Sales import not found.")
+        pending = ref.collection("sales_imports").document(hashlib.sha256(uid.encode()).hexdigest())
+
+        @firestore.transactional
+        def run(transaction: Any) -> dict[str, Any]:
+            business = self.owned(ref.get(transaction=transaction), uid)
+            data = pending.get(transaction=transaction).to_dict()
+            if not data or data["uid"] != uid:
+                raise HTTPException(404, "Sales import not found.")
+            proposal = json.loads(data["proposal"])
+            if proposal["id"] != iid:
+                raise HTTPException(404, "Sales import not found.")
+            check_import(proposal, digest, business["revision"])
+            if proposal.get("receipt"):
+                return dict(proposal["receipt"])
+            incoming = sales_days(proposal["snapshot"]["sales"])
+            prior = list(ref.collection("sales_days").stream(transaction=transaction))
+            retained = [
+                sale
+                for day in prior
+                if day.id not in incoming
+                for sale in (day.to_dict() or {})["sales"]
+            ]
+            validate_capacity(retained + proposal["snapshot"]["sales"])
+            for day, sales in incoming.items():
+                transaction.set(ref.collection("sales_days").document(day), {"sales": sales})
+            transaction.update(ref, {"revision": business["revision"] + 1})
+            receipt = {"business_id": bid, "import_id": iid, "saved": True, "days": len(incoming)}
+            proposal["receipt"] = receipt
+            transaction.set(
+                pending, {"uid": uid, "proposal": json.dumps(proposal, ensure_ascii=False)}
+            )
+            return receipt
+
+        return run(self.client.transaction())
+
+    def confirm_menu(self, uid: str, bid: str) -> dict[str, Any]:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> dict[str, Any]:
+            business = self.owned(ref.get(transaction=transaction), uid)
+            day = today_for(business["fields"]).isoformat()
+            transaction.update(ref, {"last_confirmed": day})
+            return {"business_id": bid, "last_confirmed": day}
+
+        return run(self.client.transaction())
+
+    def recap_signals(self, uid: str, bid: str) -> dict[str, Any]:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> dict[str, Any]:
+            business = self.owned(ref.get(transaction=transaction), uid)
+            return {
+                "fields": business["fields"],
+                "sold_out": {
+                    s.id: (s.to_dict() or {})["count"]
+                    for s in ref.collection("sold_out_days").stream(transaction=transaction)
+                },
+                "questions": [
+                    s.to_dict() or {}
+                    for s in ref.collection("inquiries").stream(transaction=transaction)
+                ],
+            }
+
+        return run(self.client.transaction())
+
+    def recap_cache(
+        self, uid: str, bid: str, key: str, value: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        cache = ref.collection("recaps").document(hashlib.sha256(key.encode()).hexdigest())
+
+        @firestore.transactional
+        def run(transaction: Any) -> dict[str, Any] | None:
+            self.owned(ref.get(transaction=transaction), uid)
+            if value is not None:
+                transaction.set(cache, value)
+                return value
+            data = cache.get(transaction=transaction).to_dict()
+            return dict(data) if data else None
+
+        return run(self.client.transaction())
 
     # Contact records never enter public projections, ADK tools or merchant revisions.
     def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt:

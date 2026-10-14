@@ -24,6 +24,7 @@ from .merchant import (
 )
 from .money import DEFAULT_CURRENCY, to_minor
 from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected
+from .sales import daily_sales
 from .streaming import APP_NAME
 from .threads import thread_signals
 
@@ -378,7 +379,7 @@ async def delete_template(request: Request) -> dict[str, str]:
 async def import_table(business_id: str, request: Request) -> dict[str, Any]:
     """Menu or sales export from any POS or spreadsheet (CSV / Excel), mapped by AI.
 
-    A menu becomes a sealed inventory proposal for review; sales come back as a summary only.
+    Menu and sales exports are sealed for exact owner approval; neither is saved on upload.
     """
     uid = await consented_owner(request)
     await enforce_limits(request, [("import", uid)])
@@ -405,12 +406,22 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
     if mapping.name is None:
         raise HTTPException(422, "NO_ITEM_COLUMN")
     if mapping.kind == "sales":
+        currency = business["fields"].get("currency") or DEFAULT_CURRENCY
+        aggregates = daily_sales(rows, mapping, currency)
+        proposal = await anyio.to_thread.run_sync(
+            service.prepare_sales, uid, business_id, aggregates
+        )
         return {
             "kind": "sales",
             "headers": headers,
             "mapping": mapping.model_dump(),
             "summary": sales_summary(rows, mapping),
             "saved": False,
+            "import_id": proposal["id"],
+            "digest": proposal["digest"],
+            "expires": proposal["expires"],
+            "sales": proposal["snapshot"]["sales"],
+            "currency": currency,
         }
     items, skipped = menu_items(rows, mapping)
     if not items:
