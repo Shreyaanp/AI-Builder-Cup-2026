@@ -137,12 +137,14 @@ export default function Discover({
   const front = useFrontCopy()
   const rewards = useRewards()
   const roles = useTheme().material
-  const [filters, setFilters] = useState(() => ({
-    ...readFilters(),
-    ...(initialLocation?.place ? { place: initialLocation.place } : {}),
-  }))
+  // GPS and a typed city are one remembered place, so a reload stays where the customer is.
+  const [filters, setFilters] = useState(() => {
+    const first = initialLocation?.gps
+      ? { lat: initialLocation.gps[0], lng: initialLocation.gps[1], label: t.current }
+      : initialLocation?.place
+    return { ...readFilters(), ...(first ? { place: first } : {}) }
+  })
   const [query, setQuery] = useState(filters.q)
-  const [gps, setGps] = useState<[number, number] | null>(initialLocation?.gps ?? null)
   const [gpsBusy, setGpsBusy] = useState(false)
   const [gpsError, setGpsError] = useState(false)
   const [result, setResult] = useState<Discovery | null>(null)
@@ -162,8 +164,7 @@ export default function Discover({
   const [usuals, setUsuals] = useState(readUsuals)
   const [interestsActive, setInterestsActive] = useState(interests.length > 0)
   const [scarcityNote, setScarcityNote] = useState(false)
-  const [lat, lng] =
-    gps ?? (filters.place ? [filters.place.lat, filters.place.lng] : areas[filters.area])
+  const [lat, lng] = filters.place ? [filters.place.lat, filters.place.lng] : areas[filters.area]
   useEffect(() => {
     document.title = t.title + ' · Chalkboard'
     document.documentElement.lang = locale
@@ -192,7 +193,6 @@ export default function Discover({
       const restored = readFilters()
       setFilters(restored)
       setQuery(restored.q)
-      setGps(null)
       setMapOpen(new URLSearchParams(location.search).get('view') === 'map')
     }
     window.addEventListener('popstate', restore)
@@ -250,28 +250,42 @@ export default function Discover({
       /* Optional storage. */
     }
   }
+  useEffect(() => {
+    // Already allowed: find the customer straight away (no prompt), and refresh a GPS place.
+    if (filters.place && filters.place.label !== t.current) return
+    void navigator.permissions
+      ?.query({ name: 'geolocation' })
+      .then((state) => {
+        if (state.state === 'granted') locate(true)
+      })
+      .catch(() => undefined)
+    // Once on arrival only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   function openPlace(place: Usual) {
     remember(place)
     if (place.source === 'google') setSelected(place)
   }
-  function locate() {
+  function locate(quiet = false) {
     setGpsBusy(true)
     setGpsError(false)
     if (!navigator.geolocation) {
       setGpsBusy(false)
-      setGpsError(true)
+      setGpsError(!quiet)
       return
     }
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setGps([position.coords.latitude, position.coords.longitude])
+        const { latitude: lat, longitude: lng } = position.coords
+        setFilters((current) => ({ ...current, place: { lat, lng, label: t.current } }))
         setGpsBusy(false)
       },
       () => {
-        setGpsError(true)
+        setGpsError(!quiet)
         setGpsBusy(false)
       },
-      { timeout: 10_000, maximumAge: 60_000, enableHighAccuracy: false },
+      // Precise: shops "around me" should mean this street, not this district.
+      { timeout: 15_000, maximumAge: 30_000, enableHighAccuracy: true },
     )
   }
   const places = useMemo(
@@ -563,10 +577,9 @@ export default function Discover({
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
           <PlaceSearch
-            key={gps ? 'gps' : (filters.place?.label ?? filters.area)}
-            value={gps ? t.current : (filters.place?.label ?? filters.area)}
+            key={filters.place ? `${filters.place.lat},${filters.place.lng}` : filters.area}
+            value={filters.place?.label ?? filters.area}
             onFound={(place) => {
-              setGps(null)
               setGpsError(false)
               setFilters({ ...filters, place })
             }}
@@ -574,7 +587,7 @@ export default function Discover({
           <Button
             variant="outlined"
             disabled={gpsBusy}
-            onClick={locate}
+            onClick={() => locate()}
             startIcon={gpsBusy ? <CircularProgress size={18} /> : <MapPin aria-hidden size={18} />}
             sx={{ flexShrink: 0 }}
           >
