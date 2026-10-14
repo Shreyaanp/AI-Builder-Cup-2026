@@ -31,7 +31,7 @@ def test_owner_consent_reset_isolation_and_pending_restore(app) -> None:
                     "location": "Demo Road",
                     "hours": "9–18",
                     "phone": "Demo",
-                    "category_id": "tea_shop",
+                    "category_id": "hawker_stall",
                 },
             },
             {"kind": "authorize", "value": "demo-owner"},

@@ -1,4 +1,5 @@
-import { usePreferences } from '../../state/hooks'
+import { useLocale } from '../../state/hooks'
+import type { Locale } from '../../i18n/locales'
 
 const en = {
   banner: 'Simulated — no Google listing is created or changed',
@@ -32,8 +33,13 @@ const en = {
     category_id: 'Google category fixture',
     region: 'Category region',
   },
-  categories: { tea_shop: 'Tea shop', bakery: 'Bakery', grocery: 'Grocery store' },
-  regions: { IN: 'India', GB: 'United Kingdom' },
+  categories: {
+    hawker_stall: 'Hawker stall',
+    cafe: 'Café',
+    bakery: 'Bakery',
+    grocery: 'Grocery store',
+  },
+  regions: { SG: 'Singapore', JP: 'Japan' },
   chooseCategory: 'Choose a supported category',
   privateAddress:
     'Private address hidden — only the service area appears in the simulated public preview.',
@@ -156,158 +162,9 @@ const en = {
 }
 
 type Copy = typeof en
-const hi: Copy = {
-  banner: 'सिमुलेशन — Google पर कोई लिस्टिंग बनाई या बदली नहीं जाती',
-  start: 'मेरी दुकान को Google पर रखें (सिमुलेशन)',
-  title: 'Google मालिक की प्रक्रिया (सिमुलेशन)',
-  close: 'बंद करें और प्रगति रखें',
-  continue: 'आगे बढ़ें',
-  loading: 'सहेजा हुआ सिमुलेशन लोड हो रहा है…',
-  failed: 'यह कार्रवाई पूरी नहीं हुई। सहेजी प्रगति लोड करके फिर प्रयास करें।',
-  reload: 'सहेजी प्रगति लोड करें',
-  reviewer: 'समीक्षक नियंत्रण',
-  scenario: 'समीक्षक: परिदृश्य',
-  reset: 'इस दुकान का सिमुलेशन रीसेट करें',
-  scenarioHelp: 'केवल काल्पनिक उदाहरण। रीसेट से असली दुकान, सामान और ग्राहक पेज नहीं बदलते।',
-  type: 'आप ग्राहकों को सेवा कैसे देते हैं?',
-  types: {
-    store: 'ग्राहक आते हैं',
-    service: 'मैं ग्राहकों के पास जाता हूँ (सेवा क्षेत्र)',
-    online: 'केवल ऑनलाइन',
-  },
-  facts: 'सहेजी जानकारी का उपयोग करें',
-  reused:
-    'सहेजी दुकान की जानकारी नीचे है। केवल गंतव्य की छूटी जानकारी जोड़ें। बदलाव केवल सिमुलेशन में होंगे।',
-  fields: {
-    name: 'दुकान का नाम',
-    location: 'पता',
-    hours: 'समय',
-    phone: 'संपर्क',
-    website: 'वेबसाइट (वैकल्पिक)',
-    service_area: 'सार्वजनिक सेवा क्षेत्र',
-    category_id: 'Google श्रेणी का उदाहरण',
-    region: 'श्रेणी का क्षेत्र',
-  },
-  categories: { tea_shop: 'चाय की दुकान', bakery: 'बेकरी', grocery: 'किराने की दुकान' },
-  regions: { IN: 'भारत', GB: 'यूनाइटेड किंगडम' },
-  chooseCategory: 'समर्थित श्रेणी चुनें',
-  privateAddress: 'निजी पता छिपा है — काल्पनिक सार्वजनिक पूर्वावलोकन में केवल सेवा क्षेत्र दिखेगा।',
-  permission: 'इस व्यवसाय का प्रबंधन करने वाला Google खाता चुनें',
-  fictionalAccount:
-    'काल्पनिक खाता चयन — पासवर्ड या Google OAuth नहीं। ऐप में प्रवेश से व्यवसाय के अधिकार नहीं मिलते।',
-  account: 'डेमो मालिक खाता (काल्पनिक)',
-  wrongAccount: 'गलत डेमो खाता (काल्पनिक)',
-  cancel: 'अनुमति रद्द करें',
-  search: 'मेल खाती काल्पनिक लिस्टिंग चुनें',
-  noMatches: 'कोई उदाहरण मेल नहीं खाता। बनाने की मंजूरी से पहले नई लिस्टिंग की समीक्षा करें।',
-  newListing: 'नई काल्पनिक लिस्टिंग बनाएँ',
-  management: {
-    you: 'आपके प्रबंधन में (सिमुलेशन)',
-    other: 'दूसरे मालिक के प्रबंधन में (सिमुलेशन)',
-    unclaimed: 'दावा नहीं किया गया (सिमुलेशन)',
-  },
-  claim: 'काल्पनिक स्वामित्व माँगें',
-  ownership: 'स्वामित्व का अनुरोध (सिमुलेशन)',
-  ownershipStatuses: {
-    none: 'अनुरोध नहीं किया',
-    pending: 'लंबित — स्वामित्व नहीं मिला',
-    rejected: 'अस्वीकृत — ड्राफ़्ट सुरक्षित है',
-    granted: 'स्वीकृत (सिमुलेशन)',
-  },
-  grant: 'समीक्षक: स्वामित्व दें',
-  rejectClaim: 'समीक्षक: स्वामित्व अस्वीकार करें',
-  review: 'सटीक काल्पनिक लिस्टिंग की समीक्षा करें',
-  local: 'स्थानीय जाँच — Google द्वारा सत्यापित नहीं',
-  revision: 'पूर्वावलोकन संस्करण',
-  operations: {
-    create: 'बनाना (सिमुलेशन)',
-    update: 'प्रबंधित लिस्टिंग बदलना (सिमुलेशन)',
-    claim: 'दावा करना (सिमुलेशन)',
-  },
-  destination: 'गंतव्य: Google Business Profile सिमुलेटर',
-  selected: 'चुनी गई काल्पनिक लिस्टिंग',
-  edit: 'सिमुलेशन की जानकारी बदलें',
-  approve: 'इस संस्करण को मंजूर करके काल्पनिक रूप से भेजें',
-  rejectField: 'समीक्षक: भेजते समय समय अस्वीकार करें',
-  pending: 'अनुरोध लंबित — परिणाम अज्ञात',
-  reconcileHelp:
-    'दोबारा प्रयास पहले उसी काल्पनिक अनुरोध का परिणाम जाँचता है। दूसरी लिस्टिंग कभी नहीं बनती।',
-  reconcile: 'परिणाम जाँचें और फिर प्रयास करें',
-  receipt: 'काल्पनिक रसीद',
-  submissions: 'काल्पनिक अनुरोधों की संख्या',
-  verify: 'दिया गया सत्यापन तरीका चुनें',
-  methods: {
-    sms: 'SMS (काल्पनिक)',
-    email: 'ईमेल (काल्पनिक)',
-    phone: 'फ़ोन (काल्पनिक)',
-    postcard: 'पोस्टकार्ड (काल्पनिक)',
-    pin: 'PIN (काल्पनिक)',
-    automatic: 'स्वचालित (केवल उदाहरण)',
-  },
-  methodHelp: {
-    sms: 'डेमो SMS कोड; कोई संदेश नहीं भेजा जाता।',
-    email: 'डेमो ईमेल कोड; कोई ईमेल नहीं भेजा जाता।',
-    phone: 'डेमो फ़ोन कोड; कोई कॉल नहीं की जाती।',
-    postcard: 'डेमो पोस्टकार्ड कोड; कोई डाक नहीं भेजी जाती।',
-    pin: 'डेमो PIN; असली सत्यापन कोड नहीं लिया जाता।',
-    automatic: 'स्वचालित सत्यापन केवल इस उदाहरण में है।',
-  },
-  code: 'काल्पनिक कोड',
-  codeHelp: 'काल्पनिक उदाहरण कोड 123456 का उपयोग करें। असली कोड कभी न डालें।',
-  verifyCode: 'काल्पनिक कोड जाँचें',
-  resend: 'नया काल्पनिक कोड प्रयास शुरू करें',
-  noMethods:
-    'इस परिदृश्य में कोई सत्यापन तरीका नहीं है। प्रगति लंबित रहेगी; असली मदद के लिए आधिकारिक मालिक पेज खोलें।',
-  video: 'वीडियो सत्यापन की तैयारी (सिमुलेशन)',
-  checklist: [
-    'व्यवसाय के स्थान का दृश्य तैयार रखें।',
-    'साइनबोर्ड और व्यवसाय प्रबंधन का प्रमाण तैयार रखें।',
-    'Google के आधिकारिक मालिक पेज पर दिए तरीकों का पालन करें।',
-  ],
-  rehearse: 'तैयारी सूची पूरी चिह्नित करें',
-  cancelRehearsal: 'तैयारी रद्द करें',
-  prepared: 'तैयारी पूरी — सत्यापन अभी लंबित है। कुछ रिकॉर्ड या अपलोड नहीं हुआ।',
-  handoff: 'आधिकारिक Google मालिक पेज (अलग)',
-  result: 'सिमुलेशन परिणाम',
-  verification: 'सत्यापन (सिमुलेशन)',
-  verificationStatuses: {
-    unverified: 'असत्यापित (सिमुलेशन)',
-    pending: 'लंबित (सिमुलेशन)',
-    verified: 'सत्यापित (सिमुलेशन)',
-  },
-  publication: 'प्रकाशन (सिमुलेशन)',
-  publicationStatuses: {
-    not_submitted: 'नहीं भेजा गया (सिमुलेशन)',
-    pending: 'लंबित (सिमुलेशन)',
-    restricted: 'प्रतिबंधित (सिमुलेशन)',
-  },
-  independent: 'आपका ग्राहक पेज और मंजूर सामान अलग हैं। सामान की कीमतें Google से सिंक नहीं होतीं।',
-  ineligible:
-    'केवल ऑनलाइन व्यवसाय इस उदाहरण में पात्र नहीं हैं। आपका स्वतंत्र ग्राहक पेज और सूची उपयोगी रहेंगे; काल्पनिक पता न बनाएँ।',
-  reauthorize:
-    'काल्पनिक अनुमति समाप्त हुई। प्रबंधन का काल्पनिक खाता फिर चुनें; सहेजी प्रगति सुरक्षित है।',
-  reverification:
-    'पता या श्रेणी बदली — दोबारा सत्यापन की ज़रूरत होगी। पिछला सत्यापन इस संस्करण पर लागू नहीं है।',
-  disconnect: 'काल्पनिक प्रबंधन का संबंध हटाएँ',
-  removal: 'काल्पनिक प्रबंधन हटाना',
-  removalStatuses: {
-    connected: 'जुड़ा है (सिमुलेशन)',
-    pending: 'हटाना लंबित — काल्पनिक बदलाव रोक दिए गए',
-    confirmed: 'हटाना पूरा (सिमुलेशन)',
-  },
-  confirmRemoval: 'समीक्षक: हटाना पूरा करें',
-  keepsListing: 'लिस्टिंग व्यापारी के पास रहती है। कोई असली अनुमति या स्वामित्व नहीं हटता।',
-  errors: {
-    category: 'इस क्षेत्र की समर्थित श्रेणी चुनें। मनमाना पाठ Google श्रेणी ID नहीं है।',
-    missing: 'छूटा नाम, पता या सेवा क्षेत्र, समय और संपर्क जोड़ें।',
-    account: 'गलत काल्पनिक खाता। ड्राफ़्ट सुरक्षित है; प्रबंधन का खाता फिर चुनें।',
-    wrong_code: 'गलत काल्पनिक कोड। इस प्रयास में 123456 डालें।',
-    expired_code: 'काल्पनिक कोड समाप्त हुआ। नया प्रयास शुरू करके 123456 डालें।',
-    field_hours:
-      'समय अस्वीकृत (सिमुलेशन)। समय सुधारें और फिर भेजने से पहले नए संस्करण की समीक्षा करें।',
-  },
-}
+/** Native simulator translations per locale (English source; missing keys fall back). */
+export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {}
 
 export function useSimCopy(): Copy {
-  return usePreferences().language === 'hi' ? hi : en
+  return { ...en, ...simTranslations[useLocale()] }
 }
