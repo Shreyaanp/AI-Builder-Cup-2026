@@ -92,6 +92,13 @@ class BusinessFields(BaseModel):
     # A clearly labelled sample shop (seed_demo_shops.py). Set only by the seed script, never by
     # an owner proposal (see merchant_routes.propose and coordinator.propose_business).
     demo: bool = False
+    # A wholesaler other shops can order from (sourcing.py): the categories it supplies, its
+    # minimum order and delivery terms (delivery_note). Unset on ordinary shops.
+    supplier: bool = False
+    supplies: list[Annotated[str, Field(min_length=1, max_length=40)]] = Field(
+        default_factory=list, max_length=12
+    )
+    min_order: str = Field(default="", max_length=80)
     timezone: str = Field(default="Asia/Singapore", max_length=100)
     hours: str = Field(default="", max_length=180)
     weekly_hours: list[DayHours] = Field(default_factory=list, max_length=7)
@@ -142,6 +149,9 @@ class BusinessFields(BaseModel):
             and not (key in pin_defaults and value is None)
             and not (key == "pin_demo" and value is False)
             and not (key == "demo" and value is False)
+            and not (key == "supplier" and value is False)
+            and not (key == "supplies" and value == [])
+            and not (key == "min_order" and value == "")
             and not (key == "timezone" and value == "Asia/Singapore")
             and not (key == "custom_facts" and value == [])
             and not (key == "reward_text" and value == "")
@@ -306,6 +316,12 @@ class MerchantRepository(Protocol):
     def subscribe_stock(self, bid: str, body: StockAlertInput) -> StockAlertReceipt: ...
     def stock_alerts(self, bid: str, device_id: str) -> list[dict[str, Any]]: ...
 
+    # Requests to suppliers (sourcing.py); owner-scoped, newest first.
+    def supplier_orders(self, uid: str, bid: str) -> list[dict[str, Any]]: ...
+    def save_supplier_order(self, uid: str, bid: str, order: dict[str, Any]) -> dict[str, Any]:
+        """Create or replace one order; refuses a stale `version` (409)."""
+        ...
+
     def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt: ...
     def inquiries(self, uid: str, bid: str) -> list[Inquiry]: ...
     def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry: ...
@@ -330,6 +346,15 @@ def public_projection(
         **({"pin_demo": True} if fields.get("pin_demo") else {}),
         # Sample shops are always labelled "Demo shop" to customers.
         **({"demo": True} if fields.get("demo") else {}),
+        **(
+            {
+                "supplier": True,
+                "supplies": fields.get("supplies") or [],
+                "min_order": fields.get("min_order", ""),
+            }
+            if fields.get("supplier")
+            else {}
+        ),
         "hours": fields.get("hours", ""),
         **({"weekly_hours": fields["weekly_hours"]} if fields.get("weekly_hours") else {}),
         "phone": fields.get("phone", ""),
@@ -431,6 +456,8 @@ class MerchantStore:
                 PRIMARY KEY(business_id,key));
             CREATE TABLE IF NOT EXISTS sold_out_days(business_id TEXT, day TEXT, count INTEGER,
                 PRIMARY KEY(business_id,day));
+            CREATE TABLE IF NOT EXISTS supplier_orders(id TEXT PRIMARY KEY,
+                business_id TEXT NOT NULL, created REAL NOT NULL, fields TEXT NOT NULL);
             """)
             if "last_confirmed" not in {
                 row[1] for row in db.execute("PRAGMA table_info(businesses)")
@@ -714,6 +741,7 @@ class MerchantStore:
                 db.execute("DELETE FROM inquiries WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM inquiry_blocks WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM planning WHERE business_id=?", (bid,))
+                db.execute("DELETE FROM supplier_orders WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM inventory WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM memberships WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM businesses WHERE id=?", (bid,))
@@ -999,6 +1027,36 @@ class MerchantStore:
                 "SELECT fields FROM recaps WHERE business_id=? AND key=?", (bid, key)
             ).fetchone()
             return json.loads(row[0]) if row else None
+
+    def supplier_orders(self, uid: str, bid: str) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            return [
+                json.loads(row[0])
+                for row in db.execute(
+                    "SELECT fields FROM supplier_orders WHERE business_id=? "
+                    "ORDER BY created DESC LIMIT 100",
+                    (bid,),
+                )
+            ]
+
+    def save_supplier_order(self, uid: str, bid: str, order: dict[str, Any]) -> dict[str, Any]:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self.owned(db, uid, bid)
+            row = db.execute(
+                "SELECT fields FROM supplier_orders WHERE business_id=? AND id=?",
+                (bid, order["id"]),
+            ).fetchone()
+            stored = json.loads(row[0])["version"] if row else 0
+            if order["version"] != stored + 1:
+                raise HTTPException(409, "This order changed. Reload it.")
+            db.execute(
+                "INSERT INTO supplier_orders VALUES(?,?,?,?) ON CONFLICT(id) "
+                "DO UPDATE SET fields=excluded.fields",
+                (order["id"], bid, order["created"], json.dumps(order)),
+            )
+        return order
 
     # Private planning records do not change catalog revisions or public projections.
     def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt:
