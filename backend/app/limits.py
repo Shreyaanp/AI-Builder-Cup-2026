@@ -160,6 +160,9 @@ async def enforce_limits(
     anonymous: bool = False,
     clock: Callable[[], float] | None = None,
 ) -> None:
+    settings = getattr(connection.app.state, "v1_settings", None)
+    if settings is not None and not settings.rate_limits_enabled:
+        return
     buckets = [
         Bucket(action, subject, maximum, seconds)
         for action, subject in subjects
