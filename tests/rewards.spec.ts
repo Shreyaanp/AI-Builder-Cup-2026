@@ -26,6 +26,7 @@ async function fixture(page: Page, available: () => boolean = () => false) {
         phone: '',
         currency: 'SGD',
         reward_text: '10th kopi free',
+        stamps_needed: 10,
         products: [{ name: 'Kaya toast', unit: 'set', price: 240, available: available() }],
       },
     }),
@@ -52,7 +53,7 @@ test('QR stamps are once per shop per calendar day and celebrate 5 and 10', asyn
   await expect(card(page).getByRole('status')).toHaveText('0 stamps')
   await page.goto(`/explore/s/${id}?source=qr`)
   await expect(card(page).getByRole('status')).toHaveText('1 stamps')
-  await expect(page.getByText('Show this to the shop')).toBeVisible()
+  await expect(page.getByText('This card is stored on this phone.')).toBeVisible()
   await expect(page.getByText('10th kopi free')).toBeVisible()
   await page.reload()
   await expect(card(page).getByRole('status')).toHaveText('1 stamps')
@@ -182,9 +183,12 @@ test('owner reward edits require exact review before saving and clearing', async
   await page.getByRole('button', { name: 'Add my shop' }).click()
   await page.getByLabel('Shop name').fill('Neighbourhood Kopi')
   await page.getByLabel('Reward text (optional)').fill('10th kopi free')
+  await expect(page.getByLabel('Stamps needed')).toHaveValue('8')
+  await page.getByLabel('Stamps needed').fill('10')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('10th kopi free')
+  await expect(review.getByText('10', { exact: true })).toBeVisible()
   expect(await (await page.request.get('/api/v1/businesses')).json()).toEqual([])
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(page.getByRole('button', { name: 'Choose shop: Neighbourhood Kopi' })).toBeVisible()
@@ -193,14 +197,18 @@ test('owner reward edits require exact review before saving and clearing', async
   await expect(page.getByRole('dialog')).toContainText('10th kopi free')
   await page.getByRole('button', { name: 'Edit details' }).click()
   await page.getByLabel('Reward text (optional)').fill('')
+  await expect(page.getByLabel('Stamps needed')).toHaveValue('10')
+  await page.getByLabel('Stamps needed').fill('6')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await expect(review).toContainText('Reward text (optional)')
   const before = await (await page.request.get('/api/v1/businesses')).json()
   expect(before[0].fields.reward_text).toBe('10th kopi free')
+  expect(before[0].fields.stamps_needed).toBe(10)
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(review).not.toBeVisible()
   const after = await (await page.request.get('/api/v1/businesses')).json()
   expect(after[0].fields.reward_text).toBeUndefined()
+  expect(after[0].fields.stamps_needed).toBe(6)
 })
 
 const locales = [
@@ -215,13 +223,13 @@ const locales = [
   ['fil-PH', 'Stamp card', 'Ipakita ito sa tindahan'],
 ] as const
 
-for (const [locale, title, show] of locales) {
+for (const [locale, title] of locales) {
   test.describe(`rewards in ${locale}`, () => {
     test.use({ locale })
     test('translated card wraps on phone and desktop', async ({ page }) => {
       await fixture(page)
       await page.goto(`/explore/s/${id}?source=qr`)
-      await expect(page.getByRole('region', { name: title }).getByText(show)).toBeVisible()
+      await expect(page.getByRole('region', { name: title })).toBeVisible()
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       )

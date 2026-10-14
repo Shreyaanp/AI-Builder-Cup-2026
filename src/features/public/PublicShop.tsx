@@ -13,7 +13,8 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { Leaf, MapPin, MessageCircle, Phone, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Leaf, MapPin, MessageCircle, Phone, RefreshCw } from 'lucide-react'
+import { customerNavigate } from '../frontdoors/navigation'
 import type { ReactNode } from 'react'
 import { type Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
@@ -47,6 +48,7 @@ interface PublicShopData {
   weekly_hours?: DayHours[]
   phone: string
   reward_text?: string
+  stamps_needed?: number
   /** ISO 4217 code the shop's prices are stored in. */
   currency?: string
   products: { name: string; price: number; unit: string; available: boolean; category?: string }[]
@@ -423,6 +425,9 @@ export default function PublicShop({ id }: { id: string }) {
     >
       {/* Compact header: who, open or not, how to get there. The menu is the page. */}
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+        <IconButton component="a" href="/explore/" onClick={customerNavigate} aria-label={t.back}>
+          <ArrowLeft size={20} />
+        </IconButton>
         <Box
           sx={{
             width: 72,
@@ -455,8 +460,24 @@ export default function PublicShop({ id }: { id: string }) {
             {openLabel && (
               <Typography
                 variant="labelLarge"
-                sx={{ color: shop.open_now ? roles.primary : roles.error, fontWeight: 600 }}
+                sx={{
+                  color: roles.onSurface,
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
               >
+                <Box
+                  component="span"
+                  aria-hidden="true"
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    bgcolor: shop.open_now ? 'var(--customer-open)' : 'error.main',
+                  }}
+                />
                 {openLabel}
               </Typography>
             )}
@@ -555,7 +576,13 @@ export default function PublicShop({ id }: { id: string }) {
           ))}
         </Box>
       )}
-      <StampCard shop={id} timezone={shop.timezone ?? 'Asia/Singapore'} reward={shop.reward_text} />
+      <StampCard
+        shop={id}
+        name={shop.name}
+        timezone={shop.timezone ?? 'Asia/Singapore'}
+        reward={shop.reward_text}
+        needed={shop.stamps_needed ?? 8}
+      />
       {!stale && <BackInStock shop={id} products={shop.products} />}
       {/* Menu: dense, aligned prices, readable at a glance. */}
       <Stack

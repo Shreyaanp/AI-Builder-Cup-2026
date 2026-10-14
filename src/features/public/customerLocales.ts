@@ -1,6 +1,7 @@
 import type { ConversationCopy } from '../inquiries/conversationCopy'
 import type { Locale } from '../../i18n/locales'
 import type { CustomerCopy } from './customerCopy'
+import { rewardCardTranslations } from '../rewards/cardCopy'
 
 const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
   'zh-Hans': {
@@ -270,6 +271,7 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
 export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> = {
   'zh-Hans': {
     ...chatTranslations['zh-Hans'],
+    ...rewardCardTranslations['zh-Hans'],
     chatTitle: '和店家聊聊',
     instantAnswer: '即时回答',
     askOwner: '问店主',
@@ -326,6 +328,7 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   ms: {
     ...chatTranslations['ms'],
+    ...rewardCardTranslations.ms,
     chatTitle: 'Sembang dengan kedai',
     instantAnswer: 'Jawapan segera',
     askOwner: 'Tanya pemilik',
@@ -384,6 +387,7 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   ta: {
     ...chatTranslations['ta'],
+    ...rewardCardTranslations.ta,
     chatTitle: 'கடையுடன் பேசுங்கள்',
     instantAnswer: 'உடனடி பதில்',
     askOwner: 'உரிமையாளரிடம் கேளுங்கள்',
@@ -443,6 +447,7 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   ja: {
     ...chatTranslations['ja'],
+    ...rewardCardTranslations.ja,
     chatTitle: 'お店とチャット',
     instantAnswer: 'すぐに回答',
     askOwner: 'オーナーに聞く',
@@ -500,6 +505,7 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   ko: {
     ...chatTranslations['ko'],
+    ...rewardCardTranslations.ko,
     chatTitle: '가게와 채팅',
     instantAnswer: '즉시 답변',
     askOwner: '사장님께 묻기',
@@ -556,6 +562,7 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   id: {
     ...chatTranslations['id'],
+    ...rewardCardTranslations.id,
     chatTitle: 'Chat dengan toko',
     instantAnswer: 'Jawaban instan',
     askOwner: 'Tanya pemilik',
@@ -613,6 +620,7 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   th: {
     ...chatTranslations['th'],
+    ...rewardCardTranslations.th,
     chatTitle: 'แชตกับร้าน',
     instantAnswer: 'คำตอบทันที',
     askOwner: 'ถามเจ้าของร้าน',
@@ -669,6 +677,7 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   vi: {
     ...chatTranslations['vi'],
+    ...rewardCardTranslations.vi,
     chatTitle: 'Trò chuyện với cửa hàng',
     instantAnswer: 'Trả lời ngay',
     askOwner: 'Hỏi chủ cửa hàng',
@@ -727,6 +736,7 @@ export const customerTranslations: Record<Exclude<Locale, 'en'>, CustomerCopy> =
   },
   fil: {
     ...chatTranslations['fil'],
+    ...rewardCardTranslations.fil,
     chatTitle: 'Makipag-chat sa tindahan',
     instantAnswer: 'Agarang sagot',
     askOwner: 'Tanungin ang may-ari',
