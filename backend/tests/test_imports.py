@@ -114,7 +114,12 @@ def test_import_rejections_and_owner_scope(app) -> None:  # noqa: F811
         bid = make_shop(client)
         assert upload(client, bid, b"not a pdf", "application/pdf").status_code == 415
         assert upload(client, bid, b"Item\n").status_code == 422
-        assert upload(client, bid, b"x" * 2_000_001).status_code == 413
+        assert upload(client, bid, b"x" * 5_000_001).status_code == 413
+        assert upload(client, bid, b"x" * 1_000_000).status_code == 415  # one huge field
+        assert (
+            upload(client, bid, b"\xff\xd8\xff" + b"0" * 20_000_001, "image/jpeg").status_code
+            == 413
+        )
         no_price = upload(client, bid, b"Item,Notes\nKopi,hot\n")
         assert no_price.status_code == 422
     with TestClient(app) as stranger:

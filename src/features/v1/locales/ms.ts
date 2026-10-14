@@ -223,7 +223,7 @@ export const ms: Copy = {
   photoRefused:
     'Foto ini tidak boleh digunakan. Hantar papan kedai, menu, senarai harga, produk atau hadapan kedai sahaja.',
   photoFailed: 'Foto tidak dapat disemak. Cuba lagi.',
-  photoType: 'Pilih foto JPEG, PNG atau WebP sehingga 5 MB.',
+  photoType: 'Pilih foto JPEG, PNG atau WebP sehingga 20 MB.',
   reviewTitle: 'Semak sebelum simpan',
   reviewNote: 'Hanya rekod peribadi anda berubah. Tiada yang diterbitkan ke Google.',
   reviewNotePublic:

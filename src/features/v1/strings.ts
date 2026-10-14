@@ -233,7 +233,7 @@ export const en = {
   photoRefused:
     'This photo can’t be used. Please send only a shop board, menu, price list, product or storefront.',
   photoFailed: 'The photo couldn’t be checked. Please try again.',
-  photoType: 'Choose a JPEG, PNG or WebP photo up to 5 MB.',
+  photoType: 'Choose a JPEG, PNG or WebP photo up to 20 MB.',
   // Review
   reviewTitle: 'Check before saving',
   reviewNote: 'Only your private records change. Nothing is published to Google.',

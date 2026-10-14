@@ -22,7 +22,8 @@ from .settings import Settings
 
 log = structlog.get_logger()
 
-MAX_BYTES = 2_000_000
+MAX_BYTES = 5_000_000  # spreadsheets and text exports
+MAX_MEDIA_BYTES = 20_000_000  # photos of POS screens, notebooks and PDFs from a phone
 MAX_ROWS = 2_000
 SAMPLE_ROWS = 15
 CSV_TYPES = {"text/csv", "application/csv", "text/plain"}
@@ -94,7 +95,10 @@ def parse_table(data: bytes, content_type: str) -> tuple[list[str], list[list[st
         except csv.Error:
             dialect = csv.excel
         reader = csv.reader(io.StringIO(text), dialect)
-        rows = list(itertools.islice(reader, MAX_ROWS + 2))
+        try:
+            rows = list(itertools.islice(reader, MAX_ROWS + 2))
+        except csv.Error:  # e.g. one enormous field: not a table we can read
+            raise ImportRejected(415, "UNREADABLE_FILE") from None
     else:
         raise ImportRejected(415, "UNSUPPORTED_FILE")
     if len(rows) > MAX_ROWS + 1:

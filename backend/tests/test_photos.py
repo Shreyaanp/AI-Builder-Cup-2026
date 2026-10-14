@@ -123,4 +123,15 @@ def test_zero_decimal_currency_stores_whole_units(app) -> None:
 def test_oversized_photo_is_rejected(app) -> None:
     with TestClient(app) as client:
         join(client)
-        assert upload(client, b"\xff\xd8\xff" + b"\x00" * 5_000_001).status_code == 413
+        assert upload(client, b"\xff\xd8\xff" + b"\x00" * 20_000_001).status_code == 413
+
+
+def test_big_modern_phone_photo_is_accepted_and_shrunk() -> None:
+    # A 12000x9000 (108 MP) JPEG, as a flagship phone camera produces.
+    image = Image.effect_noise((12000, 9000), 40).convert("RGB")
+    output = io.BytesIO()
+    image.save(output, format="JPEG", quality=92)
+    data = output.getvalue()
+    assert len(data) > 5_000_000  # the old limit rejected photos like this
+    cleaned = Image.open(io.BytesIO(sanitize(data)))
+    assert max(cleaned.size) <= 1600

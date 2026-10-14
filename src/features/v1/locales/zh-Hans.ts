@@ -216,7 +216,7 @@ export const zhHans: Copy = {
   photoNothing: '照片中没有找到可保存的新资料。',
   photoRefused: '此照片无法使用。请只发送招牌、菜单、价目表、商品或店面照片。',
   photoFailed: '无法检查照片，请重试。',
-  photoType: '请选择不超过 5 MB 的 JPEG、PNG 或 WebP 照片。',
+  photoType: '请选择不超过 20 MB 的 JPEG、PNG 或 WebP 照片。',
   reviewTitle: '保存前请核对',
   reviewNote: '仅更改您的私人记录，不会发布到 Google。',
   reviewNotePublic: '店铺页面已分享，顾客会看到此更改。不会发布到 Google。',

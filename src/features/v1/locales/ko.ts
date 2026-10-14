@@ -218,7 +218,7 @@ export const ko: Copy = {
   photoNothing: '이 사진에서 저장할 새 정보를 찾지 못했어요.',
   photoRefused: '이 사진은 사용할 수 없어요. 간판, 메뉴, 가격표, 상품, 매장 앞면만 보내 주세요.',
   photoFailed: '사진을 확인하지 못했어요. 다시 시도해 주세요.',
-  photoType: '5 MB 이하의 JPEG, PNG, WebP 사진을 선택해 주세요.',
+  photoType: '20 MB 이하의 JPEG, PNG, WebP 사진을 선택해 주세요.',
   reviewTitle: '저장 전에 확인해요',
   reviewNote: '개인 기록만 바뀌어요. Google에 게시하지 않아요.',
   reviewNotePublic: '공유한 고객 페이지에 이 변경이 보여요. Google에 게시하지 않아요.',

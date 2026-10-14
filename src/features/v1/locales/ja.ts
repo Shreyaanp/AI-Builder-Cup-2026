@@ -219,7 +219,7 @@ export const ja: Copy = {
   photoNothing: 'この写真から保存できる新しい情報は見つかりませんでした。',
   photoRefused: 'この写真は使えません。看板、メニュー、価格表、商品、店頭の写真を送ってください。',
   photoFailed: '写真を確認できませんでした。もう一度お試しください。',
-  photoType: '5 MB 以下の JPEG、PNG、WebP 写真を選んでください。',
+  photoType: '20 MB 以下の JPEG、PNG、WebP 写真を選んでください。',
   reviewTitle: '保存前に確認',
   reviewNote: '個人用の記録のみ変更します。Google には公開されません。',
   reviewNotePublic: '共有中のページにこの変更が表示されます。Google には公開されません。',
