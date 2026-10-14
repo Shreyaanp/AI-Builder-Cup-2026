@@ -10,9 +10,12 @@ backend in `backend/`. Product rules (also in AGENTS.md, rules in ../rules.md if
 - Every external/Google integration that is not really connected must be **visibly labelled** as
   simulated/not connected on every consequential screen. Never claim Google publication,
   verification, ownership or live Maps presence.
-- Global product: all user-facing copy goes in a feature-local strings file with `en` and `hi`
-  dictionaries (follow `src/features/v1/strings.ts` shape and `useCopy` pattern via
-  `usePreferences().language`). Keep English the source; Hindi must be real Hindi (UTF-8).
+- Market: **Asia Pacific & Japan, demo in Singapore — not India.** Use Singapore/APAC examples
+  (kopi, kaya toast, hawker stalls, SGD), never Indian ones. All user-facing copy goes in an
+  English source dictionary plus a `Partial<Record<Locale, …>>` translations registry, read via
+  `useLocale()` from `src/state/hooks.ts` (locales in `src/i18n/locales.ts`: en, zh-Hans, ms, ta,
+  ja, ko, id, th, vi, fil). Missing keys fall back to English. No Hindi strings. Prices via
+  `formatPrice`/`currencySymbol` in `src/features/v1/format.ts` (no hard-coded currency).
 - Material 3: use theme roles (`useTheme().material.*`), M3 type variants (`titleLarge`,
   `bodyMedium`, `labelMedium` …), shape scale from `src/design/theme.ts`, 48dp targets, visible
   focus, no colour-only state, reduced motion respected. Phone-first; check 412px width.
