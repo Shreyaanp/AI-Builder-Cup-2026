@@ -1,6 +1,7 @@
 import type { Copy } from '../strings'
 
 export const id: Copy = {
+  rateLimited: 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.',
   appName: 'Chalkboard',
   independent: 'Prototipe independen · bukan produk Google',
   connectionOffline: 'Offline',

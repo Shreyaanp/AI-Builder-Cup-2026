@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
 from .face_transport import worker_headers
+from .limits import client_ip, enforce_limits
 from .merchant import (
     Approval,
     AvailabilityRequest,
@@ -60,6 +61,7 @@ router = APIRouter(prefix="/api/v1")
 @router.get("/me")
 async def me(request: Request) -> dict[str, Any]:
     uid = await owner(request)
+    await enforce_limits(request, [("me", client_ip(request))])
     record = await anyio.to_thread.run_sync(store(request).consent, uid)
     return {
         "legal_version": LEGAL_VERSION,
@@ -71,6 +73,7 @@ async def me(request: Request) -> dict[str, Any]:
 @router.post("/consent")
 async def consent(body: ConsentRequest, request: Request) -> dict[str, Any]:
     uid = await owner(request)
+    await enforce_limits(request, [("consent", client_ip(request))])
     if body.version != LEGAL_VERSION or not (body.terms and body.privacy):
         raise HTTPException(422, "Accept the current Terms and Privacy Notice to continue.")
     return await anyio.to_thread.run_sync(store(request).record_consent, uid, body.version)
@@ -124,6 +127,7 @@ async def inventory(business_id: str, request: Request) -> list[dict[str, Any]]:
 @router.post("/proposals")
 async def propose(body: ProposalRequest, request: Request) -> dict[str, Any]:
     uid = await consented_owner(request)
+    await enforce_limits(request, [("proposal", uid)])
     if body.business and body.business_id:
         # Saved prices are minor units of the saved currency, so edits keep it.
         context = await anyio.to_thread.run_sync(store(request).context, uid, body.business_id)
@@ -143,6 +147,7 @@ async def update(
     business_id: str, body: BusinessFields, request: Request, revision: int = 0
 ) -> dict[str, Any]:
     uid = await consented_owner(request)
+    await enforce_limits(request, [("proposal", uid)])
     return await anyio.to_thread.run_sync(
         store(request).propose,
         uid,
@@ -185,6 +190,7 @@ async def photo(
 ) -> dict[str, Any]:
     """``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own."""
     uid = await consented_owner(request)
+    await enforce_limits(request, [("photo", uid)])
     service = store(request)
     pipeline: PhotoPipeline = request.app.state.photos
     context = await anyio.to_thread.run_sync(service.context, uid, business_id)

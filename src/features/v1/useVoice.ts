@@ -162,6 +162,11 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
           if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ kind: 'pong' }))
           return
         }
+        if (event.kind === 'error' && event.code === 'RATE_LIMITED') {
+          setError(t.rateLimited)
+          stop()
+          return
+        }
         if (event.kind === 'error') throw new Error('VOICE_UNAVAILABLE')
         eventRef.current(event)
         if (event.kind === 'ready') {

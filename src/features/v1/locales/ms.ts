@@ -1,6 +1,7 @@
 import type { Copy } from '../strings'
 
 export const ms: Copy = {
+  rateLimited: 'Terlalu banyak permintaan. Tunggu seminit dan cuba lagi.',
   connectionOffline: 'Luar talian',
   connectionReconnecting: 'Menyambung semula…',
   voiceFailed: 'Sambungan suara tamat. Cuba lagi atau gunakan teks.',

@@ -1,6 +1,7 @@
 import type { Copy } from '../strings'
 
 export const ta: Copy = {
+  rateLimited: 'அதிகமான கோரிக்கைகள். ஒரு நிமிடம் கழித்து மீண்டும் முயலுங்கள்.',
   connectionOffline: 'இணைய இணைப்பு இல்லை',
   connectionReconnecting: 'மீண்டும் இணைக்கிறது…',
   voiceFailed: 'குரல் இணைப்பு முடிந்தது. மீண்டும் முயற்சிக்கவும் அல்லது உரையைப் பயன்படுத்தவும்.',

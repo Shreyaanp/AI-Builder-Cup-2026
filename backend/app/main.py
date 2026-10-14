@@ -23,13 +23,13 @@ from .auth import IdentityService
 from .boundary import RequestBoundary
 from .contracts import CoachTurn, StreamEvent
 from .coordinator import MerchantContext, current
-from .customer import CustomerAnswers, PublicLimiter
+from .customer import CustomerAnswers
 from .customer_routes import router as customer_router
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .frontend import serve_frontend
 from .google_profile import BusinessProfileAdapter, SimulatedBusinessProfile
 from .google_sim_routes import router as google_sim_router
-from .limits import Lease, RunRegistry
+from .limits import Lease, RunRegistry, client_ip, enforce_limits, rate_limiter
 from .memory_vectors import (
     ConversationRecall,
     FirestoreRecall,
@@ -122,7 +122,7 @@ def create_app(
         )
         app.state.photos = PhotoPipeline(settings) if settings.v1_enabled else None
         app.state.customer_answers = CustomerAnswers(settings)
-        app.state.customer_limiter = PublicLimiter()
+        app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
         app.state.services = Services(
             identity,
             CoachRuntime(settings, session_service),
@@ -144,6 +144,7 @@ def create_app(
             await asyncio.gather(maintenance, return_exceptions=True)
             await app.state.services.replay.close()
             await app.state.customer_answers.close()
+            await anyio.to_thread.run_sync(app.state.rate_limiter.close)
             identity.close()
             if app.state.recall:
                 await anyio.to_thread.run_sync(app.state.recall.close)
@@ -200,6 +201,7 @@ def create_app(
 
     @app.get("/api/v1/bootstrap")
     async def bootstrap(request: Request, response: Response) -> dict[str, object]:
+        await enforce_limits(request, [("bootstrap", client_ip(request))], anonymous=True)
         return {
             **get_services(request).identity.bootstrap(request, response),
             "v1_enabled": settings.v1_enabled,
@@ -231,6 +233,7 @@ def create_app(
                 raise HTTPException(409, "RESUME_UNAVAILABLE")
             turn, after = services.replay.resume(principal.uid, str(body.session_id), bid, cursor)
             return stream_response(turn, after)
+        await enforce_limits(request, [("coach", principal.uid)])
         sid = await services.runtime.session(
             principal, str(body.session_id) if body.session_id else None, bid
         )
@@ -338,6 +341,7 @@ def create_app(
         try:
             async with asyncio.timeout(5):
                 principal = await services.identity.require_websocket(websocket)
+            await enforce_limits(websocket, [("voice", principal.uid)])
             requested = websocket.query_params.get("session_id")
             if requested:
                 requested = str(UUID(requested))
@@ -361,12 +365,15 @@ def create_app(
                 ).payload()
             )
             await serve_voice(websocket, services.runtime, principal, sid)
-        except (HTTPException, ValueError, TimeoutError):
+        except (HTTPException, ValueError, TimeoutError) as error:
+            code = (
+                "RATE_LIMITED"
+                if isinstance(error, HTTPException) and error.status_code == 429
+                else "AUTH_OR_SESSION_ERROR"
+            )
             with suppress(RuntimeError, WebSocketDisconnect):
-                await websocket.send_json(
-                    StreamEvent(kind="error", code="AUTH_OR_SESSION_ERROR").payload()
-                )
-                await websocket.close(code=1008, reason="AUTH_OR_SESSION_ERROR")
+                await websocket.send_json(StreamEvent(kind="error", code=code).payload())
+                await websocket.close(code=1008, reason=code)
         except WebSocketDisconnect:
             pass
         finally:
