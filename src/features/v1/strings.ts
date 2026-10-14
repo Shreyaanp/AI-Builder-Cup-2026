@@ -86,6 +86,8 @@ const en = {
   // Review
   reviewTitle: 'Check before saving',
   reviewNote: 'Only your private records change. Nothing is published to Google.',
+  reviewNotePublic:
+    'Your customer page is shared, so customers will see this change. Nothing is published to Google.',
   confirmSave: 'Confirm and save',
   cancel: 'Cancel',
   notProvided: 'Not provided',
@@ -187,6 +189,9 @@ const en = {
   } as Record<string, string>,
   faceDelete: 'Delete face data',
   faceDeleted: 'Face data deleted',
+  faceDeleteTitle: 'Delete your face data?',
+  faceDeleteBody:
+    'This removes your encrypted face template. Your shops stay. You can run the check again later.',
   dataSection: 'Your data',
   dataBody:
     'Erase your shops, products, conversations, memory, photos and face data from oGoogle AI.',
@@ -197,6 +202,10 @@ const en = {
   deleteConfirm: 'Delete permanently',
   deleted: 'All your data was deleted',
   actionFailed: 'That didn’t work. Please try again.',
+  accountFailed: 'We couldn’t open your workspace',
+  accountFailedBody: 'You’re signed in, but loading your account failed. Your data is safe.',
+  loadFailed: 'We couldn’t load your shops. Your data is safe — check your connection and retry.',
+  retryLoad: 'Retry',
 }
 
 type Copy = typeof en
@@ -279,6 +288,8 @@ const hi: Copy = {
   photoType: 'JPEG, PNG या WebP फोटो (5 MB तक) चुनें।',
   reviewTitle: 'सहेजने से पहले जाँचें',
   reviewNote: 'केवल आपके निजी रिकॉर्ड बदलेंगे। Google पर कुछ प्रकाशित नहीं होगा।',
+  reviewNotePublic:
+    'आपका ग्राहक पेज साझा है, इसलिए ग्राहक यह बदलाव देखेंगे। Google पर कुछ प्रकाशित नहीं होगा।',
   confirmSave: 'पुष्टि करें और सहेजें',
   cancel: 'रद्द करें',
   notProvided: 'नहीं दिया',
@@ -373,6 +384,9 @@ const hi: Copy = {
   faceStatus: { not_enrolled: 'शुरू नहीं हुई', review_pending: 'समीक्षा बाकी' },
   faceDelete: 'चेहरे का डेटा मिटाएँ',
   faceDeleted: 'चेहरे का डेटा मिटा दिया गया',
+  faceDeleteTitle: 'चेहरे का डेटा मिटाएँ?',
+  faceDeleteBody:
+    'इससे आपका एन्क्रिप्टेड चेहरा टेम्पलेट हट जाएगा। आपकी दुकानें बनी रहेंगी। आप बाद में फिर जाँच कर सकते हैं।',
   dataSection: 'आपका डेटा',
   dataBody: 'oGoogle AI से अपनी दुकानें, उत्पाद, बातचीत, मेमोरी, फोटो और चेहरे का डेटा मिटाएँ।',
   deleteAll: 'मेरा सारा डेटा मिटाएँ',
@@ -382,6 +396,11 @@ const hi: Copy = {
   deleteConfirm: 'हमेशा के लिए मिटाएँ',
   deleted: 'आपका सारा डेटा मिटा दिया गया',
   actionFailed: 'यह नहीं हो पाया। फिर कोशिश करें।',
+  accountFailed: 'आपका वर्कस्पेस नहीं खुल सका',
+  accountFailedBody: 'आप साइन इन हैं, पर खाता लोड नहीं हुआ। आपका डेटा सुरक्षित है।',
+  loadFailed:
+    'आपकी दुकानें लोड नहीं हो सकीं। आपका डेटा सुरक्षित है — कनेक्शन जाँचें और फिर कोशिश करें।',
+  retryLoad: 'फिर कोशिश करें',
 }
 
 export function useCopy(): Copy {

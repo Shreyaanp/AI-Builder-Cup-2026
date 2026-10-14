@@ -35,6 +35,7 @@ export function WorkspaceProvider({
   const [installOffer, setInstallOffer] = useState(false)
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   // Inventory is tagged with its shop so a switch never shows another shop's products.
   const [inventory, setInventory] = useState<{ bid: string | null; items: Product[] }>({
@@ -77,7 +78,10 @@ export function WorkspaceProvider({
         setBusinesses(items)
         setActiveId(items[0]?.id ?? null)
       })
-      .catch(() => undefined)
+      // A failed load must not look like an empty workspace (owners would recreate shops).
+      .catch(() => {
+        if (!abort.signal.aborted) setLoadError(true)
+      })
       .finally(() => {
         if (!abort.signal.aborted) setLoading(false)
       })
@@ -140,6 +144,18 @@ export function WorkspaceProvider({
       me,
       businesses,
       loading,
+      loadError,
+      retryLoad: async () => {
+        setLoadError(false)
+        setLoading(true)
+        try {
+          await reload()
+        } catch {
+          setLoadError(true)
+        } finally {
+          setLoading(false)
+        }
+      },
       activeId,
       active: businesses.find((item) => item.id === activeId) ?? null,
       // Products shown always belong to the active shop.
@@ -179,6 +195,7 @@ export function WorkspaceProvider({
       me,
       businesses,
       loading,
+      loadError,
       activeId,
       inventory,
       destination,

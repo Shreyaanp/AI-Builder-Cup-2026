@@ -55,13 +55,12 @@ export function AppShell() {
     { id: 'google', label: t.navGoogle, icon: <Globe size={22} /> },
     { id: 'privacy', label: t.navPrivacy, icon: <ShieldCheck size={22} /> },
   ]
-  const screen = {
-    // Keyed by shop: each shop gets its own clean conversation thread and draft.
-    coach: <CoachScreen key={ws.activeId ?? 'no-shop'} />,
-    shop: <ShopScreen />,
-    google: <GoogleScreen />,
-    privacy: <PrivacyScreen />,
-  }[ws.destination]
+  const screen =
+    ws.destination === 'coach'
+      ? null
+      : { shop: <ShopScreen />, google: <GoogleScreen />, privacy: <PrivacyScreen /> }[
+          ws.destination
+        ]
   const showPane = supporting && ws.destination === 'coach' && ws.active
 
   return (
@@ -116,6 +115,11 @@ export function AppShell() {
               outline: 'none',
             }}
           >
+            {/* Coach stays mounted while hidden so drafts, replies and voice survive tab
+                changes; keyed by shop so each shop has its own thread. */}
+            <Box hidden={ws.destination !== 'coach'} sx={{ height: '100%' }}>
+              <CoachScreen key={ws.activeId ?? 'no-shop'} />
+            </Box>
             {screen}
           </Box>
           {showPane && (

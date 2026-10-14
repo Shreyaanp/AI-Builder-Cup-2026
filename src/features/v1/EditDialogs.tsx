@@ -35,12 +35,16 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
   const compact = useCompact()
   const [fields, setFields] = useState(initial)
   const [error, setError] = useState('')
+  // One request at a time: repeated taps must not create competing proposals.
+  const [busy, setBusy] = useState(false)
   const editing = editor.kind === 'business' && editor.fields !== null
   async function submit() {
+    if (busy) return
     if (!fields.name.trim()) {
       setError(t.enterName)
       return
     }
+    setBusy(true)
     try {
       const proposal = await api<Proposal>('/proposals', {
         method: 'POST',
@@ -55,6 +59,8 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
       review(proposal)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t.actionFailed)
+    } finally {
+      setBusy(false)
     }
   }
   return (
@@ -94,7 +100,7 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3 }}>
         <Button onClick={() => openEditor({ kind: 'none' })}>{t.cancel}</Button>
-        <Button variant="contained" onClick={() => void submit()}>
+        <Button variant="contained" disabled={busy} onClick={() => void submit()}>
           {t.reviewFirst}
         </Button>
       </DialogActions>
@@ -119,11 +125,14 @@ function ProductForm({ product }: { product: Product | null }) {
     stock: product?.stock == null ? '' : String(product.stock),
   })
   const [error, setError] = useState('')
+  // One request at a time: repeated taps must not create competing proposals.
+  const [busy, setBusy] = useState(false)
   const price = Number(item.price)
   async function submit() {
     if (!item.name.trim()) return setError(t.enterName)
     if (!item.price.trim() || !Number.isFinite(price) || price < 0) return setError(t.enterPrice)
-    if (!active) return
+    if (!active || busy) return
+    setBusy(true)
     try {
       const proposal = await api<Proposal>('/proposals', {
         method: 'POST',
@@ -145,6 +154,8 @@ function ProductForm({ product }: { product: Product | null }) {
       review(proposal)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t.actionFailed)
+    } finally {
+      setBusy(false)
     }
   }
   return (
@@ -202,7 +213,7 @@ function ProductForm({ product }: { product: Product | null }) {
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3 }}>
         <Button onClick={() => openEditor({ kind: 'none' })}>{t.cancel}</Button>
-        <Button variant="contained" onClick={() => void submit()}>
+        <Button variant="contained" disabled={busy} onClick={() => void submit()}>
           {t.reviewFirst}
         </Button>
       </DialogActions>
