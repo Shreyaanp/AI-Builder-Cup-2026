@@ -45,6 +45,10 @@ only in the shop's approved public facts, and (2) contact the owner. No customer
 - Backend: ask endpoint (unshared → 404; fixture answers price from approved data only; another
   shop's data never appears; prompt-injection question does not change behaviour in fixture
   mode; rate limit 429), inquiry storage/isolation/dedupe on both adapters, owner list/done.
-- Playwright `tests/customer.spec.ts`: shared page → ask "How much is chai?" → fixture answer
+- Playwright `tests/customer.spec.ts`: shared page → ask "How much is kopi?" → fixture answer
   shows the approved price; send inquiry → pending confirmation; owner sees it under Messages;
   axe zero violations on the public page with the answer card open (light and dark).
+
+## Market note (added Oct 14)
+
+APAC / Singapore demo, not India: WhatsApp links use the shop's international number, examples use Singapore shops (kopi, kaya toast, SGD), customer copy goes into the English source + `publicTranslations` registry in `PublicShop.tsx` (another worker is filling translations in parallel — only add new English keys and keep edits to that file small).
