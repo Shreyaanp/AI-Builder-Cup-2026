@@ -551,12 +551,13 @@ const rows: Record<Exclude<Locale, 'en'>, string[]> = {
     'I-install ang Chalkboard',
   ],
 }
-export const frontTranslations: Partial<Record<Locale, Copy>> = Object.fromEntries(
+// Rows are positional (same order as keys); the browser test checks every locale is complete.
+export const frontTranslations = Object.fromEntries(
   Object.entries(rows).map(([locale, row]) => [
     locale,
     Object.fromEntries(keys.map((key, i) => [key, row[i]])),
   ]),
-)
+) as Partial<Record<Locale, Copy>>
 export function frontCopy(locale: Locale): Copy {
   return { ...frontEnglish, ...frontTranslations[locale] }
 }

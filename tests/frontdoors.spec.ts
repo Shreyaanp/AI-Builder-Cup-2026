@@ -1,7 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { canonicalCustomerPath, resolveApp, safeCustomerOrigin } from '../src/app/router.ts'
-import { frontEnglish, frontTranslations } from '../src/features/frontdoors/strings.ts'
 import { LOCALES } from '../src/i18n/locales.ts'
 
 const shopId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -207,10 +206,20 @@ for (const mode of ['light', 'dark'] as const) {
   })
 }
 
-test('all new copy has nine complete locale translations', () => {
+test('all new copy has nine complete locale translations', async ({ page }) => {
+  await page.goto('/?app=landing')
+  // Loaded through the Vite dev server: app modules use bundler-style imports.
+  const { english, translations } = await page.evaluate(async () => {
+    const path = '/src/features/frontdoors/strings.ts'
+    const mod = (await import(path)) as {
+      frontEnglish: Record<string, string>
+      frontTranslations: Record<string, Record<string, string>>
+    }
+    return { english: mod.frontEnglish, translations: mod.frontTranslations }
+  })
   for (const locale of LOCALES.filter((value) => value !== 'en')) {
-    expect(Object.keys(frontTranslations[locale] ?? {})).toEqual(Object.keys(frontEnglish))
-    for (const key of Object.keys(frontEnglish) as (keyof typeof frontEnglish)[])
-      expect(frontTranslations[locale]?.[key], `${locale}.${key}`).toEqual(expect.any(String))
+    expect(Object.keys(translations[locale] ?? {})).toEqual(Object.keys(english))
+    for (const key of Object.keys(english))
+      expect(translations[locale]?.[key], `${locale}.${key}`).toEqual(expect.any(String))
   }
 })
