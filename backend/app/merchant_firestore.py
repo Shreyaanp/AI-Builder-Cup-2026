@@ -22,9 +22,13 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .merchant import (
     CHALLENGE_SECONDS,
+    DEMO_ID,
     PROPOSAL_SECONDS,
+    BusinessFields,
+    ProductFields,
     ProposalRequest,
     challenge_prompts,
+    check_demo_seed,
     public_projection,
     seal_proposal,
     validate_proposal,
@@ -34,7 +38,12 @@ from .threads import change_thread, contact_hash, new_thread
 
 
 def document_id(value: str | None, missing: str) -> str:
-    """Only server-generated UUIDs may name documents; reject paths and arbitrary strings."""
+    """Only server-generated UUIDs may name documents; reject paths and arbitrary strings.
+
+    The one exception is the fixed `demo-…` IDs of seeded demo shops (letters, digits and
+    hyphens only, so never a path)."""
+    if value and DEMO_ID.fullmatch(value):
+        return value
     try:
         return str(UUID(str(value)))
     except ValueError as error:
@@ -374,6 +383,58 @@ class FirestoreMerchantStore:
 
         rows = self.businesses.where(filter=FieldFilter("public", "==", True)).stream()
         return [shop for row in rows if (shop := self.public_shop(row.id)) is not None]
+
+    def seed_demo_shop(
+        self, uid: str, bid: str, fields: BusinessFields, products: list[ProductFields]
+    ) -> bool:
+        record = check_demo_seed(bid, fields)
+        ref = self.businesses.document(bid)
+        items = {product_key(p.name, p.unit): p.model_dump() for p in products}
+
+        @firestore.transactional
+        def run(transaction: Any) -> bool:
+            snapshot = ref.get(transaction=transaction)
+            stored = [
+                (row.id, row.to_dict() or {})
+                for row in ref.collection("inventory").limit(500).stream(transaction=transaction)
+            ]
+            now = time.time()
+            if snapshot.exists:
+                # Never take over a shop someone else owns, even under a demo-looking ID.
+                data = self.owned(snapshot, uid)
+                if (
+                    data["fields"] == record
+                    and data.get("public")
+                    and {pid: row["fields"] for pid, row in stored} == items
+                ):
+                    return False
+                transaction.update(
+                    ref, {"fields": record, "revision": data["revision"] + 1, "public": True}
+                )
+            else:
+                transaction.create(
+                    ref,
+                    {
+                        "fields": record,
+                        "revision": 1,
+                        "status": "draft",
+                        "owners": [uid],
+                        "public": True,
+                        "created": now,
+                    },
+                )
+            for pid, _ in stored:
+                if pid not in items:
+                    transaction.delete(ref.collection("inventory").document(pid))
+            # Menu order is kept through `created`, as in commit().
+            for order, (pid, item) in enumerate(items.items()):
+                transaction.set(
+                    ref.collection("inventory").document(pid),
+                    {"fields": item, "created": now + order / 1000, "updated": now},
+                )
+            return True
+
+        return bool(run(self.client.transaction()))
 
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         try:

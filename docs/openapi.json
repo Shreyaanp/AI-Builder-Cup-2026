@@ -2689,6 +2689,11 @@
             "title": "Pin Demo",
             "default": false
           },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          },
           "timezone": {
             "type": "string",
             "maxLength": 100,
@@ -3159,6 +3164,11 @@
           "demo": {
             "type": "boolean",
             "title": "Demo",
+            "default": false
+          },
+          "demo_shop": {
+            "type": "boolean",
+            "title": "Demo Shop",
             "default": false
           },
           "photo_url": {

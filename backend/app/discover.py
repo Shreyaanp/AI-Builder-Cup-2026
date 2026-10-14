@@ -110,6 +110,8 @@ class DiscoveryPlace(BaseModel):
     google_maps_uri: str | None = None
     halal: bool | None = None
     demo: bool = False
+    # A seeded sample shop (labelled "Demo shop"), as opposed to demo map data above.
+    demo_shop: bool = False
     photo_url: str | None = None
     photo_authors: list[str] = []
 
@@ -294,6 +296,9 @@ async def prepare_pin(
         old = context["business"]["fields"]
     elif body.revision != 0:
         raise HTTPException(409, "A new business starts at revision zero.")
+    # The "Demo shop" label is server-owned too: only the seed script sets it, and an owner's
+    # edit can neither add nor remove it.
+    body.business.demo = bool(old.get("demo"))
     if (
         old
         and old.get("location") == body.business.location
@@ -361,6 +366,7 @@ async def discover(
             name=shop["name"],
             source="chalkboard",
             demo=bool(shop.get("pin_demo")),
+            demo_shop=bool(shop.get("demo")),
             category=shop["category"],
             lat=shop["lat"],
             lng=shop["lng"],

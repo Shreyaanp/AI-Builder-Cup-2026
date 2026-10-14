@@ -43,6 +43,7 @@ export const english = {
   cafe: 'Café',
   grocery: 'Grocery',
   catering: 'Catering',
+  demoShop: 'Demo shop',
 }
 type Copy = typeof english
 const keys = Object.keys(english) as (keyof Copy)[]
@@ -91,6 +92,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     '咖啡馆',
     '杂货店',
     '餐饮外烩',
+    '示范店铺',
   ],
   ms: [
     'Apa yang berdekatan?',
@@ -135,6 +137,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'Kafe',
     'Kedai runcit',
     'Katering',
+    'Kedai demo',
   ],
   ta: [
     'அருகில் என்ன இருக்கிறது?',
@@ -179,6 +182,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'கஃபே',
     'மளிகைக் கடை',
     'உணவு வழங்கல்',
+    'மாதிரிக் கடை',
   ],
   ja: [
     '近くには何がある？',
@@ -223,6 +227,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'カフェ',
     '食料品店',
     'ケータリング',
+    'デモ店舗',
   ],
   ko: [
     '주변에 무엇이 있나요?',
@@ -267,6 +272,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     '카페',
     '식료품점',
     '케이터링',
+    '데모 가게',
   ],
   id: [
     'Ada apa di sekitar saya?',
@@ -311,6 +317,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'Kafe',
     'Toko kelontong',
     'Katering',
+    'Toko demo',
   ],
   th: [
     'รอบตัวมีอะไรบ้าง?',
@@ -355,6 +362,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'คาเฟ่',
     'ร้านขายของชำ',
     'จัดเลี้ยง',
+    'ร้านตัวอย่าง',
   ],
   vi: [
     'Quanh tôi có gì?',
@@ -399,6 +407,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'Quán cà phê',
     'Tạp hóa',
     'Dịch vụ tiệc',
+    'Cửa hàng mẫu',
   ],
   fil: [
     'Ano ang malapit sa akin?',
@@ -443,6 +452,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'Kapihan',
     'Grocery',
     'Catering',
+    'Demo na tindahan',
   ],
 }
 
