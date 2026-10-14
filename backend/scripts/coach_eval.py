@@ -188,6 +188,66 @@ def no_false_publish(turn: Turn) -> bool:
     )
 
 
+def args_of(turn: Turn, name: str) -> dict[str, Any]:
+    return next((call["args"] for call in turn.tools if call["name"] == name), {})
+
+
+def bengaluru_bakery(store: MerchantStore, uid: str) -> str:
+    proposal = store.propose(
+        uid,
+        ProposalRequest(
+            kind="business",
+            business=BusinessFields(
+                name="Asha Bakery",
+                category="Bakery",
+                location="Indiranagar, Bengaluru",
+                lat=12.9716,
+                lng=77.5946,
+                currency="INR",
+                timezone="Asia/Kolkata",
+            ),
+        ),
+    )
+    return str(store.commit(uid, proposal["id"], proposal["digest"])["business_id"])
+
+
+def with_order(status: str) -> Callable[[MerchantStore, str], str]:
+    """A bakery with one demo supplier and one order to it (sent, or a draft)."""
+
+    def seed(store: MerchantStore, uid: str) -> str:
+        import time as clock
+
+        from app import sourcing
+
+        bid = bengaluru_bakery(store, uid)
+        records = sourcing.demo_records(
+            sourcing.fixture_suppliers("flour", "kg", "INR"),
+            12.9716,
+            77.5946,
+            "INR",
+            "Asia/Kolkata",
+        )
+        for sid, fields, products in records:
+            store.seed_demo_shop("eval-demo-owner", sid, fields, products)
+        supplier = store.public_shop(records[0][0])
+        assert supplier
+        pin = sourcing.shop_pin(store.context(uid, bid)["business"]["fields"])
+        order = sourcing.new_order(
+            supplier,
+            pin,
+            [sourcing.OrderItem(name="flour", quantity=20, unit="kg")],
+            "",
+            "",
+            1.4,
+            clock.time(),
+        )
+        order["status"] = status
+        store.save_supplier_order(uid, bid, order)
+        return bid
+
+    return seed
+
+
 SCENARIOS = [
     Scenario(
         "bulk_menu_photo",
@@ -383,6 +443,93 @@ SCENARIOS = [
             ("never claims to publish", no_false_publish),
             ("no tool calls", not_called("propose_products", "propose_business")),
         ],
+    ),
+    # Sourcing (Forecast → Source → Sell).
+    Scenario(
+        "running_low_finds_suppliers",
+        "My flour is running low",
+        seed=bengaluru_bakery,
+        checks=[
+            ("finds suppliers", called("find_suppliers")),
+            ("for flour", lambda t: "flour" in str(args_of(t, "find_suppliers").get("item", ""))),
+            ("says demo honestly", reply_matches(r"(?i)demo")),
+            ("does not order yet", not_called("prepare_order")),
+        ],
+    ),
+    Scenario(
+        "need_quantity_by_tomorrow",
+        "I need 20 kg flour by tomorrow",
+        seed=bengaluru_bakery,
+        checks=[
+            ("finds suppliers", called("find_suppliers")),
+            ("keeps quantity", lambda t: args_of(t, "find_suppliers").get("quantity") == 20),
+            ("keeps unit", lambda t: args_of(t, "find_suppliers").get("unit") == "kg"),
+        ],
+    ),
+    Scenario(
+        "hindi_running_low",
+        "आटा खत्म होने वाला है, सप्लायर ढूंढो",
+        language="hi",
+        seed=bengaluru_bakery,
+        checks=[
+            ("finds suppliers", called("find_suppliers")),
+            ("replies in Hindi", reply_matches(r"[\u0900-\u097f]")),
+        ],
+    ),
+    Scenario(
+        "unknown_item_asks_once",
+        "I need to restock some stuff",
+        seed=bengaluru_bakery,
+        checks=[
+            ("no blind search", not_called("find_suppliers", "prepare_order")),
+            ("asks which item", lambda t: t.reply.count("?") == 1),
+        ],
+    ),
+    Scenario(
+        "same_as_last_time",
+        "Order the same as last time",
+        seed=with_order("confirmed"),
+        checks=[
+            ("reads orders", called("get_orders")),
+            ("prepares the order", called("prepare_order")),
+            (
+                "never claims it was sent",
+                lambda t: (
+                    not re.search(r"(?i)\b(sent|ordered)\b(?! until)", t.reply)
+                    or bool(re.search(r"(?i)tap|confirm", t.reply))
+                ),
+            ),
+        ],
+    ),
+    Scenario(
+        "ask_about_sunday",
+        "Ask them if they deliver on Sunday",
+        seed=with_order("sent"),
+        checks=[("prepares a supplier message", called("message_supplier"))],
+    ),
+    Scenario(
+        "change_draft_quantity",
+        "Change the quantity to 15",
+        seed=with_order("draft"),
+        checks=[
+            (
+                "replaces the draft",
+                lambda t: bool(args_of(t, "prepare_order").get("replaces_order_id")),
+            ),
+            (
+                "15 units",
+                lambda t: any(
+                    line.get("quantity") == 15
+                    for line in args_of(t, "prepare_order").get("items", [])
+                ),
+            ),
+        ],
+    ),
+    Scenario(
+        "cancel_that_order",
+        "Cancel that order",
+        seed=with_order("sent"),
+        checks=[("cancels", called("cancel_order"))],
     ),
 ]
 

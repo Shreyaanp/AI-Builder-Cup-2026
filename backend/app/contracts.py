@@ -54,6 +54,10 @@ class StreamEvent(StrictModel):
         "ping",
         "proposal",
         "workflow",
+        # Sourcing: the "Searching nearby suppliers…" state, supplier cards, an order card.
+        "sourcing",
+        "suppliers",
+        "order",
     ]
     session_id: str | None = None
     text: str | None = None

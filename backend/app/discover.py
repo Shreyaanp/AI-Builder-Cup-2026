@@ -471,6 +471,9 @@ async def discover(
     for shop in shops:
         if shop["lat"] is None or shop["lng"] is None:
             continue
+        # Generated demo wholesalers serve shops (sourcing), not customers exploring nearby.
+        if shop.get("supplier") and shop.get("demo"):
+            continue
         d = distance(lat, lng, shop["lat"], shop["lng"])
         if d > radius:
             continue
