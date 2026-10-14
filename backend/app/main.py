@@ -53,6 +53,8 @@ from .recap import RecapWriter
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
 from .sales_routes import router as sales_router
 from .settings import Settings
+from .sourcing import SupplierGenerator
+from .sourcing_routes import router as sourcing_router
 from .streaming import CoachRuntime
 from .tts import Speech
 from .voice import serve_voice
@@ -134,6 +136,7 @@ def create_app(
         app.state.photos = PhotoPipeline(settings) if settings.v1_enabled else None
         app.state.customer_answers = CustomerAnswers(settings)
         coordinator.question_planner = QuestionPlanner(settings)
+        coordinator.supplier_generator = SupplierGenerator(settings)
         app.state.column_mapper = ColumnMapper(settings)
         app.state.forecaster = ForecastService(settings)
         coordinator.forecaster = app.state.forecaster
@@ -164,6 +167,8 @@ def create_app(
             await app.state.customer_answers.close()
             await app.state.recap_writer.close()
         await app.state.column_mapper.close()
+        if coordinator.supplier_generator is not None:
+            await coordinator.supplier_generator.close()
         if coordinator.question_planner is not None:
             await coordinator.question_planner.close()
             await app.state.maps.close()
@@ -188,6 +193,7 @@ def create_app(
     app.include_router(forecast_router)
     app.include_router(customer_router)
     app.include_router(discover_router)
+    app.include_router(sourcing_router)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
