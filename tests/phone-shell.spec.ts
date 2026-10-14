@@ -90,3 +90,64 @@ test('B2: the navigation stays after "Something changed" and returns when the ke
   await expect(nav).toBeInViewport()
   await axe(page)
 })
+
+test('B3: the composer is one line (even with a long translated hint), grows for multi-line text, and voice never moves it', async ({
+  page,
+}) => {
+  // A local tone stands in for the microphone; the voice socket answers "ready" and waits.
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      const audio = new AudioContext()
+      const destination = audio.createMediaStreamDestination()
+      audio.createOscillator().connect(destination)
+      return destination.stream
+    }
+  })
+  await page.routeWebSocket('**/api/v1/voice*', (socket) => {
+    socket.send(JSON.stringify({ kind: 'ready', session_id: 'fixture-voice', mode: 'offline' }))
+  })
+  await enter(page)
+  const field = page.locator('#coach textarea:not([aria-hidden])')
+  const form = page.locator('#coach form')
+  // One line is the 48dp row plus the composer's 4px padding.
+  const height = async () => Math.round((await form.boundingBox())!.height)
+  expect(await height()).toBe(56)
+  // Tamil has the longest hint; it used to make the empty composer several lines tall.
+  await page.getByRole('button', { name: 'Settings' }).tap()
+  await page.getByRole('combobox', { name: 'Language' }).tap()
+  await page.getByRole('option', { name: 'தமிழ்' }).tap()
+  await page.keyboard.press('Escape')
+  await expect(field).toHaveAttribute('placeholder', /கடை/)
+  expect(await height()).toBe(56)
+  await page.getByRole('button', { name: 'அமைப்புகள்' }).tap()
+  await page.getByRole('combobox').tap()
+  await page.getByRole('option', { name: 'English', exact: true }).tap()
+  await page.keyboard.press('Escape')
+  await expect(field).toHaveAttribute('placeholder', 'Tell me about your shop…')
+  // Multi-line text grows the field a line at a time; clearing it goes back to one line.
+  await field.fill('Kopi\nTeh\nMilo')
+  expect(await height()).toBe(104)
+  await field.fill('')
+  expect(await height()).toBe(56)
+
+  // Press to talk: only the icon and the text slot change state.
+  const mic = page.getByRole('button', { name: 'Press to talk', exact: true })
+  const before = (await form.boundingBox())!
+  const micBefore = (await mic.boundingBox())!
+  // A long press shows no tooltip over the composer.
+  await mic.dispatchEvent('touchstart')
+  await page.waitForTimeout(1000)
+  await expect(page.getByRole('tooltip')).toHaveCount(0)
+  await mic.dispatchEvent('touchend')
+  await mic.tap()
+  const finish = page.getByRole('button', { name: 'Finish speaking', exact: true })
+  await expect(finish).toHaveAttribute('aria-pressed', 'true')
+  await expect(form.getByRole('status')).toHaveText('Listening · up to 30 seconds')
+  await expect(page.getByRole('tooltip')).toHaveCount(0)
+  expect(await form.boundingBox()).toEqual(before)
+  expect(await finish.boundingBox()).toEqual(micBefore)
+  await axe(page)
+  await finish.tap()
+  await expect(form.getByRole('status')).toHaveText('Replying…')
+  expect(await form.boundingBox()).toEqual(before)
+})
