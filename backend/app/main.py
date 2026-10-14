@@ -29,6 +29,7 @@ from .customer import CustomerAnswers, PublicLimiter
 from .customer_routes import router as customer_router
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .frontend import serve_frontend
+from .google_profile import BusinessProfileAdapter, SimulatedBusinessProfile
 from .google_sim_routes import router as google_sim_router
 from .limits import Lease, RunRegistry
 from .memory_vectors import (
@@ -85,7 +86,10 @@ def merchant_services(settings: Settings) -> tuple[MerchantRepository | None, Re
 
 
 def create_app(
-    settings: Settings | None = None, sessions: BaseSessionService | None = None
+    settings: Settings | None = None,
+    sessions: BaseSessionService | None = None,
+    *,
+    google_profile: BusinessProfileAdapter | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
 
@@ -146,6 +150,7 @@ def create_app(
                 client.close()
 
     app = FastAPI(title="oGoogle AI streaming API", version="0.1.0", lifespan=lifespan)
+    app.state.google_profile = google_profile or SimulatedBusinessProfile()
     app.include_router(merchant_router)
     app.include_router(google_sim_router)
     app.include_router(planning_router)

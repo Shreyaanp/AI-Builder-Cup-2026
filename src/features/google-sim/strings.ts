@@ -2,6 +2,14 @@ import { useLocale } from '../../state/hooks'
 import type { Locale } from '../../i18n/locales'
 
 const en = {
+  connectionFlag: 'Simulated — not connected to Google',
+  find: 'Find & claim a listing (simulation)',
+  liveMaps: 'Live — opens Google Maps',
+  mapsHandoff: 'Open shop search on Google Maps',
+  liveOwner: 'Live — opens Google Business Profile',
+  handoffHelp:
+    'Official pages open separately. Business Profile API access is pending. No verification or publication is confirmed here.',
+  claimSaved: 'Saved fictional ownership request. No request was sent to Google.',
   banner: 'Simulated — no Google listing is created or changed',
   start: 'Put my shop on Google (simulation)',
   title: 'Google owner journey (simulation)',
@@ -163,7 +171,7 @@ const en = {
 
 type Copy = typeof en
 /** Native simulator translations per locale (English source; missing keys fall back). */
-export const simTranslations: Record<Locale, Copy> = {
+export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
   en,
   'zh-Hans': {
     banner: '模拟流程 — 不会创建或更改 Google 商家资料',
