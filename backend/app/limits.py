@@ -122,16 +122,14 @@ class FirestoreRateLimiter:
                 },
                 merge=True,
             )
-        batch.commit(retry=None, timeout=5)
-        # get_all may return documents in any order, so match them back by path.
-        by_path = dict(zip([ref.path for ref in refs], buckets, strict=True))
-        snapshots = list(self.client.get_all(refs, retry=None, timeout=5))
+        results = batch.commit(retry=None, timeout=5)
+        # Each write returns the value its own Increment produced, so concurrent takes
+        # never see each other's later increments (a separate read would over-reject).
         retry = max(
             (
-                by_path[snapshot.reference.path].retry_after(now)
-                for snapshot in snapshots
-                if (snapshot.to_dict() or {}).get("count", 0)
-                > by_path[snapshot.reference.path].maximum
+                bucket.retry_after(now)
+                for result, bucket in zip(results, buckets, strict=True)
+                if result.transform_results[0].integer_value > bucket.maximum
             ),
             default=0,
         )
