@@ -87,7 +87,14 @@ def test_clean_photo_becomes_a_reviewable_proposal_only(app) -> None:
         bid = saved["business_id"]
         priced = upload(client, jpeg(), f"?business_id={bid}").json()
         assert priced["proposal"]["snapshot"]["products"] == [
-            {"name": "Chai", "price": 1500, "unit": "cup", "stock": None, "available": True}
+            {
+                "name": "Chai",
+                "category": "drinks",
+                "price": 1500,
+                "unit": "cup",
+                "stock": None,
+                "available": True,
+            }
         ]
     with TestClient(app) as stranger:
         join(stranger)

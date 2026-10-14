@@ -1016,6 +1016,8 @@ export interface components {
              * @default
              */
             hours: string;
+            /** Weekly Hours */
+            weekly_hours?: components["schemas"]["DayHours"][];
             /**
              * Phone
              * @default
@@ -1119,6 +1121,23 @@ export interface components {
              * @default false
              */
             blocked: boolean;
+        };
+        /** DayHours */
+        DayHours: {
+            /**
+             * Day
+             * @enum {string}
+             */
+            day: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+            /**
+             * Closed
+             * @default false
+             */
+            closed: boolean;
+            /** Open */
+            open?: string | null;
+            /** Close */
+            close?: string | null;
         };
         /** Decision */
         Decision: {
@@ -1388,6 +1407,11 @@ export interface components {
         ProductFields: {
             /** Name */
             name: string;
+            /**
+             * Category
+             * @default
+             */
+            category: string;
             /**
              * Price
              * @description Minor units of the shop currency; integer, never a float

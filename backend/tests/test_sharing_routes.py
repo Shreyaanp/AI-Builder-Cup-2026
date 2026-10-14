@@ -133,7 +133,14 @@ def test_new_shop_photo_has_one_business_proposal_with_priced_products(app) -> N
         assert snapshot["kind"] == "business"
         assert snapshot["revision"] == 0
         assert snapshot["business"]["name"] == "Offline Fixture Tea Stall"
-        product = {"name": "Chai", "price": 1500, "unit": "cup", "stock": None, "available": True}
+        product = {
+            "name": "Chai",
+            "category": "drinks",
+            "price": 1500,
+            "unit": "cup",
+            "stock": None,
+            "available": True,
+        }
         assert snapshot["products"] == [product]
         assert client.get("/api/v1/businesses").json() == []
         bid = approve(client, proposal)["business_id"]

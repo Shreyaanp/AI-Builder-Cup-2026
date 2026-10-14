@@ -62,6 +62,22 @@ class CustomFact(BaseModel):
     value: str = Field(min_length=1, max_length=200)
 
 
+class DayHours(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    day: Literal["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    closed: bool = False
+    open: str | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    close: str | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+
+    @model_validator(mode="after")
+    def valid_range(self) -> DayHours:
+        if self.closed:
+            self.open = self.close = None
+        elif not self.open or not self.close or self.open == self.close:
+            raise ValueError("An open day needs distinct opening and closing times.")
+        return self
+
+
 class BusinessFields(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=180)
@@ -74,6 +90,7 @@ class BusinessFields(BaseModel):
     pin_demo: bool = False
     timezone: str = Field(default="Asia/Singapore", max_length=100)
     hours: str = Field(default="", max_length=180)
+    weekly_hours: list[DayHours] = Field(default_factory=list, max_length=7)
     phone: str = Field(default="", max_length=40)
     reward_text: str = Field(default="", max_length=80)
     # ISO 4217; prices of this shop are stored in this currency's minor unit (see money.py).
@@ -88,6 +105,13 @@ class BusinessFields(BaseModel):
     busy_hours: str = Field(default="", max_length=80)
     # Type-specific facts from the question plan; owner-confirmed like every other field.
     custom_facts: list[CustomFact] = Field(default_factory=list, max_length=30)
+
+    @field_validator("weekly_hours")
+    @classmethod
+    def unique_days(cls, value: list[DayHours]) -> list[DayHours]:
+        if len({entry.day for entry in value}) != len(value):
+            raise ValueError("Use one hours record per weekday.")
+        return value
 
     @field_validator("payment_methods")
     @classmethod
@@ -115,6 +139,7 @@ class BusinessFields(BaseModel):
             and not (key == "timezone" and value == "Asia/Singapore")
             and not (key == "custom_facts" and value == [])
             and not (key == "reward_text" and value == "")
+            and not (key == "weekly_hours" and value == [])
         }
 
     @model_validator(mode="after")
@@ -142,12 +167,20 @@ def customer_facts(fields: dict[str, Any]) -> dict[str, Any]:
 class ProductFields(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=180)
+    category: str = Field(default="", max_length=80)
     price: int = Field(
         ge=0, le=100_000_000, description="Minor units of the shop currency; integer, never a float"
     )
     unit: str = Field(default="item", min_length=1, max_length=40)
     stock: int | None = Field(default=None, ge=0, le=1_000_000)
     available: bool = True
+
+    @model_serializer(mode="wrap")
+    def drop_empty_category(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data: dict[str, Any] = handler(self)
+        if not data["category"]:
+            del data["category"]
+        return data
 
 
 class AvailabilityRequest(BaseModel):
@@ -257,6 +290,7 @@ def public_projection(
         "timezone": fields.get("timezone") or "Asia/Singapore",
         **({"pin_demo": True} if fields.get("pin_demo") else {}),
         "hours": fields.get("hours", ""),
+        **({"weekly_hours": fields["weekly_hours"]} if fields.get("weekly_hours") else {}),
         "phone": fields.get("phone", ""),
         "currency": fields.get("currency") or "SGD",
         **({"reward_text": fields["reward_text"]} if fields.get("reward_text") else {}),
@@ -265,6 +299,7 @@ def public_projection(
         "products": [
             {
                 "name": product["name"],
+                **({"category": product["category"]} if product.get("category") else {}),
                 "price": product["price"],
                 "unit": product["unit"],
                 "available": product.get("available", True),

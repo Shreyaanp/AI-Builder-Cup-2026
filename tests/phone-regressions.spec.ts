@@ -284,8 +284,10 @@ test('PHONE-3: Maps handoff is visibly Live and opens the exact shop query witho
   const opened = await popup
   await expect(opened).toHaveURL(/query=Katong%20Kopi%20Katong%2C%20Singapore/)
   await opened.close()
-  await page.getByRole('button', { name: 'Practice the steps (simulation)' }).tap()
-  await expect(page.getByText('Simulated — not connected to Google', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Practice the steps' }).tap()
+  await expect(
+    page.getByText('Simulated — no Google listing is created or changed', { exact: true }),
+  ).toBeVisible()
 })
 
 test('PHONE-3-claim: finding a fictional match leads to a saved claim outcome with a visible connection flag', async ({
@@ -294,14 +296,12 @@ test('PHONE-3-claim: finding a fictional match leads to a saved claim outcome wi
   await enter(page)
   await saveShop(page)
   await page.getByRole('button', { name: 'Google', exact: true }).tap()
-  await page.getByRole('button', { name: 'Practice the steps (simulation)' }).tap()
-  await page.getByRole('button', { name: 'Find & claim a listing (simulation)', exact: true }).tap()
-  const wizard = page.getByRole('dialog', { name: 'Google owner journey (simulation)' })
-  const flag = wizard.getByText('Simulated — not connected to Google', { exact: true })
+  await page.getByRole('button', { name: 'Practice the steps' }).tap()
+  await page.getByRole('button', { name: 'Find & claim a listing', exact: true }).tap()
+  const wizard = page.getByRole('dialog', { name: 'Practice: Google owner journey' })
+  const flag = wizard.getByRole('heading', { name: 'Practice: Google owner journey' })
   await expect(flag).toBeVisible()
-  await wizard
-    .getByRole('button', { name: 'Find & claim a listing (simulation)', exact: true })
-    .tap()
+  await wizard.getByRole('button', { name: 'Find & claim a listing', exact: true }).tap()
   await wizard.getByRole('button', { name: 'Customers visit', exact: true }).tap()
   await expect(flag).toBeVisible()
   await wizard.getByLabel('Hours', { exact: true }).fill('09:00–18:00')
@@ -314,7 +314,7 @@ test('PHONE-3-claim: finding a fictional match leads to a saved claim outcome wi
   await expect(flag).toBeVisible()
   await expect(wizard.getByRole('button', { name: /^Continue: Demo/ })).toHaveCount(2)
   await wizard.getByRole('button', { name: 'Continue: Demo Market Road', exact: true }).tap()
-  await wizard.getByRole('button', { name: 'Request simulated ownership', exact: true }).tap()
+  await wizard.getByRole('button', { name: 'Request ownership', exact: true }).tap()
   await expect(flag).toBeVisible()
   await expect(wizard.getByText('Pending — no ownership granted', { exact: true })).toBeVisible()
   await expect(
@@ -323,7 +323,7 @@ test('PHONE-3-claim: finding a fictional match leads to a saved claim outcome wi
     }),
   ).toBeVisible()
   await wizard.getByRole('button', { name: 'Close and keep progress' }).tap()
-  await page.getByRole('button', { name: 'Find & claim a listing (simulation)', exact: true }).tap()
+  await page.getByRole('button', { name: 'Find & claim a listing', exact: true }).tap()
   await expect(flag).toBeVisible()
   await expect(wizard.getByText('Pending — no ownership granted', { exact: true })).toBeVisible()
 })

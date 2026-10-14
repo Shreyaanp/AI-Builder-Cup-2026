@@ -11,6 +11,8 @@ import { Sheet } from './Sheet'
 import { useLocale } from '../../state/hooks'
 import { discoverCopy } from '../discover/strings'
 import { useRewardCopy } from '../rewards/strings'
+import { HoursList } from '../shop/Hours'
+import { categoryLabel, useShopCopy } from '../shop/strings'
 
 /**
  * The only place a change is saved: the owner confirms the exact digest the server sealed.
@@ -27,6 +29,7 @@ export function ReviewDialog({
 }) {
   const t = useCopy()
   const rewards = useRewardCopy()
+  const shopCopy = useShopCopy()
   const pinCopy = discoverCopy(useLocale())
   const { api, businesses, review } = useWorkspace()
   const [busy, setBusy] = useState(false)
@@ -125,6 +128,7 @@ export function ReviewDialog({
               ))}
           </Stack>
           <FactList fields={snapshot.business} />
+          <HoursList hours={snapshot.business.weekly_hours} />
           {snapshot.business.pin_label && (
             <Typography variant="bodyLarge">
               {pinCopy.pin}: {snapshot.business.pin_label}
@@ -162,6 +166,11 @@ export function ReviewDialog({
                   <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
                     {product.name}
                   </Typography>
+                  {product.category && (
+                    <Typography variant="bodySmall" color="text.secondary">
+                      {shopCopy.category}: {categoryLabel(product.category, shopCopy)}
+                    </Typography>
+                  )}
                   {(product.stock != null || product.available === false) && (
                     <Typography variant="bodySmall" color="text.secondary">
                       {product.available === false ? t.soldOut : `${t.stock}: ${product.stock}`}

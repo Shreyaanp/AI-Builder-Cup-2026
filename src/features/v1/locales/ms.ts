@@ -322,7 +322,7 @@ export const ms: Copy = {
   verifiedYes: 'Google sudah mengesahkan kedai saya',
   verifiedOwner: 'Disahkan — mengikut anda. Chalkboard tidak dapat menyemak ini dengan Google.',
   verifiedUndo: 'Belum disahkan',
-  practiceSteps: 'Latih langkah-langkahnya (simulasi)',
+  practiceSteps: 'Latih langkah-langkahnya',
   readiness: (done: number, total: number) => `${done} daripada ${total} sedia`,
   checkName: 'Nama kedai',
   checkCategory: 'Kategori',

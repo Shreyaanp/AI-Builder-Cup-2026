@@ -27,6 +27,7 @@ from .merchant import (
 )
 from .money import DEFAULT_CURRENCY, to_minor
 from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected
+from .product_categories import suggest_category
 from .sales import daily_sales
 from .stock_alerts import StockAlertInput, StockAlertReceipt
 from .streaming import APP_NAME
@@ -204,7 +205,9 @@ async def public_shop(business_id: str, request: Request) -> dict[str, Any]:
     # Display-only status uses the same conservative parser/timezone as discovery.
     from .discover import open_now
 
-    shop["open_now"] = open_now(shop["hours"], shop.get("timezone", "Asia/Singapore"))
+    shop["open_now"] = open_now(
+        shop["hours"], shop.get("timezone", "Asia/Singapore"), weekly_hours=shop.get("weekly_hours")
+    )
     return shop
 
 
@@ -263,6 +266,7 @@ async def photo(
     products = [
         ProductFields(
             name=p.name.strip()[:180],
+            category=suggest_category(p.name, p.category),
             price=to_minor(p.price or 0, currency),
             unit=(p.unit or "item").strip()[:40] or "item",
         )
@@ -500,6 +504,9 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
                 stock=item["stock"] if item["stock"] is not None else (known or {}).get("stock"),
                 # An import never undoes an owner's sold-out switch.
                 available=known.get("available", True) if known else True,
+                category=item.get("category")
+                or (known or {}).get("category")
+                or suggest_category(item["name"]),
             )
         )
     proposal = await anyio.to_thread.run_sync(
