@@ -69,17 +69,48 @@ jobs:
         working-directory: backend
       - run: npx openapi-typescript docs/openapi.json -o src/api/generated.d.ts
       - run: git diff --exit-code -- docs/openapi.json src/api/generated.d.ts
-      - run: npx playwright install --with-deps chromium
-      - run: npm run check
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run test:hooks
       - run: npm run format:check
+  # Browser tests run per device project in parallel jobs (phone and desktop).
+  browser:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [phone, desktop]
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: '0.13.0'
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --project backend --locked
+      - run: npm ci
+      - id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=${{ matrix.project }}
       - uses: actions/upload-artifact@v6
         if: failure()
         with:
-          name: browser-failures
+          name: browser-failures-${{ matrix.project }}
           path: test-results
           retention-days: 3
+  # Runs alongside the tests; it only checks that the packaged app starts and serves.
   container:
-    needs: [backend, frontend]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -88,9 +119,16 @@ jobs:
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: '24'
-      - name: Build and check the packaged application
+      - uses: docker/setup-buildx-action@v4.4.1
+      - uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          load: true
+          tags: ogoogle-ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Check the packaged application
         run: |
-          docker build -t ogoogle-ci .
           docker run -d --name ogoogle-ci -p 8080:8080 -e APP_ENV=local -e AUTH_MODE=local -e SESSION_BACKEND=sqlite ogoogle-ci
           for attempt in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null; then break; fi

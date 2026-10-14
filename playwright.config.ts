@@ -3,7 +3,10 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
-  workers: 1,
+  // Each test gets its own browser context and workspace, so files run in parallel.
+  workers: process.env.CI ? 3 : 4,
+  // One retry on CI absorbs a random failure; the list reporter still marks it "flaky".
+  retries: process.env.CI ? 1 : 0,
   reporter: 'list',
   use: {
     baseURL: 'http://127.0.0.1:3200',
