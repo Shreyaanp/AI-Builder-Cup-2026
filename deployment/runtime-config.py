@@ -15,10 +15,10 @@ config = {
     "SESSION_BACKEND": "firestore",
     "COACH_MODE": "gemini",
     "GEMINI_BACKEND": "vertex",
-    # Chat + photo reading stay in India (Gemini 3.5 Flash is served in asia-south1).
-    "GOOGLE_CLOUD_LOCATION": "asia-south1",
-    "GOOGLE_TEXT_MODEL": "gemini-3.5-flash",
-    # Live voice models are only offered in US/EU regions; disclosed in the Privacy Notice.
+    # Chat + photo reading: the model the live coach evaluation passed with.
+    "GOOGLE_CLOUD_LOCATION": "global",
+    "GOOGLE_TEXT_MODEL": "gemini-3.5-flash-lite",
+    # Live voice models are regional (not served at `global`).
     "GOOGLE_LIVE_LOCATION": "us-central1",
     "GOOGLE_LIVE_MODEL": "gemini-3.8-live",
     "GOOGLE_EMBEDDING_LOCATION": "global",
