@@ -105,13 +105,36 @@ jobs:
           echo "$GOOGLE_ACCESS_TOKEN" | docker login -u oauth2accesstoken --password-stdin https://asia-south1-docker.pkg.dev
           image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA"
           docker push "$image"
-      - name: Release the single service
+      - name: Build private face worker
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: backend/face.Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/face:${{ needs.revision.outputs.sha }}
+          cache-from: type=gha,scope=face
+          cache-to: type=gha,scope=face,mode=max
+      - name: Release private face worker
+        run: |
+          gcloud run deploy ogoogle-face --project=ichiropractic --region=asia-south1 \
+            --image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/face:$RELEASE_SHA" \
+            --service-account=ogoogle-face-runtime@ichiropractic.iam.gserviceaccount.com \
+            --set-secrets=FACE_WORKER_TOKEN=ogoogle-face-token:1 \
+            --set-env-vars=FACE_REQUIRE_MODELS=true \
+            --no-allow-unauthenticated --min=0 --max=2 --concurrency=1 \
+            --cpu=1 --memory=2Gi --timeout=60 --cpu-boost --quiet
+          url=$(gcloud run services describe ogoogle-face --project=ichiropractic --region=asia-south1 --format='value(status.url)')
+          test -n "$url"
+          echo "FACE_WORKER_URL=$url" >> "$GITHUB_ENV"
+      - name: Release main service
         run: |
           python deployment/runtime-config.py
           gcloud run deploy ogoogle-ai --project=ichiropractic --region=asia-south1 \
             --image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA" \
             --service-account=ogoogle-runtime@ichiropractic.iam.gserviceaccount.com \
             --env-vars-file=.deployment/runtime.json --allow-unauthenticated \
+            --update-secrets=FACE_WORKER_TOKEN=ogoogle-face-token:1 \
             --min=0 --max=10 --concurrency=16 --cpu=1 --memory=1Gi --timeout=180 \
             --cpu-boost --quiet
       - name: Verify the released revision

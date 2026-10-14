@@ -5,9 +5,9 @@ import os
 from pathlib import Path
 
 target = json.loads(Path("deployment/target.json").read_text())
-required = ["FIREBASE_WEB_API_KEY", "FIREBASE_WEB_APP_ID"]
+required = ["FIREBASE_WEB_API_KEY", "FIREBASE_WEB_APP_ID", "FACE_WORKER_URL"]
 if any(not os.getenv(name) for name in required):
-    raise SystemExit("Dedicated Firebase browser configuration is missing.")
+    raise SystemExit("Required Firebase or private face worker configuration is missing.")
 origin = f"https://{target['service']}-{target['projectNumber']}.{target['region']}.run.app"
 config = {
     "APP_ENV": "production",
@@ -37,6 +37,7 @@ config = {
     "MAX_ACTIVE_RUNS": "8",
     "MAX_TURN_SECONDS": "30",
     "MAX_VOICE_SECONDS": "120",
+    "FACE_WORKER_URL": os.environ["FACE_WORKER_URL"].strip().rstrip("/"),
 }
 output = Path(".deployment/runtime.json")
 output.parent.mkdir(exist_ok=True)
