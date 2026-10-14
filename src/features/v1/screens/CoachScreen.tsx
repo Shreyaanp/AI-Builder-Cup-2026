@@ -347,6 +347,17 @@ export function CoachScreen() {
   const lastIsReply = messages.at(-1)?.role === 'assistant' && !reply && busy === 'idle'
   const canSend = Boolean(note.trim()) && busy === 'idle' && voice.state === 'idle'
 
+  const plusButton = (
+    <Tooltip title={t.newChat}>
+      <IconButton
+        aria-label={t.newChat}
+        aria-haspopup="dialog"
+        onClick={() => setActionsOpen(true)}
+      >
+        <Plus size={20} />
+      </IconButton>
+    </Tooltip>
+  )
   return (
     <Box
       id="coach"
@@ -360,21 +371,16 @@ export function CoachScreen() {
         mx: 'auto',
       }}
     >
-      {/* One quiet row: which coach is answering, and every other action behind one "+". */}
-      <Stack direction="row" sx={{ alignItems: 'center', minHeight: 48, gap: 1 }}>
-        <Typography variant="labelMedium" color="text.secondary" sx={{ flex: 1 }} noWrap>
-          {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
-        </Typography>
-        <Tooltip title={t.newChat}>
-          <IconButton
-            aria-label={t.newChat}
-            aria-haspopup="dialog"
-            onClick={() => setActionsOpen(true)}
-          >
-            <Plus size={20} />
-          </IconButton>
-        </Tooltip>
-      </Stack>
+      {/* One quiet row: which coach is answering, and every other action behind one "+".
+          On an empty chat the + sits beside the greeting instead of taking its own row. */}
+      {!empty && (
+        <Stack direction="row" sx={{ alignItems: 'center', minHeight: 48, gap: 1 }}>
+          <Typography variant="labelMedium" color="text.secondary" sx={{ flex: 1 }} noWrap>
+            {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
+          </Typography>
+          {plusButton}
+        </Stack>
+      )}
       <Sheet
         open={actionsOpen}
         onClose={() => setActionsOpen(false)}
@@ -443,10 +449,20 @@ export function CoachScreen() {
 
       <Box sx={{ flex: 1, pb: 4 }}>
         {empty ? (
-          <Stack spacing={5} sx={{ pt: { xs: 4, sm: 10 }, pb: 4 }}>
-            <Typography component="h1" variant="headlineMedium">
-              {ws.active ? t.coachGreetingShop(ws.active.fields.name) : t.coachGreeting}
-            </Typography>
+          <Stack spacing={{ xs: 3, sm: 5 }} sx={{ pt: { xs: 1, sm: 10 }, pb: 4 }}>
+            <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+              <Typography
+                component="h1"
+                variant="headlineMedium"
+                sx={{
+                  fontSize: { xs: '1.5rem', sm: undefined },
+                  lineHeight: { xs: '2rem', sm: undefined },
+                }}
+              >
+                {ws.active ? t.coachGreetingShop(ws.active.fields.name) : t.coachGreeting}
+              </Typography>
+              {plusButton}
+            </Stack>
             {ws.active ? <ShopCard onOpen={openSheet} /> : <StartCard />}
             {ws.active && (
               <PendingCard
@@ -625,7 +641,19 @@ export function CoachScreen() {
             inputRef={messageInput}
             inputProps={{ 'aria-label': t.message, maxLength: 2000 }}
             // 16px keeps iOS from zooming on focus; 12 + 24 + 12 matches the 48dp buttons.
-            sx={{ flex: 1, px: 1, py: 3, fontSize: '1rem', lineHeight: '1.5rem' }}
+            sx={{
+              flex: 1,
+              px: 1,
+              py: 3,
+              fontSize: '1rem',
+              lineHeight: '1.5rem',
+              // The hint stays on one line on narrow phones (truncated, never wrapped).
+              '& textarea::placeholder': {
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              },
+            }}
           />
           <Tooltip
             title={
