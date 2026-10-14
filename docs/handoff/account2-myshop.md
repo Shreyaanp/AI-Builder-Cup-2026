@@ -74,3 +74,7 @@ For each bug:
 - backend tests for categorisation and units.
 
 Report in `docs/handoff/account2-status.md`: the commit for each ID, the tests and their results.
+
+## Added: B32 — customer page menu uses the same compact grid
+
+The customer shop page (`src/features/public/PublicShop.tsx`) lists the menu as a long single column, which is hard to scan on a phone. Reuse the B28 menu component (category sections, 2 per row on phone / 3+ wider, name + price, sold-out marked, sold-out last) there too — read-only for customers. Only touch the menu/products section of PublicShop.tsx: Codex is changing that file's header, theme, top bar and stamp card (`fix/customer-page`).
