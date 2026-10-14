@@ -291,7 +291,23 @@ export const vi: Copy = {
   googleTitle: 'Đưa lên Google',
   googleBody:
     'Khi thông tin sẵn sàng, hãy hoàn tất trên trang Google. Google xác minh quyền sở hữu cửa hàng.',
-  googleHonest: 'Chalkboard không đăng lên Google thay bạn.',
+  googleHonest:
+    'Chalkboard chuẩn bị thông tin của bạn. Google xác minh và đăng — chúng tôi không thể đăng lên Google thay bạn.',
+  stepDetails: 'Kiểm tra thông tin',
+  seeChecks: 'Xem tất cả mục kiểm tra',
+  stepCopy: 'Sao chép thông tin',
+  stepCopyHint: 'Dán vào biểu mẫu của Google để mọi thứ khớp nhau.',
+  copyField: (field: string) => `Sao chép ${field}`,
+  stepAdd: 'Thêm hoặc nhận quyền trên Google',
+  stepAddHint:
+    'Mở trang chính thức của Google. Hãy tìm cửa hàng trước — nếu đã có, hãy nhận quyền.',
+  stepVerify: 'Đã xác minh trên Google?',
+  stepVerifyHint:
+    'Google xác nhận bạn là chủ qua cuộc gọi, tin nhắn, email hoặc video. Báo cho chúng tôi khi xong.',
+  verifiedYes: 'Google đã xác minh cửa hàng của tôi',
+  verifiedOwner: 'Đã xác minh — theo bạn cho biết. Chalkboard không thể kiểm tra với Google.',
+  verifiedUndo: 'Chưa xác minh',
+  practiceSteps: 'Luyện tập các bước (mô phỏng)',
   readiness: (done: number, total: number) => `Sẵn sàng ${done} / ${total} mục`,
   checkName: 'Tên cửa hàng',
   checkCategory: 'Danh mục',
