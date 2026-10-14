@@ -145,7 +145,7 @@ def test_replay_bounds_cursor_and_business_scope():
     store = ReplayStore()
     store.turns[("owner", "sid")] = turn
     with pytest.raises(HTTPException):
-        store.resume("owner", "sid", "other-business", f"{turn.turn_id}:3")
+        asyncio.run(store.resume("owner", "sid", "other-business", f"{turn.turn_id}:3"))
 
 
 @pytest.mark.parametrize("idle", [True, False])
