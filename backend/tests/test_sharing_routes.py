@@ -78,7 +78,16 @@ def test_public_shop_requires_sharing_but_no_workspace(app) -> None:
                 "last_confirmed": None,
                 "gallery": [],
                 "facts": {},
-                "products": [{"name": "Chai", "price": 1500, "unit": "cup", "available": True}],
+                # New items get a category automatically (B28), which customers see.
+                "products": [
+                    {
+                        "name": "Chai",
+                        "category": "drinks",
+                        "price": 1500,
+                        "unit": "cup",
+                        "available": True,
+                    }
+                ],
             }
             for shop_id in (str(uuid4()), "not-a-uuid"):
                 assert customer.get(f"/api/v1/public/shops/{shop_id}").status_code == 404
