@@ -49,6 +49,8 @@ export function WorkspaceProvider({
   const consumePhotoRequest = useCallback(() => setPhotoPending(false), [])
   // A chat starter from another screen (e.g. My shop's "Customers ask" card).
   const [coachDraft, setCoachDraft] = useState<string | null>(null)
+  // The draft is sent at once (e.g. "Find suppliers" on the Prep plan tile).
+  const [coachDraftSend, setCoachDraftSend] = useState(false)
   const consumeCoachDraft = useCallback(() => setCoachDraft(null), [])
   const [coachActions, setCoachActions] = useState(false)
   const [faceOpen, setFaceOpen] = useState(false)
@@ -212,11 +214,13 @@ export function WorkspaceProvider({
       },
       photoPending,
       consumePhotoRequest,
-      startCoachDraft: (text: string) => {
+      startCoachDraft: (text: string, options?: { send?: boolean }) => {
         setDestination('coach')
+        setCoachDraftSend(Boolean(options?.send))
         setCoachDraft(text)
       },
       coachDraft,
+      coachDraftSend,
       consumeCoachDraft,
       coachActions,
       setCoachActions,
@@ -243,6 +247,7 @@ export function WorkspaceProvider({
       photoPending,
       consumePhotoRequest,
       coachDraft,
+      coachDraftSend,
       consumeCoachDraft,
       coachActions,
       faceOpen,

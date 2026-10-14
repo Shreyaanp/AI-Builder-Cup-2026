@@ -17,6 +17,9 @@ const kinds = new Set<CoachEvent['kind']>([
   'ping',
   'proposal',
   'workflow',
+  'sourcing',
+  'suppliers',
+  'order',
 ])
 
 function decodeEvent(data: string): CoachEvent {
