@@ -483,3 +483,16 @@ async def speak(body: SpeakRequest, request: Request) -> Response:
     if audio is None:
         return Response(status_code=204)
     return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
+
+
+@router.delete("/businesses/{business_id}/notes/{note_id}")
+async def delete_note(business_id: str, note_id: str, request: Request) -> dict[str, Any]:
+    """Owner removes something the coach remembered."""
+    uid = await consented_owner(request)
+    service = store(request)
+    context = await anyio.to_thread.run_sync(service.context, uid, business_id)
+    if not context["business"]:
+        raise HTTPException(404, "Business not found.")
+    notes = [n for n in context["business"].get("coach_notes") or [] if n["id"] != note_id]
+    saved = await anyio.to_thread.run_sync(service.set_notes, uid, business_id, notes)
+    return {"notes": saved}

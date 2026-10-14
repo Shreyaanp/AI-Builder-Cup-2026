@@ -12,7 +12,7 @@ import re
 import secrets
 import time
 from threading import Lock
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException
@@ -98,6 +98,7 @@ class FirestoreMerchantStore:
             "fields": data["fields"],
             "revision": data["revision"],
             "last_confirmed": data.get("last_confirmed"),
+            "coach_notes": data.get("coach_notes") or [],
             "registration": data["status"],
             "public": bool(data.get("public")),
             "google_publication": "not_connected",
@@ -469,6 +470,17 @@ class FirestoreMerchantStore:
             return {"business_id": bid, "last_confirmed": day}
 
         return run(self.client.transaction())
+
+    def set_notes(self, uid: str, bid: str, notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> list[dict[str, Any]]:
+            self.owned(ref.get(transaction=transaction), uid)
+            transaction.update(ref, {"coach_notes": notes})
+            return notes
+
+        return cast(list[dict[str, Any]], run(self.client.transaction()))
 
     def recap_signals(self, uid: str, bid: str) -> dict[str, Any]:
         ref = self.businesses.document(document_id(bid, "Business not found."))

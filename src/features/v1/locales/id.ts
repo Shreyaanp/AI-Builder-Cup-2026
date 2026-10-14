@@ -251,6 +251,8 @@ export const id: Copy = {
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} hari · ${from} – ${to}` : 'Tidak ada tanggal di file',
   topItems: 'Terlaris',
+  coachMemory: 'Yang diingat pelatih',
+  forgetNote: 'Lupakan',
   currencyLocked: 'Tidak bisa diubah setelah toko disimpan',
   unit: 'Satuan (cangkir, kg, buah…)',
   stockOptional: 'Stok (opsional)',

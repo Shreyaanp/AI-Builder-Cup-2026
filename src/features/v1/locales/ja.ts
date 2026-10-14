@@ -247,6 +247,8 @@ export const ja: Copy = {
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} 日間 · ${from} – ${to}` : 'ファイルに日付がありません',
   topItems: '売れ筋',
+  coachMemory: 'コーチが覚えていること',
+  forgetNote: '削除',
   currencyLocked: 'お店を保存した後は変更できません',
   unit: '単位（杯、kg、個…）',
   stockOptional: '在庫（任意）',

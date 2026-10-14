@@ -244,6 +244,8 @@ export const zhHans: Copy = {
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} 天 · ${from} – ${to}` : '文件里没有日期',
   topItems: '畅销品',
+  coachMemory: '教练记住的事',
+  forgetNote: '忘掉',
   currencyLocked: '店铺保存后不可更改',
   unit: '单位（杯、公斤、件…）',
   stockOptional: '库存（选填）',

@@ -19,9 +19,12 @@ from app.coordinator import (
     ProductInput,
     current,
     get_business_context,
+    get_insights,
     get_question_plan,
     propose_business,
+    propose_customer_facts,
     propose_products,
+    remember_note,
     request_registration,
     ui_currency,
 )
@@ -82,6 +85,7 @@ def test_context_exposes_only_readable_shop_and_major_unit_products(saved_shop, 
             {"name": "Chai", "price": 15.0, "unit": "cup", "stock": 10, "available": True}
         ],
         "relevant_history": ctx.recalled,
+        "remembered_notes": [],
         "customer_facts_to_ask": [
             "halal",
             "payment_methods",
@@ -381,7 +385,7 @@ def commit(ctx: MerchantContext, result: dict[str, Any]) -> None:
 
 
 def test_customer_fact_is_a_reviewed_edit_that_keeps_everything_else(saved_shop):
-    result = propose_business(name="", halal="Yes", payment_methods=["cash", "PayNow"])
+    result = propose_customer_facts(halal="Yes", payment_methods=["cash", "PayNow"])
     assert result["status"] == "needs_review"
     assert result["changes"] == [
         "halal: (empty) → yes",
@@ -411,17 +415,20 @@ def test_customer_fact_is_a_reviewed_edit_that_keeps_everything_else(saved_shop)
         "busy_hours",
     ]
     # A later basics edit (or another fact) never wipes confirmed facts.
-    edit = propose_business(name="", hours="8–20", vegetarian_options=False)
+    edit = propose_business(name="", hours="8–20")
     business = saved_shop.proposals[edit["proposal_id"]]["snapshot"]["business"]
     assert business["halal"] == "yes"
     assert business["payment_methods"] == ["cash", "paynow"]
-    assert business["vegetarian_options"] is False
     assert business["hours"] == "8–20"
+    fact = propose_customer_facts(vegetarian_options=False)
+    business = saved_shop.proposals[fact["proposal_id"]]["snapshot"]["business"]
+    assert business["vegetarian_options"] is False
+    assert business["halal"] == "yes"
 
 
 @pytest.mark.parametrize("fact", [{"halal": "maybe"}, {"delivery": "drone"}])
 def test_unknown_fact_value_is_repairable(saved_shop, fact):
-    result = propose_business(name="", **fact)
+    result = propose_customer_facts(**fact)
     assert result["status"] == "invalid"
     assert saved_shop.proposals == {}
 
@@ -443,14 +450,12 @@ def test_question_plan_fits_the_business_type(ctx):
 
 def test_custom_fact_answers_merge_by_key_and_leave_the_plan(ctx):
     commit(ctx, propose_business(name="Glow Hair Studio", category="Hair salon"))
-    first = propose_business(
-        name="",
+    first = propose_customer_facts(
         custom_facts=[FactInput(key="walk_ins", label="Walk-ins", value="Appointments only")],
     )
     assert first["changes"] == ["Walk-ins: (empty) → Appointments only"]
     commit(ctx, first)
-    second = propose_business(
-        name="",
+    second = propose_customer_facts(
         custom_facts=[
             {"key": "walk_ins", "label": "Walk-ins", "value": "Walk-ins welcome"},
             {"key": "booking", "label": "How to book", "value": "WhatsApp"},
@@ -484,3 +489,31 @@ def test_location_validation_runs():
         BusinessFields(name="Pin", lat=1.28)
     with pytest.raises(ValueError):
         BusinessFields(name="Zone", timezone="Not/AZone")
+
+
+def test_remember_note_is_private_deduplicated_and_in_context(saved_shop):
+    assert remember_note("Closed on Mondays during Ramadan")["status"] == "remembered"
+    assert remember_note("closed on mondays during ramadan")["status"] == "already_remembered"
+    assert remember_note("   ")["status"] == "invalid"
+    assert get_business_context()["remembered_notes"] == ["Closed on Mondays during Ramadan"]
+    for index in range(40):
+        remember_note(f"Note {index}")
+    notes = saved_shop.store.context("alice", saved_shop.business_id)["business"]["coach_notes"]
+    assert len(notes) == 30 and notes[-1]["text"] == "Note 39"
+    # Notes are the coach's private memory: never on the customer page.
+    saved_shop.store.share("alice", saved_shop.business_id, True)
+    public = saved_shop.store.public_shop(saved_shop.business_id)
+    assert "Note 39" not in json.dumps(public)
+
+
+def test_insights_without_sales_suggest_importing(saved_shop):
+    insights = get_insights()
+    assert insights["has_sales_data"] is False
+    assert insights["unanswered_customer_messages"] == 0
+    assert insights["revenue"] == 0
+    assert get_insights.__doc__ and "importing" in get_insights.__doc__
+
+
+def test_tools_need_a_shop(ctx):
+    assert remember_note("x")["status"] == "needs_business"
+    assert get_insights()["status"] == "needs_business"
