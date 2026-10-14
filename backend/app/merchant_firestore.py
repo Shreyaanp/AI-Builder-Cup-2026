@@ -474,6 +474,40 @@ class FirestoreMerchantStore:
 
         return bool(run(self.client.transaction()))
 
+    def attach_demo_owner(self, uid: str, bid: str, owner_uid: str) -> bool:
+        if not owner_uid.strip():
+            raise ValueError("Demo owner UID must not be empty.")
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> bool:
+            data = self.owned(ref.get(transaction=transaction), uid)
+            check_demo_seed(bid, BusinessFields.model_validate(data["fields"]))
+            if owner_uid in data["owners"]:
+                return False
+            transaction.update(ref, {"owners": [*data["owners"], owner_uid]})
+            return True
+
+        return bool(run(self.client.transaction()))
+
+    def seed_demo_inquiries(self, uid: str, bid: str, inquiries: list[Inquiry]) -> bool:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> bool:
+            data = self.owned(ref.get(transaction=transaction), uid)
+            check_demo_seed(bid, BusinessFields.model_validate(data["fields"]))
+            records = [
+                (ref.collection("inquiries").document(document_id(i.id, "Invalid inquiry.")), i)
+                for i in inquiries
+            ]
+            missing = [(r, i) for r, i in records if not r.get(transaction=transaction).exists]
+            for record, inquiry in missing:
+                transaction.create(record, inquiry.model_dump())
+            return bool(missing)
+
+        return bool(run(self.client.transaction()))
+
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         try:
             ref = self.businesses.document(document_id(bid, "Not found."))
