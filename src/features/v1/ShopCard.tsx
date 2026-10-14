@@ -230,8 +230,9 @@ export function ShopCard({
           display: 'block',
           width: '100%',
           textAlign: 'start',
-          p: 5,
-          pb: 3,
+          // Compact on phones so the card never dominates the coach screen.
+          p: { xs: 3, sm: 5 },
+          pb: { xs: 2, sm: 3 },
           borderRadius: `${shape.xl}px ${shape.xl}px 0 0`,
         }}
       >
@@ -239,8 +240,8 @@ export function ShopCard({
           <Box
             aria-hidden="true"
             sx={{
-              width: 48,
-              height: 48,
+              width: { xs: 40, sm: 48 },
+              height: { xs: 40, sm: 48 },
               flexShrink: 0,
               borderRadius: `${shape.md}px`,
               display: 'grid',
@@ -274,7 +275,7 @@ export function ShopCard({
           value={(done / total) * 100}
           aria-label={ready}
           sx={{
-            mt: 4,
+            mt: { xs: 2, sm: 4 },
             height: 4,
             borderRadius: 2,
             bgcolor: roles.surfaceContainerHighest,
@@ -282,7 +283,7 @@ export function ShopCard({
         />
         <Box
           sx={{
-            mt: 4,
+            mt: { xs: 2, sm: 4 },
             display: 'grid',
             gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
             columnGap: 4,
@@ -304,14 +305,31 @@ export function ShopCard({
         </Box>
       </ButtonBase>
       {shown.length > 0 && (
-        <Stack direction="row" sx={{ px: 5, pb: 2, gap: 2, flexWrap: 'wrap' }}>
+        // One swipeable row of items on phones instead of a wall of chips.
+        <Stack
+          direction="row"
+          sx={{
+            px: { xs: 3, sm: 5 },
+            pb: 2,
+            gap: 2,
+            flexWrap: { xs: 'nowrap', sm: 'wrap' },
+            overflowX: { xs: 'auto', sm: 'visible' },
+            scrollbarWidth: 'none',
+          }}
+        >
           {shown.map((product, index) => (
             <Chip
               key={product.id ?? product.name}
               label={product.name}
               onClick={() => onOpen(index)}
               variant="outlined"
-              sx={{ height: 32, maxWidth: '100%', borderColor: roles.outlineVariant, ...enterRise }}
+              sx={{
+                height: 32,
+                flexShrink: 0,
+                maxWidth: { xs: 180, sm: '100%' },
+                borderColor: roles.outlineVariant,
+                ...enterRise,
+              }}
             />
           ))}
           {more > 0 && (
