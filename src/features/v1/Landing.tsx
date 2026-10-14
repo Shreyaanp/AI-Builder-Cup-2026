@@ -18,6 +18,7 @@ import { shape } from '../../design/theme'
 import { LegalDialog } from './LegalDialog'
 import type { LegalDocument } from './LegalDialog'
 import { useCopy } from './strings'
+import { formatPrice } from './format'
 
 /** Public landing page (signed-out). Phone-first; two-column hero with a live-preview mock on wide screens. */
 export function Landing({ onPreview }: { onPreview: () => void }) {
@@ -337,10 +338,10 @@ function PhonePreview() {
             {t.reviewTitle}
           </Typography>
           <Typography variant="bodyLarge" sx={{ mt: 0.5 }}>
-            Chai · ₹12 / cup
+            {t.previewItem} · {formatPrice(180, 'SGD')} / {t.previewUnit}
           </Typography>
           <Typography variant="bodyMedium" color="error">
-            Samosa · {t.soldOut}
+            {t.previewSoldOutItem} · {t.soldOut}
           </Typography>
           <Box
             sx={{

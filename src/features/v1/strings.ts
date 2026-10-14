@@ -1,7 +1,7 @@
 import { useLocale } from '../../state/hooks'
 import { translations } from './locales'
 
-const en = {
+export const en = {
   appName: 'Chalkboard',
   independent: 'Independent prototype · not a Google product',
   loading: 'Getting your shop ready…',
@@ -11,11 +11,11 @@ const en = {
     'Send a photo of your shop board or just talk. We prepare your listing; you approve every detail.',
   featurePhoto: 'Snap your board or menu',
   featurePhotoBody: 'Name, hours and prices are read for you.',
-  featureVoice: 'Speak Hindi or English',
+  featureVoice: 'Speak in your language',
   featureVoiceBody: 'Press to talk, or type if you prefer.',
   featureControl: 'You stay in control',
   featureControlBody: 'Nothing is saved until you confirm it.',
-  landingEyebrow: 'For tea stalls, bakeries, kiranas and every corner shop',
+  landingEyebrow: 'For hawker stalls, cafés, bakeries and every corner shop',
   howTitle: 'How it works',
   step1: 'Snap your chalkboard',
   step1Body: 'Take a photo of your board, menu or price list — or just talk.',
@@ -34,8 +34,11 @@ const en = {
   trust3: 'Independent — you finish on Google’s own page',
   ctaTitle: 'Bring your shop online today',
   getStarted: 'Get started',
-  previewChat: 'Chai is 12 now, samosa sold out',
-  previewReply: 'Prepared: chai 15 → 12 per cup, samosa sold out. Check and confirm.',
+  previewChat: 'Kopi is $1.80 now, kaya toast sold out',
+  previewReply: 'Prepared: kopi $2 → $1.80 per cup, kaya toast sold out. Check and confirm.',
+  previewItem: 'Kopi',
+  previewSoldOutItem: 'Kaya toast',
+  previewUnit: 'cup',
   signIn: 'Continue with Google',
   continuePreview: 'Continue local preview',
   previewNote: 'Local preview: Google sign-in is configured on the hosted app.',
@@ -52,6 +55,7 @@ const en = {
   agree: 'Agree and continue',
   notNow: 'Not now',
   draftLegal: 'Draft for the prototype — pending legal review.',
+  legalTranslation: 'Translation for convenience — the English version applies.',
   close: 'Close',
   // Navigation
   navCoach: 'Coach',
@@ -212,6 +216,23 @@ const en = {
     not_enrolled: 'Not started',
     review_pending: 'Pending review',
   } as Record<string, string>,
+  faceTitle: 'Face registration',
+  faceConsent: 'I consent to a face template and repeat-enrollment matching',
+  faceEvaluation: 'Verification is under evaluation. Automatic identity approval is disabled.',
+  faceLeft: 'Slowly turn your head left',
+  faceRight: 'Slowly turn your head right',
+  faceUp: 'Slowly look up',
+  faceOneVisible: 'One face visible',
+  faceOnlyOne: 'Keep exactly one face visible',
+  faceGuidanceUnavailable: 'Camera guidance unavailable; server evaluation still applies',
+  faceCameraUnavailable: 'Camera unavailable. Your draft is safe; you can retry later.',
+  facePending: 'Verification pending. You can continue your draft and inventory.',
+  faceResult: (reason: string, liveness: string, oneToOne: string, oneToMany: string) =>
+    `${reason} · Liveness: ${liveness} · 1:1: ${oneToOne} · 1:N: ${oneToMany}`,
+  faceFailed: 'Evaluation did not finish. Your draft is preserved.',
+  faceProcessing: 'Evaluating privately…',
+  faceReturn: 'Return to draft',
+  faceCamera: 'Open camera',
   faceDelete: 'Delete face data',
   faceDeleted: 'Face data deleted',
   faceDeleteTitle: 'Delete your face data?',
@@ -235,10 +256,9 @@ const en = {
 
 type Copy = typeof en
 
-/** English is the source; locale files override keys and missing keys fall back to English. */
+/** English is the source; each registered locale supplies the complete copy. */
 export function useCopy(): Copy {
   const locale = useLocale()
-  const translated = translations[locale]
-  return translated ? { ...en, ...translated } : en
+  return locale === 'en' ? en : translations[locale]
 }
 export type { Copy }
