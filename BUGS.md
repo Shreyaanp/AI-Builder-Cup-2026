@@ -53,6 +53,31 @@ Each fix lives on the owner's branch. Account 1 (Claude lead) reviews, merges to
 | B37 | Google tab means nothing today: one end-to-end onboarding flow (details → photos → profile on our side → last step "Verified by Google: waiting for Google API access"), no practice simulator, less text                    | Account 1             | `fix/google-flow`       | merged — releasing |
 | B38 | Customer pages (explore, shop page, menu) need a light/dark switch                                                                                                                                                           | Codex                 | `fix/customer-page`     | live               |
 
+## First story audit · 2026-10-15
+
+Details, ranked demo impact, proposed sizes and phone evidence: [docs/stories/AUDIT.md](docs/stories/AUDIT.md).
+These are local findings; existing release statuses above are unchanged. Fixed-local entries are
+not closed: fixing commits and user batch sign-off remain pending the conflicting commit instructions.
+
+| ID  | Bug                                                                                                                           | Owner                                           | Status                                                            |
+| --- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------- |
+| B39 | S2/1–2: offline daily price/sold-out utterance produces no review proposal (A1)                                               | Tool/coach owner; coordinate sourcing ownership | open                                                              |
+| B40 | S2/3: already-open customer page stays stale until Refresh/tab return (A3)                                                    | unassigned                                      | open                                                              |
+| B41 | S1/6, S3/2, S7/3: default offline typed-city lookup is Singapore-area-only; eight-city catalogue is not a seeded preview (A2) | unassigned                                      | open                                                              |
+| B42 | S3/5: offline halal answer says Not listed despite a confirmed fact (A4)                                                      | unassigned; coordinate locale worker            | open                                                              |
+| B43 | S3/6: anonymous owner messaging contradicts required customer sign-in (A5)                                                    | identity owner                                  | open                                                              |
+| B44 | S1/6: existing-shop menu-photo proposal loses EXIF GPS (A6; B17 follow-up)                                                    | photo/backend owner                             | open                                                              |
+| B45 | S1 → S5 → S3: coach photo is not reused in gallery; customer page ignores owner gallery (A8)                                  | unassigned                                      | open                                                              |
+| B46 | S2/5: daily freshness check hides in a non-empty coach thread (A9)                                                            | unassigned                                      | open                                                              |
+| B47 | S5/4: copied Google details omit structured weekly hours                                                                      | story audit                                     | fixed locally; regression passed, sign-off pending                |
+| B48 | S3/4: unavailable shared page has no route back to nearby shops                                                               | story audit                                     | fixed locally; regression passed, sign-off pending                |
+| B49 | S3/3: known-halal discovery filter removes confirmed halal shops                                                              | story audit                                     | fixed locally; SQLite regression passed, sign-off pending         |
+| B50 | S7/1: Tamil offline reply is English; planned Indian languages incomplete (A7)                                                | locale worker; offline coach owner              | open                                                              |
+| B51 | S1/4: extraction uncertainty is behind the review sheet and cleared after creating the shop (A10)                             | unassigned                                      | open                                                              |
+| B52 | S7/1, S3/8, S5/3: Tamil clipping, customer theming and inert preview affordances (A11)                                        | coordinate locale/UI owners                     | open                                                              |
+| B53 | Coach smooth scroll ignores reduced-motion preference; Google wait pulse paints indefinitely; step focus has no outline (A12) | UI owner                                        | open                                                              |
+| B54 | S3/6: English chat timestamps use US date order on an Indian phone                                                            | story audit                                     | fixed locally; visible-thread regression passed, sign-off pending |
+
 ## Parked until the freeze ends
 
 - Launch video (`feat/demo-shops` @ `b4cefa8`).
