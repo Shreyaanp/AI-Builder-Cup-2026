@@ -33,6 +33,8 @@ import { BackInStock, BadgeRow, StampCard, StockReminder } from '../rewards/Rewa
 import { HoursList } from '../shop/Hours'
 import type { DayHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 
 interface PublicShopData {
   id: string
@@ -283,6 +285,7 @@ const publicTranslations: Record<Locale, Omit<typeof en, keyof CustomerCopy>> = 
 /** Customer-facing, read-only page for a shop the owner chose to share. No sign-in. */
 export default function PublicShop({ id }: { id: string }) {
   const locale = useLocale()
+  const shopCopy = useShopCopy()
   const discovery = discoverCopy(locale)
   const freshnessCopy = locale === 'en' ? ownerEnglish : ownerTranslations[locale]
   const t = {
@@ -587,7 +590,7 @@ export default function PublicShop({ id }: { id: string }) {
                     primary={product.name}
                     secondary={
                       product.available ? (
-                        `/ ${product.unit}`
+                        `/ ${unitLabel(product.unit, shopCopy)}`
                       ) : (
                         <StockReminder shop={id} name={product.name} unit={product.unit} />
                       )

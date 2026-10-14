@@ -268,7 +268,6 @@ export const ko: Copy = {
   coachMemory: '코치가 기억하는 것',
   forgetNote: '잊기',
   currencyLocked: '가게를 저장한 뒤에는 바꿀 수 없어요',
-  unit: '단위 (잔, kg, 개…)',
   stockOptional: '재고 (선택)',
   enterPrice: '올바른 가격을 입력해 주세요.',
   enterName: '이름을 입력해 주세요.',

@@ -402,13 +402,14 @@ test('B12: compact categories, uncategorised last and sold-out last', async ({ p
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
   await page.getByRole('button', { name: /^Menu/ }).click()
   const dialog = page.getByRole('dialog', { name: 'Menu' })
+  // B28: each category is a grid of item cards; sold-out items are marked and sort last.
   await expect(
-    dialog.getByRole('region', { name: 'Drinks', exact: true }).getByRole('button'),
-  ).toHaveText(['Kopicup$1.80', 'TehSold out · cup$1.60'])
+    dialog.getByRole('region', { name: 'Drinks', exact: true }).getByRole('listitem'),
+  ).toHaveText(['Kopicup$1.80', 'TehcupSold out$1.60'])
   expect(
     await dialog
       .getByRole('region')
-      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label'))),
+      .evaluateAll((nodes) => nodes.map((node) => node.querySelector('h3')?.textContent)),
   ).toEqual(['Drinks', 'Food', 'Uncategorised'])
   await proof(page, 'B12')
   await dialog.getByRole('button', { name: 'Edit Kopi', exact: true }).click()

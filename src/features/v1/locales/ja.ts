@@ -270,7 +270,6 @@ export const ja: Copy = {
   coachMemory: 'コーチが覚えていること',
   forgetNote: '削除',
   currencyLocked: 'お店を保存した後は変更できません',
-  unit: '単位（杯、kg、個…）',
   stockOptional: '在庫（任意）',
   enterPrice: '有効な価格を入力してください。',
   enterName: '名前を入力してください。',

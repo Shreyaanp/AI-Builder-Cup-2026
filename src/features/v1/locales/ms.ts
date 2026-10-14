@@ -274,7 +274,6 @@ export const ms: Copy = {
   coachMemory: 'Perkara yang diingati jurulatih',
   forgetNote: 'Lupakan',
   currencyLocked: 'Tidak boleh diubah selepas kedai disimpan',
-  unit: 'Unit (cawan, kg, biji…)',
   stockOptional: 'Stok (pilihan)',
   enterPrice: 'Masukkan harga yang sah.',
   enterName: 'Masukkan nama.',
