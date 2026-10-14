@@ -35,6 +35,7 @@ const en = {
     needs_reply: 'Needs your reply',
     cancelled: 'Cancelled',
     replaced: 'Discarded',
+    received: 'Received',
   },
   autoReply: 'Automatic demo reply',
   openThread: 'Open conversation',
@@ -50,6 +51,8 @@ const en = {
   lowMessage: (item: string) => `My ${item} is running low. Find suppliers.`,
   addPhone: 'Add your shop phone number first so the supplier can reach you.',
   sendFailed: 'Couldn’t send. Try again.',
+  markReceived: 'Mark as received',
+  runsOut: (item: string, day: string) => `${item} runs out ${day}`,
   choose: 'Choose',
   sendTo: (name: string) => `Send to ${name}`,
   // Starts the owner's order in the composer; they add what and how much.
@@ -87,6 +90,7 @@ const zhHans: SourcingCopy = {
     needs_reply: '需要您回复',
     cancelled: '已取消',
     replaced: '已放弃',
+    received: '已收货',
   },
   autoReply: '演示自动回复',
   openThread: '打开对话',
@@ -102,6 +106,7 @@ const zhHans: SourcingCopy = {
   lowMessage: (item) => `我的${item}快用完了，帮我找供应商。`,
   addPhone: '请先添加店铺电话，方便供应商联系您。',
   sendFailed: '发送失败，请重试。',
+  markReceived: '标记为已收货',
 }
 
 const ms: SourcingCopy = {
@@ -134,6 +139,7 @@ const ms: SourcingCopy = {
     needs_reply: 'Perlu balasan anda',
     cancelled: 'Dibatalkan',
     replaced: 'Dibuang',
+    received: 'Diterima',
   },
   autoReply: 'Balasan demo automatik',
   openThread: 'Buka perbualan',
@@ -149,6 +155,7 @@ const ms: SourcingCopy = {
   lowMessage: (item) => `${item} saya hampir habis. Cari pembekal.`,
   addPhone: 'Tambah nombor telefon kedai dahulu supaya pembekal boleh menghubungi anda.',
   sendFailed: 'Tidak dapat menghantar. Cuba lagi.',
+  markReceived: 'Tandakan diterima',
 }
 
 const id: SourcingCopy = {
@@ -179,6 +186,7 @@ const id: SourcingCopy = {
     needs_reply: 'Perlu balasan Anda',
     cancelled: 'Dibatalkan',
     replaced: 'Dibuang',
+    received: 'Diterima',
   },
   autoReply: 'Balasan demo otomatis',
   openThread: 'Buka percakapan',
@@ -194,6 +202,7 @@ const id: SourcingCopy = {
   lowMessage: (item) => `${item} saya hampir habis. Carikan pemasok.`,
   addPhone: 'Tambahkan nomor telepon toko dulu agar pemasok bisa menghubungi Anda.',
   sendFailed: 'Gagal mengirim. Coba lagi.',
+  markReceived: 'Tandai diterima',
 }
 
 const ja: SourcingCopy = {
@@ -226,6 +235,7 @@ const ja: SourcingCopy = {
     needs_reply: '返信が必要',
     cancelled: 'キャンセル済み',
     replaced: '破棄',
+    received: '受け取り済み',
   },
   autoReply: 'デモの自動返信',
   openThread: '会話を開く',
@@ -241,6 +251,7 @@ const ja: SourcingCopy = {
   lowMessage: (item) => `${item}が残りわずかです。仕入れ先を探して。`,
   addPhone: '仕入れ先から連絡できるよう、先にお店の電話番号を追加してください。',
   sendFailed: '送信できませんでした。もう一度お試しください。',
+  markReceived: '受け取り済みにする',
 }
 
 const ko: SourcingCopy = {
@@ -272,6 +283,7 @@ const ko: SourcingCopy = {
     needs_reply: '답장 필요',
     cancelled: '취소됨',
     replaced: '버림',
+    received: '받음',
   },
   autoReply: '데모 자동 답장',
   openThread: '대화 열기',
@@ -287,6 +299,7 @@ const ko: SourcingCopy = {
   lowMessage: (item) => `${item}이(가) 떨어져 가요. 공급업체를 찾아 주세요.`,
   addPhone: '공급업체가 연락할 수 있도록 먼저 가게 전화번호를 추가하세요.',
   sendFailed: '보내지 못했어요. 다시 시도하세요.',
+  markReceived: '받음으로 표시',
 }
 
 const th: SourcingCopy = {
@@ -319,6 +332,7 @@ const th: SourcingCopy = {
     needs_reply: 'รอคุณตอบ',
     cancelled: 'ยกเลิกแล้ว',
     replaced: 'ทิ้งแล้ว',
+    received: 'ได้รับแล้ว',
   },
   autoReply: 'ตอบกลับอัตโนมัติ (เดโม)',
   openThread: 'เปิดการสนทนา',
@@ -334,6 +348,7 @@ const th: SourcingCopy = {
   lowMessage: (item) => `${item}ของฉันใกล้หมดแล้ว ช่วยหาผู้จำหน่ายให้หน่อย`,
   addPhone: 'เพิ่มเบอร์โทรร้านก่อน เพื่อให้ผู้จำหน่ายติดต่อคุณได้',
   sendFailed: 'ส่งไม่สำเร็จ ลองอีกครั้ง',
+  markReceived: 'ทำเครื่องหมายว่าได้รับแล้ว',
 }
 
 const vi: SourcingCopy = {
@@ -365,6 +380,7 @@ const vi: SourcingCopy = {
     needs_reply: 'Cần bạn trả lời',
     cancelled: 'Đã hủy',
     replaced: 'Đã bỏ',
+    received: 'Đã nhận',
   },
   autoReply: 'Trả lời tự động (demo)',
   openThread: 'Mở cuộc trò chuyện',
@@ -380,6 +396,7 @@ const vi: SourcingCopy = {
   lowMessage: (item) => `${item} của tôi sắp hết. Tìm nhà cung cấp giúp tôi.`,
   addPhone: 'Hãy thêm số điện thoại cửa hàng trước để nhà cung cấp liên lạc được.',
   sendFailed: 'Không gửi được. Thử lại.',
+  markReceived: 'Đánh dấu đã nhận',
 }
 
 const fil: SourcingCopy = {
@@ -411,6 +428,7 @@ const fil: SourcingCopy = {
     needs_reply: 'Kailangan ng sagot mo',
     cancelled: 'Kinansela',
     replaced: 'Itinapon',
+    received: 'Natanggap',
   },
   autoReply: 'Awtomatikong demo na sagot',
   openThread: 'Buksan ang usapan',
@@ -426,6 +444,7 @@ const fil: SourcingCopy = {
   lowMessage: (item) => `Paubos na ang ${item} ko. Hanapan mo ako ng supplier.`,
   addPhone: 'Idagdag muna ang phone number ng tindahan para makontak ka ng supplier.',
   sendFailed: 'Hindi naipadala. Subukan ulit.',
+  markReceived: 'Markahan na natanggap',
 }
 
 const ta: SourcingCopy = {
@@ -460,6 +479,7 @@ const ta: SourcingCopy = {
     needs_reply: 'உங்கள் பதில் தேவை',
     cancelled: 'ரத்து செய்யப்பட்டது',
     replaced: 'நிராகரிக்கப்பட்டது',
+    received: 'பெறப்பட்டது',
   },
   autoReply: 'தானியங்கி டெமோ பதில்',
   openThread: 'உரையாடலைத் திற',
@@ -475,6 +495,7 @@ const ta: SourcingCopy = {
   lowMessage: (item) => `என் ${item} குறைவாக உள்ளது. விநியோகஸ்தர்களைத் தேடுங்கள்.`,
   addPhone: 'விநியோகஸ்தர் உங்களைத் தொடர்புகொள்ள முதலில் கடை தொலைபேசி எண்ணைச் சேர்க்கவும்.',
   sendFailed: 'அனுப்ப முடியவில்லை. மீண்டும் முயலவும்.',
+  markReceived: 'பெறப்பட்டதாகக் குறி',
 }
 
 const copies: Record<string, SourcingCopy> = {

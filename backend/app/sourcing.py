@@ -1029,7 +1029,9 @@ def settle(
     return order
 
 
-def orders(store: MerchantRepository, uid: str, bid: str, now: float | None = None) -> list[dict]:
+def orders(
+    store: MerchantRepository, uid: str, bid: str, now: float | None = None
+) -> list[dict[str, Any]]:
     now = time.time() if now is None else now
     return [
         settle(store, uid, bid, order, now)
@@ -1164,3 +1166,57 @@ def mark_read(store: MerchantRepository, uid: str, bid: str, oid: str) -> dict[s
         order["unread"] = False
         order = save(store, uid, bid, order, now)
     return public_order(order)
+
+
+def receive(
+    store: MerchantRepository, uid: str, bid: str, oid: str, version: int
+) -> dict[str, Any]:
+    """The delivery arrived. Marks the order received and prepares a stock update (added
+    quantities, back in stock) for the matching menu items; the owner confirms it in the usual
+    review, so the customer page stays accurate. Items not on the menu are left alone."""
+    from .merchant import ProposalRequest
+
+    now = time.time()
+    order = get_order(store, uid, bid, oid, now)
+    if order["version"] != version:
+        raise HTTPException(409, "This order changed. Review it again.")
+    if order["status"] not in OPEN:
+        raise HTTPException(409, "Only a sent or confirmed order can be received.")
+    context = store.context(uid, bid)
+    changed: dict[str, ProductFields] = {}
+    for line in order["lines"]:
+        if line["price"] is None:
+            continue
+        for product in context["inventory"]:
+            if not (
+                matches(product["name"], line["name"]) or matches(line["name"], product["name"])
+            ):
+                continue
+            amount = convert(line["quantity"], line["unit"], product["unit"])
+            if amount is None:
+                continue
+            key = f"{product['name']}/{product['unit']}"
+            base = changed[key].stock if key in changed else product.get("stock")
+            changed[key] = ProductFields(
+                name=product["name"],
+                category=product.get("category", ""),
+                price=product["price"],
+                unit=product["unit"],
+                stock=min(1_000_000, int((base or 0) + round(amount))),
+                available=True,
+            )
+            break
+    proposal = None
+    if changed:
+        proposal = store.propose(
+            uid,
+            ProposalRequest(
+                kind="inventory",
+                business_id=bid,
+                revision=context["business"]["revision"],
+                products=list(changed.values()),
+            ),
+        )
+    order["status"] = "received"
+    saved = save(store, uid, bid, order, now)
+    return {"order": public_order(saved), "proposal": proposal}
