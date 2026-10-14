@@ -392,7 +392,9 @@ async def capture(challenge_id: str, request: Request) -> dict[str, Any]:
                 async with httpx.AsyncClient(timeout=70, trust_env=False) as client:
                     response = await client.post(
                         settings.face_worker_url + "/evaluate",
-                        content=buffer,
+                        # bytes, not the bytearray: httpx treats a bytearray as a sync stream and
+                        # an AsyncClient then fails every capture with a 500.
+                        content=bytes(buffer),
                         headers={
                             **await worker_headers(settings, uid),
                             "Content-Type": content_type,
