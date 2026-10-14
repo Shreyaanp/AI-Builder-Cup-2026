@@ -444,8 +444,11 @@ def test_question_plan_fits_the_business_type(ctx):
     assert plan["business_type"] == "beauty salon"
     keys = [question["key"] for question in plan["pending"]]
     assert "walk_ins" in keys and "booking" in keys
-    # Food facts with dedicated fields are never re-asked through the plan.
-    assert not {"halal", "payment_methods", "delivery"} & set(keys)
+    # One list: common facts first (no food facts for a salon), then salon questions.
+    assert keys[0] == "payment_methods"
+    assert not {"halal", "delivery", "vegetarian_options"} & set(keys)
+    assert plan["pending"][0]["record_with"] == "payment_methods"
+    assert plan["pending"][-1]["record_with"] == "custom_facts"
 
 
 def test_custom_fact_answers_merge_by_key_and_leave_the_plan(ctx):
