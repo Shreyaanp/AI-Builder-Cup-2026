@@ -18,6 +18,9 @@ import { systemLocale, type Locale } from '../../i18n/locales'
 import { loadScriptFont } from '../../i18n/fonts'
 import { formatPrice } from '../v1/format'
 import { shape } from '../../design/theme'
+import { CustomerInquiry, CustomerQuestions } from './CustomerQuestions'
+import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
+import { customerTranslations } from './customerLocales'
 
 interface PublicShopData {
   id: string
@@ -33,6 +36,7 @@ interface PublicShopData {
 
 /** English source; customer-page translations override keys (missing keys fall back). */
 const en = {
+  ...customerEnglish,
   menu: 'Menu & prices',
   soldOut: 'Sold out',
   available: 'Available',
@@ -53,7 +57,8 @@ const en = {
 }
 
 /** Native customer-page translations per locale (filled per language; English fallback). */
-const publicTranslations: Record<Locale, typeof en> = {
+// Customer Q&A/contact keys come from customerLocales.ts.
+const publicTranslations: Record<Locale, Omit<typeof en, keyof CustomerCopy>> = {
   en,
   'zh-Hans': {
     menu: '菜单与价格',
@@ -225,7 +230,11 @@ const publicTranslations: Record<Locale, typeof en> = {
 /** Customer-facing, read-only page for a shop the owner chose to share. No sign-in. */
 export default function PublicShop({ id }: { id: string }) {
   const locale = systemLocale()
-  const t = { ...en, ...publicTranslations[locale] }
+  const t = {
+    ...en,
+    ...publicTranslations[locale],
+    ...(locale === 'en' ? {} : customerTranslations[locale]),
+  }
   const roles = useTheme().material
   const [shop, setShop] = useState<PublicShopData | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
@@ -382,6 +391,17 @@ export default function PublicShop({ id }: { id: string }) {
               {t.call}
             </Button>
           )}
+          {shop.phone && (
+            <Button
+              variant="outlined"
+              href={whatsappUrl(shop.phone, shop.name, t.whatsappMessage)}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ borderColor: roles.onPrimaryContainer, color: roles.onPrimaryContainer }}
+            >
+              {t.whatsapp}
+            </Button>
+          )}
         </Stack>
       </Box>
 
@@ -417,7 +437,10 @@ export default function PublicShop({ id }: { id: string }) {
           {shop.products.map((product, index) => (
             <Fragment key={product.name + product.unit}>
               {/* Sold-out rows use colour + strike-through + label, not opacity (contrast). */}
-              <ListItem divider={index < shop.products.length - 1} sx={{ py: 1.5 }}>
+              <ListItem
+                divider={index < shop.products.length - 1}
+                sx={{ py: 1.5, flexWrap: 'wrap' }}
+              >
                 <ListItemText
                   primary={product.name}
                   secondary={product.available ? null : t.soldOut}
@@ -436,11 +459,31 @@ export default function PublicShop({ id }: { id: string }) {
                     / {product.unit}
                   </Typography>
                 </Typography>
+                {shop.phone && (
+                  <Button
+                    href={whatsappUrl(shop.phone, shop.name, t.whatsappItemMessage, product.name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ width: '100%', justifyContent: 'flex-start' }}
+                  >
+                    {t.whatsappItem.replace('{item}', product.name)}
+                  </Button>
+                )}
               </ListItem>
             </Fragment>
           ))}
         </List>
       )}
+      {/* Public customer inputs stay local; neither uses the owner's coach/session. */}
+      <CustomerQuestions
+        key={`ask-${id}`}
+        id={id}
+        facts={stale ? '' : JSON.stringify(shop)}
+        item={shop.products[0]?.name}
+        currency={shop.currency ?? 'SGD'}
+        copy={t}
+      />
+      <CustomerInquiry key={`contact-${id}`} id={id} copy={t} />
       <Stack
         direction="row"
         spacing={1}
