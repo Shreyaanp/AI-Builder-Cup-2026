@@ -287,6 +287,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/google-sim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** State */
+        get: operations["state_api_v1_businesses__business_id__google_sim_get"];
+        put?: never;
+        /** Action */
+        post: operations["action_api_v1_businesses__business_id__google_sim_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/google-sim/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset */
+        post: operations["reset_api_v1_businesses__business_id__google_sim_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -446,6 +481,20 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** Match */
+        Match: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Address */
+            address: string;
+            /**
+             * Management
+             * @enum {string}
+             */
+            management: "you" | "other" | "unclaimed";
+        };
         /** ProductFields */
         ProductFields: {
             /** Name */
@@ -487,6 +536,209 @@ export interface components {
         ShareRequest: {
             /** Public */
             public: boolean;
+        };
+        /** SimAction */
+        SimAction: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "start" | "type" | "facts" | "authorize" | "cancel" | "select" | "claim" | "claim_result" | "edit" | "submit" | "reconcile" | "method" | "code" | "resend" | "rehearse" | "disconnect" | "confirm_removal";
+            /** Version */
+            version: number;
+            /**
+             * Value
+             * @default
+             */
+            value: string;
+            facts?: components["schemas"]["SimFacts"] | null;
+            /** Revision */
+            revision?: number | null;
+            /** Attempt */
+            attempt?: number | null;
+        };
+        /** SimFacts */
+        SimFacts: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Location
+             * @default
+             */
+            location: string;
+            /**
+             * Hours
+             * @default
+             */
+            hours: string;
+            /**
+             * Phone
+             * @default
+             */
+            phone: string;
+            /**
+             * Website
+             * @default
+             */
+            website: string;
+            /**
+             * Service Area
+             * @default
+             */
+            service_area: string;
+            /**
+             * Category Id
+             * @default
+             */
+            category_id: string;
+            /**
+             * Region
+             * @default IN
+             * @enum {string}
+             */
+            region: "IN" | "GB";
+        };
+        /** SimReset */
+        SimReset: {
+            /**
+             * Scenario
+             * @default new-store-success
+             * @enum {string}
+             */
+            scenario: "new-store-success" | "service-area" | "existing-managed" | "claim-pending" | "claim-rejected" | "ambiguous-match" | "video-required" | "code-expired" | "submit-unknown" | "restricted" | "reauthorization-required" | "ineligible";
+            /** Version */
+            version: number;
+        };
+        /** SimState */
+        SimState: {
+            /**
+             * Scenario
+             * @default new-store-success
+             * @enum {string}
+             */
+            scenario: "new-store-success" | "service-area" | "existing-managed" | "claim-pending" | "claim-rejected" | "ambiguous-match" | "video-required" | "code-expired" | "submit-unknown" | "restricted" | "reauthorization-required" | "ineligible";
+            /**
+             * Business Id
+             * @default fixture
+             */
+            business_id: string;
+            /**
+             * Version
+             * @default 0
+             */
+            version: number;
+            /**
+             * Phase
+             * @default goal
+             * @enum {string}
+             */
+            phase: "goal" | "type" | "facts" | "permission" | "search" | "claim" | "review" | "pending" | "verify" | "video" | "result" | "ineligible" | "disconnect";
+            facts: components["schemas"]["SimFacts"];
+            /**
+             * Business Type
+             * @default store
+             * @enum {string}
+             */
+            business_type: "store" | "service" | "online";
+            /**
+             * Preview Revision
+             * @default 1
+             */
+            preview_revision: number;
+            /** Approved Revision */
+            approved_revision?: number | null;
+            /**
+             * Account
+             * @default none
+             * @enum {string}
+             */
+            account: "none" | "demo-owner";
+            /**
+             * Authorization
+             * @default none
+             * @enum {string}
+             */
+            authorization: "none" | "granted" | "required";
+            /** Matches */
+            matches?: components["schemas"]["Match"][];
+            /** Selected */
+            selected?: string | null;
+            /**
+             * Operation
+             * @default create
+             * @enum {string}
+             */
+            operation: "create" | "claim" | "update";
+            /**
+             * Ownership
+             * @default none
+             * @enum {string}
+             */
+            ownership: "none" | "pending" | "rejected" | "granted";
+            /**
+             * Submission
+             * @default none
+             * @enum {string}
+             */
+            submission: "none" | "accepted" | "rejected" | "unknown";
+            /** Receipt */
+            receipt?: string | null;
+            /**
+             * Submissions
+             * @default 0
+             */
+            submissions: number;
+            /** Methods */
+            methods?: ("sms" | "email" | "phone" | "postcard" | "pin" | "automatic")[];
+            /** Method */
+            method?: ("sms" | "email" | "phone" | "postcard" | "pin" | "automatic") | null;
+            /**
+             * Verification
+             * @default unverified
+             * @enum {string}
+             */
+            verification: "unverified" | "pending" | "verified";
+            /**
+             * Publication
+             * @default not_submitted
+             * @enum {string}
+             */
+            publication: "not_submitted" | "pending" | "restricted";
+            /**
+             * Removal
+             * @default connected
+             * @enum {string}
+             */
+            removal: "connected" | "pending" | "confirmed";
+            /**
+             * Error
+             * @default
+             * @enum {string}
+             */
+            error: "" | "category" | "missing" | "account" | "wrong_code" | "expired_code" | "field_hours";
+            /**
+             * Attempt
+             * @default 1
+             */
+            attempt: number;
+            /**
+             * Reauthorized
+             * @default false
+             */
+            reauthorized: boolean;
+            /**
+             * Needs Reverification
+             * @default false
+             */
+            needs_reverification: boolean;
+            /**
+             * Rehearsal Complete
+             * @default false
+             */
+            rehearsal_complete: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -1068,6 +1320,107 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    state_api_v1_businesses__business_id__google_sim_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    action_api_v1_businesses__business_id__google_sim_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_api_v1_businesses__business_id__google_sim_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimReset"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

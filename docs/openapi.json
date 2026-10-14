@@ -651,6 +651,141 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/google-sim": {
+      "get": {
+        "summary": "State",
+        "operationId": "state_api_v1_businesses__business_id__google_sim_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Action",
+        "operationId": "action_api_v1_businesses__business_id__google_sim_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimAction"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/google-sim/reset": {
+      "post": {
+        "summary": "Reset",
+        "operationId": "reset_api_v1_businesses__business_id__google_sim_reset_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimReset"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "summary": "Health",
@@ -970,6 +1105,39 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "Match": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          },
+          "management": {
+            "type": "string",
+            "enum": [
+              "you",
+              "other",
+              "unclaimed"
+            ],
+            "title": "Management"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "address",
+          "management"
+        ],
+        "title": "Match"
+      },
       "ProductFields": {
         "properties": {
           "name": {
@@ -1082,6 +1250,448 @@
           "public"
         ],
         "title": "ShareRequest"
+      },
+      "SimAction": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "start",
+              "type",
+              "facts",
+              "authorize",
+              "cancel",
+              "select",
+              "claim",
+              "claim_result",
+              "edit",
+              "submit",
+              "reconcile",
+              "method",
+              "code",
+              "resend",
+              "rehearse",
+              "disconnect",
+              "confirm_removal"
+            ],
+            "title": "Kind"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Version"
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Value",
+            "default": ""
+          },
+          "facts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "attempt": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "version"
+        ],
+        "title": "SimAction"
+      },
+      "SimFacts": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 180,
+            "title": "Name",
+            "default": ""
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Location",
+            "default": ""
+          },
+          "hours": {
+            "type": "string",
+            "maxLength": 180,
+            "title": "Hours",
+            "default": ""
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Phone",
+            "default": ""
+          },
+          "website": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Website",
+            "default": ""
+          },
+          "service_area": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Service Area",
+            "default": ""
+          },
+          "category_id": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Category Id",
+            "default": ""
+          },
+          "region": {
+            "type": "string",
+            "enum": [
+              "IN",
+              "GB"
+            ],
+            "title": "Region",
+            "default": "IN"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SimFacts"
+      },
+      "SimReset": {
+        "properties": {
+          "scenario": {
+            "type": "string",
+            "enum": [
+              "new-store-success",
+              "service-area",
+              "existing-managed",
+              "claim-pending",
+              "claim-rejected",
+              "ambiguous-match",
+              "video-required",
+              "code-expired",
+              "submit-unknown",
+              "restricted",
+              "reauthorization-required",
+              "ineligible"
+            ],
+            "title": "Scenario",
+            "default": "new-store-success"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "SimReset"
+      },
+      "SimState": {
+        "properties": {
+          "scenario": {
+            "type": "string",
+            "enum": [
+              "new-store-success",
+              "service-area",
+              "existing-managed",
+              "claim-pending",
+              "claim-rejected",
+              "ambiguous-match",
+              "video-required",
+              "code-expired",
+              "submit-unknown",
+              "restricted",
+              "reauthorization-required",
+              "ineligible"
+            ],
+            "title": "Scenario",
+            "default": "new-store-success"
+          },
+          "business_id": {
+            "type": "string",
+            "title": "Business Id",
+            "default": "fixture"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "default": 0
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "goal",
+              "type",
+              "facts",
+              "permission",
+              "search",
+              "claim",
+              "review",
+              "pending",
+              "verify",
+              "video",
+              "result",
+              "ineligible",
+              "disconnect"
+            ],
+            "title": "Phase",
+            "default": "goal"
+          },
+          "facts": {
+            "$ref": "#/components/schemas/SimFacts"
+          },
+          "business_type": {
+            "type": "string",
+            "enum": [
+              "store",
+              "service",
+              "online"
+            ],
+            "title": "Business Type",
+            "default": "store"
+          },
+          "preview_revision": {
+            "type": "integer",
+            "title": "Preview Revision",
+            "default": 1
+          },
+          "approved_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved Revision"
+          },
+          "account": {
+            "type": "string",
+            "enum": [
+              "none",
+              "demo-owner"
+            ],
+            "title": "Account",
+            "default": "none"
+          },
+          "authorization": {
+            "type": "string",
+            "enum": [
+              "none",
+              "granted",
+              "required"
+            ],
+            "title": "Authorization",
+            "default": "none"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/Match"
+            },
+            "type": "array",
+            "title": "Matches"
+          },
+          "selected": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "create",
+              "claim",
+              "update"
+            ],
+            "title": "Operation",
+            "default": "create"
+          },
+          "ownership": {
+            "type": "string",
+            "enum": [
+              "none",
+              "pending",
+              "rejected",
+              "granted"
+            ],
+            "title": "Ownership",
+            "default": "none"
+          },
+          "submission": {
+            "type": "string",
+            "enum": [
+              "none",
+              "accepted",
+              "rejected",
+              "unknown"
+            ],
+            "title": "Submission",
+            "default": "none"
+          },
+          "receipt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt"
+          },
+          "submissions": {
+            "type": "integer",
+            "title": "Submissions",
+            "default": 0
+          },
+          "methods": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "sms",
+                "email",
+                "phone",
+                "postcard",
+                "pin",
+                "automatic"
+              ]
+            },
+            "type": "array",
+            "title": "Methods"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sms",
+                  "email",
+                  "phone",
+                  "postcard",
+                  "pin",
+                  "automatic"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "verification": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "pending",
+              "verified"
+            ],
+            "title": "Verification",
+            "default": "unverified"
+          },
+          "publication": {
+            "type": "string",
+            "enum": [
+              "not_submitted",
+              "pending",
+              "restricted"
+            ],
+            "title": "Publication",
+            "default": "not_submitted"
+          },
+          "removal": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "pending",
+              "confirmed"
+            ],
+            "title": "Removal",
+            "default": "connected"
+          },
+          "error": {
+            "type": "string",
+            "enum": [
+              "",
+              "category",
+              "missing",
+              "account",
+              "wrong_code",
+              "expired_code",
+              "field_hours"
+            ],
+            "title": "Error",
+            "default": ""
+          },
+          "attempt": {
+            "type": "integer",
+            "title": "Attempt",
+            "default": 1
+          },
+          "reauthorized": {
+            "type": "boolean",
+            "title": "Reauthorized",
+            "default": false
+          },
+          "needs_reverification": {
+            "type": "boolean",
+            "title": "Needs Reverification",
+            "default": false
+          },
+          "rehearsal_complete": {
+            "type": "boolean",
+            "title": "Rehearsal Complete",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "facts"
+        ],
+        "title": "SimState"
       },
       "ValidationError": {
         "properties": {
