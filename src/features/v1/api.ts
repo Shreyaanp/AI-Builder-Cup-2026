@@ -29,6 +29,7 @@ export interface Business {
     weekly_hours?: import('../shop/hoursModel').DayHours[]
     phone: string
     reward_text?: string
+    stamps_needed?: number
     /** ISO 4217; shops saved before currencies existed have none (treated as SGD). */
     currency?: string
   } & ShopFacts

@@ -1,5 +1,17 @@
-import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Alert, Box, Button, Chip, LinearProgress, Stack, Typography } from '@mui/material'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CssBaseline,
+  LinearProgress,
+  Stack,
+  ThemeProvider,
+  Typography,
+  useTheme,
+} from '@mui/material'
+import { customerTheme } from '../../design/customerTheme'
 import { useLocale } from '../../state/hooks'
 import { discoverCopy } from '../discover/strings'
 import { categories } from '../discover/categories'
@@ -7,7 +19,7 @@ import { PlaceSearch } from '../discover/PlaceSearch'
 import type { FoundPlace } from '../discover/PlaceSearch'
 import { useFrontCopy } from './strings'
 import { BrandSplash } from './Splash'
-import { currentPath, customerNavigate, subscribePath } from './navigation'
+import { currentPath, subscribePath } from './navigation'
 import './frontdoors.css'
 
 const Discover = lazy(() => import('../discover/Discover'))
@@ -23,6 +35,30 @@ function firstRun() {
 }
 
 export default function CustomerApp() {
+  const mode = useTheme().palette.mode
+  const theme = useMemo(() => customerTheme(mode), [mode])
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]')
+    const previous = meta?.getAttribute('content')
+    // The outer owner provider also updates this shared document element. Apply the
+    // customer surface after its effects, including a system appearance change.
+    const frame = requestAnimationFrame(() => meta?.setAttribute('content', theme.material.surface))
+    return () => {
+      cancelAnimationFrame(frame)
+      if (previous) meta?.setAttribute('content', previous)
+    }
+  }, [theme])
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box data-customer>
+        <CustomerPages />
+      </Box>
+    </ThemeProvider>
+  )
+}
+
+function CustomerPages() {
   const path = useSyncExternalStore(subscribePath, currentPath)
   const [setup, setSetup] = useState(firstRun)
   const [locationChoice, setLocationChoice] = useState<CustomerLocation | null>(null)
@@ -63,16 +99,6 @@ export default function CustomerApp() {
       <a href="#customer-content" className="skip-link">
         {t.skip}
       </a>
-      {id && (
-        <Box
-          component="nav"
-          sx={{ maxWidth: 1000, mx: 'auto', px: 4, pt: 'max(16px, env(safe-area-inset-top))' }}
-        >
-          <Button component="a" href="/explore/" onClick={customerNavigate}>
-            {t.back} · <span translate="no">Chalkboard</span>
-          </Button>
-        </Box>
-      )}
       {coachmark && !id && (
         <Box sx={{ maxWidth: 1100, mx: 'auto', px: 4, pt: 4 }}>
           <Alert action={<Button onClick={() => setCoachmark(false)}>{t.gotIt}</Button>}>

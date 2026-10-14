@@ -43,6 +43,15 @@ Each fix lives on the owner's branch. Account 1 (Claude lead) reviews, merges to
 | B27 | My shop bento grid isn't data-friendly (full-width tiles with ~25% dead space) — content-sized dynamic grid                                                                                                                  | Account 2             | `fix/myshop`            | open   |
 | B28 | Menu: items land "Uncategorised" (auto-categorise on photo/import/coach + reviewed "sort my menu"); category grid 2–3 per row; tap price to edit inline; unit is a dropdown; oversized Import/Add buttons in the phone sheet | Account 2             | `fix/myshop`            | open   |
 
+## Customer page batch (local fixes awaiting review)
+
+| ID  | Bug                                                                           | Owner | Status                                                                                    |
+| --- | ----------------------------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------- |
+| B30 | Customer monochrome theme and removal of the full-width back bar              | Codex | Local implementation; proof in `docs/bugs/B30-light.png` and `B30-dark.png`; uncommitted  |
+| B31 | Configurable stamp target, daily QR earning and local reward redemption/reset | Codex | Local implementation; proof in `docs/bugs/B31-card.png` and `B31-redeem.png`; uncommitted |
+
+The menu/products section of `PublicShop.tsx` was preserved. These entries are not closed: the current task's final rules prohibit committing, and user sign-off is pending. See `docs/bugs/B30-B31.md` for validation evidence and limitations.
+
 ## Parked until the freeze ends
 
 - Launch video (`feat/demo-shops` @ `b4cefa8`).

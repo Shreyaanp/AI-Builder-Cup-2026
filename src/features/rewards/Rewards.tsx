@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
-import { Alert, Box, Button, Chip, Stack, Typography, useTheme } from '@mui/material'
-import { Bell, Award, Check } from 'lucide-react'
-import { shape } from '../../design/theme'
+import { useState } from 'react'
+import { Alert, Box, Button, Chip, Stack, Typography } from '@mui/material'
+import { Bell, Award } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { useRewardCopy } from './strings'
-import { celebrations, deviceId, remind, useRewards, visit } from './storage'
+import { deviceId, remind, useRewards } from './storage'
 
 export function BadgeRow({ shop }: { shop?: string }) {
   const { data } = useRewards()
@@ -40,97 +39,7 @@ export function BadgeRow({ shop }: { shop?: string }) {
   )
 }
 
-export function StampCard({
-  shop,
-  timezone,
-  reward,
-}: {
-  shop: string
-  timezone: string
-  reward?: string
-}) {
-  const { data, unavailable } = useRewards()
-  const t = useRewardCopy()
-  const locale = useLocale()
-  const roles = useTheme().material
-  useEffect(() => {
-    visit(shop, new URLSearchParams(location.search).get('source') === 'qr', timezone)
-  }, [shop, timezone])
-  const count = data.shops[shop]?.stamps ?? 0
-  const number = new Intl.NumberFormat(locale).format(count)
-  return (
-    <Box
-      component="section"
-      aria-label={t.stampCard}
-      sx={{
-        mt: 3,
-        p: 2,
-        borderRadius: `${shape.lg}px`,
-        bgcolor: roles.secondaryContainer,
-        color: roles.onSecondaryContainer,
-      }}
-    >
-      <Typography component="h2" variant="titleMedium">
-        {t.stampCard}
-      </Typography>
-      <Typography
-        component="p"
-        variant="headlineSmall"
-        role="status"
-        sx={{
-          fontVariantNumeric: 'tabular-nums',
-          animation: celebrations.has(shop) ? 'stampCelebrate 700ms ease-out' : undefined,
-          '@keyframes stampCelebrate': {
-            '0%': { transform: 'scale(.95)', opacity: 0.5 },
-            '50%': { transform: 'scale(1.05)', opacity: 1 },
-            '100%': { transform: 'scale(1)', opacity: 1 },
-          },
-          '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-        }}
-      >
-        {celebrations.has(shop) && [5, 10].includes(count)
-          ? t.milestone.replace('{count}', number)
-          : t.stamps.replace('{count}', number)}
-      </Typography>
-      <Stack direction="row" aria-hidden="true" sx={{ flexWrap: 'wrap', gap: 1, my: 1 }}>
-        {Array.from({ length: 10 }, (_, index) => (
-          <Box
-            key={index}
-            component="span"
-            sx={{
-              width: 24,
-              height: 24,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '50%',
-              bgcolor: index < count ? roles.primary : roles.surfaceContainerHigh,
-              color: index < count ? roles.onPrimary : roles.onSurfaceVariant,
-              typography: 'labelSmall',
-            }}
-          >
-            {index < count ? <Check size={16} /> : new Intl.NumberFormat(locale).format(index + 1)}
-          </Box>
-        ))}
-      </Stack>
-      <Typography variant="bodySmall">{t.qr}</Typography>
-      {reward && (
-        <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
-          {reward}
-        </Typography>
-      )}
-      <Typography variant="labelLarge" sx={{ mt: 1 }}>
-        {t.show}
-      </Typography>
-      <Typography variant="bodySmall">{t.local}</Typography>
-      {unavailable && (
-        <Alert severity="warning" sx={{ mt: 1 }}>
-          {t.storage}
-        </Alert>
-      )}
-    </Box>
-  )
-}
+export { StampCard } from './StampCard'
 
 export function StockReminder({ shop, name, unit }: { shop: string; name: string; unit: string }) {
   const t = useRewardCopy()
