@@ -47,6 +47,7 @@ import { ShopQr } from './ShopQr'
 import { useUnread } from './useUnread'
 import { openNow, readiness } from './shopProgress'
 import { useCopy } from './strings'
+import { spanFor } from './tileSpan'
 import { useWorkspace } from './workspaceContext'
 import { Messages } from '../inquiries/Messages'
 import { PlanTomorrow } from '../planning/PlanTomorrow'
@@ -67,6 +68,7 @@ export function Tile({
   value,
   children,
   wide = false,
+  span,
   onClick,
   compact = false,
 }: {
@@ -74,16 +76,22 @@ export function Tile({
   label: string
   value: ReactNode
   children?: ReactNode
+  /** Two columns wide (same as span={2}). */
   wide?: boolean
+  /** Columns this tile takes in the content-sized grid (pick 1 or 2 with spanFor()). */
+  span?: 1 | 2 | 'full'
   onClick: () => void
   compact?: boolean
 }) {
   const roles = useTheme().material
+  const columns = span ?? (wide ? 2 : 1)
   return (
     <ButtonBase
       onClick={onClick}
       sx={{
-        gridColumn: wide ? '1 / -1' : undefined,
+        gridColumn: columns === 'full' ? '1 / -1' : columns === 2 ? 'span 2' : undefined,
+        // A grid too narrow for two columns gives a two-column tile the whole row instead.
+        '@container tiles (max-width: 347px)': { gridColumn: '1 / -1' },
         display: 'flex',
         flexDirection: compact ? 'row' : 'column',
         alignItems: compact ? 'center' : 'stretch',
@@ -156,7 +164,7 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
           onAnswer={(fact) => ws.startCoachDraft(`${t.factNames[fact]}: `)}
         />
       )}
-      <ShopTiles unread={unread} onSheet={setSheet} narrow={narrow} />
+      <ShopTiles unread={unread} onSheet={setSheet} />
       {!narrow && <FreshnessCard compact />}
       <ShopSheets
         kind={sheet}
@@ -174,12 +182,9 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
 export function ShopTiles({
   unread,
   onSheet,
-  narrow = false,
 }: {
   unread: number | null
   onSheet: (kind: ShopSheetKind) => void
-  /** Always two columns (the desktop side pane). */
-  narrow?: boolean
 }) {
   const t = useCopy()
   const plan = usePlanCopy()
@@ -194,41 +199,51 @@ export function ShopTiles({
     shop.fields.weekly_hours,
     shop.fields.timezone ?? 'Asia/Singapore',
   )
-  const soldOut = ws.products.filter((product) => product.available === false).length
+  const soldOutNames = ws.products
+    .filter((product) => product.available === false)
+    .map((product) => product.name)
+  const soldOut = soldOutNames.length
   const { done, total } = readiness(ws)
+  const hoursValue =
+    open === null ? shop.fields.hours || t.fields.hours : open ? t.openNow : t.closedNow
+  const details =
+    [open === null ? '' : shop.fields.hours, shop.fields.category, shop.fields.location]
+      .filter(Boolean)
+      .join(' · ') || t.notProvided
   return (
+    // Content-sized grid: as many 168px+ columns as fit (2 on a phone, 3 at 600px, 4 on a
+    // desktop), each tile one or two columns wide by how much it shows, packed densely so no
+    // row is left with a hole while a smaller tile could fill it.
     <Box
+      data-testid="shop-tiles"
       sx={{
+        containerType: 'inline-size',
+        containerName: 'tiles',
         display: 'grid',
-        gridTemplateColumns: {
-          xs: 'repeat(2, minmax(0, 1fr))',
-          md: narrow ? undefined : 'repeat(3, minmax(0, 1fr))',
-        },
+        gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 168px), 1fr))',
+        gridAutoFlow: 'row dense',
         gap: 3,
       }}
     >
       <Tile
-        wide
+        span={spanFor(hoursValue, details)}
         icon={<Store size={20} />}
         label={t.shopDetails}
-        value={open === null ? shop.fields.hours || t.fields.hours : open ? t.openNow : t.closedNow}
+        value={hoursValue}
         onClick={() => onSheet('details')}
       >
-        <Supporting>
-          {[open === null ? '' : shop.fields.hours, shop.fields.category, shop.fields.location]
-            .filter(Boolean)
-            .join(' · ') || t.notProvided}
-        </Supporting>
+        <Supporting>{details}</Supporting>
       </Tile>
       <Tile
-        wide
+        // The whole row, its category groups side by side where they fit.
+        span={ws.products.length ? 'full' : 1}
         icon={<UtensilsCrossed size={20} />}
         label={t.menu}
         value={ws.products.length ? t.itemCount(ws.products.length) : t.noItems}
         onClick={() => onSheet('menu')}
       >
         {ws.products.length > 0 && (
-          <CategoryGroups products={ws.products} inline>
+          <CategoryGroups products={ws.products} inline columns>
             {(items) => (
               <Stack component="span" spacing={1} sx={{ px: 2, pb: 1 }}>
                 {items.slice(0, 3).map((product) => (
@@ -261,19 +276,13 @@ export function ShopTiles({
         </Typography>
       </Tile>
       <Tile
+        span={spanFor(t.soldOutCount(soldOut), soldOutNames.join(' · '))}
         icon={<ZapOff size={20} />}
         label={t.soldOutToday}
         value={t.soldOutCount(soldOut)}
         onClick={() => onSheet('soldOut')}
       >
-        {soldOut > 0 && (
-          <Supporting>
-            {ws.products
-              .filter((product) => product.available === false)
-              .map((product) => product.name)
-              .join(' · ')}
-          </Supporting>
-        )}
+        {soldOut > 0 && <Supporting>{soldOutNames.join(' · ')}</Supporting>}
       </Tile>
       <PrepPlanTile key={shop.id} />
       <Tile
@@ -299,7 +308,8 @@ export function ShopTiles({
         onClick={() => onSheet('plan')}
       />
       <Tile
-        wide
+        // Its progress bar wants width; done, it is one short line.
+        span={done < total ? 2 : 1}
         icon={<Gauge size={20} />}
         compact={done === total}
         label={t.readinessTitle}
