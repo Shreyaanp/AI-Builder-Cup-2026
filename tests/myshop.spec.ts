@@ -375,3 +375,63 @@ test('B28: the menu sheet actions are one compact, aligned row on a phone', asyn
   expect((await importButton.boundingBox())!.y).toBeCloseTo(a.y, 0)
   await axe(page)
 })
+
+test('B16: one attach button offers Take photo, Photo library and Document; documents go to import', async ({
+  page,
+}) => {
+  await enter(page)
+  const attach = page.getByRole('button', { name: 'Attach a photo or document', exact: true })
+  const input = page.locator('#coach input[type="file"]')
+  // Before a shop exists there is nothing to import into: photos only.
+  await attach.tap()
+  await expect(page.getByRole('menuitem')).toHaveText(['Take photo', 'Photo library'])
+  await page.keyboard.press('Escape')
+
+  const id = await seedShop(page)
+  await page.reload()
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await expect(page.getByRole('button', { name: 'Choose shop: Katong Kopi' })).toBeVisible()
+  await attach.tap()
+  await expect(page.getByRole('menuitem')).toHaveText([
+    'Take photo',
+    'Photo library',
+    'Document (PDF, Excel, CSV)',
+  ])
+  await axe(page)
+  let imports = 0
+  page.on('request', (request) => {
+    if (request.url().endsWith(`/businesses/${id}/import`)) imports += 1
+  })
+  let chooser = page.waitForEvent('filechooser')
+  await page.getByRole('menuitem', { name: 'Document (PDF, Excel, CSV)' }).tap()
+  const document = await chooser
+  await expect(input).toHaveAttribute('accept', /\.xlsx/)
+  await expect(input).not.toHaveAttribute('capture')
+  await document.setFiles({
+    name: 'menu.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Item Name,Price\nIced lemon tea,2.20\nCurry puff,1.60\n'),
+  })
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
+  await expect(review).toContainText('Iced lemon tea')
+  await expect(review).toContainText('$1.60')
+  expect(imports).toBe(1)
+  // The picker is back to photos for the next choice.
+  await expect(input).toHaveAttribute('accept', 'image/jpeg,image/png,image/webp')
+  await review.getByRole('button', { name: 'Cancel' }).tap()
+
+  // A sales export opens its summary, nothing saved.
+  await attach.tap()
+  chooser = page.waitForEvent('filechooser')
+  await page.getByRole('menuitem', { name: 'Document (PDF, Excel, CSV)' }).tap()
+  await (
+    await chooser
+  ).setFiles({
+    name: 'sales.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Date,Item,Qty,Net Sales\n2026-10-12,Kopi,30,54\n'),
+  })
+  await expect(page.getByRole('dialog', { name: 'Sales summary' })).toContainText(
+    'Nothing was saved',
+  )
+})

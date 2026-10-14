@@ -95,7 +95,9 @@ export const en = {
   keepEditing: 'Keep editing',
   setupDone: 'Setup complete',
   photoTake: 'Take photo',
-  photoUpload: 'Upload photo',
+  photoUpload: 'Photo library',
+  photoDocument: 'Document (PDF, Excel, CSV)',
+  attach: 'Attach a photo or document',
   // Navigation
   navCoach: 'Coach',
   navShop: 'My shop',
