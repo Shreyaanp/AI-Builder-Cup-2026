@@ -44,6 +44,9 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "inquire:ip": ((30, 86_400),),
     "thread:token": ((10, 600),),
     "thread:owner": ((60, 60),),
+    # Signed-in customers: messages across all their threads, and neighbour tips.
+    "thread:customer": ((20, 60), (300, 86_400)),
+    "tips": ((5, 600), (20, 86_400)),
     "thread:translate": ((30, 60),),
     "bootstrap": ((30, 60),),
     "consent": ((30, 60),),

@@ -23,6 +23,8 @@ from . import coordinator
 from .auth import IdentityService
 from .boundary import RequestBoundary
 from .business_profile import QuestionPlanner
+from .community import community_service
+from .community_routes import router as community_router
 from .contracts import CoachTurn, StreamEvent
 from .coordinator import MerchantContext, current
 from .customer import CustomerAnswers
@@ -136,6 +138,11 @@ def create_app(
         )
         app.state.photos = PhotoPipeline(settings) if settings.v1_enabled else None
         app.state.customer_answers = CustomerAnswers(settings)
+        app.state.community = (
+            await anyio.to_thread.run_sync(community_service, settings)
+            if settings.v1_enabled
+            else None
+        )
         coordinator.question_planner = QuestionPlanner(settings)
         coordinator.supplier_generator = SupplierGenerator(settings)
         app.state.column_mapper = ColumnMapper(settings)
@@ -193,6 +200,7 @@ def create_app(
     app.include_router(sales_router)
     app.include_router(forecast_router)
     app.include_router(customer_router)
+    app.include_router(community_router)
     app.include_router(discover_router)
     app.include_router(discover_ask_router)
     app.include_router(sourcing_router)
