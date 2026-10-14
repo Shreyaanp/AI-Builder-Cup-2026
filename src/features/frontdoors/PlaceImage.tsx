@@ -26,7 +26,11 @@ export function PlaceImage({
   const [failed, setFailed] = useState<string | null>(null)
   // Only same-origin vetted endpoints; third-party photo media always travels through the server.
   const approved = ownerApprovedPhoto(id)
-  const source = approved ?? (photo?.startsWith('/api/v1/place-photo?') ? photo : undefined)
+  const source =
+    approved ??
+    (photo?.startsWith('/api/v1/place-photo?') || photo?.startsWith('/api/v1/public/shops/')
+      ? photo
+      : undefined)
   const actual = source && failed !== source ? source : undefined
   return (
     <Box

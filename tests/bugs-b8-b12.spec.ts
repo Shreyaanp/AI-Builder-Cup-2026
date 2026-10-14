@@ -127,19 +127,6 @@ test('B8: compact pending, freshness and completed readiness', async ({ page }) 
   ).toBeLessThanOrEqual(14)
 })
 
-test('B9: one notice at practice, with a clearly named practice modal', async ({ page }) => {
-  await enter(page)
-  await page.getByRole('button', { name: 'Google', exact: true }).click()
-  const notice = page.getByText('Simulated — no Google listing is created or changed', {
-    exact: true,
-  })
-  await expect(notice).toHaveCount(1)
-  await page.getByRole('button', { name: 'Practice the steps', exact: true }).click()
-  await page.locator('#google-practice').scrollIntoViewIfNeeded()
-  await expect(notice).toBeVisible()
-  await proof(page, 'B9')
-})
-
 test('B10: empty recap is compact, has no empty headings and uses a date range', async ({
   page,
 }) => {

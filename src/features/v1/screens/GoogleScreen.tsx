@@ -1,119 +1,87 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import {
   Alert,
   Box,
   Button,
   Chip,
-  Collapse,
+  CircularProgress,
   IconButton,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   Stack,
   Typography,
+  useMediaQuery,
   useTheme,
 } from '@mui/material'
 import {
+  Camera,
+  Check,
   CheckCircle2,
-  ChevronDown,
   Circle,
   Copy,
   ExternalLink,
+  ImagePlus,
+  MapPin,
   MapPinned,
+  Navigation,
   Pencil,
+  Phone,
+  Utensils,
+  X,
 } from 'lucide-react'
 import { formatPrice, shopCurrency } from '../format'
-import { Sheet } from '../Sheet'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
-import { GoogleSimulator } from '../../google-sim/GoogleSimulator'
 import { mapsSearch, OWNER_URL } from '../../google-sim/links'
-import { useSimCopy } from '../../google-sim/strings'
 import { shape } from '../../../design/theme'
 import { HoursList } from '../../shop/Hours'
 import { hasHours } from '../../shop/hoursModel'
+import { categoryArt } from '../../frontdoors/photos'
+import { fill, useGoogleCopy } from '../../google/strings'
+import { GALLERY_LIMIT, useGallery } from '../../google/useGallery'
 
-// Owner-reported only: Chalkboard cannot read verification status from Google.
-const verifiedKey = (id: string) => `chalkboard.googleVerified.${id}`
-function readVerified(id: string) {
-  try {
-    return localStorage.getItem(verifiedKey(id)) === '1'
-  } catch {
-    return false
-  }
-}
-function writeVerified(id: string, value: boolean) {
-  try {
-    if (value) localStorage.setItem(verifiedKey(id), '1')
-    else localStorage.removeItem(verifiedKey(id))
-  } catch {
-    // Storage blocked: the answer lasts for this visit only.
-  }
-}
+const PHOTO_TYPES = 'image/jpeg,image/png,image/webp'
+const EASE = 'cubic-bezier(0.2, 0, 0, 1)' // M3 emphasized decelerate
 
-function Step({
-  n,
-  done,
-  title,
-  children,
-}: {
-  n: number
-  done: boolean
-  title: string
-  children: ReactNode
-}) {
-  const roles = useTheme().material
-  return (
-    <Box
-      component="li"
-      sx={{
-        listStyle: 'none',
-        display: 'grid',
-        gridTemplateColumns: '32px minmax(0, 1fr)',
-        gap: 3,
-        p: 4,
-        borderRadius: `${shape.lgIncreased}px`,
-        bgcolor: roles.surfaceContainerLow,
-      }}
-    >
-      <Box
-        aria-hidden="true"
-        sx={{
-          width: 32,
-          height: 32,
-          borderRadius: '50%',
-          display: 'grid',
-          placeItems: 'center',
-          bgcolor: done ? roles.primary : roles.surfaceContainerHighest,
-          color: done ? roles.onPrimary : roles.onSurfaceVariant,
-          typography: 'labelLarge',
-        }}
-      >
-        {done ? <CheckCircle2 size={18} /> : n}
-      </Box>
-      <Stack spacing={2} sx={{ minWidth: 0 }}>
-        <Typography component="h2" variant="titleMedium">
-          {title}
-        </Typography>
-        {children}
-      </Stack>
-    </Box>
-  )
+// Motion, defined once for the screen; the global reduced-motion rule makes these instant.
+const motionKeyframes = {
+  '@keyframes cbStepFromRight': {
+    from: { opacity: 0, transform: 'translateX(24px)' },
+    to: { opacity: 1, transform: 'none' },
+  },
+  '@keyframes cbStepFromLeft': {
+    from: { opacity: 0, transform: 'translateX(-24px)' },
+    to: { opacity: 1, transform: 'none' },
+  },
+  '@keyframes cbPop': {
+    '0%': { transform: 'scale(0.4)', opacity: 0 },
+    '70%': { transform: 'scale(1.15)', opacity: 1 },
+    '100%': { transform: 'scale(1)' },
+  },
+  '@keyframes cbRise': {
+    from: { opacity: 0, transform: 'translateY(8px)' },
+    to: { opacity: 1, transform: 'none' },
+  },
+  '@keyframes cbPulse': {
+    '0%': { boxShadow: '0 0 0 0 currentColor' },
+    '70%': { boxShadow: '0 0 0 10px transparent' },
+    '100%': { boxShadow: '0 0 0 0 transparent' },
+  },
 }
 
-// Official owner entry points (support.google.com/business/answer/2911778).
+/** A guided, four-step path to Google: details → photos → profile preview → Google. */
 export function GoogleScreen() {
   const t = useCopy()
-  const sim = useSimCopy()
+  const g = useGoogleCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
-  const [readiness, setReadiness] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [practice, setPractice] = useState(false)
-  const [verified, setVerified] = useState<Record<string, boolean>>({})
+  const gallery = useGallery()
   const shop = ws.active
+  const checksReady = Boolean(shop) && missingChecks(shop!, ws.products.length) === 0
+  const [step, setStep] = useState(() =>
+    !checksReady ? 0 : (shop?.gallery?.length ?? 0) === 0 ? 1 : 2,
+  )
+  const [direction, setDirection] = useState<1 | -1>(1)
+  const heading = useRef<HTMLHeadingElement>(null)
+
   if (!shop)
     return (
       <Stack spacing={3} sx={{ maxWidth: 560, mx: 'auto', pt: 8 }}>
@@ -130,8 +98,9 @@ export function GoogleScreen() {
         </Button>
       </Stack>
     )
+
   const f = shop.fields
-  const isVerified = verified[shop.id] ?? readVerified(shop.id)
+  const currency = shopCurrency(shop)
   const checks = [
     { label: t.checkName, done: Boolean(f.name.trim()) },
     { label: t.checkCategory, done: Boolean(f.category.trim()) },
@@ -140,254 +109,652 @@ export function GoogleScreen() {
     { label: t.checkPhone, done: Boolean(f.phone.trim()) },
     { label: t.checkProducts, done: ws.products.length > 0 },
   ]
-  const done = checks.filter((check) => check.done).length
-  const products = ws.products
-    .map((p) => `${p.name} ${formatPrice(p.price, shopCurrency(shop))}/${p.unit}`)
-    .join(', ')
-  const rows = [
-    { label: t.fields.name, value: f.name },
-    { label: t.fields.category, value: f.category },
-    { label: t.fields.location, value: f.location },
-    { label: t.fields.hours, value: f.hours },
-    { label: t.fields.phone, value: f.phone },
-    { label: t.products, value: products },
-  ].filter((row) => row.value.trim())
-  const listing = rows
-    .map((row, i) => (i === 0 ? row.value : `${row.label}: ${row.value}`))
+  const detailsDone = checks.every((check) => check.done)
+  const photosDone = gallery.ids.length > 0
+  const doneSteps = [detailsDone, photosDone, detailsDone, false]
+
+  function go(next: number) {
+    setDirection(next > step ? 1 : -1)
+    setStep(next)
+    requestAnimationFrame(() => heading.current?.focus())
+  }
+
+  const listing = [
+    f.name,
+    f.category && `${t.fields.category}: ${f.category}`,
+    f.location && `${t.fields.location}: ${f.location}`,
+    f.hours && `${t.fields.hours}: ${f.hours}`,
+    f.phone && `${t.fields.phone}: ${f.phone}`,
+    ws.products.length > 0 &&
+      `${t.products}: ` +
+        ws.products.map((p) => `${p.name} ${formatPrice(p.price, currency)}/${p.unit}`).join(', '),
+  ]
+    .filter(Boolean)
     .join('\n')
 
-  function copy(text: string, all = false) {
+  function copyListing() {
     void navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        if (all) setCopied(true)
-        ws.notify(t.copied)
-      })
+      .writeText(listing)
+      .then(() => ws.notify(t.copied))
       .catch(() => ws.notify(t.actionFailed))
   }
 
-  function setOwnerVerified(value: boolean) {
-    if (!shop) return
-    writeVerified(shop.id, value)
-    setVerified((current) => ({ ...current, [shop.id]: value }))
-  }
+  const titles = [g.detailsTitle, g.photosTitle, g.previewTitle, g.googleTitle]
 
   return (
-    <Box component="section" aria-label={t.navGoogle} sx={{ maxWidth: 760, mx: 'auto', pt: 2 }}>
-      <Stack spacing={4}>
-        <Box>
-          <Typography component="h1" variant="headlineMedium">
-            {t.googleTitle}
-          </Typography>
-          <Typography variant="bodyLarge" color="text.secondary" sx={{ mt: 2 }}>
-            {t.googleBody}
-          </Typography>
-        </Box>
-        <Alert severity="info">{t.googleHonest}</Alert>
+    <Box
+      component="section"
+      aria-label={t.navGoogle}
+      sx={{ maxWidth: 640, mx: 'auto', pt: 2, pb: 4, ...motionKeyframes }}
+    >
+      <Typography component="h1" variant="headlineSmall">
+        {t.googleTitle}
+      </Typography>
+      <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
+        {g.intro}
+      </Typography>
 
-        <Box component="ol" sx={{ m: 0, p: 0, display: 'grid', gap: 3 }}>
-          <Step n={1} done={done === checks.length} title={t.stepDetails}>
-            <LinearProgress
-              variant="determinate"
-              value={(done / checks.length) * 100}
-              aria-hidden="true"
-              sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
-            />
-            <Typography variant="bodyMedium" color="text.secondary">
-              {t.readiness(done, checks.length)}
-              {done < checks.length &&
-                ` · ${checks
-                  .filter((check) => !check.done)
-                  .map((check) => check.label)
-                  .join(' · ')}`}
-            </Typography>
-            <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap' }}>
-              {done < checks.length && (
-                <Button
-                  variant="contained"
-                  startIcon={<Pencil size={18} />}
-                  onClick={() => ws.openEditor({ kind: 'business', fields: shop.fields })}
-                >
-                  {t.editDetails}
-                </Button>
-              )}
-              <Button onClick={() => setReadiness(true)}>{t.seeChecks}</Button>
-            </Stack>
-          </Step>
+      <StepRail
+        steps={g.steps}
+        names={g.steps.map((label, i) => `${fill(g.stepOf, { n: i + 1, total: 4 })}: ${label}`)}
+        current={step}
+        done={doneSteps}
+        onPick={go}
+      />
 
-          <Step n={2} done={copied} title={t.stepCopy}>
-            <Typography variant="bodyMedium" color="text.secondary">
-              {t.stepCopyHint}
-            </Typography>
-            <Box
-              component="div"
-              sx={{ m: 0, borderRadius: `${shape.md}px`, bgcolor: roles.surface, px: 3 }}
-            >
-              {rows.map((row) => (
+      <Box
+        key={step}
+        sx={{
+          mt: 4,
+          animation: `${direction > 0 ? 'cbStepFromRight' : 'cbStepFromLeft'} 320ms ${EASE} both`,
+        }}
+      >
+        <Typography variant="labelLarge" color="text.secondary">
+          {fill(g.stepOf, { n: step + 1, total: 4 })}
+        </Typography>
+        <Typography
+          ref={heading}
+          tabIndex={-1}
+          component="h2"
+          variant="titleLarge"
+          sx={{ mt: 1, outline: 'none' }}
+        >
+          {titles[step]}
+        </Typography>
+
+        {step === 0 && (
+          <Stack spacing={3} sx={{ mt: 2 }}>
+            <Tip>{g.detailsTip}</Tip>
+            <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none', display: 'grid', gap: 1 }}>
+              {checks.map((check, index) => (
                 <Box
-                  key={row.label}
+                  component="li"
+                  key={check.label}
                   sx={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1fr) auto',
+                    display: 'flex',
                     alignItems: 'center',
                     gap: 2,
-                    py: 2,
-                    '& + &': { borderTop: `1px solid ${roles.outlineVariant}` },
+                    py: 1.5,
+                    px: 3,
+                    borderRadius: `${shape.md}px`,
+                    bgcolor: roles.surfaceContainerLow,
+                    animation: `cbRise 280ms ${EASE} both`,
+                    animationDelay: `${index * 50}ms`,
                   }}
                 >
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography component="div" variant="labelMedium" color="text.secondary">
-                      {row.label}
-                    </Typography>
-                    <Typography
-                      component="div"
-                      variant="bodyMedium"
-                      sx={{ m: 0, overflowWrap: 'anywhere' }}
-                    >
-                      {row.value}
-                    </Typography>
+                  <Box
+                    aria-hidden="true"
+                    sx={{
+                      display: 'flex',
+                      color: check.done ? roles.primary : roles.outline,
+                      animation: check.done ? `cbPop 360ms ${EASE} both` : undefined,
+                      animationDelay: `${120 + index * 60}ms`,
+                    }}
+                  >
+                    {check.done ? <CheckCircle2 size={22} /> : <Circle size={22} />}
                   </Box>
-                  <IconButton aria-label={t.copyField(row.label)} onClick={() => copy(row.value)}>
-                    <Copy size={18} />
-                  </IconButton>
+                  <Typography variant="bodyLarge" sx={{ flex: 1, minWidth: 0 }}>
+                    {check.label}
+                  </Typography>
+                  <Typography variant="labelMedium" color={check.done ? 'text.secondary' : 'error'}>
+                    {check.done ? t.ready : t.missing}
+                  </Typography>
                 </Box>
               ))}
             </Box>
             <Button
-              variant="outlined"
-              startIcon={<Copy size={18} />}
+              variant={detailsDone ? 'outlined' : 'contained'}
+              startIcon={<Pencil size={18} />}
               sx={{ alignSelf: 'flex-start' }}
-              onClick={() => copy(listing, true)}
+              onClick={() => ws.openEditor({ kind: 'business', fields: f })}
             >
-              {t.copyListing}
+              {t.editDetails}
             </Button>
-            <HoursList hours={f.weekly_hours} />
-          </Step>
+          </Stack>
+        )}
 
-          <Step n={3} done={isVerified} title={t.stepAdd}>
-            <Chip
-              size="small"
-              label={sim.liveOwner}
-              sx={{ alignSelf: 'flex-start', bgcolor: roles.secondaryContainer }}
+        {step === 1 && <PhotosStep gallery={gallery} />}
+
+        {step === 2 && (
+          <Stack spacing={3} sx={{ mt: 2 }}>
+            <Tip>{g.previewTip}</Tip>
+            <ProfilePreview
+              name={f.name}
+              category={f.category}
+              location={f.location}
+              phone={f.phone}
+              hours={
+                f.weekly_hours?.length ? <HoursList hours={f.weekly_hours} /> : f.hours || null
+              }
+              photo={gallery.urls[gallery.ids[0] ?? ''] ?? categoryArt(f.category)}
+              photos={gallery.ids
+                .slice(1, 4)
+                .map((id) => gallery.urls[id])
+                .filter((url): url is string => Boolean(url))}
+              items={ws.products
+                .filter((p) => p.available)
+                .slice(0, 3)
+                .map((p) => ({ name: p.name, price: formatPrice(p.price, currency) }))}
             />
-            <Typography variant="bodyMedium" color="text.secondary">
-              {t.stepAddHint}
-            </Typography>
-            <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap' }}>
-              <Button
-                variant="contained"
-                startIcon={<ExternalLink size={18} />}
-                href={OWNER_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {t.addOnGoogle}
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<MapPinned size={18} />}
-                href={mapsSearch(f.name, f.location)}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-describedby="google-maps-live"
-              >
-                {t.claimOnMaps}
-              </Button>
-            </Stack>
-            <Typography id="google-maps-live" variant="bodySmall" color="text.secondary">
-              {sim.liveMaps}
-            </Typography>
-          </Step>
+          </Stack>
+        )}
 
-          <Step n={4} done={isVerified} title={t.stepVerify}>
+        {step === 3 && (
+          <Stack spacing={4} sx={{ mt: 2 }}>
+            <Box component="ol" sx={{ m: 0, p: 0, listStyle: 'none', display: 'grid', gap: 0 }}>
+              <Status
+                done={detailsDone}
+                label={detailsDone ? g.statusDetails : g.statusDetailsTodo}
+                index={0}
+              />
+              <Status
+                done={photosDone}
+                label={photosDone ? g.statusPhotos : g.statusNoPhotos}
+                index={1}
+              />
+              <Status
+                done={detailsDone}
+                label={detailsDone ? g.statusProfile : g.statusProfileTodo}
+                index={2}
+              />
+              <Status pending label={g.statusGoogle} index={3} last />
+            </Box>
             <Typography variant="bodyMedium" color="text.secondary">
-              {isVerified ? t.verifiedOwner : t.stepVerifyHint}
+              {g.googleNote}
             </Typography>
-            {isVerified ? (
-              <Button sx={{ alignSelf: 'flex-start' }} onClick={() => setOwnerVerified(false)}>
-                {t.verifiedUndo}
-              </Button>
-            ) : (
-              <Button
-                variant="outlined"
-                startIcon={<CheckCircle2 size={18} />}
-                sx={{ alignSelf: 'flex-start' }}
-                onClick={() => setOwnerVerified(true)}
-              >
-                {t.verifiedYes}
-              </Button>
-            )}
-          </Step>
-        </Box>
-
-        <Box>
-          <Button
-            fullWidth
-            aria-expanded={practice}
-            aria-controls="google-practice"
-            endIcon={
-              <Box
-                component="span"
-                sx={{
-                  display: 'flex',
-                  transition: 'transform 200ms',
-                  transform: practice ? 'rotate(180deg)' : 'none',
-                }}
-              >
-                <ChevronDown size={18} />
-              </Box>
-            }
-            onClick={() => setPractice((open) => !open)}
-            sx={{ justifyContent: 'space-between', minHeight: 48 }}
-          >
-            {t.practiceSteps}
-          </Button>
-          <Typography variant="bodySmall" color="text.secondary" sx={{ px: 2 }}>
-            {sim.banner}
-          </Typography>
-          <Collapse in={practice} unmountOnExit>
             <Box
-              id="google-practice"
               sx={{
-                mt: 2,
-                bgcolor: roles.surfaceContainerLow,
-                borderRadius: `${shape.lgIncreased}px`,
                 p: 4,
+                borderRadius: `${shape.lgIncreased}px`,
+                bgcolor: roles.surfaceContainerLow,
+                animation: `cbRise 320ms ${EASE} 400ms both`,
               }}
             >
-              <GoogleSimulator />
+              <Typography component="h3" variant="titleMedium">
+                {g.diyTitle}
+              </Typography>
+              <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
+                {g.diyBody}
+              </Typography>
+              <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap', mt: 3 }}>
+                <Button variant="outlined" startIcon={<Copy size={18} />} onClick={copyListing}>
+                  {t.copyListing}
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<ExternalLink size={18} />}
+                  href={OWNER_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t.addOnGoogle}
+                </Button>
+                <Button
+                  startIcon={<MapPinned size={18} />}
+                  href={mapsSearch(f.name, f.location)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t.claimOnMaps}
+                </Button>
+              </Stack>
             </Box>
-          </Collapse>
-        </Box>
-      </Stack>
+          </Stack>
+        )}
+      </Box>
 
-      <Sheet
-        open={readiness}
-        onClose={() => setReadiness(false)}
-        titleId="google-readiness-title"
-        title={t.readiness(done, checks.length)}
-      >
-        <List dense disablePadding>
-          {checks.map((check) => (
-            <ListItem key={check.label} disableGutters>
-              <ListItemIcon
-                sx={{ minWidth: 40, color: check.done ? roles.primary : roles.outline }}
-                aria-hidden="true"
+      <Stack direction="row" sx={{ mt: 5, gap: 2, justifyContent: 'space-between' }}>
+        <Button disabled={step === 0} onClick={() => go(step - 1)}>
+          {g.back}
+        </Button>
+        {step < 3 && (
+          <Stack direction="row" sx={{ gap: 2 }}>
+            {step === 1 && !photosDone && <Button onClick={() => go(2)}>{g.skip}</Button>}
+            <Button variant="contained" onClick={() => go(step + 1)}>
+              {g.next}
+            </Button>
+          </Stack>
+        )}
+      </Stack>
+    </Box>
+  )
+}
+
+function missingChecks(
+  shop: { fields: { name: string; category: string; location: string; phone: string } & object },
+  products: number,
+): number {
+  const f = shop.fields
+  return [
+    f.name.trim(),
+    f.category.trim(),
+    f.location.trim(),
+    hasHours(f as Parameters<typeof hasHours>[0]),
+    f.phone.trim(),
+    products > 0,
+  ].filter((value) => !value).length
+}
+
+function Tip({ children }: { children: ReactNode }) {
+  return (
+    <Typography variant="bodyMedium" color="text.secondary">
+      {children}
+    </Typography>
+  )
+}
+
+/** Four segments that fill as steps complete; each one jumps to its step. */
+function StepRail({
+  steps,
+  names,
+  current,
+  done,
+  onPick,
+}: {
+  steps: string[]
+  names: string[]
+  current: number
+  done: boolean[]
+  onPick: (step: number) => void
+}) {
+  const roles = useTheme().material
+  return (
+    <Box
+      component="ol"
+      sx={{
+        m: 0,
+        mt: 4,
+        p: 0,
+        listStyle: 'none',
+        display: 'grid',
+        gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`,
+        gap: 2,
+      }}
+    >
+      {steps.map((label, index) => {
+        const active = index === current
+        const filled = done[index] || index < current
+        return (
+          <Box component="li" key={label}>
+            <Box
+              component="button"
+              type="button"
+              aria-current={active ? 'step' : undefined}
+              aria-label={names[index]}
+              onClick={() => onPick(index)}
+              sx={{
+                all: 'unset',
+                cursor: 'pointer',
+                display: 'block',
+                width: '100%',
+                minHeight: 48,
+                '&:focus-visible': { outline: `3px solid ${roles.primary}`, borderRadius: 1 },
+              }}
+            >
+              <Box
+                sx={{
+                  height: 6,
+                  borderRadius: 3,
+                  bgcolor: roles.surfaceContainerHighest,
+                  overflow: 'hidden',
+                }}
               >
-                {check.done ? <CheckCircle2 size={22} /> : <Circle size={22} />}
-              </ListItemIcon>
-              <ListItemText
-                primary={check.label}
-                secondary={check.done ? t.ready : t.missing}
-                slotProps={{
-                  primary: { variant: 'bodyLarge' },
-                  secondary: { variant: 'bodySmall' },
+                <Box
+                  sx={{
+                    height: '100%',
+                    bgcolor: roles.primary,
+                    transformOrigin: 'left',
+                    transform: `scaleX(${filled ? 1 : active ? 0.5 : 0})`,
+                    transition: `transform 480ms ${EASE}`,
+                  }}
+                />
+              </Box>
+              <Typography
+                variant="labelMedium"
+                sx={{
+                  display: 'block',
+                  mt: 1,
+                  color: active ? roles.onSurface : roles.onSurfaceVariant,
+                  fontWeight: active ? 700 : 500,
+                }}
+                noWrap
+              >
+                {label}
+              </Typography>
+            </Box>
+          </Box>
+        )
+      })}
+    </Box>
+  )
+}
+
+function PhotosStep({ gallery }: { gallery: ReturnType<typeof useGallery> }) {
+  const g = useGoogleCopy()
+  const roles = useTheme().material
+  const phone = useMediaQuery('(pointer: coarse)')
+  const upload = useRef<HTMLInputElement>(null)
+  const camera = useRef<HTMLInputElement>(null)
+  const pick = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (file) void gallery.add(file)
+  }
+  return (
+    <Stack spacing={3} sx={{ mt: 2 }}>
+      <Tip>{g.photosTip}</Tip>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: 2,
+        }}
+      >
+        {gallery.ids.map((id, index) => (
+          <Box
+            key={id}
+            sx={{
+              position: 'relative',
+              aspectRatio: '1 / 1',
+              borderRadius: `${shape.md}px`,
+              overflow: 'hidden',
+              bgcolor: roles.surfaceContainerHigh,
+              animation: `cbPop 360ms ${EASE} both`,
+            }}
+          >
+            {gallery.urls[id] && (
+              <Box
+                component="img"
+                src={gallery.urls[id]}
+                alt=""
+                sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            )}
+            <IconButton
+              aria-label={fill(g.removePhoto, { n: index + 1 })}
+              onClick={() => void gallery.remove(id)}
+              size="small"
+              sx={{
+                position: 'absolute',
+                top: 4,
+                right: 4,
+                bgcolor: 'rgba(0,0,0,0.55)',
+                color: '#fff',
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
+              }}
+            >
+              <X size={16} />
+            </IconButton>
+          </Box>
+        ))}
+        {!gallery.full && (
+          <Box
+            component="button"
+            type="button"
+            onClick={() => upload.current?.click()}
+            disabled={gallery.busy}
+            aria-label={g.addPhoto}
+            sx={{
+              all: 'unset',
+              cursor: 'pointer',
+              aspectRatio: '1 / 1',
+              borderRadius: `${shape.md}px`,
+              border: `2px dashed ${roles.outlineVariant}`,
+              display: 'grid',
+              placeItems: 'center',
+              color: roles.primary,
+              transition: `background-color 200ms ${EASE}`,
+              '&:hover': { bgcolor: roles.surfaceContainerLow },
+              '&:focus-visible': { outline: `3px solid ${roles.primary}` },
+            }}
+          >
+            {gallery.busy ? <CircularProgress size={24} /> : <ImagePlus size={28} />}
+          </Box>
+        )}
+      </Box>
+      <Stack direction="row" sx={{ gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        {phone && !gallery.full && (
+          <Button
+            variant="outlined"
+            startIcon={<Camera size={18} />}
+            disabled={gallery.busy}
+            onClick={() => camera.current?.click()}
+          >
+            {g.takePhoto}
+          </Button>
+        )}
+        <Typography variant="bodySmall" color="text.secondary" aria-live="polite">
+          {gallery.busy
+            ? g.adding
+            : fill(g.photosCount, { n: gallery.ids.length, max: GALLERY_LIMIT })}
+        </Typography>
+      </Stack>
+      {gallery.failed && (
+        <Alert severity="error" role="alert">
+          {g.photoFailed}
+        </Alert>
+      )}
+      <input ref={upload} type="file" accept={PHOTO_TYPES} hidden onChange={pick} />
+      <input
+        ref={camera}
+        type="file"
+        accept={PHOTO_TYPES}
+        capture="environment"
+        hidden
+        onChange={pick}
+      />
+    </Stack>
+  )
+}
+
+/** How the profile could look on Google, built only from the shop's own data. */
+function ProfilePreview({
+  name,
+  category,
+  location,
+  phone,
+  hours,
+  photo,
+  photos,
+  items,
+}: {
+  name: string
+  category: string
+  location: string
+  phone: string
+  hours: ReactNode
+  photo: string
+  photos: string[]
+  items: { name: string; price: string }[]
+}) {
+  const g = useGoogleCopy()
+  const roles = useTheme().material
+  return (
+    <Box
+      sx={{
+        borderRadius: `${shape.lgIncreased}px`,
+        overflow: 'hidden',
+        bgcolor: roles.surfaceContainerLow,
+        border: `1px solid ${roles.outlineVariant}`,
+        animation: `cbRise 360ms ${EASE} both`,
+      }}
+    >
+      <Box sx={{ position: 'relative' }}>
+        <Box
+          component="img"
+          src={photo}
+          alt=""
+          sx={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', display: 'block' }}
+        />
+        <Chip
+          label={g.previewLabel}
+          size="small"
+          sx={{ position: 'absolute', top: 12, left: 12, bgcolor: roles.surface }}
+        />
+        {photos.length > 0 && (
+          <Stack direction="row" spacing={1} sx={{ position: 'absolute', bottom: 12, right: 12 }}>
+            {photos.map((src) => (
+              <Box
+                key={src}
+                component="img"
+                src={src}
+                alt=""
+                sx={{
+                  width: 44,
+                  height: 44,
+                  objectFit: 'cover',
+                  borderRadius: 1,
+                  border: `2px solid ${roles.surface}`,
                 }}
               />
-            </ListItem>
+            ))}
+          </Stack>
+        )}
+      </Box>
+      <Stack spacing={2} sx={{ p: 4 }}>
+        <Box>
+          <Typography component="h3" variant="titleLarge">
+            {name}
+          </Typography>
+          {category && (
+            <Typography variant="bodyMedium" color="text.secondary">
+              {category}
+            </Typography>
+          )}
+        </Box>
+        <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+          {[
+            { icon: <Navigation size={16} />, label: g.directions },
+            { icon: <Phone size={16} />, label: g.call },
+            { icon: <Utensils size={16} />, label: g.menu },
+          ].map((action) => (
+            <Chip key={action.label} icon={action.icon} label={action.label} variant="outlined" />
           ))}
-        </List>
-      </Sheet>
+        </Stack>
+        {location && (
+          <Row icon={<MapPin size={18} />}>
+            <Typography variant="bodyMedium">{location}</Typography>
+          </Row>
+        )}
+        {hours && <Row icon={<Check size={18} />}>{hours}</Row>}
+        {phone && (
+          <Row icon={<Phone size={18} />}>
+            <Typography variant="bodyMedium">{phone}</Typography>
+          </Row>
+        )}
+        {items.length > 0 && (
+          <Box>
+            <Typography variant="labelLarge" color="text.secondary">
+              {g.popular}
+            </Typography>
+            <Box component="ul" sx={{ m: 0, mt: 1, p: 0, listStyle: 'none' }}>
+              {items.map((item) => (
+                <Box
+                  component="li"
+                  key={item.name}
+                  sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, py: 0.5 }}
+                >
+                  <Typography variant="bodyMedium" sx={{ minWidth: 0 }} noWrap>
+                    {item.name}
+                  </Typography>
+                  <Typography variant="bodyMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {item.price}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
+      </Stack>
+    </Box>
+  )
+}
+
+function Row({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  const roles = useTheme().material
+  return (
+    <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
+      <Box aria-hidden="true" sx={{ display: 'flex', pt: 0.25, color: roles.onSurfaceVariant }}>
+        {icon}
+      </Box>
+      <Box sx={{ minWidth: 0 }}>{children}</Box>
+    </Stack>
+  )
+}
+
+/** One line of the publishing timeline; the Google step pulses while it waits. */
+function Status({
+  label,
+  index,
+  done = false,
+  pending = false,
+  last = false,
+}: {
+  label: string
+  index: number
+  done?: boolean
+  pending?: boolean
+  last?: boolean
+}) {
+  const roles = useTheme().material
+  const color = pending ? roles.tertiary : done ? roles.primary : roles.outline
+  return (
+    <Box
+      component="li"
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: '28px 1fr',
+        gap: 3,
+        animation: `cbRise 280ms ${EASE} both`,
+        animationDelay: `${index * 90}ms`,
+      }}
+    >
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box
+          aria-hidden="true"
+          sx={{
+            width: 24,
+            height: 24,
+            mt: 0.5,
+            borderRadius: '50%',
+            display: 'grid',
+            placeItems: 'center',
+            color,
+            border: `2px solid ${color}`,
+            bgcolor: done ? color : 'transparent',
+            animation: pending ? 'cbPulse 1.8s ease-out infinite' : undefined,
+          }}
+        >
+          {done && <Check size={14} color={roles.onPrimary} />}
+        </Box>
+        {!last && <Box sx={{ width: 2, flex: 1, minHeight: 16, bgcolor: roles.outlineVariant }} />}
+      </Box>
+      <Typography
+        variant="bodyLarge"
+        sx={{ pb: last ? 0 : 3, color: pending ? roles.tertiary : undefined, fontWeight: 500 }}
+      >
+        {label}
+      </Typography>
     </Box>
   )
 }

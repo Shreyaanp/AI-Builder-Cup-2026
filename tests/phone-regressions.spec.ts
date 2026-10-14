@@ -265,18 +265,23 @@ test('PHONE-2-google-empty: Google Add opens shop details directly', async ({ pa
   await expect(page.getByRole('dialog', { name: 'Add shop details' })).toBeVisible()
 })
 
-test('PHONE-3: Maps handoff is visibly Live and opens the exact shop query without contacting Google', async ({
+test('PHONE-3: the Google flow ends with official links and an honest waiting status', async ({
   page,
   context,
 }) => {
   await enter(page)
   await saveShop(page)
   await page.getByRole('button', { name: 'Google', exact: true }).tap()
+  await page.getByRole('button', { name: 'Step 4 of 4: Google', exact: true }).tap()
+  await expect(page.getByText('Waiting for Google API access', { exact: true })).toBeVisible()
   const maps = page.getByRole('link', { name: 'Find & claim on Maps', exact: true })
-  await expect(page.getByText('Live — opens Google Maps', { exact: true })).toBeVisible()
   await expect(maps).toHaveAttribute(
     'href',
     'https://www.google.com/maps/search/?api=1&query=Katong%20Kopi%20Katong%2C%20Singapore',
+  )
+  await expect(page.getByRole('link', { name: 'Add on Google', exact: true })).toHaveAttribute(
+    'href',
+    'https://business.google.com/add',
   )
   await context.route('https://www.google.com/**', (route) =>
     route.fulfill({ contentType: 'text/html', body: '<p>Offline handoff fixture</p>' }),
@@ -286,46 +291,6 @@ test('PHONE-3: Maps handoff is visibly Live and opens the exact shop query witho
   const opened = await popup
   await expect(opened).toHaveURL(/query=Katong%20Kopi%20Katong%2C%20Singapore/)
   await opened.close()
-  await page.getByRole('button', { name: 'Practice the steps' }).tap()
-  await expect(
-    page.getByText('Simulated — no Google listing is created or changed', { exact: true }),
-  ).toBeVisible()
-})
-
-test('PHONE-3-claim: finding a fictional match leads to a saved claim outcome with a visible connection flag', async ({
-  page,
-}) => {
-  await enter(page)
-  await saveShop(page)
-  await page.getByRole('button', { name: 'Google', exact: true }).tap()
-  await page.getByRole('button', { name: 'Practice the steps' }).tap()
-  await page.getByRole('button', { name: 'Find & claim a listing', exact: true }).tap()
-  const wizard = page.getByRole('dialog', { name: 'Practice: Google owner journey' })
-  const flag = wizard.getByRole('heading', { name: 'Practice: Google owner journey' })
-  await expect(flag).toBeVisible()
-  await wizard.getByRole('button', { name: 'Find & claim a listing', exact: true }).tap()
-  await wizard.getByRole('button', { name: 'Customers visit', exact: true }).tap()
-  await expect(flag).toBeVisible()
-  await wizard.getByLabel('Hours', { exact: true }).fill('09:00–18:00')
-  await wizard.getByLabel('Contact', { exact: true }).fill('Fictional contact')
-  await wizard.getByLabel('Google category fixture').tap()
-  await page.getByRole('option', { name: 'Hawker stall', exact: true }).tap()
-  await wizard.getByRole('button', { name: 'Continue', exact: true }).tap()
-  await expect(flag).toBeVisible()
-  await wizard.getByRole('button', { name: 'Demo owner account (fictional)', exact: true }).tap()
-  await expect(flag).toBeVisible()
-  await expect(wizard.getByRole('button', { name: /^Continue: Demo/ })).toHaveCount(2)
-  await wizard.getByRole('button', { name: 'Continue: Demo Market Road', exact: true }).tap()
-  await wizard.getByRole('button', { name: 'Request ownership', exact: true }).tap()
-  await expect(flag).toBeVisible()
-  await expect(wizard.getByText('Pending — no ownership granted', { exact: true })).toBeVisible()
-  await expect(
-    wizard.getByText('Saved fictional ownership request. No request was sent to Google.', {
-      exact: true,
-    }),
-  ).toBeVisible()
-  await wizard.getByRole('button', { name: 'Close and keep progress' }).tap()
-  await page.getByRole('button', { name: 'Find & claim a listing', exact: true }).tap()
-  await expect(flag).toBeVisible()
-  await expect(wizard.getByText('Pending — no ownership granted', { exact: true })).toBeVisible()
+  // No practice simulator any more.
+  await expect(page.getByText(/simulat/i)).toHaveCount(0)
 })

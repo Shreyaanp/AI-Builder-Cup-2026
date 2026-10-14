@@ -133,17 +133,20 @@ test('switching shops never shows the other shop’s products or conversation', 
   await expect(page.getByText('Alpha Chai')).toHaveCount(0)
 })
 
-test('Google handoff shows readiness and only official Google links', async ({ page }) => {
+test('Google flow: details, photos, preview, then official links', async ({ page }) => {
   await open(page)
   await addShop(page, 'Morning Crumb')
   await page.getByRole('button', { name: 'Google' }).click()
-  // The coach's shop card (kept mounted while hidden) shows the same readiness.
-  await expect(page.getByRole('region', { name: 'Google' }).getByText('1 of 6 ready')).toBeVisible()
-  await expect(page.getByText(/we can’t publish to Google for you/)).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Practice the steps', exact: true })).toBeVisible()
-  await expect(
-    page.getByText('Simulated — no Google listing is created or changed', { exact: true }),
-  ).toHaveCount(1)
+  const flow = page.getByRole('region', { name: 'Google' })
+  await expect(flow.getByRole('heading', { name: 'Check your details' })).toBeVisible()
+  await expect(flow.getByText('Missing').first()).toBeVisible()
+  await flow.getByRole('button', { name: 'Next' }).click()
+  await expect(flow.getByRole('heading', { name: 'Add photos' })).toBeVisible()
+  await flow.getByRole('button', { name: 'Skip for now' }).click()
+  await expect(flow.getByRole('heading', { name: 'Your profile' })).toBeVisible()
+  await expect(flow.getByRole('heading', { name: 'Morning Crumb' })).toBeVisible()
+  await flow.getByRole('button', { name: 'Next' }).click()
+  await expect(flow.getByText('Waiting for Google API access')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Add on Google' })).toHaveAttribute(
     'href',
     'https://business.google.com/add',
@@ -153,7 +156,6 @@ test('Google handoff shows readiness and only official Google links', async ({ p
     /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=Morning%20Crumb/,
   )
 })
-
 test('delete all my data erases shops and asks for consent again', async ({ page }) => {
   await open(page)
   await addShop(page, 'Gone Soon Kirana')

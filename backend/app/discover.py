@@ -488,6 +488,12 @@ async def discover(
                 shop["hours"], shop["timezone"], weekly_hours=shop.get("weekly_hours")
             ),
             currency=shop["currency"],
+            # The owner's first gallery photo, served only because the shop is shared.
+            photo_url=(
+                f"/api/v1/public/shops/{shop['id']}/photos/{shop['gallery'][0]}.jpg"
+                if shop.get("gallery")
+                else None
+            ),
             items=[TopItem(**p) for p in shop["products"][:3]],
             sold_out=[p["name"] for p in shop["products"] if not p["available"]],
         )
