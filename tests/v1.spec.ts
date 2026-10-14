@@ -162,3 +162,84 @@ test('delete all my data erases shops and asks for consent again', async ({ page
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await expect(page.getByRole('heading', { name: 'Before we start' })).toBeVisible()
 })
+
+test('customer facts: the card starts the chat, the owner confirms, customers see a chip', async ({
+  page,
+}) => {
+  // Outside busy hours, so the facts card (not the sold-out sweep) is the pending item.
+  await page.clock.setFixedTime(new Date('2026-10-14T09:00:00+08:00'))
+  await open(page)
+  await addShop(page, 'Halal Corner')
+  await page.getByRole('button', { name: 'Coach', exact: true }).click()
+  const card = page.getByRole('region', { name: 'Customers ask: halal? payment?' })
+  await expect(card).toBeVisible()
+  await card.getByRole('button', { name: 'Answer' }).click()
+  const message = page.getByLabel('Message', { exact: true })
+  await expect(message).toHaveValue('Halal: ')
+  await expect(message).toBeFocused()
+  await message.pressSequentially('yes')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
+  await expect(review.getByRole('region', { name: 'What customers ask' })).toContainText('Halal')
+  await review.getByRole('button', { name: 'Confirm and save' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  // Next unanswered fact moves up; halal is no longer asked.
+  await expect(page.getByRole('button', { name: /^Customers ask: payment\?/ })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: /^Shop details/ }).click()
+  const details = page.getByRole('dialog', { name: 'Halal Corner' })
+  await expect(details.getByRole('region', { name: 'What customers ask' })).toContainText('Halal')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByRole('switch', { name: 'Share customer page' }).click()
+  await expect(
+    page.getByRole('img', { name: 'QR code for Halal Corner’s customer page' }),
+  ).toBeVisible()
+  await expect(page.getByText('Scan for today’s menu')).toBeVisible()
+  const url = await page.getByRole('link', { name: 'Open page' }).getAttribute('href')
+  await page.goto(url!)
+  await expect(page.getByRole('list', { name: 'Good to know' })).toContainText('Halal')
+})
+
+test('busy-hours sweep asks about top items; Sold out uses the owner switch', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-10-14T12:30:00+08:00'))
+  await open(page)
+  const proposal = await (
+    await page.request.post('/api/v1/proposals', {
+      data: {
+        kind: 'business',
+        business: { name: 'Sweep Kopitiam' },
+        products: [
+          { name: 'Kopi', unit: 'cup', price: 180 },
+          { name: 'Teh', unit: 'cup', price: 170 },
+        ],
+      },
+    })
+  ).json()
+  const { business_id: id } = await (
+    await page.request.post(`/api/v1/proposals/${proposal.id}/approve`, {
+      data: { digest: proposal.digest },
+    })
+  ).json()
+  await page.reload()
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  const kopi = page.getByRole('region', { name: 'Still have Kopi?' })
+  await expect(kopi).toBeVisible()
+  await kopi.getByRole('button', { name: 'Sold out' }).click()
+  const teh = page.getByRole('region', { name: 'Still have Teh?' })
+  await expect(teh).toBeVisible()
+  const items = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
+  expect(items.find((item: { name: string }) => item.name === 'Kopi').available).toBe(false)
+  // "Yes" hides that item until the next busy window; nothing else is left to sweep.
+  await teh.getByRole('button', { name: 'Yes' }).click()
+  await expect(page.getByRole('region', { name: /^Still have/ })).toHaveCount(0)
+  await expect(page.getByRole('region', { name: /^Customers ask:/ })).toBeVisible()
+  // Remembered for this shop today.
+  await page.reload()
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await expect(page.getByRole('region', { name: /^Customers ask:/ })).toBeVisible()
+  await expect(page.getByRole('region', { name: /^Still have/ })).toHaveCount(0)
+})
