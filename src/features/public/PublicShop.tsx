@@ -17,6 +17,7 @@ import type { ReactNode } from 'react'
 import { systemLocale, type Locale } from '../../i18n/locales'
 import { loadScriptFont } from '../../i18n/fonts'
 import { formatPrice } from '../v1/format'
+import type { ShopFacts } from '../v1/api'
 import { shape } from '../../design/theme'
 import { CustomerInquiry, CustomerQuestions } from './CustomerQuestions'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
@@ -32,6 +33,42 @@ interface PublicShopData {
   /** ISO 4217 code the shop's prices are stored in. */
   currency?: string
   products: { name: string; price: number; unit: string; available: boolean }[]
+  /** Owner-confirmed customer facts; absent keys are simply not listed. */
+  facts?: ShopFacts
+}
+
+const PAYMENT_BRANDS = { paynow: 'PayNow', grabpay: 'GrabPay', nets: 'NETS' } as const
+const DELIVERY_BRANDS = { grab: 'Grab', foodpanda: 'foodpanda' } as const
+
+/** Small, plain chips for what customers ask most (halal, payment, delivery…). */
+function factChips(facts: ShopFacts, t: CustomerCopy): string[] {
+  const chips: string[] = []
+  if (facts.halal === 'yes') chips.push(t.factHalal)
+  if (facts.halal === 'muslim_owned') chips.push(t.factMuslimOwned)
+  if (facts.halal === 'no') chips.push(t.factNotHalal)
+  if (facts.vegetarian_options) chips.push(t.factVegetarian)
+  if (facts.delivery === 'none') chips.push(t.factNoDelivery)
+  else if (facts.delivery === 'grab' || facts.delivery === 'foodpanda')
+    chips.push(t.factDeliveryVia.replace('{name}', DELIVERY_BRANDS[facts.delivery]))
+  else if (facts.delivery) chips.push(t.factDelivery)
+  if (facts.preorders)
+    chips.push(
+      facts.preorder_lead_time
+        ? t.factPreordersLead.replace('{lead}', facts.preorder_lead_time)
+        : t.factPreorders,
+    )
+  for (const method of facts.payment_methods ?? [])
+    chips.push(
+      method === 'cash'
+        ? t.factCash
+        : method === 'card'
+          ? t.factCard
+          : method === 'other'
+            ? t.factOtherPayment
+            : PAYMENT_BRANDS[method],
+    )
+  if (facts.busy_hours) chips.push(t.factBusy.replace('{hours}', facts.busy_hours))
+  return chips
 }
 
 /** English source; customer-page translations override keys (missing keys fall back). */
@@ -328,6 +365,7 @@ export default function PublicShop({ id }: { id: string }) {
     shop.location && { icon: <MapPin size={20} />, text: shop.location },
     shop.phone && { icon: <Phone size={20} />, text: shop.phone },
   ].filter(Boolean) as { icon: ReactNode; text: string }[]
+  const chips = factChips(shop.facts ?? {}, t)
 
   return (
     <Box
@@ -366,6 +404,29 @@ export default function PublicShop({ id }: { id: string }) {
             </Stack>
           ))}
         </Stack>
+        {chips.length > 0 && (
+          <Box
+            component="ul"
+            aria-label={t.factsLabel}
+            sx={{ listStyle: 'none', m: 0, p: 0, mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}
+          >
+            {chips.map((chip) => (
+              <Box
+                component="li"
+                key={chip}
+                sx={{
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: `${shape.sm}px`,
+                  border: `1px solid ${roles.onPrimaryContainer}`,
+                  typography: 'labelLarge',
+                }}
+              >
+                {chip}
+              </Box>
+            ))}
+          </Box>
+        )}
         <Stack direction="row" spacing={1} sx={{ mt: 2.5, flexWrap: 'wrap', gap: 1 }}>
           {shop.location && (
             <Button

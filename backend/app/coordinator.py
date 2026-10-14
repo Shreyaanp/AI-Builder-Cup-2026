@@ -15,10 +15,25 @@ from typing import Any
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
-from .merchant import BusinessFields, MerchantRepository, ProductFields, ProposalRequest
+from .merchant import (
+    FACT_KEYS,
+    BusinessFields,
+    MerchantRepository,
+    ProductFields,
+    ProposalRequest,
+)
 from .money import DEFAULT_CURRENCY, to_major, to_minor
 
 MAX_REPAIRS = 2
+# Customer facts the coach asks about after the basics are saved, most asked first.
+ASK_ORDER = (
+    "halal",
+    "payment_methods",
+    "delivery",
+    "vegetarian_options",
+    "preorders",
+    "busy_hours",
+)
 # A price moving by more than this factor is flagged so the model confirms with the owner.
 SUSPICIOUS_PRICE_RATIO = 2.0
 
@@ -108,6 +123,10 @@ def get_business_context() -> dict[str, Any]:
             for product in data["inventory"]
         ],
         "relevant_history": ctx.recalled,
+        # Customer facts not stated yet, in the order the coach should ask about them.
+        "customer_facts_to_ask": [
+            key for key in ASK_ORDER if shop and shop["fields"].get(key) in (None, "", [])
+        ],
     }
 
 
@@ -118,16 +137,29 @@ def propose_business(
     hours: str = "",
     phone: str = "",
     currency: str = "",
+    halal: str = "",
+    vegetarian_options: bool | None = None,
+    delivery: str = "",
+    delivery_note: str = "",
+    preorders: bool | None = None,
+    preorder_lead_time: str = "",
+    payment_methods: list[str] | None = None,
+    busy_hours: str = "",
 ) -> dict[str, Any]:
     """Prepare the shop's details (new shop, or edits to the active shop) for the owner to review.
     Nothing is saved until the owner confirms. Leave a field empty if the owner did not say it.
     currency is the ISO 4217 code (SGD, JPY, MYR…) for a new shop, only when the owner states
-    or clearly implies it; an existing shop keeps its currency."""
+    or clearly implies it; an existing shop keeps its currency.
+    Customer facts, only as the owner states them: halal is yes, no, muslim_owned or not_stated;
+    vegetarian_options and preorders are true/false; delivery is none, own, grab, foodpanda or
+    other (delivery_note: up to 80 characters, e.g. "within 3 km"); preorder_lead_time e.g.
+    "1 day ahead"; payment_methods from cash, paynow, card, grabpay, nets, other; busy_hours
+    e.g. "12:00-13:30". For an existing shop pass name="" and only the facts that changed."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}
     existing = ctx.store.context(ctx.uid, ctx.business_id)["business"]
-    given = {
+    given: dict[str, Any] = {
         "name": name,
         "category": category,
         "location": location,
@@ -135,16 +167,29 @@ def propose_business(
         "phone": phone,
         "currency": (currency or "").strip().upper(),
     }
+    facts: dict[str, Any] = {
+        "halal": (halal or "").strip().lower() or None,
+        "vegetarian_options": vegetarian_options,
+        "delivery": (delivery or "").strip().lower() or None,
+        "delivery_note": (delivery_note or "").strip() or None,
+        "preorders": preorders,
+        "preorder_lead_time": (preorder_lead_time or "").strip() or None,
+        "payment_methods": [m.strip().lower() for m in payment_methods]
+        if payment_methods
+        else None,
+        "busy_hours": (busy_hours or "").strip() or None,
+    }
     if existing:
-        # Edits keep saved values the owner did not mention.
+        # Edits keep everything saved that the owner did not mention, customer facts included.
         given = {
-            key: (value or "").strip() or existing["fields"].get(key, "")
-            for key, value in given.items()
+            **existing["fields"],
+            **{key: value.strip() for key, value in given.items() if (value or "").strip()},
         }
         # Saved prices are minor units of the saved currency, so it never changes on edit.
         given["currency"] = shop_currency(existing)
     elif not re.fullmatch(r"[A-Z]{3}", given["currency"]):
         given["currency"] = ui_currency.get() or DEFAULT_CURRENCY
+    given.update({key: value for key, value in facts.items() if value is not None})
     try:
         fields = BusinessFields(**given)
         proposal = ctx.store.propose(
@@ -163,7 +208,7 @@ def propose_business(
         [
             f"{key}: {existing['fields'].get(key) or '(empty)'} → {value or '(empty)'}"
             for key, value in fields.model_dump().items()
-            if value != existing["fields"].get(key, "")
+            if value != existing["fields"].get(key, "" if key not in FACT_KEYS else None)
         ]
         if existing
         else [f"New shop: {fields.name}"]

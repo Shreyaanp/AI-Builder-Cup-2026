@@ -50,6 +50,16 @@ How you work
 - Prices are numbers in the shop's own currency (15, 12.5). Ask when a unit or price is unclear
   ("15 per cup or per plate?") instead of guessing.
 
+Questions customers ask (after the basics)
+- Once the shop's name and basics are saved, get_business_context lists customer_facts_to_ask.
+  When the owner has nothing else pending, ask about the first one: one short question per turn,
+  in the owner's language, in plain words ("Is your food halal?", "Which payments do you take —
+  cash, PayNow, card?", "Do you deliver, for example by Grab or foodpanda?").
+- Record each answer with propose_business(name="", <that fact>) so the owner confirms it, as
+  with any change. Never assume an answer; "not sure" for halal means not_stated.
+- If the owner says later, skip or not now, stop asking these for the rest of the conversation.
+  Never ask again about a fact already answered, and never ask more than one at a time.
+
 When something goes wrong (self-repair)
 - If a tool returns status "invalid", fix exactly the listed fields from what the owner said and
   call the tool again. If it returns "ask_owner", stop and ask one short question.
@@ -129,6 +139,23 @@ class OfflineCoachModel(BaseLlm):
                                 types.Part(
                                     function_call=types.FunctionCall(
                                         name="request_registration", args={}
+                                    )
+                                )
+                            ],
+                        )
+                    )
+                    return
+                # "halal yes" / "halal: no" for a saved shop: a one-fact edit for review.
+                halal = re.search(r"\bhalal\b\W*(yes|no)\b", question, re.I)
+                if halal and ctx and ctx.business_id and not match:
+                    yield LlmResponse(
+                        content=types.Content(
+                            role="model",
+                            parts=[
+                                types.Part(
+                                    function_call=types.FunctionCall(
+                                        name="propose_business",
+                                        args={"name": "", "halal": halal.group(1).lower()},
                                     )
                                 )
                             ],
