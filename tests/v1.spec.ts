@@ -94,6 +94,38 @@ test('the coach turns a typed description into a proposal, never a save', async 
   await expect(page.getByRole('navigation', { name: 'Main' })).toBeInViewport()
 })
 
+test('switching shops never shows the other shop’s products or conversation', async ({ page }) => {
+  await open(page)
+  await addShop(page, 'Alpha Tea')
+  await page.getByRole('button', { name: 'My shop' }).click()
+  await page.getByRole('button', { name: 'Add product' }).click()
+  await page.getByLabel('Product name').fill('Alpha Chai')
+  await page.getByLabel('Price (₹)').fill('15')
+  await page.getByRole('button', { name: 'Review', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: 'Check before saving' })
+    .getByRole('button', { name: 'Confirm and save' })
+    .click()
+  await expect(page.getByText('Alpha Chai')).toBeVisible()
+  await page.getByRole('button', { name: 'Coach' }).click()
+  await page.getByLabel('Message').fill('Hello from Alpha')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByRole('log')).toContainText('Hello from Alpha')
+  // Second shop via the shop switcher.
+  await page.getByRole('button', { name: /Choose shop/ }).click()
+  await page.getByRole('menuitem', { name: 'New shop' }).click()
+  await page.getByLabel('Shop name').fill('Beta Bakery')
+  await page.getByRole('button', { name: 'Review', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: 'Check before saving' })
+    .getByRole('button', { name: 'Confirm and save' })
+    .click()
+  await expect(page.getByRole('button', { name: 'Choose shop: Beta Bakery' })).toBeVisible()
+  await expect(page.getByText('Hello from Alpha')).toHaveCount(0)
+  await page.getByRole('button', { name: 'My shop' }).click()
+  await expect(page.getByText('Alpha Chai')).toHaveCount(0)
+})
+
 test('Google handoff shows readiness and only official Google links', async ({ page }) => {
   await open(page)
   await addShop(page, 'Morning Crumb')

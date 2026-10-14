@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, IconButton, Snackbar, useTheme } from '@mui/material'
 import { X } from 'lucide-react'
@@ -36,7 +36,11 @@ export function WorkspaceProvider({
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [loading, setLoading] = useState(true)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
+  // Inventory is tagged with its shop so a switch never shows another shop's products.
+  const [inventory, setInventory] = useState<{ bid: string | null; items: Product[] }>({
+    bid: null,
+    items: [],
+  })
   const [destination, setDestination] = useState<Destination>('coach')
   const [proposal, setProposal] = useState<Proposal | null>(null)
   const [toast, setToast] = useState('')
@@ -49,11 +53,11 @@ export function WorkspaceProvider({
   const loadProducts = useCallback(
     async (id: string | null, signal?: AbortSignal) => {
       if (!id) {
-        setProducts([])
+        setInventory({ bid: null, items: [] })
         return
       }
       const items = await api<Product[]>(`/businesses/${id}/inventory`, { signal })
-      if (!signal?.aborted) setProducts(items)
+      if (!signal?.aborted) setInventory({ bid: id, items })
     },
     [api],
   )
@@ -84,7 +88,7 @@ export function WorkspaceProvider({
     const abort = new AbortController()
     void api<Product[]>(`/businesses/${activeId}/inventory`, { signal: abort.signal })
       .then((items) => {
-        if (!abort.signal.aborted) setProducts(items)
+        if (!abort.signal.aborted) setInventory({ bid: activeId, items })
       })
       .catch(() => undefined)
     return () => abort.abort()
@@ -94,9 +98,12 @@ export function WorkspaceProvider({
     async (product: Product, available: boolean) => {
       if (!activeId || !product.id) return
       // Optimistic: the switch moves at once; a failure restores the saved state.
-      setProducts((items) =>
-        items.map((item) => (item.id === product.id ? { ...item, available } : item)),
-      )
+      setInventory((current) => ({
+        ...current,
+        items: current.items.map((item) =>
+          item.id === product.id ? { ...item, available } : item,
+        ),
+      }))
       try {
         await api(`/businesses/${activeId}/inventory/${product.id}/availability`, {
           method: 'POST',
@@ -104,9 +111,12 @@ export function WorkspaceProvider({
         })
         await reload()
       } catch {
-        setProducts((items) =>
-          items.map((item) => (item.id === product.id ? { ...item, available: !available } : item)),
-        )
+        setInventory((current) => ({
+          ...current,
+          items: current.items.map((item) =>
+            item.id === product.id ? { ...item, available: !available } : item,
+          ),
+        }))
         setToast(language === 'hi' ? 'बदलाव सहेजा नहीं गया' : 'Couldn’t update. Try again.')
       }
     },
@@ -133,7 +143,7 @@ export function WorkspaceProvider({
       activeId,
       active: businesses.find((item) => item.id === activeId) ?? null,
       // Products shown always belong to the active shop.
-      products: activeId ? products : [],
+      products: inventory.bid === activeId ? inventory.items : [],
       destination,
       speakReplies,
       setSpeakReplies: (next) => {
@@ -170,7 +180,7 @@ export function WorkspaceProvider({
       businesses,
       loading,
       activeId,
-      products,
+      inventory,
       destination,
       speakReplies,
       reload,
