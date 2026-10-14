@@ -296,7 +296,7 @@ test('B7: every photo entry offers Take photo (rear camera) and Upload', async (
   await enter(page)
   const input = page.locator('#coach input[type="file"]')
   const take = page.getByRole('menuitem', { name: 'Take photo' })
-  const upload = page.getByRole('menuitem', { name: 'Upload photo' })
+  const upload = page.getByRole('menuitem', { name: 'Photo library' })
 
   // The start card's "Take a photo" (before a shop exists).
   await page.getByRole('button', { name: 'Take a photo' }).tap()
@@ -309,7 +309,7 @@ test('B7: every photo entry offers Take photo (rear camera) and Upload', async (
   await expect(input).toHaveAttribute('capture', 'environment')
 
   // The composer's photo button.
-  await page.getByRole('button', { name: 'Add photo', exact: true }).tap()
+  await page.getByRole('button', { name: 'Attach a photo or document', exact: true }).tap()
   chooser = page.waitForEvent('filechooser')
   await upload.tap()
   await chooser
