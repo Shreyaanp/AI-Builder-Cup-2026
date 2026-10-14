@@ -180,6 +180,8 @@ export const ja: Copy = {
     muslim_owned: 'ムスリム経営',
     not_stated: '未記載',
   },
+  factInputHelp: '候補を選ぶか自由に名前を入力。支払方法は8件まで、各40文字以内。',
+  deliveryInputHelp: '候補を選ぶか配達サービス名を入力（40文字以内）。',
   deliveryValues: {
     none: 'デリバリーなし',
     own: '自店デリバリー',
