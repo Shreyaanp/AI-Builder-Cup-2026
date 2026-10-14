@@ -113,7 +113,6 @@ export const ta: Copy = {
   signOut: 'வெளியேறுங்கள்',
   saved: 'சேமிக்கப்பட்டது',
   coachGreeting: 'இன்று எதைச் செய்யலாம்?',
-  coachGreetingShop: (name: string) => `${name} கடையில் என்ன புதிது?`,
   coachHint: 'கடைப் பலகையின் படத்தை அனுப்புங்கள் அல்லது கடைப் பெயரைச் சொல்லுங்கள்.',
   suggestPhoto: 'கடைப் படம் அனுப்புங்கள்',
   suggestAdd: 'என் கடையைச் சேருங்கள்',

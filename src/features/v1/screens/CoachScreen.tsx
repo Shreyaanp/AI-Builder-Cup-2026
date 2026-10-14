@@ -28,7 +28,6 @@ import {
   MessageSquarePlus,
   Mic,
   PackagePlus,
-  Plus,
   Share2,
   Square,
   Store,
@@ -81,8 +80,6 @@ export function CoachScreen() {
   const [reconnecting, setReconnecting] = useState(false)
   const [mode, setMode] = useState<'offline' | 'gemini' | null>(null)
   const [history, setHistory] = useState<Conversation[]>([])
-  // One "+" sheet holds every coach action: add shop/product, new chat, earlier chats.
-  const [actionsOpen, setActionsOpen] = useState(false)
   // Shop details sheet: null = closed, -1 = open, n = open on product n.
   const [sheet, setSheet] = useState<number | null>(null)
   const openSheet = (product?: number) => setSheet(product ?? -1)
@@ -96,6 +93,10 @@ export function CoachScreen() {
   const speaking = useRef<HTMLAudioElement | null>(null)
   const end = useRef<HTMLDivElement>(null)
   const { api, activeId, review, setFaceOpen, go, speakReplies } = ws
+  // One "+" sheet (opened from the top bar) holds every coach action: add shop/product, new
+  // chat, earlier chats.
+  const actionsOpen = ws.coachActions
+  const setActionsOpen = ws.setCoachActions
 
   const receive = useCallback(
     (event: CoachEvent) => {
@@ -395,17 +396,6 @@ export function CoachScreen() {
   const voiceText =
     voice.state === 'recording' ? t.listening : voice.state === 'replying' ? t.speaking : ''
 
-  const plusButton = (
-    <Tooltip title={t.newChat}>
-      <IconButton
-        aria-label={t.newChat}
-        aria-haspopup="dialog"
-        onClick={() => setActionsOpen(true)}
-      >
-        <Plus size={20} />
-      </IconButton>
-    </Tooltip>
-  )
   return (
     <Box
       id="coach"
@@ -420,15 +410,16 @@ export function CoachScreen() {
       }}
     >
       <OwnerJourney />
-      {/* One quiet row: which coach is answering, and every other action behind one "+".
-          On an empty chat the + sits beside the greeting instead of taking its own row. */}
+      {/* One quiet line: which coach is answering. Every other action is behind the top bar's +. */}
       {!empty && (
-        <Stack direction="row" sx={{ alignItems: 'center', minHeight: 48, gap: 1 }}>
-          <Typography variant="labelMedium" color="text.secondary" sx={{ flex: 1 }} noWrap>
-            {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
-          </Typography>
-          {plusButton}
-        </Stack>
+        <Typography
+          variant="labelMedium"
+          color="text.secondary"
+          noWrap
+          sx={{ display: 'block', minHeight: 32, pt: 2 }}
+        >
+          {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
+        </Typography>
       )}
       <Sheet
         open={actionsOpen}
@@ -499,7 +490,13 @@ export function CoachScreen() {
       <Box sx={{ flex: 1, pb: 4 }}>
         {empty ? (
           <Stack spacing={{ xs: 3, sm: 5 }} sx={{ pt: { xs: 1, sm: 10 }, pb: 4 }}>
-            <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+            {/* With a shop, the top bar already names it: no greeting line, only a heading for
+                screen readers. Before a shop exists the greeting introduces the coach. */}
+            {ws.active ? (
+              <Typography component="h1" sx={visuallyHidden}>
+                {t.navCoach}
+              </Typography>
+            ) : (
               <Typography
                 component="h1"
                 variant="headlineMedium"
@@ -508,10 +505,9 @@ export function CoachScreen() {
                   lineHeight: { xs: '2rem', sm: undefined },
                 }}
               >
-                {ws.active ? t.coachGreetingShop(ws.active.fields.name) : t.coachGreeting}
+                {t.coachGreeting}
               </Typography>
-              {plusButton}
-            </Stack>
+            )}
             {ws.active ? <ShopCard onOpen={openSheet} /> : <StartCard />}
             {ws.active && (
               <>

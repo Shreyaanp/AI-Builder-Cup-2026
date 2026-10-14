@@ -108,7 +108,6 @@ export const vi: Copy = {
   signOut: 'Đăng xuất',
   saved: 'Đã lưu',
   coachGreeting: 'Hôm nay bạn muốn làm gì?',
-  coachGreetingShop: (name: string) => `${name} có gì mới?`,
   coachHint: 'Gửi ảnh bảng hiệu hoặc cho tôi biết tên cửa hàng.',
   suggestPhoto: 'Gửi ảnh cửa hàng',
   suggestAdd: 'Thêm cửa hàng',

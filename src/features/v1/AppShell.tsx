@@ -309,6 +309,18 @@ function TopBar() {
         </Typography>
       </Button>
       <Box sx={{ flex: 1 }} />
+      {/* New chat and the other coach actions, next to settings (only where the coach is). */}
+      {ws.destination === 'coach' && (
+        <Tooltip title={t.newChat}>
+          <IconButton
+            aria-label={t.newChat}
+            aria-haspopup="dialog"
+            onClick={() => ws.setCoachActions(true)}
+          >
+            <Plus size={22} />
+          </IconButton>
+        </Tooltip>
+      )}
       <Tooltip title={t.settings}>
         <IconButton
           aria-label={t.settings}

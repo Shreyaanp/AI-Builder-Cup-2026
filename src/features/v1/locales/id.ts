@@ -109,7 +109,6 @@ export const id: Copy = {
   signOut: 'Keluar',
   saved: 'Tersimpan',
   coachGreeting: 'Apa yang ingin dikerjakan hari ini?',
-  coachGreetingShop: (name: string) => `Ada kabar baru di ${name}?`,
   coachHint: 'Kirim foto papan toko, atau beri tahu nama toko Anda.',
   suggestPhoto: 'Kirim foto toko',
   suggestAdd: 'Tambah toko saya',

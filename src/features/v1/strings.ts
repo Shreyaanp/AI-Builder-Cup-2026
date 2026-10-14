@@ -114,7 +114,6 @@ export const en = {
   saved: 'Saved',
   // Coach
   coachGreeting: 'What shall we work on today?',
-  coachGreetingShop: (name: string) => `What’s new at ${name}?`,
   coachHint: 'Send a photo of your shop board, or tell me your shop’s name.',
   suggestPhoto: 'Send a shop photo',
   suggestAdd: 'Add my shop',
