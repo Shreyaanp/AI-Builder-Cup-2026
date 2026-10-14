@@ -1,6 +1,7 @@
 import type { Copy } from '../strings'
 
 export const th: Copy = {
+  importUnavailable: 'การอ่านรูปภาพ PDF และบันทึกต้องเชื่อมต่อ AI ยังนำเข้า CSV และ Excel ได้',
   saveSales: 'บันทึกยอดขายนี้',
   salesSaved: 'บันทึกยอดขายแล้ว',
   salesReplace: 'การบันทึกจะแทนที่ยอดขายทั้งหมดในวันที่เหล่านี้ วันอื่นยังเหมือนเดิม',
@@ -237,7 +238,19 @@ export const th: Copy = {
   productName: 'ชื่อสินค้า',
   price: 'ราคา',
   currency: 'สกุลเงิน',
-  importMenu: 'นำเข้าจาก POS หรือ Excel',
+  importMenu: 'นำเข้ายอดขายหรือเมนู (Excel รูปภาพ บันทึก)',
+  importUpload: 'อัปโหลดไฟล์',
+  importTakePhoto: 'ถ่ายรูป',
+  importNotes: 'วางบันทึกยอดขายหรือเมนู',
+  importReviewNotes: 'ตรวจสอบบันทึก',
+  importReviewFlags: 'ตรวจสอบแถวที่ไม่แน่ใจอย่างละเอียด',
+  prepPlan: 'แผนเตรียมของ',
+  prepTomorrow: 'พรุ่งนี้',
+  prepLoading: 'กำลังเตรียมการคาดการณ์…',
+  prepEmpty: 'นำเข้าและบันทึกยอดขายอย่างน้อย 4 สัปดาห์ต่อรายการ',
+  prepTimesfm: 'TimesFM',
+  prepWeekday: 'ค่าเฉลี่ยวันเดียวกันของสัปดาห์ · ฤดูกาลและแนวโน้ม',
+  prepQuestion: 'พรุ่งนี้ควรเตรียมเท่าไร?',
   importing: 'กำลังอ่านไฟล์…',
   importFailed: 'อ่านไฟล์นี้ไม่ได้ กรุณาส่งไฟล์ CSV หรือ Excel ที่มีชื่อสินค้าและราคา',
   salesSummary: 'สรุปยอดขาย',

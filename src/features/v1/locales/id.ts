@@ -1,6 +1,8 @@
 import type { Copy } from '../strings'
 
 export const id: Copy = {
+  importUnavailable:
+    'Membaca foto, PDF, dan catatan memerlukan AI yang terhubung. Impor CSV dan Excel tetap berfungsi.',
   saveSales: 'Simpan penjualan ini',
   salesSaved: 'Penjualan disimpan',
   salesReplace: 'Menyimpan mengganti semua penjualan pada tanggal ini. Hari lain tetap.',
@@ -242,7 +244,19 @@ export const id: Copy = {
   productName: 'Nama produk',
   price: 'Harga',
   currency: 'Mata uang',
-  importMenu: 'Impor dari POS atau Excel',
+  importMenu: 'Impor penjualan atau menu (Excel, foto, catatan)',
+  importUpload: 'Unggah berkas',
+  importTakePhoto: 'Ambil foto',
+  importNotes: 'Tempel catatan penjualan atau menu',
+  importReviewNotes: 'Tinjau catatan',
+  importReviewFlags: 'Periksa baris yang tidak pasti dengan teliti',
+  prepPlan: 'Rencana persiapan',
+  prepTomorrow: 'Besok',
+  prepLoading: 'Menyiapkan prakiraan…',
+  prepEmpty: 'Impor dan simpan setidaknya 4 minggu penjualan per item.',
+  prepTimesfm: 'TimesFM',
+  prepWeekday: 'Rata-rata hari yang sama · musim dan tren',
+  prepQuestion: 'Berapa banyak yang harus saya siapkan besok?',
   importing: 'Membaca file Anda…',
   importFailed:
     'File itu tidak bisa dibaca. Kirim ekspor CSV atau Excel dengan nama item dan harga.',

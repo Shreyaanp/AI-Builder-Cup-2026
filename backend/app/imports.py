@@ -183,7 +183,8 @@ def sales_summary(rows: list[list[str]], mapping: ColumnMap) -> dict[str, Any]:
         name = cell(row, mapping.name)
         if not name:
             continue
-        qty = number(cell(row, mapping.quantity)) or 1
+        qty = number(cell(row, mapping.quantity)) if mapping.quantity is not None else 1
+        qty = qty if qty is not None else 0
         total = number(cell(row, mapping.total))
         if total is None:
             total = (number(cell(row, mapping.price)) or 0) * qty
