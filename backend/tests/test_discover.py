@@ -7,13 +7,85 @@ import pytest
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
-from app.discover import FIXTURE_PLACES, PLACES_MASK, MapsService, open_now
+from app.discover import (
+    CATEGORIES,
+    FIXTURE_PLACES,
+    PLACES_MASK,
+    DiscoveryPlace,
+    MapsService,
+    matches,
+    open_now,
+)
 from app.main import create_app
 from app.merchant import BusinessFields, MerchantRepository, ProductFields, ProposalRequest
 from app.settings import Settings
 from tests.test_photos import join
 
 pytest_plugins = ("tests.test_merchant_store",)  # store fixture covers both adapters
+
+
+@pytest.mark.parametrize(
+    ("category", "shop_type"),
+    [
+        ("coffee", "kedai kopi"),
+        ("food", "restaurant"),
+        ("bakery", "bakery"),
+        ("grocery", "supermarket"),
+        ("pharmacy", "pharmacy"),
+        ("hardware", "hardware store"),
+        ("fashion", "clothing store"),
+        ("beauty", "hair salon"),
+        ("services", "laundry"),
+        ("other", "book store"),
+        ("kopi", "cafe"),
+        ("hawker", "restaurant"),
+        ("café", "cafe"),
+        ("catering", "caterer"),
+    ],
+)
+def test_generic_categories_match_shop_keywords(category: str, shop_type: str) -> None:
+    place = DiscoveryPlace(
+        id="fixture",
+        name="Local business",
+        category=shop_type,
+        source="chalkboard",
+        lat=0,
+        lng=0,
+        distance_m=0,
+        open_now=True,
+        items=[],
+        sold_out=[],
+    )
+    assert matches(place, "", category, False)
+
+
+async def test_generic_categories_use_places_types(tmp_path: Path) -> None:
+    payloads: list[dict] = []
+
+    def fixture(request: httpx.Request) -> httpx.Response:
+        payloads.append(json.loads(request.content))
+        return httpx.Response(200, json={"places": []})
+
+    service = MapsService(settings(tmp_path, live=True), httpx.MockTransport(fixture))
+    try:
+        for category in [
+            "coffee",
+            "food",
+            "bakery",
+            "grocery",
+            "pharmacy",
+            "hardware",
+            "fashion",
+            "beauty",
+            "services",
+            "other",
+        ]:
+            await service.places(0, 0, 3000, "", category)
+            assert payloads[-1]["includedTypes"] == list(CATEGORIES[category][0])
+        assert {"beauty_salon", "hair_care"} <= set(payloads[-3]["includedTypes"])
+        assert {"grocery_store", "supermarket"} <= set(payloads[3]["includedTypes"])
+    finally:
+        await service.close()
 
 
 def settings(tmp_path: Path, *, live: bool = False) -> Settings:

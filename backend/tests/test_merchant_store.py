@@ -38,6 +38,42 @@ def create(store: MerchantRepository, uid: str, name: str = "Ram Tea Stall") -> 
     return str(store.commit(uid, proposal["id"], proposal["digest"])["business_id"])
 
 
+@pytest.mark.parametrize("delivery", ["Swiggy", "grab", "foodpanda"])
+def test_global_payment_and_delivery_round_trip(store: MerchantRepository, delivery: str) -> None:
+    methods = ["UPI", "paynow", "grabpay", "nets", "cash", "card", "PhonePe", "Paytm"]
+    proposal = store.propose(
+        "alice",
+        ProposalRequest(
+            kind="business",
+            business=BusinessFields(name="Local shop", payment_methods=methods, delivery=delivery),
+        ),
+    )
+    bid = store.commit("alice", proposal["id"], proposal["digest"])["business_id"]
+    fields = store.context("alice", bid)["business"]["fields"]
+    assert fields["payment_methods"] == methods
+    assert fields["delivery"] == delivery
+    store.share("alice", bid, True)
+    public = store.public_shop(bid)
+    assert public is not None
+    assert public["facts"]["payment_methods"] == methods
+    assert public["facts"]["delivery"] == delivery
+
+
+@pytest.mark.parametrize(
+    "facts",
+    [
+        {"payment_methods": ["x" * 41]},
+        {"payment_methods": [str(n) for n in range(9)]},
+        {"payment_methods": [" "]},
+        {"delivery": "x" * 41},
+        {"delivery": " "},
+    ],
+)
+def test_global_fact_name_limits(facts: dict[str, object]) -> None:
+    with pytest.raises(ValueError):
+        BusinessFields.model_validate({"name": "Local shop", **facts})
+
+
 def create_with_products(store: MerchantRepository, uid: str = "alice") -> str:
     proposal = store.propose(
         uid,
@@ -425,8 +461,8 @@ def test_customer_facts_are_sealed_saved_and_published(store: MerchantRepository
     "fact",
     [
         {"halal": "maybe"},
-        {"delivery": "drone"},
-        {"payment_methods": ["bitcoin"]},
+        {"delivery": "x" * 41},
+        {"payment_methods": ["x" * 41]},
         {"busy_hours": "x" * 81},
         {"delivery_note": "x" * 81},
         {"preorder_lead_time": "x" * 81},
