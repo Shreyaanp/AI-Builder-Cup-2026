@@ -8,6 +8,16 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .limits import JSON_BODY_BYTES
 
+# Browsers ignore HSTS over plain http, so local dev is unaffected. The popup sign-in needs
+# same-origin-allow-popups; camera, microphone and location stay first-party only.
+SECURITY_HEADERS = {
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "Content-Security-Policy": "frame-ancestors 'none'",
+    "X-Frame-Options": "DENY",
+    "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    "Permissions-Policy": "camera=(self), microphone=(self), geolocation=(self), payment=()",
+}
+
 
 class RequestBoundary:
     def __init__(self, app: ASGIApp, allowed_origins: list[str]) -> None:
@@ -26,6 +36,7 @@ class RequestBoundary:
                     headers["Cache-Control"] = "no-store"
                 headers["X-Content-Type-Options"] = "nosniff"
                 headers["Referrer-Policy"] = "same-origin"
+                headers.update(SECURITY_HEADERS)
             await send(message)
 
         async def reject(code: str, status: int) -> None:

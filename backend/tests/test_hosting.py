@@ -28,6 +28,13 @@ def test_single_origin_serves_frontend_and_api_without_exposing_files(tmp_path: 
         assert client.get("/%2e%2e/backend/.env").status_code == 404
         assert client.get("/assets/fixture.js").headers["cache-control"].endswith("immutable")
         assert client.get("/").headers["cache-control"] == "no-store"
+        for path in ("/", "/api/v1/health"):
+            headers = client.get(path).headers
+            assert headers["x-frame-options"] == "DENY"
+            assert headers["content-security-policy"] == "frame-ancestors 'none'"
+            assert headers["strict-transport-security"].startswith("max-age=")
+            assert headers["cross-origin-opener-policy"] == "same-origin-allow-popups"
+            assert "camera=(self)" in headers["permissions-policy"]
 
 
 def test_production_requires_identity_cloud_memory_and_https(
