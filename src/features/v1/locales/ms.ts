@@ -87,6 +87,7 @@ export const ms: Copy = {
   draftLegal: 'Draf prototaip — belum disemak dari segi undang-undang.',
   legalTranslation: 'Terjemahan untuk kemudahan — versi bahasa Inggeris terpakai.',
   close: 'Tutup',
+  setupDone: 'Persediaan selesai',
   discardTitle: 'Buang perubahan?',
   discardBody: 'Apa yang anda taip atau sedang semak belum disimpan.',
   discard: 'Buang',

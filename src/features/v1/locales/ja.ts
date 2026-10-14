@@ -85,6 +85,7 @@ export const ja: Copy = {
   draftLegal: '試作版の草案です。法務レビューは未実施です。',
   legalTranslation: '翻訳は参考用です。英語版が適用されます。',
   close: '閉じる',
+  setupDone: '設定完了',
   discardTitle: '変更を破棄しますか？',
   discardBody: '入力した内容や確認中の内容はまだ保存されていません。',
   discard: '破棄',
