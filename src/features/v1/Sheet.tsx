@@ -31,6 +31,7 @@ export function Sheet({
   children,
   actions,
   onEntered,
+  keepMounted = false,
 }: {
   open: boolean
   onClose: () => void
@@ -40,6 +41,8 @@ export function Sheet({
   children: ReactNode
   actions?: ReactNode
   onEntered?: () => void
+  /** Keep content (and typed drafts) mounted while closed. */
+  keepMounted?: boolean
 }) {
   const roles = useTheme().material
   const t = useCopy()
@@ -66,7 +69,7 @@ export function Sheet({
         disableDiscovery
         transitionDuration={timing}
         // Unmount when closed, like a dialog: no hidden copy left in the page.
-        ModalProps={{ keepMounted: false }}
+        ModalProps={{ keepMounted }}
         slotProps={{
           transition: { onEntered },
           paper: {
@@ -127,6 +130,7 @@ export function Sheet({
   return (
     <Dialog
       open={open}
+      keepMounted={keepMounted}
       onClose={onClose}
       aria-labelledby={titleId}
       transitionDuration={timing}
