@@ -217,6 +217,15 @@ export const id: Copy = {
   productName: 'Nama produk',
   price: 'Harga',
   currency: 'Mata uang',
+  importMenu: 'Impor dari POS atau Excel',
+  importing: 'Membaca file Anda…',
+  importFailed:
+    'File itu tidak bisa dibaca. Kirim ekspor CSV atau Excel dengan nama item dan harga.',
+  salesSummary: 'Ringkasan penjualan',
+  salesNotSaved: 'Dari file Anda. Tidak ada yang disimpan.',
+  salesRange: (days: number, from: string, to: string) =>
+    days ? `${days} hari · ${from} – ${to}` : 'Tidak ada tanggal di file',
+  topItems: 'Terlaris',
   currencyLocked: 'Tidak bisa diubah setelah toko disimpan',
   unit: 'Satuan (cangkir, kg, buah…)',
   stockOptional: 'Stok (opsional)',

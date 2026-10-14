@@ -220,6 +220,15 @@ export const fil: Copy = {
   productName: 'Pangalan ng produkto',
   price: 'Presyo',
   currency: 'Currency',
+  importMenu: 'Mag-import mula sa POS o Excel',
+  importing: 'Binabasa ang file…',
+  importFailed:
+    'Hindi mabasa ang file. Magpadala ng CSV o Excel na may pangalan ng item at presyo.',
+  salesSummary: 'Buod ng benta',
+  salesNotSaved: 'Mula sa file mo. Walang na-save.',
+  salesRange: (days: number, from: string, to: string) =>
+    days ? `${days} araw · ${from} – ${to}` : 'Walang petsa sa file',
+  topItems: 'Pinakamabenta',
   currencyLocked: 'Hindi na mababago kapag na-save na ang tindahan',
   unit: 'Yunit (tasa, kg, piraso…)',
   stockOptional: 'Stock (opsyonal)',

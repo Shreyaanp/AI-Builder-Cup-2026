@@ -217,6 +217,15 @@ export const ms: Copy = {
   productName: 'Nama produk',
   price: 'Harga',
   currency: 'Mata wang',
+  importMenu: 'Import dari POS atau Excel',
+  importing: 'Membaca fail anda…',
+  importFailed:
+    'Fail itu tidak dapat dibaca. Hantar eksport CSV atau Excel dengan nama item dan harga.',
+  salesSummary: 'Ringkasan jualan',
+  salesNotSaved: 'Daripada fail anda. Tiada apa-apa disimpan.',
+  salesRange: (days: number, from: string, to: string) =>
+    days ? `${days} hari · ${from} – ${to}` : 'Tiada tarikh dalam fail',
+  topItems: 'Paling laris',
   currencyLocked: 'Tidak boleh diubah selepas kedai disimpan',
   unit: 'Unit (cawan, kg, biji…)',
   stockOptional: 'Stok (pilihan)',
