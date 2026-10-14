@@ -1,6 +1,10 @@
 import type { Copy } from '../strings'
 
 export const th: Copy = {
+  connectionOffline: 'ออฟไลน์',
+  connectionReconnecting: 'กำลังเชื่อมต่อใหม่…',
+  voiceFailed: 'การเชื่อมต่อเสียงสิ้นสุดแล้ว ลองอีกครั้งหรือใช้ข้อความ',
+  voiceRestarted: 'เชื่อมต่อเสียงใหม่แล้ว กรุณาพูดอีกครั้ง',
   appName: 'Chalkboard',
   independent: 'แอปต้นแบบอิสระ · ไม่ใช่ผลิตภัณฑ์ Google',
   loading: 'กำลังเตรียมร้านของคุณ…',

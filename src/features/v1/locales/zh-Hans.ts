@@ -1,6 +1,10 @@
 import type { Copy } from '../strings'
 
 export const zhHans: Copy = {
+  connectionOffline: '离线',
+  connectionReconnecting: '正在重新连接…',
+  voiceFailed: '语音连接已结束。请重试或使用文字。',
+  voiceRestarted: '语音已重新连接。请再说一遍。',
   appName: 'Chalkboard',
   independent: '独立原型 · 非 Google 产品',
   loading: '正在准备您的店铺…',

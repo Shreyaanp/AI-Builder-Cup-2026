@@ -3,6 +3,10 @@ import type { Copy } from '../strings'
 export const id: Copy = {
   appName: 'Chalkboard',
   independent: 'Prototipe independen · bukan produk Google',
+  connectionOffline: 'Offline',
+  connectionReconnecting: 'Menghubungkan kembali…',
+  voiceFailed: 'Koneksi suara berakhir. Coba lagi atau gunakan teks.',
+  voiceRestarted: 'Suara terhubung kembali. Silakan ucapkan lagi.',
   loading: 'Menyiapkan toko Anda…',
   welcomeTitle: 'Toko Anda hadir online lewat satu percakapan',
   welcomeBody:
