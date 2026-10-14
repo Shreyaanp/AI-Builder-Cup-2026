@@ -29,6 +29,7 @@ from .coordinator import (
     propose_products,
     remember_note,
     request_registration,
+    shop_currency,
 )
 from .settings import Settings
 from .sourcing_offline import sourcing_call, sourcing_reply
@@ -158,6 +159,88 @@ def prepare_business_draft(name: str, category: str, location: str) -> dict[str,
     return {"status": "needs_review", "fields": proposal.model_dump(), "published": False}
 
 
+NUMBER_WORDS = {
+    word: index
+    for index, word in enumerate(
+        "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
+        "fifteen sixteen seventeen eighteen nineteen twenty".split()
+    )
+}
+SOLD_OUT = r"sold\s*out|finished|out of stock|not available|unavailable"
+BACK = r"back(?:\s+in\s+stock)?|available again|in stock"
+# Spoken currency names and the shop currencies they can mean; a price in another currency is
+# never converted or guessed.
+CURRENCY_WORDS = {
+    r"dollars?|bucks?|\$": {"SGD", "USD", "AUD", "CAD", "HKD", "NZD", "TWD", "BND"},
+    r"rupees?|rs\.?|₹": {"INR", "LKR", "NPR", "PKR"},
+    r"yen|¥": {"JPY"},
+    r"ringgit|rm": {"MYR"},
+    r"baht|฿": {"THB"},
+    r"won|₩": {"KRW"},
+    r"pesos?|₱": {"PHP"},
+    r"rupiah": {"IDR"},
+    r"dong|₫": {"VND"},
+    r"euros?|€": {"EUR"},
+    r"pounds?|£": {"GBP"},
+}
+
+
+def upkeep_call(question: str, ctx: Any) -> types.Part | None:
+    """Offline fixture for daily upkeep: "Kopi is two dollars now, kaya toast sold out".
+
+    Only items already on the saved menu are matched, so the review card shows real old → new
+    values; anything else falls through to the scripted reply.
+    """
+    import re
+
+    if "?" in question or re.search(r"\b(?:prep|forecast|how much|how many)\b", question, re.I):
+        return None
+    try:
+        context = ctx.store.context(ctx.uid, ctx.business_id)
+        inventory = context["inventory"]
+        currency = shop_currency(context["business"])
+    except Exception:
+        return None
+    names = sorted({p["name"] for p in inventory}, key=len, reverse=True)
+    items: dict[str, dict[str, object]] = {}
+    for clause in re.split(r"[,;.\n]|\band\b|\bbut\b", question, flags=re.I):
+        lowered = clause.casefold()
+        name = next((n for n in names if n.casefold() in lowered), None)
+        if not name:
+            continue
+        rest = lowered.split(name.casefold(), 1)[1]
+        if re.search(rf"\b(?:{SOLD_OUT})\b", rest):
+            items.setdefault(name, {"name": name})["available"] = False
+            continue
+        if re.search(rf"\b(?:{BACK})\b", rest):
+            items.setdefault(name, {"name": name})["available"] = True
+            continue
+        named = [
+            codes
+            for pattern, codes in CURRENCY_WORDS.items()
+            if re.search(rf"(?<!\w)(?:{pattern})(?!\w)", rest)
+        ]
+        if named and not any(currency in codes for codes in named):
+            continue  # "two dollars" for a rupee shop: leave it to the owner, never guess
+        number = re.search(r"(\d+(?:[.,]\d{1,3})?)", rest)
+        word = next(
+            (NUMBER_WORDS[w] for w in re.findall(r"[a-z]+", rest) if w in NUMBER_WORDS), None
+        )
+        if number:
+            items.setdefault(name, {"name": name})["price"] = float(
+                number.group(1).replace(",", ".")
+            )
+        elif word is not None:
+            items.setdefault(name, {"name": name})["price"] = float(word)
+    if not items:
+        return None
+    return types.Part(
+        function_call=types.FunctionCall(
+            name="propose_products", args={"items": list(items.values())}
+        )
+    )
+
+
 class OfflineCoachModel(BaseLlm):
     """Scripted fixture using the actual ADK model interface; never calls a provider."""
 
@@ -231,6 +314,10 @@ class OfflineCoachModel(BaseLlm):
                 )
                 if sourcing is not None:
                     yield LlmResponse(content=types.Content(role="model", parts=[sourcing]))
+                    return
+                upkeep = upkeep_call(question, ctx) if ctx and ctx.business_id else None
+                if upkeep is not None:
+                    yield LlmResponse(content=types.Content(role="model", parts=[upkeep]))
                     return
                 if ctx and ctx.business_id and re.search(r"\b(?:prep|forecast)\b", question, re.I):
                     yield LlmResponse(

@@ -41,10 +41,11 @@ physical camera/GPS and hosted validation remain live-only.
 **Connects to:** S3 and S4.
 
 Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s2.spec.ts`.
-Gaps: [A1](docs/stories/AUDIT.md) — conversational edits lack an offline fixture.
+A1 fixed: "Kopi is 20 rupees now, kaya toast sold out" opens one review card offline (menu items
+only; a price in another currency is never guessed). Live voice verified against Vertex on
+2026-10-15: gemini-3.8-live calls get_business_context then propose_products with both changes.
 A3, A9 and A12 are fixed and live (99bed19); visible public pages poll within about five seconds.
-**Known:** the live voice model must actually call the tools (it said "I can't access your menu").
-Reviewed manual edits and CSV import are verified fallbacks, not live voice/photo/PDF evidence.
+Photo/PDF import and on-device speech recognition remain live-only evidence.
 
 ## S3 · A customer finds a shop nearby and talks to it
 

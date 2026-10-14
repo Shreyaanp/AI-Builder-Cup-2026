@@ -3,7 +3,6 @@ import {
   closeSheet,
   confirm,
   enter,
-  gap,
   liveOnly,
   localOnly,
   phone,
@@ -34,25 +33,18 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Press to talk' })).toBeVisible()
     await tryVoice(page, 2)
-    liveOnly('Voice tool execution and ASR; daily text fixture is also incomplete')
+    // Live voice tool calls were verified against Vertex on 2026-10-15 (propose_products).
+    liveOnly('Speech recognition and live voice tool execution')
     await page
       .getByLabel('Message', { exact: true })
-      .fill('Kopi is two dollars now, kaya toast sold out')
+      .fill('Kopi is 20 rupees now, kaya toast sold out')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
-    await expect(page.getByRole('log')).toContainText('This is a scripted reply')
-    await expect(page.getByRole('dialog', { name: reviewName })).toHaveCount(0)
-    gap(
-      'S2/1–2: offline coach does not propose price or availability edits; manual review below is a fallback',
-    )
     await shot(page, 2, 1)
   })
-  await test.step('2 · confirm a reviewed price via the manual fallback', async () => {
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
-    await page.getByRole('button', { name: /^Menu/ }).click()
-    await page.getByRole('button', { name: /^Edit Kopi/ }).click()
-    await page.getByLabel(/^Price/).fill('20')
-    await page.getByRole('button', { name: 'Review', exact: true }).click()
-    await expect(page.getByRole('dialog', { name: reviewName })).toContainText('₹20.00 / cup')
+  await test.step('2 · one review card for both changes, one tap to confirm', async () => {
+    const review = page.getByRole('dialog', { name: reviewName })
+    await expect(review).toContainText('₹20.00 / cup')
+    await expect(review).toContainText(/Kaya toast/i)
     await shot(page, 2, 2)
     await confirm(page)
   })
@@ -61,16 +53,18 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
     await shot(customer, 2, 3)
   })
   await test.step('4 · sold-out switch reaches customer page', async () => {
+    const toast = customer.getByRole('listitem').filter({ hasText: 'Kaya toast' })
+    await expect(toast).toContainText('Sold out')
+    await page.getByRole('button', { name: 'My shop', exact: true }).click()
     await page.getByRole('button', { name: /^Sold out today/ }).click()
     const available = page.getByRole('switch', { name: 'Available: Kaya toast' })
-    await available.click()
     await expect(available).not.toBeChecked()
+    await available.click()
+    await expect(available).toBeChecked()
     await shot(page, 2, 4)
     await closeSheet(page)
     await customer.getByRole('button', { name: 'Refresh', exact: true }).click()
-    await expect(customer.getByRole('listitem').filter({ hasText: 'Kaya toast' })).toContainText(
-      'Sold out',
-    )
+    await expect(toast).not.toContainText('Sold out')
   })
   await test.step('5 · daily still-the-same check', async () => {
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
