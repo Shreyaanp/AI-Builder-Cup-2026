@@ -90,6 +90,7 @@ test('the customer page follows the customer’s phone language', async ({ page,
     .getByRole('button', { name: 'Confirm and save' })
     .click()
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: /^Customer page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   await sharing.click()
   await expect(sharing).toBeChecked()

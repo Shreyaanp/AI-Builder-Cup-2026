@@ -14,6 +14,38 @@ export const shape = { xs: 4, sm: 8, md: 12, lg: 16, lgIncreased: 20, xl: 28, fu
 /** M3 window size classes (dp == CSS px on the web). */
 export const windowClass = { medium: 600, expanded: 840, large: 1200 }
 
+/**
+ * M3 motion tokens. Enter with emphasized-decelerate (long), exit with emphasized-accelerate
+ * (short). Animate transform/opacity only; the global reduced-motion rule makes these instant.
+ */
+export const motion = {
+  easing: {
+    emphasized: 'cubic-bezier(0.2, 0, 0, 1)',
+    emphasizedDecelerate: 'cubic-bezier(0.05, 0.7, 0.1, 1)',
+    emphasizedAccelerate: 'cubic-bezier(0.3, 0, 0.8, 0.15)',
+    standard: 'cubic-bezier(0.2, 0, 0, 1)',
+  },
+  duration: { short: 200, medium: 300, enter: 400, exit: 200 },
+}
+
+/** Card entrance: fade + small rise. Spread into `sx`. */
+export const enterRise = {
+  '@keyframes enterRise': {
+    from: { opacity: 0, transform: 'translateY(12px)' },
+    to: { opacity: 1, transform: 'none' },
+  },
+  animation: `enterRise ${motion.duration.enter}ms ${motion.easing.emphasizedDecelerate} both`,
+}
+
+/** A value that just changed fades in over the old one. Spread into `sx`. */
+export const fieldFade = {
+  '@keyframes fieldFade': {
+    from: { opacity: 0, transform: 'translateY(4px)' },
+    to: { opacity: 1, transform: 'none' },
+  },
+  animation: `fieldFade ${motion.duration.medium}ms ${motion.easing.emphasizedDecelerate} both`,
+}
+
 // Generated with Google's official color utilities; screens consume semantic roles.
 export function materialRoles(mode: Appearance) {
   return generatedRoles[mode]
@@ -82,12 +114,33 @@ const typeScale: Record<TypeRole, TypeStyle> = {
   labelSmall: role(11, 16, 500, 0.5),
 }
 
+// Compact windows: slightly tighter body/label sizes and tracking. Sizes stay ≥ 12px.
+const compactQuery = `@media (max-width:${windowClass.medium - 1}px)`
+const compactScale: Partial<Record<TypeRole, TypeStyle>> = {
+  bodyLarge: role(15, 22, 400, 0.15),
+  bodyMedium: role(14, 20, 400, 0.1),
+  labelLarge: role(14, 20, 500, 0.05),
+  labelMedium: role(12, 16, 500, 0.3),
+}
+const responsiveScale = Object.fromEntries(
+  (Object.keys(typeScale) as TypeRole[]).map((key) => [
+    key,
+    compactScale[key] ? { ...typeScale[key], [compactQuery]: compactScale[key] } : typeScale[key],
+  ]),
+) as Record<TypeRole, CSSProperties>
+
 export function nivaTheme(mode: Appearance) {
   const roles = materialRoles(mode)
   return createTheme({
     material: roles,
     spacing: 4,
     shape: { borderRadius: shape.lg },
+    transitions: {
+      easing: {
+        easeOut: motion.easing.emphasizedDecelerate,
+        sharp: motion.easing.emphasizedAccelerate,
+      },
+    },
     palette: {
       mode,
       primary: { main: roles.primary, contrastText: roles.onPrimary },
@@ -106,7 +159,7 @@ export function nivaTheme(mode: Appearance) {
     },
     typography: {
       fontFamily: FONT_STACK,
-      ...typeScale,
+      ...responsiveScale,
       // Legacy starter roles (classic screen) remain unchanged.
       h1: {
         fontSize: '2.25rem',

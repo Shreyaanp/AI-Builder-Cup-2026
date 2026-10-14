@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Alert,
   Box,
@@ -11,14 +12,26 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { CheckCircle2, Circle, Copy, ExternalLink, Info, MapPinned } from 'lucide-react'
+import {
+  CheckCircle2,
+  Circle,
+  Copy,
+  ExternalLink,
+  Gauge,
+  Info,
+  ListChecks,
+  MapPinned,
+  Pencil,
+} from 'lucide-react'
 import { formatPrice, shopCurrency } from '../format'
+import { Sheet } from '../Sheet'
+import { Supporting, Tile } from '../ShopTiles'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
-import { shape } from '../../../design/theme'
 import { GoogleSimulator } from '../../google-sim/GoogleSimulator'
 import { mapsSearch, OWNER_URL } from '../../google-sim/links'
 import { useSimCopy } from '../../google-sim/strings'
+import { shape } from '../../../design/theme'
 
 // Official owner entry points (support.google.com/business/answer/2911778).
 export function GoogleScreen() {
@@ -26,6 +39,7 @@ export function GoogleScreen() {
   const sim = useSimCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
+  const [sheet, setSheet] = useState<'readiness' | 'steps' | null>(null)
   const shop = ws.active
   if (!shop)
     return (
@@ -75,86 +89,144 @@ export function GoogleScreen() {
           <Typography component="h1" variant="headlineMedium">
             {t.googleTitle}
           </Typography>
-          <Typography variant="bodyLarge" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography variant="bodyLarge" color="text.secondary" sx={{ mt: 2 }}>
             {t.googleBody}
           </Typography>
         </Box>
 
-        <Box sx={{ bgcolor: roles.surfaceContainerLow, borderRadius: `${shape.lg}px`, p: 3 }}>
-          <Stack
-            direction="row"
-            sx={{ justifyContent: 'space-between', alignItems: 'baseline', mb: 1.5 }}
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 3 }}>
+          <Tile
+            wide
+            icon={<Gauge size={20} />}
+            label={t.readinessTitle}
+            value={t.readiness(done, checks.length)}
+            onClick={() => setSheet('readiness')}
           >
-            <Typography component="h2" variant="titleMedium">
-              {shop.fields.name}
-            </Typography>
-            <Typography variant="labelLarge" color="text.secondary">
-              {t.readiness(done, checks.length)}
-            </Typography>
-          </Stack>
-          <LinearProgress
-            variant="determinate"
-            value={(done / checks.length) * 100}
-            aria-label={t.readiness(done, checks.length)}
-            sx={{ height: 6, borderRadius: 3, bgcolor: roles.surfaceContainerHighest }}
-          />
-          <List dense sx={{ mt: 1 }}>
-            {checks.map((check) => (
-              <ListItem key={check.label} disableGutters>
-                <ListItemIcon
-                  sx={{ minWidth: 40, color: check.done ? roles.primary : roles.outline }}
-                  aria-hidden="true"
-                >
-                  {check.done ? <CheckCircle2 size={22} /> : <Circle size={22} />}
-                </ListItemIcon>
-                <ListItemText
-                  primary={check.label}
-                  secondary={check.done ? t.ready : t.missing}
-                  slotProps={{
-                    primary: { variant: 'bodyLarge' },
-                    secondary: { variant: 'bodySmall' },
-                  }}
-                />
-              </ListItem>
-            ))}
-          </List>
-          {done < checks.length && (
-            <Button onClick={() => ws.openEditor({ kind: 'business', fields: shop.fields })}>
+            <LinearProgress
+              variant="determinate"
+              value={(done / checks.length) * 100}
+              aria-hidden="true"
+              sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
+            />
+            <Supporting>
+              {checks
+                .filter((check) => !check.done)
+                .map((check) => check.label)
+                .join(' · ') || t.ready}
+            </Supporting>
+          </Tile>
+          <Tile
+            wide
+            icon={<ListChecks size={20} />}
+            label={t.finishOnGoogle}
+            value={t.googleSteps[0]}
+            onClick={() => setSheet('steps')}
+          >
+            <Supporting>{sim.liveOwner}</Supporting>
+          </Tile>
+        </Box>
+
+        <Stack
+          direction="row"
+          spacing={3}
+          sx={{ alignItems: 'flex-start', color: 'text.secondary' }}
+        >
+          <Box aria-hidden="true" sx={{ pt: 0.5, display: 'flex' }}>
+            <Info size={18} />
+          </Box>
+          <Typography variant="bodyMedium">{t.googleHonest}</Typography>
+        </Stack>
+        {/* The simulator stays on the page (restyle only): its Simulated flag is always visible. */}
+        <Box
+          sx={{ bgcolor: roles.surfaceContainerLow, borderRadius: `${shape.lgIncreased}px`, p: 4 }}
+        >
+          <GoogleSimulator />
+        </Box>
+      </Stack>
+
+      <Sheet
+        open={sheet === 'readiness'}
+        onClose={() => setSheet(null)}
+        titleId="google-readiness-title"
+        title={t.readiness(done, checks.length)}
+        actions={
+          done < checks.length ? (
+            <Button
+              variant="contained"
+              startIcon={<Pencil size={18} />}
+              onClick={() => {
+                setSheet(null)
+                ws.openEditor({ kind: 'business', fields: shop.fields })
+              }}
+            >
               {t.editDetails}
             </Button>
-          )}
-        </Box>
-
-        <Box component="ol" sx={{ m: 0, pl: 3, display: 'grid', gap: 1.5 }}>
-          {t.googleSteps.map((step) => (
-            <Typography component="li" variant="bodyLarge" key={step}>
-              {step}
-            </Typography>
+          ) : undefined
+        }
+      >
+        <List dense disablePadding>
+          {checks.map((check) => (
+            <ListItem key={check.label} disableGutters>
+              <ListItemIcon
+                sx={{ minWidth: 40, color: check.done ? roles.primary : roles.outline }}
+                aria-hidden="true"
+              >
+                {check.done ? <CheckCircle2 size={22} /> : <Circle size={22} />}
+              </ListItemIcon>
+              <ListItemText
+                primary={check.label}
+                secondary={check.done ? t.ready : t.missing}
+                slotProps={{
+                  primary: { variant: 'bodyLarge' },
+                  secondary: { variant: 'bodySmall' },
+                }}
+              />
+            </ListItem>
           ))}
-        </Box>
+        </List>
+      </Sheet>
 
-        <Stack spacing={1.5}>
-          <Typography variant="bodyMedium">{sim.handoffHelp}</Typography>
-          <Typography variant="labelMedium">{sim.liveOwner}</Typography>
-          <Button
-            variant="contained"
-            startIcon={<ExternalLink size={20} />}
-            href={OWNER_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {t.addOnGoogle}
-          </Button>
-          <Typography variant="labelMedium">{sim.liveMaps}</Typography>
-          <Button
-            variant="outlined"
-            startIcon={<MapPinned size={20} />}
-            href={mapsSearch(f.name, f.location)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {t.claimOnMaps}
-          </Button>
+      <Sheet
+        open={sheet === 'steps'}
+        onClose={() => setSheet(null)}
+        titleId="google-steps-title"
+        title={t.finishOnGoogle}
+      >
+        <Stack spacing={4}>
+          <Box component="ol" sx={{ m: 0, pl: 6, display: 'grid', gap: 2 }}>
+            {t.googleSteps.map((step) => (
+              <Typography component="li" variant="bodyLarge" key={step}>
+                {step}
+              </Typography>
+            ))}
+          </Box>
+          <Typography variant="bodyMedium" color="text.secondary">
+            {sim.handoffHelp}
+          </Typography>
+          <Stack spacing={2}>
+            <Typography variant="labelMedium">{sim.liveOwner}</Typography>
+            <Button
+              variant="contained"
+              startIcon={<ExternalLink size={20} />}
+              href={OWNER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t.addOnGoogle}
+            </Button>
+          </Stack>
+          <Stack spacing={2}>
+            <Typography variant="labelMedium">{sim.liveMaps}</Typography>
+            <Button
+              variant="outlined"
+              startIcon={<MapPinned size={20} />}
+              href={mapsSearch(f.name, f.location)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t.claimOnMaps}
+            </Button>
+          </Stack>
           <Button
             startIcon={<Copy size={20} />}
             onClick={() => {
@@ -167,19 +239,7 @@ export function GoogleScreen() {
             {t.copyListing}
           </Button>
         </Stack>
-
-        <Stack
-          direction="row"
-          spacing={1.5}
-          sx={{ alignItems: 'flex-start', color: 'text.secondary' }}
-        >
-          <Box aria-hidden="true" sx={{ pt: 0.25 }}>
-            <Info size={18} />
-          </Box>
-          <Typography variant="bodyMedium">{t.googleHonest}</Typography>
-        </Stack>
-        <GoogleSimulator />
-      </Stack>
+      </Sheet>
     </Box>
   )
 }

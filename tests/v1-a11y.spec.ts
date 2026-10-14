@@ -44,6 +44,8 @@ async function sharedShop(page: Page) {
   await open(page)
   await addShop(page, 'Accessibility Tea Stall')
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  // My shop is tiles; each opens a bottom sheet.
+  await page.getByRole('button', { name: /^Menu/ }).click()
   await page.getByRole('button', { name: 'Add product', exact: true }).click()
   await page.getByLabel('Product name').fill('Chai')
   await page.getByLabel(/^Price/).fill('15')
@@ -52,12 +54,19 @@ async function sharedShop(page: Page) {
   const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('Chai')
   await review.getByRole('button', { name: 'Confirm and save' }).click()
-  await expect(review).not.toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: /^Menu/ }).click()
   await expect(page.getByRole('button', { name: /^Edit Chai/ })).toContainText('$15.00')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: /^Customer page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   await sharing.click()
   await expect(sharing).toBeChecked()
-  await expect(page.getByRole('link', { name: 'Open page' })).toBeVisible()
+  const url = await page.getByRole('link', { name: 'Open page' }).getAttribute('href')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  return url
 }
 
 async function settled(page: Page) {
@@ -112,8 +121,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
           })
           await expect(page.getByRole('dialog', { name: 'Check before saving' })).toBeVisible()
           break
-        default:
-          await sharedShop(page)
+        default: {
+          const shared = await sharedShop(page)
           if (screen === 'Google') {
             await page.getByRole('button', { name: 'Google', exact: true }).click()
             await expect(page.getByRole('heading', { name: 'Get on Google' })).toBeVisible()
@@ -125,9 +134,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
               await expect(page.getByRole('dialog', { name: 'Delete everything?' })).toBeVisible()
             }
           } else if (screen === 'Public customer page') {
-            const url = await page.getByRole('link', { name: 'Open page' }).getAttribute('href')
-            expect(url).toContain('/s/')
-            await page.goto(url!)
+            expect(shared).toContain('/s/')
+            await page.goto(shared!)
             await expect(
               page.getByRole('heading', { name: 'Accessibility Tea Stall' }),
             ).toBeVisible()
@@ -135,6 +143,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
               '$15.00',
             )
           }
+        }
       }
 
       await settled(page)
