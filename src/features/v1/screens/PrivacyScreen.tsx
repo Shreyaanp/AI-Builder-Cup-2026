@@ -18,6 +18,7 @@ import { useLocale } from '../../../state/hooks'
 import { formatDate } from '../format'
 import { LegalDialog } from '../LegalDialog'
 import type { LegalDocument } from '../LegalDialog'
+import { useBackClose } from '../backStack'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
 import { shape } from '../../../design/theme'
@@ -59,6 +60,7 @@ export function PrivacyScreen() {
   const [confirming, setConfirming] = useState<'none' | 'all' | 'face'>('none')
   const [busy, setBusy] = useState(false)
   const pending = ws.businesses.some((shop) => shop.registration === 'verification_pending')
+  useBackClose(confirming !== 'none', () => !busy && setConfirming('none'))
 
   async function deleteFace() {
     setBusy(true)

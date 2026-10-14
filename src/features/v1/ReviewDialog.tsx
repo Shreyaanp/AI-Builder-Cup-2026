@@ -194,6 +194,8 @@ export function ReviewDialog({
     <Sheet
       open={open}
       onClose={close}
+      // An open review is unsaved by definition: Back asks before throwing it away.
+      dirty
       titleId="review-title"
       title={t.reviewTitle}
       actions={actions}

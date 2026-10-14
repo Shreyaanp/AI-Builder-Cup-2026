@@ -89,6 +89,10 @@ export const en = {
   draftLegal: 'Draft for the prototype — pending legal review.',
   legalTranslation: 'Translation for convenience — the English version applies.',
   close: 'Close',
+  discardTitle: 'Discard changes?',
+  discardBody: 'What you typed or are reviewing has not been saved.',
+  discard: 'Discard',
+  keepEditing: 'Keep editing',
   // Navigation
   navCoach: 'Coach',
   navShop: 'My shop',
