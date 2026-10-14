@@ -102,7 +102,8 @@ const FOOD =
 const FOOD_ONLY: AskFact[] = ['halal', 'vegetarian_options', 'delivery', 'preorders']
 
 export function missingFacts(fields: ShopFacts & { category?: string; name?: string }): AskFact[] {
-  const food = FOOD.test(`${fields.category ?? ''} ${fields.name ?? ''}`)
+  // Unknown type yet: ask everything; food questions drop once the category says otherwise.
+  const food = !fields.category?.trim() || FOOD.test(`${fields.category} ${fields.name ?? ''}`)
   return ASK_ORDER.filter((key) => {
     if (!food && FOOD_ONLY.includes(key)) return false
     const value = fields[key]
