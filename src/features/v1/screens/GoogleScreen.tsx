@@ -17,14 +17,13 @@ import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
 import { shape } from '../../../design/theme'
 import { GoogleSimulator } from '../../google-sim/GoogleSimulator'
+import { mapsSearch, OWNER_URL } from '../../google-sim/links'
+import { useSimCopy } from '../../google-sim/strings'
 
 // Official owner entry points (support.google.com/business/answer/2911778).
-const ADD_URL = 'https://business.google.com/add'
-const mapsSearch = (query: string) =>
-  'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query)
-
 export function GoogleScreen() {
   const t = useCopy()
+  const sim = useSimCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   const shop = ws.active
@@ -35,7 +34,11 @@ export function GoogleScreen() {
           {t.googleTitle}
         </Typography>
         <Alert severity="info">{t.googleNeedsShop}</Alert>
-        <Button variant="contained" sx={{ alignSelf: 'flex-start' }} onClick={() => ws.go('shop')}>
+        <Button
+          variant="contained"
+          sx={{ alignSelf: 'flex-start' }}
+          onClick={() => ws.openEditor({ kind: 'business', fields: null })}
+        >
           {t.addShop}
         </Button>
       </Stack>
@@ -130,20 +133,23 @@ export function GoogleScreen() {
           ))}
         </Box>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+        <Stack spacing={1.5}>
+          <Typography variant="bodyMedium">{sim.handoffHelp}</Typography>
+          <Typography variant="labelMedium">{sim.liveOwner}</Typography>
           <Button
             variant="contained"
             startIcon={<ExternalLink size={20} />}
-            href={ADD_URL}
+            href={OWNER_URL}
             target="_blank"
             rel="noopener noreferrer"
           >
             {t.addOnGoogle}
           </Button>
+          <Typography variant="labelMedium">{sim.liveMaps}</Typography>
           <Button
             variant="outlined"
             startIcon={<MapPinned size={20} />}
-            href={mapsSearch([f.name, f.location].filter(Boolean).join(' '))}
+            href={mapsSearch(f.name, f.location)}
             target="_blank"
             rel="noopener noreferrer"
           >

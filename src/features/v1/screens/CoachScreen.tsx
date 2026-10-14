@@ -4,16 +4,16 @@ import {
   Alert,
   Avatar,
   Box,
+  Button,
   Chip,
   CircularProgress,
-  Divider,
   IconButton,
   InputBase,
+  List,
+  ListItemButton,
   ListItemIcon,
   ListItemText,
   ListSubheader,
-  Menu,
-  MenuItem,
   Stack,
   Tooltip,
   Typography,
@@ -22,13 +22,15 @@ import {
 import {
   ArrowUp,
   Clock,
-  EllipsisVertical,
   History,
   ImagePlus,
   Leaf,
+  MessageSquarePlus,
   Mic,
+  PackagePlus,
   Plus,
   Square,
+  Store,
   Tag,
   Volume2,
   VolumeX,
@@ -42,6 +44,7 @@ import { ApiError } from '../api'
 import type { Conversation, PhotoResult, Proposal } from '../api'
 import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
+import { Sheet } from '../Sheet'
 import { ShopCard, ShopSheet, StartCard } from '../ShopCard'
 import { useVoice } from '../useVoice'
 import { useWorkspace } from '../workspaceContext'
@@ -64,7 +67,8 @@ export function CoachScreen() {
   const [error, setError] = useState('')
   const [mode, setMode] = useState<'offline' | 'gemini' | null>(null)
   const [history, setHistory] = useState<Conversation[]>([])
-  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
+  // One "+" sheet holds every coach action: add shop/product, new chat, earlier chats.
+  const [actionsOpen, setActionsOpen] = useState(false)
   // Shop details sheet: null = closed, -1 = open, n = open on product n.
   const [sheet, setSheet] = useState<number | null>(null)
   const openSheet = (product?: number) => setSheet(product ?? -1)
@@ -144,7 +148,13 @@ export function CoachScreen() {
     try {
       const token = await identity.getToken()
       await streamCoach(
-        { message, language, session_id: session.current, business_id: activeId },
+        {
+          message,
+          language,
+          currency: defaultCurrency(),
+          session_id: session.current,
+          business_id: activeId,
+        },
         abort.signal,
         (event) => {
           receive(event)
@@ -169,8 +179,9 @@ export function CoachScreen() {
         utterance.lang = language
         speechSynthesis.speak(utterance)
       }
-      const items = await api<Conversation[]>('/conversations')
-      if (controller.current === abort) setHistory(items)
+      // History is supplemental; a failed refresh must never roll back a completed turn.
+      const items = await api<Conversation[]>('/conversations').catch(() => null)
+      if (items && controller.current === abort) setHistory(items)
     } catch {
       if (!abort.signal.aborted) {
         setError(t.replyFailed)
@@ -228,7 +239,7 @@ export function CoachScreen() {
   }
 
   async function restore(id: string) {
-    setMenuAnchor(null)
+    setActionsOpen(false)
     try {
       const data = await api<{ messages: Message[] }>(`/conversations/${id}`)
       controller.current?.abort()
@@ -248,8 +259,6 @@ export function CoachScreen() {
     { label: t.suggestPrice, icon: <Tag size={18} /> },
     { label: t.suggestHours, icon: <Clock size={18} /> },
   ]
-  // The top row only appears once there is something to show or do in it.
-  const showTopRow = Boolean(mode) || !empty || shopHistory.length > 0
   const canSend = Boolean(note.trim()) && busy === 'idle' && voice.state === 'idle'
 
   return (
@@ -265,47 +274,73 @@ export function CoachScreen() {
         mx: 'auto',
       }}
     >
-      {/* One quiet row: which coach is answering, and everything else in one overflow menu. */}
-      {showTopRow && (
-        <Stack direction="row" sx={{ alignItems: 'center', minHeight: 48, gap: 1 }}>
-          <Typography variant="labelMedium" color="text.secondary" sx={{ flex: 1 }} noWrap>
-            {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
-          </Typography>
-          <Tooltip title={t.moreOptions}>
-            <IconButton
-              aria-label={t.moreOptions}
-              aria-haspopup="menu"
-              onClick={(event) => setMenuAnchor(event.currentTarget)}
-            >
-              <EllipsisVertical size={20} />
-            </IconButton>
-          </Tooltip>
-          <Menu
-            anchorEl={menuAnchor}
-            open={Boolean(menuAnchor)}
-            onClose={() => setMenuAnchor(null)}
+      {/* One quiet row: which coach is answering, and every other action behind one "+". */}
+      <Stack direction="row" sx={{ alignItems: 'center', minHeight: 48, gap: 1 }}>
+        <Typography variant="labelMedium" color="text.secondary" sx={{ flex: 1 }} noWrap>
+          {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
+        </Typography>
+        <Tooltip title={t.newChat}>
+          <IconButton
+            aria-label={t.newChat}
+            aria-haspopup="dialog"
+            onClick={() => setActionsOpen(true)}
           >
-            <MenuItem
-              disabled={empty}
+            <Plus size={20} />
+          </IconButton>
+        </Tooltip>
+      </Stack>
+      <Sheet
+        open={actionsOpen}
+        onClose={() => setActionsOpen(false)}
+        titleId="coach-actions-title"
+        title={t.newChat}
+        actions={<Button onClick={() => setActionsOpen(false)}>{t.cancel}</Button>}
+      >
+        <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+          <Button
+            startIcon={<Store size={18} />}
+            onClick={() => {
+              setActionsOpen(false)
+              ws.openEditor({ kind: 'business', fields: null })
+            }}
+          >
+            {t.addShop}
+          </Button>
+          {ws.active && (
+            <Button
+              startIcon={<PackagePlus size={18} />}
               onClick={() => {
-                setMenuAnchor(null)
-                resetThread()
+                setActionsOpen(false)
+                ws.openEditor({ kind: 'product', product: null })
               }}
             >
-              <ListItemIcon>
-                <Plus size={18} />
-              </ListItemIcon>
-              <ListItemText primary={t.newChat} />
-            </MenuItem>
-            {shopHistory.length > 0 && <Divider />}
-            {shopHistory.length > 0 && (
-              <ListSubheader sx={{ bgcolor: 'transparent', lineHeight: '36px' }}>
+              {t.addProduct}
+            </Button>
+          )}
+          <Button
+            startIcon={<MessageSquarePlus size={18} />}
+            disabled={empty}
+            onClick={() => {
+              setActionsOpen(false)
+              resetThread()
+            }}
+          >
+            {t.newChat}
+          </Button>
+        </Stack>
+        {shopHistory.length > 0 && (
+          <List
+            dense
+            subheader={
+              <ListSubheader sx={{ bgcolor: 'transparent', px: 0, lineHeight: '36px' }}>
                 {t.history}
               </ListSubheader>
-            )}
+            }
+            sx={{ mt: 4 }}
+          >
             {shopHistory.map((entry) => (
-              <MenuItem key={entry.session_id} onClick={() => void restore(entry.session_id)}>
-                <ListItemIcon>
+              <ListItemButton key={entry.session_id} onClick={() => void restore(entry.session_id)}>
+                <ListItemIcon sx={{ minWidth: 36 }}>
                   <History size={18} />
                 </ListItemIcon>
                 <ListItemText
@@ -314,15 +349,15 @@ export function CoachScreen() {
                     timeStyle: 'short',
                   })}
                 />
-              </MenuItem>
+              </ListItemButton>
             ))}
-          </Menu>
-        </Stack>
-      )}
+          </List>
+        )}
+      </Sheet>
 
       <Box sx={{ flex: 1, pb: 4 }}>
         {empty ? (
-          <Stack spacing={5} sx={{ pt: { xs: showTopRow ? 4 : 10, sm: 10 }, pb: 4 }}>
+          <Stack spacing={5} sx={{ pt: { xs: 4, sm: 10 }, pb: 4 }}>
             <Typography component="h1" variant="headlineMedium">
               {ws.active ? t.coachGreetingShop(ws.active.fields.name) : t.coachGreeting}
             </Typography>
