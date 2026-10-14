@@ -52,6 +52,8 @@ test.beforeEach(async ({ page }, info) => {
   // Each scenario represents a separate public customer, including the 30/minute IP limit.
   await page.setExtraHTTPHeaders({ 'x-forwarded-for': `fixture-discover-${info.testId}` })
   await offline(page)
+  // This suite exercises the returning feed; first-run guidance has its own journey spec.
+  await page.addInitScript(() => localStorage.setItem('chalkboard.customer.journey', 'done'))
 })
 
 test('search, category, open-now, sold-out and anonymous customer page', async ({ page }, info) => {
@@ -76,9 +78,9 @@ test('search, category, open-now, sold-out and anonymous customer page', async (
   await expect(card).toContainText('Kaya toast · Sold out')
   await expect(card).toContainText(/SGD\s*2\.20/)
   await expect(card).toContainText('Open now')
-  expect(await card.getAttribute('href')).toBe(`/s/${id}`)
+  expect(await card.getAttribute('href')).toBe(`/explore/s/${id}`)
   await card.click()
-  await expect(page).toHaveURL(new RegExp(`/s/${id}$`))
+  await expect(page).toHaveURL(new RegExp(`/explore/s/${id}$`))
   await expect(page.getByRole('heading', { name })).toBeVisible()
   await page.goBack()
   await expect(page.getByRole('heading', { name: 'Your usuals' })).toBeVisible()
@@ -94,7 +96,10 @@ test('Google sheet, live directions link, lazy fixture map, area and known-only 
     if (/googleapis\.com|google\.com/.test(request.url())) googleRequests++
   })
   await page.goto('/discover')
-  await page.getByRole('button', { name: /Tiong Bahru Bakery/ }).click()
+  await page
+    .getByRole('list')
+    .getByRole('button', { name: /Tiong Bahru Bakery/ })
+    .click()
   const sheet = page.getByRole('dialog')
   await expect(sheet).toBeVisible()
   await expect(sheet.getByText('Demo data', { exact: false })).toBeVisible()
@@ -104,6 +109,7 @@ test('Google sheet, live directions link, lazy fixture map, area and known-only 
   await sheet.getByRole('button', { name: 'Close', exact: true }).click()
   await page.getByRole('button', { name: 'Map view', exact: true }).click()
   await expect(page.getByRole('button', { name: 'List view', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'List view', exact: true }).click()
   expect(googleRequests).toBe(0)
   await page.getByRole('switch', { name: 'Halal if known' }).check()
   await expect(page.getByText('No matches. Try another area or clear your filters.')).toBeVisible()
@@ -171,7 +177,10 @@ for (const mode of ['light', 'dark'] as const) {
     await page.getByLabel('Search nearby').focus()
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeFocused()
-    await page.getByRole('button', { name: /Tiong Bahru Bakery/ }).click()
+    await page
+      .getByRole('list')
+      .getByRole('button', { name: /Tiong Bahru Bakery/ })
+      .click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.screenshot({ path: info.outputPath('discover-sheet.png') })
     const dialogReport = await new AxeBuilder({ page })

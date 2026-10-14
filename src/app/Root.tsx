@@ -1,31 +1,36 @@
 import { lazy, Suspense } from 'react'
-import App from './App'
+import { resolveApp } from './router'
+import { BrandSplash } from '../features/frontdoors/Splash'
 
+const App = lazy(() => import('./App'))
 const V1App = lazy(() => import('../features/v1/V1App'))
-const PublicShop = lazy(() => import('../features/public/PublicShop'))
-const Discover = lazy(() => import('../features/discover/Discover'))
-
-const fallback = <div role="status">Loading…</div>
+const CustomerApp = lazy(() => import('../features/frontdoors/CustomerApp'))
+const Marketing = lazy(() => import('../features/frontdoors/Marketing'))
 
 export default function Root() {
-  if (/^\/discover\/?$/.test(location.pathname))
+  const kind = resolveApp(new URL(location.href))
+  if (kind === 'landing')
     return (
-      <Suspense fallback={fallback}>
-        <Discover />
+      <Suspense fallback={null}>
+        <Marketing />
       </Suspense>
     )
-  // Customer page: /s/<shop id>, public and read-only.
-  const sharedId = /^\/s\/([0-9a-f-]{36})\/?$/i.exec(location.pathname)?.[1]
-  if (sharedId)
+  if (kind === 'customer') {
     return (
-      <Suspense fallback={fallback}>
-        <PublicShop id={sharedId} />
+      <Suspense fallback={<BrandSplash />}>
+        <CustomerApp />
       </Suspense>
     )
+  }
   // The conversational V1 workspace is the product; ?classic=1 keeps the original starter.
-  if (new URLSearchParams(location.search).get('classic') === '1') return <App />
+  if (new URLSearchParams(location.search).get('classic') === '1')
+    return (
+      <Suspense fallback={<BrandSplash business />}>
+        <App />
+      </Suspense>
+    )
   return (
-    <Suspense fallback={fallback}>
+    <Suspense fallback={<BrandSplash business />}>
       <V1App />
     </Suspense>
   )

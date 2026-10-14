@@ -211,6 +211,12 @@ def create_app(
         return {
             **get_services(request).identity.bootstrap(request, response),
             "v1_enabled": settings.v1_enabled,
+            "customer_origin": settings.customer_origin
+            or (
+                "https://chalkboard.shreyaan.work"
+                if settings.app_env == "production"
+                else "http://127.0.0.1:3200"
+            ),
             "coach_mode": settings.coach_mode,
             "maps_browser_key": (
                 settings.maps_browser_key.get_secret_value() if settings.maps_browser_key else ""

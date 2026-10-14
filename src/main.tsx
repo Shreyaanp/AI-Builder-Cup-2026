@@ -5,12 +5,19 @@ import '@fontsource-variable/roboto'
 import Root from './app/Root'
 import { AppProviders } from './app/AppProviders'
 import { setupPwa } from './app/pwa'
+import { canonicalCustomerPath, resolveApp } from './app/router'
 
-setupPwa()
+const app = resolveApp(new URL(location.href))
+if (app === 'customer') {
+  const path = canonicalCustomerPath(location.pathname)
+  if (path !== location.pathname)
+    history.replaceState(null, '', path + location.search + location.hash)
+}
+setupPwa(app)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AppProviders>
+    <AppProviders business={app === 'business'}>
       <Root />
     </AppProviders>
   </StrictMode>,
