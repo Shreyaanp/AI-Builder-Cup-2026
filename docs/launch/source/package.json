@@ -1,0 +1,11 @@
+{
+  "name": "chalkboard-launch",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "cd dist/portrait && npx --yes hyperframes@0.8.92 check && cd ../landscape && npx --yes hyperframes@0.8.92 check",
+    "render:portrait": "npx --yes hyperframes@0.8.92 render dist/portrait -o ../chalkboard-launch.mp4",
+    "render:landscape": "npx --yes hyperframes@0.8.92 render dist/landscape -o ../chalkboard-launch-1920x1080.mp4"
+  }
+}

@@ -108,6 +108,76 @@ tests/test_merchant_routes.py tests/test_sharing_routes.py tests/test_discover.p
 3. **Production seeding:** not done, and only possible with an explicit `--project`. It needs a
    real demo owner UID from account 1.
 
-## Task 2 — launch video
+## Task 2 — launch video: done
 
-Not started; it begins after this branch is pushed.
+**Branch:** `feat/demo-shops` (same branch, after Task 1 was pushed at `242633f`).
+
+### What was made
+
+- **Videos:**
+  - `docs/launch/chalkboard-launch.mp4`: 1080×1920, H.264, 30 fps, 60.0 s, 29.7 MB.
+  - `docs/launch/chalkboard-launch-1920x1080.mp4`: 1920×1080, same cut, 22.0 MB.
+  - Both are silent; no music license was in hand. Both are under 50 MB, so they are committed.
+- **Story:**
+  1. The owner snaps the menu board.
+  2. The coach fills in the shop (review sheet: "nothing is saved until you confirm").
+  3. The shop card is ready.
+  4. One item is flipped to sold out with the owner's switch.
+  5. The QR is printed.
+  6. A customer scans it and asks "halal?", and gets an instant answer.
+  7. The owner sees the weekly recap.
+  8. Google: "Chalkboard prepares your details. Google verifies." The app screen itself says
+     "we can't publish to Google for you".
+  9. End card: chalkboard.shreyaan.work.
+- **Honesty:** every scene with the shop carries a "Demo shop · fictional" label. The end card
+  says the shops and data are fictional and that Chalkboard is an independent prototype, not a
+  Google product.
+- **Tooling:** HyperFrames (`hyperframes@0.8.92`, the newest release at least two weeks old) with
+  the given FFmpeg and local Chrome.
+  - **Not used:** BRAG.
+  - **Nothing published:** `hyperframes publish` was never run, and telemetry was off
+    (`HYPERFRAMES_NO_TELEMETRY`, `DO_NOT_TRACK`).
+- **Source:**
+  - `docs/launch/source/`: `build.mjs` holds one scene list and generates both cuts into a
+    git-ignored `dist/`. Assets are 13 real screens, vendored GSAP 3.14.2 and the app's font.
+  - `docs/launch/capture/`: the Playwright script that filmed the screens.
+  - `docs/launch/README.md`: how to reproduce it, and exactly what is staged.
+
+### Real screens, and what is staged
+
+**Real:** the screens come from a local dev run of the real app with the offline coach. That
+covers the seeded demo shops, three weeks of sales saved through the store's own
+`prepare_sales`/`save_sales` behind the recap, the real sold-out switch, the real QR and the real
+Google checklist.
+
+**Staged:** the offline fixtures can't do two steps, so they are staged, and the README says so:
+
+- **The menu-photo read:** `/photos` returns a real sealed proposal made through the API. The
+  board in scene 2 is an HTML illustration.
+- **The "halal?" answer:** `/ask` returns the production-shaped reply, worded strictly from the
+  shop's confirmed facts (halal: yes; cash, PayNow).
+
+**Isolated data:** the capture uses its own `backend/data/launch-merchant.sqlite3` on ports
+3210/3310. The shared dev database is untouched.
+
+### Checks
+
+- **Composition:** `hyperframes check` passes for both cuts: 0 errors, no layout issues, 12/12
+  text contrast checks at WCAG AA. The 12 warnings are HyperFrames' advice to move scenes into
+  sub-compositions, which this flat 60 s cut doesn't need.
+- **Review:** I pulled contact sheets of frames from both renders and checked every scene.
+  `ffprobe` confirms the size, codec and 60.000 s length of both files.
+- **Formatting:** `prettier --check docs/launch src tests` passes, and the capture's Python
+  setup passes `ruff`.
+
+### Open questions
+
+1. **The QR in the video encodes
+   `https://chalkboard.shreyaan.work/explore/s/demo-geylang-serai-nasi-lemak`.** It only opens
+   once demo shops are seeded in production (Task 1, open question 3). Until then a viewer who
+   scans it reaches "This shop page isn't available".
+2. **Small UI glitch seen while filming:** the recap sheet reads "Written by AIOffline template"
+   with no space. It's in the sales/recap UI; I didn't change it here.
+3. **No soundtrack or voice-over:** add one before posting if wanted.
+4. **No live AI shots:** the two staged steps could be re-filmed against a live Gemini run if
+   account 1 wants fully unstaged footage.
