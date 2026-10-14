@@ -54,6 +54,10 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
   const { api, active, editor, openEditor, review } = useWorkspace()
   const compact = useCompact()
   const [fields, setFields] = useState(initial)
+  const [stampTarget, setStampTarget] = useState(String(initial.stamps_needed ?? 8))
+  const stampInput = useRef<HTMLInputElement>(null)
+  const invalidTarget =
+    !/^\d+$/.test(stampTarget) || Number(stampTarget) < 3 || Number(stampTarget) > 20
   const paymentInput = useRef<HTMLInputElement>(null)
   const deliveryInput = useRef<HTMLInputElement>(null)
   const suggestions = factSuggestions()
@@ -68,7 +72,12 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
   const editing = editor.kind === 'business' && editor.fields !== null
   const close = () => openEditor({ kind: 'none' })
   // Back closes the form; typed changes ask "Discard changes?" first.
-  useBackClose(true, close, JSON.stringify(fields) !== JSON.stringify(initial))
+  useBackClose(
+    true,
+    close,
+    JSON.stringify(fields) !== JSON.stringify(initial) ||
+      stampTarget !== String(initial.stamps_needed ?? 8),
+  )
   async function submit() {
     if (busy) return
     if (!fields.name.trim()) {
@@ -80,6 +89,11 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
       ;(invalidPayments ? paymentInput : deliveryInput).current?.focus()
       return
     }
+    if (invalidTarget) {
+      setError(rewards.neededHelp)
+      stampInput.current?.focus()
+      return
+    }
     setBusy(true)
     try {
       const proposal = await api<Proposal>('/proposals', {
@@ -88,7 +102,7 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
           kind: 'business',
           business_id: editing ? active?.id : null,
           revision: editing ? (active?.revision ?? 0) : 0,
-          business: fields,
+          business: { ...fields, stamps_needed: Number(stampTarget) },
         }),
       })
       openEditor({ kind: 'none' })
@@ -148,6 +162,18 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
             helperText={rewards.rewardHelp}
             slotProps={{ htmlInput: { maxLength: 80 } }}
             onChange={(event) => setFields({ ...fields, reward_text: event.target.value })}
+          />
+          <TextField
+            label={rewards.needed}
+            name="stamps_needed"
+            inputRef={stampInput}
+            type="number"
+            value={stampTarget}
+            required
+            error={invalidTarget}
+            helperText={rewards.neededHelp}
+            slotProps={{ htmlInput: { min: 3, max: 20, step: 1, inputMode: 'numeric' } }}
+            onChange={(event) => setStampTarget(event.target.value)}
           />
           <TextField
             select

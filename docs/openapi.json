@@ -2911,6 +2911,13 @@
             "title": "Reward Text",
             "default": ""
           },
+          "stamps_needed": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 3.0,
+            "title": "Stamps Needed",
+            "default": 8
+          },
           "currency": {
             "type": "string",
             "pattern": "^[A-Z]{3}$",
