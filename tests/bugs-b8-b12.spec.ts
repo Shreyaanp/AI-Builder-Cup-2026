@@ -229,7 +229,7 @@ test('B11: weekday hours are reviewed, saved and shown publicly', async ({ page 
   await enter(page, false)
   await page.getByRole('button', { name: 'Add my shop', exact: true }).click()
   await page.getByLabel('Shop name').fill('Katong Night Kopi')
-  await page.getByLabel('Opening hours', { exact: true }).fill('Ask about holiday hours')
+  await page.getByLabel('Hours note (optional)', { exact: true }).fill('Ask about holiday hours')
   await page.getByLabel('Set hours by weekday').check()
   await expect(page.locator('input[type="time"]')).toHaveCount(2)
   for (const day of [
@@ -345,7 +345,9 @@ test('B11: existing different hours survive editing, and shared times survive cl
   await expect(page.getByLabel('Closes', { exact: true })).toHaveValue('18:00')
   await page.getByLabel('Set hours by weekday').uncheck()
   await expect(page.locator('input[type="time"]')).toHaveCount(0)
-  await expect(page.getByLabel('Opening hours', { exact: true })).toHaveValue(business.fields.hours)
+  await expect(page.getByLabel('Hours note (optional)', { exact: true })).toHaveValue(
+    business.fields.hours,
+  )
 })
 
 for (const locale of [

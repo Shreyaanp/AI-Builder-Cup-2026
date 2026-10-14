@@ -47,6 +47,7 @@ export function BusinessDialog() {
 function BusinessForm({ initial }: { initial: Business['fields'] }) {
   const t = useCopy()
   const rewards = useRewardCopy()
+  const shopCopy = useShopCopy()
   const { api, active, editor, openEditor, review } = useWorkspace()
   const compact = useCompact()
   const [fields, setFields] = useState(initial)
@@ -97,22 +98,34 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
             void submit()
           }}
         >
-          {(Object.keys(t.fields) as (keyof typeof t.fields)[]).map((key) => (
-            <TextField
-              key={key}
-              label={t.fields[key]}
-              value={fields[key]}
-              required={key === 'name'}
-              autoFocus={key === 'name'}
-              type={key === 'phone' ? 'tel' : 'text'}
-              autoComplete={key === 'phone' ? 'tel' : key === 'location' ? 'street-address' : 'off'}
-              onChange={(event) => setFields({ ...fields, [key]: event.target.value })}
-              slotProps={{ htmlInput: { maxLength: key === 'location' ? 300 : 180 } }}
-            />
-          ))}
+          {(Object.keys(t.fields) as (keyof typeof t.fields)[])
+            .filter((key) => key !== 'hours')
+            .map((key) => (
+              <TextField
+                key={key}
+                label={t.fields[key]}
+                value={fields[key]}
+                required={key === 'name'}
+                autoFocus={key === 'name'}
+                type={key === 'phone' ? 'tel' : 'text'}
+                autoComplete={
+                  key === 'phone' ? 'tel' : key === 'location' ? 'street-address' : 'off'
+                }
+                onChange={(event) => setFields({ ...fields, [key]: event.target.value })}
+                slotProps={{ htmlInput: { maxLength: key === 'location' ? 300 : 180 } }}
+              />
+            ))}
           <HoursEditor
             value={fields.weekly_hours ?? []}
             onChange={(weekly_hours) => setFields({ ...fields, weekly_hours })}
+          />
+          {/* Free text stays for what a schedule can't say (holidays, "until sold out"). */}
+          <TextField
+            label={shopCopy.hoursNote}
+            value={fields.hours}
+            autoComplete="off"
+            onChange={(event) => setFields({ ...fields, hours: event.target.value })}
+            slotProps={{ htmlInput: { maxLength: 180 } }}
           />
           <TextField
             label={rewards.reward}
