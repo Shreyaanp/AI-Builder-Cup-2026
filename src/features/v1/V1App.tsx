@@ -3,6 +3,7 @@ import { useIdentity } from '../../auth/useIdentity'
 import { makeApi } from './api'
 import type { Me } from './api'
 import { AppShell } from './AppShell'
+import { BackHistory } from './backStack'
 import { LEGAL_VERSION } from './legal'
 import { Landing } from './Landing'
 import { AccountError, ConsentScreen, Splash } from './Onboarding'
@@ -60,9 +61,12 @@ function Account({ onLeave }: { onLeave: () => void }) {
         }}
       />
     )
+  // The phone's Back button closes the owner app's sheets and dialogs first.
   return (
-    <WorkspaceProvider api={api} me={me}>
-      <AppShell />
-    </WorkspaceProvider>
+    <BackHistory value>
+      <WorkspaceProvider api={api} me={me}>
+        <AppShell />
+      </WorkspaceProvider>
+    </BackHistory>
   )
 }

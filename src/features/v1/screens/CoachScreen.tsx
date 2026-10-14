@@ -1,6 +1,6 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ReactElement } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { ChangeEvent, KeyboardEvent, ReactElement } from 'react'
 import {
   Alert,
   Avatar,
@@ -9,27 +9,30 @@ import {
   Chip,
   CircularProgress,
   IconButton,
-  InputBase,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   ListSubheader,
+  Menu,
+  MenuItem,
   Stack,
   Tooltip,
   Typography,
+  useMediaQuery,
   useTheme,
 } from '@mui/material'
 import {
   ArrowUp,
+  Camera,
   History,
   ImagePlus,
+  ImageUp,
   Leaf,
   MessageSquare,
   MessageSquarePlus,
   Mic,
   PackagePlus,
-  Plus,
   Share2,
   Square,
   Store,
@@ -48,6 +51,7 @@ import type { Conversation, PhotoResult, Proposal } from '../api'
 import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
 import { Sheet } from '../Sheet'
+import { useBackClose } from '../backStack'
 import { ShopCard, ShopSheet, StartCard } from '../ShopCard'
 import { PendingCard } from '../PendingCard'
 import { ShopSheets } from '../ShopTiles'
@@ -58,9 +62,11 @@ import { useVoice } from '../useVoice'
 import { useOnline } from '../useOnline'
 import { useWorkspace } from '../workspaceContext'
 import { OwnerJourney } from '../../frontdoors/OwnerJourney'
-import { enterRise, shape } from '../../../design/theme'
+import { enterRise, shape, windowClass } from '../../../design/theme'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+// The composer grows with multi-line text up to this many lines, then scrolls.
+const COMPOSER_ROWS = 6
 type Message = { role: 'user' | 'assistant'; text: string }
 
 export function CoachScreen() {
@@ -79,8 +85,6 @@ export function CoachScreen() {
   const [reconnecting, setReconnecting] = useState(false)
   const [mode, setMode] = useState<'offline' | 'gemini' | null>(null)
   const [history, setHistory] = useState<Conversation[]>([])
-  // One "+" sheet holds every coach action: add shop/product, new chat, earlier chats.
-  const [actionsOpen, setActionsOpen] = useState(false)
   // Shop details sheet: null = closed, -1 = open, n = open on product n.
   const [sheet, setSheet] = useState<number | null>(null)
   const openSheet = (product?: number) => setSheet(product ?? -1)
@@ -91,9 +95,31 @@ export function CoachScreen() {
   const session = useRef<string | null>(null)
   const controller = useRef<AbortController | null>(null)
   const photoInput = useRef<HTMLInputElement>(null)
+  const photoButton = useRef<HTMLButtonElement>(null)
+  // Phones choose between the camera and the gallery; a desktop goes straight to the file
+  // picker (it has no camera capture).
+  const touch = useMediaQuery('(pointer: coarse)')
+  const [photoMenu, setPhotoMenu] = useState<HTMLElement | null>(null)
+  function choosePhoto(anchor: HTMLElement | null) {
+    if (touch && anchor) setPhotoMenu(anchor)
+    else pickPhoto(false)
+  }
+  // One input for both: `capture` asks the phone to open the rear camera directly.
+  function pickPhoto(camera: boolean) {
+    setPhotoMenu(null)
+    const input = photoInput.current
+    if (!input) return
+    if (camera) input.setAttribute('capture', 'environment')
+    else input.removeAttribute('capture')
+    input.click()
+  }
   const speaking = useRef<HTMLAudioElement | null>(null)
   const end = useRef<HTMLDivElement>(null)
   const { api, activeId, review, setFaceOpen, go, speakReplies } = ws
+  // One "+" sheet (opened from the top bar) holds every coach action: add shop/product, new
+  // chat, earlier chats.
+  const actionsOpen = ws.coachActions
+  const setActionsOpen = ws.setCoachActions
 
   const receive = useCallback(
     (event: CoachEvent) => {
@@ -134,14 +160,27 @@ export function CoachScreen() {
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
   }, [messages, reply])
-  // A pending request (e.g. "Start from a photo" on My shop) opens the picker once.
+  // The composer is one line until the text itself needs more. Sized from the text only: the
+  // old autosize also measured the placeholder, so a long translated hint made an empty
+  // composer two or three lines tall (B3).
+  useLayoutEffect(() => {
+    const field = messageInput.current
+    if (!field) return
+    field.style.height = '48px'
+    if (note) field.style.height = `${Math.max(48, field.scrollHeight)}px`
+  }, [note, voice.state])
+  // A pending request (e.g. "Start from a photo" on My shop) opens the chooser once, from the
+  // composer's photo button.
   const { photoPending, consumePhotoRequest } = ws
   useEffect(() => {
-    if (photoPending) {
-      consumePhotoRequest()
+    if (!photoPending) return
+    consumePhotoRequest()
+    if (touch && photoButton.current) setPhotoMenu(photoButton.current)
+    else {
+      photoInput.current?.removeAttribute('capture')
       photoInput.current?.click()
     }
-  }, [photoPending, consumePhotoRequest])
+  }, [photoPending, consumePhotoRequest, touch])
   // A chat starter from My shop ("Customers ask: halal?") lands in the composer once.
   const { coachDraft, consumeCoachDraft } = ws
   const [seenDraft, setSeenDraft] = useState<string | null>(null)
@@ -154,6 +193,16 @@ export function CoachScreen() {
     consumeCoachDraft()
     messageInput.current?.focus()
   }, [coachDraft, consumeCoachDraft])
+
+  // A typed draft: Back asks "Discard changes?" before leaving, and so does closing the tab.
+  useBackClose(
+    Boolean(note.trim()),
+    () => {
+      setNote('')
+      window.history.back()
+    },
+    true,
+  )
 
   function resetThread() {
     controller.current?.abort()
@@ -339,11 +388,11 @@ export function CoachScreen() {
     .filter(([, applies]) => applies)
     .slice(0, 3)
     .map(([id]) => ({ id, ...chipCopy[id] }))
-  function suggest(id: Suggestion) {
+  function suggest(id: Suggestion, anchor: HTMLElement) {
     if (id === 'reply') setShopSheet('messages')
     else if (id === 'soldOut') setShopSheet('soldOut')
     else if (id === 'share') setShopSheet('customer')
-    else if (id === 'menu' || id === 'photo') photoInput.current?.click()
+    else if (id === 'menu' || id === 'photo') choosePhoto(anchor)
     else {
       setNote(`${id === 'price' ? t.chipPrice : t.fields.name}: `)
       messageInput.current?.focus()
@@ -357,7 +406,7 @@ export function CoachScreen() {
           icon={item.icon}
           label={item.label}
           variant="outlined"
-          onClick={() => suggest(item.id)}
+          onClick={(event) => suggest(item.id, event.currentTarget)}
           sx={{
             height: 40,
             px: 1,
@@ -371,18 +420,9 @@ export function CoachScreen() {
   )
   const lastIsReply = messages.at(-1)?.role === 'assistant' && !reply && busy === 'idle'
   const canSend = Boolean(note.trim()) && busy === 'idle' && voice.state === 'idle'
+  const voiceText =
+    voice.state === 'recording' ? t.listening : voice.state === 'replying' ? t.speaking : ''
 
-  const plusButton = (
-    <Tooltip title={t.newChat}>
-      <IconButton
-        aria-label={t.newChat}
-        aria-haspopup="dialog"
-        onClick={() => setActionsOpen(true)}
-      >
-        <Plus size={20} />
-      </IconButton>
-    </Tooltip>
-  )
   return (
     <Box
       id="coach"
@@ -397,15 +437,16 @@ export function CoachScreen() {
       }}
     >
       <OwnerJourney />
-      {/* One quiet row: which coach is answering, and every other action behind one "+".
-          On an empty chat the + sits beside the greeting instead of taking its own row. */}
+      {/* One quiet line: which coach is answering. Every other action is behind the top bar's +. */}
       {!empty && (
-        <Stack direction="row" sx={{ alignItems: 'center', minHeight: 48, gap: 1 }}>
-          <Typography variant="labelMedium" color="text.secondary" sx={{ flex: 1 }} noWrap>
-            {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
-          </Typography>
-          {plusButton}
-        </Stack>
+        <Typography
+          variant="labelMedium"
+          color="text.secondary"
+          noWrap
+          sx={{ display: 'block', minHeight: 32, pt: 2 }}
+        >
+          {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
+        </Typography>
       )}
       <Sheet
         open={actionsOpen}
@@ -476,7 +517,13 @@ export function CoachScreen() {
       <Box sx={{ flex: 1, pb: 4 }}>
         {empty ? (
           <Stack spacing={{ xs: 3, sm: 5 }} sx={{ pt: { xs: 1, sm: 10 }, pb: 4 }}>
-            <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+            {/* With a shop, the top bar already names it: no greeting line, only a heading for
+                screen readers. Before a shop exists the greeting introduces the coach. */}
+            {ws.active ? (
+              <Typography component="h1" sx={visuallyHidden}>
+                {t.navCoach}
+              </Typography>
+            ) : (
               <Typography
                 component="h1"
                 variant="headlineMedium"
@@ -485,29 +532,48 @@ export function CoachScreen() {
                   lineHeight: { xs: '2rem', sm: undefined },
                 }}
               >
-                {ws.active ? t.coachGreetingShop(ws.active.fields.name) : t.coachGreeting}
+                {t.coachGreeting}
               </Typography>
-              {plusButton}
-            </Stack>
-            {ws.active ? <ShopCard onOpen={openSheet} /> : <StartCard />}
-            {ws.active && (
-              <>
-                <FreshnessCard key={`freshness-${ws.active.id}`} />
-                <RecapTile key={`recap-${ws.active.id}`} mondayOnly />
-              </>
             )}
-            {ws.active && (
-              <PendingCard
-                unread={unread}
-                onMessages={() => setShopSheet('messages')}
-                onAnswer={(fact) => {
-                  setNote(`${t.factNames[fact]}: `)
-                  messageInput.current?.focus()
-                }}
-              />
-            )}{' '}
-            {/* Before a shop exists the start card is the only thing shown. */}
+            {ws.active ? <ShopCard onOpen={openSheet} /> : <StartCard />}
+            {/* Suggestions right under the shop card; before a shop exists the start card is
+                the only thing shown. */}
             {ws.active && chips}
+            {ws.active && (
+              // Phones: one attention card at a time so the first view fits without scrolling.
+              // The first card with something to say shows, the rest wait their turn (each one
+              // also lives on My shop). A card with nothing to say renders nothing.
+              <Box
+                data-testid="coach-attention"
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: { xs: 0, sm: 5 },
+                  '& > :empty': { display: 'none' },
+                  [`@media (max-width:${windowClass.medium - 1}px)`]: {
+                    '& > :not(:empty) ~ *': { display: 'none' },
+                  },
+                  '&:not(:has(> :not(:empty)))': { display: 'none' },
+                }}
+              >
+                <div>
+                  <FreshnessCard key={`freshness-${ws.active.id}`} />
+                </div>
+                <div>
+                  <RecapTile key={`recap-${ws.active.id}`} mondayOnly />
+                </div>
+                <div>
+                  <PendingCard
+                    unread={unread}
+                    onMessages={() => setShopSheet('messages')}
+                    onAnswer={(fact) => {
+                      setNote(`${t.factNames[fact]}: `)
+                      messageInput.current?.focus()
+                    }}
+                  />
+                </div>
+              </Box>
+            )}
           </Stack>
         ) : (
           <>
@@ -594,19 +660,19 @@ export function CoachScreen() {
           role="status"
           sx={{ display: 'block', px: 4, '&:not(:empty)': { pb: 2 } }}
         >
+          {/* Listening and speaking show inside the composer, so this line stays empty for
+              voice and the composer never jumps. */}
           {!online
             ? t.connectionOffline
             : reconnecting || voice.state === 'reconnecting'
               ? t.connectionReconnecting
-              : voice.state === 'recording'
-                ? t.listening
-                : voice.state === 'replying'
-                  ? t.speaking
-                  : busy === 'photo'
-                    ? t.checkingPhoto
-                    : ''}
+              : busy === 'photo'
+                ? t.checkingPhoto
+                : ''}
         </Typography>
-        {/* One-line composer: attach, text, mic, send. Grows upward for long messages. */}
+        {/* One-line composer: attach, text, mic, send. Grows upward only for multi-line text.
+            Voice swaps contents in place (mute for attach, status for text), so the row keeps
+            its size and the buttons never move. */}
         <Box
           component="form"
           onSubmit={(event) => {
@@ -620,23 +686,32 @@ export function CoachScreen() {
             bgcolor: roles.surfaceContainerHigh,
             borderRadius: `${shape.xl}px`,
             p: 1,
+            '&:has(textarea:focus-visible)': { outline: `2px solid ${roles.primary}` },
           }}
         >
-          <Tooltip title={t.photo}>
-            <span>
-              <IconButton
-                aria-label={t.photo}
-                disabled={busy !== 'idle' || voice.state !== 'idle'}
-                onClick={() => photoInput.current?.click()}
-              >
-                {busy === 'photo' ? (
-                  <CircularProgress size={20} aria-label={t.checkingPhoto} />
-                ) : (
-                  <ImagePlus size={22} />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
+          {voice.state !== 'idle' ? (
+            <IconButton aria-label={voice.muted ? t.unmute : t.mute} onClick={voice.toggleMute}>
+              {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+            </IconButton>
+          ) : (
+            <Tooltip title={t.photo} disableTouchListener>
+              <span>
+                <IconButton
+                  aria-label={t.photo}
+                  disabled={busy !== 'idle'}
+                  ref={photoButton}
+                  aria-haspopup={touch ? 'menu' : undefined}
+                  onClick={(event) => choosePhoto(event.currentTarget)}
+                >
+                  {busy === 'photo' ? (
+                    <CircularProgress size={20} aria-label={t.checkingPhoto} />
+                  ) : (
+                    <ImagePlus size={22} />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
           <input
             ref={photoInput}
             type="file"
@@ -649,44 +724,94 @@ export function CoachScreen() {
               if (file) void uploadPhoto(file)
             }}
           />
-          <InputBase
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            onKeyDown={(event) => {
-              // Desktop: Enter sends (Shift+Enter = new line). Touch keyboards: Enter is a new
-              // line and the Send button sends, so half-typed messages aren't sent by accident.
-              if (
-                event.key === 'Enter' &&
-                !event.shiftKey &&
-                !event.nativeEvent.isComposing &&
-                !matchMedia('(pointer: coarse)').matches
-              ) {
-                event.preventDefault()
-                void send()
-              }
-            }}
-            placeholder={t.messagePlaceholder}
-            multiline
-            maxRows={6}
-            fullWidth
-            disabled={voice.state !== 'idle'}
-            inputRef={messageInput}
-            inputProps={{ 'aria-label': t.message, maxLength: 2000 }}
-            // 16px keeps iOS from zooming on focus; 12 + 24 + 12 matches the 48dp buttons.
-            sx={{
-              flex: 1,
-              px: 1,
-              py: 3,
-              fontSize: '1rem',
-              lineHeight: '1.5rem',
-              // The hint stays on one line on narrow phones (truncated, never wrapped).
-              '& textarea::placeholder': {
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              },
-            }}
-          />
+          <Menu
+            anchorEl={photoMenu}
+            open={Boolean(photoMenu)}
+            onClose={() => setPhotoMenu(null)}
+            anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+            transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          >
+            <MenuItem onClick={() => pickPhoto(true)} sx={{ minHeight: 48 }}>
+              <ListItemIcon>
+                <Camera size={20} />
+              </ListItemIcon>
+              <ListItemText primary={t.photoTake} />
+            </MenuItem>
+            <MenuItem onClick={() => pickPhoto(false)} sx={{ minHeight: 48 }}>
+              <ListItemIcon>
+                <ImageUp size={20} />
+              </ListItemIcon>
+              <ListItemText primary={t.photoUpload} />
+            </MenuItem>
+          </Menu>
+          {voiceText ? (
+            <Typography
+              role="status"
+              variant="bodyLarge"
+              noWrap
+              sx={{ flex: 1, minWidth: 0, px: 1, py: 3, lineHeight: '1.5rem' }}
+            >
+              {voiceText}
+            </Typography>
+          ) : (
+            <Box
+              component="textarea"
+              ref={messageInput}
+              rows={1}
+              name="message"
+              autoComplete="off"
+              value={note}
+              onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setNote(event.target.value)}
+              onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
+                // Desktop: Enter sends (Shift+Enter = new line). Touch keyboards: Enter is a new
+                // line and the Send button sends, so half-typed messages aren't sent by accident.
+                if (
+                  event.key === 'Enter' &&
+                  !event.shiftKey &&
+                  !event.nativeEvent.isComposing &&
+                  !matchMedia('(pointer: coarse)').matches
+                ) {
+                  event.preventDefault()
+                  void send()
+                }
+              }}
+              placeholder={t.messagePlaceholder}
+              disabled={voice.state !== 'idle'}
+              aria-label={t.message}
+              maxLength={2000}
+              // 16px keeps iOS from zooming on focus; 12 + 24 + 12 matches the 48dp buttons.
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                boxSizing: 'border-box',
+                height: '48px',
+                maxHeight: `calc(${COMPOSER_ROWS} * 1.5rem + 24px)`,
+                m: 0,
+                px: 1,
+                py: 3,
+                border: 0,
+                outline: 0,
+                resize: 'none',
+                overflowY: 'auto',
+                bgcolor: 'transparent',
+                color: 'text.primary',
+                font: 'inherit',
+                fontSize: '1rem',
+                lineHeight: '1.5rem',
+                '&:disabled': { color: 'text.disabled' },
+                // The hint stays on one line on narrow phones (truncated, never wrapped).
+                '&::placeholder': {
+                  color: 'text.secondary',
+                  opacity: 1,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                },
+              }}
+            />
+          )}
+          {/* Tap to talk, tap again to finish: the icon and its container show the state. No
+              tooltip on touch, which would pop over the composer on a long press. */}
           <Tooltip
             title={
               voice.state === 'recording'
@@ -695,6 +820,7 @@ export function CoachScreen() {
                   ? t.talk
                   : t.stopVoice
             }
+            disableTouchListener
           >
             <span>
               <IconButton
@@ -730,11 +856,6 @@ export function CoachScreen() {
               </IconButton>
             </span>
           </Tooltip>
-          {voice.state !== 'idle' && (
-            <IconButton aria-label={voice.muted ? t.unmute : t.mute} onClick={voice.toggleMute}>
-              {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-            </IconButton>
-          )}
           {busy === 'reply' ? (
             <IconButton
               aria-label={t.stop}
