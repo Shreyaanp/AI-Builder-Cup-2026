@@ -38,3 +38,7 @@ Use 1 worker if the machine is loaded.
 
 Report in `docs/handoff/account2-status.md`: the commit for each bug ID, the tests and their
 results.
+
+## Added: B16
+
+In the coach composer, replace separate photo controls with ONE attach (+/paperclip) button opening a small menu: **Take photo** (`capture="environment"`), **Photo library**, **Document** (PDF, Excel, CSV). Images go to the existing photo pipeline; documents go to `POST /businesses/{bid}/import` (see `src/features/v1/ImportMenu.tsx` for the call and review flow — reuse it, don't fork it). This replaces B7's separate camera button.
