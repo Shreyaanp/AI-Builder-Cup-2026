@@ -131,7 +131,8 @@ test('Google handoff shows readiness and only official Google links', async ({ p
   await open(page)
   await addShop(page, 'Morning Crumb')
   await page.getByRole('button', { name: 'Google' }).click()
-  await expect(page.getByText('1 of 6 ready')).toBeVisible()
+  // The coach's shop card (kept mounted while hidden) shows the same readiness.
+  await expect(page.getByRole('region', { name: 'Google' }).getByText('1 of 6 ready')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Add on Google' })).toHaveAttribute(
     'href',
     'https://business.google.com/add',

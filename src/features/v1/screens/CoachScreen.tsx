@@ -6,9 +6,12 @@ import {
   Box,
   Chip,
   CircularProgress,
+  Divider,
   IconButton,
   InputBase,
+  ListItemIcon,
   ListItemText,
+  ListSubheader,
   Menu,
   MenuItem,
   Stack,
@@ -18,14 +21,14 @@ import {
 } from '@mui/material'
 import {
   ArrowUp,
-  Camera,
   Clock,
+  EllipsisVertical,
   History,
+  ImagePlus,
   Leaf,
   Mic,
   Plus,
   Square,
-  Store,
   Tag,
   Volume2,
   VolumeX,
@@ -39,7 +42,7 @@ import { ApiError } from '../api'
 import type { Conversation, PhotoResult, Proposal } from '../api'
 import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
-import { NextAction } from '../NextAction'
+import { ShopCard, ShopSheet, StartCard } from '../ShopCard'
 import { useVoice } from '../useVoice'
 import { useWorkspace } from '../workspaceContext'
 import { shape } from '../../../design/theme'
@@ -61,7 +64,10 @@ export function CoachScreen() {
   const [error, setError] = useState('')
   const [mode, setMode] = useState<'offline' | 'gemini' | null>(null)
   const [history, setHistory] = useState<Conversation[]>([])
-  const [historyAnchor, setHistoryAnchor] = useState<HTMLElement | null>(null)
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
+  // Shop details sheet: null = closed, -1 = open, n = open on product n.
+  const [sheet, setSheet] = useState<number | null>(null)
+  const openSheet = (product?: number) => setSheet(product ?? -1)
   const session = useRef<string | null>(null)
   const controller = useRef<AbortController | null>(null)
   const photoInput = useRef<HTMLInputElement>(null)
@@ -222,7 +228,7 @@ export function CoachScreen() {
   }
 
   async function restore(id: string) {
-    setHistoryAnchor(null)
+    setMenuAnchor(null)
     try {
       const data = await api<{ messages: Message[] }>(`/conversations/${id}`)
       controller.current?.abort()
@@ -236,21 +242,14 @@ export function CoachScreen() {
 
   const shopHistory = history.filter((entry) => (entry.business_id ?? null) === activeId)
   const empty = messages.length === 0 && !reply
-  type Suggestion = 'photo' | 'add' | 'price' | 'hours'
-  const suggestions: { id: Suggestion; label: string; icon: ReactElement }[] = [
-    { id: 'photo', label: t.suggestPhoto, icon: <Camera size={18} /> },
-    ...(ws.active
-      ? [
-          { id: 'price' as const, label: t.suggestPrice, icon: <Tag size={18} /> },
-          { id: 'hours' as const, label: t.suggestHours, icon: <Clock size={18} /> },
-        ]
-      : [{ id: 'add' as const, label: t.suggestAdd, icon: <Store size={18} /> }]),
+  // Quick starts once a shop exists. Photos live on the composer and the shop card's next
+  // step; before a shop exists the start card carries every action.
+  const suggestions: { label: string; icon: ReactElement }[] = [
+    { label: t.suggestPrice, icon: <Tag size={18} /> },
+    { label: t.suggestHours, icon: <Clock size={18} /> },
   ]
-  function suggest(id: Suggestion) {
-    if (id === 'photo') photoInput.current?.click()
-    else if (id === 'add') ws.openEditor({ kind: 'business', fields: null })
-    else setNote((id === 'price' ? t.suggestPrice : t.suggestHours) + ': ')
-  }
+  // The top row only appears once there is something to show or do in it.
+  const showTopRow = Boolean(mode) || !empty || shopHistory.length > 0
   const canSend = Boolean(note.trim()) && busy === 'idle' && voice.state === 'idle'
 
   return (
@@ -266,100 +265,133 @@ export function CoachScreen() {
         mx: 'auto',
       }}
     >
-      <Stack
-        direction="row"
-        sx={{ alignItems: 'center', justifyContent: 'flex-end', minHeight: 48 }}
-      >
-        {mode && (
-          <Typography variant="labelMedium" color="text.secondary" sx={{ flex: 1 }}>
-            {mode === 'gemini' ? t.geminiMode : t.offlineMode}
+      {/* One quiet row: which coach is answering, and everything else in one overflow menu. */}
+      {showTopRow && (
+        <Stack direction="row" sx={{ alignItems: 'center', minHeight: 48, gap: 1 }}>
+          <Typography variant="labelMedium" color="text.secondary" sx={{ flex: 1 }} noWrap>
+            {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
           </Typography>
-        )}
-        <Tooltip title={t.newChat}>
-          <IconButton aria-label={t.newChat} onClick={resetThread} disabled={empty}>
-            <Plus size={20} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={t.history}>
-          <span>
+          <Tooltip title={t.moreOptions}>
             <IconButton
-              aria-label={t.history}
-              disabled={shopHistory.length === 0}
-              onClick={(event) => setHistoryAnchor(event.currentTarget)}
+              aria-label={t.moreOptions}
+              aria-haspopup="menu"
+              onClick={(event) => setMenuAnchor(event.currentTarget)}
             >
-              <History size={20} />
+              <EllipsisVertical size={20} />
             </IconButton>
-          </span>
-        </Tooltip>
-        <Menu
-          anchorEl={historyAnchor}
-          open={Boolean(historyAnchor)}
-          onClose={() => setHistoryAnchor(null)}
-        >
-          {shopHistory.map((entry) => (
-            <MenuItem key={entry.session_id} onClick={() => void restore(entry.session_id)}>
-              <ListItemText
-                primary={new Date(entry.updated * 1000).toLocaleString(language, {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })}
-              />
+          </Tooltip>
+          <Menu
+            anchorEl={menuAnchor}
+            open={Boolean(menuAnchor)}
+            onClose={() => setMenuAnchor(null)}
+          >
+            <MenuItem
+              disabled={empty}
+              onClick={() => {
+                setMenuAnchor(null)
+                resetThread()
+              }}
+            >
+              <ListItemIcon>
+                <Plus size={18} />
+              </ListItemIcon>
+              <ListItemText primary={t.newChat} />
             </MenuItem>
-          ))}
-        </Menu>
-      </Stack>
+            {shopHistory.length > 0 && <Divider />}
+            {shopHistory.length > 0 && (
+              <ListSubheader sx={{ bgcolor: 'transparent', lineHeight: '36px' }}>
+                {t.history}
+              </ListSubheader>
+            )}
+            {shopHistory.map((entry) => (
+              <MenuItem key={entry.session_id} onClick={() => void restore(entry.session_id)}>
+                <ListItemIcon>
+                  <History size={18} />
+                </ListItemIcon>
+                <ListItemText
+                  primary={new Date(entry.updated * 1000).toLocaleString(language, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
+                />
+              </MenuItem>
+            ))}
+          </Menu>
+        </Stack>
+      )}
 
-      <Box sx={{ flex: 1, pb: 2 }}>
+      <Box sx={{ flex: 1, pb: 4 }}>
         {empty ? (
-          <Stack spacing={3} sx={{ pt: { xs: 6, sm: 10 }, pb: 4 }}>
+          <Stack spacing={5} sx={{ pt: { xs: showTopRow ? 4 : 10, sm: 10 }, pb: 4 }}>
             <Typography component="h1" variant="headlineMedium">
               {ws.active ? t.coachGreetingShop(ws.active.fields.name) : t.coachGreeting}
             </Typography>
-            <NextAction />
-            <Typography variant="bodyMedium" color="text.secondary">
-              {t.coachHint}
-            </Typography>
-            <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
-              {suggestions.map((item) => (
-                <Chip
-                  key={item.label}
-                  icon={item.icon}
-                  label={item.label}
-                  variant="outlined"
-                  onClick={() => suggest(item.id)}
-                  sx={{
-                    height: 40,
-                    px: 1,
-                    borderColor: roles.outlineVariant,
-                    '& .MuiChip-icon': { color: roles.primary },
-                  }}
-                />
-              ))}
-            </Stack>
+            {ws.active ? <ShopCard onOpen={openSheet} /> : <StartCard />}
+            {ws.active && (
+              <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2 }}>
+                {suggestions.map((item) => (
+                  <Chip
+                    key={item.label}
+                    icon={item.icon}
+                    label={item.label}
+                    variant="outlined"
+                    onClick={() => setNote(item.label + ': ')}
+                    sx={{
+                      height: 40,
+                      px: 1,
+                      borderColor: roles.outlineVariant,
+                      '& .MuiChip-icon': { color: roles.primary },
+                    }}
+                  />
+                ))}
+              </Stack>
+            )}
           </Stack>
         ) : (
-          <Stack
-            component="ol"
-            role="log"
-            aria-live="polite"
-            spacing={3}
-            sx={{ listStyle: 'none', m: 0, p: 0, pt: 2 }}
-          >
-            {messages.map((message, index) => (
-              <Bubble key={index} message={message} you={t.you} coach={t.coach} />
-            ))}
-            {reply && (
-              <Bubble message={{ role: 'assistant', text: reply }} you={t.you} coach={t.coach} />
-            )}
-            {busy === 'reply' && !reply && (
-              <Box component="li" sx={{ pl: 6 }}>
-                <CircularProgress size={20} aria-label={t.speaking} />
+          <>
+            {ws.active && (
+              // Stays under the app bar while the conversation scrolls, filling in as
+              // proposals are confirmed.
+              <Box
+                sx={{
+                  position: 'sticky',
+                  top: 'calc(64px + env(safe-area-inset-top))',
+                  zIndex: 2,
+                  bgcolor: 'background.default',
+                  pb: 2,
+                }}
+              >
+                <ShopCard dense onOpen={openSheet} />
               </Box>
             )}
-          </Stack>
+            <Stack
+              component="ol"
+              role="log"
+              aria-live="polite"
+              spacing={3}
+              sx={{ listStyle: 'none', m: 0, p: 0, pt: 2 }}
+            >
+              {messages.map((message, index) => (
+                <Bubble key={index} message={message} you={t.you} coach={t.coach} />
+              ))}
+              {reply && (
+                <Bubble message={{ role: 'assistant', text: reply }} you={t.you} coach={t.coach} />
+              )}
+              {busy === 'reply' && !reply && (
+                <Box component="li" sx={{ pl: 10 }}>
+                  <CircularProgress size={20} aria-label={t.speaking} />
+                </Box>
+              )}
+            </Stack>
+          </>
         )}
         <div ref={end} />
       </Box>
+      <ShopSheet
+        open={sheet !== null}
+        focusProduct={sheet !== null && sheet >= 0 ? sheet : null}
+        onClose={() => setSheet(null)}
+      />
 
       <Box
         sx={{
@@ -382,6 +414,22 @@ export function CoachScreen() {
             {voice.error}
           </Alert>
         )}
+        <Typography
+          variant="labelMedium"
+          color="text.secondary"
+          role="status"
+          noWrap
+          sx={{ display: 'block', px: 4, '&:not(:empty)': { pb: 2 } }}
+        >
+          {voice.state === 'recording'
+            ? t.listening
+            : voice.state === 'replying'
+              ? t.speaking
+              : busy === 'photo'
+                ? t.checkingPhoto
+                : ''}
+        </Typography>
+        {/* One-line composer: attach, text, mic, send. Grows upward for long messages. */}
         <Box
           component="form"
           onSubmit={(event) => {
@@ -389,13 +437,41 @@ export function CoachScreen() {
             void send()
           }}
           sx={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: 0.5,
             bgcolor: roles.surfaceContainerHigh,
             borderRadius: `${shape.xl}px`,
-            px: 2,
-            pt: 1.5,
-            pb: 1,
+            p: 1,
           }}
         >
+          <Tooltip title={t.photo}>
+            <span>
+              <IconButton
+                aria-label={t.photo}
+                disabled={busy !== 'idle' || voice.state !== 'idle'}
+                onClick={() => photoInput.current?.click()}
+              >
+                {busy === 'photo' ? (
+                  <CircularProgress size={20} aria-label={t.checkingPhoto} />
+                ) : (
+                  <ImagePlus size={22} />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
+          <input
+            ref={photoInput}
+            type="file"
+            accept={PHOTO_TYPES.join(',')}
+            hidden
+            aria-hidden="true"
+            tabIndex={-1}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void uploadPhoto(file)
+            }}
+          />
           <InputBase
             value={note}
             onChange={(event) => setNote(event.target.value)}
@@ -418,134 +494,92 @@ export function CoachScreen() {
             fullWidth
             disabled={voice.state !== 'idle'}
             inputProps={{ 'aria-label': t.message, maxLength: 2000 }}
-            sx={{ ...theme.typography.bodyLarge, px: 1, py: 1 }}
+            // 16px keeps iOS from zooming on focus; 12 + 24 + 12 matches the 48dp buttons.
+            sx={{ flex: 1, px: 1, py: 3, fontSize: '1rem', lineHeight: '1.5rem' }}
           />
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5 }}>
-            <Tooltip title={t.photo}>
-              <span>
-                <IconButton
-                  aria-label={t.photo}
-                  disabled={busy !== 'idle' || voice.state !== 'idle'}
-                  onClick={() => photoInput.current?.click()}
-                >
-                  {busy === 'photo' ? (
-                    <CircularProgress size={20} aria-label={t.checkingPhoto} />
-                  ) : (
-                    <Camera size={22} />
-                  )}
-                </IconButton>
-              </span>
-            </Tooltip>
-            <input
-              ref={photoInput}
-              type="file"
-              accept={PHOTO_TYPES.join(',')}
-              hidden
-              aria-hidden="true"
-              tabIndex={-1}
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) void uploadPhoto(file)
-              }}
-            />
-            <Tooltip
-              title={
-                voice.state === 'recording'
-                  ? t.finishTalking
-                  : voice.state === 'idle'
-                    ? t.talk
-                    : t.stopVoice
-              }
-            >
-              <span>
-                <IconButton
-                  aria-label={
-                    voice.state === 'recording'
-                      ? t.finishTalking
-                      : voice.state === 'idle'
-                        ? t.talk
-                        : t.stopVoice
-                  }
-                  aria-pressed={voice.state === 'recording'}
-                  disabled={busy !== 'idle'}
-                  onClick={() => {
-                    if (voice.state === 'recording') voice.finishRecording()
-                    else if (voice.state === 'idle') void voice.start()
-                    else voice.stop()
-                  }}
-                  sx={
-                    voice.state === 'recording'
-                      ? {
-                          bgcolor: roles.primaryContainer,
-                          color: roles.onPrimaryContainer,
-                          '&:hover': { bgcolor: roles.primaryContainer },
-                        }
-                      : undefined
-                  }
-                >
-                  {voice.state === 'idle' || voice.state === 'recording' ? (
-                    <Mic size={22} />
-                  ) : (
-                    <Square size={18} />
-                  )}
-                </IconButton>
-              </span>
-            </Tooltip>
-            {voice.state !== 'idle' && (
-              <IconButton aria-label={voice.muted ? t.unmute : t.mute} onClick={voice.toggleMute}>
-                {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-              </IconButton>
-            )}
-            <Typography
-              variant="bodySmall"
-              color="text.secondary"
-              role="status"
-              sx={{ flex: 1, px: 1 }}
-              noWrap
-            >
-              {voice.state === 'recording'
-                ? t.listening
-                : voice.state === 'replying'
-                  ? t.speaking
-                  : busy === 'photo'
-                    ? t.checkingPhoto
-                    : ''}
-            </Typography>
-            {busy === 'reply' ? (
+          <Tooltip
+            title={
+              voice.state === 'recording'
+                ? t.finishTalking
+                : voice.state === 'idle'
+                  ? t.talk
+                  : t.stopVoice
+            }
+          >
+            <span>
               <IconButton
-                aria-label={t.stop}
+                aria-label={
+                  voice.state === 'recording'
+                    ? t.finishTalking
+                    : voice.state === 'idle'
+                      ? t.talk
+                      : t.stopVoice
+                }
+                aria-pressed={voice.state === 'recording'}
+                disabled={busy !== 'idle'}
                 onClick={() => {
-                  controller.current?.abort()
-                  setBusy('idle')
+                  if (voice.state === 'recording') voice.finishRecording()
+                  else if (voice.state === 'idle') void voice.start()
+                  else voice.stop()
                 }}
-                sx={{
-                  bgcolor: roles.secondaryContainer,
-                  color: roles.onSecondaryContainer,
-                  '&:hover': { bgcolor: roles.secondaryContainer },
-                }}
+                sx={
+                  voice.state === 'recording'
+                    ? {
+                        bgcolor: roles.primaryContainer,
+                        color: roles.onPrimaryContainer,
+                        '&:hover': { bgcolor: roles.primaryContainer },
+                      }
+                    : undefined
+                }
               >
-                <Square size={18} />
+                {voice.state === 'idle' || voice.state === 'recording' ? (
+                  <Mic size={22} />
+                ) : (
+                  <Square size={18} />
+                )}
               </IconButton>
-            ) : (
-              <IconButton
-                type="submit"
-                aria-label={t.send}
-                disabled={!canSend}
-                sx={{
-                  bgcolor: canSend ? roles.primary : 'transparent',
-                  color: canSend ? roles.onPrimary : undefined,
-                  '&:hover': { bgcolor: canSend ? roles.primary : undefined },
-                }}
-              >
-                <ArrowUp size={22} />
-              </IconButton>
-            )}
-          </Stack>
+            </span>
+          </Tooltip>
+          {voice.state !== 'idle' && (
+            <IconButton aria-label={voice.muted ? t.unmute : t.mute} onClick={voice.toggleMute}>
+              {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+            </IconButton>
+          )}
+          {busy === 'reply' ? (
+            <IconButton
+              aria-label={t.stop}
+              onClick={() => {
+                controller.current?.abort()
+                setBusy('idle')
+              }}
+              sx={{
+                bgcolor: roles.secondaryContainer,
+                color: roles.onSecondaryContainer,
+                '&:hover': { bgcolor: roles.secondaryContainer },
+              }}
+            >
+              <Square size={18} />
+            </IconButton>
+          ) : (
+            <IconButton
+              type="submit"
+              aria-label={t.send}
+              disabled={!canSend}
+              sx={{
+                bgcolor: canSend ? roles.primary : 'transparent',
+                color: canSend ? roles.onPrimary : undefined,
+                '&:hover': { bgcolor: canSend ? roles.primary : undefined },
+              }}
+            >
+              <ArrowUp size={22} />
+            </IconButton>
+          )}
         </Box>
+        {/* Phones: the review sheet already says this, so the coach screen stays quiet. */}
         <Typography
           variant="bodySmall"
           color="text.secondary"
-          sx={{ display: 'block', textAlign: 'center', mt: 1 }}
+          sx={{ display: { xs: 'none', sm: 'block' }, textAlign: 'center', mt: 2 }}
         >
           {t.reviewNote}
         </Typography>
