@@ -15,6 +15,8 @@ async function shopWithoutMenu(page: Page) {
     .click()
   await page.getByRole('button', { name: 'My shop' }).click()
   await page.getByRole('button', { name: /^Menu/ }).click()
+  // The sheet's compact "Import" action opens its choices in the sheet (B28).
+  await page.getByRole('button', { name: 'Import sales or menu (Excel, photo, notes)' }).click()
 }
 
 const csv = (text: string) => ({

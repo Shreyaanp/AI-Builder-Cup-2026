@@ -1,4 +1,5 @@
-import { Box, Button, Chip, Skeleton, Stack, Typography, useTheme } from '@mui/material'
+import { Box, Button, Skeleton, Stack, Typography, useTheme } from '@mui/material'
+import { visuallyHidden } from '@mui/utils'
 import { Camera, Store } from 'lucide-react'
 import { useCopy } from '../strings'
 import { LoadError } from '../LoadError'
@@ -30,27 +31,19 @@ export function ShopScreen() {
   )
 }
 
-/** Glanceable tiles; the detail lives in bottom sheets, not a long page. */
+/**
+ * Glanceable tiles; the detail lives in bottom sheets, not a long page. The top bar already
+ * names the shop, so the tiles start at the top; a pending check shows in the Readiness tile.
+ */
 function ShopHome() {
   const t = useCopy()
-  const ws = useWorkspace()
-  const roles = useTheme().material
-  const shop = ws.active
-  if (!shop) return null
   return (
-    <Stack spacing={4}>
-      <Box>
-        <Typography component="h1" variant="headlineMedium" sx={{ overflowWrap: 'anywhere' }}>
-          {shop.fields.name}
-        </Typography>
-        <Chip
-          size="small"
-          label={shop.registration === 'draft' ? t.draft : t.verificationPending}
-          sx={{ mt: 2, bgcolor: roles.secondaryContainer, color: roles.onSecondaryContainer }}
-        />
-      </Box>
+    <>
+      <Typography component="h1" sx={visuallyHidden}>
+        {t.navShop}
+      </Typography>
       <ShopOverview />
-    </Stack>
+    </>
   )
 }
 function EmptyShop() {

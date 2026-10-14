@@ -181,12 +181,17 @@ class ProductFields(BaseModel):
     unit: str = Field(default="item", min_length=1, max_length=40)
     stock: int | None = Field(default=None, ge=0, le=1_000_000)
     available: bool = True
+    # Set only when the owner picks a new unit for an item saved under another one: the commit
+    # updates that saved item instead of adding a second one. Never stored on the item.
+    previous_unit: str | None = Field(default=None, min_length=1, max_length=40)
 
     @model_serializer(mode="wrap")
     def drop_empty_category(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data: dict[str, Any] = handler(self)
         if not data["category"]:
             del data["category"]
+        if data.get("previous_unit") in (None, data["unit"]):
+            data.pop("previous_unit", None)
         return data
 
 
@@ -583,11 +588,17 @@ class MerchantStore:
                 db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))
             # Inventory proposals, or a brand-new shop arriving with its menu.
             for product in data["products"]:
-                existing = db.execute(
+                find = (
                     "SELECT id FROM inventory WHERE business_id=? AND "
-                    "json_extract(fields,'$.name')=? AND json_extract(fields,'$.unit')=?",
-                    (bid, product["name"], product["unit"]),
-                ).fetchone()
+                    "json_extract(fields,'$.name')=? AND json_extract(fields,'$.unit')=?"
+                )
+                existing = db.execute(find, (bid, product["name"], product["unit"])).fetchone()
+                if previous := product.pop("previous_unit", None):
+                    # A new unit for a saved item: that item changes, no second copy.
+                    old = db.execute(find, (bid, product["name"], previous)).fetchone()
+                    if old and existing:
+                        db.execute("DELETE FROM inventory WHERE id=?", (old[0],))
+                    existing = existing or old
                 if existing:
                     db.execute(
                         "UPDATE inventory SET fields=? WHERE id=?",

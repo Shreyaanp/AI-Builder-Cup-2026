@@ -9,15 +9,29 @@ export function CategoryGroups<T extends Categorised>({
   products,
   children,
   inline = false,
+  columns = false,
 }: {
   products: T[]
   children: (items: T[]) => ReactNode
   inline?: boolean
+  /** Lay the groups side by side when there is room (200px+ each). */
+  columns?: boolean
 }) {
   const t = useShopCopy()
   const roles = useTheme().material
   return (
-    <Box component={inline ? 'span' : 'div'} sx={{ display: 'grid', gap: 2, minWidth: 0 }}>
+    <Box
+      component={inline ? 'span' : 'div'}
+      sx={{
+        display: 'grid',
+        gap: 2,
+        minWidth: 0,
+        alignItems: 'start',
+        gridTemplateColumns: columns
+          ? 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))'
+          : undefined,
+      }}
+    >
       {groupProducts(products).map((group) => (
         <Box
           component={inline ? 'span' : 'section'}

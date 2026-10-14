@@ -140,6 +140,18 @@ export function WorkspaceProvider({
     },
     [activeId, api, reload, t.actionFailed],
   )
+  const confirm = useCallback(
+    async (proposal: Proposal) => {
+      const receipt = await api<{ business_id: string }>(`/proposals/${proposal.id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ digest: proposal.digest }),
+      })
+      await reload()
+      await loadProducts(receipt.business_id).catch(() => undefined)
+      setToast(t.saved)
+    },
+    [api, reload, loadProducts, t.saved],
+  )
   const setShared = useCallback(
     async (shared: boolean) => {
       if (!activeId) return
@@ -192,6 +204,7 @@ export function WorkspaceProvider({
       setShared,
       shareUrl: activeId && customerOrigin ? customerShopLink(activeId, customerOrigin) : null,
       review: setProposal,
+      confirm,
       notify: setToast,
       requestPhoto: () => {
         setDestination('coach')
@@ -226,6 +239,7 @@ export function WorkspaceProvider({
       reload,
       setAvailability,
       setShared,
+      confirm,
       photoPending,
       consumePhotoRequest,
       coachDraft,
