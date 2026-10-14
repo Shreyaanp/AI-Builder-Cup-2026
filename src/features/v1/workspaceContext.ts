@@ -36,6 +36,9 @@ export interface Workspace {
   startCoachDraft: (text: string) => void
   coachDraft: string | null
   consumeCoachDraft: () => void
+  /** The coach's "+" sheet (new chat, add shop or product, earlier chats); the top bar opens it. */
+  coachActions: boolean
+  setCoachActions: (open: boolean) => void
   /** Opens the optional duplicate-owner check (Privacy). */
   faceOpen: boolean
   setFaceOpen: (open: boolean) => void

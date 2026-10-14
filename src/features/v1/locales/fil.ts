@@ -112,7 +112,6 @@ export const fil: Copy = {
   signOut: 'Mag-sign out',
   saved: 'Na-save na',
   coachGreeting: 'Ano ang gusto mong ayusin ngayon?',
-  coachGreetingShop: (name: string) => `Ano ang bago sa ${name}?`,
   coachHint: 'Magpadala ng litrato ng karatula o sabihin ang pangalan ng tindahan.',
   suggestPhoto: 'Magpadala ng litrato',
   suggestAdd: 'Idagdag ang tindahan ko',

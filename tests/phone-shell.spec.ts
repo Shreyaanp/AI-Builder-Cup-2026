@@ -219,3 +219,29 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   await page.close({ runBeforeUnload: true })
   expect(await unload).toBe('beforeunload')
 })
+
+test('B5: no "What’s new at …" line; + sits top-right next to settings', async ({ page }) => {
+  await enter(page)
+  await saveShop(page)
+  await expect(page.getByText(/What’s new at/)).toHaveCount(0)
+  const header = page.getByRole('banner')
+  const plus = header.getByRole('button', { name: 'New conversation', exact: true })
+  const settings = header.getByRole('button', { name: 'Settings', exact: true })
+  await expect(plus).toBeVisible()
+  const a = (await plus.boundingBox())!
+  const b = (await settings.boundingBox())!
+  // Same row, directly left of settings, at the right edge of the bar.
+  expect(Math.abs(a.y - b.y)).toBeLessThanOrEqual(1)
+  expect(b.x - (a.x + a.width)).toBeLessThanOrEqual(8)
+  expect(b.x + b.width).toBeGreaterThan(390 - 24)
+  await expect(page.locator('main').getByRole('button', { name: 'New conversation' })).toHaveCount(
+    0,
+  )
+  await axe(page)
+  await plus.tap()
+  await expect(page.getByRole('dialog', { name: 'New conversation' })).toBeVisible()
+  await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
+  // It belongs to the coach; other screens don't show it.
+  await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  await expect(plus).toHaveCount(0)
+})

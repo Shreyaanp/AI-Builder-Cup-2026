@@ -104,7 +104,6 @@ export const zhHans: Copy = {
   signOut: '退出登录',
   saved: '已保存',
   coachGreeting: '今天想先处理什么？',
-  coachGreetingShop: (name: string) => `${name} 有什么新消息？`,
   coachHint: '发一张招牌照片，或告诉我店铺名称。',
   suggestPhoto: '发送店铺照片',
   suggestAdd: '添加我的店铺',

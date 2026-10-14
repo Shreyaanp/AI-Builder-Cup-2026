@@ -105,7 +105,6 @@ export const th: Copy = {
   signOut: 'ออกจากระบบ',
   saved: 'บันทึกแล้ว',
   coachGreeting: 'วันนี้อยากจัดการเรื่องอะไรคะ',
-  coachGreetingShop: (name: string) => `${name} มีอะไรใหม่บ้างคะ`,
   coachHint: 'ส่งรูปป้ายร้านหรือบอกชื่อร้านได้เลยค่ะ',
   suggestPhoto: 'ส่งรูปร้าน',
   suggestAdd: 'เพิ่มร้านของฉัน',

@@ -107,7 +107,6 @@ export const ja: Copy = {
   signOut: 'ログアウト',
   saved: '保存しました',
   coachGreeting: '今日は何をしましょうか？',
-  coachGreetingShop: (name: string) => `${name} の新しい情報を教えてください。`,
   coachHint: '看板の写真を送るか、お店の名前を教えてください。',
   suggestPhoto: 'お店の写真を送る',
   suggestAdd: 'お店を追加',
