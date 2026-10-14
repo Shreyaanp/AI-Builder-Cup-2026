@@ -227,6 +227,9 @@ FOOD_ONLY_FACTS = {"halal", "vegetarian_options", "delivery", "preorders"}
 
 
 def serves_food(fields: dict[str, Any]) -> bool:
+    # Unknown type yet: ask everything; food questions drop once the category says otherwise.
+    if not (fields.get("category") or "").strip():
+        return True
     text = f"{fields.get('category', '')} {fields.get('name', '')}".casefold()
     return bool(re.search(FOOD[0], text))
 
