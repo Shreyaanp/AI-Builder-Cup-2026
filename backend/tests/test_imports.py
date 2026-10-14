@@ -89,6 +89,7 @@ def test_excel_menu_and_sold_out_switch_survives_import(app) -> None:  # noqa: F
         assert products["Kopi"]["unit"] == "item"  # the saved item, not a new "Cup" one
         assert products["Curry puff"] == {
             "name": "Curry puff",
+            "category": "food",
             "price": 150,
             "unit": "piece",
             "stock": 10,

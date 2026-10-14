@@ -22,11 +22,13 @@ from .forecast import ForecastService
 from .merchant import (
     FACT_KEYS,
     BusinessFields,
+    DayHours,
     MerchantRepository,
     ProductFields,
     ProposalRequest,
 )
 from .money import DEFAULT_CURRENCY, to_major, to_minor
+from .product_categories import suggest_category
 from .recap import recap_facts
 
 MAX_REPAIRS = 2
@@ -157,6 +159,11 @@ class ProductInput(BaseModel):
     unit: str = Field(default="item", description="Selling unit: cup, plate, kg, piece, item…")
     stock: int | None = Field(default=None, description="Units in stock, only if the owner said")
     available: bool = Field(default=True, description="False when the owner says it is sold out")
+    category: str | None = Field(
+        default=None,
+        max_length=80,
+        description="Item category; omit to keep the saved category, empty to clear it",
+    )
 
 
 def _invalid(
@@ -206,7 +213,16 @@ def get_business_context() -> dict[str, Any]:
             for key, value in shop["fields"].items()
             # Coordinates stay hidden from the model; customer facts are part of the shop.
             if key
-            in {"name", "category", "location", "hours", "phone", "currency", "custom_facts"}
+            in {
+                "name",
+                "category",
+                "location",
+                "hours",
+                "weekly_hours",
+                "phone",
+                "currency",
+                "custom_facts",
+            }
             | set(FACT_KEYS)
         }
         if shop
@@ -215,6 +231,7 @@ def get_business_context() -> dict[str, Any]:
         "products": [
             {
                 "name": product["name"],
+                **({"category": product["category"]} if product.get("category") else {}),
                 "price": to_major(product["price"], currency),
                 "unit": product["unit"],
                 "stock": product.get("stock"),
@@ -337,6 +354,7 @@ def _propose_shop(
     payment_methods: list[str] | None = None,
     busy_hours: str = "",
     custom_facts: list[FactInput] | None = None,
+    weekly_hours: list[DayHours] | None = None,
 ) -> dict[str, Any]:
     """Shared sealed-proposal logic for shop basics and customer facts."""
     ctx = current.get()
@@ -374,6 +392,8 @@ def _propose_shop(
     elif not re.fullmatch(r"[A-Z]{3}", given["currency"]):
         given["currency"] = ui_currency.get() or DEFAULT_CURRENCY
     given.update({key: value for key, value in facts.items() if value is not None})
+    if weekly_hours is not None:
+        given["weekly_hours"] = weekly_hours
     if custom_facts:
         # Merge by key: an answer replaces the earlier answer to the same question only.
         merged = {fact["key"]: fact for fact in given.get("custom_facts", [])}
@@ -428,13 +448,23 @@ def propose_business(
     hours: str = "",
     phone: str = "",
     currency: str = "",
+    weekly_hours: list[DayHours] | None = None,
 ) -> dict[str, Any]:
     """Prepare the shop's basic details (new shop, or edits to the active shop) for the owner to
     review. Nothing is saved until the owner confirms. Leave a field empty if the owner did not
     say it; for an existing shop pass name="" and only what changed. currency is the ISO 4217
-    code (SGD, JPY, MYR…) for a new shop, only when the owner states or clearly implies it."""
+    code (SGD, JPY, MYR…) for a new shop, only when the owner states or clearly implies it.
+    weekly_hours: one record per stated weekday (day: mon/tue/wed/thu/fri/sat/sun,
+    closed: boolean, open/close: HH:MM). Overnight closing belongs to the opening day.
+    Leave it unset to preserve saved hours; an empty list returns to free-text hours."""
     return _propose_shop(
-        name=name, category=category, location=location, hours=hours, phone=phone, currency=currency
+        name=name,
+        category=category,
+        location=location,
+        hours=hours,
+        phone=phone,
+        currency=currency,
+        weekly_hours=weekly_hours,
     )
 
 
@@ -478,7 +508,8 @@ def propose_customer_facts(
 def propose_products(items: list[ProductInput]) -> dict[str, Any]:
     """Prepare additions or corrections to the active shop's products and prices, including
     marking items sold out (available=false), for the owner to review. Use one call for all
-    items mentioned together. Prices are in the shop's currency (major units)."""
+    items mentioned together. Prices are in the shop's currency (major units). category is
+    the owner's menu section, or a suggested group for a new item; empty clears it."""
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {
@@ -513,7 +544,14 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
                     else to_minor(item.price or 0, currency),
                     unit=known["unit"] if known else item.unit,
                     stock=item.stock if item.stock is not None else (known or {}).get("stock"),
-                    available=item.available,
+                    available=item.available
+                    if "available" in item.model_fields_set or not known
+                    else known.get("available", True),
+                    category=item.category
+                    if item.category is not None
+                    else known.get("category", "")
+                    if known
+                    else suggest_category(item.name),
                 )
             )
         proposal = ctx.store.propose(
@@ -538,6 +576,11 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
         if not known:
             changes.append(f"New item: {product.name}, {money(product.price):g} per {product.unit}")
             continue
+        if known.get("category", "") != product.category:
+            changes.append(
+                f"{product.name}: category {known.get('category') or '(empty)'} → "
+                f"{product.category or '(empty)'}"
+            )
         if known["price"] != product.price:
             changes.append(
                 f"{product.name}: price {money(known['price']):g} → {money(product.price):g} "

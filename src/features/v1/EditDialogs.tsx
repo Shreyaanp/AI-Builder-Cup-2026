@@ -18,6 +18,8 @@ import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { windowClass } from '../../design/theme'
 import { useRewardCopy } from '../rewards/strings'
+import { HoursEditor } from '../shop/Hours'
+import { useShopCopy } from '../shop/strings'
 
 const EMPTY: Business['fields'] = { name: '', category: '', location: '', hours: '', phone: '' }
 
@@ -108,6 +110,10 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
               slotProps={{ htmlInput: { maxLength: key === 'location' ? 300 : 180 } }}
             />
           ))}
+          <HoursEditor
+            value={fields.weekly_hours ?? []}
+            onChange={(weekly_hours) => setFields({ ...fields, weekly_hours })}
+          />
           <TextField
             label={rewards.reward}
             name="reward_text"
@@ -153,6 +159,7 @@ export function ProductDialog() {
 
 function ProductForm({ product }: { product: Product | null }) {
   const t = useCopy()
+  const shopCopy = useShopCopy()
   const { api, active, openEditor, review } = useWorkspace()
   const compact = useCompact()
   const currency = shopCurrency(active)
@@ -161,6 +168,7 @@ function ProductForm({ product }: { product: Product | null }) {
     price: product ? String(toMajor(product.price, currency)) : '',
     unit: product?.unit ?? 'item',
     stock: product?.stock == null ? '' : String(product.stock),
+    category: product?.category ?? '',
   })
   const [error, setError] = useState('')
   // One request at a time: repeated taps must not create competing proposals.
@@ -184,6 +192,8 @@ function ProductForm({ product }: { product: Product | null }) {
               price: toMinor(price, currency),
               unit: item.unit.trim() || 'item',
               stock: item.stock.trim() ? Number(item.stock) : null,
+              category: item.category.trim(),
+              available: product?.available ?? true,
             },
           ],
         }),
@@ -242,6 +252,13 @@ function ProductForm({ product }: { product: Product | null }) {
             value={item.unit}
             onChange={(event) => setItem({ ...item, unit: event.target.value })}
             slotProps={{ htmlInput: { maxLength: 40 } }}
+          />
+          <TextField
+            label={shopCopy.category}
+            name="category"
+            value={item.category}
+            onChange={(event) => setItem({ ...item, category: event.target.value })}
+            slotProps={{ htmlInput: { maxLength: 80 } }}
           />
           <TextField
             label={t.stockOptional}

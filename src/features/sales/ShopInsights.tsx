@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  Chip,
   List,
   ListItem,
   ListItemText,
@@ -61,7 +62,7 @@ function useFreshness() {
   return { value, error, retry: () => retry((n) => n + 1) }
 }
 
-export function FreshnessCard() {
+export function FreshnessCard({ compact = false }: { compact?: boolean }) {
   const ws = useWorkspace()
   const t = useCopy()
   const roles = useTheme().material
@@ -92,19 +93,23 @@ export function FreshnessCard() {
   }
   return (
     <Stack
-      spacing={2}
+      spacing={compact ? 0 : 2}
       sx={{
-        p: 3,
+        p: compact ? 2 : 3,
         borderRadius: `${shape.lg}px`,
         bgcolor: roles.surfaceContainer,
         color: roles.onSurface,
       }}
     >
-      <Typography component="h2" variant="titleMedium">
+      <Typography component="h2" variant={compact ? 'bodyMedium' : 'titleMedium'}>
         {t.freshnessTitle}
       </Typography>
       {failed && <Alert severity="error">{t.actionFailed}</Alert>}
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+      <Stack
+        direction={compact ? 'row' : { xs: 'column', sm: 'row' }}
+        spacing={1}
+        sx={{ flexWrap: 'wrap' }}
+      >
         <Button
           variant="contained"
           disabled={busy}
@@ -191,12 +196,12 @@ function RecapDetails({ week }: { week: string }) {
       </Typography>
       {!recap.sales_days && <Alert severity="info">{t.recapEmpty}</Alert>}
       <Box>
-        <Typography variant="labelMedium">{t.writtenByAi}</Typography>
-        {recap.mode === 'offline' && (
-          <Typography variant="labelMedium" color="text.secondary">
-            {t.offlineRecap}
-          </Typography>
-        )}
+        <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+          <Chip size="small" label={t.writtenByAi} />
+          {recap.mode === 'offline' && (
+            <Chip size="small" variant="outlined" label={t.offlineRecap} />
+          )}
+        </Stack>
         <Typography variant="bodyLarge" sx={{ mt: 1, overflowWrap: 'anywhere' }}>
           {recap.summary}
         </Typography>

@@ -39,10 +39,12 @@ export function PendingCard({
   unread,
   onMessages,
   onAnswer,
+  compact = false,
 }: {
   unread: number | null
   onMessages: () => void
   onAnswer: (fact: AskFact) => void
+  compact?: boolean
 }) {
   const t = useCopy()
   const ws = useWorkspace()
@@ -160,37 +162,47 @@ export function PendingCard({
       sx={{
         bgcolor: roles.surfaceContainerHigh,
         borderRadius: `${shape.lgIncreased}px`,
-        p: 4,
+        p: compact ? 2 : 4,
         ...enterRise,
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'flex-start', gap: 3 }}>
+      <Stack
+        direction="row"
+        sx={{ alignItems: compact ? 'center' : 'flex-start', gap: compact ? 2 : 3 }}
+      >
         <Box aria-hidden="true" sx={{ display: 'flex', color: roles.primary, pt: 1 }}>
           {card.icon}
         </Box>
         <Box sx={{ flex: 1, minWidth: 0, pt: 0.5 }}>
-          <Typography id={titleId} component="h2" variant="titleMedium">
+          <Typography id={titleId} component="h2" variant={compact ? 'bodyMedium' : 'titleMedium'}>
             {card.title}
           </Typography>
-          {card.hint && (
+          {card.hint && !compact && (
             <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
               {card.hint}
             </Typography>
           )}
         </Box>
+        {compact && (
+          <Stack direction="row" sx={{ gap: 1, flexShrink: 0 }}>
+            {card.actions}
+          </Stack>
+        )}
         <IconButton
           aria-label={t.dismiss}
           onClick={() =>
             dismiss(card.id.startsWith('sweep-') && window ? `sweep-${window}` : card.id)
           }
-          sx={{ mt: -2, mr: -2 }}
+          sx={{ mt: compact ? 0 : -2, mr: compact ? 0 : -2, flexShrink: compact ? 0 : undefined }}
         >
           <X size={20} />
         </IconButton>
       </Stack>
-      <Stack direction="row" sx={{ mt: 3, gap: 2, flexWrap: 'wrap', pl: 8 }}>
-        {card.actions}
-      </Stack>
+      {!compact && (
+        <Stack direction="row" sx={{ mt: 3, gap: 2, flexWrap: 'wrap', pl: 8 }}>
+          {card.actions}
+        </Stack>
+      )}
     </Box>
   )
 }

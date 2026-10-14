@@ -25,6 +25,7 @@ export interface Business {
     pin_demo?: boolean
     timezone?: string
     hours: string
+    weekly_hours?: import('../shop/hoursModel').DayHours[]
     phone: string
     reward_text?: string
     /** ISO 4217; shops saved before currencies existed have none (treated as SGD). */
@@ -40,6 +41,7 @@ export interface Business {
 export interface Product {
   id?: string
   name: string
+  category?: string
   price: number
   unit: string
   stock: number | null
