@@ -269,6 +269,10 @@ async def photo(
         for p in extraction.products
         if p.price is not None and p.name.strip()
     ]
+    # The photo's own location (read server-side from its EXIF) can become the shop's pin.
+    # It is only ever proposed: the owner sees the pin in the review sheet before saving.
+    gps = outcome.get("gps")
+    pin = await request.app.state.maps.reverse(*gps) if gps else {}
     proposal = None
     if business is None and found.name.strip():
         # A new shop and its menu are reviewed together in one sheet.
@@ -277,12 +281,28 @@ async def photo(
             business=BusinessFields(
                 name=found.name.strip()[:180],
                 category=found.category[:180],
-                location=found.location[:300],
+                location=(found.location or (str(pin["pin_label"]) if pin.get("place_id") else ""))[
+                    :300
+                ],
                 hours=found.hours[:180],
                 phone=found.phone[:40],
                 currency=currency,
+                **pin,
             ),
             products=products,
+        )
+        proposal = await anyio.to_thread.run_sync(service.propose, uid, request_body)
+    elif business is not None and not products and pin and business["fields"].get("lat") is None:
+        # A storefront photo for a shop with no pin yet: propose just the pin.
+        allowed = BusinessFields.model_fields
+        fields = {k: v for k, v in business["fields"].items() if k in allowed} | pin
+        if not fields.get("location") and pin.get("place_id"):
+            fields["location"] = pin["pin_label"][:300]
+        request_body = ProposalRequest(
+            kind="business",
+            business_id=business["id"],
+            revision=business["revision"],
+            business=BusinessFields.model_validate(fields),
         )
         proposal = await anyio.to_thread.run_sync(service.propose, uid, request_body)
     elif business is not None and products:
