@@ -87,6 +87,8 @@ export const id: Copy = {
   draftLegal: 'Draf prototipe — menunggu tinjauan hukum.',
   legalTranslation: 'Terjemahan untuk kemudahan — versi bahasa Inggris yang berlaku.',
   close: 'Tutup',
+  photoTake: 'Ambil foto',
+  photoUpload: 'Unggah foto',
   setupDone: 'Pengaturan selesai',
   discardTitle: 'Buang perubahan?',
   discardBody: 'Yang Anda ketik atau sedang periksa belum disimpan.',

@@ -251,8 +251,10 @@ test('PHONE-2: every shop and product Add entry opens its form; coach plus opens
   await page.getByRole('button', { name: 'Add your opening hours', exact: true }).tap()
   await expect(page.getByRole('dialog', { name: 'Edit details' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
-  const picker = page.waitForEvent('filechooser')
+  // Phones choose camera or gallery first (B7).
   await page.getByRole('button', { name: 'Add photo', exact: true }).tap()
+  const picker = page.waitForEvent('filechooser')
+  await page.getByRole('menuitem', { name: 'Upload photo' }).tap()
   await picker
 })
 

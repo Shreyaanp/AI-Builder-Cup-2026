@@ -86,6 +86,8 @@ export const vi: Copy = {
   draftLegal: 'Bản nháp cho bản thử nghiệm — chờ rà soát pháp lý.',
   legalTranslation: 'Bản dịch để tiện tham khảo — bản tiếng Anh được áp dụng.',
   close: 'Đóng',
+  photoTake: 'Chụp ảnh',
+  photoUpload: 'Tải ảnh lên',
   setupDone: 'Đã thiết lập xong',
   discardTitle: 'Bỏ thay đổi?',
   discardBody: 'Nội dung bạn đã nhập hoặc đang xem lại chưa được lưu.',

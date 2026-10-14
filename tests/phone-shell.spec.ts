@@ -291,3 +291,48 @@ test('B6: the coach fits the phone without scrolling, suggestions sit under the 
   expect(await fits()).toBe(true)
   await axe(page)
 })
+
+test('B7: every photo entry offers Take photo (rear camera) and Upload', async ({ page }) => {
+  await enter(page)
+  const input = page.locator('#coach input[type="file"]')
+  const take = page.getByRole('menuitem', { name: 'Take photo' })
+  const upload = page.getByRole('menuitem', { name: 'Upload photo' })
+
+  // The start card's "Take a photo" (before a shop exists).
+  await page.getByRole('button', { name: 'Take a photo' }).tap()
+  await expect(take).toBeVisible()
+  await expect(upload).toBeVisible()
+  await axe(page)
+  let chooser = page.waitForEvent('filechooser')
+  await take.tap()
+  await chooser
+  await expect(input).toHaveAttribute('capture', 'environment')
+
+  // The composer's photo button.
+  await page.getByRole('button', { name: 'Add photo', exact: true }).tap()
+  chooser = page.waitForEvent('filechooser')
+  await upload.tap()
+  await chooser
+  await expect(input).not.toHaveAttribute('capture')
+
+  // A suggestion chip, then an actual upload reaches the review.
+  await saveShop(page)
+  await page.getByRole('button', { name: 'Add my menu' }).tap()
+  chooser = page.waitForEvent('filechooser')
+  await take.tap()
+  const png = await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 40
+    canvas.getContext('2d')!.fillRect(0, 0, 64, 40)
+    return canvas.toDataURL('image/png').split(',')[1]
+  })
+  await (
+    await chooser
+  ).setFiles({
+    name: 'menu.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(png, 'base64'),
+  })
+  await expect(page.getByRole('dialog', { name: 'Check before saving' })).toBeVisible()
+})

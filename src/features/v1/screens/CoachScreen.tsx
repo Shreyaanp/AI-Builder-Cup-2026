@@ -14,15 +14,20 @@ import {
   ListItemIcon,
   ListItemText,
   ListSubheader,
+  Menu,
+  MenuItem,
   Stack,
   Tooltip,
   Typography,
+  useMediaQuery,
   useTheme,
 } from '@mui/material'
 import {
   ArrowUp,
+  Camera,
   History,
   ImagePlus,
+  ImageUp,
   Leaf,
   MessageSquare,
   MessageSquarePlus,
@@ -90,6 +95,24 @@ export function CoachScreen() {
   const session = useRef<string | null>(null)
   const controller = useRef<AbortController | null>(null)
   const photoInput = useRef<HTMLInputElement>(null)
+  const photoButton = useRef<HTMLButtonElement>(null)
+  // Phones choose between the camera and the gallery; a desktop goes straight to the file
+  // picker (it has no camera capture).
+  const touch = useMediaQuery('(pointer: coarse)')
+  const [photoMenu, setPhotoMenu] = useState<HTMLElement | null>(null)
+  function choosePhoto(anchor: HTMLElement | null) {
+    if (touch && anchor) setPhotoMenu(anchor)
+    else pickPhoto(false)
+  }
+  // One input for both: `capture` asks the phone to open the rear camera directly.
+  function pickPhoto(camera: boolean) {
+    setPhotoMenu(null)
+    const input = photoInput.current
+    if (!input) return
+    if (camera) input.setAttribute('capture', 'environment')
+    else input.removeAttribute('capture')
+    input.click()
+  }
   const speaking = useRef<HTMLAudioElement | null>(null)
   const end = useRef<HTMLDivElement>(null)
   const { api, activeId, review, setFaceOpen, go, speakReplies } = ws
@@ -146,14 +169,18 @@ export function CoachScreen() {
     field.style.height = '48px'
     if (note) field.style.height = `${Math.max(48, field.scrollHeight)}px`
   }, [note, voice.state])
-  // A pending request (e.g. "Start from a photo" on My shop) opens the picker once.
+  // A pending request (e.g. "Start from a photo" on My shop) opens the chooser once, from the
+  // composer's photo button.
   const { photoPending, consumePhotoRequest } = ws
   useEffect(() => {
-    if (photoPending) {
-      consumePhotoRequest()
+    if (!photoPending) return
+    consumePhotoRequest()
+    if (touch && photoButton.current) setPhotoMenu(photoButton.current)
+    else {
+      photoInput.current?.removeAttribute('capture')
       photoInput.current?.click()
     }
-  }, [photoPending, consumePhotoRequest])
+  }, [photoPending, consumePhotoRequest, touch])
   // A chat starter from My shop ("Customers ask: halal?") lands in the composer once.
   const { coachDraft, consumeCoachDraft } = ws
   const [seenDraft, setSeenDraft] = useState<string | null>(null)
@@ -361,11 +388,11 @@ export function CoachScreen() {
     .filter(([, applies]) => applies)
     .slice(0, 3)
     .map(([id]) => ({ id, ...chipCopy[id] }))
-  function suggest(id: Suggestion) {
+  function suggest(id: Suggestion, anchor: HTMLElement) {
     if (id === 'reply') setShopSheet('messages')
     else if (id === 'soldOut') setShopSheet('soldOut')
     else if (id === 'share') setShopSheet('customer')
-    else if (id === 'menu' || id === 'photo') photoInput.current?.click()
+    else if (id === 'menu' || id === 'photo') choosePhoto(anchor)
     else {
       setNote(`${id === 'price' ? t.chipPrice : t.fields.name}: `)
       messageInput.current?.focus()
@@ -379,7 +406,7 @@ export function CoachScreen() {
           icon={item.icon}
           label={item.label}
           variant="outlined"
-          onClick={() => suggest(item.id)}
+          onClick={(event) => suggest(item.id, event.currentTarget)}
           sx={{
             height: 40,
             px: 1,
@@ -672,7 +699,9 @@ export function CoachScreen() {
                 <IconButton
                   aria-label={t.photo}
                   disabled={busy !== 'idle'}
-                  onClick={() => photoInput.current?.click()}
+                  ref={photoButton}
+                  aria-haspopup={touch ? 'menu' : undefined}
+                  onClick={(event) => choosePhoto(event.currentTarget)}
                 >
                   {busy === 'photo' ? (
                     <CircularProgress size={20} aria-label={t.checkingPhoto} />
@@ -695,6 +724,26 @@ export function CoachScreen() {
               if (file) void uploadPhoto(file)
             }}
           />
+          <Menu
+            anchorEl={photoMenu}
+            open={Boolean(photoMenu)}
+            onClose={() => setPhotoMenu(null)}
+            anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+            transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          >
+            <MenuItem onClick={() => pickPhoto(true)} sx={{ minHeight: 48 }}>
+              <ListItemIcon>
+                <Camera size={20} />
+              </ListItemIcon>
+              <ListItemText primary={t.photoTake} />
+            </MenuItem>
+            <MenuItem onClick={() => pickPhoto(false)} sx={{ minHeight: 48 }}>
+              <ListItemIcon>
+                <ImageUp size={20} />
+              </ListItemIcon>
+              <ListItemText primary={t.photoUpload} />
+            </MenuItem>
+          </Menu>
           {voiceText ? (
             <Typography
               role="status"
