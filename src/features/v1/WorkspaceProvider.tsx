@@ -13,9 +13,10 @@ import { FaceDialog } from './FaceDialog'
 
 function readSpeak() {
   try {
-    return localStorage.getItem('ogoogle.speakReplies') === '1'
+    // Spoken replies are on unless the owner turned them off in Settings.
+    return localStorage.getItem('ogoogle.speakReplies') !== '0'
   } catch {
-    return false
+    return true
   }
 }
 
