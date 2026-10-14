@@ -9,7 +9,16 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .merchant import Approval
 from .merchant_routes import consented_owner, store
-from .planning import Observation, backtest, demo_history, forecast, preparation, stale
+from .planning import (
+    Observation,
+    backtest,
+    demo_history,
+    forecast,
+    preparation,
+    sales_forecast,
+    stale,
+)
+from .sales import today_for
 
 router = APIRouter(prefix="/api/v1/businesses/{business_id}/planning/{product_id}")
 
@@ -86,13 +95,29 @@ async def calculate(
     product = next(p for p in products if p["id"] == product_id)
     rows = [r for r in state.get("observations", []) if r["source"] == body.source]
     result = forecast(rows, date.today() + timedelta(days=1), product["unit"])
+    if body.source == "owner":
+        business = (await anyio.to_thread.run_sync(store(request).context, uid, business_id))[
+            "business"
+        ]
+        sales = await anyio.to_thread.run_sync(store(request).sales_history, uid, business_id)
+        result = (
+            sales_forecast(
+                sales,
+                today_for(business["fields"]) + timedelta(days=1),
+                product["name"],
+                product["unit"],
+            )
+            or result
+        )
     result.update(
         business_id=business_id,
         product_id=product_id,
         product_name=product["name"],
-        source=body.source,
+        source="sales" if result["method"] == "same_weekday_four_weeks" else body.source,
         evaluation=backtest(rows, product["unit"]),
     )
+    if result["source"] == "sales":
+        result["evaluation"] = {"n": 0, "mae": None, "naive_mae": None, "prefer_naive": False}
     if result["status"] == "ready":
         chosen = result["baseline"]
         if result["evaluation"]["prefer_naive"]:

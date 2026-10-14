@@ -681,7 +681,7 @@
     "/api/v1/businesses/{business_id}/import": {
       "post": {
         "summary": "Import Table",
-        "description": "Menu or sales export from any POS or spreadsheet (CSV / Excel), mapped by AI.\n\nA menu becomes a sealed inventory proposal for review; sales come back as a summary only.",
+        "description": "Menu or sales export from any POS or spreadsheet (CSV / Excel), mapped by AI.\n\nMenu and sales exports are sealed for exact owner approval; neither is saved on upload.",
         "operationId": "import_table_api_v1_businesses__business_id__import_post",
         "parameters": [
           {
@@ -1215,6 +1215,251 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Decision Api V1 Businesses  Business Id  Planning  Product Id  Decision Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/import/{import_id}/approve": {
+      "post": {
+        "summary": "Approve Sales",
+        "operationId": "approve_sales_api_v1_businesses__business_id__import__import_id__approve_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "import_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Import Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Approval"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Approve Sales Api V1 Businesses  Business Id  Import  Import Id  Approve Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/sales": {
+      "get": {
+        "summary": "Sales History",
+        "operationId": "sales_history_api_v1_businesses__business_id__sales_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Sales History Api V1 Businesses  Business Id  Sales Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/freshness/confirm": {
+      "post": {
+        "summary": "Confirm Menu",
+        "operationId": "confirm_menu_api_v1_businesses__business_id__freshness_confirm_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Confirm Menu Api V1 Businesses  Business Id  Freshness Confirm Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/freshness": {
+      "get": {
+        "summary": "Freshness",
+        "operationId": "freshness_api_v1_businesses__business_id__freshness_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Freshness Api V1 Businesses  Business Id  Freshness Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/recap": {
+      "get": {
+        "summary": "Recap",
+        "operationId": "recap_api_v1_businesses__business_id__recap_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "week",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Week"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil)$",
+              "default": "en",
+              "title": "Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Recap"
                 }
               }
             }
@@ -3316,6 +3561,125 @@
           "question"
         ],
         "title": "Question"
+      },
+      "Recap": {
+        "properties": {
+          "week": {
+            "type": "string",
+            "title": "Week"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "sales_days": {
+            "type": "integer",
+            "title": "Sales Days"
+          },
+          "previous_sales_days": {
+            "type": "integer",
+            "title": "Previous Sales Days"
+          },
+          "top_sellers": {
+            "items": {
+              "$ref": "#/components/schemas/RecapItem"
+            },
+            "type": "array",
+            "title": "Top Sellers"
+          },
+          "slow_movers": {
+            "items": {
+              "$ref": "#/components/schemas/RecapItem"
+            },
+            "type": "array",
+            "title": "Slow Movers"
+          },
+          "revenue": {
+            "type": "integer",
+            "title": "Revenue"
+          },
+          "previous_revenue": {
+            "type": "integer",
+            "title": "Previous Revenue"
+          },
+          "revenue_change": {
+            "type": "integer",
+            "title": "Revenue Change"
+          },
+          "revenue_change_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Change Percent"
+          },
+          "sold_out_count": {
+            "type": "integer",
+            "title": "Sold Out Count"
+          },
+          "customer_questions_count": {
+            "type": "integer",
+            "title": "Customer Questions Count"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "week",
+          "currency",
+          "sales_days",
+          "previous_sales_days",
+          "top_sellers",
+          "slow_movers",
+          "revenue",
+          "previous_revenue",
+          "revenue_change",
+          "revenue_change_percent",
+          "sold_out_count",
+          "customer_questions_count",
+          "summary",
+          "language",
+          "mode"
+        ],
+        "title": "Recap"
+      },
+      "RecapItem": {
+        "properties": {
+          "item": {
+            "type": "string",
+            "title": "Item"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "revenue": {
+            "type": "integer",
+            "title": "Revenue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "quantity",
+          "revenue"
+        ],
+        "title": "RecapItem"
       },
       "ShareRequest": {
         "properties": {
