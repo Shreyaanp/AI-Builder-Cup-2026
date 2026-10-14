@@ -279,6 +279,34 @@ def instruction(_: ReadonlyContext) -> str:
     return f"{INSTRUCTION}\nApp language (fallback only): {ui_language.get()}"
 
 
+def live_history(contents: list[types.Content]) -> list[types.Content]:
+    """The shop's conversation as the Live (voice) model can accept it.
+
+    Text-coach turns carry encrypted thought signatures and thought parts. The Live model
+    cannot read another model's signatures and rejects the whole session ("PassbackContext
+    should be decrypted", error 1007), which ended every voice session once a shop had text
+    history. Words, tool calls and tool results stay; only the private reasoning is dropped.
+    """
+    cleaned: list[types.Content] = []
+    for content in contents:
+        parts = [
+            part.model_copy(update={"thought_signature": None})
+            for part in content.parts or []
+            if not part.thought
+        ]
+        if parts:
+            cleaned.append(content.model_copy(update={"parts": parts}))
+    return cleaned
+
+
+class LiveGemini(Gemini):
+    """Gemini for voice sessions: connects with history the Live model accepts."""
+
+    def connect(self, llm_request: LlmRequest) -> Any:
+        llm_request.contents = live_history(llm_request.contents or [])
+        return super().connect(llm_request)
+
+
 def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
     model: str | BaseLlm = OfflineCoachModel()
     if settings.coach_mode == "gemini":
@@ -294,7 +322,7 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
             if settings.gemini_backend == "vertex"
             else {"api_key": settings.google_api_key.get_secret_value(), "vertexai": False}
         )
-        model = Gemini(
+        model = (LiveGemini if live else Gemini)(
             model=settings.google_live_model if live else settings.google_text_model,
             client_kwargs=client_kwargs,
             retry_options=types.HttpRetryOptions(attempts=1),
