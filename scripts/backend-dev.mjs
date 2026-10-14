@@ -19,6 +19,7 @@ const child = spawn(uv, ['run', '--locked', 'python', 'run.py'], {
     V1_ENABLED: 'true',
     MERCHANT_BACKEND: 'sqlite',
     MODERATION_MODE: 'fixture',
+    RATE_LIMITS_ENABLED: 'false',
     MEDIA_BUCKET: '',
   },
 })
