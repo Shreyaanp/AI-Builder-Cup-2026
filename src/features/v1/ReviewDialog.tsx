@@ -108,6 +108,10 @@ export function ReviewDialog({
             <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
               {snapshot.business.reward_text || '—'}
             </Typography>
+            <Typography variant="labelMedium" color="text.secondary">
+              {rewards.needed}
+            </Typography>
+            <Typography variant="bodyLarge">{snapshot.business.stamps_needed ?? 8}</Typography>
           </Box>
           <Stack component="dl" spacing={2} sx={{ m: 0 }}>
             {(Object.keys(t.fields) as (keyof typeof t.fields)[])

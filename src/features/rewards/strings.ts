@@ -1,5 +1,6 @@
 import type { Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
+import { rewardCardEnglish, rewardCardTranslations } from './cardCopy'
 
 const en = {
   stampCard: 'Stamp card',
@@ -215,6 +216,12 @@ const translations: Partial<Record<Locale, Copy>> = {
   },
 }
 
-export function useRewardCopy(): Copy {
-  return { ...en, ...translations[useLocale()] }
+export function useRewardCopy(): Copy & typeof rewardCardEnglish {
+  const locale = useLocale()
+  return {
+    ...en,
+    ...translations[locale],
+    ...rewardCardEnglish,
+    ...(locale === 'en' ? {} : rewardCardTranslations[locale]),
+  }
 }
