@@ -3,6 +3,8 @@ on:
   # Main only: fix branches are merged locally, so a branch push would just duplicate the run.
   push:
     branches: [main]
+    # Briefs, trackers and notes change nothing that ships: no checks, no release.
+    paths-ignore: ['docs/**', '*.md']
   pull_request:
   workflow_call:
     inputs:
