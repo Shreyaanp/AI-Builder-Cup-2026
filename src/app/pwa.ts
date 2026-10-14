@@ -1,4 +1,5 @@
 /** PWA helpers: service worker registration and a deferred install prompt. */
+import type { AppKind } from './router'
 
 interface InstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -6,9 +7,17 @@ interface InstallPromptEvent extends Event {
 }
 
 let deferred: InstallPromptEvent | null = null
-const DISMISSED = 'ogoogle.installDismissed'
+let dismissedKey = 'chalkboard.business.installDismissed'
 
-export function setupPwa() {
+export function setupPwa(app: AppKind) {
+  document.querySelector('link[rel="manifest"]')?.remove()
+  if (app === 'landing') return
+  dismissedKey = `chalkboard.${app}.installDismissed`
+  const manifest = document.createElement('link')
+  manifest.rel = 'manifest'
+  manifest.href =
+    app === 'customer' ? '/explore/manifest.webmanifest' : '/manifest-business.webmanifest'
+  document.head.appendChild(manifest)
   // Chrome fires this when the app is installable; keep it until the owner has made progress.
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault()
@@ -19,7 +28,10 @@ export function setupPwa() {
   })
   if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      void navigator.serviceWorker.register('/sw.js').catch(() => undefined)
+      const worker = app === 'customer' ? '/explore/sw.js' : '/sw.js'
+      void navigator.serviceWorker
+        .register(worker, { scope: app === 'customer' ? '/explore/' : '/' })
+        .catch(() => undefined)
     })
   }
 }
@@ -28,7 +40,7 @@ export function setupPwa() {
 export function canOfferInstall(): boolean {
   if (!deferred || matchMedia('(display-mode: standalone)').matches) return false
   try {
-    return localStorage.getItem(DISMISSED) !== '1'
+    return localStorage.getItem(dismissedKey) !== '1'
   } catch {
     return true
   }
@@ -45,7 +57,7 @@ export async function offerInstall(): Promise<void> {
 
 export function rememberInstallDeclined() {
   try {
-    localStorage.setItem(DISMISSED, '1')
+    localStorage.setItem(dismissedKey, '1')
   } catch {
     /* Offer may reappear next session. */
   }

@@ -14,7 +14,12 @@ import {
 import { Clock, Leaf, MapPin, Phone, RefreshCw } from 'lucide-react'
 import { Fragment } from 'react'
 import type { ReactNode } from 'react'
-import { systemLocale, type Locale } from '../../i18n/locales'
+import { type Locale } from '../../i18n/locales'
+import { useLocale } from '../../state/hooks'
+import { BrandSplash } from '../frontdoors/Splash'
+import { PlaceImage } from '../frontdoors/PlaceImage'
+import { useFrontCopy } from '../frontdoors/strings'
+import { discoverCopy } from '../discover/strings'
 import { loadScriptFont } from '../../i18n/fonts'
 import { formatPrice } from '../v1/format'
 import type { ShopFacts } from '../v1/api'
@@ -35,6 +40,7 @@ interface PublicShopData {
   products: { name: string; price: number; unit: string; available: boolean }[]
   /** Owner-confirmed customer facts; absent keys are simply not listed. */
   facts?: ShopFacts
+  open_now?: boolean | null
 }
 
 const PAYMENT_BRANDS = { paynow: 'PayNow', grabpay: 'GrabPay', nets: 'NETS' } as const
@@ -266,7 +272,9 @@ const publicTranslations: Record<Locale, Omit<typeof en, keyof CustomerCopy>> = 
 
 /** Customer-facing, read-only page for a shop the owner chose to share. No sign-in. */
 export default function PublicShop({ id }: { id: string }) {
-  const locale = systemLocale()
+  const locale = useLocale()
+  const front = useFrontCopy()
+  const discovery = discoverCopy(locale)
   const t = {
     ...en,
     ...publicTranslations[locale],
@@ -328,12 +336,7 @@ export default function PublicShop({ id }: { id: string }) {
     }
   }, [fetchShop, t.menu, apply, failRefresh])
 
-  if (state === 'loading')
-    return (
-      <Box role="status" sx={{ minHeight: '100dvh', display: 'grid', placeItems: 'center' }}>
-        <CircularProgress aria-label={t.loading} />
-      </Box>
-    )
+  if (state === 'loading') return <BrandSplash />
   if (state === 'error')
     return (
       <Stack spacing={2} sx={{ maxWidth: 480, mx: 'auto', px: 3, pt: 12, textAlign: 'center' }}>
@@ -371,13 +374,18 @@ export default function PublicShop({ id }: { id: string }) {
     <Box
       component="main"
       sx={{
-        maxWidth: 640,
+        maxWidth: 1000,
         mx: 'auto',
         px: { xs: 2, sm: 3 },
         pt: 'calc(24px + env(safe-area-inset-top))',
         pb: 'calc(32px + env(safe-area-inset-bottom))',
       }}
     >
+      <Box
+        sx={{ borderRadius: `${shape.xl}px`, overflow: 'hidden', mb: 4, maxHeight: { md: 480 } }}
+      >
+        <PlaceImage id={id} category={shop.category} eager transition />
+      </Box>
       <Box
         sx={{
           bgcolor: roles.primaryContainer,
@@ -394,6 +402,70 @@ export default function PublicShop({ id }: { id: string }) {
             {shop.category}
           </Typography>
         )}
+        <Box
+          component="dl"
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 3,
+            mt: 4,
+            mb: 0,
+          }}
+        >
+          {[
+            [
+              discovery.open,
+              shop.open_now == null
+                ? discovery.unknown
+                : shop.open_now
+                  ? discovery.open
+                  : discovery.closed,
+            ],
+            [
+              front.price,
+              shop.products.length
+                ? `${formatPrice(Math.min(...shop.products.map((p) => p.price)), shop.currency ?? 'SGD', locale)} – ${formatPrice(Math.max(...shop.products.map((p) => p.price)), shop.currency ?? 'SGD', locale)}`
+                : front.notListed,
+            ],
+            [
+              t.factHalal,
+              shop.facts?.halal === 'yes'
+                ? t.factHalal
+                : shop.facts?.halal === 'no'
+                  ? t.factNotHalal
+                  : shop.facts?.halal === 'muslim_owned'
+                    ? t.factMuslimOwned
+                    : front.notListed,
+            ],
+            [
+              t.factsLabel,
+              factChips({ payment_methods: shop.facts?.payment_methods }, t).join(' · ') ||
+                front.notListed,
+            ],
+          ].map(([label, value]) => (
+            <Box
+              key={label}
+              sx={{
+                m: 0,
+                p: 3,
+                borderRadius: `${shape.lg}px`,
+                bgcolor: roles.surface,
+                color: roles.onSurface,
+              }}
+            >
+              <Typography component="dt" variant="labelMedium" color="text.secondary">
+                {label}
+              </Typography>
+              <Typography
+                component="dd"
+                variant="titleMedium"
+                sx={{ m: 0, mt: 1, overflowWrap: 'anywhere' }}
+              >
+                {value}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
         <Stack spacing={1} sx={{ mt: 2 }}>
           {facts.map((fact) => (
             <Stack key={fact.text} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
@@ -428,9 +500,19 @@ export default function PublicShop({ id }: { id: string }) {
           </Box>
         )}
         <Stack direction="row" spacing={1} sx={{ mt: 2.5, flexWrap: 'wrap', gap: 1 }}>
+          <Button variant="contained" href="#shop-ask">
+            {front.ask}
+          </Button>
+          <Button
+            variant="outlined"
+            href="#shop-message"
+            sx={{ color: roles.onPrimaryContainer, borderColor: roles.onPrimaryContainer }}
+          >
+            {front.message}
+          </Button>
           {shop.location && (
             <Button
-              variant="contained"
+              variant="outlined"
               startIcon={<MapPin size={18} />}
               href={
                 'https://www.google.com/maps/search/?api=1&query=' +
@@ -438,6 +520,7 @@ export default function PublicShop({ id }: { id: string }) {
               }
               target="_blank"
               rel="noopener noreferrer"
+              sx={{ color: roles.onPrimaryContainer, borderColor: roles.onPrimaryContainer }}
             >
               {t.directions}
             </Button>
@@ -493,14 +576,24 @@ export default function PublicShop({ id }: { id: string }) {
       ) : (
         <List
           disablePadding
-          sx={{ bgcolor: roles.surfaceContainerLow, borderRadius: `${shape.lg}px` }}
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+            gap: 3,
+          }}
         >
-          {shop.products.map((product, index) => (
+          {shop.products.map((product) => (
             <Fragment key={product.name + product.unit}>
               {/* Sold-out rows use colour + strike-through + label, not opacity (contrast). */}
               <ListItem
-                divider={index < shop.products.length - 1}
-                sx={{ py: 1.5, flexWrap: 'wrap' }}
+                sx={{
+                  py: 3,
+                  px: 4,
+                  flexWrap: 'wrap',
+                  bgcolor: roles.surfaceContainerLow,
+                  borderRadius: `${shape.lg}px`,
+                  border: `1px solid ${roles.outlineVariant}`,
+                }}
               >
                 <ListItemText
                   primary={product.name}
@@ -514,7 +607,7 @@ export default function PublicShop({ id }: { id: string }) {
                   }}
                 />
                 <Typography variant="titleMedium" sx={{ whiteSpace: 'nowrap', ml: 2 }}>
-                  {formatPrice(product.price, shop.currency ?? 'SGD')}
+                  {formatPrice(product.price, shop.currency ?? 'SGD', locale)}
                   <Typography component="span" variant="bodyMedium" color="text.secondary">
                     {' '}
                     / {product.unit}
@@ -536,15 +629,19 @@ export default function PublicShop({ id }: { id: string }) {
         </List>
       )}
       {/* Public customer inputs stay local; neither uses the owner's coach/session. */}
-      <CustomerQuestions
-        key={`ask-${id}`}
-        id={id}
-        facts={stale ? '' : JSON.stringify(shop)}
-        item={shop.products[0]?.name}
-        currency={shop.currency ?? 'SGD'}
-        copy={t}
-      />
-      <CustomerInquiry key={`contact-${id}`} id={id} copy={t} />
+      <Box id="shop-ask" sx={{ scrollMarginTop: 24 }}>
+        <CustomerQuestions
+          key={`ask-${id}`}
+          id={id}
+          facts={stale ? '' : JSON.stringify(shop)}
+          item={shop.products[0]?.name}
+          currency={shop.currency ?? 'SGD'}
+          copy={t}
+        />
+      </Box>
+      <Box id="shop-message" sx={{ scrollMarginTop: 24 }}>
+        <CustomerInquiry key={`contact-${id}`} id={id} copy={t} />
+      </Box>
       <Stack
         direction="row"
         spacing={1}

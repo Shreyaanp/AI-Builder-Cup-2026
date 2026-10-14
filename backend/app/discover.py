@@ -8,11 +8,12 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
 from .limits import client_ip, enforce_limits
 from .merchant import MerchantRepository, ProposalRequest
+from .place_photos import PlacesPhotos
 from .settings import Settings
 from .shop_time import shop_timezone
 
@@ -28,6 +29,7 @@ PLACES_MASK = ",".join(
         "currentOpeningHours.openNow",
         "priceLevel",
         "googleMapsUri",
+        "photos",
     )
 )
 CATEGORIES = {
@@ -108,6 +110,8 @@ class DiscoveryPlace(BaseModel):
     google_maps_uri: str | None = None
     halal: bool | None = None
     demo: bool = False
+    photo_url: str | None = None
+    photo_authors: list[str] = []
 
 
 class DiscoveryResponse(BaseModel):
@@ -169,6 +173,7 @@ class MapsService:
         browser = settings.maps_browser_key.get_secret_value() if settings.maps_browser_key else ""
         self.demo = not (self.key and browser)
         self.client = httpx.AsyncClient(timeout=8, trust_env=False, transport=transport)
+        self.photos = PlacesPhotos(self.client, self.key, enabled=not self.demo)
         self.cache: dict[tuple[Any, ...], tuple[float, Any]] = {}
         self.lock = asyncio.Lock()
 
@@ -382,6 +387,7 @@ async def discover(
         d = distance(lat, lng, point["latitude"], point["longitude"])
         if d > radius:
             continue
+        photo_url, photo_authors = maps.photos.describe(row)
         place = DiscoveryPlace(
             id=row["id"],
             name=row["displayName"]["text"],
@@ -398,6 +404,8 @@ async def discover(
             user_rating_count=row.get("userRatingCount"),
             price_level=row.get("priceLevel"),
             google_maps_uri=row.get("googleMapsUri"),
+            photo_url=photo_url,
+            photo_authors=photo_authors,
         )
         # Live Text Search already matches semantic queries; don't discard matches by name alone.
         if matches(place, q if maps.demo else "", category if maps.demo else "", open_now_filter):
@@ -406,3 +414,15 @@ async def discover(
     return DiscoveryResponse(
         mode="demo" if maps.demo else "live", google_unavailable=unavailable, places=places
     )
+
+
+@router.get("/place-photo", response_class=Response)
+async def place_photo(
+    request: Request,
+    name: str = Query(min_length=1, max_length=4096),
+    width: int = Query(default=800, ge=64, le=800),
+) -> Response:
+    await enforce_limits(request, [("discover", client_ip(request))], anonymous=True)
+    maps: MapsService = request.app.state.maps
+    body, media_type = await maps.photos.media(name, width)
+    return Response(body, media_type=media_type, headers={"Cache-Control": "no-store"})
