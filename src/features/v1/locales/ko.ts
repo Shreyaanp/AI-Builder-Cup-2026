@@ -1,6 +1,10 @@
 import type { Copy } from '../strings'
 
 export const ko: Copy = {
+  installApp: '앱 설치',
+  installIos: 'Safari에서 공유 → 홈 화면에 추가를 누른 다음 추가를 누르세요.',
+  installUnavailable:
+    '아직 설치할 수 없습니다. 브라우저의 설치 메뉴를 사용하거나 웹 앱을 계속 이용하세요.',
   importUnavailable:
     '사진, PDF, 메모를 읽으려면 AI 연결이 필요해요. CSV와 Excel 가져오기는 계속 사용할 수 있어요.',
   saveSales: '이 매출 저장',
