@@ -53,6 +53,26 @@ class FirestoreMerchantStore:
     def person_ref(self, uid: str) -> Any:
         return self.people.document(hashlib.sha256(uid.encode()).hexdigest())
 
+    def sim_state(self, uid: str, bid: str) -> dict[str, Any] | None:
+        self.owned_business(uid, bid)
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        data = ref.collection("google_sim").document(hashlib.sha256(uid.encode()).hexdigest()).get()
+        return data.to_dict() if data.exists else None
+
+    def save_sim_state(self, uid: str, bid: str, state: dict[str, Any]) -> None:
+        business = self.businesses.document(document_id(bid, "Business not found."))
+        ref = business.collection("google_sim").document(hashlib.sha256(uid.encode()).hexdigest())
+
+        @firestore.transactional
+        def run(transaction: Any) -> None:
+            self.owned(business.get(transaction=transaction), uid)
+            current = ref.get(transaction=transaction).to_dict() or {}
+            if state["version"] != current.get("version", 0) + 1:
+                raise HTTPException(409, "Simulator changed. Reload before reviewing.")
+            transaction.set(ref, state)
+
+        run(self.client.transaction())
+
     @staticmethod
     def owned(snapshot: Any, uid: str) -> dict[str, Any]:
         data = snapshot.to_dict() if snapshot.exists else None
@@ -276,6 +296,9 @@ class FirestoreMerchantStore:
         for snapshot in query.stream():
             owned.append(snapshot.id)
             refs += [item.reference for item in snapshot.reference.collection("inventory").stream()]
+            refs += [
+                item.reference for item in snapshot.reference.collection("google_sim").stream()
+            ]
             refs.append(snapshot.reference)
         for collection in (self.proposals, self.challenges):
             refs += [
