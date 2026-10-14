@@ -24,6 +24,7 @@ from pydantic import (
 )
 
 from .customer import Inquiry, InquiryInput, InquiryReceipt
+from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
 from .shop_time import shop_timezone
 from .threads import change_thread, contact_hash, new_thread
 
@@ -175,6 +176,14 @@ class MerchantRepository(Protocol):
     def list_businesses(self, uid: str) -> list[dict[str, Any]]: ...
     def context(self, uid: str, bid: str | None) -> dict[str, Any]: ...
     def inventory(self, uid: str, bid: str) -> list[dict[str, Any]]: ...
+    def sales_history(self, uid: str, bid: str) -> list[dict[str, Any]]: ...
+    def prepare_sales(self, uid: str, bid: str, rows: list[dict[str, Any]]) -> dict[str, Any]: ...
+    def save_sales(self, uid: str, bid: str, iid: str, digest: str) -> dict[str, Any]: ...
+    def confirm_menu(self, uid: str, bid: str) -> dict[str, Any]: ...
+    def recap_signals(self, uid: str, bid: str) -> dict[str, Any]: ...
+    def recap_cache(
+        self, uid: str, bid: str, key: str, value: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None: ...
     # Simulator records are isolated from confirmed merchant facts.
     def sim_state(self, uid: str, bid: str) -> dict[str, Any] | None: ...
     def save_sim_state(self, uid: str, bid: str, state: dict[str, Any]) -> None: ...
@@ -307,7 +316,19 @@ class MerchantStore:
             CREATE TABLE IF NOT EXISTS inquiry_blocks(business_id TEXT NOT NULL,
                 key TEXT NOT NULL, PRIMARY KEY(business_id, key));
             CREATE INDEX IF NOT EXISTS inquiry_lookup ON inquiries(business_id, dedupe, created);
+            CREATE TABLE IF NOT EXISTS sales_days(business_id TEXT, day TEXT, fields TEXT,
+                PRIMARY KEY(business_id,day));
+            CREATE TABLE IF NOT EXISTS sales_imports(id TEXT PRIMARY KEY, uid TEXT,
+                business_id TEXT, fields TEXT);
+            CREATE TABLE IF NOT EXISTS recaps(business_id TEXT, key TEXT, fields TEXT,
+                PRIMARY KEY(business_id,key));
+            CREATE TABLE IF NOT EXISTS sold_out_days(business_id TEXT, day TEXT, count INTEGER,
+                PRIMARY KEY(business_id,day));
             """)
+            if "last_confirmed" not in {
+                row[1] for row in db.execute("PRAGMA table_info(businesses)")
+            }:
+                db.execute("ALTER TABLE businesses ADD COLUMN last_confirmed TEXT")
 
     def connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10)
@@ -367,6 +388,7 @@ class MerchantStore:
             "id": row["id"],
             "fields": json.loads(row["fields"]),
             "revision": row["revision"],
+            "last_confirmed": row["last_confirmed"],
             "registration": row["status"],
             "public": bool(shared),
             "google_publication": "not_connected",
@@ -444,7 +466,7 @@ class MerchantStore:
                         (uid, "not_enrolled"),
                     )
                     db.execute(
-                        "INSERT INTO businesses VALUES(?,?,1,'draft')",
+                        "INSERT INTO businesses(id,fields,revision,status) VALUES(?,?,1,'draft')",
                         (bid, json.dumps(data["business"])),
                     )
                     db.execute("INSERT INTO memberships VALUES(?,?,'owner')", (uid, bid))
@@ -566,6 +588,8 @@ class MerchantStore:
                 )
             ]
             for bid in owned:
+                for table in ("sales_days", "sales_imports", "recaps", "sold_out_days"):
+                    db.execute(f"DELETE FROM {table} WHERE business_id=?", (bid,))  # noqa: S608
                 db.execute("DELETE FROM inquiries WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM inquiry_blocks WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM planning WHERE business_id=?", (bid,))
@@ -582,13 +606,20 @@ class MerchantStore:
     ) -> dict[str, Any]:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            self.owned(db, uid, bid)
+            business = self.owned(db, uid, bid)
             row = db.execute(
                 "SELECT fields FROM inventory WHERE id=? AND business_id=?", (product_id, bid)
             ).fetchone()
             if not row:
                 raise HTTPException(404, "Product not found.")
             fields = {**json.loads(row[0]), "available": available}
+            if not available and json.loads(row[0]).get("available", True):
+                day = today_for(json.loads(business["fields"])).isoformat()
+                db.execute(
+                    "INSERT INTO sold_out_days VALUES(?,?,1) ON CONFLICT(business_id,day) "
+                    "DO UPDATE SET count=count+1",
+                    (bid, day),
+                )
             db.execute("UPDATE inventory SET fields=? WHERE id=?", (json.dumps(fields), product_id))
             db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))
             revision = db.execute("SELECT revision FROM businesses WHERE id=?", (bid,)).fetchone()
@@ -611,7 +642,8 @@ class MerchantStore:
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         with self.connect() as db:
             row = db.execute(
-                "SELECT b.fields FROM businesses b JOIN shares s ON s.business_id=b.id "
+                "SELECT b.fields,b.last_confirmed FROM businesses b "
+                "JOIN shares s ON s.business_id=b.id "
                 "WHERE b.id=?",
                 (bid,),
             ).fetchone()
@@ -623,7 +655,114 @@ class MerchantStore:
                     "SELECT fields FROM inventory WHERE business_id=? ORDER BY rowid", (bid,)
                 )
             ]
-        return public_projection(bid, json.loads(row[0]), products)
+        return {**public_projection(bid, json.loads(row[0]), products), "last_confirmed": row[1]}
+
+    def sales_history(self, uid: str, bid: str) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            return [
+                sale
+                for row in db.execute(
+                    "SELECT fields FROM sales_days WHERE business_id=? ORDER BY day", (bid,)
+                )
+                for sale in json.loads(row[0])
+            ]
+
+    def prepare_sales(self, uid: str, bid: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            business = self.owned(db, uid, bid)
+            proposal = prepare_import(
+                {
+                    "id": bid,
+                    "revision": business["revision"],
+                    "fields": json.loads(business["fields"]),
+                },
+                rows,
+            )
+            db.execute("DELETE FROM sales_imports WHERE uid=? AND business_id=?", (uid, bid))
+            db.execute(
+                "INSERT INTO sales_imports VALUES(?,?,?,?)",
+                (proposal["id"], uid, bid, json.dumps(proposal)),
+            )
+            return proposal
+
+    def save_sales(self, uid: str, bid: str, iid: str, digest: str) -> dict[str, Any]:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            business = self.owned(db, uid, bid)
+            row = db.execute(
+                "SELECT fields FROM sales_imports WHERE id=? AND uid=? AND business_id=?",
+                (iid, uid, bid),
+            ).fetchone()
+            if not row:
+                raise HTTPException(404, "Sales import not found.")
+            proposal = json.loads(row[0])
+            check_import(proposal, digest, business["revision"])
+            if proposal.get("receipt"):
+                return dict(proposal["receipt"])
+            incoming = sales_days(proposal["snapshot"]["sales"])
+            retained = [
+                sale
+                for r in db.execute("SELECT day,fields FROM sales_days WHERE business_id=?", (bid,))
+                if r[0] not in incoming
+                for sale in json.loads(r[1])
+            ]
+            validate_capacity(retained + proposal["snapshot"]["sales"])
+            for day, sales in incoming.items():
+                db.execute(
+                    "INSERT INTO sales_days VALUES(?,?,?) ON CONFLICT(business_id,day) "
+                    "DO UPDATE SET fields=excluded.fields",
+                    (bid, day, json.dumps(sales)),
+                )
+            db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))
+            receipt = {"business_id": bid, "import_id": iid, "saved": True, "days": len(incoming)}
+            proposal["receipt"] = receipt
+            db.execute("UPDATE sales_imports SET fields=? WHERE id=?", (json.dumps(proposal), iid))
+            return receipt
+
+    def confirm_menu(self, uid: str, bid: str) -> dict[str, Any]:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            business = self.owned(db, uid, bid)
+            day = today_for(json.loads(business["fields"])).isoformat()
+            db.execute("UPDATE businesses SET last_confirmed=? WHERE id=?", (day, bid))
+            return {"business_id": bid, "last_confirmed": day}
+
+    def recap_signals(self, uid: str, bid: str) -> dict[str, Any]:
+        with self.connect() as db:
+            business = self.owned(db, uid, bid)
+            return {
+                "fields": json.loads(business["fields"]),
+                "sold_out": {
+                    r[0]: r[1]
+                    for r in db.execute(
+                        "SELECT day,count FROM sold_out_days WHERE business_id=?", (bid,)
+                    )
+                },
+                "questions": [
+                    json.loads(r[0])
+                    for r in db.execute("SELECT fields FROM inquiries WHERE business_id=?", (bid,))
+                ],
+            }
+
+    def recap_cache(
+        self, uid: str, bid: str, key: str, value: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self.owned(db, uid, bid)
+            if value is not None:
+                db.execute(
+                    "INSERT INTO recaps VALUES(?,?,?) ON CONFLICT(business_id,key) "
+                    "DO UPDATE SET fields=excluded.fields",
+                    (bid, key, json.dumps(value)),
+                )
+                return value
+            row = db.execute(
+                "SELECT fields FROM recaps WHERE business_id=? AND key=?", (bid, key)
+            ).fetchone()
+            return json.loads(row[0]) if row else None
 
     # Private planning records do not change catalog revisions or public projections.
     def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt:

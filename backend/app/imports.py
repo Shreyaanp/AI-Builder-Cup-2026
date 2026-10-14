@@ -2,7 +2,7 @@
 
 No per-POS integration: owners upload whatever their POS exports. Gemini maps the columns
 (item, price, unit, quantity, date, stock); offline mode uses header heuristics. A menu becomes
-a sealed inventory proposal the owner confirms; a sales export becomes a summary (not saved).
+a sealed inventory proposal the owner confirms; sales are sealed separately after a summary.
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ def parse_table(data: bytes, content_type: str) -> tuple[list[str], list[list[st
             raise ImportRejected(422, "EMPTY_FILE")
         rows = [
             ["" if cell is None else _text(cell) for cell in row]
-            for row in sheet.iter_rows(values_only=True, max_row=MAX_ROWS + 1)
+            for row in sheet.iter_rows(values_only=True, max_row=MAX_ROWS + 2)
         ]
     elif content_type in CSV_TYPES or not content_type:
         try:
@@ -92,9 +92,11 @@ def parse_table(data: bytes, content_type: str) -> tuple[list[str], list[list[st
         except csv.Error:
             dialect = csv.excel
         reader = csv.reader(io.StringIO(text), dialect)
-        rows = list(itertools.islice(reader, MAX_ROWS + 1))
+        rows = list(itertools.islice(reader, MAX_ROWS + 2))
     else:
         raise ImportRejected(415, "UNSUPPORTED_FILE")
+    if len(rows) > MAX_ROWS + 1:
+        raise ImportRejected(413, "TOO_MANY_ROWS")
     rows = [row for row in rows if any(cell.strip() for cell in row)]
     if len(rows) < 2:
         raise ImportRejected(422, "EMPTY_FILE")
@@ -209,26 +211,30 @@ class ColumnMapper:
         self.settings = settings
         self._client: Any = None
 
+    def client(self) -> Any:
+        from google import genai
+
+        if self._client is None:
+            self._client = (
+                genai.Client(
+                    vertexai=True,
+                    project=self.settings.google_cloud_project,
+                    location=self.settings.google_cloud_location,
+                )
+                if self.settings.gemini_backend == "vertex"
+                else genai.Client(api_key=self.settings.google_api_key.get_secret_value())
+            )
+        return self._client
+
     async def map(self, headers: list[str], sample: list[list[str]]) -> ColumnMap:
         fallback = heuristic_map(headers)
         if self.settings.coach_mode != "gemini":
             return fallback
         try:
-            from google import genai
             from google.genai import types
 
-            if self._client is None:
-                self._client = (
-                    genai.Client(
-                        vertexai=True,
-                        project=self.settings.google_cloud_project,
-                        location=self.settings.google_cloud_location,
-                    )
-                    if self.settings.gemini_backend == "vertex"
-                    else genai.Client(api_key=self.settings.google_api_key.get_secret_value())
-                )
             table = "\n".join(" | ".join(row) for row in [headers, *sample[:SAMPLE_ROWS]])
-            response = await self._client.aio.models.generate_content(
+            response = await self.client().aio.models.generate_content(
                 model=self.settings.google_text_model,
                 contents=table[:8000],
                 config=types.GenerateContentConfig(

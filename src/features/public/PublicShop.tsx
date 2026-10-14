@@ -18,6 +18,8 @@ import { systemLocale, type Locale } from '../../i18n/locales'
 import { loadScriptFont } from '../../i18n/fonts'
 import { formatPrice } from '../v1/format'
 import type { ShopFacts } from '../v1/api'
+import { en as ownerEnglish } from '../v1/strings'
+import { translations as ownerTranslations } from '../v1/locales'
 import { shape } from '../../design/theme'
 import { CustomerInquiry, CustomerQuestions } from './CustomerQuestions'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
@@ -25,6 +27,8 @@ import { customerTranslations } from './customerLocales'
 
 interface PublicShopData {
   id: string
+  last_confirmed?: string | null
+  timezone?: string
   name: string
   category: string
   location: string
@@ -267,6 +271,7 @@ const publicTranslations: Record<Locale, Omit<typeof en, keyof CustomerCopy>> = 
 /** Customer-facing, read-only page for a shop the owner chose to share. No sign-in. */
 export default function PublicShop({ id }: { id: string }) {
   const locale = systemLocale()
+  const freshnessCopy = locale === 'en' ? ownerEnglish : ownerTranslations[locale]
   const t = {
     ...en,
     ...publicTranslations[locale],
@@ -394,6 +399,25 @@ export default function PublicShop({ id }: { id: string }) {
             {shop.category}
           </Typography>
         )}
+        <Typography variant="bodyMedium" sx={{ mt: 1 }}>
+          {shop.last_confirmed
+            ? (() => {
+                const parts = new Intl.DateTimeFormat('en-CA', {
+                  timeZone: shop.timezone ?? 'Asia/Singapore',
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                }).formatToParts(new Date())
+                const part = (name: string) => parts.find((p) => p.type === name)?.value
+                const today = `${part('year')}-${part('month')}-${part('day')}`
+                const days = Math.max(
+                  0,
+                  Math.round((Date.parse(today) - Date.parse(shop.last_confirmed)) / 86_400_000),
+                )
+                return days === 0 ? freshnessCopy.updatedToday : freshnessCopy.updatedDays(days)
+              })()
+            : freshnessCopy.menuUnconfirmed}
+        </Typography>
         <Stack spacing={1} sx={{ mt: 2 }}>
           {facts.map((fact) => (
             <Stack key={fact.text} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
