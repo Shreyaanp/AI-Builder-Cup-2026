@@ -13,6 +13,7 @@ class CoachTurn(StrictModel):
     # BCP 47 tag of the owner's UI language (e.g. en, hi, es-MX, pt-BR). The coach still replies
     # in whatever language the owner actually writes in.
     language: str = Field(default="en", pattern=r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$")
+    currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
     session_id: UUID | None = None
     business_id: UUID | None = None
 

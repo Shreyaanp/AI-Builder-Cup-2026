@@ -20,6 +20,7 @@ from app.coordinator import (
     propose_business,
     propose_products,
     request_registration,
+    ui_currency,
 )
 from app.merchant import BusinessFields, MerchantStore, ProductFields, ProposalRequest
 from app.streaming import public_events
@@ -115,6 +116,33 @@ def test_hours_only_edit_preserves_saved_fields(saved_shop):
     assert result["changes"] == ["hours: 7–21 → 8–20"]
     assert_sealed(proposal)
     assert get_business_context()["shop"]["hours"] == "7–21"
+
+
+@pytest.mark.parametrize("currency, expected", [(None, "JPY"), ("MYR", "MYR"), ("invalid", "JPY")])
+def test_new_shop_currency_uses_phone_fallback(ctx, currency, expected):
+    token = ui_currency.set("JPY")
+    try:
+        result = (
+            propose_business(name="New Tea Stall")
+            if currency is None
+            else propose_business(name="New Tea Stall", currency=currency)
+        )
+        proposal = ctx.proposals[result["proposal_id"]]
+        assert proposal["snapshot"]["business"]["currency"] == expected
+    finally:
+        ui_currency.reset(token)
+
+
+@pytest.mark.parametrize("currency", ["", "MYR"])
+def test_existing_shop_keeps_currency_with_phone_fallback(saved_shop, currency):
+    token = ui_currency.set("JPY")
+    try:
+        result = propose_business(name="", hours="8–20", currency=currency)
+        proposal = saved_shop.proposals[result["proposal_id"]]
+        assert proposal["snapshot"]["business"]["currency"] == "SGD"
+        assert get_business_context()["shop"]["currency"] == "SGD"
+    finally:
+        ui_currency.reset(token)
 
 
 def test_bare_string_items_are_repairable_not_a_crash(saved_shop):
