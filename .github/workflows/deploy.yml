@@ -6,11 +6,9 @@ on:
         description: Commit SHA on main (blank uses current main)
         type: string
         required: false
-  # Every green main commit releases automatically: no waiting for someone to press release.
-  workflow_run:
-    workflows: [oGoogle AI checks]
-    types: [completed]
-    branches: [main]
+  # Releases ship from the lead's machine (scripts/ship.ps1: local checks → Cloud Build →
+  # Cloud Run). No automatic trigger here, so a slower CI run can never overwrite a newer
+  # local release with an older commit.
 permissions:
   contents: read
 concurrency:
