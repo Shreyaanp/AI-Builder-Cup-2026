@@ -1,6 +1,8 @@
 import type { ColorMode } from '../design/theme'
+import type { LanguagePref } from '../i18n/locales'
 
-export type Language = 'en' | 'hi'
+/** 'system' follows the phone's language setting; otherwise a locale picked in Settings. */
+export type Language = LanguagePref
 export type Destination = 'coach' | 'business' | 'activity'
 export type Segment = 'grocery' | 'tea' | 'bakery'
 export type BusinessFields = {

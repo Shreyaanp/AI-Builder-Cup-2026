@@ -100,7 +100,7 @@ test('switching shops never shows the other shop’s products or conversation', 
   await page.getByRole('button', { name: 'My shop' }).click()
   await page.getByRole('button', { name: 'Add product' }).click()
   await page.getByLabel('Product name').fill('Alpha Chai')
-  await page.getByLabel('Price (₹)').fill('15')
+  await page.getByLabel(/^Price/).fill('15')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await page
     .getByRole('dialog', { name: 'Check before saving' })
@@ -139,7 +139,7 @@ test('Google handoff shows readiness and only official Google links', async ({ p
     'href',
     /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=Morning%20Crumb/,
   )
-  await expect(page.getByText('oGoogle AI never publishes to Google for you.')).toBeVisible()
+  await expect(page.getByText('Chalkboard never publishes to Google for you.')).toBeVisible()
 })
 
 test('delete all my data erases shops and asks for consent again', async ({ page }) => {

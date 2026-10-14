@@ -4,7 +4,8 @@ import { makeApi } from './api'
 import type { Me } from './api'
 import { AppShell } from './AppShell'
 import { LEGAL_VERSION } from './legal'
-import { AccountError, ConsentScreen, Splash, Welcome } from './Onboarding'
+import { Landing } from './Landing'
+import { AccountError, ConsentScreen, Splash } from './Onboarding'
 import { WorkspaceProvider } from './WorkspaceProvider'
 
 /** First run: splash → welcome/sign-in → consent → workspace. */
@@ -13,7 +14,7 @@ export default function V1App() {
   const [preview, setPreview] = useState(false)
   if (identity.status === 'loading') return <Splash />
   if (identity.status !== 'ready' || (identity.mode === 'local' && !preview))
-    return <Welcome onPreview={() => setPreview(true)} />
+    return <Landing onPreview={() => setPreview(true)} />
   return <Account key={identity.scope} onLeave={() => setPreview(false)} />
 }
 

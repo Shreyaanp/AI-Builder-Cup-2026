@@ -12,7 +12,7 @@ import {
 } from '@mui/material'
 import { ArrowUp, Camera, Mic, X } from 'lucide-react'
 import { copy } from '../../design/copy'
-import { useBusinessDispatch, usePreferences } from '../../state/hooks'
+import { useBusinessDispatch } from '../../state/hooks'
 import { useCoachStream } from '../../hooks/useCoachStream'
 import { useIdentity } from '../../auth/useIdentity'
 
@@ -24,8 +24,8 @@ export function InputDock({
   onNotice: (message: string) => void
 }) {
   const dispatch = useBusinessDispatch()
-  const { language } = usePreferences()
-  const t = copy[language]
+  // Legacy starter (English-only).
+  const t = copy.en
   const roles = useTheme().material
   const coach = useCoachStream()
   const identity = useIdentity()
@@ -61,7 +61,7 @@ export function InputDock({
     event.preventDefault()
     const message = note.trim()
     if (!message || coach.busy) return
-    if (await coach.send(message, language)) {
+    if (await coach.send(message, 'en')) {
       dispatch({ type: 'note', text: message })
       setNote('')
       onNotice(t.aiNotice)
@@ -73,7 +73,7 @@ export function InputDock({
         <TextField
           select
           fullWidth
-          label={language === 'hi' ? 'आपकी बातचीत' : 'Your conversations'}
+          label={'Your conversations'}
           value={coach.sessionId ?? ''}
           disabled={coach.busy}
           onChange={(event) => {
@@ -82,19 +82,17 @@ export function InputDock({
           slotProps={{ select: { native: true } }}
           sx={{ mb: 3 }}
         >
-          <option value="">{language === 'hi' ? 'नई बातचीत' : 'New conversation'}</option>
+          <option value="">{'New conversation'}</option>
           {coach.history.map((item) => (
             <option key={item.session_id} value={item.session_id}>
-              {new Date(item.updated * 1000).toLocaleString(language === 'hi' ? 'hi-IN' : 'en-IN')}
+              {new Date(item.updated * 1000).toLocaleString()}
             </option>
           ))}
         </TextField>
       )}
       <Typography role="status" variant="body2" sx={{ mb: 2 }}>
         {coach.restoring
-          ? language === 'hi'
-            ? 'बातचीत खोल रहे हैं…'
-            : 'Restoring your conversation…'
+          ? 'Restoring your conversation…'
           : coach.status === 'streaming'
             ? t.replying
             : coach.status === 'cancelled'
@@ -166,10 +164,10 @@ export function InputDock({
             onClick={() => fileRef.current?.click()}
             sx={{ px: 3 }}
           >
-            {language === 'hi' ? 'फोटो' : 'Photo'}
+            {'Photo'}
           </Button>
           <Button startIcon={<Mic size={19} />} onClick={onVoice} sx={{ px: 3 }}>
-            {language === 'hi' ? 'बोलें' : 'Speak'}
+            {'Speak'}
           </Button>
           <Box sx={{ flex: 1 }} />
           {coach.status === 'streaming' && <Button onClick={coach.stop}>{t.stopReply}</Button>}

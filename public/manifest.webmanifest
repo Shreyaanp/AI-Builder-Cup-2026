@@ -1,9 +1,9 @@
 {
   "id": "/",
-  "name": "oGoogle AI — your shop, online in one conversation",
-  "short_name": "oGoogle AI",
-  "description": "Scan your menu, talk in Hindi or English, approve every detail, and share a live shop page.",
-  "lang": "en-IN",
+  "name": "Chalkboard — your shop, online in one conversation",
+  "short_name": "Chalkboard",
+  "description": "Snap your chalkboard or speak in any language, approve every detail, and share a live shop page.",
+  "lang": "en",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

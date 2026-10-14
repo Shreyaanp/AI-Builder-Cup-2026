@@ -10,7 +10,7 @@ import type { Destination, Editor, Workspace } from './workspaceContext'
 import { ReviewDialog } from './ReviewDialog'
 import { BusinessDialog, ProductDialog } from './EditDialogs'
 import { FaceDialog } from './FaceDialog'
-import { usePreferences } from '../../state/hooks'
+import { useLocale } from '../../state/hooks'
 
 function readSpeak() {
   try {
@@ -29,7 +29,7 @@ export function WorkspaceProvider({
   me: Me
   children: ReactNode
 }) {
-  const { language } = usePreferences()
+  const language = useLocale()
   const t = useCopy()
   const theme = useTheme()
   const [installOffer, setInstallOffer] = useState(false)
@@ -121,10 +121,10 @@ export function WorkspaceProvider({
             item.id === product.id ? { ...item, available: !available } : item,
           ),
         }))
-        setToast(language === 'hi' ? 'बदलाव सहेजा नहीं गया' : 'Couldn’t update. Try again.')
+        setToast(t.actionFailed)
       }
     },
-    [activeId, api, reload, language],
+    [activeId, api, reload, t.actionFailed],
   )
   const setShared = useCallback(
     async (shared: boolean) => {

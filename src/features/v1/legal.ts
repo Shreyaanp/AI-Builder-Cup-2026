@@ -13,9 +13,9 @@ export interface LegalSection {
 
 export const TERMS: LegalSection[] = [
   {
-    heading: 'What oGoogle AI is',
+    heading: 'What Chalkboard is',
     body: [
-      'oGoogle AI is an independent prototype that helps small-business owners prepare and maintain their business information. It is not a Google product and is not endorsed by Google.',
+      'Chalkboard is an independent prototype that helps small-business owners prepare and maintain their business information. It is not a Google product and is not endorsed by Google.',
       'It does not publish anything to Google. When you are ready, it hands you a checklist and Google’s own official page, where Google verifies you separately.',
     ],
   },
