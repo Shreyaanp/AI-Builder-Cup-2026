@@ -64,3 +64,29 @@ test('B1: a bottom sheet sits on the bottom edge, full width, with its actions o
   await sheet.getByRole('button', { name: 'Close' }).tap()
   await expect(sheet).toBeHidden()
 })
+
+test('B2: the navigation stays after "Something changed" and returns when the keyboard closes', async ({
+  page,
+}) => {
+  await enter(page)
+  await saveShop(page)
+  const nav = page.getByRole('navigation', { name: 'Main' })
+  const composer = page.getByLabel('Message', { exact: true })
+  await page.getByRole('button', { name: 'Something changed' }).tap()
+  await expect(composer).toBeFocused()
+  await expect(composer).toHaveValue('Today: ')
+  await expect(nav).toBeInViewport()
+  // The composer sits on top of the navigation, not under it.
+  const form = (await page.locator('#coach form').boundingBox())!
+  const bar = (await nav.boundingBox())!
+  expect(form.y + form.height).toBeLessThanOrEqual(bar.y + 1)
+  // Keyboard up (the window gets shorter): the navigation makes room for the composer.
+  await page.setViewportSize({ width: 390, height: 500 })
+  await expect(nav).toBeHidden()
+  await expect(composer).toBeInViewport()
+  // Keyboard dismissed while the field keeps focus: the navigation comes back.
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(composer).toBeFocused()
+  await expect(nav).toBeInViewport()
+  await axe(page)
+})
