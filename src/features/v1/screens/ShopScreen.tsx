@@ -33,6 +33,7 @@ import { formatPrice } from '../format'
 import { useCopy } from '../strings'
 import { LoadError } from '../LoadError'
 import { useWorkspace } from '../workspaceContext'
+import { PlanTomorrow } from '../../planning/PlanTomorrow'
 import { shape } from '../../../design/theme'
 
 export function ShopScreen() {
@@ -261,6 +262,7 @@ export function ShopSummary({ compact = false }: { compact?: boolean }) {
           </List>
         )}
       </Box>
+      {!compact && <PlanTomorrow key={shop.id} />}
       {!compact && <CustomerPage />}
     </Stack>
   )

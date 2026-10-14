@@ -89,6 +89,10 @@ class MerchantRepository(Protocol):
         """Owner's direct sold-out toggle; bumps the revision so pending proposals go stale."""
         ...
 
+    def planning(
+        self, uid: str, bid: str, pid: str, action: str, payload: dict[str, Any]
+    ) -> dict[str, Any]: ...
+
     def share(self, uid: str, bid: str, public: bool) -> dict[str, Any]: ...
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         """Customer-facing projection of a shared shop, or None when not shared."""
@@ -171,6 +175,8 @@ class MerchantStore:
             CREATE TABLE IF NOT EXISTS shares(business_id TEXT PRIMARY KEY);
             CREATE TABLE IF NOT EXISTS google_sim(uid TEXT NOT NULL, business_id TEXT NOT NULL,
                 state TEXT NOT NULL, PRIMARY KEY(uid,business_id));
+            CREATE TABLE IF NOT EXISTS planning(business_id TEXT, product_id TEXT, fields TEXT,
+                PRIMARY KEY(business_id, product_id));
             """)
 
     def connect(self) -> sqlite3.Connection:
@@ -430,6 +436,7 @@ class MerchantStore:
                 )
             ]
             for bid in owned:
+                db.execute("DELETE FROM planning WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM inventory WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM memberships WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM businesses WHERE id=?", (bid,))
@@ -480,3 +487,43 @@ class MerchantStore:
                 )
             ]
         return public_projection(bid, json.loads(row[0]), products)
+
+    # Private planning records do not change catalog revisions or public projections.
+    def planning(
+        self, uid: str, bid: str, pid: str, action: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        from datetime import date
+
+        from .planning import change
+
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            business = self.owned(db, uid, bid)
+            if not db.execute(
+                "SELECT 1 FROM inventory WHERE business_id=? AND id=?", (bid, pid)
+            ).fetchone():
+                raise HTTPException(404, "Product not found.")
+            row = db.execute(
+                "SELECT fields FROM planning WHERE business_id=? AND product_id=?", (bid, pid)
+            ).fetchone()
+            state = json.loads(row[0]) if row else {}
+            if action != "read":
+                if action == "prepare":
+                    payload = {
+                        **payload,
+                        "business_id": bid,
+                        "product_id": pid,
+                        "revision": business["revision"],
+                    }
+                elif (
+                    state.get("pending", {}).get("snapshot", {}).get("revision")
+                    != business["revision"]
+                ):
+                    raise HTTPException(409, "Business changed. Review planning again.")
+                state = change(state, action, payload, date.today())
+                db.execute(
+                    "INSERT INTO planning VALUES(?,?,?) ON CONFLICT(business_id,product_id) "
+                    "DO UPDATE SET fields=excluded.fields",
+                    (bid, pid, json.dumps(state)),
+                )
+            return state

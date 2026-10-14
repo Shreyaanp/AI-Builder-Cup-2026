@@ -299,6 +299,7 @@ class FirestoreMerchantStore:
             refs += [
                 item.reference for item in snapshot.reference.collection("google_sim").stream()
             ]
+            refs += [item.reference for item in snapshot.reference.collection("planning").stream()]
             refs.append(snapshot.reference)
         for collection in (self.proposals, self.challenges):
             refs += [
@@ -351,3 +352,42 @@ class FirestoreMerchantStore:
         rows = [s.to_dict() or {} for s in ref.collection("inventory").limit(500).stream()]
         rows.sort(key=lambda row: row.get("created", 0))
         return public_projection(ref.id, data["fields"], [row["fields"] for row in rows])
+
+    def planning(
+        self, uid: str, bid: str, pid: str, action: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        from datetime import date
+
+        from .planning import change
+
+        business_ref = self.businesses.document(document_id(bid, "Business not found."))
+        if not re.fullmatch(r"[0-9a-f]{64}", pid):
+            raise HTTPException(404, "Product not found.")
+        item_ref = business_ref.collection("inventory").document(pid)
+        ref = business_ref.collection("planning").document(pid)
+
+        @firestore.transactional
+        def run(transaction: Any) -> dict[str, Any]:
+            business = self.owned(business_ref.get(transaction=transaction), uid)
+            if not item_ref.get(transaction=transaction).exists:
+                raise HTTPException(404, "Product not found.")
+            change_payload = payload
+            state = ref.get(transaction=transaction).to_dict() or {}
+            if action != "read":
+                if action == "prepare":
+                    change_payload = {
+                        **payload,
+                        "business_id": bid,
+                        "product_id": pid,
+                        "revision": business["revision"],
+                    }
+                elif (
+                    state.get("pending", {}).get("snapshot", {}).get("revision")
+                    != business["revision"]
+                ):
+                    raise HTTPException(409, "Business changed. Review planning again.")
+                state = change(state, action, change_payload, date.today())
+                transaction.set(ref, state)
+            return dict(state)
+
+        return run(self.client.transaction())
