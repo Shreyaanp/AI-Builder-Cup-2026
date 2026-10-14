@@ -38,8 +38,10 @@ export interface Workspace {
   photoPending: boolean
   consumePhotoRequest: () => void
   /** Open the Coach with a started message in the composer (the owner finishes and sends). */
-  startCoachDraft: (text: string) => void
+  startCoachDraft: (text: string, options?: { send?: boolean }) => void
   coachDraft: string | null
+  /** The pending draft should be sent at once instead of waiting in the composer. */
+  coachDraftSend: boolean
   consumeCoachDraft: () => void
   /** The coach's "+" sheet (new chat, add shop or product, earlier chats); the top bar opens it. */
   coachActions: boolean
