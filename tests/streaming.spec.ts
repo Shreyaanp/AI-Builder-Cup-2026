@@ -16,7 +16,9 @@ test('real Python stream completes without changing reviewed business facts', as
 })
 
 // FIXME: legacy ?classic=1 screen only; the V1 coach Stop is covered in coach-reliability.spec.ts.
-test.fixme('stopping a real stream preserves the input and allows another turn', async ({ page }) => {
+test.fixme('stopping a real stream preserves the input and allows another turn', async ({
+  page,
+}) => {
   await page.goto('/?classic=1')
   const note = page.getByRole('textbox', { name: 'Your note', exact: true })
   await note.fill('Help with my bakery')
