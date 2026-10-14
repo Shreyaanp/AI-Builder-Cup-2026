@@ -1,4 +1,14 @@
-import { Box, Checkbox, FormControlLabel, Stack, TextField, Typography } from '@mui/material'
+import { useEffect, useId, useRef, useState } from 'react'
+import {
+  Box,
+  Button,
+  Checkbox,
+  Chip,
+  FormControlLabel,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { useLocale } from '../../state/hooks'
 import { useShopCopy } from './strings'
 import { weekdays, type DayHours } from './hoursModel'
@@ -10,6 +20,12 @@ function dayLabel(day: DayHours['day'], locale: string, short = false) {
   }).format(new Date(Date.UTC(2026, 0, 5 + weekdays.indexOf(day))))
 }
 
+function equalHours(hours: DayHours[]) {
+  const open = hours.filter((entry) => !entry.closed)
+  const first = open[0]
+  return !first || open.every((entry) => entry.open === first.open && entry.close === first.close)
+}
+
 export function HoursEditor({
   value,
   onChange,
@@ -19,7 +35,63 @@ export function HoursEditor({
 }) {
   const t = useShopCopy()
   const locale = useLocale()
+  const id = useId()
+  const toggle = useRef<HTMLButtonElement>(null)
+  const [perDay, setPerDay] = useState(false)
+  const [returnFocus, setReturnFocus] = useState(false)
+  const [shared, setShared] = useState({ open: '', close: '' })
   const enabled = value.length > 0
+  const uniform = equalHours(value)
+  const expanded = perDay || !uniform
+  useEffect(() => {
+    if (!expanded && returnFocus) toggle.current?.focus()
+  }, [expanded, returnFocus])
+  const times = value.find((entry) => !entry.closed) ?? shared
+  const overnight = value.some(
+    (entry) => !entry.closed && entry.open && entry.close && entry.close < entry.open,
+  )
+  function updateDays(next: DayHours[]) {
+    onChange(next)
+    if (equalHours(next)) {
+      setPerDay(false)
+      setReturnFocus(true)
+    }
+  }
+  function timeFields(
+    entry: Pick<DayHours, 'open' | 'close' | 'closed'>,
+    change: (key: 'open' | 'close', time: string) => void,
+    day?: DayHours['day'],
+  ) {
+    return (['open', 'close'] as const).map((key) => (
+      <TextField
+        key={key}
+        label={key === 'open' ? t.opens : t.closes}
+        type="time"
+        size="small"
+        disabled={entry.closed}
+        value={entry[key] ?? ''}
+        onChange={(event) => change(key, event.target.value)}
+        slotProps={{
+          inputLabel: { shrink: true },
+          htmlInput: {
+            'aria-label': day
+              ? `${dayLabel(day, locale)}: ${key === 'open' ? t.opens : t.closes}`
+              : key === 'open'
+                ? t.opens
+                : t.closes,
+            'aria-describedby': overnight ? `${id}-overnight` : undefined,
+            name: `${day ?? 'shared'}-${key}`,
+            step: 60,
+          },
+        }}
+        sx={{
+          minWidth: 0,
+          flex: 1,
+          '& input': { px: 1, fontSize: 16, minHeight: 48, boxSizing: 'border-box' },
+        }}
+      />
+    ))
+  }
   return (
     <Stack spacing={1}>
       <FormControlLabel
@@ -27,80 +99,145 @@ export function HoursEditor({
         control={
           <Checkbox
             checked={enabled}
-            onChange={(_, checked) =>
-              onChange(checked ? weekdays.map((day) => ({ day, closed: true })) : [])
-            }
+            onChange={(_, checked) => {
+              setPerDay(false)
+              setShared({ open: '', close: '' })
+              onChange(
+                checked ? weekdays.map((day) => ({ day, closed: false, open: '', close: '' })) : [],
+              )
+            }}
+            sx={{ minHeight: 48, minWidth: 48 }}
           />
         }
       />
       {enabled && (
         <>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: '40px 48px minmax(0,1fr) minmax(0,1fr)',
-              gap: 1,
-              alignItems: 'center',
-            }}
-          >
-            <span />
-            {[t.closed, t.opens, t.closes].map((label, i) => (
-              <Typography key={i} variant="labelSmall">
-                {label}
-              </Typography>
-            ))}
-            {weekdays.map((day) => {
-              const entry = value.find((item) => item.day === day) ?? { day, closed: true }
-              const update = (next: DayHours) =>
-                onChange(
-                  weekdays.map((key) =>
-                    key === day
-                      ? next
-                      : (value.find((item) => item.day === key) ?? { day: key, closed: true }),
-                  ),
-                )
-              const label = dayLabel(day, locale)
-              return (
-                <Box key={day} sx={{ display: 'contents' }}>
-                  <Typography variant="bodySmall">{dayLabel(day, locale, true)}</Typography>
-                  <Checkbox
-                    checked={entry.closed}
-                    onChange={(_, closed) =>
-                      update({
-                        ...entry,
-                        closed,
-                        open: closed ? null : '',
-                        close: closed ? null : '',
-                      })
-                    }
-                    slotProps={{ input: { 'aria-label': `${label}: ${t.closed}` } }}
-                    sx={{ minHeight: 48, minWidth: 48 }}
-                  />
-                  {(['open', 'close'] as const).map((key) => (
-                    <TextField
-                      key={key}
-                      type="time"
-                      size="small"
-                      disabled={entry.closed}
-                      value={entry[key] ?? ''}
-                      onChange={(event) => update({ ...entry, [key]: event.target.value })}
-                      slotProps={{
-                        htmlInput: {
-                          'aria-label': `${label}: ${key === 'open' ? t.opens : t.closes}`,
-                          name: `${day}-${key}`,
-                          step: 60,
-                        },
+          {!expanded && (
+            <>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', pt: 2 }}>
+                {timeFields({ ...times, closed: false }, (key, time) => {
+                  setShared({ open: times.open ?? '', close: times.close ?? '', [key]: time })
+                  onChange(value.map((entry) => (entry.closed ? entry : { ...entry, [key]: time })))
+                }).flatMap((field, index) =>
+                  index === 0
+                    ? [
+                        field,
+                        <Typography key="separator" aria-hidden="true">
+                          ·
+                        </Typography>,
+                      ]
+                    : [field],
+                )}
+              </Stack>
+              <Stack direction="row" sx={{ flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                {weekdays.map((day) => {
+                  const entry = value.find((item) => item.day === day)
+                  const selected = Boolean(entry && !entry.closed)
+                  return (
+                    <Chip
+                      key={day}
+                      component="button"
+                      type="button"
+                      label={dayLabel(day, locale, true)}
+                      aria-label={dayLabel(day, locale)}
+                      aria-pressed={selected}
+                      variant={selected ? 'filled' : 'outlined'}
+                      onClick={() => {
+                        setShared({ open: times.open ?? '', close: times.close ?? '' })
+                        onChange(
+                          weekdays.map((key) =>
+                            key === day
+                              ? {
+                                  day,
+                                  closed: selected,
+                                  open: selected ? null : (times.open ?? ''),
+                                  close: selected ? null : (times.close ?? ''),
+                                }
+                              : (value.find((item) => item.day === key) ?? {
+                                  day: key,
+                                  closed: true,
+                                }),
+                          ),
+                        )
                       }}
-                      sx={{ minWidth: 0, '& input': { px: 1, fontSize: 16, minHeight: 32 } }}
+                      sx={{
+                        minWidth: 48,
+                        minHeight: 48,
+                        height: 'auto',
+                        '& .MuiChip-label': { px: 1 },
+                      }}
                     />
-                  ))}
-                </Box>
-              )
-            })}
-          </Box>
-          <Typography variant="bodySmall" color="text.secondary">
-            {t.overnight}
-          </Typography>
+                  )
+                })}
+              </Stack>
+            </>
+          )}
+          <Button
+            ref={toggle}
+            aria-expanded={expanded}
+            aria-controls={`${id}-days`}
+            disabled={expanded && !uniform}
+            onClick={() => setPerDay(!expanded)}
+            sx={{ minHeight: 48, alignSelf: 'flex-start', textAlign: 'start' }}
+          >
+            {t.differentHours}
+          </Button>
+          <Stack id={`${id}-days`} spacing={2} hidden={!expanded}>
+            {expanded && (
+              <Typography variant="labelSmall" sx={{ width: 88, textAlign: 'right', pr: 1 }}>
+                {t.closed}
+              </Typography>
+            )}
+            {expanded &&
+              weekdays.map((day) => {
+                const entry = value.find((item) => item.day === day) ?? { day, closed: true }
+                const update = (next: DayHours) =>
+                  updateDays(
+                    weekdays.map((key) =>
+                      key === day
+                        ? next
+                        : (value.find((item) => item.day === key) ?? { day: key, closed: true }),
+                    ),
+                  )
+                const label = dayLabel(day, locale)
+                return (
+                  <Stack key={day} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <FormControlLabel
+                      label={dayLabel(day, locale, true)}
+                      labelPlacement="start"
+                      sx={{
+                        m: 0,
+                        width: 88,
+                        flexShrink: 0,
+                        justifyContent: 'space-between',
+                        '& .MuiFormControlLabel-label': { typography: 'bodySmall' },
+                      }}
+                      control={
+                        <Checkbox
+                          checked={entry.closed}
+                          onChange={(_, closed) =>
+                            update({
+                              ...entry,
+                              closed,
+                              open: closed ? null : (times.open ?? ''),
+                              close: closed ? null : (times.close ?? ''),
+                            })
+                          }
+                          slotProps={{ input: { 'aria-label': `${label}: ${t.closed}` } }}
+                          sx={{ minHeight: 48, minWidth: 48 }}
+                        />
+                      }
+                    />
+                    {timeFields(entry, (key, time) => update({ ...entry, [key]: time }), day)}
+                  </Stack>
+                )
+              })}
+          </Stack>
+          {overnight && (
+            <Typography id={`${id}-overnight`} variant="bodySmall" color="text.secondary">
+              {t.overnight}
+            </Typography>
+          )}
         </>
       )}
     </Stack>
