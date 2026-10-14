@@ -84,6 +84,8 @@ export const ko: Copy = {
   draftLegal: '시제품용 초안이며 법률 검토를 기다리고 있어요.',
   legalTranslation: '편의를 위한 번역이며 영어 버전이 적용돼요.',
   close: '닫기',
+  photoTake: '사진 찍기',
+  photoUpload: '사진 올리기',
   setupDone: '설정 완료',
   discardTitle: '변경사항을 버릴까요?',
   discardBody: '입력하거나 검토 중인 내용은 아직 저장되지 않았습니다.',
