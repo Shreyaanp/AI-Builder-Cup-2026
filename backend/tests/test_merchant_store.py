@@ -300,3 +300,63 @@ def test_face_challenge_is_single_use_and_deletion_invalidates(store: MerchantRe
     assert store.context("alice", bid)["person_verification"] == "not_enrolled"
     with pytest.raises(HTTPException):
         store.result("alice", challenge["id"])
+
+
+def test_simulator_persistence_isolation_erasure_and_inventory(store: MerchantRepository) -> None:
+    """E20, E23–24: both adapters keep fictional records separate from real facts."""
+    from app.google_sim import SimFacts, initial
+
+    bid = create_with_products(store)
+    second = create(store, "alice", "Second shop")
+    bob = create(store, "bob", "Bob shop")
+    original = store.context("alice", bid)
+    assert store.sim_state("alice", bid) is None
+    state = initial(SimFacts(name="Fictional only"), "submit-unknown")
+    state.phase, state.submission, state.version = "pending", "unknown", 1
+    store.save_sim_state("alice", bid, state.model_dump())
+    assert store.sim_state("alice", bid) == state.model_dump()
+    if isinstance(store, MerchantStore):
+        reopened = MerchantStore(store.path)
+    else:
+        reopened = FirestoreMerchantStore(store.client, store.businesses.parent.parent.id)
+    assert reopened.sim_state("alice", bid) == state.model_dump()
+    assert store.sim_state("alice", second) is None
+    assert store.context("alice", bid) == original
+    for method in [
+        lambda: store.sim_state("bob", bid),
+        lambda: store.save_sim_state("bob", bid, state.model_dump()),
+    ]:
+        with pytest.raises(HTTPException) as denied:
+            method()
+        assert denied.value.status_code == 404
+    with pytest.raises(HTTPException) as stale:
+        store.save_sim_state("alice", bid, state.model_dump())
+    assert stale.value.status_code == 409
+    proposal = store.propose(
+        "alice",
+        ProposalRequest(
+            kind="inventory",
+            business_id=bid,
+            revision=1,
+            products=[ProductFields(name="Chai", price=2500, unit="cup")],
+        ),
+    )
+    store.commit("alice", proposal["id"], proposal["digest"])
+    assert store.sim_state("alice", bid) == state.model_dump()
+    assert store.context("alice", bid)["business"]["google_publication"] == "not_connected"
+    state = initial(SimFacts(name="Reset only"))
+    state.version = 2
+    store.save_sim_state("alice", bid, state.model_dump())
+    assert store.inventory("alice", bid)[0]["price"] == 2500
+    store.erase_owner("alice")
+    with pytest.raises(HTTPException):
+        store.sim_state("alice", bid)
+    assert store.sim_state("bob", bob) is None
+    # Confirm erasure of the underlying simulator document/table too.
+    if isinstance(store, MerchantStore):
+        with store.connect() as db:
+            assert (
+                db.execute("SELECT COUNT(*) FROM google_sim WHERE uid='alice'").fetchone()[0] == 0
+            )
+    else:
+        assert list(store.businesses.document(bid).collection("google_sim").stream()) == []

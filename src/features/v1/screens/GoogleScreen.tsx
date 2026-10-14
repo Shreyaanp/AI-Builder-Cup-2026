@@ -16,6 +16,7 @@ import { formatPrice } from '../format'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
 import { shape } from '../../../design/theme'
+import { GoogleSimulator } from '../../google-sim/GoogleSimulator'
 
 // Official owner entry points (support.google.com/business/answer/2911778).
 const ADD_URL = 'https://business.google.com/add'
@@ -169,6 +170,7 @@ export function GoogleScreen() {
           </Box>
           <Typography variant="bodyMedium">{t.googleHonest}</Typography>
         </Stack>
+        <GoogleSimulator />
       </Stack>
     </Box>
   )

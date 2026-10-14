@@ -67,6 +67,9 @@ class MerchantRepository(Protocol):
     def list_businesses(self, uid: str) -> list[dict[str, Any]]: ...
     def context(self, uid: str, bid: str | None) -> dict[str, Any]: ...
     def inventory(self, uid: str, bid: str) -> list[dict[str, Any]]: ...
+    # Simulator records are isolated from confirmed merchant facts.
+    def sim_state(self, uid: str, bid: str) -> dict[str, Any] | None: ...
+    def save_sim_state(self, uid: str, bid: str, state: dict[str, Any]) -> None: ...
     def propose(self, uid: str, request: ProposalRequest) -> dict[str, Any]: ...
     def commit(self, uid: str, pid: str, digest: str) -> dict[str, Any]: ...
     def challenge(self, uid: str, bid: str) -> dict[str, Any]: ...
@@ -166,12 +169,38 @@ class MerchantStore:
             CREATE TABLE IF NOT EXISTS consents(uid TEXT PRIMARY KEY, version TEXT NOT NULL,
                 accepted REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS shares(business_id TEXT PRIMARY KEY);
+            CREATE TABLE IF NOT EXISTS google_sim(uid TEXT NOT NULL, business_id TEXT NOT NULL,
+                state TEXT NOT NULL, PRIMARY KEY(uid,business_id));
             """)
 
     def connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10)
         db.row_factory = sqlite3.Row
         return db
+
+    def sim_state(self, uid: str, bid: str) -> dict[str, Any] | None:
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            row = db.execute(
+                "SELECT state FROM google_sim WHERE uid=? AND business_id=?", (uid, bid)
+            ).fetchone()
+            return json.loads(row[0]) if row else None
+
+    def save_sim_state(self, uid: str, bid: str, state: dict[str, Any]) -> None:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self.owned(db, uid, bid)
+            row = db.execute(
+                "SELECT state FROM google_sim WHERE uid=? AND business_id=?", (uid, bid)
+            ).fetchone()
+            version = json.loads(row[0])["version"] if row else 0
+            if state["version"] != version + 1:
+                raise HTTPException(409, "Simulator changed. Reload before reviewing.")
+            db.execute(
+                "INSERT INTO google_sim VALUES(?,?,?) ON CONFLICT(uid,business_id) "
+                "DO UPDATE SET state=excluded.state",
+                (uid, bid, json.dumps(state)),
+            )
 
     @staticmethod
     def owned(db: sqlite3.Connection, uid: str, bid: str) -> sqlite3.Row:
@@ -405,7 +434,7 @@ class MerchantStore:
                 db.execute("DELETE FROM memberships WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM businesses WHERE id=?", (bid,))
                 db.execute("DELETE FROM shares WHERE business_id=?", (bid,))
-            for table in ("proposals", "challenges", "consents", "people"):
+            for table in ("proposals", "challenges", "consents", "people", "google_sim"):
                 db.execute(f"DELETE FROM {table} WHERE uid=?", (uid,))  # noqa: S608 - fixed names
         return owned
 

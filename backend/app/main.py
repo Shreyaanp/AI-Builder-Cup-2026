@@ -27,6 +27,7 @@ from .contracts import CoachTurn, StreamEvent
 from .coordinator import MerchantContext, current
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .frontend import serve_frontend
+from .google_sim_routes import router as google_sim_router
 from .limits import Lease, RunRegistry
 from .memory_vectors import (
     ConversationRecall,
@@ -140,6 +141,7 @@ def create_app(
 
     app = FastAPI(title="oGoogle AI streaming API", version="0.1.0", lifespan=lifespan)
     app.include_router(merchant_router)
+    app.include_router(google_sim_router)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
