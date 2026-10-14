@@ -521,6 +521,7 @@ export function OrderCard({
                 variant="contained"
                 disabled={busy}
                 onClick={() => void send()}
+                aria-label={s.sendTo(order.supplier.name)}
                 startIcon={
                   busy ? <CircularProgress size={16} color="inherit" /> : <Send size={18} />
                 }
