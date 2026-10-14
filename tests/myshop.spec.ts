@@ -30,7 +30,7 @@ async function seedShop(page: Page) {
         business: {
           name: 'Katong Kopi',
           category: 'Kopitiam',
-          location: '112 East Coast Road, Katong',
+          location: 'Katong',
           hours: '7am–3pm',
         },
         products: [
@@ -111,4 +111,72 @@ test('B26: a pending check shows as a small status inside the Readiness tile', a
   const readiness = page.getByRole('button', { name: /^Readiness/ })
   await expect(readiness.getByText('Check pending', { exact: true })).toBeVisible()
   await expect(page.getByRole('main').getByText('Check pending', { exact: true })).toHaveCount(1)
+})
+
+test('B27: the tile grid sizes to its content at 390, 600 and desktop widths', async ({ page }) => {
+  await enter(page)
+  await seedShop(page)
+  await myShop(page)
+  for (const [width, height] of [
+    [390, 844],
+    [600, 900],
+    [1280, 1000],
+  ]) {
+    await page.setViewportSize({ width, height })
+    const menu = page.getByRole('button', { name: /^Menu/ })
+    await expect(menu).toBeVisible()
+    const tiles = menu.locator('..')
+    const report = await tiles.evaluate((grid) => {
+      const textRight = (tile: Element) => {
+        const walker = document.createTreeWalker(tile, NodeFilter.SHOW_TEXT)
+        let right = 0
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (!node.textContent?.trim()) continue
+          const range = document.createRange()
+          range.selectNodeContents(node)
+          for (const rect of Array.from(range.getClientRects())) right = Math.max(right, rect.right)
+        }
+        // Bars count as content too (the Readiness progress).
+        for (const bar of Array.from(tile.querySelectorAll('.MuiLinearProgress-root')))
+          right = Math.max(right, bar.getBoundingClientRect().right)
+        return right
+      }
+      const box = grid.getBoundingClientRect()
+      const column = parseFloat(getComputedStyle(grid).gridTemplateColumns)
+      return {
+        overflow: grid.scrollWidth > grid.clientWidth + 1,
+        columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
+        tiles: Array.from(grid.children).map((tile) => {
+          const rect = tile.getBoundingClientRect()
+          const truncated = Array.from(tile.querySelectorAll('*')).filter(
+            (node) =>
+              node.scrollWidth > node.clientWidth + 1 &&
+              getComputedStyle(node).overflow !== 'visible',
+          ).length
+          return {
+            name: tile.textContent?.slice(0, 24),
+            // How much of the tile's width its text actually uses.
+            used: (textRight(tile) - rect.left) / rect.width,
+            wide: rect.width > column * 1.5,
+            truncated,
+            // Every tile sits inside the grid.
+            inside: rect.left >= box.left - 1 && rect.right <= box.right + 1,
+          }
+        }),
+      }
+    })
+    expect(report.overflow, `${width}px overflows`).toBe(false)
+    expect(report.columns).toBe(width === 390 ? 2 : width === 600 ? 2 : 4)
+    for (const tile of report.tiles) {
+      expect(tile.inside, `${tile.name} at ${width}px`).toBe(true)
+      expect(tile.truncated, `${tile.name} truncated at ${width}px`).toBe(0)
+      // A tile wider than one column must use that width; a one-column tile is the smallest
+      // box there is, so only an almost-empty one fails.
+      expect(tile.used, `${tile.name} is mostly empty at ${width}px`).toBeGreaterThan(
+        tile.wide ? 0.65 : 0.45,
+      )
+    }
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
+  await axe(page)
 })
