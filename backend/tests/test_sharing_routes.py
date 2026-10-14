@@ -62,6 +62,10 @@ def test_public_shop_requires_sharing_but_no_workspace(app) -> None:
             response = customer.get(f"/api/v1/public/shops/{bid}")
             assert response.status_code == 200
             assert response.json() == {
+                "lat": None,
+                "lng": None,
+                "place_id": None,
+                "timezone": "Asia/Singapore",
                 "id": bid,
                 "name": "Test Tea Stall",
                 "category": "",

@@ -134,7 +134,7 @@ jobs:
             --image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA" \
             --service-account=ogoogle-runtime@ichiropractic.iam.gserviceaccount.com \
             --env-vars-file=.deployment/runtime.json --allow-unauthenticated \
-            --update-secrets=FACE_WORKER_TOKEN=ogoogle-face-token:1 \
+            --update-secrets=FACE_WORKER_TOKEN=ogoogle-face-token:1,MAPS_SERVER_KEY=maps-server-key:1,MAPS_BROWSER_KEY=maps-browser-key:1 \
             --min=1 --max=10 --concurrency=40 --cpu=1 --memory=2Gi --timeout=3600 \
             --no-cpu-throttling --session-affinity \
             --cpu-boost --quiet

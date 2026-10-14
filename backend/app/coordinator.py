@@ -110,7 +110,15 @@ def get_business_context() -> dict[str, Any]:
     shop = data["business"]
     currency = shop_currency(shop)
     return {
-        "shop": shop["fields"] if shop else None,
+        "shop": {
+            key: value
+            for key, value in shop["fields"].items()
+            # Coordinates stay hidden from the model; customer facts are part of the shop.
+            if key
+            in {"name", "category", "location", "hours", "phone", "currency"} | set(FACT_KEYS)
+        }
+        if shop
+        else None,
         "customer_page_shared": bool(shop and shop.get("public")),
         "products": [
             {
@@ -191,7 +199,9 @@ def propose_business(
         given["currency"] = ui_currency.get() or DEFAULT_CURRENCY
     given.update({key: value for key, value in facts.items() if value is not None})
     try:
-        fields = BusinessFields(**given)
+        fields = BusinessFields.model_validate(given)
+        if existing and existing["fields"].get("location") == fields.location:
+            fields = BusinessFields.model_validate({**existing["fields"], **given})
         proposal = ctx.store.propose(
             ctx.uid,
             ProposalRequest(

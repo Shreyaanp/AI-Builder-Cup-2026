@@ -21,6 +21,8 @@ const child = spawn(uv, ['run', '--locked', 'python', 'run.py'], {
     MODERATION_MODE: 'fixture',
     RATE_LIMITS_ENABLED: 'false',
     MEDIA_BUCKET: '',
+    MAPS_SERVER_KEY: '',
+    MAPS_BROWSER_KEY: '',
   },
 })
 child.on('error', (error) => {

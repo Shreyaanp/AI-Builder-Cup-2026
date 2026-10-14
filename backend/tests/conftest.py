@@ -7,5 +7,11 @@ def offline_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COACH_MODE", "offline")
     monkeypatch.setenv("AUTH_MODE", "local")
     monkeypatch.setenv("APP_ENV", "test")
-    for name in ("GOOGLE_API_KEY", "GOOGLE_TEXT_MODEL", "GOOGLE_LIVE_MODEL"):
+    for name in (
+        "GOOGLE_API_KEY",
+        "GOOGLE_TEXT_MODEL",
+        "GOOGLE_LIVE_MODEL",
+        "MAPS_SERVER_KEY",
+        "MAPS_BROWSER_KEY",
+    ):
         monkeypatch.delenv(name, raising=False)

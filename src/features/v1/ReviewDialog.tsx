@@ -8,6 +8,8 @@ import { useWorkspace } from './workspaceContext'
 import { formatPrice, shopCurrency } from './format'
 import { FactList } from './FactList'
 import { Sheet } from './Sheet'
+import { useLocale } from '../../state/hooks'
+import { discoverCopy } from '../discover/strings'
 
 /**
  * The only place a change is saved: the owner confirms the exact digest the server sealed.
@@ -23,7 +25,8 @@ export function ReviewDialog({
   onSaved: (businessId: string) => Promise<void>
 }) {
   const t = useCopy()
-  const { api, businesses } = useWorkspace()
+  const pinCopy = discoverCopy(useLocale())
+  const { api, businesses, review } = useWorkspace()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const snapshot = proposal?.snapshot
@@ -33,6 +36,26 @@ export function ReviewDialog({
   // A new shop carries its currency in the proposal; edits use the saved shop's.
   const currency = snapshot?.business?.currency ?? shopCurrency(target)
   const open = proposal !== null
+  async function findPin() {
+    if (!proposal || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      const pinned = await api<Proposal>('/proposals', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...proposal.snapshot,
+          business_id: target ? proposal.snapshot.business_id : null,
+          geocode_confirmed: true,
+        }),
+      })
+      review(pinned)
+    } catch {
+      setError(pinCopy.pinError)
+    } finally {
+      setBusy(false)
+    }
+  }
   function close() {
     if (busy) return
     setError('')
@@ -87,6 +110,23 @@ export function ReviewDialog({
               ))}
           </Stack>
           <FactList fields={snapshot.business} />
+          {snapshot.business.pin_label && (
+            <Typography variant="bodyLarge">
+              {pinCopy.pin}: {snapshot.business.pin_label}
+              {snapshot.business.pin_demo && ` · ${pinCopy.demo}`}
+            </Typography>
+          )}
+          {snapshot.business.location &&
+            (!snapshot.business.pin_label || snapshot.business.pin_demo) && (
+              <Stack spacing={2}>
+                <Typography variant="bodyMedium" color="text.secondary">
+                  {pinCopy.pinReason}
+                </Typography>
+                <Button variant="outlined" disabled={busy} onClick={() => void findPin()}>
+                  {pinCopy.findPin}
+                </Button>
+              </Stack>
+            )}
         </>
       )}
       {snapshot.products.length > 0 && (

@@ -7,6 +7,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
+from .discover import prepare_pin
 from .face_transport import worker_headers
 from .limits import client_ip, enforce_limits
 from .merchant import (
@@ -133,6 +134,7 @@ async def propose(body: ProposalRequest, request: Request) -> dict[str, Any]:
         context = await anyio.to_thread.run_sync(store(request).context, uid, body.business_id)
         saved = (context["business"] or {}).get("fields", {}).get("currency")
         body.business.currency = saved or DEFAULT_CURRENCY
+    await prepare_pin(body, store(request), uid, request.app.state.maps)
     return await anyio.to_thread.run_sync(store(request).propose, uid, body)
 
 
@@ -144,15 +146,23 @@ async def approve(proposal_id: str, body: Approval, request: Request) -> dict[st
 
 @router.post("/businesses/{business_id}/update")
 async def update(
-    business_id: str, body: BusinessFields, request: Request, revision: int = 0
+    business_id: str,
+    body: BusinessFields,
+    request: Request,
+    revision: int = 0,
+    geocode_confirmed: bool = False,
 ) -> dict[str, Any]:
     uid = await consented_owner(request)
     await enforce_limits(request, [("proposal", uid)])
-    return await anyio.to_thread.run_sync(
-        store(request).propose,
-        uid,
-        ProposalRequest(kind="business", business_id=business_id, revision=revision, business=body),
+    proposal = ProposalRequest(
+        kind="business",
+        business_id=business_id,
+        revision=revision,
+        business=body,
+        geocode_confirmed=geocode_confirmed,
     )
+    await prepare_pin(proposal, store(request), uid, request.app.state.maps)
+    return await anyio.to_thread.run_sync(store(request).propose, uid, proposal)
 
 
 @router.post("/businesses/{business_id}/inventory/{product_id}/availability")

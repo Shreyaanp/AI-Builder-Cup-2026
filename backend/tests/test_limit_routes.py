@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 from starlette.websockets import WebSocketDisconnect
 
-from app.limits import LIMITS, Bucket, RateLimiter
+from app.limits import JSON_BODY_BYTES, LIMITS, Bucket, RateLimiter
 from app.main import create_app
 from app.settings import Settings
 from tests.test_customer import create_shop
@@ -182,13 +182,13 @@ def test_request_body_and_existing_coach_character_cap(app: FastAPI) -> None:
         headers = {"Content-Type": "application/json"}
         assert (
             client.post(
-                path, content=small + b" " * (65_536 - len(small)), headers=headers
+                path, content=small + b" " * (JSON_BODY_BYTES - len(small)), headers=headers
             ).status_code
             == 200
         )
         assert (
             client.post(
-                path, content=small + b" " * (65_537 - len(small)), headers=headers
+                path, content=small + b" " * (JSON_BODY_BYTES + 1 - len(small)), headers=headers
             ).status_code
             == 413
         )

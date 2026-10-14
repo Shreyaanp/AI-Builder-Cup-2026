@@ -349,6 +349,12 @@ class FirestoreMerchantStore:
         ref.update({"public": public})
         return {"business_id": ref.id, "public": public}
 
+    def shared_shops(self) -> list[dict[str, Any]]:
+        from google.cloud.firestore_v1.base_query import FieldFilter
+
+        rows = self.businesses.where(filter=FieldFilter("public", "==", True)).stream()
+        return [shop for row in rows if (shop := self.public_shop(row.id)) is not None]
+
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         try:
             ref = self.businesses.document(document_id(bid, "Not found."))

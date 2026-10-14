@@ -25,6 +25,8 @@ from .contracts import CoachTurn, StreamEvent
 from .coordinator import MerchantContext, current
 from .customer import CustomerAnswers
 from .customer_routes import router as customer_router
+from .discover import MapsService
+from .discover import router as discover_router
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .frontend import serve_frontend
 from .google_profile import BusinessProfileAdapter, SimulatedBusinessProfile
@@ -91,6 +93,7 @@ def create_app(
     sessions: BaseSessionService | None = None,
     *,
     google_profile: BusinessProfileAdapter | None = None,
+    maps_service: MapsService | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
 
@@ -122,6 +125,7 @@ def create_app(
         )
         app.state.photos = PhotoPipeline(settings) if settings.v1_enabled else None
         app.state.customer_answers = CustomerAnswers(settings)
+        app.state.maps = maps_service or MapsService(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
         app.state.services = Services(
             identity,
@@ -144,6 +148,7 @@ def create_app(
             await asyncio.gather(maintenance, return_exceptions=True)
             await app.state.services.replay.close()
             await app.state.customer_answers.close()
+            await app.state.maps.close()
             await anyio.to_thread.run_sync(app.state.rate_limiter.close)
             identity.close()
             if app.state.recall:
@@ -162,6 +167,7 @@ def create_app(
     app.include_router(google_sim_router)
     app.include_router(planning_router)
     app.include_router(customer_router)
+    app.include_router(discover_router)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
@@ -206,6 +212,10 @@ def create_app(
             **get_services(request).identity.bootstrap(request, response),
             "v1_enabled": settings.v1_enabled,
             "coach_mode": settings.coach_mode,
+            "maps_browser_key": (
+                settings.maps_browser_key.get_secret_value() if settings.maps_browser_key else ""
+            ),
+            "maps_mode": "demo" if app.state.maps.demo else "live",
         }
 
     @app.post(
