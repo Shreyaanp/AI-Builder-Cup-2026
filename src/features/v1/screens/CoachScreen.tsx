@@ -57,6 +57,7 @@ import { useBackClose } from '../backStack'
 import { SalesImportSheet } from '../ImportMenu'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
 import { ShopCard, ShopSheet, StartCard } from '../ShopCard'
+import { TourOffer } from '../../tour/Tour'
 import { PendingCard } from '../PendingCard'
 import { ShopSheets } from '../ShopTiles'
 import { FreshnessCard, RecapTile } from '../../sales/ShopInsights'
@@ -659,6 +660,8 @@ export function CoachScreen() {
               </Typography>
             )}
             {ws.active ? <ShopCard onOpen={openSheet} /> : <StartCard />}
+            {/* First visit: see the product working on a filled demo shop. */}
+            {ws.businesses.length === 0 && <TourOffer />}
             {/* Suggestions right under the shop card; before a shop exists the start card is
                 the only thing shown. */}
             {ws.active && chips}
@@ -831,6 +834,7 @@ export function CoachScreen() {
             its size and the buttons never move. */}
         <Box
           component="form"
+          data-tour="composer"
           onSubmit={(event) => {
             event.preventDefault()
             void send()

@@ -44,6 +44,7 @@ import { isLanguagePref, LOCALE_NAMES, LOCALES, systemLocale } from '../../i18n/
 import { useWorkspace } from './workspaceContext'
 import type { Destination } from './workspaceContext'
 import { CoachScreen } from './screens/CoachScreen'
+import { TourHost, TourMenuButton } from '../tour/Tour'
 import { ShopScreen } from './screens/ShopScreen'
 import { ShopOverview } from './ShopTiles'
 import { GoogleScreen } from './screens/GoogleScreen'
@@ -116,6 +117,7 @@ export function AppShell() {
       )}
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <TopBar />
+        <TourHost />
         <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <Box
             component="main"
@@ -245,6 +247,7 @@ function NavItem({
   return (
     <ButtonBase
       aria-current={selected ? 'page' : undefined}
+      data-tour={`nav-${item.id}`}
       onClick={() => onSelect(item.id)}
       sx={{
         flexDirection: 'column',
@@ -458,6 +461,7 @@ function TopBar() {
             }
           />
         </Box>
+        <TourMenuButton onStart={() => setSettings(null)} />
         {installation !== 'installed' && (
           <ButtonBase
             sx={{

@@ -38,6 +38,7 @@ export function OrdersTile() {
   return (
     <>
       <Tile
+        tour="orders"
         icon={
           <Badge badgeContent={unread} color="primary" aria-hidden="true">
             <Truck size={20} />

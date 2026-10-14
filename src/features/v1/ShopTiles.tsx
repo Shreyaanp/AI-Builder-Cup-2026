@@ -72,6 +72,7 @@ export function Tile({
   span,
   onClick,
   compact = false,
+  tour,
 }: {
   icon: ReactNode
   label: string
@@ -83,12 +84,15 @@ export function Tile({
   span?: 1 | 2 | 'full'
   onClick: () => void
   compact?: boolean
+  /** Guided-tour anchor (data-tour). */
+  tour?: string
 }) {
   const roles = useTheme().material
   const columns = span ?? (wide ? 2 : 1)
   return (
     <ButtonBase
       onClick={onClick}
+      data-tour={tour}
       sx={{
         gridColumn: columns === 'full' ? '1 / -1' : columns === 2 ? 'span 2' : undefined,
         // A grid too narrow for two columns gives a two-column tile the whole row instead.
@@ -238,6 +242,7 @@ export function ShopTiles({
       <Tile
         // The whole row, its category groups side by side where they fit.
         span={ws.products.length ? 'full' : 1}
+        tour="menu"
         icon={<UtensilsCrossed size={20} />}
         label={t.menu}
         value={ws.products.length ? t.itemCount(ws.products.length) : t.noItems}
@@ -289,6 +294,7 @@ export function ShopTiles({
       <PrepPlanTile key={shop.id} />
       <Tile
         icon={<Globe size={20} />}
+        tour="customer"
         label={t.customerPage}
         value={shop.public ? t.shared : t.notShared}
         onClick={() => onSheet('customer')}
