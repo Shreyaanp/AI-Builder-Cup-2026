@@ -1,6 +1,7 @@
 import type { Copy } from '../strings'
 
 export const zhHans: Copy = {
+  importUnavailable: '读取照片、PDF和笔记需要连接AI。仍可导入CSV和Excel。',
   saveSales: '保存这些销售记录',
   salesSaved: '销售记录已保存',
   salesReplace: '保存将替换这些日期的全部销售记录，其他日期不变。',
@@ -236,7 +237,19 @@ export const zhHans: Copy = {
   productName: '商品名称',
   price: '价格',
   currency: '货币',
-  importMenu: '从 POS 或 Excel 导入',
+  importMenu: '导入销售或菜单（Excel、照片、笔记）',
+  importUpload: '上传文件',
+  importTakePhoto: '拍照',
+  importNotes: '粘贴销售或菜单笔记',
+  importReviewNotes: '查看笔记',
+  importReviewFlags: '请仔细检查不确定的行',
+  prepPlan: '备货计划',
+  prepTomorrow: '明天',
+  prepLoading: '正在预测…',
+  prepEmpty: '请导入并保存每个商品至少4周的销售数据。',
+  prepTimesfm: 'TimesFM',
+  prepWeekday: '同星期平均值 · 季节性与趋势',
+  prepQuestion: '明天应该准备多少？',
   importing: '正在读取文件…',
   importFailed: '无法读取这个文件。请上传包含品名和价格的 CSV 或 Excel 文件。',
   salesSummary: '销售概览',

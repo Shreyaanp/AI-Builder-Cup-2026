@@ -1,6 +1,7 @@
 import type { Copy } from '../strings'
 
 export const vi: Copy = {
+  importUnavailable: 'Đọc ảnh, PDF và ghi chú cần kết nối AI. Bạn vẫn có thể nhập CSV và Excel.',
   saveSales: 'Lưu doanh số này',
   salesSaved: 'Đã lưu doanh số',
   salesReplace: 'Lưu sẽ thay thế toàn bộ doanh số của các ngày này. Các ngày khác giữ nguyên.',
@@ -242,7 +243,19 @@ export const vi: Copy = {
   productName: 'Tên sản phẩm',
   price: 'Giá',
   currency: 'Tiền tệ',
-  importMenu: 'Nhập từ POS hoặc Excel',
+  importMenu: 'Nhập doanh số hoặc thực đơn (Excel, ảnh, ghi chú)',
+  importUpload: 'Tải tệp lên',
+  importTakePhoto: 'Chụp ảnh',
+  importNotes: 'Dán ghi chú doanh số hoặc thực đơn',
+  importReviewNotes: 'Xem lại ghi chú',
+  importReviewFlags: 'Kiểm tra kỹ các dòng chưa chắc chắn',
+  prepPlan: 'Kế hoạch chuẩn bị',
+  prepTomorrow: 'Ngày mai',
+  prepLoading: 'Đang chuẩn bị dự báo…',
+  prepEmpty: 'Nhập và lưu ít nhất 4 tuần doanh số cho mỗi món.',
+  prepTimesfm: 'TimesFM',
+  prepWeekday: 'Trung bình cùng thứ · mùa vụ và xu hướng',
+  prepQuestion: 'Ngày mai nên chuẩn bị bao nhiêu?',
   importing: 'Đang đọc tệp…',
   importFailed: 'Không đọc được tệp. Hãy gửi tệp CSV hoặc Excel có tên món và giá.',
   salesSummary: 'Tóm tắt doanh số',

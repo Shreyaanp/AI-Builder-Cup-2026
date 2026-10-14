@@ -46,6 +46,7 @@ export interface Product {
   available?: boolean
 }
 export interface Proposal {
+  import_flags?: { row: number; item: string; reasons: string[] }[]
   id: string
   digest: string
   expires: number

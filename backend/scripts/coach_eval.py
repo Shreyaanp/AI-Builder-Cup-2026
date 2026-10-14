@@ -13,6 +13,7 @@ Each scenario makes a few small model calls; it never touches production data.
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 import os
 import re
@@ -55,6 +56,25 @@ class Scenario:
     language: str = "en"
     seed: Callable[[MerchantStore, str], str | None] | None = None
     checks: list[tuple[str, Callable[[Turn], bool]]] = field(default_factory=list)
+    image: bytes | None = None
+
+
+def menu_photo() -> bytes:
+    """Synthetic local menu image for the opt-in multimodal eval; no merchant photo data."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    image = Image.new("RGB", (640, 240), "white")
+    draw = ImageDraw.Draw(image)
+    draw.multiline_text(
+        (24, 24),
+        "MENU\nKopi  SGD 1.80 / cup\nKaya toast  SGD 2.50 / set",
+        fill="black",
+        font=ImageFont.load_default(size=28),
+        spacing=20,
+    )
+    output = io.BytesIO()
+    image.save(output, format="PNG")
+    return output.getvalue()
 
 
 def shop(store: MerchantStore, uid: str, products: list[ProductFields] | None = None) -> str:
@@ -169,6 +189,21 @@ def no_false_publish(turn: Turn) -> bool:
 
 
 SCENARIOS = [
+    Scenario(
+        "bulk_menu_photo",
+        "Add these to the menu.",
+        seed=shop,
+        image=menu_photo(),
+        checks=[
+            (
+                "one bulk proposal",
+                lambda turn: sum(c["name"] == "propose_products" for c in turn.tools) == 1,
+            ),
+            ("kopi extracted", item("Kopi", price=1.8, unit="cup")),
+            ("toast extracted", item("Kaya toast", price=2.5, unit="set")),
+            ("all items together", lambda turn: len(items(turn)) == 2),
+        ],
+    ),
     Scenario(
         "memory_note",
         "Please remember: we are closed every Monday during Ramadan.",
@@ -369,7 +404,17 @@ async def run_scenario(scenario: Scenario, settings: Settings, root: Path) -> di
         async for event in runner.run_async(
             user_id=uid,
             session_id=session.id,
-            new_message=types.Content(role="user", parts=[types.Part(text=scenario.message)]),
+            new_message=types.Content(
+                role="user",
+                parts=[
+                    types.Part(text=scenario.message),
+                    *(
+                        [types.Part.from_bytes(data=scenario.image, mime_type="image/png")]
+                        if scenario.image
+                        else []
+                    ),
+                ],
+            ),
         ):
             for call in event.get_function_calls():
                 turn.tools.append({"name": call.name, "args": dict(call.args or {})})

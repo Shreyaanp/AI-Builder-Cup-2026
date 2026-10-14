@@ -1,6 +1,8 @@
 import type { Copy } from '../strings'
 
 export const ta: Copy = {
+  importUnavailable:
+    'படம், PDF மற்றும் குறிப்புகளைப் படிக்க இணைக்கப்பட்ட AI தேவை. CSV மற்றும் Excel இறக்குமதி தொடர்ந்து இயங்கும்.',
   saveSales: 'இந்த விற்பனையைச் சேமிக்கவும்',
   salesSaved: 'விற்பனை சேமிக்கப்பட்டது',
   salesReplace:
@@ -249,7 +251,19 @@ export const ta: Copy = {
   productName: 'பொருளின் பெயர்',
   price: 'விலை',
   currency: 'நாணயம்',
-  importMenu: 'POS அல்லது Excel-இலிருந்து இறக்குமதி',
+  importMenu: 'விற்பனை அல்லது மெனுவை இறக்குமதி செய் (Excel, படம், குறிப்புகள்)',
+  importUpload: 'கோப்பைப் பதிவேற்று',
+  importTakePhoto: 'படம் எடு',
+  importNotes: 'விற்பனை அல்லது மெனு குறிப்புகளை ஒட்டு',
+  importReviewNotes: 'குறிப்புகளைச் சரிபார்',
+  importReviewFlags: 'உறுதியற்ற வரிகளை கவனமாகச் சரிபார்',
+  prepPlan: 'தயாரிப்புத் திட்டம்',
+  prepTomorrow: 'நாளை',
+  prepLoading: 'கணிப்பு தயாராகிறது…',
+  prepEmpty: 'ஒவ்வொரு பொருளுக்கும் குறைந்தது 4 வார விற்பனையை இறக்குமதி செய்து சேமிக்கவும்.',
+  prepTimesfm: 'TimesFM',
+  prepWeekday: 'அதே வாரநாளின் சராசரி · பருவம் மற்றும் போக்கு',
+  prepQuestion: 'நாளை எவ்வளவு தயாரிக்க வேண்டும்?',
   importing: 'உங்கள் கோப்பைப் படிக்கிறது…',
   importFailed:
     'அந்தக் கோப்பைப் படிக்க முடியவில்லை. பொருள் பெயர்களும் விலைகளும் உள்ள CSV அல்லது Excel கோப்பை அனுப்புங்கள்.',
