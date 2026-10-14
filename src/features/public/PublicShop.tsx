@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   IconButton,
   List,
@@ -45,6 +46,8 @@ interface PublicShopData {
   /** Owner-confirmed customer facts; absent keys are simply not listed. */
   facts?: ShopFacts
   open_now?: boolean | null
+  /** A seeded sample shop; always labelled "Demo shop". */
+  demo?: boolean
 }
 
 const PAYMENT_BRANDS = { paynow: 'PayNow', grabpay: 'GrabPay', nets: 'NETS' } as const
@@ -377,6 +380,8 @@ export default function PublicShop({ id }: { id: string }) {
   // Available items first; sold-out items stay listed (customers ask about them) but last.
   const menu = [...shop.products].sort((a, b) => Number(b.available) - Number(a.available))
   const openLabel = shop.open_now == null ? null : shop.open_now ? discovery.open : discovery.closed
+  // Demo shops' numbers are fictional; never offer to call or message them.
+  const phone = shop.demo ? '' : shop.phone
   const actions = [
     shop.location && {
       label: t.directions,
@@ -385,15 +390,15 @@ export default function PublicShop({ id }: { id: string }) {
         'https://www.google.com/maps/search/?api=1&query=' +
         encodeURIComponent(`${shop.name} ${shop.location}`),
     },
-    shop.phone && {
+    phone && {
       label: t.call,
       icon: <Phone size={20} />,
-      href: `tel:${shop.phone.replace(/[^\d+]/g, '')}`,
+      href: `tel:${phone.replace(/[^\d+]/g, '')}`,
     },
-    shop.phone && {
+    phone && {
       label: t.whatsapp,
       icon: <MessageCircle size={20} />,
-      href: whatsappUrl(shop.phone, shop.name, t.whatsappMessage),
+      href: whatsappUrl(phone, shop.name, t.whatsappMessage),
     },
   ].filter(Boolean) as { label: string; icon: ReactNode; href: string }[]
 
@@ -427,6 +432,18 @@ export default function PublicShop({ id }: { id: string }) {
           <Typography component="h1" variant="titleLarge" sx={{ overflowWrap: 'anywhere' }}>
             {shop.name}
           </Typography>
+          {shop.demo && (
+            <Chip
+              label={t.demoShop}
+              size="small"
+              sx={{
+                my: 0.5,
+                bgcolor: roles.tertiaryContainer,
+                color: roles.onTertiaryContainer,
+                fontWeight: 600,
+              }}
+            />
+          )}
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
             {openLabel && (
               <Typography
@@ -444,6 +461,12 @@ export default function PublicShop({ id }: { id: string }) {
           </Stack>
         </Box>
       </Stack>
+      {/* Sample shops say so in words, not only with a chip. */}
+      {shop.demo && (
+        <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1.5 }}>
+          {t.demoShopNote}
+        </Typography>
+      )}
       {actions.length > 0 && (
         <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
           {actions.map((action) => (

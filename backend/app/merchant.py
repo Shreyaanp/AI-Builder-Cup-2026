@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import secrets
 import sqlite3
 import time
 from pathlib import Path
 from typing import Any, Literal, Protocol
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 from zoneinfo import ZoneInfoNotFoundError
 
 from fastapi import HTTPException
@@ -64,6 +65,9 @@ class BusinessFields(BaseModel):
     place_id: str | None = Field(default=None, max_length=300)
     pin_label: str | None = Field(default=None, max_length=300)
     pin_demo: bool = False
+    # A clearly labelled sample shop (seed_demo_shops.py). Set only by the seed script, never by
+    # an owner proposal (see merchant_routes.propose and coordinator.propose_business).
+    demo: bool = False
     timezone: str = Field(default="Asia/Singapore", max_length=100)
     hours: str = Field(default="", max_length=180)
     phone: str = Field(default="", max_length=40)
@@ -103,6 +107,7 @@ class BusinessFields(BaseModel):
             if (key not in FACT_KEYS or value not in (None, "", []))
             and not (key in pin_defaults and value is None)
             and not (key == "pin_demo" and value is False)
+            and not (key == "demo" and value is False)
             and not (key == "timezone" and value == "Asia/Singapore")
             and not (key == "custom_facts" and value == [])
         }
@@ -166,6 +171,23 @@ class Approval(BaseModel):
     digest: str = Field(min_length=64, max_length=64)
 
 
+# Fixed IDs of seeded demo shops; the only non-UUID business IDs the stores accept.
+DEMO_ID = re.compile(r"^demo-[a-z0-9-]{1,40}$")
+
+
+def check_demo_seed(bid: str, fields: BusinessFields) -> dict[str, Any]:
+    if not DEMO_ID.fullmatch(bid):
+        raise ValueError("Demo shop IDs look like demo-katong-kopitiam.")
+    if not fields.demo:
+        raise ValueError("Seeded shops must be labelled demo.")
+    return fields.model_dump()
+
+
+def demo_product_id(bid: str, product: ProductFields) -> str:
+    """Stable product IDs so re-seeding keeps the same rows."""
+    return str(uuid5(NAMESPACE_URL, f"chalkboard-demo/{bid}/{product.name}/{product.unit}"))
+
+
 PROPOSAL_SECONDS = 600
 CHALLENGE_SECONDS = 90
 
@@ -220,6 +242,12 @@ class MerchantRepository(Protocol):
         ...
 
     def shared_shops(self) -> list[dict[str, Any]]: ...
+    def seed_demo_shop(
+        self, uid: str, bid: str, fields: BusinessFields, products: list[ProductFields]
+    ) -> bool:
+        """Create or reset one labelled demo shop (shared, owned by uid). Idempotent: returns
+        False when the stored shop already matches. Refuses a non-demo ID or someone else's shop."""
+        ...
 
     def add_inquiry(self, bid: str, body: InquiryInput) -> InquiryReceipt: ...
     def inquiries(self, uid: str, bid: str) -> list[Inquiry]: ...
@@ -243,6 +271,8 @@ def public_projection(
         "place_id": fields.get("place_id"),
         "timezone": fields.get("timezone") or "Asia/Singapore",
         **({"pin_demo": True} if fields.get("pin_demo") else {}),
+        # Sample shops are always labelled "Demo shop" to customers.
+        **({"demo": True} if fields.get("demo") else {}),
         "hours": fields.get("hours", ""),
         "phone": fields.get("phone", ""),
         "currency": fields.get("currency") or "SGD",
@@ -645,6 +675,49 @@ class MerchantStore:
         with self.connect() as db:
             bids = [row[0] for row in db.execute("SELECT business_id FROM shares").fetchall()]
         return [shop for bid in bids if (shop := self.public_shop(bid)) is not None]
+
+    def seed_demo_shop(
+        self, uid: str, bid: str, fields: BusinessFields, products: list[ProductFields]
+    ) -> bool:
+        record = check_demo_seed(bid, fields)
+        items = {demo_product_id(bid, p): p.model_dump() for p in products}
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT fields, revision FROM businesses WHERE id=?", (bid,)
+            ).fetchone()
+            if row:
+                # Never take over a shop someone else owns, even under a demo-looking ID.
+                self.owned(db, uid, bid)
+                stored = {
+                    item[0]: json.loads(item[1])
+                    for item in db.execute(
+                        "SELECT id, fields FROM inventory WHERE business_id=?", (bid,)
+                    )
+                }
+                shared = db.execute("SELECT 1 FROM shares WHERE business_id=?", (bid,)).fetchone()
+                if json.loads(row["fields"]) == record and stored == items and shared:
+                    return False
+                db.execute(
+                    "UPDATE businesses SET fields=?, revision=revision+1 WHERE id=?",
+                    (json.dumps(record), bid),
+                )
+                db.execute("DELETE FROM inventory WHERE business_id=?", (bid,))
+            else:
+                db.execute(
+                    "INSERT INTO people VALUES(?,?) ON CONFLICT DO NOTHING", (uid, "not_enrolled")
+                )
+                db.execute(
+                    "INSERT INTO businesses(id, fields, revision, status) VALUES(?,?,1,'draft')",
+                    (bid, json.dumps(record)),
+                )
+                db.execute("INSERT INTO memberships VALUES(?,?,'owner')", (uid, bid))
+            db.executemany(
+                "INSERT INTO inventory VALUES(?,?,?)",
+                [(pid, bid, json.dumps(item)) for pid, item in items.items()],
+            )
+            db.execute("INSERT INTO shares VALUES(?) ON CONFLICT DO NOTHING", (bid,))
+        return True
 
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         with self.connect() as db:

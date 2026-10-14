@@ -38,7 +38,8 @@ export default function CustomerApp() {
   const [interests, setInterests] = useState<string[]>([])
   const [coachmark, setCoachmark] = useState(false)
   const t = useFrontCopy()
-  const id = /^\/explore\/s\/([0-9a-f-]{36})\/?$/i.exec(path)?.[1]
+  // Shop IDs are server UUIDs, or the fixed `demo-…` IDs of seeded demo shops.
+  const id = /^\/explore\/s\/([0-9a-f-]{36}|demo-[a-z0-9-]{1,40})\/?$/i.exec(path)?.[1]
   useEffect(() => {
     const restore = () =>
       requestAnimationFrame(() =>
