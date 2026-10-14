@@ -33,7 +33,10 @@ class RequestBoundary:
         async def send_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = MutableHeaders(scope=message)
-                if not (scope["path"].startswith("/assets/") and message["status"] == 200):
+                # Default no-store; static assets and routes that chose a cache policy (e.g.
+                # immutable shop photos) keep theirs.
+                cached = scope["path"].startswith("/assets/") or "cache-control" in headers
+                if not (cached and message["status"] == 200):
                     headers["Cache-Control"] = "no-store"
                 headers["X-Content-Type-Options"] = "nosniff"
                 headers["Referrer-Policy"] = "same-origin"

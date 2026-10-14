@@ -1,7 +1,7 @@
 import asyncio
 import re
 from typing import Any, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import anyio
 import httpx
@@ -111,6 +111,8 @@ async def erase(request: Request) -> dict[str, Any]:
     businesses = await anyio.to_thread.run_sync(store(request).erase_owner, uid)
     for bid in businesses:
         thread_signals(request).wake(bid)
+        # Gallery photos of erased shops go too.
+        await anyio.to_thread.run_sync(request.app.state.photos.delete_gallery_sync, bid)
     if request.app.state.recall:
         await anyio.to_thread.run_sync(request.app.state.recall.forget, uid, businesses)
     runtime = request.app.state.services.runtime
@@ -586,3 +588,91 @@ async def delete_note(business_id: str, note_id: str, request: Request) -> dict[
     notes = [n for n in context["business"].get("coach_notes") or [] if n["id"] != note_id]
     saved = await anyio.to_thread.run_sync(service.set_notes, uid, business_id, notes)
     return {"notes": saved}
+
+
+# --- Shop gallery: photos the owner explicitly chose to show customers -------------------
+GALLERY_LIMIT = 12
+PHOTO_ID = re.compile(r"^[0-9a-f-]{36}$")
+
+
+async def owned_gallery(request: Request, business_id: str) -> tuple[str, list[str]]:
+    uid = await consented_owner(request)
+    context = await anyio.to_thread.run_sync(store(request).context, uid, business_id)
+    if not context["business"]:
+        raise HTTPException(404, "Business not found.")
+    return uid, list(context["business"].get("gallery") or [])
+
+
+@router.post("/businesses/{business_id}/gallery")
+async def add_gallery_photo(business_id: str, request: Request) -> dict[str, Any]:
+    """An explicit owner action ("Add photo"), like the sold-out switch: no AI, no proposal.
+    The photo is re-encoded (metadata stripped) and safety-checked before it is kept."""
+    uid, gallery = await owned_gallery(request, business_id)
+    await enforce_limits(request, [("gallery", uid)])
+    if len(gallery) >= GALLERY_LIMIT:
+        raise HTTPException(409, "GALLERY_FULL")
+    if request.headers.get("content-type", "").split(";")[0] not in PHOTO_TYPES:
+        raise HTTPException(415, "Send a JPEG, PNG or WebP photo.")
+    limit = request.app.state.v1_settings.max_photo_bytes
+    buffer = bytearray()
+    try:
+        async with asyncio.timeout(120):  # big phone photos on mobile data
+            async for chunk in request.stream():
+                if len(buffer) + len(chunk) > limit:
+                    raise HTTPException(413, "Photo is too large.")
+                buffer.extend(chunk)
+        pipeline: PhotoPipeline = request.app.state.photos
+        try:
+            image = await pipeline.gallery_photo(bytes(buffer))
+        except PhotoRejected as rejected:
+            raise HTTPException(rejected.status, rejected.code) from None
+    finally:
+        buffer.clear()
+    photo_id = str(uuid4())
+    await anyio.to_thread.run_sync(pipeline.save_gallery_sync, business_id, photo_id, image)
+    saved = await anyio.to_thread.run_sync(
+        store(request).set_gallery, uid, business_id, [*gallery, photo_id]
+    )
+    return {"gallery": saved, "photo_id": photo_id}
+
+
+@router.delete("/businesses/{business_id}/gallery/{photo_id}")
+async def remove_gallery_photo(business_id: str, photo_id: str, request: Request) -> dict[str, Any]:
+    uid, gallery = await owned_gallery(request, business_id)
+    if photo_id not in gallery:
+        raise HTTPException(404, "Photo not found.")
+    saved = await anyio.to_thread.run_sync(
+        store(request).set_gallery, uid, business_id, [p for p in gallery if p != photo_id]
+    )
+    pipeline: PhotoPipeline = request.app.state.photos
+    await anyio.to_thread.run_sync(pipeline.delete_gallery_sync, business_id, photo_id)
+    return {"gallery": saved}
+
+
+def jpeg(image: bytes | None, cache: str) -> Response:
+    if image is None:
+        raise HTTPException(404, "Photo not found.")
+    return Response(content=image, media_type="image/jpeg", headers={"Cache-Control": cache})
+
+
+@router.get("/businesses/{business_id}/gallery/{photo_id}.jpg")
+async def owner_gallery_photo(business_id: str, photo_id: str, request: Request) -> Response:
+    _, gallery = await owned_gallery(request, business_id)
+    if photo_id not in gallery:
+        raise HTTPException(404, "Photo not found.")
+    pipeline: PhotoPipeline = request.app.state.photos
+    image = await anyio.to_thread.run_sync(pipeline.load_gallery_sync, business_id, photo_id)
+    return jpeg(image, "private, max-age=3600")
+
+
+@router.get("/public/shops/{business_id}/photos/{photo_id}.jpg")
+async def public_gallery_photo(business_id: str, photo_id: str, request: Request) -> Response:
+    """Only photos in a shared shop's gallery. IDs are never reused, so caching is safe."""
+    if not PHOTO_ID.fullmatch(photo_id):
+        raise HTTPException(404, "Photo not found.")
+    shop = await anyio.to_thread.run_sync(store(request).public_shop, business_id)
+    if shop is None or photo_id not in (shop.get("gallery") or []):
+        raise HTTPException(404, "Photo not found.")
+    pipeline: PhotoPipeline = request.app.state.photos
+    image = await anyio.to_thread.run_sync(pipeline.load_gallery_sync, business_id, photo_id)
+    return jpeg(image, "public, max-age=86400, immutable")

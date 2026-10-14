@@ -252,6 +252,10 @@ class MerchantRepository(Protocol):
         """Replace the coach's private notes for a shop (owner-only, never public)."""
         ...
 
+    def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
+        """Replace the shop's gallery (photo IDs the owner chose to show customers)."""
+        ...
+
     def recap_cache(
         self, uid: str, bid: str, key: str, value: dict[str, Any] | None = None
     ) -> dict[str, Any] | None: ...
@@ -427,8 +431,11 @@ class MerchantStore:
                 row[1] for row in db.execute("PRAGMA table_info(businesses)")
             }:
                 db.execute("ALTER TABLE businesses ADD COLUMN last_confirmed TEXT")
-            if "coach_notes" not in {row[1] for row in db.execute("PRAGMA table_info(businesses)")}:
+            columns = {row[1] for row in db.execute("PRAGMA table_info(businesses)")}
+            if "coach_notes" not in columns:
                 db.execute("ALTER TABLE businesses ADD COLUMN coach_notes TEXT")
+            if "gallery" not in columns:
+                db.execute("ALTER TABLE businesses ADD COLUMN gallery TEXT")
 
     def connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10)
@@ -490,6 +497,7 @@ class MerchantStore:
             "revision": row["revision"],
             "last_confirmed": row["last_confirmed"],
             "coach_notes": json.loads(row["coach_notes"] or "[]"),
+            "gallery": json.loads(row["gallery"] or "[]"),
             "registration": row["status"],
             "public": bool(shared),
             "google_publication": "not_connected",
@@ -793,7 +801,7 @@ class MerchantStore:
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         with self.connect() as db:
             row = db.execute(
-                "SELECT b.fields,b.last_confirmed FROM businesses b "
+                "SELECT b.fields,b.last_confirmed,b.gallery FROM businesses b "
                 "JOIN shares s ON s.business_id=b.id "
                 "WHERE b.id=?",
                 (bid,),
@@ -806,7 +814,11 @@ class MerchantStore:
                     "SELECT fields FROM inventory WHERE business_id=? ORDER BY rowid", (bid,)
                 )
             ]
-        return {**public_projection(bid, json.loads(row[0]), products), "last_confirmed": row[1]}
+        return {
+            **public_projection(bid, json.loads(row[0]), products),
+            "last_confirmed": row[1],
+            "gallery": json.loads(row[2] or "[]"),
+        }
 
     def subscribe_stock(self, bid: str, body: StockAlertInput) -> StockAlertReceipt:
         now = time.time()
@@ -934,6 +946,13 @@ class MerchantStore:
             self.owned(db, uid, bid)
             db.execute("UPDATE businesses SET coach_notes=? WHERE id=?", (json.dumps(notes), bid))
             return notes
+
+    def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self.owned(db, uid, bid)
+            db.execute("UPDATE businesses SET gallery=? WHERE id=?", (json.dumps(photos), bid))
+            return photos
 
     def recap_signals(self, uid: str, bid: str) -> dict[str, Any]:
         with self.connect() as db:

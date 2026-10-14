@@ -117,6 +117,7 @@ class FirestoreMerchantStore:
             "revision": data["revision"],
             "last_confirmed": data.get("last_confirmed"),
             "coach_notes": data.get("coach_notes") or [],
+            "gallery": data.get("gallery") or [],
             "registration": data["status"],
             "public": bool(data.get("public")),
             "google_publication": "not_connected",
@@ -473,6 +474,7 @@ class FirestoreMerchantStore:
         return {
             **public_projection(ref.id, data["fields"], [row["fields"] for row in rows]),
             "last_confirmed": data.get("last_confirmed"),
+            "gallery": data.get("gallery") or [],
         }
 
     def subscribe_stock(self, bid: str, body: StockAlertInput) -> StockAlertReceipt:
@@ -634,6 +636,17 @@ class FirestoreMerchantStore:
             return notes
 
         return cast(list[dict[str, Any]], run(self.client.transaction()))
+
+    def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> list[str]:
+            self.owned(ref.get(transaction=transaction), uid)
+            transaction.update(ref, {"gallery": photos})
+            return photos
+
+        return cast(list[str], run(self.client.transaction()))
 
     def recap_signals(self, uid: str, bid: str) -> dict[str, Any]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
