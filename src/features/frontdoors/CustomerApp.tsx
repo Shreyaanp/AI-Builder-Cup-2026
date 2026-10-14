@@ -12,6 +12,7 @@ import {
   useTheme,
 } from '@mui/material'
 import { customerTheme } from '../../design/customerTheme'
+import { AppearanceToggle } from './AppearanceToggle'
 import { useLocale } from '../../state/hooks'
 import { discoverCopy } from '../discover/strings'
 import { categories } from '../discover/categories'
@@ -52,6 +53,7 @@ export default function CustomerApp() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box data-customer>
+        <AppearanceToggle />
         <CustomerPages />
       </Box>
     </ThemeProvider>
