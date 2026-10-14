@@ -225,6 +225,36 @@ def test_coach_without_business_returns_offline_sse(app) -> None:
         assert not any(event["kind"] == "error" for event in events)
 
 
+@pytest.mark.parametrize("currency", ["jpy", "JP", "JPYY", "123"])
+def test_coach_stream_rejects_invalid_currency(app, currency) -> None:
+    with TestClient(app) as client:
+        join(client)
+        response = client.post(
+            "/api/v1/coach/stream", json={"message": "Help with my business", "currency": currency}
+        )
+        assert response.status_code == 422
+        assert response.json()["issues"][0]["field"] == ["body", "currency"]
+
+
+@pytest.mark.parametrize("currency, expected", [("JPY", "JPY"), (None, "SGD")])
+def test_coach_stream_new_shop_currency(app, currency, expected) -> None:
+    with TestClient(app) as client:
+        join(client)
+        response = client.post(
+            "/api/v1/coach/stream",
+            json={"message": "Shop name: New Tea Stall", "currency": currency},
+        )
+        assert response.status_code == 200
+        events = [
+            json.loads(line.removeprefix("data: "))
+            for line in response.text.splitlines()
+            if line.startswith("data: ")
+        ]
+        proposal = next(event["data"] for event in events if event["kind"] == "proposal")
+        assert proposal["snapshot"]["business"]["currency"] == expected
+        assert client.get("/api/v1/businesses").json() == []
+
+
 def test_businesses_unavailable_when_v1_disabled(settings: Settings) -> None:
     app = create_app(settings.model_copy(update={"v1_enabled": False}), InMemorySessionService())
     with TestClient(app) as client:
