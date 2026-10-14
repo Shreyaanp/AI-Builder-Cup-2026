@@ -285,7 +285,6 @@ export const ta: Copy = {
   stockOptional: 'இருப்பு (விருப்பம்)',
   enterPrice: 'செல்லுபடியான விலையை உள்ளிடுங்கள்.',
   enterName: 'பெயரை உள்ளிடுங்கள்.',
-  draft: 'வரைவு',
   verificationPending: 'சரிபார்ப்பு நிலுவையில்',
   customerPage: 'வாடிக்கையாளர் பக்கம்',
   customerPageOff:

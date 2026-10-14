@@ -272,7 +272,6 @@ export const ko: Copy = {
   stockOptional: '재고 (선택)',
   enterPrice: '올바른 가격을 입력해 주세요.',
   enterName: '이름을 입력해 주세요.',
-  draft: '초안',
   verificationPending: '확인 대기',
   customerPage: '고객 페이지',
   customerPageOff: '켜면 손님이 메뉴, 가격, 영업시간을 볼 수 있는 링크가 생겨요.',

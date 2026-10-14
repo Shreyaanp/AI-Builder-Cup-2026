@@ -271,7 +271,6 @@ export const th: Copy = {
   stockOptional: 'สต็อก (ไม่บังคับ)',
   enterPrice: 'กรุณาระบุราคาที่ถูกต้อง',
   enterName: 'กรุณาระบุชื่อ',
-  draft: 'ฉบับร่าง',
   verificationPending: 'รอตรวจสอบ',
   customerPage: 'หน้าสำหรับลูกค้า',
   customerPageOff: 'เปิดเพื่อรับลิงก์ให้ลูกค้าดูเมนู ราคา และเวลาเปิดร้าน',

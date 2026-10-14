@@ -281,7 +281,6 @@ export const fil: Copy = {
   stockOptional: 'Stock (opsyonal)',
   enterPrice: 'Maglagay ng wastong presyo.',
   enterName: 'Maglagay ng pangalan.',
-  draft: 'Draft',
   verificationPending: 'Naghihintay ng pagsusuri',
   customerPage: 'Pahina para sa suki',
   customerPageOff: 'I-on para makakuha ng link ng menu, presyo at oras para sa mga suki.',

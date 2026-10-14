@@ -276,7 +276,6 @@ export const vi: Copy = {
   stockOptional: 'Tồn kho (không bắt buộc)',
   enterPrice: 'Nhập giá hợp lệ.',
   enterName: 'Nhập tên.',
-  draft: 'Bản nháp',
   verificationPending: 'Chờ kiểm tra',
   customerPage: 'Trang khách hàng',
   customerPageOff: 'Bật để lấy liên kết cho khách xem thực đơn, giá và giờ mở cửa.',
