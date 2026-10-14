@@ -22,6 +22,7 @@ JSON_BODY_BYTES = 16_384
 # (maximum, window seconds). Windows align to Unix time, including UTC days.
 LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "discover": ((30, 60),),
+    "discover:place": ((10, 60), (100, 86_400)),
     "stock:ip": ((30, 86_400),),
     "stock:shop": ((300, 86_400),),
     "stock:read": ((60, 60),),

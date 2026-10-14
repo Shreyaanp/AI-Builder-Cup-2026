@@ -1,4 +1,5 @@
 import type { components } from './generated.js'
+import { clientTimezoneHeader } from './timezone.js'
 
 export type CoachEvent = components['schemas']['StreamEvent']
 type CoachTurn = components['schemas']['CoachTurn']
@@ -127,6 +128,7 @@ export async function streamCoach(
           'Content-Type': 'application/json',
           ...(credential ? { Authorization: `Bearer ${credential}` } : {}),
           ...(lastId ? { 'Last-Event-ID': lastId } : {}),
+          ...clientTimezoneHeader(),
         },
         body: JSON.stringify({ ...turn, session_id: sessionId }),
       })
