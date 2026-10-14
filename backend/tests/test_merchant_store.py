@@ -121,7 +121,16 @@ def test_public_shop_exposes_only_customer_fields(store: MerchantRepository) -> 
     shop = store.public_shop(bid)
     assert shop is not None
     # Exact key sets at both levels exclude owners, revision, stock and registration.
-    assert set(shop) == {"id", "name", "category", "location", "hours", "phone", "products"}
+    assert set(shop) == {
+        "id",
+        "name",
+        "category",
+        "location",
+        "hours",
+        "phone",
+        "currency",
+        "products",
+    }
     assert {key: value for key, value in shop.items() if key != "products"} == {
         "id": bid,
         "name": "Ram Tea Stall",
@@ -129,6 +138,7 @@ def test_public_shop_exposes_only_customer_fields(store: MerchantRepository) -> 
         "location": "Market Road",
         "hours": "09:00–18:00",
         "phone": "1234567890",
+        "currency": "SGD",
     }
     assert {product["name"]: product for product in shop["products"]} == {
         "Chai": {"name": "Chai", "price": 1500, "unit": "cup", "available": True},

@@ -136,6 +136,8 @@ const en = {
   },
   productName: 'Product name',
   price: 'Price',
+  currency: 'Currency',
+  currencyLocked: 'Fixed once the shop is saved',
   unit: 'Unit (cup, kg, piece…)',
   stockOptional: 'Stock (optional)',
   enterPrice: 'Enter a valid price.',

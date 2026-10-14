@@ -15,6 +15,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field, ValidationError
 
 from .merchant import BusinessFields, MerchantRepository, ProductFields, ProposalRequest
+from .money import DEFAULT_CURRENCY, to_major, to_minor
 
 MAX_REPAIRS = 2
 # A price moving by more than this factor is flagged so the model confirms with the owner.
@@ -74,9 +75,8 @@ def _invalid(
     }
 
 
-def money(minor: int) -> float:
-    """Model-facing prices are always in major units (15.0), never stored minor units (1500)."""
-    return round(minor / 100, 2)
+def shop_currency(business: dict[str, Any] | None) -> str:
+    return (business or {}).get("fields", {}).get("currency") or DEFAULT_CURRENCY
 
 
 def get_business_context() -> dict[str, Any]:
@@ -87,13 +87,14 @@ def get_business_context() -> dict[str, Any]:
         return {"status": "unavailable"}
     data = ctx.store.context(ctx.uid, ctx.business_id)
     shop = data["business"]
+    currency = shop_currency(shop)
     return {
         "shop": shop["fields"] if shop else None,
         "customer_page_shared": bool(shop and shop.get("public")),
         "products": [
             {
                 "name": product["name"],
-                "price": money(product["price"]),
+                "price": to_major(product["price"], currency),
                 "unit": product["unit"],
                 "stock": product.get("stock"),
                 "available": product.get("available", True),
@@ -105,10 +106,17 @@ def get_business_context() -> dict[str, Any]:
 
 
 def propose_business(
-    name: str, category: str = "", location: str = "", hours: str = "", phone: str = ""
+    name: str,
+    category: str = "",
+    location: str = "",
+    hours: str = "",
+    phone: str = "",
+    currency: str = "",
 ) -> dict[str, Any]:
     """Prepare the shop's details (new shop, or edits to the active shop) for the owner to review.
-    Nothing is saved until the owner confirms. Leave a field empty if the owner did not say it."""
+    Nothing is saved until the owner confirms. Leave a field empty if the owner did not say it.
+    currency is the ISO 4217 code (SGD, JPY, MYR…) for a new shop, only when the owner states
+    or clearly implies it; an existing shop keeps its currency."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}
@@ -119,6 +127,7 @@ def propose_business(
         "location": location,
         "hours": hours,
         "phone": phone,
+        "currency": (currency or "").strip().upper(),
     }
     if existing:
         # Edits keep saved values the owner did not mention.
@@ -126,6 +135,9 @@ def propose_business(
             key: (value or "").strip() or existing["fields"].get(key, "")
             for key, value in given.items()
         }
+        # Saved prices are minor units of the saved currency, so it never changes on edit.
+        given["currency"] = shop_currency(existing)
+    given["currency"] = given["currency"] or DEFAULT_CURRENCY
     try:
         fields = BusinessFields(**given)
         proposal = ctx.store.propose(
@@ -164,6 +176,7 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
         }
     try:
         context = ctx.store.context(ctx.uid, ctx.business_id)
+        currency = shop_currency(context["business"])
         saved = {(p["name"].casefold(), p["unit"].casefold()): p for p in context["inventory"]}
         products = []
         for item in items:
@@ -172,7 +185,7 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
                 ProductFields(
                     # Keep the saved spelling so a correction updates the same item.
                     name=known["name"] if known else item.name,
-                    price=round(item.price * 100),
+                    price=to_minor(item.price, currency),
                     unit=known["unit"] if known else item.unit,
                     stock=item.stock if item.stock is not None else (known or {}).get("stock"),
                     available=item.available,
@@ -191,6 +204,10 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
         return _invalid(error, ctx)
     ctx.proposals[proposal["id"]] = proposal
     changes, warnings = [], []
+
+    def money(minor: int) -> float:
+        return to_major(minor, currency)
+
     for product in products:
         known = saved.get((product.name.casefold(), product.unit.casefold()))
         if not known:

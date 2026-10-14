@@ -7,17 +7,23 @@ import {
   DialogContent,
   DialogTitle,
   InputAdornment,
+  MenuItem,
   Stack,
   TextField,
   useMediaQuery,
 } from '@mui/material'
 import type { Business, Product, Proposal } from './api'
-import { currencySymbol } from './format'
+import { CURRENCIES, currencySymbol, shopCurrency, toMajor, toMinor } from './format'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { windowClass } from '../../design/theme'
 
 const EMPTY: Business['fields'] = { name: '', category: '', location: '', hours: '', phone: '' }
+
+// Shop currency picker: the phone region's currency first, then the APAC list.
+function currencyOptions(current: string) {
+  return [current, ...CURRENCIES.filter((code) => code !== current)]
+}
 
 function useCompact() {
   return useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
@@ -27,7 +33,12 @@ export function BusinessDialog() {
   const { editor } = useWorkspace()
   if (editor.kind !== 'business') return null
   // Keyed so each open starts from the shop's current saved fields.
-  return <BusinessForm key={JSON.stringify(editor.fields)} initial={editor.fields ?? EMPTY} />
+  return (
+    <BusinessForm
+      key={JSON.stringify(editor.fields)}
+      initial={editor.fields ?? { ...EMPTY, currency: shopCurrency(null) }}
+    />
+  )
 }
 
 function BusinessForm({ initial }: { initial: Business['fields'] }) {
@@ -95,6 +106,21 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
               slotProps={{ htmlInput: { maxLength: key === 'location' ? 300 : 180 } }}
             />
           ))}
+          <TextField
+            select
+            label={t.currency}
+            value={fields.currency ?? 'SGD'}
+            // Stored prices are in this currency's minor units, so it is fixed once saved.
+            disabled={editing}
+            helperText={editing ? t.currencyLocked : undefined}
+            onChange={(event) => setFields({ ...fields, currency: event.target.value })}
+          >
+            {currencyOptions(fields.currency ?? 'SGD').map((code) => (
+              <MenuItem key={code} value={code}>
+                {code} · {currencySymbol(code)}
+              </MenuItem>
+            ))}
+          </TextField>
           {error && <Alert severity="error">{error}</Alert>}
           <button type="submit" hidden />
         </Stack>
@@ -119,9 +145,10 @@ function ProductForm({ product }: { product: Product | null }) {
   const t = useCopy()
   const { api, active, openEditor, review } = useWorkspace()
   const compact = useCompact()
+  const currency = shopCurrency(active)
   const [item, setItem] = useState({
     name: product?.name ?? '',
-    price: product ? String(product.price / 100) : '',
+    price: product ? String(toMajor(product.price, currency)) : '',
     unit: product?.unit ?? 'item',
     stock: product?.stock == null ? '' : String(product.stock),
   })
@@ -144,7 +171,7 @@ function ProductForm({ product }: { product: Product | null }) {
           products: [
             {
               name: item.name.trim(),
-              price: Math.round(price * 100),
+              price: toMinor(price, currency),
               unit: item.unit.trim() || 'item',
               stock: item.stock.trim() ? Number(item.stock) : null,
             },
@@ -194,7 +221,7 @@ function ProductForm({ product }: { product: Product | null }) {
             slotProps={{
               input: {
                 startAdornment: (
-                  <InputAdornment position="start">{currencySymbol()}</InputAdornment>
+                  <InputAdornment position="start">{currencySymbol(currency)}</InputAdornment>
                 ),
               },
               htmlInput: { inputMode: 'decimal' },

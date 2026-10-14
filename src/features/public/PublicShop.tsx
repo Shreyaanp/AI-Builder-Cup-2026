@@ -26,6 +26,8 @@ interface PublicShopData {
   location: string
   hours: string
   phone: string
+  /** ISO 4217 code the shop's prices are stored in. */
+  currency?: string
   products: { name: string; price: number; unit: string; available: boolean }[]
 }
 
@@ -257,7 +259,7 @@ export default function PublicShop({ id }: { id: string }) {
                   }}
                 />
                 <Typography variant="titleMedium" sx={{ whiteSpace: 'nowrap', ml: 2 }}>
-                  {formatPrice(product.price)}
+                  {formatPrice(product.price, shop.currency ?? 'SGD')}
                   <Typography component="span" variant="bodyMedium" color="text.secondary">
                     {' '}
                     / {product.unit}

@@ -29,7 +29,7 @@ import {
 } from 'lucide-react'
 import { Fragment, useState } from 'react'
 import type { ReactNode } from 'react'
-import { formatPrice } from '../format'
+import { formatPrice, shopCurrency } from '../format'
 import { useCopy } from '../strings'
 import { LoadError } from '../LoadError'
 import { useWorkspace } from '../workspaceContext'
@@ -121,6 +121,7 @@ export function ShopSummary({ compact = false }: { compact?: boolean }) {
   const roles = useTheme().material
   const shop = ws.active
   if (!shop) return null
+  const currency = shopCurrency(shop)
   const rows: { key: keyof typeof t.fields; icon: ReactNode }[] = [
     { key: 'category', icon: <Tag size={20} /> },
     { key: 'location', icon: <MapPin size={20} /> },
@@ -239,9 +240,9 @@ export function ShopSummary({ compact = false }: { compact?: boolean }) {
                         primary={product.name}
                         secondary={
                           available
-                            ? `${formatPrice(product.price)} / ${product.unit}` +
+                            ? `${formatPrice(product.price, currency)} / ${product.unit}` +
                               (product.stock == null ? '' : ` · ${t.stock}: ${product.stock}`)
-                            : `${t.soldOut} · ${formatPrice(product.price)} / ${product.unit}`
+                            : `${t.soldOut} · ${formatPrice(product.price, currency)} / ${product.unit}`
                         }
                         slotProps={{
                           primary: {

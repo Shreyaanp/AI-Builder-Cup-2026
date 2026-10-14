@@ -46,7 +46,7 @@ class ExtractedBusiness(BaseModel):
 
 class ExtractedProduct(BaseModel):
     name: str
-    price_rupees: float | None = Field(default=None, ge=0, le=1_000_000)
+    price: float | None = Field(default=None, ge=0, le=100_000_000)
     unit: str = "item"
 
 
@@ -61,7 +61,7 @@ PROMPT = """You review a photo sent by a small-business owner for their own busi
 Classify photo_kind. Use "other" for anything that is not a signboard, menu, price list,
 product or storefront (for example selfies, people, documents, screenshots or scenery).
 Copy only text that is clearly visible; never guess. Keep the original language/script.
-Prices: price_rupees as a number only when a price is printed next to the item.
+Prices: a plain number in the local currency, only when printed next to the item.
 List every field or item you are unsure about in "uncertain"."""
 
 
@@ -120,7 +120,7 @@ class PhotoPipeline:
             return PhotoExtraction(
                 photo_kind="signboard",
                 business=ExtractedBusiness(name="Offline Fixture Tea Stall", category="Tea stall"),
-                products=[ExtractedProduct(name="Chai", price_rupees=15, unit="cup")],
+                products=[ExtractedProduct(name="Chai", price=15, unit="cup")],
                 uncertain=["Offline fixture: no model read this photo."],
             )
         from google import genai
