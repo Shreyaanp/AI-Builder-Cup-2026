@@ -52,6 +52,7 @@ import { ShopSheets } from '../ShopTiles'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
 import { useVoice } from '../useVoice'
+import { useOnline } from '../useOnline'
 import { useWorkspace } from '../workspaceContext'
 import { enterRise, shape } from '../../../design/theme'
 
@@ -70,6 +71,8 @@ export function CoachScreen() {
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState<'idle' | 'reply' | 'photo'>('idle')
   const [error, setError] = useState('')
+  const online = useOnline()
+  const [reconnecting, setReconnecting] = useState(false)
   const [mode, setMode] = useState<'offline' | 'gemini' | null>(null)
   const [history, setHistory] = useState<Conversation[]>([])
   // One "+" sheet holds every coach action: add shop/product, new chat, earlier chats.
@@ -155,7 +158,6 @@ export function CoachScreen() {
     let finalReply = ''
     let proposed = false
     try {
-      const token = await identity.getToken()
       await streamCoach(
         {
           message,
@@ -171,7 +173,8 @@ export function CoachScreen() {
           if (event.kind === 'reply') finalReply = event.text ?? ''
           if (event.kind === 'proposal') proposed = true
         },
-        token,
+        identity.getToken,
+        (state) => setReconnecting(state === 'reconnecting'),
       )
       if (controller.current !== abort) return
       // The model occasionally returns an empty turn; treat it like a failed reply so the
@@ -202,6 +205,7 @@ export function CoachScreen() {
       if (controller.current === abort) {
         controller.current = null
         setBusy('idle')
+        setReconnecting(false)
       }
     }
   }
@@ -507,16 +511,19 @@ export function CoachScreen() {
           variant="labelMedium"
           color="text.secondary"
           role="status"
-          noWrap
           sx={{ display: 'block', px: 4, '&:not(:empty)': { pb: 2 } }}
         >
-          {voice.state === 'recording'
-            ? t.listening
-            : voice.state === 'replying'
-              ? t.speaking
-              : busy === 'photo'
-                ? t.checkingPhoto
-                : ''}
+          {!online
+            ? t.connectionOffline
+            : reconnecting || voice.state === 'reconnecting'
+              ? t.connectionReconnecting
+              : voice.state === 'recording'
+                ? t.listening
+                : voice.state === 'replying'
+                  ? t.speaking
+                  : busy === 'photo'
+                    ? t.checkingPhoto
+                    : ''}
         </Typography>
         {/* One-line composer: attach, text, mic, send. Grows upward for long messages. */}
         <Box

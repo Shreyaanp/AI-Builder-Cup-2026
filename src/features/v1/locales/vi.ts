@@ -1,6 +1,10 @@
 import type { Copy } from '../strings'
 
 export const vi: Copy = {
+  connectionOffline: 'Ngoại tuyến',
+  connectionReconnecting: 'Đang kết nối lại…',
+  voiceFailed: 'Kết nối giọng nói đã kết thúc. Hãy thử lại hoặc dùng văn bản.',
+  voiceRestarted: 'Đã kết nối lại giọng nói. Vui lòng nói lại.',
   appName: 'Chalkboard',
   independent: 'Bản thử nghiệm độc lập · không phải sản phẩm Google',
   loading: 'Đang chuẩn bị cửa hàng…',

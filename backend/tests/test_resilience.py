@@ -105,7 +105,7 @@ def test_sqlite_adk_session_survives_application_restart(tmp_path: Path) -> None
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("phase", ["ready", "delta"])
-async def test_sse_disconnect_preserves_sqlite_and_allows_next_turn(
+async def test_sse_disconnect_finishes_owned_turn_preserves_sqlite_and_allows_next_turn(
     tmp_path: Path, phase: str
 ) -> None:
     settings = Settings(
@@ -151,6 +151,9 @@ async def test_sse_disconnect_preserves_sqlite_and_allows_next_turn(
         }
         await asyncio.wait_for(app(scope, incoming.get, send), timeout=3)
         assert disconnected
+        turn = services.replay.turns[(principal.uid, sid)]
+        assert turn.task is not None
+        await asyncio.wait_for(turn.task, timeout=3)
         assert not services.registry.active
         assert await services.runtime.session(principal, sid) == sid
         events = [

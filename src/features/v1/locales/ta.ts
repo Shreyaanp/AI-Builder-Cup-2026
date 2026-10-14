@@ -1,6 +1,10 @@
 import type { Copy } from '../strings'
 
 export const ta: Copy = {
+  connectionOffline: 'இணைய இணைப்பு இல்லை',
+  connectionReconnecting: 'மீண்டும் இணைக்கிறது…',
+  voiceFailed: 'குரல் இணைப்பு முடிந்தது. மீண்டும் முயற்சிக்கவும் அல்லது உரையைப் பயன்படுத்தவும்.',
+  voiceRestarted: 'குரல் மீண்டும் இணைக்கப்பட்டது. மீண்டும் சொல்லவும்.',
   appName: 'Chalkboard',
   independent: 'சுயாதீன முன்மாதிரி · Google தயாரிப்பு அல்ல',
   loading: 'உங்கள் கடையைத் தயார்செய்கிறோம்…',

@@ -1,6 +1,10 @@
 import type { Copy } from '../strings'
 
 export const ja: Copy = {
+  connectionOffline: 'オフライン',
+  connectionReconnecting: '再接続中…',
+  voiceFailed: '音声接続が終了しました。もう一度試すか、文字で入力してください。',
+  voiceRestarted: '音声が再接続されました。もう一度お話しください。',
   appName: 'Chalkboard',
   independent: '独立した試作アプリ・Google 製品ではありません',
   loading: 'お店を準備しています…',

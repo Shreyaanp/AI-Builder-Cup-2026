@@ -4,6 +4,10 @@ import { translations } from './locales'
 export const en = {
   appName: 'Chalkboard',
   independent: 'Independent prototype · not a Google product',
+  connectionOffline: 'Offline',
+  connectionReconnecting: 'Reconnecting…',
+  voiceFailed: 'Voice connection ended. Try again or use text.',
+  voiceRestarted: 'Voice reconnected. Please say that again.',
   loading: 'Getting your shop ready…',
   // Onboarding
   welcomeTitle: 'Your shop, online in one conversation',

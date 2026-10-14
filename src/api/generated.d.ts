@@ -1073,7 +1073,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "proposal" | "workflow";
+            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow";
             /**
              * Session Id
              * @default null
@@ -1113,7 +1113,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "text" | "audio_end" | "close" | "ping";
+            kind: "text" | "audio_end" | "close" | "ping" | "pong";
             /**
              * Text
              * @default

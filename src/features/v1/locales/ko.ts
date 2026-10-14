@@ -1,6 +1,10 @@
 import type { Copy } from '../strings'
 
 export const ko: Copy = {
+  connectionOffline: '오프라인',
+  connectionReconnecting: '다시 연결 중…',
+  voiceFailed: '음성 연결이 종료되었습니다. 다시 시도하거나 텍스트를 사용하세요.',
+  voiceRestarted: '음성이 다시 연결되었습니다. 다시 말씀해 주세요.',
   appName: 'Chalkboard',
   independent: '독립 시제품 · Google 제품이 아니에요',
   loading: '가게를 준비하고 있어요…',

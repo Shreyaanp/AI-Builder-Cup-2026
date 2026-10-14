@@ -3,6 +3,10 @@ import type { Copy } from '../strings'
 export const fil: Copy = {
   appName: 'Chalkboard',
   independent: 'Hiwalay na prototype · hindi produkto ng Google',
+  connectionOffline: 'Offline',
+  connectionReconnecting: 'Muling kumokonekta…',
+  voiceFailed: 'Natapos ang koneksyon sa boses. Subukan muli o gumamit ng teksto.',
+  voiceRestarted: 'Nakakonekta muli ang boses. Pakisabi iyon muli.',
   loading: 'Inihahanda ang tindahan mo…',
   welcomeTitle: 'Ipakilala online ang tindahan mo sa isang usapan',
   welcomeBody:

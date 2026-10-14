@@ -1,5 +1,4 @@
 import asyncio
-import json
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
@@ -18,8 +17,7 @@ from google.adk.sessions import BaseSessionService, DatabaseSessionService
 from google.cloud import firestore
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
-from sse_starlette import EventSourceResponse
-from starlette.background import BackgroundTask
+from sse_starlette import EventSourceResponse, ServerSentEvent
 
 from .auth import IdentityService
 from .boundary import RequestBoundary
@@ -44,11 +42,13 @@ from .merchant_firestore import FirestoreMerchantStore
 from .merchant_routes import router as merchant_router
 from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
+from .replay import ReplayStore, TurnReplay
 from .settings import Settings
 from .streaming import CoachRuntime
 from .voice import serve_voice
 
 log = structlog.get_logger()
+SSE_HEARTBEAT_SECONDS = 15
 
 
 @dataclass
@@ -56,6 +56,7 @@ class Services:
     identity: IdentityService
     runtime: CoachRuntime
     registry: RunRegistry | FirestoreRunRegistry
+    replay: ReplayStore
 
 
 def get_services(connection: Request | WebSocket) -> Services:
@@ -133,10 +134,15 @@ def create_app(
             )
             if client
             else RunRegistry(settings.max_active_runs),
+            ReplayStore(),
         )
+        maintenance = asyncio.create_task(app.state.services.replay.maintain())
         try:
             yield
         finally:
+            maintenance.cancel()
+            await asyncio.gather(maintenance, return_exceptions=True)
+            await app.state.services.replay.close()
             await app.state.customer_answers.close()
             identity.close()
             if app.state.recall:
@@ -160,7 +166,7 @@ def create_app(
         allow_origins=settings.allowed_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "DELETE"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", "Last-Event-ID"],
     )
 
     app.add_middleware(RequestBoundary, allowed_origins=settings.allowed_origins)
@@ -218,61 +224,66 @@ def create_app(
             if not app.state.merchant:
                 raise HTTPException(503, "Local V1 is not enabled.")
             await anyio.to_thread.run_sync(app.state.merchant.context, principal.uid, bid)
+        cursor = request.headers.get("last-event-id")
+        if cursor is not None:
+            # Resume only the owned, retained turn; never fall through to a new model call.
+            if not body.session_id:
+                raise HTTPException(409, "RESUME_UNAVAILABLE")
+            turn, after = services.replay.resume(principal.uid, str(body.session_id), bid, cursor)
+            return stream_response(turn, after)
         sid = await services.runtime.session(
             principal, str(body.session_id) if body.session_id else None, bid
         )
-
         lease = await services.registry.acquire_async(principal.uid, sid)
 
-        async def events() -> AsyncIterator[dict[str, str]]:
+        async def produce(turn: TurnReplay) -> None:
             token = None
-            if app.state.merchant:
-                recall = await anyio.to_thread.run_sync(
-                    app.state.recall.search, principal.uid, bid, body.message
-                )
-                token = current.set(
-                    MerchantContext(app.state.merchant, principal.uid, bid, recall, body.message)
-                )
-            sequence = 0
-
-            def frame(event: StreamEvent) -> dict[str, str]:
-                nonlocal sequence
-                sequence += 1
-                return {
-                    "event": "coach",
-                    "id": str(sequence),
-                    "data": json.dumps(event.payload(), ensure_ascii=False),
-                }
-
             try:
-                yield frame(StreamEvent(kind="ready", session_id=sid, mode=settings.coach_mode))
                 async with asyncio.timeout(settings.max_turn_seconds):
+                    if app.state.merchant:
+                        recall = await anyio.to_thread.run_sync(
+                            app.state.recall.search, principal.uid, bid, body.message
+                        )
+                        token = current.set(
+                            MerchantContext(
+                                app.state.merchant, principal.uid, bid, recall, body.message
+                            )
+                        )
+                    turn.append(StreamEvent(kind="ready", session_id=sid, mode=settings.coach_mode))
                     async for event in services.runtime.text_events(
                         principal, sid, body.message, body.language, body.currency
                     ):
-                        yield frame(event)
+                        turn.append(event)
                         if event.kind == "error":
                             return
+                    if app.state.recall:
+                        await anyio.to_thread.run_sync(
+                            app.state.recall.remember, principal.uid, bid, body.message
+                        )
             except TimeoutError:
-                yield frame(StreamEvent(kind="error", code="TURN_TIMEOUT"))
+                turn.append(StreamEvent(kind="error", code="TURN_TIMEOUT"))
             except Exception:
                 log.warning("coach_stream_failed", code="PROVIDER_UNAVAILABLE")
-                yield frame(StreamEvent(kind="error", code="PROVIDER_UNAVAILABLE"))
+                turn.append(StreamEvent(kind="error", code="PROVIDER_UNAVAILABLE"))
             finally:
                 if token is not None:
                     current.reset(token)
                 await services.registry.release_async(lease)
-            if app.state.recall:
-                await anyio.to_thread.run_sync(
-                    app.state.recall.remember, principal.uid, bid, body.message
-                )
 
+        try:
+            turn = services.replay.start(principal.uid, sid, bid, produce)
+        except Exception:
+            await services.registry.release_async(lease)
+            raise
+        return stream_response(turn)
+
+    def stream_response(turn: TurnReplay, after: int = 0) -> EventSourceResponse:
         return EventSourceResponse(
-            events(),
-            ping=10,
+            turn.follow(after),
+            ping=SSE_HEARTBEAT_SECONDS,
+            ping_message_factory=lambda: ServerSentEvent(comment="heartbeat"),
             send_timeout=5,
             headers={"X-Accel-Buffering": "no", "Cache-Control": "no-store"},
-            background=BackgroundTask(services.registry.release_async, lease),
         )
 
     @app.get("/api/v1/conversations")
@@ -355,6 +366,7 @@ def create_app(
                 await websocket.send_json(
                     StreamEvent(kind="error", code="AUTH_OR_SESSION_ERROR").payload()
                 )
+                await websocket.close(code=1008, reason="AUTH_OR_SESSION_ERROR")
         except WebSocketDisconnect:
             pass
         finally:
