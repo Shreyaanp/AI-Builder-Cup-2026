@@ -1,6 +1,8 @@
 import type { Copy } from '../strings'
 
 export const fil: Copy = {
+  importUnavailable:
+    'Kailangan ng nakakonektang AI para basahin ang larawan, PDF at tala. Gumagana pa rin ang CSV at Excel import.',
   saveSales: 'I-save ang mga bentang ito',
   salesSaved: 'Na-save ang benta',
   salesReplace: 'Papalitan nito ang lahat ng benta sa mga petsang ito. Mananatili ang ibang araw.',
@@ -245,7 +247,19 @@ export const fil: Copy = {
   productName: 'Pangalan ng produkto',
   price: 'Presyo',
   currency: 'Currency',
-  importMenu: 'Mag-import mula sa POS o Excel',
+  importMenu: 'Mag-import ng benta o menu (Excel, larawan, tala)',
+  importUpload: 'Mag-upload ng file',
+  importTakePhoto: 'Kumuha ng larawan',
+  importNotes: 'Idikit ang tala ng benta o menu',
+  importReviewNotes: 'Suriin ang mga tala',
+  importReviewFlags: 'Suriing mabuti ang mga hindi tiyak na hilera',
+  prepPlan: 'Plano ng paghahanda',
+  prepTomorrow: 'Bukas',
+  prepLoading: 'Inihahanda ang pagtataya…',
+  prepEmpty: 'Mag-import at mag-save ng hindi bababa sa 4 na linggong benta bawat item.',
+  prepTimesfm: 'TimesFM',
+  prepWeekday: 'Karaniwang benta sa parehong araw · panahon at takbo',
+  prepQuestion: 'Gaano karami ang ihahanda ko bukas?',
   importing: 'Binabasa ang file…',
   importFailed:
     'Hindi mabasa ang file. Magpadala ng CSV o Excel na may pangalan ng item at presyo.',

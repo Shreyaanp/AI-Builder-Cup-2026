@@ -1,6 +1,8 @@
 import type { Copy } from '../strings'
 
 export const ko: Copy = {
+  importUnavailable:
+    '사진, PDF, 메모를 읽으려면 AI 연결이 필요해요. CSV와 Excel 가져오기는 계속 사용할 수 있어요.',
   saveSales: '이 매출 저장',
   salesSaved: '매출이 저장되었습니다',
   salesReplace: '저장하면 해당 날짜의 모든 매출이 대체됩니다. 다른 날짜는 유지됩니다.',
@@ -237,7 +239,19 @@ export const ko: Copy = {
   productName: '상품 이름',
   price: '가격',
   currency: '통화',
-  importMenu: 'POS나 Excel에서 가져오기',
+  importMenu: '매출 또는 메뉴 가져오기 (Excel, 사진, 메모)',
+  importUpload: '파일 업로드',
+  importTakePhoto: '사진 촬영',
+  importNotes: '매출 또는 메뉴 메모 붙여넣기',
+  importReviewNotes: '메모 검토',
+  importReviewFlags: '불확실한 행을 꼼꼼히 확인하세요',
+  prepPlan: '준비 계획',
+  prepTomorrow: '내일',
+  prepLoading: '예측 준비 중…',
+  prepEmpty: '상품별 최소 4주간의 매출을 가져와 저장하세요.',
+  prepTimesfm: 'TimesFM',
+  prepWeekday: '동일 요일 평균 · 계절성과 추세',
+  prepQuestion: '내일 얼마나 준비해야 하나요?',
   importing: '파일을 읽는 중…',
   importFailed: '파일을 읽지 못했어요. 상품명과 가격이 있는 CSV나 Excel 파일을 보내 주세요.',
   salesSummary: '판매 요약',

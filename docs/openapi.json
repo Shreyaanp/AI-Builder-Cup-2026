@@ -1528,6 +1528,48 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/forecast": {
+      "get": {
+        "tags": [
+          "forecast"
+        ],
+        "summary": "Get Forecast",
+        "operationId": "get_forecast_api_v1_businesses__business_id__forecast_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Forecast"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/public/shops/{business_id}/ask": {
       "post": {
         "summary": "Ask",
@@ -3226,6 +3268,80 @@
         ],
         "title": "DiscoveryResponse"
       },
+      "Forecast": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "insufficient"
+            ],
+            "title": "Status"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "timesfm",
+              "weekday_average"
+            ],
+            "title": "Method"
+          },
+          "training_cutoff": {
+            "type": "string",
+            "format": "date",
+            "title": "Training Cutoff"
+          },
+          "horizon_days": {
+            "type": "integer",
+            "title": "Horizon Days",
+            "default": 7
+          },
+          "predictions": {
+            "items": {
+              "$ref": "#/components/schemas/Prediction"
+            },
+            "type": "array",
+            "title": "Predictions"
+          },
+          "insufficient_items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Insufficient Items"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "provider_unavailable"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason"
+          },
+          "confidence_level": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence Level"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "method",
+          "training_cutoff"
+        ],
+        "title": "Forecast"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3487,6 +3603,60 @@
         "type": "object",
         "title": "PlanningInput"
       },
+      "Prediction": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "item": {
+            "type": "string",
+            "title": "Item"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Quantity"
+          },
+          "lower": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lower"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit",
+            "default": "item"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "item",
+          "quantity"
+        ],
+        "title": "Prediction"
+      },
       "ProductFields": {
         "properties": {
           "name": {
@@ -3580,7 +3750,7 @@
               "$ref": "#/components/schemas/ProductFields"
             },
             "type": "array",
-            "maxItems": 30,
+            "maxItems": 200,
             "title": "Products"
           }
         },
