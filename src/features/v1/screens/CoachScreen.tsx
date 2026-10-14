@@ -1,6 +1,6 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ReactElement } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { ChangeEvent, KeyboardEvent, ReactElement } from 'react'
 import {
   Alert,
   Avatar,
@@ -9,7 +9,6 @@ import {
   Chip,
   CircularProgress,
   IconButton,
-  InputBase,
   List,
   ListItemButton,
   ListItemIcon,
@@ -61,6 +60,8 @@ import { OwnerJourney } from '../../frontdoors/OwnerJourney'
 import { enterRise, shape } from '../../../design/theme'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+// The composer grows with multi-line text up to this many lines, then scrolls.
+const COMPOSER_ROWS = 6
 type Message = { role: 'user' | 'assistant'; text: string }
 
 export function CoachScreen() {
@@ -134,6 +135,15 @@ export function CoachScreen() {
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
   }, [messages, reply])
+  // The composer is one line until the text itself needs more. Sized from the text only: the
+  // old autosize also measured the placeholder, so a long translated hint made an empty
+  // composer two or three lines tall (B3).
+  useLayoutEffect(() => {
+    const field = messageInput.current
+    if (!field) return
+    field.style.height = '48px'
+    if (note) field.style.height = `${Math.max(48, field.scrollHeight)}px`
+  }, [note, voice.state])
   // A pending request (e.g. "Start from a photo" on My shop) opens the picker once.
   const { photoPending, consumePhotoRequest } = ws
   useEffect(() => {
@@ -371,6 +381,8 @@ export function CoachScreen() {
   )
   const lastIsReply = messages.at(-1)?.role === 'assistant' && !reply && busy === 'idle'
   const canSend = Boolean(note.trim()) && busy === 'idle' && voice.state === 'idle'
+  const voiceText =
+    voice.state === 'recording' ? t.listening : voice.state === 'replying' ? t.speaking : ''
 
   const plusButton = (
     <Tooltip title={t.newChat}>
@@ -594,19 +606,19 @@ export function CoachScreen() {
           role="status"
           sx={{ display: 'block', px: 4, '&:not(:empty)': { pb: 2 } }}
         >
+          {/* Listening and speaking show inside the composer, so this line stays empty for
+              voice and the composer never jumps. */}
           {!online
             ? t.connectionOffline
             : reconnecting || voice.state === 'reconnecting'
               ? t.connectionReconnecting
-              : voice.state === 'recording'
-                ? t.listening
-                : voice.state === 'replying'
-                  ? t.speaking
-                  : busy === 'photo'
-                    ? t.checkingPhoto
-                    : ''}
+              : busy === 'photo'
+                ? t.checkingPhoto
+                : ''}
         </Typography>
-        {/* One-line composer: attach, text, mic, send. Grows upward for long messages. */}
+        {/* One-line composer: attach, text, mic, send. Grows upward only for multi-line text.
+            Voice swaps contents in place (mute for attach, status for text), so the row keeps
+            its size and the buttons never move. */}
         <Box
           component="form"
           onSubmit={(event) => {
@@ -620,23 +632,30 @@ export function CoachScreen() {
             bgcolor: roles.surfaceContainerHigh,
             borderRadius: `${shape.xl}px`,
             p: 1,
+            '&:has(textarea:focus-visible)': { outline: `2px solid ${roles.primary}` },
           }}
         >
-          <Tooltip title={t.photo}>
-            <span>
-              <IconButton
-                aria-label={t.photo}
-                disabled={busy !== 'idle' || voice.state !== 'idle'}
-                onClick={() => photoInput.current?.click()}
-              >
-                {busy === 'photo' ? (
-                  <CircularProgress size={20} aria-label={t.checkingPhoto} />
-                ) : (
-                  <ImagePlus size={22} />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
+          {voice.state !== 'idle' ? (
+            <IconButton aria-label={voice.muted ? t.unmute : t.mute} onClick={voice.toggleMute}>
+              {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+            </IconButton>
+          ) : (
+            <Tooltip title={t.photo} disableTouchListener>
+              <span>
+                <IconButton
+                  aria-label={t.photo}
+                  disabled={busy !== 'idle'}
+                  onClick={() => photoInput.current?.click()}
+                >
+                  {busy === 'photo' ? (
+                    <CircularProgress size={20} aria-label={t.checkingPhoto} />
+                  ) : (
+                    <ImagePlus size={22} />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
           <input
             ref={photoInput}
             type="file"
@@ -649,44 +668,74 @@ export function CoachScreen() {
               if (file) void uploadPhoto(file)
             }}
           />
-          <InputBase
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            onKeyDown={(event) => {
-              // Desktop: Enter sends (Shift+Enter = new line). Touch keyboards: Enter is a new
-              // line and the Send button sends, so half-typed messages aren't sent by accident.
-              if (
-                event.key === 'Enter' &&
-                !event.shiftKey &&
-                !event.nativeEvent.isComposing &&
-                !matchMedia('(pointer: coarse)').matches
-              ) {
-                event.preventDefault()
-                void send()
-              }
-            }}
-            placeholder={t.messagePlaceholder}
-            multiline
-            maxRows={6}
-            fullWidth
-            disabled={voice.state !== 'idle'}
-            inputRef={messageInput}
-            inputProps={{ 'aria-label': t.message, maxLength: 2000 }}
-            // 16px keeps iOS from zooming on focus; 12 + 24 + 12 matches the 48dp buttons.
-            sx={{
-              flex: 1,
-              px: 1,
-              py: 3,
-              fontSize: '1rem',
-              lineHeight: '1.5rem',
-              // The hint stays on one line on narrow phones (truncated, never wrapped).
-              '& textarea::placeholder': {
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              },
-            }}
-          />
+          {voiceText ? (
+            <Typography
+              role="status"
+              variant="bodyLarge"
+              noWrap
+              sx={{ flex: 1, minWidth: 0, px: 1, py: 3, lineHeight: '1.5rem' }}
+            >
+              {voiceText}
+            </Typography>
+          ) : (
+            <Box
+              component="textarea"
+              ref={messageInput}
+              rows={1}
+              name="message"
+              autoComplete="off"
+              value={note}
+              onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setNote(event.target.value)}
+              onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
+                // Desktop: Enter sends (Shift+Enter = new line). Touch keyboards: Enter is a new
+                // line and the Send button sends, so half-typed messages aren't sent by accident.
+                if (
+                  event.key === 'Enter' &&
+                  !event.shiftKey &&
+                  !event.nativeEvent.isComposing &&
+                  !matchMedia('(pointer: coarse)').matches
+                ) {
+                  event.preventDefault()
+                  void send()
+                }
+              }}
+              placeholder={t.messagePlaceholder}
+              disabled={voice.state !== 'idle'}
+              aria-label={t.message}
+              maxLength={2000}
+              // 16px keeps iOS from zooming on focus; 12 + 24 + 12 matches the 48dp buttons.
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                boxSizing: 'border-box',
+                height: '48px',
+                maxHeight: `calc(${COMPOSER_ROWS} * 1.5rem + 24px)`,
+                m: 0,
+                px: 1,
+                py: 3,
+                border: 0,
+                outline: 0,
+                resize: 'none',
+                overflowY: 'auto',
+                bgcolor: 'transparent',
+                color: 'text.primary',
+                font: 'inherit',
+                fontSize: '1rem',
+                lineHeight: '1.5rem',
+                '&:disabled': { color: 'text.disabled' },
+                // The hint stays on one line on narrow phones (truncated, never wrapped).
+                '&::placeholder': {
+                  color: 'text.secondary',
+                  opacity: 1,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                },
+              }}
+            />
+          )}
+          {/* Tap to talk, tap again to finish: the icon and its container show the state. No
+              tooltip on touch, which would pop over the composer on a long press. */}
           <Tooltip
             title={
               voice.state === 'recording'
@@ -695,6 +744,7 @@ export function CoachScreen() {
                   ? t.talk
                   : t.stopVoice
             }
+            disableTouchListener
           >
             <span>
               <IconButton
@@ -730,11 +780,6 @@ export function CoachScreen() {
               </IconButton>
             </span>
           </Tooltip>
-          {voice.state !== 'idle' && (
-            <IconButton aria-label={voice.muted ? t.unmute : t.mute} onClick={voice.toggleMute}>
-              {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-            </IconButton>
-          )}
           {busy === 'reply' ? (
             <IconButton
               aria-label={t.stop}
