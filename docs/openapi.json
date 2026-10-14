@@ -2618,6 +2618,806 @@
         }
       }
     },
+    "/api/v1/customer/me": {
+      "get": {
+        "summary": "Me",
+        "operationId": "me_api_v1_customer_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/session": {
+      "post": {
+        "summary": "Local Sign In",
+        "description": "Local and test mode only: stands in for Google sign-in (404 when Firebase is on).",
+        "operationId": "local_sign_in_api_v1_customer_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalSignIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Local Sign Out",
+        "operationId": "local_sign_out_api_v1_customer_session_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object",
+                  "title": "Response Local Sign Out Api V1 Customer Session Delete"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/follows/{business_id}": {
+      "put": {
+        "summary": "Follow",
+        "operationId": "follow_api_v1_customer_follows__business_id__put",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Unfollow",
+        "operationId": "unfollow_api_v1_customer_follows__business_id__delete",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/preferences": {
+      "put": {
+        "summary": "Preferences",
+        "operationId": "preferences_api_v1_customer_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Clear Preferences",
+        "operationId": "clear_preferences_api_v1_customer_preferences_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/updates": {
+      "get": {
+        "summary": "Updates",
+        "operationId": "updates_api_v1_public_updates_get",
+        "parameters": [
+          {
+            "name": "shops",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Shops"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feed"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/threads": {
+      "get": {
+        "summary": "Chats",
+        "operationId": "chats_api_v1_customer_threads_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChatSummary"
+                  },
+                  "type": "array",
+                  "title": "Response Chats Api V1 Customer Threads Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/shops/{business_id}/thread": {
+      "get": {
+        "summary": "Shop Thread",
+        "description": "The signed-in customer's existing thread with this shop, if any.",
+        "operationId": "shop_thread_api_v1_customer_shops__business_id__thread_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ChatSummary"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Shop Thread Api V1 Customer Shops  Business Id  Thread Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/shops/{business_id}/threads": {
+      "post": {
+        "summary": "Start Thread",
+        "operationId": "start_thread_api_v1_customer_shops__business_id__threads_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewThread"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/shops/{business_id}/threads/{inquiry_id}": {
+      "get": {
+        "summary": "Get Thread",
+        "operationId": "get_thread_api_v1_customer_shops__business_id__threads__inquiry_id__get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "inquiry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Inquiry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Thread",
+        "operationId": "delete_thread_api_v1_customer_shops__business_id__threads__inquiry_id__delete",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "inquiry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Inquiry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Delete Thread Api V1 Customer Shops  Business Id  Threads  Inquiry Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/shops/{business_id}/threads/{inquiry_id}/messages": {
+      "post": {
+        "summary": "Post Message",
+        "operationId": "post_message_api_v1_customer_shops__business_id__threads__inquiry_id__messages_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "inquiry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Inquiry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerMessageInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/shops/{business_id}/threads/{inquiry_id}/seen": {
+      "post": {
+        "summary": "Seen",
+        "operationId": "seen_api_v1_customer_shops__business_id__threads__inquiry_id__seen_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "inquiry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Inquiry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Seen"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Seen Api V1 Customer Shops  Business Id  Threads  Inquiry Id  Seen Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/shops/{business_id}/threads/{inquiry_id}/stream": {
+      "get": {
+        "summary": "Stream Thread",
+        "operationId": "stream_thread_api_v1_customer_shops__business_id__threads__inquiry_id__stream_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "inquiry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Inquiry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durable conversation snapshot SSE with heartbeat comments.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/shops/{business_id}/tips": {
+      "get": {
+        "summary": "Tips",
+        "operationId": "tips_api_v1_public_shops__business_id__tips_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/shops/{business_id}/tips": {
+      "post": {
+        "summary": "Add Tip",
+        "operationId": "add_tip_api_v1_customer_shops__business_id__tips_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TipInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tip"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Tip",
+        "operationId": "delete_tip_api_v1_customer_shops__business_id__tips_delete",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Delete Tip Api V1 Customer Shops  Business Id  Tips Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/tips": {
+      "get": {
+        "summary": "Owner Tips",
+        "operationId": "owner_tips_api_v1_businesses__business_id__tips_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/discover/place": {
       "get": {
         "summary": "Find Place",
@@ -2788,6 +3588,44 @@
         "responses": {
           "200": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/discover/ask": {
+      "post": {
+        "summary": "Ask",
+        "operationId": "ask_api_v1_discover_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -3397,6 +4235,87 @@
         ],
         "title": "Approval"
       },
+      "AskRequest": {
+        "properties": {
+          "q": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Q"
+          },
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lng"
+          },
+          "radius": {
+            "type": "integer",
+            "maximum": 30000.0,
+            "minimum": 200.0,
+            "title": "Radius",
+            "default": 4000
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 16,
+            "title": "Language",
+            "default": "en"
+          }
+        },
+        "type": "object",
+        "required": [
+          "q",
+          "lat",
+          "lng"
+        ],
+        "title": "AskRequest"
+      },
+      "AskResponse": {
+        "properties": {
+          "intent": {
+            "$ref": "#/components/schemas/Intent"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "keywords"
+            ],
+            "title": "Mode"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/Group"
+            },
+            "type": "array",
+            "title": "Groups"
+          },
+          "personal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Personal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent",
+          "mode",
+          "groups"
+        ],
+        "title": "AskResponse"
+      },
       "AvailabilityRequest": {
         "properties": {
           "available": {
@@ -3672,6 +4591,27 @@
         ],
         "title": "ChallengeRequest"
       },
+      "ChatSummary": {
+        "properties": {
+          "shop": {
+            "$ref": "#/components/schemas/ShopCard"
+          },
+          "thread": {
+            "$ref": "#/components/schemas/CustomerThread"
+          },
+          "unread": {
+            "type": "integer",
+            "title": "Unread",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop",
+          "thread"
+        ],
+        "title": "ChatSummary"
+      },
       "CoachTurn": {
         "properties": {
           "message": {
@@ -3784,6 +4724,28 @@
         ],
         "title": "CustomFact",
         "description": "A fact this kind of business's customers ask about (e.g. a salon's walk-in policy)."
+      },
+      "CustomerMessageInput": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "language": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$",
+            "title": "Language",
+            "default": "en"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "CustomerMessageInput"
       },
       "CustomerThread": {
         "properties": {
@@ -4116,6 +5078,30 @@
         ],
         "title": "DiscoveryResponse"
       },
+      "Feed": {
+        "properties": {
+          "shops": {
+            "items": {
+              "$ref": "#/components/schemas/ShopCard"
+            },
+            "type": "array",
+            "title": "Shops"
+          },
+          "updates": {
+            "items": {
+              "$ref": "#/components/schemas/Update"
+            },
+            "type": "array",
+            "title": "Updates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shops",
+          "updates"
+        ],
+        "title": "Feed"
+      },
       "Forecast": {
         "properties": {
           "status": {
@@ -4189,6 +5175,33 @@
           "training_cutoff"
         ],
         "title": "Forecast"
+      },
+      "Group": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "for_you",
+              "best",
+              "open",
+              "more"
+            ],
+            "title": "Id"
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/Pick"
+            },
+            "type": "array",
+            "title": "Places"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "places"
+        ],
+        "title": "Group"
       },
       "HTTPValidationError": {
         "properties": {
@@ -4311,6 +5324,80 @@
         ],
         "title": "InquiryReceipt"
       },
+      "Intent": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "maxLength": 160,
+            "title": "Summary",
+            "default": ""
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Keywords"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "default": ""
+          },
+          "max_price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Price"
+          },
+          "halal": {
+            "type": "boolean",
+            "title": "Halal",
+            "default": false
+          },
+          "vegetarian": {
+            "type": "boolean",
+            "title": "Vegetarian",
+            "default": false
+          },
+          "open_now": {
+            "type": "boolean",
+            "title": "Open Now",
+            "default": false
+          },
+          "followups": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Followups"
+          }
+        },
+        "type": "object",
+        "title": "Intent",
+        "description": "What the customer asked for. Prices are in the local currency's major units."
+      },
+      "LocalSignIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name",
+            "default": "Asha"
+          }
+        },
+        "type": "object",
+        "title": "LocalSignIn"
+      },
       "Match": {
         "properties": {
           "id": {
@@ -4344,6 +5431,39 @@
         ],
         "title": "Match"
       },
+      "Me": {
+        "properties": {
+          "signed_in": {
+            "type": "boolean",
+            "title": "Signed In"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode",
+            "default": "local"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Profile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "signed_in"
+        ],
+        "title": "Me"
+      },
       "MessageInput": {
         "properties": {
           "text": {
@@ -4359,6 +5479,28 @@
           "text"
         ],
         "title": "MessageInput"
+      },
+      "NewThread": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "language": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$",
+            "title": "Language",
+            "default": "en"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "NewThread"
       },
       "Observation": {
         "properties": {
@@ -4451,6 +5593,220 @@
           "version"
         ],
         "title": "OrderVersion"
+      },
+      "Personal": {
+        "properties": {
+          "applied": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Applied",
+            "default": []
+          },
+          "saved": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Saved",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "Personal",
+        "description": "What the signed-in customer's profile changed: never applied when signed out."
+      },
+      "Pick": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "chalkboard",
+              "google"
+            ],
+            "title": "Source"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "distance_m": {
+            "type": "integer",
+            "title": "Distance M"
+          },
+          "open_now": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Now"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TopItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "sold_out": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sold Out"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "user_rating_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Rating Count"
+          },
+          "price_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Level"
+          },
+          "google_maps_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Google Maps Uri"
+          },
+          "halal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Halal"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          },
+          "demo_shop": {
+            "type": "boolean",
+            "title": "Demo Shop",
+            "default": false
+          },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          },
+          "photo_authors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Photo Authors",
+            "default": []
+          },
+          "matched": {
+            "items": {
+              "$ref": "#/components/schemas/TopItem"
+            },
+            "type": "array",
+            "title": "Matched",
+            "default": []
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "default": 0
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "source",
+          "category",
+          "lat",
+          "lng",
+          "distance_m",
+          "open_now",
+          "items",
+          "sold_out"
+        ],
+        "title": "Pick"
       },
       "PlaceMatch": {
         "properties": {
@@ -4559,6 +5915,42 @@
         ],
         "title": "Prediction"
       },
+      "Preferences": {
+        "properties": {
+          "vegetarian": {
+            "type": "boolean",
+            "title": "Vegetarian",
+            "default": false
+          },
+          "halal": {
+            "type": "boolean",
+            "title": "Halal",
+            "default": false
+          },
+          "budget": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 16,
+            "title": "Language",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Preferences"
+      },
       "ProductFields": {
         "properties": {
           "name": {
@@ -4626,6 +6018,34 @@
           "price"
         ],
         "title": "ProductFields"
+      },
+      "Profile": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "follows": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Follows"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/Preferences"
+          },
+          "searches": {
+            "items": {
+              "$ref": "#/components/schemas/Search"
+            },
+            "type": "array",
+            "title": "Searches"
+          }
+        },
+        "type": "object",
+        "title": "Profile"
       },
       "ProposalRequest": {
         "properties": {
@@ -4823,6 +6243,40 @@
         ],
         "title": "RecapItem"
       },
+      "Search": {
+        "properties": {
+          "q": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Q"
+          },
+          "at": {
+            "type": "number",
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "q",
+          "at"
+        ],
+        "title": "Search"
+      },
+      "Seen": {
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Message Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message_id"
+        ],
+        "title": "Seen"
+      },
       "ShareRequest": {
         "properties": {
           "public": {
@@ -4836,6 +6290,55 @@
           "public"
         ],
         "title": "ShareRequest"
+      },
+      "ShopCard": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "default": ""
+          },
+          "location": {
+            "type": "string",
+            "title": "Location",
+            "default": ""
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": ""
+          },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ShopCard"
       },
       "SimAction": {
         "properties": {
@@ -5371,6 +6874,16 @@
           "created": {
             "type": "number",
             "title": "Created"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "",
+              "ai",
+              "demo"
+            ],
+            "title": "Kind",
+            "default": ""
           }
         },
         "additionalProperties": false,
@@ -5382,6 +6895,111 @@
           "created"
         ],
         "title": "ThreadMessage"
+      },
+      "Tip": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "created": {
+            "type": "number",
+            "title": "Created"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          },
+          "mine": {
+            "type": "boolean",
+            "title": "Mine",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "text",
+          "created"
+        ],
+        "title": "Tip"
+      },
+      "TipInput": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 280,
+            "minLength": 3,
+            "title": "Text"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 5.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "TipInput"
+      },
+      "TipList": {
+        "properties": {
+          "tips": {
+            "items": {
+              "$ref": "#/components/schemas/Tip"
+            },
+            "type": "array",
+            "title": "Tips"
+          },
+          "average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tips"
+        ],
+        "title": "TipList"
       },
       "TopItem": {
         "properties": {
@@ -5449,6 +7067,82 @@
           "language"
         ],
         "title": "TranslationInput"
+      },
+      "Update": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "price_change",
+              "back_in_stock",
+              "new_item",
+              "menu_confirmed"
+            ],
+            "title": "Kind"
+          },
+          "item": {
+            "type": "string",
+            "title": "Item",
+            "default": ""
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "old_price": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Price"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit",
+            "default": ""
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": ""
+          },
+          "created": {
+            "type": "number",
+            "title": "Created"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "shop_id",
+          "kind",
+          "created"
+        ],
+        "title": "Update"
       },
       "ValidationError": {
         "properties": {
