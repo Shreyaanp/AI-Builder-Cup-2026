@@ -24,9 +24,8 @@ def fetch(url: str) -> bytes:
 def main() -> None:
     ROOT.mkdir(parents=True, exist_ok=True)
     base = "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/"
-    commit = json.loads(
-        fetch("https://api.github.com/repos/openvinotoolkit/open_model_zoo/commits/master")
-    )["sha"]
+    # Fixed publisher release; builds must not follow a changing master branch.
+    commit = "2023.3.0"
     receipts = []
     for group, name in [("intel", n) for n in MODELS] + [("public", "anti-spoof-mn3")]:
         manifest = fetch(f"{base}{commit}/models/{group}/{name}/model.yml")

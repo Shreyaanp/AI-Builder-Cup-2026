@@ -1,5 +1,9 @@
 # Deployment
 
+The release workflow also packages a private CPU face worker before deploying the main
+service. See [the face worker handoff](FACE_WORKER.md) for one-time lead setup, local
+checks, cost assumptions and the unresolved ephemeral template-storage limitation.
+
 One Cloud Run service serves compiled React and the Python API at the same HTTPS origin. Firebase Google sign-in identifies users; Firestore stores owner-scoped ADK conversations and distributed run leases under `ogoogle_ai_v1`. Business cards remain temporary browser data. Google AI Mode/Lens and Google Business Profile publishing remain unconnected.
 
 ## Release flow
