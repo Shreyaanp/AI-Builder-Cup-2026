@@ -10,6 +10,7 @@ export function PlaceImage({
   authors = [],
   eager = false,
   transition = false,
+  compact = false,
 }: {
   id: string
   category: string
@@ -17,6 +18,8 @@ export function PlaceImage({
   authors?: string[]
   eager?: boolean
   transition?: boolean
+  /** Square thumbnail without the caption (credits move to the tooltip). */
+  compact?: boolean
 }) {
   const roles = useTheme().material
   const t = useFrontCopy()
@@ -27,8 +30,10 @@ export function PlaceImage({
   const actual = source && failed !== source ? source : undefined
   return (
     <Box
+      title={compact && actual ? authors.join(' · ') : undefined}
       sx={{
         position: 'relative',
+        height: compact ? '100%' : undefined,
         bgcolor: roles.secondaryContainer,
         color: roles.onSecondaryContainer,
       }}
@@ -47,19 +52,21 @@ export function PlaceImage({
         }}
         sx={{
           width: '100%',
-          height: 'auto',
-          aspectRatio: '4/3',
+          height: compact ? '100%' : 'auto',
+          aspectRatio: compact ? '1/1' : '4/3',
           objectFit: 'cover',
           display: 'block',
           viewTransitionName: transition ? `shop-${id.replace(/[^a-zA-Z0-9-]/g, '')}` : undefined,
         }}
       />
-      <Typography
-        variant="labelMedium"
-        sx={{ p: 2, bgcolor: roles.surfaceContainer, color: roles.onSurface }}
-      >
-        {actual ? authors.join(' · ') : t.art}
-      </Typography>
+      {!compact && (
+        <Typography
+          variant="labelMedium"
+          sx={{ p: 2, bgcolor: roles.surfaceContainer, color: roles.onSurface }}
+        >
+          {actual ? authors.join(' · ') : t.art}
+        </Typography>
+      )}
     </Box>
   )
 }

@@ -416,7 +416,7 @@ export default function PublicShop({ id }: { id: string }) {
             bgcolor: roles.surfaceContainerHigh,
           }}
         >
-          <PlaceImage id={id} category={shop.category} eager transition />
+          <PlaceImage id={id} category={shop.category} eager transition compact />
         </Box>
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography component="h1" variant="titleLarge" sx={{ overflowWrap: 'anywhere' }}>
@@ -565,7 +565,8 @@ export default function PublicShop({ id }: { id: string }) {
                   variant="titleMedium"
                   sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
                 >
-                  {formatPrice(product.price, currency, locale)}
+                  {/* The phone's full locale (en-SG → $15.00), not just the UI language. */}
+                  {formatPrice(product.price, currency)}
                 </Typography>
               ) : (
                 // Sold out: label + muted text, not colour alone.
@@ -626,6 +627,7 @@ export default function PublicShop({ id }: { id: string }) {
         </Button>
       </Box>
       <Sheet
+        keepMounted
         open={chatOpen}
         onClose={() => setChatOpen(false)}
         titleId="shop-chat-title"
