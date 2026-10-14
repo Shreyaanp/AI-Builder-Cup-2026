@@ -135,7 +135,7 @@ jobs:
             --service-account=ogoogle-runtime@ichiropractic.iam.gserviceaccount.com \
             --env-vars-file=.deployment/runtime.json --allow-unauthenticated \
             --update-secrets=FACE_WORKER_TOKEN=ogoogle-face-token:1 \
-            --min=1 --max=10 --concurrency=40 --cpu=2 --memory=2Gi --timeout=3600 \
+            --min=1 --max=10 --concurrency=40 --cpu=1 --memory=2Gi --timeout=3600 \
             --no-cpu-throttling --session-affinity \
             --cpu-boost --quiet
       - name: Verify the released revision
