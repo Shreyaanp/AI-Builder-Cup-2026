@@ -168,7 +168,7 @@ class ProposalRequest(BaseModel):
     # Separate consent to look up a pin; never inferred from approval to save.
     geocode_confirmed: bool = False
     business: BusinessFields | None = None
-    products: list[ProductFields] = Field(default_factory=list, max_length=30)
+    products: list[ProductFields] = Field(default_factory=list, max_length=200)
 
 
 class Approval(BaseModel):

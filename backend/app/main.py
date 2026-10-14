@@ -30,6 +30,8 @@ from .customer_routes import router as customer_router
 from .discover import MapsService
 from .discover import router as discover_router
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
+from .forecast import ForecastService
+from .forecast_routes import router as forecast_router
 from .frontend import serve_frontend
 from .google_profile import BusinessProfileAdapter, SimulatedBusinessProfile
 from .google_sim_routes import router as google_sim_router
@@ -133,6 +135,8 @@ def create_app(
         app.state.customer_answers = CustomerAnswers(settings)
         coordinator.question_planner = QuestionPlanner(settings)
         app.state.column_mapper = ColumnMapper(settings)
+        app.state.forecaster = ForecastService(settings)
+        coordinator.forecaster = app.state.forecaster
         app.state.recap_writer = RecapWriter(settings)
         app.state.speech = Speech(settings)
         app.state.maps = maps_service or MapsService(settings)
@@ -181,6 +185,7 @@ def create_app(
     app.include_router(google_sim_router)
     app.include_router(planning_router)
     app.include_router(sales_router)
+    app.include_router(forecast_router)
     app.include_router(customer_router)
     app.include_router(discover_router)
     app.add_middleware(

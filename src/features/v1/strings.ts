@@ -2,6 +2,8 @@ import { useLocale } from '../../state/hooks'
 import { translations } from './locales'
 
 export const en = {
+  importUnavailable:
+    'Photo, PDF and note reading needs connected AI. CSV and Excel imports still work.',
   saveSales: 'Save these sales',
   salesSaved: 'Sales saved',
   salesReplace: 'Saving replaces all sales on these dates. Other days stay unchanged.',
@@ -255,7 +257,19 @@ export const en = {
   productName: 'Product name',
   price: 'Price',
   currency: 'Currency',
-  importMenu: 'Import from POS or Excel',
+  importMenu: 'Import sales or menu (Excel, photo, notes)',
+  importUpload: 'Upload file',
+  importTakePhoto: 'Take photo',
+  importNotes: 'Paste sales or menu notes',
+  importReviewNotes: 'Review notes',
+  importReviewFlags: 'Check uncertain rows carefully',
+  prepPlan: 'Prep plan',
+  prepTomorrow: 'Tomorrow',
+  prepLoading: 'Preparing forecast…',
+  prepEmpty: 'Import and save at least 4 weeks of sales per item.',
+  prepTimesfm: 'TimesFM',
+  prepWeekday: 'Weekday average · seasonality and trend',
+  prepQuestion: 'How much should I prep tomorrow?',
   importing: 'Reading your file…',
   importFailed: 'Couldn’t read that file. Send a CSV or Excel export with item names and prices.',
   salesSummary: 'Sales summary',

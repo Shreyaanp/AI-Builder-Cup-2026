@@ -8,16 +8,25 @@ import {
   ListItem,
   ListItemText,
   Typography,
+  TextField,
+  Stack,
 } from '@mui/material'
-import { FileSpreadsheet } from 'lucide-react'
+import { Camera, FileSpreadsheet } from 'lucide-react'
 import type { Proposal } from './api'
+import { ApiError } from './api'
 import { formatPrice, shopCurrency, toMinor } from './format'
 import { Sheet } from './Sheet'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 
 const ACCEPT =
-  '.csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  '.csv,.xlsx,.pdf,.txt,image/jpeg,image/png,image/webp,text/plain,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+interface ImportFlag {
+  row: number
+  item: string
+  reasons: string[]
+}
 
 export interface SalesSummary {
   rows: number
@@ -30,6 +39,7 @@ export interface SalesSummary {
 }
 
 export interface SalesImport {
+  flags?: ImportFlag[]
   kind: 'sales'
   summary: SalesSummary
   import_id: string
@@ -39,7 +49,8 @@ export interface SalesImport {
 }
 
 type ImportResult =
-  { kind: 'menu'; proposal: Proposal; items: number; skipped: number } | SalesImport
+  | { kind: 'menu'; proposal: Proposal; items: number; skipped: number; flags?: ImportFlag[] }
+  | SalesImport
 
 /**
  * Import a menu or sales export from any POS or spreadsheet. AI maps the columns on the server;
@@ -55,13 +66,18 @@ export function ImportMenu({
   const t = useCopy()
   const ws = useWorkspace()
   const input = useRef<HTMLInputElement>(null)
+  const camera = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [notes, setNotes] = useState('')
+  const [failed, setFailed] = useState('')
   const shop = ws.active
   if (!shop) return null
 
   async function upload(file: File) {
     if (busy || !shop) return
     setBusy(true)
+    setFailed('')
     try {
       const result = await ws.api<ImportResult>(
         `/businesses/${encodeURIComponent(shop.id)}/import`,
@@ -73,16 +89,22 @@ export function ImportMenu({
       )
       if (result.kind === 'menu') {
         onBeforeReview?.()
-        ws.review(result.proposal)
+        ws.review({ ...result.proposal, import_flags: result.flags })
       } else {
         onBeforeReview?.()
         onSales(result)
       }
-    } catch {
-      ws.notify(t.importFailed)
+    } catch (cause) {
+      const message =
+        cause instanceof ApiError && cause.code === 'EXTRACTION_UNAVAILABLE'
+          ? t.importUnavailable
+          : t.importFailed
+      setFailed(message)
+      ws.notify(message)
     } finally {
       setBusy(false)
       if (input.current) input.current.value = ''
+      if (camera.current) camera.current.value = ''
     }
   }
 
@@ -104,10 +126,65 @@ export function ImportMenu({
         variant="outlined"
         startIcon={busy ? <CircularProgress size={18} /> : <FileSpreadsheet size={18} />}
         disabled={busy}
-        onClick={() => input.current?.click()}
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        sx={{ minHeight: 48 }}
       >
         {t.importMenu}
       </Button>
+      {expanded && (
+        <Stack spacing={2} sx={{ width: '100%', minWidth: 0 }}>
+          <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap' }}>
+            <Button disabled={busy} onClick={() => input.current?.click()} sx={{ minHeight: 48 }}>
+              {t.importUpload}
+            </Button>
+            <Button
+              disabled={busy}
+              startIcon={<Camera size={18} />}
+              onClick={() => camera.current?.click()}
+              sx={{ minHeight: 48, display: { xs: 'inline-flex', md: 'none' } }}
+            >
+              {t.importTakePhoto}
+            </Button>
+          </Stack>
+          <input
+            ref={camera}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            capture="environment"
+            hidden
+            aria-hidden="true"
+            tabIndex={-1}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void upload(file)
+            }}
+          />
+          <TextField
+            name="import-notes"
+            label={t.importNotes}
+            multiline
+            minRows={3}
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault()
+                void upload(new File([notes], 'notes.txt', { type: 'text/plain' }))
+              }
+            }}
+          />
+          {failed && <Alert severity="error">{failed}</Alert>}
+          <Button
+            disabled={busy}
+            onClick={() => void upload(new File([notes], 'notes.txt', { type: 'text/plain' }))}
+            startIcon={busy ? <CircularProgress size={18} /> : undefined}
+            sx={{ minHeight: 48 }}
+          >
+            {t.importReviewNotes}
+          </Button>
+        </Stack>
+      )}
     </>
   )
 }
@@ -166,6 +243,12 @@ export function SalesImportSheet({
           {failed && (
             <Alert severity="error" sx={{ mt: 2 }}>
               {t.importFailed}
+            </Alert>
+          )}
+          {Boolean(imported?.flags?.length) && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              {t.importReviewFlags}:{' '}
+              {imported?.flags?.map((flag) => `${flag.row}: ${flag.item}`).join(', ')}
             </Alert>
           )}
           <Typography variant="headlineSmall" sx={{ mt: 3 }}>

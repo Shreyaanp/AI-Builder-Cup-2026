@@ -592,6 +592,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Forecast */
+        get: operations["get_forecast_api_v1_businesses__business_id__forecast_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/shops/{business_id}/ask": {
         parameters: {
             query?: never;
@@ -1194,6 +1211,37 @@ export interface components {
             /** Places */
             places: components["schemas"]["DiscoveryPlace"][];
         };
+        /** Forecast */
+        Forecast: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "insufficient";
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "timesfm" | "weekday_average";
+            /**
+             * Training Cutoff
+             * Format: date
+             */
+            training_cutoff: string;
+            /**
+             * Horizon Days
+             * @default 7
+             */
+            horizon_days: number;
+            /** Predictions */
+            predictions?: components["schemas"]["Prediction"][];
+            /** Insufficient Items */
+            insufficient_items?: string[];
+            /** Fallback Reason */
+            fallback_reason?: "provider_unavailable" | null;
+            /** Confidence Level */
+            confidence_level?: number | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1314,6 +1362,27 @@ export interface components {
              * @default 0
              */
             capacity: number;
+        };
+        /** Prediction */
+        Prediction: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Item */
+            item: string;
+            /** Quantity */
+            quantity: number;
+            /** Lower */
+            lower?: number | null;
+            /** Upper */
+            upper?: number | null;
+            /**
+             * Unit
+             * @default item
+             */
+            unit: string;
         };
         /** ProductFields */
         ProductFields: {
@@ -2924,6 +2993,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Recap"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_forecast_api_v1_businesses__business_id__forecast_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Forecast"];
                 };
             };
             /** @description Validation Error */

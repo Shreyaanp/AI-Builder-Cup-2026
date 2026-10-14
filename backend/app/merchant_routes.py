@@ -8,10 +8,12 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
+from .coordinator import MerchantContext, ProductInput, current, propose_products
 from .discover import prepare_pin
 from .face_transport import worker_headers
 from .imports import MAX_BYTES as MAX_IMPORT_BYTES
 from .imports import SAMPLE_ROWS, ImportRejected, menu_items, parse_table, sales_summary
+from .ingestion import IMAGE_TYPES, alias, as_table, clean, extract
 from .limits import client_ip, enforce_limits
 from .merchant import (
     Approval,
@@ -266,7 +268,7 @@ async def photo(
         )
         for p in extraction.products
         if p.price is not None and p.name.strip()
-    ][:30]
+    ]
     proposal = None
     if business is None and found.name.strip():
         # A new shop and its menu are reviewed together in one sheet.
@@ -284,13 +286,32 @@ async def photo(
         )
         proposal = await anyio.to_thread.run_sync(service.propose, uid, request_body)
     elif business is not None and products:
-        request_body = ProposalRequest(
-            kind="inventory",
-            business_id=business["id"],
-            revision=business["revision"],
-            products=products,
-        )
-        proposal = await anyio.to_thread.run_sync(service.propose, uid, request_body)
+        # The coach photo entry point uses the same single bulk-review tool as chat.
+        def propose_menu() -> dict[str, Any]:
+            ctx = MerchantContext(service, uid, business["id"], [])
+            token = current.set(ctx)
+            try:
+                saved = {p["name"]: p for p in context["inventory"]}
+                result = propose_products(
+                    [
+                        ProductInput(
+                            name=name,
+                            price=p.price,
+                            unit=p.unit,
+                            available=saved.get(name, {}).get("available", True),
+                        )
+                        for p in extraction.products
+                        if p.price is not None and p.name.strip()
+                        for name, _ in [alias(p.name, list(saved))]
+                    ]
+                )
+                if result["status"] != "needs_review":
+                    raise HTTPException(422, "NO_PRICED_ITEMS")
+                return ctx.proposals[result["proposal_id"]]
+            finally:
+                current.reset(token)
+
+        proposal = await anyio.to_thread.run_sync(propose_menu)
     return {
         "status": "needs_review" if proposal else "nothing_to_propose",
         "photo_id": outcome["photo_id"],
@@ -415,12 +436,26 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
                     raise HTTPException(413, "FILE_TOO_LARGE")
                 buffer.extend(chunk)
         try:
-            headers, rows = await anyio.to_thread.run_sync(parse_table, bytes(buffer), content_type)
-        except ImportRejected as rejected:
+            mapper = request.app.state.column_mapper
+            if content_type in IMAGE_TYPES | {"application/pdf", "text/plain"}:
+                async with asyncio.timeout(60):
+                    extracted = await extract(
+                        mapper, request.app.state.photos, bytes(buffer), content_type
+                    )
+                headers, rows, mapping, low_confidence = as_table(extracted)
+            else:
+                headers, rows = await anyio.to_thread.run_sync(
+                    parse_table, bytes(buffer), content_type
+                )
+                mapping = await mapper.map(headers, rows[:SAMPLE_ROWS])
+                low_confidence = []
+            rows, flags, dropped = clean(rows, mapping, context["inventory"], low_confidence)
+        except (ImportRejected, PhotoRejected) as rejected:
             raise HTTPException(rejected.status, rejected.code) from None
+        except TimeoutError:
+            raise HTTPException(504, "EXTRACTION_TIMEOUT") from None
     finally:
         buffer.clear()
-    mapping = await request.app.state.column_mapper.map(headers, rows[:SAMPLE_ROWS])
     if mapping.name is None:
         raise HTTPException(422, "NO_ITEM_COLUMN")
     if mapping.kind == "sales":
@@ -440,6 +475,8 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
             "expires": proposal["expires"],
             "sales": proposal["snapshot"]["sales"],
             "currency": currency,
+            "flags": flags,
+            "dropped": dropped,
         }
     items, skipped = menu_items(rows, mapping)
     if not items:
@@ -482,6 +519,8 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
         "mapping": mapping.model_dump(),
         "items": len(products),
         "skipped": skipped,
+        "flags": flags,
+        "dropped": dropped,
         "proposal": proposal,
     }
 
