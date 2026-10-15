@@ -6,6 +6,10 @@ generated demo data is fine and expected, as long as it is labelled as demo.
 
 ## Owner decisions (15 Oct, verbatim intent)
 
+- **FEATURE FREEZE (15 Oct ~19:00):** no new features. Only fix flows, experiences and error
+  handling. Account 1 orchestrates only (limits low); workers do the fixes on fix/ branches with
+  PRs per docs/REVIEW.md.
+
 0. **Demo revamp (later):** the demo must showcase how to use every feature we build.
 1. **Order of work:** V1 stable and bug-free first ("get V1 out without any bugs"), then refine,
    then add logic and features. The owner tests and reports bugs; UI/UX flow beats extra features.
@@ -98,6 +102,14 @@ honest demo labels, reduced motion, axe clean, a story walkthrough test, live on
 
 ## Status log (newest first)
 
+- 15 Oct ~19:00: live 224a2f5. Mic "Too many requests" root cause: 20-conversation cap per account
+  (every mic press made a new conversation); now the oldest are cleared, 400 events per
+  conversation. Voice sessions now log ready/rejected/closed. Delete-my-data 500: face worker
+  auth fixed earlier; GCS 403 fixed by granting the runtime account roles/storage.objectUser on
+  gs://ichiropractic-shop-photos. Open PRs: #2 sign-in screen (needs impact run, then merge),
+  #3 new-shop flow (Codex making it a grand full-screen flow, task-NEW-SHOP-GRAND.md), #4 rescue
+  UI (account 2, review impact then merge). Account 2 now on fix/erase-hardening.
+  Follow-ups: voice should continue the current conversation instead of a new one per press.
 - 15 Oct (evening): owner asked: everything running, use Codex, basic owner features must work
   for real (photo/menu upload to register, images, voice) and revamp the demo LATER so it
   showcases how to use every feature. Live: 40b7dec (uploads refused by the 16 KB body guard,
