@@ -17,7 +17,7 @@ from app.settings import Settings
 from app.streaming import CoachRuntime
 
 pytestmark = pytest.mark.skipif(
-    os.getenv("FIRESTORE_EMULATOR_HOST") != "127.0.0.1:8085",
+    (os.getenv("FIRESTORE_EMULATOR_HOST") or "").split(":")[0] not in {"127.0.0.1", "localhost"},
     reason="Requires the explicitly local Firestore emulator; never use a cloud database.",
 )
 

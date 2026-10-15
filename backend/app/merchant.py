@@ -24,6 +24,7 @@ from pydantic import (
     model_validator,
 )
 
+from .community import Documents, SqliteDocuments
 from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
 from .shop_time import client_timezone, shop_timezone
@@ -258,6 +259,8 @@ CHALLENGE_SECONDS = 90
 class MerchantRepository(Protocol):
     """Owner-scoped merchant records shared by the local SQLite and Firestore adapters."""
 
+    feature_docs: Documents
+
     def list_businesses(self, uid: str) -> list[dict[str, Any]]: ...
     def context(self, uid: str, bid: str | None) -> dict[str, Any]: ...
     def inventory(self, uid: str, bid: str) -> list[dict[str, Any]]: ...
@@ -426,6 +429,10 @@ class MerchantStore:
     def __init__(self, path: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.path = path
+        db_path = Path(path)
+        self.feature_docs: Documents = SqliteDocuments(
+            str(db_path.with_name(db_path.stem + "-community.sqlite3"))
+        )
         with self.connect() as db:
             db.executescript("""
             PRAGMA journal_mode=WAL;
@@ -780,6 +787,9 @@ class MerchantStore:
                 db.execute("DELETE FROM shares WHERE business_id=?", (bid,))
             for table in ("proposals", "challenges", "consents", "people", "google_sim"):
                 db.execute(f"DELETE FROM {table} WHERE uid=?", (uid,))  # noqa: S608 - fixed names
+        for bid in owned:
+            for kind in ("rescue", "brief", "brief_wording"):
+                self.feature_docs.delete_scope(kind, bid)
         return owned
 
     def set_availability(

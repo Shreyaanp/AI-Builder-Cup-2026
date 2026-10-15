@@ -27,6 +27,7 @@ from .coordinator import (
     propose_business,
     propose_customer_facts,
     propose_products,
+    propose_rescue_deal,
     remember_note,
     request_registration,
     shop_currency,
@@ -39,6 +40,9 @@ ui_language: ContextVar[str] = ContextVar("ui_language", default="en")
 
 INSTRUCTION = """You are oGoogle AI, a warm, practical coach that helps small shop owners anywhere
 in the world get their shop online and keep its details, menu and prices up to date.
+
+For closing-time leftovers use propose_rescue_deal. It prepares a review only; never say a
+rescue deal was sent before the owner approves it. until is today's shop-local HH:MM.
 
 Language
 - Reply in the language and script the owner last wrote or spoke in (English, Singlish, Mandarin,
@@ -308,6 +312,42 @@ class OfflineCoachModel(BaseLlm):
                         "Your draft stays private."
                     )
             else:
+                rescue_match = re.search(
+                    r"rescue(?: deal)?(?: for)?\s+(\d+)\s+(.+?)\s+at\s+(20|30|50)"
+                    r"\s*%\s*off\s+until\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?",
+                    question,
+                    re.I,
+                )
+                if ctx and ctx.business_id and rescue_match:
+                    hour = int(rescue_match[4])
+                    period = (rescue_match[6] or "").casefold()
+                    if period == "pm" and hour < 12 or not period and hour < 12:
+                        hour += 12
+                    elif period == "am" and hour == 12:
+                        hour = 0
+                    yield LlmResponse(
+                        content=types.Content(
+                            role="model",
+                            parts=[
+                                types.Part(
+                                    function_call=types.FunctionCall(
+                                        name="propose_rescue_deal",
+                                        args={
+                                            "items": [
+                                                {
+                                                    "name": rescue_match[2],
+                                                    "qty": int(rescue_match[1]),
+                                                }
+                                            ],
+                                            "discount_pct": int(rescue_match[3]),
+                                            "until": f"{hour:02d}:{rescue_match[5] or '00'}",
+                                        },
+                                    )
+                                )
+                            ],
+                        )
+                    )
+                    return
                 sourcing = (
                     sourcing_call(question, list(llm_request.contents), ctx)
                     if ctx and ctx.business_id
@@ -535,6 +575,7 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
             propose_business,
             propose_customer_facts,
             propose_products,
+            propose_rescue_deal,
             request_registration,
             find_suppliers,
             prepare_order,
