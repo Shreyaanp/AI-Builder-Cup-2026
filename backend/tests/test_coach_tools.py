@@ -533,3 +533,13 @@ def test_insights_without_sales_suggest_importing(saved_shop):
 def test_tools_need_a_shop(ctx):
     assert remember_note("x")["status"] == "needs_business"
     assert get_insights()["status"] == "needs_business"
+
+
+def test_instruction_carries_a_shop_snapshot_to_save_a_tool_round_trip(ctx, saved_shop) -> None:
+    from app.agent import instruction
+
+    text = instruction(None)  # type: ignore[arg-type]
+    assert "Current shop (saved" in text
+    assert "Ram Tea Stall" in text and "Chai 15/cup" in text
+    ctx.business_id = None  # no saved shop yet: no snapshot
+    assert "Current shop (saved" not in instruction(None)  # type: ignore[arg-type]
