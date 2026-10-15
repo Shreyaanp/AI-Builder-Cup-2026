@@ -1339,6 +1339,286 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/qr-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Owner Qr Key */
+        get: operations["owner_qr_key_api_v1_businesses__business_id__qr_key_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/shops/{business_id}/demo-qr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demo Qr Key
+         * @description Demo shops show their QR on screen for the demo, so their key is public.
+         */
+        get: operations["demo_qr_key_api_v1_public_shops__business_id__demo_qr_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/passport/stamps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stamp */
+        post: operations["stamp_api_v1_customer_passport_stamps_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/passport/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check
+         * @description Signed-out scan: the same checks, a signed receipt for the phone, nothing stored. The
+         *     phone's earlier receipts are replayed first, so a second scan today is not a first visit.
+         */
+        post: operations["check_api_v1_public_passport_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/passport/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview
+         * @description The passport drawn from this phone's receipts (signed out: "on this phone").
+         */
+        post: operations["preview_api_v1_public_passport_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/passport/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge
+         * @description Once on sign-in: this phone's receipts are re-checked and each counts once, ever.
+         */
+        post: operations["merge_api_v1_customer_passport_merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/passport": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Passport */
+        get: operations["passport_api_v1_customer_passport_get"];
+        put?: never;
+        post?: never;
+        /** Erase Passport */
+        delete: operations["erase_passport_api_v1_customer_passport_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/passport/shops/{business_id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Claim
+         * @description Counter staff saw the full card: it starts again.
+         */
+        post: operations["claim_api_v1_customer_passport_shops__business_id__claim_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/passport/rescues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Collect Rescue
+         * @description Scanning the shop QR during the pickup window collects the rescue: leaf stamp.
+         */
+        post: operations["collect_rescue_api_v1_customer_passport_rescues_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/shops/{business_id}/tips/{tip_id}/helpful": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Helpful */
+        post: operations["mark_helpful_api_v1_customer_shops__business_id__tips__tip_id__helpful_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/passport/leaderboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Join Board */
+        put: operations["join_board_api_v1_customer_passport_leaderboard_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/passport/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Board */
+        get: operations["board_api_v1_customer_passport_board_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/perks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Owner Perks */
+        get: operations["owner_perks_api_v1_businesses__business_id__perks_get"];
+        /** Save Perks */
+        put: operations["save_perks_api_v1_businesses__business_id__perks_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/shops/{business_id}/perks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Perks */
+        get: operations["public_perks_api_v1_public_shops__business_id__perks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Today
+         * @description Anonymous; signed-in customers also get their follows, preferences and stamps applied,
+         *     and the server remembers what they saw.
+         */
+        get: operations["today_api_v1_public_today_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/orders": {
         parameters: {
             query?: never;
@@ -1707,6 +1987,19 @@ export interface components {
             /** Digest */
             digest: string;
         };
+        /** AreaView */
+        AreaView: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Shops */
+            shops: number;
+            /** Stamps */
+            stamps: number;
+            /** Demo */
+            demo: boolean;
+        };
         /** AskRequest */
         AskRequest: {
             /** Q */
@@ -1759,6 +2052,49 @@ export interface components {
              * @default false
              */
             demo: boolean;
+        };
+        /** Board */
+        Board: {
+            /** Area */
+            area: string;
+            /** Week */
+            week: string;
+            /** Joined */
+            joined: boolean;
+            /** Rows */
+            rows: components["schemas"]["BoardRow"][];
+            you?: components["schemas"]["BoardRow"] | null;
+        };
+        /** BoardInput */
+        BoardInput: {
+            /** On */
+            on: boolean;
+        };
+        /** BoardRow */
+        BoardRow: {
+            /** Rank */
+            rank: number;
+            /** Name */
+            name: string;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "newcomer" | "regular" | "local_hero";
+            /** Points */
+            points: number;
+            /** Stamps */
+            stamps: number;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+            /**
+             * You
+             * @default false
+             */
+            you: boolean;
         };
         /** Brief */
         Brief: {
@@ -2146,6 +2482,62 @@ export interface components {
             /** Updates */
             updates: components["schemas"]["Update"][];
         };
+        /** Find */
+        Find: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "only_one" | "rescue" | "hidden_gem" | "new_this_week" | "locally_made" | "festival" | "tip";
+            shop?: components["schemas"]["FindShop"] | null;
+            /** Params */
+            params?: {
+                [key: string]: string | number | boolean | null;
+            };
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "chalkboard" | "demo";
+            /** Demo */
+            demo: boolean;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "go" | "hold" | "save" | "trail";
+            /** Score */
+            score: number;
+            /** Ends At */
+            ends_at?: number | null;
+        };
+        /** FindShop */
+        FindShop: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Category
+             * @default
+             */
+            category: string;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+            /** Distance M */
+            distance_m: number;
+            /** Walk Min */
+            walk_min: number;
+            /** Open Now */
+            open_now?: boolean | null;
+            /** Photo Url */
+            photo_url?: string | null;
+        };
         /** Forecast */
         Forecast: {
             /**
@@ -2192,6 +2584,11 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** Helpful */
+        Helpful: {
+            /** Helpful */
+            helpful: number;
+        };
         /** HoldInput */
         HoldInput: {
             /** Thread Id */
@@ -2200,6 +2597,17 @@ export interface components {
             name: string;
             /** Qty */
             qty: number;
+        };
+        /** Impact */
+        Impact: {
+            /** Meals */
+            meals: number;
+            /** Co2 Kg */
+            co2_kg: number;
+            /** Saved */
+            saved: {
+                [key: string]: number;
+            };
         };
         /** Inquiry */
         Inquiry: {
@@ -2298,6 +2706,19 @@ export interface components {
             /** Followups */
             followups?: string[];
         };
+        /** LevelView */
+        LevelView: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "newcomer" | "regular" | "local_hero";
+            /** Next */
+            next: ("newcomer" | "regular" | "local_hero") | null;
+            next_requirement: components["schemas"]["Requirement"] | null;
+            /** Requirements */
+            requirements: components["schemas"]["Requirement"][];
+        };
         /** LocalSignIn */
         LocalSignIn: {
             /**
@@ -2344,6 +2765,15 @@ export interface components {
              */
             mode: string;
             profile?: components["schemas"]["Profile"] | null;
+        };
+        /** MergeInput */
+        MergeInput: {
+            /** Receipts */
+            receipts?: string[];
+            /** Cards */
+            cards?: {
+                [key: string]: number;
+            };
         };
         /** MessageInput */
         MessageInput: {
@@ -2412,6 +2842,129 @@ export interface components {
         OrderVersion: {
             /** Version */
             version: number;
+        };
+        /** Outcome */
+        Outcome: {
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "stamped" | "card_only" | "already_today" | "too_far" | "low_accuracy" | "too_fast" | "daily_cap" | "bad_key" | "own_shop";
+            /**
+             * Points
+             * @default 0
+             */
+            points: number;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+            /**
+             * First
+             * @default false
+             */
+            first: boolean;
+            stamp?: components["schemas"]["StampRecord"] | null;
+            /**
+             * Level Before
+             * @default newcomer
+             * @enum {string}
+             */
+            level_before: "newcomer" | "regular" | "local_hero";
+            /**
+             * Level After
+             * @default newcomer
+             * @enum {string}
+             */
+            level_after: "newcomer" | "regular" | "local_hero";
+            /** Quests Completed */
+            quests_completed?: string[];
+            /** Milestone */
+            milestone?: number | null;
+            /** Distance M */
+            distance_m?: number | null;
+            /**
+             * Card
+             * @default 0
+             */
+            card: number;
+        };
+        /** PassportView */
+        PassportView: {
+            /** Signed In */
+            signed_in: boolean;
+            /**
+             * Device Only
+             * @default false
+             */
+            device_only: boolean;
+            /** Points */
+            points: number;
+            /** Demo Points */
+            demo_points: number;
+            /** Total */
+            total: number;
+            level: components["schemas"]["LevelView"];
+            streak: components["schemas"]["Streak"];
+            /** Stamps */
+            stamps: components["schemas"]["StampRecord"][];
+            /** Shops */
+            shops: components["schemas"]["ShopStamp"][];
+            /** Areas */
+            areas: components["schemas"]["AreaView"][];
+            /** Quests */
+            quests: components["schemas"]["Quest"][];
+            impact: components["schemas"]["Impact"];
+            /** Perks */
+            perks: components["schemas"]["PerkView"][];
+            /** Leaderboard */
+            leaderboard: boolean;
+            /**
+             * Flagged
+             * @default false
+             */
+            flagged: boolean;
+        };
+        /** Perk */
+        Perk: {
+            /** Id */
+            id: string;
+            /**
+             * Trigger
+             * @enum {string}
+             */
+            trigger: "regular" | "full_card" | "quest_finale" | "rescue_hero";
+            /** Text */
+            text: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        };
+        /** PerkList */
+        PerkList: {
+            /** Perks */
+            perks?: components["schemas"]["Perk"][];
+        };
+        /** PerkView */
+        PerkView: {
+            /** Shop Id */
+            shop_id: string;
+            /** Shop Name */
+            shop_name: string;
+            /** Id */
+            id: string;
+            /**
+             * Trigger
+             * @enum {string}
+             */
+            trigger: "regular" | "full_card" | "quest_finale" | "rescue_hero";
+            /** Text */
+            text: string;
+            /** Demo */
+            demo: boolean;
         };
         /**
          * Personal
@@ -2664,6 +3217,85 @@ export interface components {
             distance_m: number;
             deal: components["schemas"]["Deal"];
         };
+        /** PublicStampInput */
+        PublicStampInput: {
+            /** Shop Id */
+            shop_id: string;
+            /**
+             * Key
+             * @default
+             */
+            key: string;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
+            /** Accuracy */
+            accuracy?: number | null;
+            /** Receipts */
+            receipts?: string[];
+        };
+        /** QrKey */
+        QrKey: {
+            /** Key */
+            key: string;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+        };
+        /** Quest */
+        Quest: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "breakthrough" | "crawl" | "rescue" | "makers" | "festival";
+            /** Festival */
+            festival?: string | null;
+            /** Art */
+            art?: string | null;
+            /** Have */
+            have: number;
+            /** Need */
+            need: number;
+            /** Points */
+            points: number;
+            /** Ends */
+            ends: string;
+            /**
+             * Done
+             * @default false
+             */
+            done: boolean;
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate: boolean;
+            /** Stops */
+            stops?: components["schemas"]["QuestStop"][];
+        };
+        /** QuestStop */
+        QuestStop: {
+            /** Shop Id */
+            shop_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Done
+             * @default false
+             */
+            done: boolean;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+        };
         /** Question */
         Question: {
             /** Question */
@@ -2742,6 +3374,22 @@ export interface components {
             /** Revenue */
             revenue: number;
         };
+        /** Requirement */
+        Requirement: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "points" | "shops" | "repeat" | "areas" | "rescues_or_tips";
+            /** Have */
+            have: number;
+            /** Need */
+            need: number;
+            /** Alt Have */
+            alt_have?: number | null;
+            /** Alt Need */
+            alt_need?: number | null;
+        };
         /** RescueInput */
         RescueInput: {
             /** Items */
@@ -2800,6 +3448,24 @@ export interface components {
             /** Expires */
             expires: number;
             snapshot: components["schemas"]["Deal"];
+        };
+        /** RescueStampInput */
+        RescueStampInput: {
+            /** Shop Id */
+            shop_id: string;
+            /**
+             * Key
+             * @default
+             */
+            key: string;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
+            /** Accuracy */
+            accuracy?: number | null;
+            /** Rescue Id */
+            rescue_id: string;
         };
         /** RescueSuggestion */
         RescueSuggestion: {
@@ -2882,6 +3548,33 @@ export interface components {
              * @default false
              */
             demo: boolean;
+        };
+        /** ShopStamp */
+        ShopStamp: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Area */
+            area: string;
+            /** Area Name */
+            area_name: string;
+            /** Category */
+            category: string;
+            /** Demo */
+            demo: boolean;
+            /** Visits */
+            visits: number;
+            /** Days */
+            days: number;
+            /** Card */
+            card: number;
+            /** Claimed */
+            claimed: number;
+            /** Rescues */
+            rescues: number;
+            /** Last Day */
+            last_day: string;
         };
         /** SimAction */
         SimAction: {
@@ -3096,6 +3789,87 @@ export interface components {
              */
             language: string;
         };
+        /** StampInput */
+        StampInput: {
+            /** Shop Id */
+            shop_id: string;
+            /**
+             * Key
+             * @default
+             */
+            key: string;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
+            /** Accuracy */
+            accuracy?: number | null;
+        };
+        /** StampRecord */
+        StampRecord: {
+            /** Id */
+            id: string;
+            /** Shop Id */
+            shop_id: string;
+            /**
+             * Shop Name
+             * @default
+             */
+            shop_name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "visit" | "first" | "rescue" | "tip";
+            /** Day */
+            day: string;
+            /** Week */
+            week: string;
+            /**
+             * Hour
+             * @default 12
+             */
+            hour: number;
+            /** At */
+            at: number;
+            /**
+             * Points
+             * @default 0
+             */
+            points: number;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+            /**
+             * Area
+             * @default
+             */
+            area: string;
+            /**
+             * Area Name
+             * @default
+             */
+            area_name: string;
+            /**
+             * Category
+             * @default
+             */
+            category: string;
+            /**
+             * Country
+             * @default
+             */
+            country: string;
+        };
+        /** StampResult */
+        StampResult: {
+            outcome: components["schemas"]["Outcome"];
+            passport?: components["schemas"]["PassportView"] | null;
+            /** Receipt */
+            receipt?: string | null;
+        };
         /** StockAlertInput */
         StockAlertInput: {
             /**
@@ -3129,6 +3903,17 @@ export interface components {
              * @enum {string}
              */
             mode: "count" | "delivery";
+        };
+        /** Streak */
+        Streak: {
+            /** Weeks */
+            weeks: number;
+            /** Rain Checks */
+            rain_checks: number;
+            /** This Week */
+            this_week: boolean;
+            /** Row */
+            row: ("done" | "rain" | "missed" | "current")[];
         };
         /** Suggestions */
         Suggestions: {
@@ -3188,6 +3973,11 @@ export interface components {
              * @default false
              */
             mine: boolean;
+            /**
+             * Helpful
+             * @default 0
+             */
+            helpful: number;
         };
         /** TipInput */
         TipInput: {
@@ -3202,6 +3992,31 @@ export interface components {
             tips: components["schemas"]["Tip"][];
             /** Average */
             average?: number | null;
+        };
+        /** TodayArea */
+        TodayArea: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Demo */
+            demo: boolean;
+        };
+        /** TodayFeed */
+        TodayFeed: {
+            /** Day */
+            day: string;
+            /** Next Drop */
+            next_drop: number;
+            area: components["schemas"]["TodayArea"];
+            /** Finds */
+            finds: components["schemas"]["Find"][];
+            /** Candidates */
+            candidates: number;
+            /** Demo */
+            demo: boolean;
+            /** Signed In */
+            signed_in: boolean;
         };
         /** TopItem */
         TopItem: {
@@ -6112,6 +6927,561 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorldReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    owner_qr_key_api_v1_businesses__business_id__qr_key_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrKey"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_qr_key_api_v1_public_shops__business_id__demo_qr_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrKey"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stamp_api_v1_customer_passport_stamps_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StampInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StampResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_api_v1_public_passport_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicStampInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StampResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_v1_public_passport_preview_post: {
+        parameters: {
+            query?: {
+                lat?: number | null;
+                lng?: number | null;
+                tz?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MergeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    merge_api_v1_customer_passport_merge_post: {
+        parameters: {
+            query?: {
+                lat?: number | null;
+                lng?: number | null;
+                tz?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MergeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    passport_api_v1_customer_passport_get: {
+        parameters: {
+            query?: {
+                lat?: number | null;
+                lng?: number | null;
+                tz?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    erase_passport_api_v1_customer_passport_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+        };
+    };
+    claim_api_v1_customer_passport_shops__business_id__claim_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    collect_rescue_api_v1_customer_passport_rescues_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RescueStampInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StampResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_helpful_api_v1_customer_shops__business_id__tips__tip_id__helpful_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                tip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Helpful"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    join_board_api_v1_customer_passport_leaderboard_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoardInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    board_api_v1_customer_passport_board_get: {
+        parameters: {
+            query?: {
+                area?: string;
+                lat?: number | null;
+                lng?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    owner_perks_api_v1_businesses__business_id__perks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerkList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_perks_api_v1_businesses__business_id__perks_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PerkList"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerkList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_perks_api_v1_public_shops__business_id__perks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerkList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    today_api_v1_public_today_get: {
+        parameters: {
+            query: {
+                lat: number;
+                lng: number;
+                tz?: string;
+                currency?: string;
+                place?: string;
+                /** @description Finds shown on earlier days */
+                seen?: string;
+                /** @description Today's finds, to keep them */
+                keep?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayFeed"];
                 };
             };
             /** @description Validation Error */

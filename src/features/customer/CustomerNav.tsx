@@ -1,14 +1,16 @@
 import { Box, Typography, useTheme } from '@mui/material'
-import { Bookmark, MessageCircle, Sparkles } from 'lucide-react'
+import { Bookmark, MessageCircle, Sparkles, Stamp } from 'lucide-react'
 import { customerNavigate } from '../frontdoors/navigation'
 import { useCustomer } from './account'
 import { useAccountCopy } from './copy'
+import { usePassportCopy } from '../passport/copy'
 import './customer.css'
 
-export type CustomerTab = 'ask' | 'chats' | 'saved'
+export type CustomerTab = 'ask' | 'passport' | 'chats' | 'saved'
 
 const tabs: { id: CustomerTab; href: string; Icon: typeof Sparkles }[] = [
   { id: 'ask', href: '/explore/', Icon: Sparkles },
+  { id: 'passport', href: '/explore/passport', Icon: Stamp },
   { id: 'chats', href: '/explore/chats', Icon: MessageCircle },
   { id: 'saved', href: '/explore/saved', Icon: Bookmark },
 ]
@@ -18,6 +20,7 @@ export function CustomerNav({ active }: { active: CustomerTab }) {
   const roles = useTheme().material
   const { unread } = useCustomer()
   const t = useAccountCopy()
+  const passport = usePassportCopy()
   return (
     <Box
       component="nav"
@@ -44,12 +47,12 @@ export function CustomerNav({ active }: { active: CustomerTab }) {
           mx: 'auto',
           maxWidth: 560,
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: `repeat(${tabs.length}, 1fr)`,
           height: 80,
         }}
       >
         {tabs.map(({ id, href, Icon }) => {
-          const label = t[id]
+          const label = id === 'passport' ? passport.nav : t[id]
           const current = id === active
           const badge = id === 'chats' && unread > 0
           return (

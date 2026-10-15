@@ -589,13 +589,17 @@ async def tips(business_id: str, request: Request) -> TipList:
 
 @router.post("/customer/shops/{business_id}/tips", response_model=Tip)
 async def add_tip(business_id: str, body: TipInput, request: Request) -> Tip:
+    from .passport_routes import award_tip  # The passport builds on these routes.
+
     principal = await customer(request)
-    await shared(request, business_id)
+    shop = await shared(request, business_id)
     await enforce_limits(request, [("tips", principal.uid)], anonymous=True)
     await moderate(request, body.text)
     tip = await anyio.to_thread.run_sync(
         community(request).add_tip, principal.uid, display_name(principal), business_id, body
     )
+    # Passed moderation: a pencil stamp in the passport (once per shop, three a day).
+    await award_tip(request, principal.uid, business_id, shop)
     thread_signals(request).wake(business_id)
     return tip
 

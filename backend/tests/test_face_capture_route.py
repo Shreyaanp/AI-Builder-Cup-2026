@@ -54,3 +54,41 @@ def test_capture_reaches_the_worker_through_a_real_async_client(tmp_path: Path, 
         assert seen == [video]
         body = response.json()
         assert body["status"] == "verified" and "embedding" not in str(body)
+
+
+def test_erase_reaches_the_private_worker_with_both_auth_layers(tmp_path: Path, monkeypatch):
+    """Regression: "Delete all my data" sent only the worker token, Cloud Run answered 401 and
+    the whole erasure stopped with 503 (15 Oct 2026)."""
+    seen: list[httpx.Headers] = []
+
+    def worker(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers)
+        return httpx.Response(200, json={"deleted": True})
+
+    real = httpx.AsyncClient
+
+    def with_worker(*args, **kwargs):
+        return real(*args, **{**kwargs, "transport": httpx.MockTransport(worker)})
+
+    async def headers(settings, uid):
+        return {
+            "Authorization": "Bearer worker",
+            "X-Owner": uid,
+            "X-Serverless-Authorization": "Bearer id",
+        }
+
+    monkeypatch.setattr(merchant_routes.httpx, "AsyncClient", with_worker)
+    monkeypatch.setattr(merchant_routes, "worker_headers", headers)
+    settings = Settings(
+        app_env="test",
+        v1_enabled=True,
+        merchant_database=str(tmp_path / "merchant.sqlite3"),
+        recall_path=str(tmp_path / "recall"),
+        face_worker_token="fixture-only",
+        _env_file=None,
+    )
+    with TestClient(create_app(settings, InMemorySessionService())) as client:
+        join(client)
+        response = client.delete("/api/v1/me/data")
+        assert response.status_code == 200, response.text
+        assert seen and seen[0]["x-serverless-authorization"] == "Bearer id"
