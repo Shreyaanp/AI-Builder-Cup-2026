@@ -4,7 +4,7 @@ import httpx
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
-from app import merchant_routes
+from app import erasure, merchant_routes
 from app.main import create_app
 from app.settings import Settings
 from tests.test_photo_location import located_jpeg
@@ -78,7 +78,7 @@ def test_erase_reaches_the_private_worker_with_both_auth_layers(tmp_path: Path, 
         }
 
     monkeypatch.setattr(merchant_routes.httpx, "AsyncClient", with_worker)
-    monkeypatch.setattr(merchant_routes, "worker_headers", headers)
+    monkeypatch.setattr(erasure, "worker_headers", headers)
     settings = Settings(
         app_env="test",
         v1_enabled=True,
