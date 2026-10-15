@@ -33,6 +33,7 @@ const PublicShop = lazy(() => import('../public/PublicShop'))
 const ChatList = lazy(() => import('../customer/Chats').then((m) => ({ default: m.ChatList })))
 const ChatThread = lazy(() => import('../customer/Chats').then((m) => ({ default: m.ChatThread })))
 const Saved = lazy(() => import('../customer/Saved').then((m) => ({ default: m.Saved })))
+const Passport = lazy(() => import('../passport/Passport').then((m) => ({ default: m.Passport })))
 const journeyKey = 'chalkboard.customer.journey'
 export type CustomerLocation = { gps: [number, number] | null; place: FoundPlace | null }
 function firstRun() {
@@ -84,6 +85,7 @@ function CustomerPages() {
     /^\/explore\/chats\/([0-9a-f-]{36}|demo-[a-z0-9-]{1,40})\/([0-9a-f-]{36})\/?$/i.exec(path)
   const chats = /^\/explore\/chats\/?$/.test(path)
   const saved = /^\/explore\/saved\/?$/.test(path)
+  const passport = /^\/explore\/passport\/?$/.test(path)
   // The full list: its own path, or any shared list link with filters (?category=, ?area=…).
   const browse =
     /^\/explore\/browse\/?$/.test(path) ||
@@ -101,7 +103,7 @@ function CustomerPages() {
     window.addEventListener('popstate', restore)
     return () => window.removeEventListener('popstate', restore)
   }, [])
-  if (!id && !thread && !chats && !saved && setup)
+  if (!id && !thread && !chats && !saved && !passport && setup)
     return (
       <CustomerWelcome
         onComplete={(value, picks) => {
@@ -122,9 +124,11 @@ function CustomerPages() {
     ? 'chats'
     : saved
       ? 'saved'
-      : !id && !thread && !browse
-        ? 'ask'
-        : null
+      : passport
+        ? 'passport'
+        : !id && !thread && !browse
+          ? 'ask'
+          : null
   return (
     <>
       <a href="#customer-content" className="skip-link">
@@ -147,6 +151,8 @@ function CustomerPages() {
             <ChatList />
           ) : saved ? (
             <Saved />
+          ) : passport ? (
+            <Passport />
           ) : browse ? (
             <Discover initialLocation={locationChoice} interests={interests} />
           ) : (

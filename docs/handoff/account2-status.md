@@ -1,4 +1,50 @@
-# Account 2 status: customer sign-in, WhatsApp-style chats, following shops
+# Account 2 status: passport + Today's 7 (`feat/passport`)
+
+**Brief:** PLAN-V2 §customer + `docs/research/customer.md` §2.2, §3. **Branch:** `feat/passport`
+from `origin/main` at `3f29084`. Push only `origin/feat/passport`. Ports: web 3447, API 3547,
+Firestore emulator 8567 (start: `java -Duser.language=en -cp <gcloud>/platform/cloud-firestore-emulator/cloud-firestore-emulator.jar com.google.cloud.datastore.emulator.firestore.CloudFirestore start --host=127.0.0.1 --port=8567`, Java 21 JRE under `%LOCALAPPDATA%\AIBuilderCupTools\java21`).
+
+## Progress
+
+| Step                                                                                                    | State | Commit                        |
+| ------------------------------------------------------------------------------------------------------- | ----- | ----------------------------- |
+| 1. Passport backend (`passport.py`, `passport_routes.py`, `rescue_feed.py`) + tests (SQLite + emulator) | done  | `07fc109`, demo QR relax `+1` |
+| 2. Today's 7 backend (`today.py`) + tests                                                               | done  | `ab425ac`                     |
+| 3. Merge `Chalkboard theme` (41f65fb) from origin/main                                                  | done  | `a9d8725`                     |
+| 4. UI: Passport tab, stamp moment, Today's 7 deck, server stamp cards, owner QR key, 15 locales         | done  | see `git log`                 |
+
+**Checks run:** backend 568 passed / 136 skipped (SQLite); passport + Today 45 passed on the
+emulator; `tsc -b`, ESLint clean on changed files; QA "customer navigation in 15 languages"
+passes phone + desktop with the 4-tab nav. Screenshots checked at 390×844 (Today, passport,
+stamp moment). **Not run:** full `npm run check`, axe, the whole QA matrix, Firestore indexes for
+new kinds (they use equality/key lookups only), real-phone GPS.
+
+**Open / next:** weather (Open-Meteo), Wikipedia "history" and busiest-hour cards not built;
+rescue endpoint not on main yet (adapter falls back to labelled demo rescues); owner perk picker UI
+not built (API `GET/PUT /businesses/{id}/perks` exists; demo shops have fixed demo perks); the
+Rescue tab of nav option A is left to the rescue UI owner; story walkthrough test for the passport
+still to write. Local review: `MERCHANT_DATABASE=data/passport-merchant.sqlite3
+DEMO_WORLD_ENABLED=true WEB_PORT=3447 API_PORT=3547 node scripts/backend-dev.mjs` + `npx vite`.
+
+## Resume notes
+
+- **Passport rules** (`backend/app/passport.py`): pure functions over one `PassportState` doc per
+  customer (`Documents` kind `passport`, edited atomically). QR key = HMAC of the session signing
+  secret (`qr_key`); owner gets it at `GET /businesses/{id}/qr-key`, demo shops publicly at
+  `GET /public/shops/{id}/demo-qr`. Demo shop IDs (`demo-*`, generated `demo-w-*`) earn
+  `demo_points`; levels use real + demo total, labelled in UI.
+- **Signed-out**: `POST /public/passport/check` returns a signed receipt (nothing stored);
+  `POST /public/passport/preview` draws the passport from receipts; `POST /customer/passport/merge`
+  applies each receipt once ever (`receipt` docs).
+- **Rescue**: `rescue_feed.live_rescues` calls Codex's `GET /api/v1/public/rescue` in-process if
+  that route exists (lenient `parse_deal`), else derives labelled demo rescues from demo shops'
+  closing time. Owner "Collected" tap: call `passport_routes.award_rescue(request, uid, bid, id)`.
+- Tips: moderation pass → pencil stamp (`award_tip` in `community_routes.add_tip`); helpful marks
+  `POST /customer/shops/{id}/tips/{tip}/helpful`; `Tip.helpful` count added.
+
+---
+
+## Earlier work (previous status)
 
 **Brief:** `docs/handoff/account2-customer.md` · **Audit gap:** A5 · **Story:** STORIES.md (Oct 15
 customer decisions).

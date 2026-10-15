@@ -261,6 +261,7 @@ class Tip(BaseModel):
     created: float
     demo: bool = False
     mine: bool = False
+    helpful: int = 0
 
 
 class Update(BaseModel):
@@ -555,6 +556,7 @@ class Community:
         self.docs.delete("snapshot", bid)
         self.docs.delete_scope("update", bid)
         self.docs.delete_scope("tip", bid)
+        self.docs.delete("perks", bid)
 
     def thread_for_shop(self, uid: str, bid: str) -> dict[str, Any] | None:
         return next((t for t in self.threads(uid) if t["bid"] == bid), None)
@@ -722,8 +724,43 @@ class Community:
         rows = []
         for data in self.docs.scoped("tip", bid, 50):
             owner = data.pop("uid", None)
-            rows.append(Tip.model_validate({**data, "mine": bool(uid) and owner == uid}))
+            voters = data.pop("voters", [])
+            rows.append(
+                Tip.model_validate(
+                    {**data, "mine": bool(uid) and owner == uid, "helpful": len(voters)}
+                )
+            )
         return rows
+
+    def mark_helpful(self, bid: str, tip_id: str, voter: str) -> tuple[str | None, int]:
+        """A signed-in neighbour (not the author) marks a tip helpful, once. Returns the author
+        to reward (None for demo tips, repeats and the author's own tip) and the new count."""
+        found = next((t for t in self.docs.scoped("tip", bid, 50) if t.get("id") == tip_id), None)
+        if found is None:
+            raise HTTPException(404, "Tip not found.")
+        key = f"{bid}\0{found['uid']}" if found.get("uid") else f"{bid}\0{tip_id}"
+        member = hashlib.sha256(voter.encode()).hexdigest()[:16]
+        author: str | None = None
+        count = 0
+
+        def change(data: dict[str, Any] | None) -> tuple[float, dict[str, Any]] | None:
+            nonlocal author, count
+            if data is None or data.get("id") != tip_id:
+                raise HTTPException(404, "Tip not found.")
+            voters = list(data.get("voters", []))
+            count = len(voters)
+            if data.get("uid") == voter:
+                raise HTTPException(409, "You can't mark your own tip helpful.")
+            if member in voters:
+                return None
+            voters.append(member)
+            count = len(voters)
+            author = data.get("uid")
+            return data["created"], {**data, "voters": voters[-500:]}
+
+        with self.lock:
+            self.docs.update("tip", key, bid, change)
+        return author, count
 
     def add_tip(self, uid: str, name: str, bid: str, body: TipInput) -> Tip:
         # One tip per neighbour per shop; a new one replaces the old.
