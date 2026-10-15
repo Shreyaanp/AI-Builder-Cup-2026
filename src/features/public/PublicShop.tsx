@@ -684,7 +684,7 @@ export default function PublicShop({ id }: { id: string }) {
       )}
       {/* Sample shops say so in words, not only with a chip. */}
       {shop.demo && (
-        <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1.5 }}>
+        <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
           {t.demoShopNote}
         </Typography>
       )}
@@ -729,7 +729,7 @@ export default function PublicShop({ id }: { id: string }) {
               key={chip}
               sx={{
                 flexShrink: 0,
-                px: 1.5,
+                px: 2,
                 py: 1,
                 borderRadius: `${shape.sm}px`,
                 bgcolor: roles.secondaryContainer,
@@ -790,7 +790,7 @@ export default function PublicShop({ id }: { id: string }) {
           <HoursList hours={shop.weekly_hours} />
         </Box>
         {shop.location && (
-          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1.5 }}>
+          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
             {shop.location}
           </Typography>
         )}
@@ -850,7 +850,7 @@ export default function PublicShop({ id }: { id: string }) {
                 <ListItem
                   key={product.name + product.unit}
                   divider={index < items.length - 1}
-                  sx={{ py: 1.5, px: 2, gap: 2 }}
+                  sx={{ py: 2, px: 2, gap: 2 }}
                 >
                   <ListItemText
                     primary={product.name}
@@ -953,7 +953,7 @@ export default function PublicShop({ id }: { id: string }) {
           right: 0,
           bottom: 0,
           px: 2,
-          pt: 1.5,
+          pt: 2,
           pb: 'calc(12px + env(safe-area-inset-bottom))',
           bgcolor: roles.surfaceContainer,
           borderTop: `1px solid ${roles.outlineVariant}`,

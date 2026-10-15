@@ -176,7 +176,7 @@ export function Saved() {
               sx={{
                 listStyle: 'none',
                 m: 0,
-                mt: 1.5,
+                mt: 2,
                 mx: -2,
                 px: 2,
                 pb: 1,
@@ -198,7 +198,7 @@ export function Saved() {
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: 0.75,
+                      gap: 1,
                       color: 'inherit',
                       textDecoration: 'none',
                       borderRadius: 2,
@@ -231,7 +231,7 @@ export function Saved() {
           </Box>
           {account.status === 'signed-out' && (
             <Stack
-              spacing={1.5}
+              spacing={2}
               sx={{ mt: 2, p: 2, borderRadius: '20px', bgcolor: roles.surfaceContainerLow }}
             >
               <Typography variant="bodyMedium">{t.deviceOnly}</Typography>
@@ -247,7 +247,7 @@ export function Saved() {
                 {t.noUpdates}
               </Typography>
             ) : (
-              <Stack component="ul" spacing={1.5} sx={{ listStyle: 'none', m: 0, mt: 1.5, p: 0 }}>
+              <Stack component="ul" spacing={2} sx={{ listStyle: 'none', m: 0, mt: 2, p: 0 }}>
                 {feed.updates.map((update, index) => {
                   const shop = shops.get(update.shop_id)
                   const { icon, title, body } = describe(update, shop, t)
@@ -307,7 +307,7 @@ export function Saved() {
                           <Stack
                             direction="row"
                             spacing={1}
-                            sx={{ mt: 0.75, alignItems: 'center', color: roles.primary }}
+                            sx={{ mt: 1, alignItems: 'center', color: roles.primary }}
                           >
                             <Box aria-hidden="true" sx={{ display: 'grid' }}>
                               {icon}

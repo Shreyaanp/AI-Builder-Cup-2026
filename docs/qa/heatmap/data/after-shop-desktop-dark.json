@@ -1,0 +1,26 @@
+{
+ "label": "after",
+ "screen": "shop",
+ "project": "desktop",
+ "theme": "dark",
+ "marks": 54,
+ "words": 117,
+ "busiest": 2,
+ "busyCells": 0,
+ "accentFamilies": 2,
+ "filledActions": 2,
+ "typeSizes": 7,
+ "weights": 4,
+ "spacingValues": 129,
+ "offGrid": 16,
+ "offValues": [
+  "6px×10",
+  "3px×4",
+  "7px×2"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "pageHeight": 1471,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

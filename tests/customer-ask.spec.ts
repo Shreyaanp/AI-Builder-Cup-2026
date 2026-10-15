@@ -92,7 +92,7 @@ test('front door: the conversation opens with real local suggestions and Today�
   ).toEqual([])
   // Today's 7 lives in the conversation, not as a dashboard section.
   await page.getByRole('button', { name: /Today’s 7 near you/ }).click()
-  await expect(page.getByText('Here are today’s 7 finds around Indiranagar.')).toBeVisible()
+  await expect(page.getByRole('region', { name: /^Today near/ })).toBeVisible()
   await expect(page.getByRole('button', { name: 'New conversation' })).toBeVisible()
 })
 

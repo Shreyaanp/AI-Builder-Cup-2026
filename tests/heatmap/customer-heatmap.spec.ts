@@ -66,6 +66,26 @@ const screens: Screen[] = [
     },
   },
   {
+    // New in the conversation design: a follow-up answer and Today's 7 inside the thread.
+    name: 'ask-followup',
+    open: async (page) => {
+      await page.goto('/explore/')
+      await askFor(page, 'coffee')
+      await page.getByRole('button', { name: 'Cheaper?' }).click()
+      await expect(page.getByText('Cheapest first', { exact: true })).toBeVisible()
+      await page.waitForTimeout(1800)
+    },
+  },
+  {
+    name: 'ask-today',
+    open: async (page) => {
+      await page.goto('/explore/')
+      await page.getByRole('button', { name: /Today’s 7 near you/ }).click()
+      await expect(page.getByRole('region', { name: /^Today/ })).toBeVisible()
+      await page.waitForTimeout(1500)
+    },
+  },
+  {
     name: 'shop',
     open: async (page) => {
       await page.goto(`/explore/s/${await demoShop(page)}`)
@@ -260,7 +280,9 @@ function measure() {
   const small: DOMRect[] = []
   const names: string[] = []
   for (const el of controls) {
-    const r = el.getBoundingClientRect()
+    // A text field's tap area is its whole field (MUI InputBase root), not the bare <input>.
+    const field = el.matches('input, textarea') ? el.closest('.MuiInputBase-root') : null
+    const r = (field ?? el).getBoundingClientRect()
     const inline = getComputedStyle(el).display === 'inline' && el.closest('p')
     if (inline) continue
     if (r.width < 47.5 || r.height < 47.5) {

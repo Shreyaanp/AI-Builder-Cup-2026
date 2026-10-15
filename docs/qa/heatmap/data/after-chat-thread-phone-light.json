@@ -1,0 +1,27 @@
+{
+ "label": "after",
+ "screen": "chat-thread",
+ "project": "phone",
+ "theme": "light",
+ "marks": 11,
+ "words": 20,
+ "busiest": 2,
+ "busyCells": 0,
+ "accentFamilies": 2,
+ "filledActions": 0,
+ "typeSizes": 4,
+ "weights": 3,
+ "spacingValues": 43,
+ "offGrid": 9,
+ "offValues": [
+  "5px×6",
+  "1px×1",
+  "2px×1",
+  "10px×1"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "pageHeight": 844,
+ "contrastIssues": 0,
+ "axeViolations": []
+}
