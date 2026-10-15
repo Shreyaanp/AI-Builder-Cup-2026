@@ -52,6 +52,13 @@ class ThreadMessage(MessageInput):
     id: str
     author: Literal["customer", "owner"]
     created: float
+    # Shop-side messages that are not the owner typing: "ai" instant answers from the shop's
+    # listed facts, and "demo" automatic replies from seeded demo shops. Always labelled.
+    kind: Literal["", "ai", "demo"] = ""
+
+
+class CustomerMessageInput(MessageInput):
+    language: str = Field(default="en", pattern=r"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$")
 
 
 class CustomerThread(BaseModel):

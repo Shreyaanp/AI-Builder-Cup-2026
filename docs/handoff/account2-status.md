@@ -1,205 +1,211 @@
-# Account 2 status: Source supplies in the coach chat (Forecast → Source → Sell)
+# Account 2 status: customer sign-in, WhatsApp-style chats, following shops
 
-**Brief:** `docs/handoff/account2-sourcing.md` · **Story:** STORIES.md S4.
-**Branch:** `feat/sourcing`, from `origin/main`, with `origin/main` merged in at `f9d1d16`
-(B40 demo world, STORIES.md). Pushed to `origin/feat/sourcing` only. No AI co-author trailers.
-The previous status (My shop bugs B26–B28, B16) is in git history at `c0e3e5d`.
+**Brief:** `docs/handoff/account2-customer.md` · **Audit gap:** A5 · **Story:** STORIES.md (Oct 15
+customer decisions).
+**Branch:** `feat/customer-chat`, from `origin/main` at `cf63808`. Pushed to
+`origin/feat/customer-chat` only. The previous status (sourcing, S4) is in git history at
+`432933c`.
 
-**Status: done.** The story works end to end on a phone in the offline coach, and is wired for
-Gemini text and voice. Live Gemini and live voice were **not** run (no model key in this session);
-see "Not verified" below.
+**Status: done.** The customer story works end to end on a phone (390×844-class Pixel 7
+emulation), in local auth mode with the offline AI. Live Google sign-in and live Gemini moderation
+were **not** run; see "Not verified" below.
 
 ## Commits
 
-| Commit    | What                                                                                                                                                                                                                     |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `0827985` | Backend: `sourcing.py`, five coach tools, prompt rules (sourcing and voice), offline script, stream events, supplier fields and `supplier_orders` in both stores, order routes, pytest.                                  |
-| `813331a` | UI: searching radar, supplier carousel, order card with one-tap Send, reply announcement, Orders tile and sheet with the supplier thread, Prep plan Running low tile, sourcing copy in 10 locales, regenerated contract. |
-| `aa1848d` | Tests: the phone browser story (`tests/sourcing.spec.ts`) and 8 live eval scenarios in `scripts/coach_eval.py`.                                                                                                          |
-| `f9d1d16` | Merge `origin/main` (clean).                                                                                                                                                                                             |
-| `13cd0fd` | STORIES S4 steps 1 and 8: "Mark as received" opens a stock update in the usual review, and the Prep plan says "<item> runs out <day>".                                                                                   |
+| Commit    | What                                                                                                                                                                                                                                                  |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `62fed86` | Backend: `community.py` (profiles, owned threads, follows, update feed, tips, document store with SQLite and Firestore adapters), `community_routes.py`, the customer auth cookie, personalised `/discover/ask`, pytest.                              |
+| `88a8bf0` | Customer app: **Ask · Chats · Saved** bottom navigation, Google sign-in sheet, chat list and thread, Saved (following and updates), tips, profile sheet, motion CSS, regenerated contract.                                                            |
+| `249ce26` | Wiring: the For you group and the "Remembered" chip in Ask; Follow and Tips on the shop page; the shop chat's "Ask the owner" now signs in and opens the thread in Chats.                                                                             |
+| `c8cfbf4` | Owner Messages shows neighbour tips (average and demo labels).                                                                                                                                                                                        |
+| `9610b06` | Phone story test and screenshots `C-1..7`. Demo replies now understand plurals and show prices with their decimals. The owner inbox preview shows the person's last words. The customer tests use sign-in and the worktree's own port. Two axe fixes. |
 
 ## How it works
 
-**Tools** (`coordinator.py`, registered in `agent.py` for text and voice):
+**1. Sign-in to chat (A5)**
 
-- `find_suppliers(item, quantity?, unit?)`: searches shared shops within 15 km of the shop pin that
-  are flagged `supplier`, or that sell the item in a bulk unit (kg, g, litre, ml, pack, box, dozen,
-  bottle). Results are ranked by distance (50%), price per requested unit (40%) and availability.
-  It returns up to 5 cards plus `cheapest_id` and `nearest_id`.
-- `prepare_order(supplier_id, items[], note?, delivery?, replaces_order_id?)`: builds a **draft**
-  order (lines, estimated total in the shop currency, the supplier's next delivery slot). Nothing is
-  sent.
-- `get_orders()`, `message_supplier(order_id, text)`, `cancel_order(order_id)`. The message and the
-  sent-order cancellation are prepared as **pending**, and the owner taps Send. A draft that was
-  never sent is simply dropped.
+- Browsing, Ask and the shop's instant answers stay anonymous.
+- Messaging an owner, following across devices and posting tips need Google sign-in:
+  - Firebase is used when `/config` says `auth_mode: firebase`, through the same lazy Firebase
+    SDK as the owner app;
+  - in local and test mode, an explicit signed `customer` cookie stands in for it
+    (`POST /customer/session`, which returns 404 when Firebase is on).
+- The server checks every request:
+  - a customer thread is an ordinary shop inquiry, and `community.py` records which customer
+    owns it together with its capability token;
+  - the token never reaches the browser;
+  - another customer's thread returns 404.
+- Anonymous threads created before this change stay readable on the device that has them
+  (`CustomerConversation`). New ones need sign-in.
 
-**One tap:** `POST /businesses/{id}/orders/{oid}/send` with the order `version` (stale taps get a
-409). Other routes: list, read, discard, messages (the owner typing in the thread is its own
-confirmation), read, received.
+**2. Chats**
 
-**Supplier conversation:**
+- **List:** shop art or photo, last message, time, unread badge, and a Demo shop chip. The Chats
+  tab carries the total unread count.
+- **Thread:**
+  - full screen like WhatsApp, with the shop in the header (a shared-element avatar morph from
+    the list);
+  - bubbles grouped by author, a send animation and a "Sending…/Delivered/Not sent, tap to retry"
+    state;
+  - a typing indicator for demo shops, and "Sent. The owner replies here…" for real ones.
+- **Labels:** an **AI instant answer** (dashed bubble, "From the shop's listed facts") is posted
+  when the shop's facts answer the question. Owner replies are labelled Owner. Demo shops
+  (`demo-*` IDs) reply automatically after about 2.5 s with a **Demo reply · Automatic: this is
+  a sample shop** that names the item asked about, says if it is sold out, or gives the hours.
+- **Live updates:** owner replies arrive over the existing thread signal SSE
+  (`…/threads/{id}/stream`), with 5 s polling when the stream fails. Owner close or block shows
+  "This conversation is closed."
+- **One thread per shop:** starting again continues the same thread.
 
-- **Demo suppliers** answer 4 s after a send. The reply is created lazily on the next read, with no
-  background task that a scaled-to-zero Cloud Run instance could lose. It is always marked
-  `auto: true` and shown as "Automatic demo reply". The replies are deterministic and plausible:
-  - "Confirmed: 20 kg Wheat flour, 5 kg Sugar, ₹1,145. Delivering today at 16:00."
-  - an out-of-stock line asks whether to send the rest
-  - Sunday gets "we don't deliver on Sunday"
-  - "by 8am" gets "Yes, we can deliver by 8:00"
-  - a cancellation is acknowledged
-- **Real Chalkboard suppliers** get the request in their existing **Messages inbox**, as an inquiry
-  from "<shop> (order request)" with the ordering shop's phone as the contact. Their replies are
-  mirrored back into the order thread through the inquiry's customer token, which reuses
-  `threads.py` and the inbox unchanged. The token never reaches the browser (`public_order`).
+**3. Follow and the updates feed**
 
-**Demo suppliers anywhere:** when nothing within range stocks the item, `SupplierGenerator`
-creates 4 suppliers near the pin:
+- **Follow:**
+  - the button sits on the shop page and on Ask cards;
+  - signed in, follows are stored on the server; signed out, they live in `localStorage` and
+    merge into the account on sign-in.
+- **The feed** (`GET /public/updates?shops=…`) comes from real shop data:
+  - each read compares a snapshot of the public shop with the last one, producing price
+    drop or new price, back in stock, new item, and menu confirmed today;
+  - demo shops also get seeded updates, labelled **Demo update**.
+- **Saved** shows a Following row and the Updates feed:
+  - the cards stagger in;
+  - tapping one uses a view transition into the shop.
 
-- **Source:** Gemini with a JSON schema in Gemini mode, and the deterministic fixture offline or on
-  any failure.
-- **Roles:** dry goods; dairy and fresh; cash and carry with packaging, cleaning and stationery;
-  coffee and tea. This covers the brief's common categories in one cheap call.
-- **Requested item:** at least three of them always stock it.
-- **Local feel:** names, currency and price level come from the shop's currency (INR, SGD, MYR,
-  IDR, JPY and THB have their own tables; others use approximate rates).
-- **Storage:** through `seed_demo_shop` (labelled `demo`, owned by a fixed demo owner,
-  `demo-sup-<cell>-<n>` IDs, one set per ~2 km cell), so they persist and nearby shops reuse them.
-  They are hidden from the customer Explore list.
+**4. Personalisation**
 
-**UI (phone first):**
+- Ask stores only first-person statements:
+  - "I'm vegetarian", "I only eat halal", "my budget is under ₹100", "reply in Hindi";
+  - a search for "veg biryani" is not a preference.
+- It also keeps recent searches and follows.
+- `/discover/ask` boosts matching shops and adds a **For you** group, with a reason on each card
+  ("You follow this shop", "Vegetarian options", "Within your budget").
+- A "Remembered: …" chip opens the profile sheet, which lists everything stored and clears
+  preferences and searches in one tap.
 
-- **Searching:** a radar pulse with shimmering placeholders where the cards land.
-- **Supplier cards:** stagger in as a snap-scrolling carousel that bleeds to the screen edge so
-  the next card peeks. Each card has a rank, name, Demo chip, distance and delivery, price per
-  unit, the estimate for the quantity, "Also stocks", the minimum order and **Choose** (which
-  starts "Order from number N: …" in the composer).
-- **Order card:** lines, estimated total, localised delivery time and the hint "Nothing is sent
-  until you tap Send. No payment". Send makes the card lift while a paper plane flies off, then
-  shows "Sent to … / Waiting for the supplier…". The supplier's reply fades in on the card, and
-  the coach announces it in the chat.
-- **Orders tile (My shop):** shows the open count, the latest status and an unread badge. Its
-  sheet lists the orders, opens the thread (bubbles, auto-reply labels, composer) and has
-  **Mark as received**.
-- **Motion:** all of it uses the theme's M3 tokens (emphasized-decelerate enter) and turns off
-  under reduced motion.
+**5. Neighbour tips**
+
+- Up to 280 characters with an optional 1–5 star rating; one tip per customer per shop.
+- Moderation:
+  - a basic filter always runs (abuse words in English and Hindi, links, phone numbers);
+  - Gemini safety runs on top when live, and the tip is refused (503) if that check fails.
+- Demo shops get two seeded tips, labelled **Demo tip**.
+- The owner sees tips under Messages.
+
+**Motion:**
+
+- M3 emphasized easing for rise, send, receive, pop, typing dots and the nav indicator, plus view
+  transitions between screens.
+- Everything turns off under `prefers-reduced-motion`; a test checks that no animation is running.
 
 ## Decisions I made
 
-1. **Separate copy module** (`src/features/sourcing/copy.ts`): all 10 current locales, with an
-   English fallback for any locale added later. Codex's Hindi, Bengali, Telugu, Marathi and Kannada
-   have not reached main yet, so they show English sourcing strings until someone adds them there.
-   `choose`, `chooseDraft`, `sendTo` and `runsOut` are English in every locale for now.
-2. **Lazy demo replies** instead of a background timer (see above). The coach chat polls the order
-   for up to 45 s after Send, and the open thread polls every 2 s.
-3. **Supplier fields** `supplier`, `supplies[]` and `min_order` were added to `BusinessFields`. The
-   delivery terms reuse `delivery_note`. Lead time and delivery time are `custom_facts` on demo
-   suppliers. All of these are omitted from records when unset, so existing digests are unchanged.
-4. **No shop pin:** the search uses the currency's city centre (INR → Bengaluru, SGD → Singapore…)
-   and the cards say "Distances are approximate".
-5. **Only bulk units count** for a non-supplier shop, so a café selling coffee by the cup is not
-   offered as a coffee supplier.
-6. **Running low / runs out (Prep plan):** there is no ingredient inventory, and the demo shops have
-   no stock counts. So the tile shows only for menu items with a stock count: the first forecast day
-   on which the week's demand passes the stock ("Croissant runs out Thu"), or a stock of at most 5
-   when there is no forecast. **Find suppliers** sends "My <item> is running low…" to the coach in
-   one tap (`startCoachDraft(text, { send: true })`). For the flour demo, say it to the coach.
-7. **Mark as received** opens a normal inventory proposal (stock plus the delivered quantity, back
-   in stock) for menu items that match the delivered lines. The owner confirms it like any change.
-8. **Voice:** the same tools are registered for `make_agent(live=True)`, and the instruction now has
-   a Voice section ("you have exactly the same tools… never say you can't access the menu"). Cards
-   from a voice turn render in the chat because the voice socket uses the same `receive`.
+1. **Customer data sits beside the merchant store** (`community.py`, with its own small document
+   store), so the owner data model and digests are unchanged.
+2. **Threads reuse inquiries.** The owner inbox, block, close and translation work unchanged. The
+   customer's Google name and email become the inquiry's name and contact.
+3. **The demo reply is scheduled in-process** (an asyncio task that holds its own reference). If a
+   scaled-to-zero instance drops it, the thread simply has no demo reply; nothing breaks. The
+   sourcing flow's lazy-on-read approach would be more robust on Cloud Run, if that is needed.
+4. **Copy is English only** (`src/features/customer/copy.ts`). Other locales fall back to it.
+5. **The owner inbox preview** shows the latest message from a person, not the AI's instant
+   answer.
+6. **Small out-of-scope fix:** the shop page's "Good to know" chip row scrolls sideways, so it
+   needed `tabIndex={0}` to pass axe (`scrollable-region-focusable`).
 
 ## Tests
 
-- **Backend:** `pytest` **465 passed**, 85 skipped (Firestore-emulator tests). `ruff check`,
-  `ruff format --check` and `mypy app` are clean. `tests/test_sourcing.py` (9 tests) covers:
-  - units and local names (atta, chini)
-  - demo generation once, then reuse
-  - one-tap send with the lazy demo reply and the stale-version 409
-  - change, Sunday question and cancel
-  - a real supplier's inbox round trip
-  - the offline phrasings, the stream events and receive → stock review
-  - HTTP end to end, from "running low" to the typed follow-up
-- **Frontend:** `tsc -b`, `npm run build` and `npm run test:hooks` pass, and Prettier is clean.
-  `eslint` passes on tracked code. Locally, `npm run lint` also scans the git-ignored
-  `docs/launch/source/dist` vendor bundle (`gsap.min.js`) and fails there; that is not part of the
-  repo.
-- **Browser (phone, Pixel 7):** `tests/sourcing.spec.ts` passes. Full phone suite: **157 passed**, 3 skipped,
-  9 failed:
-  - **B27 tile grid** (`myshop.spec.ts:120`): it measured the Prep plan tile while the forecast
-    was still loading, under 4 parallel workers. Run alone it **passes 3 of 3**, so I treat it as a
-    timing flake, not a regression.
-  - **The other 8 couldn't run correctly here.** They hard-code `http://127.0.0.1:3200`:
-    - customer pages: `customer.spec.ts` ×2, `demo-flow`, `i18n:80`, `v1-a11y` customer page ×2 and
-      `v1:172`
-    - the network allow-list: `starter:83`
+- **Backend:**
+  - `pytest` **485 passed**, 94 skipped (Firestore emulator);
+  - `ruff check`, `ruff format --check` and `mypy app` are clean;
+  - `tests/test_community.py` has 10 tests: the sign-in gate, owned threads with the AI answer and
+    the labelled demo reply, ownership across customers, the follow feed detecting real changes,
+    moderated and seeded tips that the owner sees, stated preferences, personalised ask, the
+    SQLite document scope, and demo-reply plurals.
+- **Frontend:** `tsc -b`, eslint and Prettier are clean on the changed code.
+- **Browser (phone):**
+  - `tests/customer-chat.spec.ts` covers the whole story with axe on every screen, plus reduced
+    motion and personalisation (3 tests);
+  - `tests/customer.spec.ts` was rewritten for the signed-in flow: live two-way chat with the
+    owner, error recovery, polling fallback and block. It also stopped hard-coding port 3200.
+  - Both pass on phone and desktop. Full phone suite: see "Full suite" below.
+- **Setup:** the story test needs the Singapore demo shops in the dev database. It skips with a
+  hint when they are missing:
 
-    Another session owned 3200 and 3300, so I ran on 3210 and 3310, and those links went to the
-    other session's server and database. **They need a rerun on the standard ports** (the normal
-    `npm run test:ui`). None of them touches sourcing code.
-- **Live eval** (`scripts/coach_eval.py`, needs a Gemini key): 8 new sourcing scenarios, not run in
-  this session.
-- I ran everything against my own servers (`127.0.0.1:3210` and `3310`), because another session
-  owned 3200 and 3300.
+  ```
+  cd backend && uv run python -m scripts.seed_demo_shops --sqlite data/merchant.sqlite3 --city singapore
+  ```
+
+## Full suite
+
+Full phone suite on my own ports (`WEB_PORT=3447`, `API_PORT=3547`): **11 failed**, none in the
+customer chat code. My capture cut off the pass/skip totals line.
+
+- **Hard-coded `http://127.0.0.1:3200` (8)**, so they reach another session's server or nothing:
+  `demo-flow:28`, `i18n:80`, `stories/s1`, `s2`, `s3`, `s7`, `v1:172`, and the network allow-list
+  in `starter:83`. They need a rerun on the standard ports, or the same `baseURL` fix I applied to
+  `customer.spec.ts`.
+- **`discover:59` (open now → "No matches")**: caused by my local seeding of the Singapore demo
+  shops, because the demo bakery is open now. `demo-shops.spec.ts` keeps demo shops out of the
+  shared dev database on purpose, so run the story test against its own database or unseed after.
+- **`myshop:120` (B27 tile grid)**: the known parallel-load timing flake from the last status.
+- **`story-page-recovery:6`**: stale on main since `/explore/` became the Ask home (`45be345`).
+  **Fixed** here, and it now passes.
+
+`tests/customer-chat.spec.ts` (3 tests) and `tests/customer.spec.ts` (10 tests, phone and
+desktop) pass.
 
 ## Not verified (needs a person or a key)
 
-- Live Gemini text: whether the model calls `find_suppliers` / `prepare_order` as the prompt says.
-  Run `scripts/coach_eval.py`.
-- Live voice: the instruction and tool registration are in place, but I could not reproduce or
-  confirm account 1's "I can't access your menu". The declarations are the same Python functions as
-  text mode, and the Voice section of the prompt tells the model to call them.
-- Gemini-generated demo suppliers: the schema and fallback are tested offline only.
-- A real phone: the screenshots come from Chrome at 390×844 with touch emulation.
-- The Firestore adapter's `supplier_orders` / `save_supplier_order`: written to mirror SQLite, and
-  type-checked, but not run against the emulator.
+- Real Google sign-in through Firebase in a hosted build. The code path is the owner app's.
+- Gemini safety moderation of tips: only the basic filter and the fixture path ran.
+- `FirestoreDocuments` (the customer data store when hosted): type-checked and mirrors SQLite,
+  but it was not run against the emulator.
+- A real phone. The screenshots come from Chrome with Pixel 7 emulation.
 
-## Screenshots (`docs/bugs/`, 390×844, offline coach, en-IN)
+## Screenshots (`docs/stories/`, phone, en-SG, offline AI)
 
-- `SRC-0-searching.png`: radar and placeholders.
-- `SRC-1-suppliers.png`: the carousel with Demo chips.
-- `SRC-2-order-request.png`: the order card before the tap.
-- `SRC-3-sending.png`: the send flight, card sent and waiting.
-- `SRC-4-supplier-replied.png`: the confirmed card with the automatic demo reply, announced in the
-  chat.
-- `SRC-5-supplier-thread.png`: the thread with "Can you deliver by 8am?" and its reply.
-- `SRC-6-orders-tile.png`, `SRC-7-orders-sheet.png`, `SRC-8-received.png`: My shop.
+- `C-1-ask.png`: Ask with the Ask · Chats · Saved bar.
+- `C-2-results.png`: curated results, with the demo bakery first and a Follow button on the card.
+- `C-3-shop-followed.png`: the shop page after Follow, signed out (saved on this device).
+- `C-4-sign-in.png`: "Ask the owner" asks for Google sign-in and explains why.
+- `C-5-thread-demo-reply.png`: the thread, with the AI instant answer then the labelled demo reply.
+- `C-6-chats.png`: Chats with the thread, Demo shop chip and last message.
+- `C-7-saved-updates.png`: Saved, with the Following row and the Demo update feed.
+- `C-8-for-you.png`, `C-9-profile.png`: "Remembered: Vegetarian", the For you group and the
+  profile sheet.
 
-## Demo script (say or type these, in order)
+## Demo script (phone, 390×844)
 
-1. Sign in, then create the shop: "Shop name: Asha Bakery; category: Bakery; location: Indiranagar,
-   Bengaluru". Confirm the review.
-2. **"My flour is running low."** The radar appears and 3 demo supplier cards slide in. The coach
-   says they are demo suppliers.
-3. **"The second one looks good, order 20 kg flour and 5 kg sugar from them."** The order request
-   card appears.
-4. Tap **Send** (one tap). The card flies into "Sent", and about 4 s later the supplier's
-   automatic demo reply appears on the card and in the chat.
-5. **"Can you deliver by 8?"**: the coach prepares a message to the supplier on the order card,
-   and you tap Send (offline too). Or tap **Open conversation** and type it. Either way, the
-   supplier replies "Yes, we can deliver by 8:00".
-6. **My shop → Orders:** the tile shows "1 open · Confirmed". Open it, open the order, then
-   **Mark as received**.
-7. **By voice:** tap the mic and say "My sugar is running low" (Gemini mode). The same cards appear.
-
-**Extra phrasings** (handled by the prompt; the offline script also handles them):
-
-- "order 2 kg flour from the cheapest one"
-- "change the quantity to 15" (on a draft)
-- "order the same as last time"
-- "ask them if they deliver on Sunday"
-- "cancel that order"
+1. Open `/explore/`. Ask **"croissant in Tiong Bahru"**. The thinking motion plays, then
+   Crumb & Courtyard Bakery (Demo) is the best match.
+2. Tap the card. The shop opens with a shared-element transition. Tap **Follow**: signed out, it
+   is saved on this device.
+3. Tap **Chat with the shop → Hours** for an instant answer with no account.
+4. Tap **Ask the owner**. The sheet explains why sign-in is needed; tap **Continue with Google**.
+   Type "Do you have butter croissants this afternoon?" and tap **Send message**.
+5. The thread opens in Chats: an **AI instant answer**, the typing dots, then the **Demo reply**
+   ("Yes, Butter croissant is on today (SGD 4.50 per piece)…").
+6. Tap Back: **Chats** lists the thread. Tap **Saved**: the bakery is under Following, and the
+   feed shows Menu checked today, Price drop, Back in stock and New on the menu, all labelled Demo
+   update.
+7. Back on **Ask**, say **"I'm vegetarian, croissant in Tiong Bahru"**. The chip shows "Remembered:
+   Vegetarian" and a **For you** group appears. Tap **Manage** to see and clear what is stored.
+8. On the shop page, scroll to **Neighbour tips**, post a tip with a rating, then open the owner
+   app's **Messages** to see it with the demo tips.
 
 ## Resume steps
 
 ```
-git fetch origin && git switch feat/sourcing && git pull
-cd backend && uv run pytest tests/test_sourcing.py -q
-npm run dev:backend & npm run dev        # then follow the demo script at 390×844
-npx playwright test tests/sourcing.spec.ts --project=phone
-GEMINI_BACKEND=vertex GOOGLE_CLOUD_PROJECT=... uv run python -m scripts.coach_eval   # live eval
+git fetch origin && git switch feat/customer-chat && git pull
+cd backend && uv run python -m scripts.seed_demo_shops --sqlite data/merchant.sqlite3 --city singapore
+cd backend && uv run pytest tests/test_community.py -q
+$env:WEB_PORT='3447'; $env:API_PORT='3547'
+npx playwright test tests/customer-chat.spec.ts tests/customer.spec.ts --project=phone
 ```
 
-Next, if wanted: Hindi and other new-locale sourcing copy once Codex's locales land; an ingredient
-stock list so "flour runs out Thursday" can come from real stock; live voice verification.
+Next, if wanted:
+
+- customer copy in the other locales;
+- push notifications for owner replies (the unread badge only updates in the app);
+- make the demo reply lazy-on-read like the supplier replies, for Cloud Run;
+- run the Firestore adapter against the emulator.

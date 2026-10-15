@@ -928,6 +928,272 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Me */
+        get: operations["me_api_v1_customer_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Local Sign In
+         * @description Local and test mode only: stands in for Google sign-in (404 when Firebase is on).
+         */
+        post: operations["local_sign_in_api_v1_customer_session_post"];
+        /** Local Sign Out */
+        delete: operations["local_sign_out_api_v1_customer_session_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/follows/{business_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Follow */
+        put: operations["follow_api_v1_customer_follows__business_id__put"];
+        post?: never;
+        /** Unfollow */
+        delete: operations["unfollow_api_v1_customer_follows__business_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Preferences */
+        put: operations["preferences_api_v1_customer_preferences_put"];
+        post?: never;
+        /** Clear Preferences */
+        delete: operations["clear_preferences_api_v1_customer_preferences_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Updates */
+        get: operations["updates_api_v1_public_updates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chats */
+        get: operations["chats_api_v1_customer_threads_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/shops/{business_id}/thread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shop Thread
+         * @description The signed-in customer's existing thread with this shop, if any.
+         */
+        get: operations["shop_thread_api_v1_customer_shops__business_id__thread_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/shops/{business_id}/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Thread */
+        post: operations["start_thread_api_v1_customer_shops__business_id__threads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/shops/{business_id}/threads/{inquiry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Thread */
+        get: operations["get_thread_api_v1_customer_shops__business_id__threads__inquiry_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Thread */
+        delete: operations["delete_thread_api_v1_customer_shops__business_id__threads__inquiry_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/shops/{business_id}/threads/{inquiry_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Message */
+        post: operations["post_message_api_v1_customer_shops__business_id__threads__inquiry_id__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/shops/{business_id}/threads/{inquiry_id}/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Seen */
+        post: operations["seen_api_v1_customer_shops__business_id__threads__inquiry_id__seen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/shops/{business_id}/threads/{inquiry_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream Thread */
+        get: operations["stream_thread_api_v1_customer_shops__business_id__threads__inquiry_id__stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/shops/{business_id}/tips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tips */
+        get: operations["tips_api_v1_public_shops__business_id__tips_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/shops/{business_id}/tips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Tip */
+        post: operations["add_tip_api_v1_customer_shops__business_id__tips_post"];
+        /** Delete Tip */
+        delete: operations["delete_tip_api_v1_customer_shops__business_id__tips_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/tips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Owner Tips */
+        get: operations["owner_tips_api_v1_businesses__business_id__tips_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/discover/place": {
         parameters: {
             query?: never;
@@ -1313,6 +1579,7 @@ export interface components {
             mode: "ai" | "keywords";
             /** Groups */
             groups: components["schemas"]["Group"][];
+            personal?: components["schemas"]["Personal"] | null;
         };
         /** AvailabilityRequest */
         AvailabilityRequest: {
@@ -1430,6 +1697,16 @@ export interface components {
             /** Consent */
             consent: boolean;
         };
+        /** ChatSummary */
+        ChatSummary: {
+            shop: components["schemas"]["ShopCard"];
+            thread: components["schemas"]["CustomerThread"];
+            /**
+             * Unread
+             * @default 0
+             */
+            unread: number;
+        };
         /** CoachTurn */
         CoachTurn: {
             /** Message */
@@ -1466,6 +1743,16 @@ export interface components {
             label: string;
             /** Value */
             value: string;
+        };
+        /** CustomerMessageInput */
+        CustomerMessageInput: {
+            /** Text */
+            text: string;
+            /**
+             * Language
+             * @default en
+             */
+            language: string;
         };
         /** CustomerThread */
         CustomerThread: {
@@ -1609,6 +1896,13 @@ export interface components {
             /** Places */
             places: components["schemas"]["DiscoveryPlace"][];
         };
+        /** Feed */
+        Feed: {
+            /** Shops */
+            shops: components["schemas"]["ShopCard"][];
+            /** Updates */
+            updates: components["schemas"]["Update"][];
+        };
         /** Forecast */
         Forecast: {
             /**
@@ -1646,7 +1940,7 @@ export interface components {
              * Id
              * @enum {string}
              */
-            id: "best" | "open" | "more";
+            id: "for_you" | "best" | "open" | "more";
             /** Places */
             places: components["schemas"]["Pick"][];
         };
@@ -1747,6 +2041,14 @@ export interface components {
             /** Followups */
             followups?: string[];
         };
+        /** LocalSignIn */
+        LocalSignIn: {
+            /**
+             * Name
+             * @default Asha
+             */
+            name: string;
+        };
         /** Match */
         Match: {
             /** Id */
@@ -1761,10 +2063,36 @@ export interface components {
              */
             management: "you" | "other" | "unclaimed";
         };
+        /** Me */
+        Me: {
+            /** Signed In */
+            signed_in: boolean;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Mode
+             * @default local
+             */
+            mode: string;
+            profile?: components["schemas"]["Profile"] | null;
+        };
         /** MessageInput */
         MessageInput: {
             /** Text */
             text: string;
+        };
+        /** NewThread */
+        NewThread: {
+            /** Text */
+            text: string;
+            /**
+             * Language
+             * @default en
+             */
+            language: string;
         };
         /** Observation */
         Observation: {
@@ -1798,6 +2126,22 @@ export interface components {
         OrderVersion: {
             /** Version */
             version: number;
+        };
+        /**
+         * Personal
+         * @description What the signed-in customer's profile changed: never applied when signed out.
+         */
+        Personal: {
+            /**
+             * Applied
+             * @default []
+             */
+            applied: string[];
+            /**
+             * Saved
+             * @default []
+             */
+            saved: string[];
         };
         /** Pick */
         Pick: {
@@ -1863,6 +2207,11 @@ export interface components {
              * @default 0
              */
             score: number;
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: string[];
         };
         /** PlaceMatch */
         PlaceMatch: {
@@ -1913,6 +2262,26 @@ export interface components {
              */
             unit: string;
         };
+        /** Preferences */
+        Preferences: {
+            /**
+             * Vegetarian
+             * @default false
+             */
+            vegetarian: boolean;
+            /**
+             * Halal
+             * @default false
+             */
+            halal: boolean;
+            /** Budget */
+            budget?: number | null;
+            /**
+             * Language
+             * @default
+             */
+            language: string;
+        };
         /** ProductFields */
         ProductFields: {
             /** Name */
@@ -1941,6 +2310,19 @@ export interface components {
             available: boolean;
             /** Previous Unit */
             previous_unit?: string | null;
+        };
+        /** Profile */
+        Profile: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Follows */
+            follows?: string[];
+            preferences?: components["schemas"]["Preferences"];
+            /** Searches */
+            searches?: components["schemas"]["Search"][];
         };
         /** ProposalRequest */
         ProposalRequest: {
@@ -2023,10 +2405,51 @@ export interface components {
             /** Amount */
             amount: number;
         };
+        /** Search */
+        Search: {
+            /** Q */
+            q: string;
+            /** At */
+            at: number;
+        };
+        /** Seen */
+        Seen: {
+            /** Message Id */
+            message_id: string;
+        };
         /** ShareRequest */
         ShareRequest: {
             /** Public */
             public: boolean;
+        };
+        /** ShopCard */
+        ShopCard: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Category
+             * @default
+             */
+            category: string;
+            /**
+             * Location
+             * @default
+             */
+            location: string;
+            /**
+             * Currency
+             * @default
+             */
+            currency: string;
+            /** Photo Url */
+            photo_url?: string | null;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
         };
         /** SimAction */
         SimAction: {
@@ -2288,6 +2711,49 @@ export interface components {
             author: "customer" | "owner";
             /** Created */
             created: number;
+            /**
+             * Kind
+             * @default
+             * @enum {string}
+             */
+            kind: "" | "ai" | "demo";
+        };
+        /** Tip */
+        Tip: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Text */
+            text: string;
+            /** Rating */
+            rating?: number | null;
+            /** Created */
+            created: number;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+            /**
+             * Mine
+             * @default false
+             */
+            mine: boolean;
+        };
+        /** TipInput */
+        TipInput: {
+            /** Text */
+            text: string;
+            /** Rating */
+            rating?: number | null;
+        };
+        /** TipList */
+        TipList: {
+            /** Tips */
+            tips: components["schemas"]["Tip"][];
+            /** Average */
+            average?: number | null;
         };
         /** TopItem */
         TopItem: {
@@ -2314,6 +2780,44 @@ export interface components {
         TranslationInput: {
             /** Language */
             language: string;
+        };
+        /** Update */
+        Update: {
+            /** Id */
+            id: string;
+            /** Shop Id */
+            shop_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "price_change" | "back_in_stock" | "new_item" | "menu_confirmed";
+            /**
+             * Item
+             * @default
+             */
+            item: string;
+            /** Price */
+            price?: number | null;
+            /** Old Price */
+            old_price?: number | null;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+            /**
+             * Currency
+             * @default
+             */
+            currency: string;
+            /** Created */
+            created: number;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -4217,6 +4721,615 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    me_api_v1_customer_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+        };
+    };
+    local_sign_in_api_v1_customer_session_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocalSignIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    local_sign_out_api_v1_customer_session_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+        };
+    };
+    follow_api_v1_customer_follows__business_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unfollow_api_v1_customer_follows__business_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preferences_api_v1_customer_preferences_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Preferences"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_preferences_api_v1_customer_preferences_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+        };
+    };
+    updates_api_v1_public_updates_get: {
+        parameters: {
+            query?: {
+                shops?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feed"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    chats_api_v1_customer_threads_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSummary"][];
+                };
+            };
+        };
+    };
+    shop_thread_api_v1_customer_shops__business_id__thread_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSummary"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_thread_api_v1_customer_shops__business_id__threads_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewThread"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_thread_api_v1_customer_shops__business_id__threads__inquiry_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                inquiry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_thread_api_v1_customer_shops__business_id__threads__inquiry_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                inquiry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_message_api_v1_customer_shops__business_id__threads__inquiry_id__messages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                inquiry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerMessageInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    seen_api_v1_customer_shops__business_id__threads__inquiry_id__seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                inquiry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Seen"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_thread_api_v1_customer_shops__business_id__threads__inquiry_id__stream_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                inquiry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Durable conversation snapshot SSE with heartbeat comments. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tips_api_v1_public_shops__business_id__tips_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_tip_api_v1_customer_shops__business_id__tips_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TipInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tip"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_tip_api_v1_customer_shops__business_id__tips_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    owner_tips_api_v1_businesses__business_id__tips_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipList"];
                 };
             };
             /** @description Validation Error */

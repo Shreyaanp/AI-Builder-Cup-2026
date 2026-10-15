@@ -12,13 +12,18 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { ArrowUp, UserRound } from 'lucide-react'
+import { ArrowUp, MessageCircle, UserRound } from 'lucide-react'
 import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
 import { formatPrice } from '../v1/format'
 import { CustomerConversation } from './CustomerConversation'
 import { accessKey, readAccess, type ThreadAccess } from './threadAccess'
+import { useCustomer } from '../customer/account'
+import { accountCopy } from '../customer/copy'
+import { chatPath, go } from '../customer/paths'
+import { SignInButton } from '../customer/SignIn'
+import type { ChatSummary } from '../customer/types'
 import type { CustomerCopy } from './customerCopy'
 
 type Answer = components['schemas']['Answer']
@@ -77,13 +82,26 @@ export function ShopChat({
   const [invalid, setInvalid] = useState(false)
   // The "ask the owner" step: contact + the question to send (editable).
   const [handover, setHandover] = useState<string | null>(null)
-  const [contact, setContact] = useState('')
-  const [name, setName] = useState('')
-  const [contactError, setContactError] = useState('')
-  const [storageError, setStorageError] = useState(false)
-  const [justSent, setJustSent] = useState(false)
   const input = useRef<HTMLInputElement>(null)
-  const contactInput = useRef<HTMLInputElement>(null)
+  const contactInput = useRef<HTMLTextAreaElement>(null)
+  const account = useCustomer()
+  const signedIn = account.status === 'signed-in'
+  // A signed-in customer's existing chat with this shop (one per shop, like a messaging app).
+  const [existing, setExisting] = useState<ChatSummary | null>(null)
+  const { api } = account
+  useEffect(() => {
+    if (!signedIn) return
+    const abort = new AbortController()
+    api<ChatSummary | null>(`/api/v1/customer/shops/${encodeURIComponent(id)}/thread`, {
+      signal: abort.signal,
+    }).then(
+      (value) => {
+        if (!abort.signal.aborted) setExisting(value)
+      },
+      () => undefined,
+    )
+    return () => abort.abort()
+  }, [signedIn, api, id])
   const request = useRef<AbortController | null>(null)
   const end = useRef<HTMLDivElement>(null)
   useEffect(() => () => request.current?.abort(), [])
@@ -125,64 +143,36 @@ export function ShopChat({
     }
   }
 
+  // Messaging an owner needs a signed-in customer (A5); the thread then lives in Chats.
   async function sendToOwner() {
-    if (busy || handover === null) return
-    const phone =
-      /^\+?[\d ()-]+$/.test(contact.trim()) && /^[\d]{7,15}$/.test(contact.replace(/\D/g, ''))
-    const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.trim())
-    if ((!phone && !email) || contact.trim().length > 254) {
-      setContactError(t.contactInvalid)
+    if (busy || handover === null || !signedIn) return
+    if (!handover.trim() || Array.from(handover.trim()).length > 500) {
+      setError(t.messageInvalid)
       contactInput.current?.focus()
       return
     }
-    if (!handover.trim() || Array.from(handover.trim()).length > 500) {
-      setError(t.messageInvalid)
-      return
-    }
-    setContactError('')
     setBusy(true)
     setError('')
-    const abort = new AbortController()
-    request.current = abort
     try {
-      const receipt = await post<components['schemas']['InquiryReceipt']>(
-        id,
-        'inquiries',
-        { name: name.trim(), contact: contact.trim(), message: handover.trim() },
-        abort.signal,
+      const chat = await api<ChatSummary>(
+        `/api/v1/customer/shops/${encodeURIComponent(id)}/threads`,
+        { method: 'POST', body: JSON.stringify({ text: handover.trim(), language: locale }) },
       )
-      if (abort.signal.aborted) return
-      const saved = { id: receipt.id, token: receipt.token }
-      try {
-        localStorage.setItem(accessKey(id), JSON.stringify(saved))
-      } catch {
-        setStorageError(true)
-      }
-      setAccess(saved)
-      setJustSent(true)
       setHandover(null)
+      go(chatPath(id, chat.thread.id))
     } catch (failure) {
-      if (!abort.signal.aborted)
-        setError(
-          failure instanceof Error && failure.message === '409' ? t.closed : errorCopy(failure, t),
-        )
+      setError(
+        failure instanceof Error && failure.message === '409' ? t.closed : errorCopy(failure, t),
+      )
     } finally {
-      if (!abort.signal.aborted) setBusy(false)
+      setBusy(false)
     }
   }
 
-  // Once the owner has the question, the conversation continues with them.
+  // Threads started anonymously before sign-in was required stay readable on this device.
   if (access)
     return (
       <Box sx={{ mt: 2 }}>
-        {storageError && <Alert severity="warning">{t.storage}</Alert>}
-        <Box role="status" aria-live="polite">
-          {justSent && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              {t.sentPending}
-            </Alert>
-          )}
-        </Box>
         <CustomerConversation
           key={access.id}
           shop={id}
@@ -195,7 +185,6 @@ export function ShopChat({
               /* Browser storage may be unavailable. */
             }
             setAccess(null)
-            setJustSent(false)
           }}
         />
       </Box>
@@ -271,8 +260,19 @@ export function ShopChat({
         )}
       </Stack>
 
+      {existing && handover === null && (
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<MessageCircle size={18} />}
+          onClick={() => go(chatPath(id, existing.thread.id))}
+          sx={{ mt: 2, minHeight: 48 }}
+        >
+          {t.openChat}
+        </Button>
+      )}
       {handover !== null ? (
-        // One short step: who to reply to, and the question (editable) for the owner.
+        // One short step: sign in (once), then the question (editable) goes to the owner.
         <Stack
           component="form"
           noValidate
@@ -284,53 +284,46 @@ export function ShopChat({
           }}
         >
           <Typography variant="titleSmall">{t.askOwner}</Typography>
-          <Typography variant="bodySmall" color="text.secondary">
-            {t.contactHint}
-          </Typography>
-          <TextField
-            label={t.customerContact}
-            name="contact"
-            autoComplete="email"
-            inputRef={contactInput}
-            value={contact}
-            onChange={(event) => setContact(event.target.value)}
-            required
-            error={!!contactError}
-            helperText={contactError || t.customerContactHint}
-          />
-          <TextField
-            label={t.customerName}
-            name="name"
-            autoComplete="name"
-            value={name}
-            onChange={(event) => setName(event.target.value.slice(0, 100))}
-          />
-          <TextField
-            label={t.customerMessage}
-            name="message"
-            value={handover}
-            onChange={(event) => setHandover(event.target.value)}
-            multiline
-            minRows={2}
-            helperText={`${Array.from(handover).length}/500`}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-                event.preventDefault()
-                void sendToOwner()
-              }
-            }}
-          />
-          <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
-            <Button onClick={() => setHandover(null)}>{t.cancel}</Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={busy}
-              startIcon={busy ? <CircularProgress size={18} color="inherit" /> : undefined}
-            >
-              {t.sendMessage}
-            </Button>
-          </Stack>
+          {!signedIn ? (
+            <>
+              <Typography variant="bodyMedium">{accountCopy.signInBody}</Typography>
+              <SignInButton />
+              <Button onClick={() => setHandover(null)}>{t.cancel}</Button>
+            </>
+          ) : (
+            <>
+              <Typography variant="bodySmall" color="text.secondary">
+                {accountCopy.signedInAs.replace('{name}', account.name)}
+              </Typography>
+              <TextField
+                label={t.customerMessage}
+                name="message"
+                inputRef={contactInput}
+                value={handover}
+                onChange={(event) => setHandover(event.target.value)}
+                multiline
+                minRows={2}
+                helperText={`${Array.from(handover).length}/500`}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault()
+                    void sendToOwner()
+                  }
+                }}
+              />
+              <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
+                <Button onClick={() => setHandover(null)}>{t.cancel}</Button>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={busy}
+                  startIcon={busy ? <CircularProgress size={18} color="inherit" /> : undefined}
+                >
+                  {t.sendMessage}
+                </Button>
+              </Stack>
+            </>
+          )}
         </Stack>
       ) : (
         <>
