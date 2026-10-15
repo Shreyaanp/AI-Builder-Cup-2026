@@ -251,6 +251,36 @@ def test_signed_in_owned_chat_hold_idempotence_and_no_overselling(setup):
     assert client.get("/api/v1/public/rescue", params=POINT).json() == []
 
 
+def test_held_rescue_is_collected_at_the_counter_once_sold_out(setup):
+    client, _, bid, _ = setup
+    deal = approve(client, bid, proposal(client, bid))
+    key = client.get(f"/api/v1/businesses/{bid}/qr-key").json()["key"]
+    collect = "/api/v1/customer/passport/rescues"
+    scan = {"shop_id": bid, "key": key, "rescue_id": deal["id"], **POINT, "accuracy": 15}
+    client.post("/api/v1/customer/session", json={"name": "Asha"})
+    # Scanning the counter QR without a hold in chat collects nothing.
+    assert client.post(collect, json=scan).json()["detail"] == "NO_HOLD"
+    thread = client.post(
+        f"/api/v1/customer/shops/{bid}/threads", json={"text": "Could you hold them?"}
+    ).json()["thread"]
+    held = client.post(
+        f"/api/v1/customer/shops/{bid}/rescue/{deal['id']}/hold",
+        json={"thread_id": thread["id"], "name": "Croissant", "qty": 6},
+    )
+    assert held.status_code == 200, held.text
+    # Sold out: off the map, but the holder still collects it.
+    assert client.get("/api/v1/public/rescue", params=POINT).json() == []
+    done = client.post(collect, json=scan)
+    assert done.status_code == 200, done.text
+    body = done.json()
+    item = deal["items"][0]
+    assert body["outcome"]["verdict"] == "stamped" and body["outcome"]["points"] == 40
+    assert body["passport"]["impact"]["meals"] == 1
+    assert body["passport"]["impact"]["saved"] == {
+        deal["currency"]: (item["was"] - item["price"]) * 6
+    }
+
+
 def test_reservation_race_caps_stock(setup):
     client, store, bid, _ = setup
     deal = approve(client, bid, proposal(client, bid))

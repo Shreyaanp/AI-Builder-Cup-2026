@@ -236,6 +236,9 @@ def mentions(name: str, text: str) -> bool:
 
 
 def demo_reply_text(shop: dict[str, Any], message: str) -> str:
+    if message.startswith("[rescue "):
+        # The chat marker of "Hold one for me" (owner_routes.reserve_rescue).
+        return "Held for you! Show this chat at the counter when you pick it up."
     text = message.casefold()
     currency = shop.get("currency", "")
     products = shop.get("products", [])
@@ -281,7 +284,6 @@ async def shop_side_replies(
         return
     delay = float(getattr(request.app.state, "demo_reply_delay", 2.5))
     app = request.app
-    reply = demo_reply_text(shop, body.text)
 
     async def later() -> None:
         await asyncio.sleep(delay)
@@ -292,6 +294,8 @@ async def shop_side_replies(
             # Reply once per customer turn: only when the customer still has the last word.
             humans = [m for m in record.messages if m.kind != "ai"]
             if humans and humans[-1].author == "customer":
+                # The customer's latest words: a rescue hold may have followed the message.
+                reply = demo_reply_text(shop, humans[-1].text)
                 await anyio.to_thread.run_sync(
                     app.state.merchant.thread_action,
                     None,
