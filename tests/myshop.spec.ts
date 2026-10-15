@@ -1,4 +1,3 @@
-import { reviewPanel } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -257,7 +256,7 @@ test('B28: Sort my menu turns uncategorised items into a reviewed proposal', asy
   await expect(sheet.getByRole('heading', { name: 'Uncategorised' })).toBeVisible()
   await axe(page)
   await sheet.getByRole('button', { name: 'Sort my menu' }).tap()
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toBeVisible()
   expect(sorted).toBe(1)
   // Nothing is saved until the owner confirms.
@@ -413,7 +412,7 @@ test('B16: one attach button offers Take photo, Photo library and Document; docu
     mimeType: 'text/csv',
     buffer: Buffer.from('Item Name,Price\nIced lemon tea,2.20\nCurry puff,1.60\n'),
   })
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('Iced lemon tea')
   await expect(review).toContainText('$1.60')
   expect(imports).toBe(1)

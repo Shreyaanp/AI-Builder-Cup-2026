@@ -1,5 +1,39 @@
 # Account 2 status: passport + Today's 7 (`feat/passport`, merged as `merge/passport`)
 
+## New-shop flow (`feat/new-shop-flow`, PR #3) — owner answers of 15 Oct
+
+Built from the six owner answers (brief: PLAN-V2 §New-shop onboarding; details in
+`docs/OWNER-NEW-SHOP.md`). `origin/wip/new-shop-grand` merged first; kept: GPS shop pins with
+accuracy, the location reason/denial handling, the sealed one-review approval, the ready moment,
+coach fixes (photo abort, keyboard-resize scroll). Replaced: the stepped coach page, the step
+banner, the review portal and the "Fill in a form instead" path.
+
+| Owner answer | Built |
+| --- | --- |
+| 1. Kill the modals | "Add my shop" form dialog gone for new shops (the form stays only as **Edit details**); tour end, "+", shop menu, empty My shop, Google empty all open the flow; no dialog/sheet anywhere in it (tests assert `dialog` count 0). |
+| 2. Big hero, then chat | Full-screen "Let’s open your shop" hero: chalk-drawn shop (stroke draw), written title, sparkles via `useChalkTimeline` (off with reduced motion), then a full-screen conversation. |
+| 3. AI speaks first | One Gemini Live session (`useVoice` conversation mode): opening sent once the mic is granted, coach greets aloud, mic opens after the greeting; mute button, mic toggle, live captions bar. No mic → same chat by text, replies read by `/tts`. |
+| 4. Entry points | Header "+" (direct, next to settings), tour "Start my own shop", empty My shop "Create your shop". First run after sign-in is main's (start card), not auto-entered. |
+| 5. Agent drives; acts in chat; silence | One question at a time; every proposal is an action card in the chat ("Added to your shop · Shop name: …", "I read your menu: N items", "Saved your location: Near …"); ~9 s silence (or Skip) → coach suggests/leaves it out and moves on (max 2 in a row); live "Your shop so far" card; full-screen review page with one "Open my shop"; full-screen ready moment. |
+| 6. Must not break | Main coach voice/photo/document, Import, Close the day: their suites pass unchanged. |
+
+Backend (small): `NEW_SHOP_INSTRUCTION` speak-first/silence rules; offline fixture greets first and
+remembers skipped questions; voice socket accepts a mid-session `new_shop` draft frame. Removed
+`tests/zz-live-owner.spec.ts` (main had already removed it; it needs private photos).
+
+**Checks (fresh SQLite DBs, WEB_PORT=3447 API_PORT=3547):** backend 620 passed / 164 skipped,
+Ruff + mypy clean; lint (ESLint over the repo, ignoring the untracked local `docs/launch/source/dist`
+build output), build and hook rules pass; full browser suite phone + desktop **348 passed / 84
+skipped / 0 failed**; QA suite (`npm run test:qa`, fresh `.cache/qa`) **122 passed**. New:
+`tests/stories/s10-new-shop.spec.ts` (hero → greeting → answer → action → silence → location +
+photo → review → ready; entries from tour end and empty My shop), `tests/new-shop.spec.ts` (axe
+light/dark on phone and desktop, photo, location, denial, Back, separate drafts). Screenshots:
+`docs/stories/S10-*.png`, `docs/stories/new-shop-{1-hero,2-chat,3-review,4-ready}-{light,dark}[-desktop].png`.
+New strings in all 15 locales (`newShopCopy.ts`).
+
+**Not validated:** real Gemini Live greeting/turn-taking, ASR, speaker echo on a real phone, live
+coaching quality, native-speaker review of the new translations.
+
 ## Merge follow-up (`merge/passport`, on the calmer shop page `fe27b92`)
 
 Push only `origin/merge/passport`. The 31 phone failures after the merge were all the stamp/QR

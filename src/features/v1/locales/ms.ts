@@ -2,17 +2,9 @@ import type { Copy } from '../strings'
 
 export const ms: Copy = {
   newShopMode: 'Kedai baharu',
-  newShopIntro:
-    'Mari bawa kedai baharu anda ke dalam talian. Mulakan dengan foto, atau beritahu apa yang anda jual.',
-  newShopCamera: 'Ambil foto menu atau depan kedai',
-  newShopVoice: 'Ceritakan tentang kedai anda',
-  newShopForm: 'Isi borang sahaja',
-  newShopCancel: 'Kembali ke kedai semasa',
-  newShopReview: 'Semak kedai baharu saya',
   newShopReady: 'Kedai baharu anda sudah sedia',
   newShopReadyBody: 'Anda kini mengurus kedai baharu. Kongsi halaman pelanggan apabila bersedia.',
   newShopContinue: 'Teruskan dengan kedai saya',
-  newShopPhotoNext: 'Apa yang anda mahu pelanggan tahu tentang kedai anda?',
   useCurrentLocation: 'Guna lokasi semasa saya',
   locationReason:
     'Di kedai? Benarkan akses lokasi untuk meletakkan pin. Anda akan menyemaknya sebelum menyimpan.',
@@ -21,7 +13,6 @@ export const ms: Copy = {
   locationFailed: 'Lokasi tidak ditemui. Cuba lagi, taip alamat, atau guna foto dengan GPS.',
   yourLocation: 'Lokasi anda',
   description: 'Penerangan',
-  newShopStep: (n: number) => `Kedai baharu · langkah ${n}/4`,
   locationAccuracy: (m: string) => `dalam ${m} m`,
   installApp: 'Pasang aplikasi',
   installIos: 'Dalam Safari, ketik Kongsi → Tambah ke Skrin Utama, kemudian ketik Tambah.',
@@ -263,7 +254,6 @@ export const ms: Copy = {
   notProvided: 'Belum diisi',
   stock: 'Stok',
   shopEmptyTitle: 'Mari tambah kedai anda',
-  shopEmptyBody: 'Mulakan dengan foto papan kedai atau isi butiran sendiri.',
   addShop: 'Tambah butiran kedai',
   startPhoto: 'Mula dengan foto',
   editDetails: 'Edit butiran',

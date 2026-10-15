@@ -2,17 +2,9 @@ import type { Copy } from '../strings'
 
 export const id: Copy = {
   newShopMode: 'Toko baru',
-  newShopIntro:
-    'Ayo hadirkan toko baru Anda secara online. Mulai dengan foto, atau ceritakan apa yang Anda jual.',
-  newShopCamera: 'Foto menu atau depan toko',
-  newShopVoice: 'Ceritakan tentang toko Anda',
-  newShopForm: 'Isi formulir saja',
-  newShopCancel: 'Kembali ke toko saat ini',
-  newShopReview: 'Tinjau toko baru saya',
   newShopReady: 'Toko baru Anda sudah siap',
   newShopReadyBody: 'Anda kini mengelola toko baru. Bagikan halaman pelanggan saat siap.',
   newShopContinue: 'Lanjutkan dengan toko saya',
-  newShopPhotoNext: 'Apa yang ingin Anda sampaikan kepada pelanggan tentang toko Anda?',
   useCurrentLocation: 'Gunakan lokasi saya saat ini',
   locationReason:
     'Di toko? Izinkan akses lokasi untuk menempatkan pin. Anda akan meninjaunya sebelum menyimpan.',
@@ -21,7 +13,6 @@ export const id: Copy = {
   locationFailed: 'Lokasi tidak ditemukan. Coba lagi, ketik alamat, atau gunakan foto dengan GPS.',
   yourLocation: 'Lokasi Anda',
   description: 'Deskripsi',
-  newShopStep: (n: number) => `Toko baru · langkah ${n}/4`,
   locationAccuracy: (m: string) => `dalam ${m} m`,
   installApp: 'Instal aplikasi',
   installIos: 'Di Safari, ketuk Bagikan → Tambahkan ke Layar Utama, lalu ketuk Tambah.',
@@ -263,7 +254,6 @@ export const id: Copy = {
   notProvided: 'Belum diisi',
   stock: 'Stok',
   shopEmptyTitle: 'Tambahkan toko Anda',
-  shopEmptyBody: 'Mulai dari foto papan toko atau isi detail sendiri.',
   addShop: 'Tambah info toko',
   startPhoto: 'Mulai dari foto',
   editDetails: 'Edit detail',

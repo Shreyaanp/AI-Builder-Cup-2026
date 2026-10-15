@@ -1,4 +1,4 @@
-import { reviewPanel, confirm as approveReview } from './stories/support.js'
+import { createShop, editShopDetails } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -181,18 +181,22 @@ test('owner reward edits require exact review before saving and clearing', async
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
-  await page.getByLabel('Shop name').fill('Neighbourhood Kopi')
+  // The shop comes from the new-shop flow; its reward is set in the details form.
+  await createShop(page, 'name: Neighbourhood Kopi')
+  await editShopDetails(page)
   await page.getByLabel('Reward text (optional)').fill('10th kopi free')
   await expect(page.getByLabel('Stamps needed')).toHaveValue('8')
   await page.getByLabel('Stamps needed').fill('10')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('10th kopi free')
   await expect(review.getByText('10', { exact: true })).toBeVisible()
-  expect(await (await page.request.get('/api/v1/businesses')).json()).toEqual([])
-  await approveReview(page)
+  expect(
+    (await (await page.request.get('/api/v1/businesses')).json())[0].fields.reward_text,
+  ).toBeUndefined()
+  await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(page.getByRole('button', { name: 'Choose shop: Neighbourhood Kopi' })).toBeVisible()
+  while ((await page.getByRole('dialog').count()) > 0) await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
   await expect(page.getByRole('dialog')).toContainText('10th kopi free')
@@ -205,7 +209,7 @@ test('owner reward edits require exact review before saving and clearing', async
   const before = await (await page.request.get('/api/v1/businesses')).json()
   expect(before[0].fields.reward_text).toBe('10th kopi free')
   expect(before[0].fields.stamps_needed).toBe(10)
-  await approveReview(page)
+  await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(review).not.toBeVisible()
   const after = await (await page.request.get('/api/v1/businesses')).json()
   expect(after[0].fields.reward_text).toBeUndefined()

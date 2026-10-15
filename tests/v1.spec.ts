@@ -1,4 +1,4 @@
-import { reviewPanel, openNewShopReview, confirm as approveReview } from './stories/support.js'
+import { createShop, openNewShopReview, createShopFromReview } from './stories/support.js'
 import { expect, test, type Page } from '@playwright/test'
 
 /** Builds a real PNG in the browser so the backend's decoder and fixture moderation see an image. */
@@ -24,16 +24,13 @@ async function open(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await agree.click()
-  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
 }
 
 async function addShop(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
-  await page.getByLabel('Shop name').fill(name)
-  await page.getByRole('button', { name: 'Review', exact: true }).click()
-  const review = reviewPanel(page)
-  await expect(review).toContainText('Nothing is published to Google')
-  await approveReview(page)
+  await openNewShopReview(page, `name: ${name}`)
+  await expect(page.getByTestId('new-shop-review')).toContainText('Nothing is published to Google')
+  await createShopFromReview(page)
   await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
 }
 
@@ -68,14 +65,13 @@ test('a shop photo becomes a reviewable draft; an explicit photo is refused', as
     buffer: await png(page, 13),
   })
   await expect(page.getByRole('alert')).toContainText('This photo can’t be used')
-  await expect(reviewPanel(page)).toHaveCount(0)
+  await expect(page.getByRole('dialog', { name: 'Check before saving' })).toHaveCount(0)
   await input.setInputFiles({
     name: 'sign.png',
     mimeType: 'image/png',
     buffer: await png(page, 64),
   })
-  await openNewShopReview(page)
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('Offline Fixture Tea Stall')
   // The modal hides the page from assistive tech; check the coach note once it closes.
   await review.getByRole('button', { name: 'Cancel' }).click()
@@ -86,8 +82,7 @@ test('the coach turns a typed description into a proposal, never a save', async 
   await open(page)
   await page.getByLabel('Message').fill('name: Sharma Bakery; category: Bakery; location: Pune')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await openNewShopReview(page)
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('Sharma Bakery')
   await review.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByRole('button', { name: 'Choose shop: Sharma Bakery' })).toHaveCount(0)
@@ -109,7 +104,10 @@ test('switching shops never shows the other shop’s products or conversation', 
   await page.getByLabel('Product name').fill('Alpha Chai')
   await page.getByLabel(/^Price/).fill('15')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await approveReview(page)
+  await page
+    .getByRole('dialog', { name: 'Check before saving' })
+    .getByRole('button', { name: 'Confirm and save' })
+    .click()
   // The saved row in the Menu sheet (the closing review sheet can also show the name).
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: /^Menu/ }).click()
@@ -123,11 +121,7 @@ test('switching shops never shows the other shop’s products or conversation', 
   // Second shop via the shop switcher.
   await page.getByRole('button', { name: /Choose shop/ }).click()
   await page.getByRole('menuitem', { name: 'New shop' }).click()
-  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
-  await page.getByLabel('Shop name').fill('Beta Bakery')
-  await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await approveReview(page)
+  await createShop(page, 'name: Beta Bakery')
   await expect(page.getByRole('button', { name: 'Choose shop: Beta Bakery' })).toBeVisible()
   await expect(page.getByText('Hello from Alpha')).toHaveCount(0)
   await page.getByRole('button', { name: 'My shop' }).click()
@@ -187,9 +181,9 @@ test('customer facts: the card starts the chat, the owner confirms, customers se
   await expect(message).toBeFocused()
   await message.pressSequentially('yes')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review.getByRole('region', { name: 'What customers ask' })).toContainText('Halal')
-  await approveReview(page)
+  await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   // Next unanswered fact moves up; halal is no longer asked.
   await expect(page.getByRole('button', { name: /^Customers ask: payment\?/ })).toHaveCount(0)

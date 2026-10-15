@@ -1,7 +1,8 @@
 import { Box, Button, Skeleton, Stack, Typography, useTheme } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
-import { Camera, Store } from 'lucide-react'
+import { Store } from 'lucide-react'
 import { useCopy } from '../strings'
+import { useNewShopCopy } from '../newShopCopy'
 import { LoadError } from '../LoadError'
 import { useWorkspace } from '../workspaceContext'
 import { ShopOverview } from '../ShopTiles'
@@ -49,6 +50,7 @@ function ShopHome() {
 function EmptyShop() {
   const t = useCopy()
   const ws = useWorkspace()
+  const flow = useNewShopCopy()
   const roles = useTheme().material
   return (
     <Stack
@@ -79,20 +81,18 @@ function EmptyShop() {
         {t.shopEmptyTitle}
       </Typography>
       <Typography variant="bodyLarge" color="text.secondary">
-        {t.shopEmptyBody}
+        {flow.heroBody}
       </Typography>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1.5}
+      {/* One way in: the full-screen new-shop flow (it asks for the menu photo itself). */}
+      <Button
+        variant="contained"
+        size="large"
+        startIcon={<Store size={20} />}
+        onClick={ws.startNewShop}
         sx={{ width: { xs: '100%', sm: 'auto' } }}
       >
-        <Button variant="contained" startIcon={<Camera size={20} />} onClick={ws.requestPhoto}>
-          {t.startPhoto}
-        </Button>
-        <Button variant="outlined" onClick={ws.startNewShop}>
-          {t.addShop}
-        </Button>
-      </Stack>
+        {flow.createShop}
+      </Button>
     </Stack>
   )
 }

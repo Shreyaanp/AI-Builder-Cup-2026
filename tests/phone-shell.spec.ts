@@ -1,4 +1,4 @@
-import { reviewPanel } from './stories/support.js'
+import { createShop } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -33,11 +33,7 @@ async function axe(page: Page) {
 }
 
 async function saveShop(page: Page) {
-  await page.getByRole('button', { name: 'Fill in a form instead' }).tap()
-  await page.getByLabel('Shop name').fill('Katong Kopi')
-  await page.getByLabel('Address or area').fill('Katong, Singapore')
-  await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await page.getByRole('button', { name: 'Confirm and save' }).click()
+  await createShop(page, 'name: Katong Kopi; location: Katong, Singapore')
   await expect(page.getByRole('button', { name: 'Choose shop: Katong Kopi' })).toBeVisible()
 }
 
@@ -209,7 +205,7 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   await sheet.getByRole('button', { name: 'Edit details' }).tap()
   await form.getByLabel('Hours note (optional)').fill('7am–3pm')
   await form.getByRole('button', { name: 'Review', exact: true }).tap()
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toBeVisible()
   await page.goBack()
   await prompt.getByRole('button', { name: 'Discard' }).tap()
@@ -232,12 +228,16 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   expect(await unload).toBe('beforeunload')
 })
 
-test('B5: no "What’s new at …" line; + sits top-right next to settings', async ({ page }) => {
+test('B5: no "What’s new at …" line; + (new shop) sits top-right next to settings', async ({
+  page,
+}) => {
   await enter(page)
   await saveShop(page)
   await expect(page.getByText(/What’s new at/)).toHaveCount(0)
   const header = page.getByRole('banner')
-  const plus = header.getByRole('button', { name: 'New conversation', exact: true })
+  // "+" opens the new-shop flow directly; new conversation sits just before it.
+  await expect(header.getByRole('button', { name: 'New conversation', exact: true })).toBeVisible()
+  const plus = header.getByRole('button', { name: 'Add shop details', exact: true })
   const settings = header.getByRole('button', { name: 'Settings', exact: true })
   await expect(plus).toBeVisible()
   const a = (await plus.boundingBox())!
@@ -251,11 +251,17 @@ test('B5: no "What’s new at …" line; + sits top-right next to settings', asy
   )
   await axe(page)
   await plus.tap()
+  await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
+  const newChat = header.getByRole('button', { name: 'New conversation', exact: true })
+  await newChat.tap()
   await expect(page.getByRole('dialog', { name: 'New conversation' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
-  // It belongs to the coach; other screens don't show it.
+  // New conversation belongs to the coach; "+" (a new shop) is on every screen.
   await page.getByRole('button', { name: 'My shop', exact: true }).tap()
-  await expect(plus).toHaveCount(0)
+  await expect(newChat).toHaveCount(0)
+  await expect(plus).toBeVisible()
 })
 
 test('B6: the coach fits the phone without scrolling, suggestions sit under the shop card, and finished setup is one chip', async ({
@@ -311,10 +317,13 @@ test('B7: every photo entry offers Take photo (rear camera) and Upload', async (
   const upload = page.getByRole('menuitem', { name: 'Photo library' })
 
   // The start card's "Take a photo" (before a shop exists).
-  let chooser = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: 'Snap your menu or shopfront' }).tap()
-  await chooser
+  await page.getByRole('button', { name: 'Take a photo' }).tap()
+  await expect(take).toBeVisible()
+  await expect(upload).toBeVisible()
   await axe(page)
+  let chooser = page.waitForEvent('filechooser')
+  await take.tap()
+  await chooser
   await expect(input).toHaveAttribute('capture', 'environment')
 
   // The composer's photo button.
@@ -343,5 +352,5 @@ test('B7: every photo entry offers Take photo (rear camera) and Upload', async (
     mimeType: 'image/png',
     buffer: Buffer.from(png, 'base64'),
   })
-  await expect(reviewPanel(page)).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Check before saving' })).toBeVisible()
 })

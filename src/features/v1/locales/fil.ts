@@ -2,18 +2,10 @@ import type { Copy } from '../strings'
 
 export const fil: Copy = {
   newShopMode: 'Bagong tindahan',
-  newShopIntro:
-    'Ipakilala natin ang bago mong tindahan online. Magsimula sa larawan o ikuwento ang paninda mo.',
-  newShopCamera: 'Kunan ang menu o harap ng tindahan',
-  newShopVoice: 'Ikuwento ang tindahan mo',
-  newShopForm: 'Punan na lang ang form',
-  newShopCancel: 'Bumalik sa kasalukuyang tindahan',
-  newShopReview: 'Suriin ang bago kong tindahan',
   newShopReady: 'Handa na ang bago mong tindahan',
   newShopReadyBody:
     'Nasa bago mong tindahan ka na. Ibahagi ang pahina para sa customer kapag handa ka na.',
   newShopContinue: 'Magpatuloy sa tindahan ko',
-  newShopPhotoNext: 'Ano ang gusto mong malaman ng mga customer tungkol sa tindahan mo?',
   useCurrentLocation: 'Gamitin ang lokasyon ko ngayon',
   locationReason:
     'Nasa tindahan? Payagan ang lokasyon para mailagay ang pin. Susuriin mo ito bago i-save.',
@@ -24,7 +16,6 @@ export const fil: Copy = {
     'Hindi makuha ang lokasyon. Subukan muli, mag-type ng address, o gumamit ng larawang may GPS.',
   yourLocation: 'Lokasyon mo',
   description: 'Paglalarawan',
-  newShopStep: (n: number) => `Bagong tindahan · hakbang ${n}/4`,
   locationAccuracy: (m: string) => `sa loob ng ${m} m`,
   installApp: 'I-install ang app',
   installIos:
@@ -270,7 +261,6 @@ export const fil: Copy = {
   notProvided: 'Hindi ibinigay',
   stock: 'Stock',
   shopEmptyTitle: 'Idagdag natin ang tindahan mo',
-  shopEmptyBody: 'Magsimula sa litrato ng karatula o ilagay ang detalye mismo.',
   addShop: 'Magdagdag ng detalye',
   startPhoto: 'Magsimula sa litrato',
   editDetails: 'I-edit ang detalye',

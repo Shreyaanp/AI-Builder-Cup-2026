@@ -1,26 +1,10 @@
 {
-  "capturedAt": "2026-10-15T12:45:55.315Z",
+  "capturedAt": "2026-10-15T16:11:41.357Z",
   "mode": "audit",
   "scope": "390×844 offline audit; annotated gaps and live-only paths are not verified story outcomes",
   "stories": [
     {
       "story": "A11 · preview labels are inert and Call is absent",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
-      "story": "A11 · preview labels are inert and Call is shown",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
-      "story": "A11 · Tamil composer and navigation have room for script metrics",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -36,7 +20,7 @@
       "annotations": []
     },
     {
-      "story": "A11 · customer light mode separates menu and background surfaces",
+      "story": "A11 · preview labels are inert and Call is shown",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -52,7 +36,23 @@
       "annotations": []
     },
     {
+      "story": "A11 · Tamil composer and navigation have room for script metrics",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
       "story": "A4 · yes fact chip and offline answer agree",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A11 · customer light mode separates menu and background surfaces",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -84,7 +84,7 @@
       "annotations": []
     },
     {
-      "story": "A8 · coach photo reuse is explicit for existing shops",
+      "story": "A3 · independent customer context polls visible prices and availability",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -108,7 +108,7 @@
       "annotations": []
     },
     {
-      "story": "A3 · independent customer context polls visible prices and availability",
+      "story": "A8 · coach photo reuse is explicit for existing shops",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -130,36 +130,6 @@
       "retry": 0,
       "steps": [],
       "annotations": []
-    },
-    {
-      "story": "S5 · shop details to Google preview and truthful handoff",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [
-        {
-          "title": "1 · details reuse the owner shop",
-          "status": "passed"
-        },
-        {
-          "title": "2 · photo upload persists for the profile",
-          "status": "passed"
-        },
-        {
-          "title": "3 · profile preview shows local prices and saved details",
-          "status": "passed"
-        },
-        {
-          "title": "4 · waiting state and official links",
-          "status": "passed"
-        }
-      ],
-      "annotations": [
-        {
-          "type": "live-only",
-          "description": "Google API access, business verification and publication; official links are inspected without opening them"
-        }
-      ]
     },
     {
       "story": "S1 · owner sets up and shares a shop",
@@ -207,7 +177,37 @@
         },
         {
           "type": "live-only",
-          "description": "Location, microphone ASR and camera capture still need a physical phone"
+          "description": "Photo GPS capture needs a physical phone"
+        }
+      ]
+    },
+    {
+      "story": "S5 · shop details to Google preview and truthful handoff",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [
+        {
+          "title": "1 · details reuse the owner shop",
+          "status": "passed"
+        },
+        {
+          "title": "2 · photo upload persists for the profile",
+          "status": "passed"
+        },
+        {
+          "title": "3 · profile preview shows local prices and saved details",
+          "status": "passed"
+        },
+        {
+          "title": "4 · waiting state and official links",
+          "status": "passed"
+        }
+      ],
+      "annotations": [
+        {
+          "type": "live-only",
+          "description": "Google API access, business verification and publication; official links are inspected without opening them"
         }
       ]
     },

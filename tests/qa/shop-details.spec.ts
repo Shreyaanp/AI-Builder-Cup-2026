@@ -1,13 +1,12 @@
-import { reviewPanel } from './../stories/support.js'
 import { test, expect, owner, enter, confirm, audit, tamil } from './support.js'
-import { gpsBoardPath, share, closeSheet } from '../stories/support.js'
+import { createShop, editShopDetails, gpsBoardPath, share, closeSheet } from '../stories/support.js'
 
 test('hours, custom payment and delivery are reviewed then appear on the shared QR page', async ({
   page,
 }) => {
   await enter(page)
-  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
-  await page.getByLabel('Shop name').fill('QA hours and facts')
+  await createShop(page, 'name: QA hours and facts')
+  await editShopDetails(page)
   await page.getByLabel('Address or area').fill('Indiranagar, Bengaluru')
   await page.getByLabel('Set hours by weekday').check()
   await page.getByLabel('Opens', { exact: true }).fill('07:00')
@@ -19,7 +18,7 @@ test('hours, custom payment and delivery are reviewed then appear on the shared 
   await delivery.fill('Neighbour delivery')
   await delivery.press('Enter')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('07:00')
   await expect(review).toContainText('20:00')
   await review.getByRole('button', { name: /Find.*pin/i }).click()
@@ -40,7 +39,7 @@ test('existing-shop photo GPS is a separate exact approval, never an automatic m
   const id = await owner(page)
   const before = (await (await page.request.get('/api/v1/businesses')).json())[0]
   await page.locator('#coach input[type=file]').setInputFiles(gpsBoardPath)
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).not.toContainText('12.97180, 77.64120')
   await confirm(page)
   const unchanged = (await (await page.request.get('/api/v1/businesses')).json())[0]

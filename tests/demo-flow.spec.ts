@@ -1,4 +1,3 @@
-import { reviewPanel, openNewShopReview, confirm as approveReview } from './stories/support.js'
 import { expect, test, type Page } from '@playwright/test'
 
 async function png(page: Page, width: number): Promise<Buffer> {
@@ -23,7 +22,7 @@ async function open(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await agree.click()
-  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
 }
 
 test('demo: photo, price correction, customer page and availability', async ({
@@ -39,13 +38,12 @@ test('demo: photo, price correction, customer page and availability', async ({
     mimeType: 'image/png',
     buffer: await png(page, 64),
   })
-  await openNewShopReview(page)
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toBeVisible()
   await expect(review).toContainText('Offline Fixture Tea Stall')
   await expect(review).toContainText('Chai')
   await expect(review).toContainText('$15.00 / cup')
-  await approveReview(page)
+  await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(review).not.toBeVisible()
 
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
@@ -63,7 +61,7 @@ test('demo: photo, price correction, customer page and availability', async ({
   await page.getByLabel(/^Price/).fill('12')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await expect(review).toContainText('$12.00 / cup')
-  await approveReview(page)
+  await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await menu.click()
   // B28: the price is its own button on the item card.

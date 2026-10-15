@@ -16,10 +16,23 @@ interface VoiceRuntime {
   complete: boolean
 }
 
+type NewShopDraft = { business: Business['fields'] | null; products: Product[] }
+
+/**
+ * Conversation mode (the new-shop flow): one session for many turns. The coach speaks first, the
+ * microphone opens once its first turn has played, and turns end by the model's own voice
+ * activity detection instead of "finish speaking".
+ */
+export interface VoiceConversation {
+  /** The session is open and the microphone granted: send the opening message now. */
+  onReady?: () => void
+}
+
 export function useVoice(
   businessId: string | null,
   onEvent: (event: CoachEvent) => void,
-  newShop?: { business: Business['fields'] | null; products: Product[] },
+  newShop?: NewShopDraft,
+  conversation?: VoiceConversation,
 ) {
   const identity = useIdentity()
   const t = useCopy()
@@ -36,6 +49,12 @@ export function useVoice(
   useEffect(() => {
     eventRef.current = onEvent
   }, [onEvent])
+  const conversationRef = useRef(conversation)
+  useEffect(() => {
+    conversationRef.current = conversation
+  }, [conversation])
+  // Conversation mode: the microphone stays closed until the coach's first turn has played.
+  const micOpen = useRef(false)
   const release = useCallback(() => {
     const current = runtime.current
     runtime.current = null
@@ -76,12 +95,26 @@ export function useVoice(
       current.socket.send(JSON.stringify({ kind: 'audio_end' }))
     setState('replying')
   }
-  async function start() {
+  async function start(sessionId?: string | null) {
     if (owner.current) return
     const operation = new AbortController()
     owner.current = operation
+    micOpen.current = !conversationRef.current
     setError('')
-    await connect(operation, false)
+    await connect(operation, false, sessionId ?? undefined)
+  }
+  /** Conversation mode: a typed turn or an app note in the same live session (false: not open). */
+  function sendText(text: string, draft?: NewShopDraft) {
+    const socket = runtime.current?.socket
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false
+    if (draft) socket.send(JSON.stringify({ kind: 'new_shop', draft }))
+    socket.send(JSON.stringify({ kind: 'text', text }))
+    return true
+  }
+  /** Seconds of coach audio still queued to play. */
+  function playbackRemaining() {
+    const current = runtime.current
+    return current ? Math.max(0, current.next - current.audio.currentTime) : 0
   }
   async function connect(operation: AbortController, retry: boolean, sid?: string) {
     if (operation.signal.aborted) return
@@ -198,18 +231,33 @@ export function useVoice(
           node.connect(silent)
           silent.connect(audio.destination)
           node.port.onmessage = (packet: MessageEvent<ArrayBuffer>) => {
-            if (socket.readyState === WebSocket.OPEN && socket.bufferedAmount < 65536)
+            if (
+              micOpen.current &&
+              socket.readyState === WebSocket.OPEN &&
+              socket.bufferedAmount < 65536
+            )
               socket.send(packet.data)
           }
-          current.deadline = setTimeout(finishRecording, 30_000)
+          if (!conversationRef.current) current.deadline = setTimeout(finishRecording, 30_000)
           setState('recording')
+          conversationRef.current?.onReady?.()
         }
         if (event.kind === 'interrupted') {
           await audio.suspend()
           current.next = 0
           await audio.resume()
         }
-        if (event.kind === 'turn_complete') {
+        if (event.kind === 'turn_complete' && conversationRef.current) {
+          // Keep listening. The first completed turn (the greeting) opens the microphone once it
+          // has finished playing, so the coach never hears itself.
+          if (!micOpen.current)
+            setTimeout(
+              () => {
+                if (runtime.current === current) micOpen.current = true
+              },
+              Math.max(0, (current.next - audio.currentTime) * 1000),
+            )
+        } else if (event.kind === 'turn_complete') {
           current.complete = true
           clearTimeout(current.deadline)
           current.deadline = setTimeout(
@@ -236,6 +284,9 @@ export function useVoice(
       release()
       if (current.complete) {
         stop()
+      } else if (conversationRef.current && [1000, 1001].includes(event.code)) {
+        // The live session reached its time limit: the conversation carries on by text.
+        stop()
       } else if (!retry && ![1000, 1001, 1008].includes(event.code)) {
         void connect(operation, true, sessionId)
       } else {
@@ -244,5 +295,15 @@ export function useVoice(
       }
     }
   }
-  return { state, error, muted, start, stop, finishRecording, toggleMute }
+  return {
+    state,
+    error,
+    muted,
+    start,
+    stop,
+    finishRecording,
+    toggleMute,
+    sendText,
+    playbackRemaining,
+  }
 }
