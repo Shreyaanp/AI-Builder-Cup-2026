@@ -67,7 +67,7 @@ def test_non_food_categories_still_skip_food_questions(category: str) -> None:
     assert not serves_food({"category": category, "name": "Local business"})
 
 
-def test_multilingual_food_plan_asks_halal_and_vegetarian_both_adapters(
+def test_multilingual_food_plan_waits_for_meat_and_relevance_before_halal(
     store: MerchantRepository,
 ) -> None:
     proposal = store.propose(
@@ -79,8 +79,10 @@ def test_multilingual_food_plan_asks_halal_and_vegetarian_both_adapters(
     bid = store.commit("alice", proposal["id"], proposal["digest"])["business_id"]
     token = current.set(MerchantContext(store, "alice", bid, []))
     try:
-        assert get_business_context()["customer_facts_to_ask"] == list(ASK_ORDER)
+        assert get_business_context()["customer_facts_to_ask"] == [
+            k for k in ASK_ORDER if k != "halal"
+        ]
         keys = [question["key"] for question in asyncio.run(get_question_plan())["pending"]]
-        assert {"halal", "vegetarian_options"} <= set(keys)
+        assert "vegetarian_options" in keys and "halal" not in keys
     finally:
         current.reset(token)

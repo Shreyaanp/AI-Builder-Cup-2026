@@ -6411,6 +6411,9 @@
             "type": "array",
             "maxItems": 30,
             "title": "Custom Facts"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/BusinessTypeProfile"
           }
         },
         "additionalProperties": false,
@@ -6419,6 +6422,90 @@
           "name"
         ],
         "title": "BusinessFields"
+      },
+      "BusinessTypeProfile": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "generic",
+              "food",
+              "tailor",
+              "salon",
+              "retail",
+              "grocer",
+              "service"
+            ],
+            "title": "Kind",
+            "default": "generic"
+          },
+          "subtype": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Subtype",
+            "default": ""
+          },
+          "food": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FoodAttributes"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tailor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TailorAttributes"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "salon": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalonAttributes"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetailAttributes"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "service": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceAttributes"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "BusinessTypeProfile",
+        "description": "Gemini proposes this from owner words/menu/photos; approval still belongs to the owner.\n\nA single envelope keeps the ADK tool schema simple; only the matching typed block is valid.\nMissing profiles are version 1 generic, without guessing anything about existing records."
       },
       "ChallengeRequest": {
         "properties": {
@@ -7223,6 +7310,51 @@
           "walk_min"
         ],
         "title": "FindShop"
+      },
+      "FoodAttributes": {
+        "properties": {
+          "cuisine": {
+            "items": {
+              "type": "string",
+              "maxLength": 80,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Cuisine"
+          },
+          "diet": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "veg_only",
+              "vegan",
+              "non_veg",
+              "both"
+            ],
+            "title": "Diet",
+            "default": "unknown"
+          },
+          "serves_meat": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serves Meat"
+          },
+          "halal_relevant": {
+            "type": "boolean",
+            "title": "Halal Relevant",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "FoodAttributes"
       },
       "Forecast": {
         "properties": {
@@ -9614,6 +9746,29 @@
         ],
         "title": "RescueSuggestion"
       },
+      "RetailAttributes": {
+        "properties": {
+          "categories": {
+            "items": {
+              "type": "string",
+              "maxLength": 80,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Categories"
+          },
+          "delivery": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Delivery",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RetailAttributes"
+      },
       "SaleLine": {
         "properties": {
           "item": {
@@ -9641,6 +9796,40 @@
           "amount"
         ],
         "title": "SaleLine"
+      },
+      "SalonAttributes": {
+        "properties": {
+          "services": {
+            "items": {
+              "type": "string",
+              "maxLength": 80,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Services"
+          },
+          "booking": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Booking",
+            "default": ""
+          },
+          "walk_ins": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Walk Ins"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SalonAttributes"
       },
       "Search": {
         "properties": {
@@ -9675,6 +9864,40 @@
           "message_id"
         ],
         "title": "Seen"
+      },
+      "ServiceAttributes": {
+        "properties": {
+          "services": {
+            "items": {
+              "type": "string",
+              "maxLength": 80,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Services"
+          },
+          "service_area": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Service Area",
+            "default": ""
+          },
+          "appointment": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appointment"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ServiceAttributes"
       },
       "ShareRequest": {
         "properties": {
@@ -10606,6 +10829,35 @@
           "method"
         ],
         "title": "Suggestions"
+      },
+      "TailorAttributes": {
+        "properties": {
+          "services": {
+            "items": {
+              "type": "string",
+              "maxLength": 80,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Services"
+          },
+          "turnaround": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Turnaround",
+            "default": ""
+          },
+          "measurements": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Measurements",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "TailorAttributes"
       },
       "ThreadMessage": {
         "properties": {

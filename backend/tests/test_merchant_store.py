@@ -509,8 +509,8 @@ def test_simulator_persistence_isolation_erasure_and_inventory(store: MerchantRe
 def test_customer_facts_are_sealed_saved_and_published(store: MerchantRepository) -> None:
     bid = create_with_products(store)
     saved = store.context("alice", bid)["business"]["fields"]
-    # Shops without facts keep exactly the original record shape (and therefore digests).
-    assert set(saved) == {"name", "category", "location", "hours", "phone", "currency"}
+    # The versioned default is additive; proposal snapshots/digests remain immutable.
+    assert set(saved) == {"name", "category", "location", "hours", "phone", "currency", "profile"}
     proposal = store.propose(
         "alice",
         ProposalRequest(
