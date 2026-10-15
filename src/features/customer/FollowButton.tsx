@@ -37,7 +37,8 @@ export function FollowButton({
   const [failed, setFailed] = useState(false)
   const label = (following ? t.unfollowShop : t.followShop).replace('{shop}', name)
   async function toggle() {
-    if (busy) return
+    // Enabled while the account loads (no grey flash on every page); a tap waits for it.
+    if (busy || account.status === 'loading') return
     setBusy(true)
     setFailed(false)
     try {
@@ -64,7 +65,7 @@ export function FollowButton({
             aria-label={label}
             aria-pressed={following}
             aria-busy={busy}
-            disabled={busy || account.status === 'loading'}
+            disabled={busy}
             onClick={() => void toggle()}
             sx={{
               width: 48,
@@ -87,7 +88,7 @@ export function FollowButton({
           size="small"
           startIcon={icon}
           aria-busy={busy}
-          disabled={busy || account.status === 'loading'}
+          disabled={busy}
           onClick={() => void toggle()}
           sx={{
             minHeight: 48,
