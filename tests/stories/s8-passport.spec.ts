@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import { AxeBuilder } from '@axe-core/playwright'
+import { expect, test, type Browser, type Page } from '@playwright/test'
 import { closeSheet, enter, localOnly, phone, shareSigned, shot } from './support.js'
 
 /**
@@ -61,10 +62,10 @@ async function seedPinnedShop(page: Page, name: string, at: { lat: number; lng: 
   await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
 }
 
-test.use(phone)
-test.skip(({ isMobile }) => !isMobile, 'Story evidence uses the phone project')
-test("S8 · Today's 7, a shop, the stamp moment and the passport", async ({ page, browser }) => {
-  test.setTimeout(90_000)
+type Mode = 'light' | 'dark'
+
+/** One shop, its signed QR and a customer phone standing at its pin, in the given appearance. */
+async function setup(page: Page, browser: Browser, mode: Mode) {
   await localOnly(page)
   await enter(page)
   const shopName = `Iyengar Bakery ${Date.now().toString().slice(-5)}`
@@ -77,88 +78,129 @@ test("S8 · Today's 7, a shop, the stamp moment and the passport", async ({ page
     ...phone,
     isMobile: true,
     hasTouch: true,
+    // The app follows its saved choice (default light), not the system scheme.
+    colorScheme: mode === 'dark' ? 'light' : 'dark',
     permissions: ['geolocation'],
     geolocation: { latitude: at.lat, longitude: at.lng, accuracy: 15 },
   })
-  try {
-    const customer = await context.newPage()
-    await localOnly(customer)
-    await test.step("1 · Today's 7 on the Ask home", async () => {
-      await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/`)
-      await customer.getByRole('button', { name: 'Use my location' }).click()
-      await customer.getByRole('button', { name: 'Explore my neighbourhood' }).click()
-      const today = customer.getByRole('region', { name: /^Today near/ })
-      const find = today.getByRole('listitem').filter({ hasText: shopName }).first()
-      await expect(find).toBeVisible({ timeout: 20_000 })
-      await expect(find).toContainText(/min walk/)
-      await find.scrollIntoViewIfNeeded()
-      await shot(customer, 8, 1)
-    })
-    await test.step('2 · a find opens its shop', async () => {
-      const today = customer.getByRole('region', { name: /^Today near/ })
-      const find = today.getByRole('listitem').filter({ hasText: shopName }).first()
-      await find.getByRole('link', { name: 'Go' }).click()
-      await expect(customer).toHaveURL(/\/explore\/s\//)
-      await expect(customer.getByRole('heading', { level: 1, name: shopName })).toBeVisible()
-      // Signed out, the shop card is honest about where it lives.
-      const card = customer.getByRole('region', { name: 'Stamp card' })
-      await expect(card.getByRole('status')).toHaveText('0 stamps')
-      await expect(card).toContainText('This card is stored on this phone.')
-      await shot(customer, 8, 2)
-    })
-    await test.step('3 · scanning the counter QR: the stamp moment', async () => {
-      await customer.goto(qr)
-      const moment = customer.getByRole('dialog')
-      await expect(moment.getByRole('button', { name: 'Done' })).toBeVisible()
-      await expect(moment.getByRole('progressbar')).toHaveCount(0)
-      // A tap skips the celebration to its end state.
-      await moment.getByRole('heading').first().click()
-      await expect(moment.getByRole('heading', { name: 'First try!' })).toBeVisible()
-      await expect(moment.getByText('+50 points')).toBeVisible()
-      await expect(
-        moment.getByText('Kept on this phone. Sign in to keep it everywhere.'),
-      ).toBeVisible()
-      await expect(moment.getByRole('button', { name: 'Sign in' })).toBeVisible()
-      await shot(customer, 8, 3)
-      await moment.getByRole('button', { name: 'Done' }).click()
-      await expect(moment).toBeHidden()
-      // The signed link is spent from the address bar, and the phone card counted the visit.
-      await expect(customer).not.toHaveURL(/[?&]k=/)
-      const card = customer.getByRole('region', { name: 'Stamp card' })
-      await expect(card.getByRole('status')).toHaveText('1 stamps')
-    })
-    await test.step('4 · passport: level, streak, stamp book and quests', async () => {
-      // Back to the Ask home, then the Passport tab.
-      await customer.getByRole('link', { name: 'Back', exact: true }).first().click()
-      await customer.getByRole('navigation').getByRole('link', { name: 'Passport' }).click()
-      await expect(customer.getByRole('heading', { level: 1, name: 'Your passport' })).toBeVisible()
-      await expect(customer.getByText('On this phone', { exact: true })).toBeVisible()
-      await expect(customer.getByText('Newcomer').first()).toBeVisible()
-      await expect(customer.getByText('250 more points to Regular')).toBeVisible()
-      await expect(customer.getByRole('region', { name: 'Weekly streak: 1' })).toBeVisible()
-      await shot(customer, 8, '4-level')
-      const book = customer.getByRole('region', { name: 'Stamp book' })
-      await expect(book).toContainText(shopName)
-      await book.scrollIntoViewIfNeeded()
-      await shot(customer, 8, '4-book')
-      const quests = customer.getByRole('region', { name: 'Quests' })
-      await expect(quests.getByRole('heading', { name: 'Weekly breakthrough' })).toBeVisible()
-      // The quests in order: this week's breakthrough has the one verified visit.
-      await expect(quests.getByRole('progressbar', { name: '1 of 3' })).toHaveCount(1)
-      await quests.scrollIntoViewIfNeeded()
-      await shot(customer, 8, '4-quests')
-    })
-    await test.step('5 · a second scan the same day is honest', async () => {
-      await customer.goto(qr)
-      const moment = customer.getByRole('dialog')
-      await expect(moment.getByRole('heading', { name: 'Already stamped today' })).toBeVisible()
-      await shot(customer, 8, 5)
-      await moment.getByRole('button', { name: 'Done' }).click()
-      await expect(
-        customer.getByRole('region', { name: 'Stamp card' }).getByRole('status'),
-      ).toHaveText('1 stamps')
-    })
-  } finally {
-    await context.close()
+  await context.addInitScript((appearance) => {
+    const key = 'niva.starter.preferences'
+    if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({ appearance }))
+  }, mode)
+  return { context, shopName, qr }
+}
+
+/** Screenshot plus a WCAG 2 A/AA axe pass of whatever is on screen (dialogs included). */
+function recorder(mode: Mode) {
+  return async (page: Page, step: string | number) => {
+    await shot(page, 8, mode === 'light' ? step : `${step}-dark`)
+    const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
+    expect(
+      violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
+      `S8/${step} (${mode})`,
+    ).toEqual([])
   }
-})
+}
+
+async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
+  const evidence = recorder(mode)
+  await localOnly(customer)
+  await test.step("1 · Today's 7 on the Ask home", async () => {
+    await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/`)
+    await customer.getByRole('button', { name: 'Use my location' }).click()
+    await customer.getByRole('button', { name: 'Explore my neighbourhood' }).click()
+    const today = customer.getByRole('region', { name: /^Today near/ })
+    const find = today.getByRole('listitem').filter({ hasText: shopName }).first()
+    await expect(find).toBeVisible({ timeout: 20_000 })
+    await expect(find).toContainText(/min walk/)
+    await find.scrollIntoViewIfNeeded()
+    await evidence(customer, 1)
+  })
+  await test.step('2 · a find opens its shop', async () => {
+    const today = customer.getByRole('region', { name: /^Today near/ })
+    const find = today.getByRole('listitem').filter({ hasText: shopName }).first()
+    await find.getByRole('link', { name: 'Go' }).click()
+    await expect(customer).toHaveURL(/\/explore\/s\//)
+    await expect(customer.getByRole('heading', { level: 1, name: shopName })).toBeVisible()
+    // Signed out, the shop card is honest about where it lives.
+    const card = customer.getByRole('region', { name: 'Stamp card' })
+    await expect(card.getByRole('status')).toHaveText('0 stamps')
+    await expect(card).toContainText('This card is stored on this phone.')
+    await evidence(customer, 2)
+  })
+  await test.step('3 · scanning the counter QR: the stamp moment', async () => {
+    await customer.goto(qr)
+    const moment = customer.getByRole('dialog')
+    await expect(moment.getByRole('button', { name: 'Done' })).toBeVisible()
+    await expect(moment.getByRole('progressbar')).toHaveCount(0)
+    // A tap skips the celebration to its end state.
+    await moment.getByRole('heading').first().click()
+    await expect(moment.getByRole('heading', { name: 'First try!' })).toBeVisible()
+    await expect(moment.getByText('+50 points')).toBeVisible()
+    await expect(
+      moment.getByText('Kept on this phone. Sign in to keep it everywhere.'),
+    ).toBeVisible()
+    await expect(moment.getByRole('button', { name: 'Sign in' })).toBeVisible()
+    await evidence(customer, 3)
+    await moment.getByRole('button', { name: 'Done' }).click()
+    await expect(moment).toBeHidden()
+    // The signed link is spent from the address bar, and the phone card counted the visit.
+    await expect(customer).not.toHaveURL(/[?&]k=/)
+    const card = customer.getByRole('region', { name: 'Stamp card' })
+    await expect(card.getByRole('status')).toHaveText('1 stamps')
+  })
+  await test.step('4 · passport: level, streak, stamp book and quests', async () => {
+    // Back to the Ask home, then the Passport tab.
+    await customer.getByRole('link', { name: 'Back', exact: true }).first().click()
+    await customer.getByRole('navigation').getByRole('link', { name: 'Passport' }).click()
+    await expect(customer.getByRole('heading', { level: 1, name: 'Your passport' })).toBeVisible()
+    await expect(customer.getByText('On this phone', { exact: true })).toBeVisible()
+    await expect(customer.getByText('Newcomer').first()).toBeVisible()
+    await expect(customer.getByText('250 more points to Regular')).toBeVisible()
+    await expect(customer.getByRole('region', { name: 'Weekly streak: 1' })).toBeVisible()
+    await evidence(customer, '4-level')
+    const book = customer.getByRole('region', { name: 'Stamp book' })
+    await expect(book).toContainText(shopName)
+    await book.scrollIntoViewIfNeeded()
+    await evidence(customer, '4-book')
+    const quests = customer.getByRole('region', { name: 'Quests' })
+    await expect(quests.getByRole('heading', { name: 'Weekly breakthrough' })).toBeVisible()
+    // The quests in order: this week's breakthrough has the one verified visit.
+    await expect(quests.getByRole('progressbar', { name: '1 of 3' })).toHaveCount(1)
+    await quests.scrollIntoViewIfNeeded()
+    // Chrome rasterises freshly scrolled layers (opacity, progress bars) a beat later.
+    await customer.waitForTimeout(400)
+    await evidence(customer, '4-quests')
+  })
+  await test.step('5 · a second scan the same day is honest', async () => {
+    await customer.goto(qr)
+    const moment = customer.getByRole('dialog')
+    await expect(moment.getByRole('heading', { name: 'Already stamped today' })).toBeVisible()
+    await evidence(customer, 5)
+    await moment.getByRole('button', { name: 'Done' }).click()
+    await expect(
+      customer.getByRole('region', { name: 'Stamp card' }).getByRole('status'),
+    ).toHaveText('1 stamps')
+  })
+}
+
+test.use(phone)
+test.skip(({ isMobile }) => !isMobile, 'Story evidence uses the phone project')
+for (const mode of ['light', 'dark'] as const) {
+  test(`S8 · Today's 7, a shop, the stamp moment and the passport (${mode})`, async ({
+    page,
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const { context, shopName, qr } = await setup(page, browser, mode)
+    try {
+      const customer = await context.newPage()
+      await walk(customer, shopName, qr, mode)
+      const surface = await customer.evaluate(() => getComputedStyle(document.body).backgroundColor)
+      // Kraft paper light, chalkboard dark (B30).
+      expect(surface).toBe(mode === 'dark' ? 'rgb(23, 39, 31)' : 'rgb(251, 247, 236)')
+    } finally {
+      await context.close()
+    }
+  })
+}
