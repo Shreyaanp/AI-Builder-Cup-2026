@@ -5,9 +5,10 @@ from uuid import UUID, uuid4
 
 import anyio
 import httpx
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
+from . import erasure
 from .coordinator import MerchantContext, ProductInput, current, propose_products
 from .discover import prepare_pin
 from .face_transport import worker_headers
@@ -32,8 +33,6 @@ from .product_categories import suggest_category
 from .product_units import normalize_unit
 from .sales import daily_sales
 from .stock_alerts import StockAlertInput, StockAlertReceipt
-from .streaming import APP_NAME
-from .threads import thread_signals
 
 # Bump when the Terms or Privacy Notice text changes; owners must accept again.
 LEGAL_VERSION = "2026-10-14"
@@ -71,14 +70,19 @@ router = APIRouter(prefix="/api/v1")
 
 
 @router.get("/me")
-async def me(request: Request) -> dict[str, Any]:
+async def me(request: Request, background: BackgroundTasks) -> dict[str, Any]:
     uid = await owner(request)
     await enforce_limits(request, [("me", client_ip(request))])
     record = await anyio.to_thread.run_sync(store(request).consent, uid)
+    left = ((await erasure.pending(request, uid)) or {}).get("steps", {})
+    if left:
+        # An earlier "Delete all my data" did not finish: retry it quietly in the background.
+        background.add_task(erasure.retry_quietly, request, uid, list(left))
     return {
         "legal_version": LEGAL_VERSION,
         "consent": record,
         "consent_current": bool(record and record.get("version") == LEGAL_VERSION),
+        "erase_pending": [step for step in erasure.STEPS if step in left],
     }
 
 
@@ -93,44 +97,13 @@ async def consent(body: ConsentRequest, request: Request) -> dict[str, Any]:
 
 @router.delete("/me/data")
 async def erase(request: Request) -> dict[str, Any]:
-    """Erase everything this owner stored: records, memory, conversations, photos, face data."""
+    """Erase everything this owner stored: records, memory, conversations, photos, face data.
+
+    Each step runs on its own; `status` is "erased", or "partial" with the `pending` steps that
+    will be retried (on Try again and on the next visit) instead of a bare 500.
+    """
     uid = await owner(request)
-    settings = request.app.state.v1_settings
-    token = settings.face_worker_token.get_secret_value()
-    if token:
-        try:
-            async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
-                # Same two auth layers as capture: Cloud Run identity token + worker token
-                # (without the identity token Cloud Run answered 401 and erasure stopped).
-                response = await client.delete(
-                    settings.face_worker_url + "/template",
-                    headers=await worker_headers(settings, uid),
-                )
-            if not response.is_success:
-                raise HTTPException(503, "Face data deletion could not be confirmed. Retry.")
-        except httpx.HTTPError as error:
-            raise HTTPException(503, "Face data deletion could not be confirmed. Retry.") from error
-    photos = await anyio.to_thread.run_sync(request.app.state.photos.erase_owner_sync, uid)
-    businesses = await anyio.to_thread.run_sync(store(request).erase_owner, uid)
-    for bid in businesses:
-        thread_signals(request).wake(bid)
-        # Gallery photos of erased shops go too.
-        await anyio.to_thread.run_sync(request.app.state.photos.delete_gallery_sync, bid)
-        # And the community copies: menu snapshot, update feed and neighbour tips.
-        if getattr(request.app.state, "community", None) is not None:
-            await anyio.to_thread.run_sync(request.app.state.community.erase_shop, bid)
-    if request.app.state.recall:
-        await anyio.to_thread.run_sync(request.app.state.recall.forget, uid, businesses)
-    runtime = request.app.state.services.runtime
-    listing = await runtime.sessions.list_sessions(app_name=APP_NAME, user_id=uid)
-    for session in listing.sessions:
-        await runtime.sessions.delete_session(app_name=APP_NAME, user_id=uid, session_id=session.id)
-    return {
-        "status": "erased",
-        "businesses": len(businesses),
-        "photos": photos,
-        "conversations": len(listing.sessions),
-    }
+    return await erasure.erase(request, uid)
 
 
 @router.get("/businesses")

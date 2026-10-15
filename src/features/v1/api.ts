@@ -71,6 +71,13 @@ export interface Me {
   legal_version: string
   consent: { version: string; accepted: number } | null
   consent_current: boolean
+  /** Steps of an earlier "Delete all my data" still being retried (backend erasure.STEPS). */
+  erase_pending?: string[]
+}
+export interface EraseResult {
+  status: 'erased' | 'partial'
+  erased: string[]
+  pending: string[]
 }
 export interface Conversation {
   session_id: string
