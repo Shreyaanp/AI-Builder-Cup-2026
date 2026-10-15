@@ -153,3 +153,17 @@ dismissed for this tab/day, separately per shop. Strict phone isolation/next-day
 
 A11 fixed and live (99bed19): clearly labelled Google preview text, truthful Call availability, Tamil
 composer/navigation metrics and distinct customer light surfaces passed four phone cases.
+
+## QA machine · 15 October 2026
+
+`npm run test:qa` runs 118 end-to-end cases across every feature (phone and desktop). Findings live
+in [docs/qa/QA-REPORT.md](docs/qa/QA-REPORT.md); open bugs stay as expected failures until fixed.
+
+- Q8 (blocker, anonymous chat) fixed: new owner conversations need a signed-in customer.
+- Q1 won't fix (owner decision): no multilingual offline coach replies; the live AI handles languages.
+- In progress: owner side Q6, Q7, Q12–Q14 (Codex); customer side Q2–Q5, Q9–Q11 (account 2).
+
+## Questions for the user
+
+- Next features: build (1) unmet-demand radar, (2) closing-time rescue deals and (3)
+  neighbourhood passport badges, or swap in the morning brief, group buying or price check?
