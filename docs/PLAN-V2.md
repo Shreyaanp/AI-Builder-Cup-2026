@@ -6,6 +6,7 @@ generated demo data is fine and expected, as long as it is labelled as demo.
 
 ## Owner decisions (15 Oct, verbatim intent)
 
+0. **Demo revamp (later):** the demo must showcase how to use every feature we build.
 1. **Order of work:** V1 stable and bug-free first ("get V1 out without any bugs"), then refine,
    then add logic and features. The owner tests and reports bugs; UI/UX flow beats extra features.
 2. **Build all six features:** unmet-demand radar, closing-time rescue deals, neighbourhood
@@ -83,6 +84,9 @@ honest demo labels, reduced motion, axe clean, a story walkthrough test, live on
 
 ## Workers and recovery
 
+- **Branches and review (owner decision 15 Oct):** every feature on its own feat/<name> branch,
+  merged only through a pull request with green checks and the graphify impact comment
+  (docs/REVIEW.md, scripts/build_graph.py, scripts/impact.py, npm run graph / npm run impact).
 - Account 2: headless `claude -p` with `CLAUDE_CONFIG_DIR=%USERPROFILE%\.claude-account2` in
   `%USERPROFILE%\work\chalkboard-ui`; claude.exe is under
   `%USERPROFILE%\.vscode\extensions\anthropic.claude-code-*\resources\native-binary\`. Logs in
@@ -94,6 +98,14 @@ honest demo labels, reduced motion, axe clean, a story walkthrough test, live on
 
 ## Status log (newest first)
 
+- 15 Oct (evening): owner asked: everything running, use Codex, basic owner features must work
+  for real (photo/menu upload to register, images, voice) and revamp the demo LATER so it
+  showcases how to use every feature. Live: 40b7dec (uploads refused by the 16 KB body guard,
+  numbers-as-text readers, 3/3 live Gemini owner runs). On main a164b7e: passport + Today's 7
+  merged, owner backends (radar/rescue/brief) merged, delete-my-data fixed (face worker 401).
+  New owner bugs being fixed: real GPS location for the shop pin, and a guided AI "new shop" flow
+  instead of the manual form (Codex, task-NEW-SHOP.md). Account 2: rescue/radar/brief UI
+  (feat/rescue-ui). Next for me: ship a164b7e, keep live owner checks green.
 - 15 Oct (late): owner reported broken photo upload, slow mic, "too many requests", and an
   overloaded shop page. Fixed and live (0cdc4b1): Vertex rejects list-length limits in response
   schemas (photos, Close the day, imports, suppliers, demo world all 400ed) so every call now uses
