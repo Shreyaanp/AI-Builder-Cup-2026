@@ -126,7 +126,6 @@ function CoachScreen({
   const [reconnecting, setReconnecting] = useState(false)
   const [mode, setMode] = useState<'offline' | 'gemini' | null>(null)
   const [history, setHistory] = useState<Conversation[]>([])
-  const [restoring, setRestoring] = useState(true)
   const s = useSourcingCopy()
   // Sourcing: the item being searched for, every order shown in the chat, the open thread.
   const [searching, setSearching] = useState<string | null>(null)
@@ -247,9 +246,6 @@ function CoachScreen({
         if (latest && !session.current) await restore(latest.session_id)
       })
       .catch(() => undefined)
-      .finally(() => {
-        if (!abort.signal.aborted) setRestoring(false)
-      })
     return () => {
       abort.abort()
       speechSynthesis.cancel()
@@ -526,7 +522,6 @@ function CoachScreen({
   async function restore(id: string) {
     setActionsOpen(false)
     voice.stop()
-    setRestoring(true)
     try {
       const data = await api<{ messages: Message[] }>(`/conversations/${id}`)
       controller.current?.abort()
@@ -535,8 +530,6 @@ function CoachScreen({
       setReply('')
     } catch {
       setError(t.actionFailed)
-    } finally {
-      setRestoring(false)
     }
   }
 
@@ -1160,7 +1153,7 @@ function CoachScreen({
                       : t.stopVoice
                 }
                 aria-pressed={voice.state === 'recording'}
-                disabled={busy !== 'idle' || restoring}
+                disabled={busy !== 'idle'}
                 onClick={() => {
                   if (voice.state === 'recording') voice.finishRecording()
                   else if (voice.state === 'idle') void voice.start(session.current)
