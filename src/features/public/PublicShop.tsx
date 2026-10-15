@@ -74,6 +74,7 @@ function factChips(facts: ShopFacts, t: CustomerCopy): string[] {
   if (facts.halal === 'muslim_owned') chips.push(t.factMuslimOwned)
   if (facts.halal === 'no') chips.push(t.factNotHalal)
   if (facts.vegetarian_options) chips.push(t.factVegetarian)
+  if (facts.locally_made) chips.push(t.factLocallyMade)
   if (facts.delivery === 'none') chips.push(t.factNoDelivery)
   else if (facts.delivery === 'own' || facts.delivery === 'other') chips.push(t.factDelivery)
   else if (facts.delivery)

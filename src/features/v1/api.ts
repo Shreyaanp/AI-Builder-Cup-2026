@@ -3,6 +3,7 @@ import { clientTimezoneHeader } from '../../api/timezone'
 export interface ShopFacts {
   halal?: 'yes' | 'no' | 'muslim_owned' | 'not_stated' | null
   vegetarian_options?: boolean | null
+  locally_made?: boolean | null
   delivery?: string | null
   delivery_note?: string
   preorders?: boolean | null

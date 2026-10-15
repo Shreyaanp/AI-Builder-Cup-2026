@@ -284,6 +284,8 @@ def neighbourhood(
                 if category == "Salon"
                 else delivery,
                 delivery_note="Demo option only; no ordering or delivery service connected",
+                # Every other demo shop makes its own goods, so each city shows the badge.
+                locally_made=index % 2 == 0,
                 preorders=True,
                 preorder_lead_time="Ask one day ahead (demo)",
                 busy_hours="12:00–14:00",

@@ -21,6 +21,14 @@ def test_keyword_intent_reads_budget_diet_and_category() -> None:
     assert "coffee" in intent.keywords and "cheap" not in intent.keywords
 
 
+def test_keyword_intent_reads_locally_made() -> None:
+    for q in ["homemade cookies", "locally made soap", "hand-made bags", "local makers"]:
+        assert keyword_intent(q).locally_made, q
+    intent = keyword_intent("homemade cookies")
+    assert intent.keywords == ["cookies"]
+    assert not keyword_intent("cookies near me").locally_made
+
+
 def test_ask_matches_real_menu_items_prices_and_facts(
     store: MerchantRepository, tmp_path: Path
 ) -> None:
@@ -50,3 +58,6 @@ def test_ask_matches_real_menu_items_prices_and_facts(
         # Too expensive for the budget: no match from this shop.
         cheap = ask("toast under 1")
         assert all(p["id"] != bid for g in cheap["groups"] for p in g["places"])
+        # "Locally made" only matches shops whose owner said so (not this one).
+        local = ask("homemade kopi")
+        assert all(p["id"] != bid for g in local["groups"] for p in g["places"])

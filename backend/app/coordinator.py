@@ -40,6 +40,7 @@ ASK_ORDER = (
     "payment_methods",
     "delivery",
     "vegetarian_options",
+    "locally_made",
     "preorders",
     "busy_hours",
 )
@@ -273,6 +274,7 @@ COMMON_QUESTIONS = {
     "payment_methods": "Which payment methods do you accept? Any local method, card or cash.",
     "delivery": "Do you deliver? If so, what is the service name, or do you deliver yourself?",
     "vegetarian_options": "Do you have vegetarian options?",
+    "locally_made": "Do you make what you sell yourself, or source it from local makers?",
     "preorders": "Can customers order ahead?",
     "busy_hours": "When are you busiest?",
 }
@@ -361,6 +363,7 @@ def _propose_shop(
     currency: str = "",
     halal: str = "",
     vegetarian_options: bool | None = None,
+    locally_made: bool | None = None,
     delivery: str = "",
     delivery_note: str = "",
     preorders: bool | None = None,
@@ -386,6 +389,7 @@ def _propose_shop(
     facts: dict[str, Any] = {
         "halal": (halal or "").strip().lower() or None,
         "vegetarian_options": vegetarian_options,
+        "locally_made": locally_made,
         "delivery": _known_fact_name(delivery, {"none", "own", "grab", "foodpanda", "other"})
         or None,
         "delivery_note": (delivery_note or "").strip() or None,
@@ -494,6 +498,7 @@ def _known_fact_name(value: str, known: set[str]) -> str:
 def propose_customer_facts(
     halal: str = "",
     vegetarian_options: bool | None = None,
+    locally_made: bool | None = None,
     delivery: str = "",
     delivery_note: str = "",
     preorders: bool | None = None,
@@ -504,8 +509,9 @@ def propose_customer_facts(
 ) -> dict[str, Any]:
     """Prepare facts customers ask about for the owner to review, only as the owner states
     them; pass just the facts that changed. halal: yes, no, muslim_owned or not_stated.
-    vegetarian_options, preorders: true/false. delivery: any service name, max 40 characters;
-    use none for no delivery, own for the shop's delivery. Existing grab/foodpanda keys work
+    vegetarian_options, locally_made (made in-house or by local makers), preorders:
+    true/false. delivery: any service name, max 40 characters; use none for no delivery,
+    own for the shop's delivery. Existing grab/foodpanda keys work
     (delivery_note up to 80 characters, e.g. "within 3 km"). preorder_lead_time e.g. "1 day
     ahead". payment_methods: up to 8 names, each max 40 characters, exactly as the owner says
     (e.g. UPI, PayPay, GCash, card, cash). Known keys remain compatible. busy_hours e.g.
@@ -520,6 +526,7 @@ def propose_customer_facts(
         name="",
         halal=halal,
         vegetarian_options=vegetarian_options,
+        locally_made=locally_made,
         delivery=delivery,
         delivery_note=delivery_note,
         preorders=preorders,

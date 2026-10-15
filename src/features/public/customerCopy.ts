@@ -48,6 +48,7 @@ export const customerEnglish = {
   factMuslimOwned: 'Muslim-owned',
   factNotHalal: 'Not halal',
   factVegetarian: 'Vegetarian options',
+  factLocallyMade: 'Locally made',
   factDelivery: 'Delivery',
   factDeliveryVia: 'Delivery via {name}',
   factNoDelivery: 'No delivery',
