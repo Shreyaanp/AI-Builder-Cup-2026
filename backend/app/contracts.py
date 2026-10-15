@@ -58,6 +58,7 @@ class StreamEvent(StrictModel):
         "sourcing",
         "suppliers",
         "order",
+        "rescue_proposal",
     ]
     session_id: str | None = None
     text: str | None = None

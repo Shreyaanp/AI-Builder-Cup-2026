@@ -55,6 +55,15 @@ def public_events(event: Event) -> list[StreamEvent]:
                     StreamEvent(kind="sourcing", data={"stage": "searching", "item": item})
                 )
             response = part.function_response
+            if response and response.name == "propose_rescue_deal":
+                merchant = current.get()
+                card = (
+                    merchant.cards.get(str((response.response or {}).get("card_id")))
+                    if merchant
+                    else None
+                )
+                if card:
+                    output.append(StreamEvent(kind="rescue_proposal", data=card[1]))
             if response and response.name in SOURCING_TOOLS:
                 merchant = current.get()
                 card = (

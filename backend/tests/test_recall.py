@@ -8,7 +8,7 @@ from google.cloud import firestore
 from app.memory_vectors import EMBEDDING_DIMENSIONS, FirestoreRecall, padded_lexical
 
 pytestmark = pytest.mark.skipif(
-    os.getenv("FIRESTORE_EMULATOR_HOST") != "127.0.0.1:8085",
+    (os.getenv("FIRESTORE_EMULATOR_HOST") or "").split(":")[0] not in {"127.0.0.1", "localhost"},
     reason="Requires the explicitly local Firestore emulator; never use a cloud database.",
 )
 
