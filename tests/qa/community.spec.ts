@@ -1,4 +1,5 @@
 import { test, expect, owner, publish, audit, evidence } from './support.js'
+import { LOCALES } from '../../src/i18n/locales.js'
 
 test('signed-out Saved and Chats offer recovery; keyboard navigation works', async ({ page }) => {
   await page.goto('/explore/saved')
@@ -143,4 +144,34 @@ test.describe('Tamil community', () => {
     await expect(page.getByText('Follow shops to see their news here')).toHaveCount(0)
     await audit(page)
   })
+})
+
+// Fixed Q2: every supported language, not only Tamil, carries the customer navigation and Saved.
+test('customer navigation and Saved follow each of the 15 languages', async ({
+  browser,
+  baseURL,
+}) => {
+  for (const locale of LOCALES.filter((l) => l !== 'en')) {
+    const context = await browser.newContext({ baseURL, locale })
+    try {
+      const page = await context.newPage()
+      await page.addInitScript(() => localStorage.setItem('chalkboard.customer.journey', 'done'))
+      await page.goto('/explore/saved')
+      await expect(page.locator('html')).toHaveAttribute(
+        'lang',
+        new RegExp(`^${locale.split('-')[0]}`),
+      )
+      await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0)
+      const nav = page.getByRole('navigation').last()
+      await expect(nav.getByRole('link')).toHaveCount(3)
+      for (const english of ['Ask', 'Chats', 'Saved'])
+        await expect(nav.getByRole('link', { name: english, exact: true })).toHaveCount(0)
+      await expect(page.getByRole('heading', { level: 1 })).not.toHaveText('Saved')
+      await expect(page.getByText('Follow shops to see their news here')).toHaveCount(0)
+      const fits = await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)
+      expect(fits, `${locale} fits the viewport`).toBe(true)
+    } finally {
+      await context.close()
+    }
+  }
 })
