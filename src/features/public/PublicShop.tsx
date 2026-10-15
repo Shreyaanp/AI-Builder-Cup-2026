@@ -37,6 +37,7 @@ import { Tips } from '../customer/Tips'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
 import { customerTranslations } from './customerLocales'
 import { BackInStock, BadgeRow, StampCard, StockReminder } from '../rewards/Rewards'
+import { ShopStamp } from '../passport/ShopStamp'
 import { HoursList } from '../shop/Hours'
 import type { DayHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
@@ -617,7 +618,8 @@ export default function PublicShop({ id }: { id: string }) {
             compact
           />
         </Box>
-        <Box sx={{ minWidth: 0, flex: 1 }}>
+        {/* On a phone the floating theme button sits over the top-right corner: wrap before it. */}
+        <Box sx={{ minWidth: 0, flex: 1, pr: { xs: '44px', md: 0 } }}>
           <Typography component="h1" variant="titleLarge" sx={{ overflowWrap: 'anywhere' }}>
             {shop.name}
           </Typography>
@@ -658,9 +660,9 @@ export default function PublicShop({ id }: { id: string }) {
                 {openLabel}
               </Typography>
             )}
-            {[shop.category, shop.hours].filter(Boolean).map((text) => (
+            {[shop.category, shop.hours].filter(Boolean).map((text, index) => (
               <Typography key={text} variant="bodyMedium" color="text.secondary" noWrap>
-                · {text}
+                {openLabel || index > 0 ? `· ${text}` : text}
               </Typography>
             ))}
           </Stack>
@@ -931,6 +933,7 @@ export default function PublicShop({ id }: { id: string }) {
         reward={shop.reward_text}
         needed={shop.stamps_needed ?? 8}
       />
+      <ShopStamp shop={{ id, name: shop.name, category: shop.category, demo: shop.demo }} />
       {!stale && <BackInStock shop={id} products={shop.products} />}
       <BadgeRow shop={id} />
       <Tips shop={id} />

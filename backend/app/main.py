@@ -56,6 +56,7 @@ from .merchant import MerchantRepository, MerchantStore
 from .merchant_firestore import FirestoreMerchantStore
 from .merchant_routes import router as merchant_router
 from .owner_routes import router as owner_router
+from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
 from .recap import RecapWriter
@@ -65,6 +66,7 @@ from .settings import Settings
 from .sourcing import SupplierGenerator
 from .sourcing_routes import router as sourcing_router
 from .streaming import CoachRuntime
+from .today import router as today_router
 from .tts import Speech
 from .voice import serve_voice
 
@@ -217,6 +219,8 @@ def create_app(
     app.include_router(day_close_router)
     app.include_router(demo_workspace_router)
     app.include_router(demo_world_router)
+    app.include_router(passport_router)
+    app.include_router(today_router)
     app.include_router(sourcing_router)
     app.include_router(owner_router)
     app.add_middleware(
