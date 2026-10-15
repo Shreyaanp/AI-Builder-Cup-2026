@@ -248,6 +248,11 @@ export function HoursList({ hours }: { hours?: DayHours[] }) {
   const t = useShopCopy()
   const locale = useLocale()
   if (!hours?.length) return null
+  // Seven identical open days read as one line ("Mon–Sun 07:00–20:00").
+  const first = hours[0]
+  const same =
+    hours.length === weekdays.length &&
+    hours.every((item) => !item.closed && item.open === first?.open && item.close === first?.close)
   return (
     <Box component="section" aria-label={t.weeklyHours}>
       <Typography component="h3" variant="titleSmall">
@@ -264,26 +269,41 @@ export function HoursList({ hours }: { hours?: DayHours[] }) {
           rowGap: 1,
         }}
       >
-        {weekdays.flatMap((day) => {
-          const entry = hours.find((item) => item.day === day)
-          return entry
-            ? [
-                <Typography component="dt" variant="bodySmall" key={`${day}-label`}>
-                  {dayLabel(day, locale)}
-                </Typography>,
-                <Typography
-                  component="dd"
-                  variant="bodySmall"
-                  key={day}
-                  sx={{ m: 0, fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {entry.closed
-                    ? t.closed
-                    : `${entry.open}–${entry.close}${entry.open! > entry.close! ? ' (+1)' : ''}`}
-                </Typography>,
-              ]
-            : []
-        })}
+        {same ? (
+          <>
+            <Typography component="dt" variant="bodySmall">
+              {dayLabel(weekdays[0]!, locale)}–{dayLabel(weekdays[weekdays.length - 1]!, locale)}
+            </Typography>
+            <Typography
+              component="dd"
+              variant="bodySmall"
+              sx={{ m: 0, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {`${first!.open}–${first!.close}${first!.open! > first!.close! ? ' (+1)' : ''}`}
+            </Typography>
+          </>
+        ) : (
+          weekdays.flatMap((day) => {
+            const entry = hours.find((item) => item.day === day)
+            return entry
+              ? [
+                  <Typography component="dt" variant="bodySmall" key={`${day}-label`}>
+                    {dayLabel(day, locale)}
+                  </Typography>,
+                  <Typography
+                    component="dd"
+                    variant="bodySmall"
+                    key={day}
+                    sx={{ m: 0, fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    {entry.closed
+                      ? t.closed
+                      : `${entry.open}–${entry.close}${entry.open! > entry.close! ? ' (+1)' : ''}`}
+                  </Typography>,
+                ]
+              : []
+          })
+        )}
       </Box>
     </Box>
   )
