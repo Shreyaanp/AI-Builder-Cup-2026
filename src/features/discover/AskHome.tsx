@@ -671,13 +671,14 @@ function TodayEntry({
         alignItems: 'center',
         gap: 4,
         p: 4,
-        border: 0,
         borderRadius: '20px',
         cursor: 'pointer',
         textAlign: 'start',
         font: 'inherit',
-        bgcolor: tone.container,
-        color: tone.onContainer,
+        // A calm card: the one sunflower accent is the small tile, not the whole surface.
+        bgcolor: theme.material.surfaceContainerLow,
+        color: theme.material.onSurface,
+        border: `1px solid ${theme.material.outlineVariant}`,
         ...dealIn,
         '--deal-index': 5,
         '&:focus-visible': { outline: `3px solid ${theme.material.primary}`, outlineOffset: 2 },
@@ -706,7 +707,7 @@ function TodayEntry({
         >
           {copy.today}
         </Typography>
-        <Typography variant="bodyMedium" sx={{ mt: 1 }}>
+        <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
           {copy.todayHint}
         </Typography>
       </Box>

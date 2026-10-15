@@ -238,7 +238,8 @@ function measure() {
       Math.max(0, Math.min(r.bottom, H) - Math.max(r.top, 0))
     if (bg && bg.a > 0.5) {
       const c = hsl(bg)
-      if (c.s > 0.35 && c.l > 0.15 && c.l < 0.88) {
+      // Kraft-paper neutrals (very light, low chroma) are surfaces, not accents.
+      if (c.s > 0.35 && c.l > 0.15 && c.l < 0.8) {
         const bucket = Math.round(c.h / 30) % 12
         hues.set(bucket, (hues.get(bucket) ?? 0) + area)
         if (/^(BUTTON|A)$/.test(el.tagName) || el.getAttribute('role') === 'button') primaries += 1
