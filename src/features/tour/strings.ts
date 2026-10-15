@@ -1,4 +1,5 @@
 import type { Locale } from '../../i18n/locales'
+import { tourApac } from './apacTranslations'
 import { tourTranslations } from './translations'
 
 /** The guided tour. Languages without their own copy fall back to English. */
@@ -56,7 +57,10 @@ const en = {
 export type TourCopy = typeof en
 type Copy = TourCopy
 
-const translations: Partial<Record<Locale, Partial<Copy>>> = tourTranslations
+const translations: Partial<Record<Locale, Partial<Copy>>> = {
+  ...tourTranslations,
+  ...tourApac,
+}
 
 export function tourCopy(locale: Locale): Copy {
   return { ...en, ...(translations[locale] ?? {}) }
