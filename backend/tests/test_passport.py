@@ -101,6 +101,13 @@ def test_demo_shops_earn_demo_points_kept_apart() -> None:
     visit(state, shop("demo-x", demo=True), at(0))
     assert state.points == 0 and state.demo_points == 50
     assert state.stamps[0].demo
+    # Fictional demo shops stamp without a location fix, still once a day.
+    place = shop("demo-y", demo=True)
+    anywhere = apply_visit(state, Visit(shop_id="demo-y", shop=place, at=at(0)))
+    assert anywhere.verdict == "stamped" and state.demo_points == 100
+    assert apply_visit(state, Visit(shop_id="demo-y", shop=place, at=at(0, 12))).verdict == (
+        "already_today"
+    )
 
 
 def test_location_rules_reject_without_points() -> None:
@@ -341,11 +348,10 @@ def test_stamp_route_checks_key_location_and_day(client: TestClient) -> None:
     sign_in(client)
     bad = client.post("/api/v1/customer/passport/stamps", json={**body, "key": "nope"})
     assert bad.status_code == 403
-    far = client.post(
+    # A demo shop is fictional: its on-screen QR stamps from anywhere, for demo points only.
+    first = client.post(
         "/api/v1/customer/passport/stamps", json={**body, "lat": body["lat"] + 0.02}
     ).json()
-    assert far["outcome"]["verdict"] == "too_far" and far["passport"]["total"] == 0
-    first = client.post("/api/v1/customer/passport/stamps", json=body).json()
     assert first["outcome"]["verdict"] == "stamped" and first["outcome"]["first"]
     assert first["outcome"]["demo"] is True
     view = first["passport"]
@@ -391,10 +397,10 @@ def test_demo_qr_only_for_demo_shops(client: TestClient) -> None:
     assert public["perks"][0]["text"] == "Free kopi upgrade"
     # A real shop stamps real points.
     sign_in(client)
-    real = client.post(
-        "/api/v1/customer/passport/stamps",
-        json={"shop_id": bid, "key": key, "lat": 1.285, "lng": 103.827, "accuracy": 10},
-    ).json()
+    stamp = {"shop_id": bid, "key": key, "lat": 1.285, "lng": 103.827, "accuracy": 10}
+    far = client.post("/api/v1/customer/passport/stamps", json={**stamp, "lat": 1.305}).json()
+    assert far["outcome"]["verdict"] == "too_far" and far["passport"]["total"] == 0
+    real = client.post("/api/v1/customer/passport/stamps", json=stamp).json()
     assert real["passport"]["points"] == 50 and real["passport"]["demo_points"] == 0
 
 
@@ -406,7 +412,7 @@ def test_signed_out_receipts_preview_and_merge_once(client: TestClient) -> None:
     no_location = client.post(
         "/api/v1/public/passport/check", json={"shop_id": DEMO, "key": body["key"]}
     ).json()
-    assert no_location["outcome"]["verdict"] == "card_only" and no_location["receipt"] is None
+    assert no_location["outcome"]["verdict"] == "stamped" and no_location["receipt"]  # demo shop
     preview = client.post(
         "/api/v1/public/passport/preview",
         json={"receipts": [receipt, "forged"], "cards": {"demo-katong-tailor": 2}},

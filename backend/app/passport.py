@@ -715,7 +715,14 @@ def apply_visit(state: PassportState, visit: Visit) -> Outcome:
     if visit.own_shop:
         outcome.verdict = "own_shop"
         return outcome
-    if not located or slat is None or slng is None:
+    # Demo shops are fictional and shown on screen in the demo, so their QR stamps without a
+    # location fix. They only ever earn demo points; the day and daily-cap rules still apply.
+    demo_shop = bool(shop.get("demo"))
+    if demo_shop:
+        if located and slat is not None and slng is not None:
+            assert visit.lat is not None and visit.lng is not None
+            outcome.distance_m = distance(visit.lat, visit.lng, float(slat), float(slng))
+    elif not located or slat is None or slng is None:
         # Location refused (or the shop has no pin): the shop card still counts, the passport
         # does not.
         progress = shop_progress(state, visit.shop_id, shop)
@@ -725,17 +732,25 @@ def apply_visit(state: PassportState, visit: Visit) -> Outcome:
         outcome.verdict = "card_only"
         outcome.card = progress.card
         return outcome
-    assert visit.lat is not None and visit.lng is not None
-    gap = distance(visit.lat, visit.lng, float(slat), float(slng))
-    outcome.distance_m = gap
-    if visit.accuracy is None or visit.accuracy > MAX_ACCURACY_M:
-        outcome.verdict = "low_accuracy"
-        return _reject(state, day, outcome)
-    if gap > VISIT_RADIUS_M:
-        outcome.verdict = "too_far"
-        return _reject(state, day, outcome)
+    else:
+        assert visit.lat is not None and visit.lng is not None
+        assert slat is not None and slng is not None
+        gap = distance(visit.lat, visit.lng, float(slat), float(slng))
+        outcome.distance_m = gap
+        if visit.accuracy is None or visit.accuracy > MAX_ACCURACY_M:
+            outcome.verdict = "low_accuracy"
+            return _reject(state, day, outcome)
+        if gap > VISIT_RADIUS_M:
+            outcome.verdict = "too_far"
+            return _reject(state, day, outcome)
     last = state.last_fix
-    if last is not None and visit.at > last.at:
+    if (
+        not demo_shop
+        and last
+        and visit.lat is not None
+        and visit.lng is not None
+        and visit.at > last.at
+    ):
         hours = (visit.at - last.at) / 3600
         km = distance(last.lat, last.lng, visit.lat, visit.lng) / 1000
         if km > 0.5 and km / max(hours, 1 / 3600) > MAX_SPEED_KMH:
@@ -753,7 +768,8 @@ def apply_visit(state: PassportState, visit: Visit) -> Outcome:
     if progress.card_day != day:
         progress.card += 1
         progress.card_day = day
-    state.last_fix = Fix(lat=visit.lat, lng=visit.lng, at=visit.at)
+    if not demo_shop and visit.lat is not None and visit.lng is not None:
+        state.last_fix = Fix(lat=visit.lat, lng=visit.lng, at=visit.at)
     record = _record("first" if first else "visit", visit.shop_id, shop, local, visit.at, points)
     _award(state, record, local.date(), outcome)
     outcome.first = first
