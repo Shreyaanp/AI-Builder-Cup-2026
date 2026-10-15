@@ -4,6 +4,7 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 from uuid import uuid4
 
 import pytest
@@ -263,22 +264,30 @@ def test_missing_firestore_index_falls_back_to_sorted_equality_query(docs, monke
 
 
 def test_profile_edits_from_two_instances_are_never_lost(docs) -> None:
-    # Two server instances share one database; a process lock cannot serialise them.
+    # Two server instances share one database; a process lock cannot serialise them. Each round,
+    # the person's two devices edit at the same instant (one request per instance).
     first, second = Community(docs), Community(docs)
-    shops = [f"shop-{n}" for n in range(8)]
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        list(
-            pool.map(
-                lambda pair: (first if pair[0] % 2 else second).follow("asha", pair[1], True),
-                enumerate(shops),
-            )
-        )
-    assert sorted(first.profile("asha").follows) == shops
-    first.set_preferences("asha", {"vegetarian": True})
-    second.remember_search("asha", "kopi")
+    start = Barrier(2)
+
+    def edit(instance: Community, action) -> None:
+        start.wait()
+        action(instance)
+
+    rounds = [
+        (lambda c: c.follow("asha", "shop-1", True), lambda c: c.follow("asha", "shop-2", True)),
+        (lambda c: c.follow("asha", "shop-3", True), lambda c: c.remember_search("asha", "kopi")),
+        (
+            lambda c: c.set_preferences("asha", {"vegetarian": True}),
+            lambda c: c.follow("asha", "shop-4", True),
+        ),
+    ]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        for one, two in rounds:
+            for future in [pool.submit(edit, first, one), pool.submit(edit, second, two)]:
+                future.result()
     profile = first.profile("asha")
+    assert sorted(profile.follows) == ["shop-1", "shop-2", "shop-3", "shop-4"]
     assert profile.preferences.vegetarian and profile.searches[0].q == "kopi"
-    assert len(profile.follows) == 8
 
 
 def test_snapshots_accept_any_product_name_and_older_snapshots(docs) -> None:
