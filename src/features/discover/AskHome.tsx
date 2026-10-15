@@ -24,6 +24,7 @@ import { FollowButton } from '../customer/FollowButton'
 import { preferenceChips } from '../customer/preferences'
 import { ProfileSheet } from '../customer/Profile'
 import { PlaceSearch } from './PlaceSearch'
+import { ensureDemoWorld } from './demoWorld'
 import { locallyMadeLabel } from '../public/locallyMade'
 import type { Locale } from '../../i18n/locales'
 import type { FoundPlace } from './PlaceSearch'
@@ -165,6 +166,7 @@ export default function AskHome({
     setPhase('thinking')
     const started = performance.now()
     try {
+      await ensureDemoWorld(place.lat, place.lng, place.label)
       // Signed-in customers get "For you" ranking and stated preferences remembered.
       const data = await account.api<Answer>('/api/v1/discover/ask', {
         method: 'POST',

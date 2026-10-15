@@ -18,3 +18,4 @@ backend/data/
 gha-creds-*.json
 output/
 .playwright-cli/
+docs/research/mockups/

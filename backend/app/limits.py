@@ -25,6 +25,8 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "discover:place": ((10, 60), (100, 86_400)),
     # Customer AI entry: one model call per ask.
     "discover:ask": ((15, 60), (300, 86_400)),
+    # Demo world: at most one model call per new ~2 km area; repeats reuse stored shops.
+    "demo:world": ((10, 60), (60, 86_400)),
     "stock:ip": ((30, 86_400),),
     "stock:shop": ((300, 86_400),),
     "stock:read": ((60, 60),),

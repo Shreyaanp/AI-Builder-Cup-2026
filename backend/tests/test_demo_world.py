@@ -1,0 +1,56 @@
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+from google.adk.sessions import InMemorySessionService
+
+from app.demo_world import fixture_world, world_id
+from app.main import create_app
+from tests.test_discover import settings
+
+INDIRANAGAR = {"lat": 12.9719, "lng": 77.6412}
+
+
+def test_fixture_prices_follow_the_local_currency() -> None:
+    usd = fixture_world("USD").shops[0].items[0].price
+    inr = fixture_world("INR").shops[0].items[0].price
+    assert inr > usd * 10  # rupees, not dollars
+
+
+def test_world_seeds_labelled_demo_shops_once_per_area(tmp_path: Path) -> None:
+    config = settings(tmp_path).model_copy(
+        update={"rate_limits_enabled": False, "demo_world_enabled": True}
+    )
+    app = create_app(config, InMemorySessionService())
+    with TestClient(app) as client:
+        body = {
+            **INDIRANAGAR,
+            "currency": "INR",
+            "timezone": "Asia/Kolkata",
+            "place": "Indiranagar",
+        }
+        made = client.post("/api/v1/demo/world", json=body)
+        assert made.status_code == 200, made.text
+        receipt = made.json()
+        assert receipt["created"] is True and receipt["source"] == "fixture"
+        assert len(receipt["shop_ids"]) == 8
+        assert receipt["shop_ids"][0] == world_id(INDIRANAGAR["lat"], INDIRANAGAR["lng"], 0)
+
+        shop = client.get(f"/api/v1/public/shops/{receipt['shop_ids'][1]}").json()
+        assert shop["name"].endswith("(Demo)")
+        assert shop["currency"] == "INR"
+        labels = {fact["label"] for fact in shop["facts"]["custom"]}
+        assert {"Demo data", "Why go"} <= labels
+
+        # A neighbour a few hundred metres away shares the same area: nothing new is made.
+        again = client.post(
+            "/api/v1/demo/world", json={**body, "lat": 12.9725, "lng": 77.6418}
+        ).json()
+        assert again == {"shop_ids": receipt["shop_ids"], "created": False, "source": "existing"}
+
+        # The shops are discoverable nearby and answer the AI ask.
+        nearby = client.get("/api/v1/discover", params={**INDIRANAGAR, "radius": 3000}).json()
+        found = {place["id"] for place in nearby["places"]}
+        assert set(receipt["shop_ids"]) <= found
+        ask = client.post("/api/v1/discover/ask", json={"q": "croissant", **INDIRANAGAR}).json()
+        best = [p["id"] for g in ask["groups"] for p in g["places"]]
+        assert any(bid in receipt["shop_ids"] for bid in best)
