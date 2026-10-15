@@ -27,7 +27,7 @@ function readPreferences(): Preferences {
   return {
     language: isLanguagePref(saved?.language) ? saved.language : 'system',
     appearance:
-      saved?.appearance === 'dark' || saved?.appearance === 'light' ? saved.appearance : 'system',
+      saved?.appearance === 'dark' || saved?.appearance === 'light' ? saved.appearance : 'light',
     destination: 'coach',
   }
 }

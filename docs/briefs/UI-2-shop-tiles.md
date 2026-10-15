@@ -23,5 +23,5 @@ Do NOT change the bottom navigation bar.
    the Menu sheet, not a long page.
 4. **Google screen**: same tile/sheet treatment for the steps; keep every "Simulated — not connected"
    label visible (another worker is fixing the simulator logic — only restyle, don't change its logic).
-Checks: tsc, eslint, prettier, `CI=1 npx playwright test tests/v1.spec.ts tests/v1-a11y.spec.ts --project=phone`
-(update tests whose labels move).
+   Checks: tsc, eslint, prettier, `CI=1 npx playwright test tests/v1.spec.ts tests/v1-a11y.spec.ts --project=phone`
+   (update tests whose labels move).
