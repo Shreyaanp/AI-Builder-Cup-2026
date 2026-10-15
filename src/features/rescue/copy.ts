@@ -61,7 +61,7 @@ export const rescueStrings = {
 export type RescueStrings = typeof rescueStrings
 
 export function rescueCopy(locale: Locale): RescueStrings {
-  return locale === 'en' ? rescueStrings : (rescueTranslations[locale] ?? rescueStrings)
+  return locale === 'en' ? rescueStrings : rescueTranslations[locale]
 }
 
 export function useRescueCopy() {

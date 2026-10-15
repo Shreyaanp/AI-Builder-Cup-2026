@@ -699,10 +699,11 @@ function DealCard({
               variant="bodyMedium"
               sx={{ color: roles.onSurfaceVariant, textDecoration: 'line-through' }}
             >
+              {/* Struck through for the eye; said in words ("Was ₹25") for a screen reader. */}
               <Box component="span" sx={visuallyHidden}>
-                {fill(t.was, { price: '' })}
+                {fill(t.was, { price: formatPrice(item.was, deal.currency, locale) })}
               </Box>
-              {formatPrice(item.was, deal.currency, locale)}
+              <span aria-hidden="true">{formatPrice(item.was, deal.currency, locale)}</span>
             </Typography>
           </Stack>
         ))}

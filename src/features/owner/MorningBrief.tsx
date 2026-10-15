@@ -8,6 +8,8 @@ import { useChalkTimeline } from '../../design/chalkMotion'
 import { shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { CloseDay } from '../closeday/CloseDay'
+import { closeDayCopy } from '../closeday/strings'
+import { useCopy as usePlanCopy } from '../planning/strings'
 import type { ShopSheetKind } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
 import { fill, useOwnerCopy } from './copy'
@@ -104,7 +106,11 @@ export function MorningBrief({
               <Typography variant="bodyLarge" sx={{ flex: 1, minWidth: 0 }} noWrap>
                 {row.name}
               </Typography>
-              <Typography component="p" variant="titleMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+              <Typography
+                component="p"
+                variant="titleMedium"
+                sx={{ fontVariantNumeric: 'tabular-nums' }}
+              >
                 {number(row.quantity)} {row.unit}
               </Typography>
               {row.lower != null && row.upper != null && (
@@ -130,7 +136,11 @@ export function MorningBrief({
             body: (
               <Stack spacing={1}>
                 <Stack direction="row" sx={{ gap: 2, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                  <Typography component="p" variant="headlineSmall" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <Typography
+                    component="p"
+                    variant="headlineSmall"
+                    sx={{ fontVariantNumeric: 'tabular-nums' }}
+                  >
                     {new Intl.NumberFormat(locale, {
                       style: 'unit',
                       unit: 'celsius',
@@ -326,6 +336,8 @@ export function MorningBrief({
 
 function BestAction({ action, onGo }: { action: Action; onGo: () => void }) {
   const t = useOwnerCopy()
+  const plan = usePlanCopy()
+  const closeDay = closeDayCopy(useLocale())
   // The server's own words carry the count ("Reply to 3 customers", "Prep 4 fewer …").
   const n = Number(/\d+/.exec(action.title)?.[0] ?? 0)
   const item = action.item ?? ''
@@ -345,14 +357,16 @@ function BestAction({ action, onGo }: { action: Action; onGo: () => void }) {
           reply: t.go_reply,
           order: t.go_order,
           radar: t.go_radar,
-          reduce_prep: t.go_reduce_prep,
+          reduce_prep: plan.title,
           confirm_menu: t.go_confirm_menu,
-          record_sales: t.go_record_sales,
+          record_sales: closeDay.title,
         }[action.kind]
   return (
     <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
       <Stack direction="row" sx={{ gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Typography component="p" variant="titleMedium">{text}</Typography>
+        <Typography component="p" variant="titleMedium">
+          {text}
+        </Typography>
         {action.demo && <Chip size="small" label={t.demo} />}
       </Stack>
       {button && (

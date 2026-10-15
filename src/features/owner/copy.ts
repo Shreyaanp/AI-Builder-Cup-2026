@@ -32,7 +32,6 @@ export const ownerStrings = {
   fewer: 'Fewer {item}',
   more: 'More {item}',
   qty: 'Portions of {item}',
-  rescuedToday: 'Already rescued today',
   discount: 'Discount',
   off: '{pct}% off',
   until: 'Pickup until',
@@ -70,9 +69,7 @@ export const ownerStrings = {
   go_reply: 'Open messages',
   go_order: 'Ask the coach',
   go_radar: 'See ideas',
-  go_reduce_prep: 'Plan tomorrow',
   go_confirm_menu: 'Open menu',
-  go_record_sales: 'Close the day',
   orderDraft: 'Find a supplier for {item}',
   // Unmet-demand radar
   radar: 'Asked nearby',
@@ -99,7 +96,7 @@ export const ownerStrings = {
 export type OwnerStrings = typeof ownerStrings
 
 export function ownerCopy(locale: Locale): OwnerStrings {
-  return locale === 'en' ? ownerStrings : (ownerTranslations[locale] ?? ownerStrings)
+  return locale === 'en' ? ownerStrings : ownerTranslations[locale]
 }
 
 export function useOwnerCopy() {
