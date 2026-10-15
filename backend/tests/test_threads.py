@@ -123,6 +123,7 @@ def test_routes_privacy_token_limits_translation_and_consent(app, monkeypatch) -
     )
     with TestClient(app) as owner_client:
         customer = TestClient(app)
+        customer.post("/api/v1/customer/session", json={"name": "Asha"})
         bid = owned_shop(owner_client)
         base = f"/api/v1/public/shops/{bid}/inquiries"
         receipt = customer.post(
@@ -211,6 +212,7 @@ def test_shop_ip_daily_limit_is_separate_per_shop(app) -> None:
         for uid, shop in [("alice", bid), ("bob", other)]:
             app.state.merchant.share(uid, shop, True)
         body = {"contact": "customer@example.test", "message": "Hello"}
+        client.post("/api/v1/customer/session", json={"name": "Asha"})
         for _ in range(30):
             assert (
                 client.post(f"/api/v1/public/shops/{bid}/inquiries", json=body).status_code == 200

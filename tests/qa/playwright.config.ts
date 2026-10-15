@@ -3,13 +3,14 @@ import base from '../../playwright.config.js'
 import { fileURLToPath } from 'node:url'
 
 // Separate servers and artifacts: never use another worker's ports or story reporter.
-process.env.WEB_PORT = '3437'
-process.env.API_PORT = '3537'
+process.env.WEB_PORT ??= '3437'
+process.env.API_PORT ??= '3537'
 process.env.PLAYWRIGHT_LOCAL_ONLY = 'true'
 
 export default defineConfig({
   ...base,
   testDir: '.',
+  testIgnore: [],
   testMatch: '**/*.spec.ts',
   outputDir: '../../test-results/qa',
   timeout: 60_000,
@@ -21,7 +22,7 @@ export default defineConfig({
   ],
   use: {
     ...base.use,
-    baseURL: 'http://127.0.0.1:3437',
+    baseURL: `http://127.0.0.1:${process.env.WEB_PORT}`,
     locale: 'en-IN',
     timezoneId: 'Asia/Kolkata',
     reducedMotion: 'reduce',
@@ -45,14 +46,14 @@ export default defineConfig({
           {
             command: 'node tests/qa/server.mjs',
             cwd: fileURLToPath(new URL('../..', import.meta.url)),
-            url: 'http://127.0.0.1:3537/api/v1/health',
+            url: `http://127.0.0.1:${process.env.API_PORT}/api/v1/health`,
             reuseExistingServer: false,
             timeout: 90_000,
           },
           {
             command: 'npm run dev',
             cwd: fileURLToPath(new URL('../..', import.meta.url)),
-            url: 'http://127.0.0.1:3437',
+            url: `http://127.0.0.1:${process.env.WEB_PORT}`,
             reuseExistingServer: false,
             timeout: 60_000,
           },

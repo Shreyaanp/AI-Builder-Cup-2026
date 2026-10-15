@@ -270,10 +270,12 @@ def test_inquiry_routes_consent_capability_and_owner_scope(app) -> None:
         path = f"/api/v1/public/shops/{bid}/inquiries"
         owner_path = f"/api/v1/businesses/{bid}/inquiries"
         body = {"contact": "customer@example.test", "message": "Could I ask about kopi?"}
-        assert client.post(path, json=body).status_code == 404
+        # New conversations need a signed-in customer (Q8).
+        assert client.post(path, json=body).status_code == 401
         client.post(f"/api/v1/businesses/{bid}/share", json={"public": True})
         client.cookies.clear()
         assert client.get(owner_path).status_code == 401
+        client.post("/api/v1/customer/session", json={"name": "Asha"})
         for invalid in [
             {**body, "contact": "garbage"},
             {**body, "message": "x" * 501},
@@ -298,9 +300,11 @@ def test_inquiry_routes_consent_capability_and_owner_scope(app) -> None:
         assert client.post(done_path).status_code == 428
         join(client)
         assert client.post(done_path).json()["done"]
+        client.post("/api/v1/customer/session", json={"name": "Asha"})
         client.post(path, json=body)
         assert len(client.get(owner_path).json()) == 3
         client.delete("/api/v1/me/data")
+        client.post("/api/v1/customer/session", json={"name": "Asha"})
         assert client.post(path, json=body).status_code == 404
 
 

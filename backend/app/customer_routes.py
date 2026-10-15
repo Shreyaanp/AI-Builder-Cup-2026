@@ -1,4 +1,4 @@
-"""Unauthenticated shop questions/contact and owner-only inquiry handling."""
+"""Anonymous shop questions, signed-in customer contact and owner-only inquiry handling."""
 
 import asyncio
 import hashlib
@@ -51,6 +51,9 @@ async def ask(business_id: str, body: Question, request: Request) -> Answer:
 
 @router.post("/public/shops/{business_id}/inquiries", response_model=InquiryReceipt)
 async def inquire(business_id: str, body: InquiryInput, request: Request) -> InquiryReceipt:
+    # Owners talk to real people only: a new conversation needs a signed-in customer (Q8).
+    # Browsing and instant answers stay anonymous; the app starts threads via /customer/....
+    await request.app.state.services.identity.require_customer(request)
     await shared(request, business_id)
     await enforce_limits(
         request, [("inquire:ip", business_id + ":" + client_ip(request))], anonymous=True

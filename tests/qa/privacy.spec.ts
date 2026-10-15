@@ -1,15 +1,4 @@
-import {
-  test,
-  expect,
-  enter,
-  owner,
-  publish,
-  prepare,
-  approve,
-  audit,
-  tamil,
-  evidence,
-} from './support.js'
+import { test, expect, enter, owner, publish, prepare, approve, audit, tamil } from './support.js'
 import { localOnly } from '../stories/support.js'
 
 test('separate owner cannot read inventory, approvals or inbox; public page stays bounded', async ({
@@ -115,17 +104,12 @@ test('legacy public inquiry route cannot bypass required customer sign-in', asyn
         message: 'Anonymous chat bypass QA',
       },
     })
+    // Q8 fixed: a new owner conversation needs a signed-in customer; nothing reaches Messages.
+    expect(response.status()).toBe(401)
     await page.reload()
     await page.getByRole('button', { name: 'Continue local preview' }).click()
     await page.getByRole('button', { name: 'My shop', exact: true }).click()
-    await page.getByRole('button', { name: /^Messages 1/ }).click()
-    await expect(page.getByRole('region', { name: /Messages/ })).toContainText(
-      'Anonymous chat bypass QA',
-    )
-    await evidence(page, 'Q8-anonymous-bypass')
-    // BUG Q8: Legacy public inquiry creation bypasses the required Google/customer sign-in gate.
-    test.fail()
-    expect(response.status()).toBe(401)
+    await expect(page.getByRole('button', { name: /^Messages 1/ })).toHaveCount(0)
   } finally {
     await anonymous.close()
   }
