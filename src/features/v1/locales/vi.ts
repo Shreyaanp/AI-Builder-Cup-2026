@@ -36,6 +36,12 @@ export const vi: Copy = {
   connectionReconnecting: 'Đang kết nối lại…',
   voiceFailed: 'Kết nối giọng nói đã kết thúc. Hãy thử lại hoặc dùng văn bản.',
   voiceRestarted: 'Đã kết nối lại giọng nói. Vui lòng nói lại.',
+  voiceMicDenied:
+    'Quyền truy cập micrô bị chặn. Hãy cho phép micrô trong cài đặt trình duyệt rồi thử lại, hoặc nhập văn bản.',
+  voiceRateLimited: (seconds: number) =>
+    `Có quá nhiều yêu cầu giọng nói. Đợi ${seconds} giây rồi thử lại hoặc nhập văn bản.`,
+  conversationRolledOver:
+    'Cuộc trò chuyện này đã đầy. Tôi đã bắt đầu cuộc trò chuyện mới để chúng ta tiếp tục.',
   appName: 'Chalkboard',
   independent: 'Bản thử nghiệm độc lập · không phải sản phẩm Google',
   loading: 'Đang chuẩn bị cửa hàng…',

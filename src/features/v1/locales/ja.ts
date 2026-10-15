@@ -36,6 +36,11 @@ export const ja: Copy = {
   connectionReconnecting: '再接続中…',
   voiceFailed: '音声接続が終了しました。もう一度試すか、文字で入力してください。',
   voiceRestarted: '音声が再接続されました。もう一度お話しください。',
+  voiceMicDenied:
+    'マイクへのアクセスがブロックされています。ブラウザの設定でマイクを許可して再試行するか、文字で入力してください。',
+  voiceRateLimited: (seconds: number) =>
+    `音声のリクエストが多すぎます。${seconds} 秒待って再試行するか、文字で入力してください。`,
+  conversationRolledOver: 'この会話は上限に達しました。続けられるよう、新しい会話を始めました。',
   appName: 'Chalkboard',
   independent: '独立した試作アプリ・Google 製品ではありません',
   loading: 'お店を準備しています…',
