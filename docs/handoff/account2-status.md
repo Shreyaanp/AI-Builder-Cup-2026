@@ -1,4 +1,39 @@
-# Account 2 status: customer sign-in, WhatsApp-style chats, following shops
+# Account 2 status: passport + Today's 7 (`feat/passport`)
+
+**Brief:** PLAN-V2 §customer + `docs/research/customer.md` §2.2, §3. **Branch:** `feat/passport`
+from `origin/main` at `3f29084`. Push only `origin/feat/passport`. Ports: web 3447, API 3547,
+Firestore emulator 8567 (start: `java -Duser.language=en -cp <gcloud>/platform/cloud-firestore-emulator/cloud-firestore-emulator.jar com.google.cloud.datastore.emulator.firestore.CloudFirestore start --host=127.0.0.1 --port=8567`, Java 21 JRE under `%LOCALAPPDATA%\AIBuilderCupTools\java21`).
+
+## Progress
+
+| Step | State | Commit |
+| ---- | ----- | ------ |
+| 1. Passport backend (`passport.py` rules, `passport_routes.py`, `rescue_feed.py`) + 34 tests (SQLite + emulator) | done | `07fc109` |
+| 2. Today's 7 backend (`today.py`) + tests | in progress | |
+| 3. Wait for `Chalkboard theme` commit on origin/main, merge it | waiting | |
+| 4. UI: passport, stamp moment, Today's 7 (15 locales) | not started | |
+
+## Resume notes
+
+- **Passport rules** (`backend/app/passport.py`): pure functions over one `PassportState` doc per
+  customer (`Documents` kind `passport`, edited atomically). QR key = HMAC of the session signing
+  secret (`qr_key`); owner gets it at `GET /businesses/{id}/qr-key`, demo shops publicly at
+  `GET /public/shops/{id}/demo-qr`. Demo shop IDs (`demo-*`, generated `demo-w-*`) earn
+  `demo_points`; levels use real + demo total, labelled in UI.
+- **Signed-out**: `POST /public/passport/check` returns a signed receipt (nothing stored);
+  `POST /public/passport/preview` draws the passport from receipts; `POST /customer/passport/merge`
+  applies each receipt once ever (`receipt` docs).
+- **Rescue**: `rescue_feed.live_rescues` calls Codex's `GET /api/v1/public/rescue` in-process if
+  that route exists (lenient `parse_deal`), else derives labelled demo rescues from demo shops'
+  closing time. Owner "Collected" tap: call `passport_routes.award_rescue(request, uid, bid, id)`.
+- Tips: moderation pass → pencil stamp (`award_tip` in `community_routes.add_tip`); helpful marks
+  `POST /customer/shops/{id}/tips/{tip}/helpful`; `Tip.helpful` count added.
+
+
+---
+
+## Earlier work (previous status)
+
 
 **Brief:** `docs/handoff/account2-customer.md` · **Audit gap:** A5 · **Story:** STORIES.md (Oct 15
 customer decisions).
