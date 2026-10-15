@@ -420,6 +420,23 @@ export const en = {
   accountFailedBody: 'You’re signed in, but loading your account failed. Your data is safe.',
   loadFailed: 'We couldn’t load your shops. Your data is safe — check your connection and retry.',
   retryLoad: 'Retry',
+  erasing: 'Deleting your data… This can take a minute.',
+  eraseDone: 'All your data was deleted. Restarting…',
+  erasePartialTitle: 'Some of your data is still being deleted',
+  erasePartialBody: (items: string) =>
+    `Still pending: ${items}. Everything else is deleted. We’ll keep retrying automatically, or you can try again now.`,
+  eraseFailed: 'Deletion didn’t finish. Check your connection and try again.',
+  eraseRetry: 'Try again',
+  // Erase steps the server reports as still pending (backend/app/erasure.py STEPS).
+  eraseSteps: {
+    face: 'face data',
+    photos: 'photos',
+    records: 'shops and products',
+    gallery: 'shop gallery photos',
+    community: 'public shop copies',
+    memory: 'assistant memory',
+    conversations: 'conversations',
+  } as Record<string, string>,
 }
 
 type Copy = typeof en

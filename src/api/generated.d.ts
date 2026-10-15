@@ -51,6 +51,9 @@ export interface paths {
         /**
          * Erase
          * @description Erase everything this owner stored: records, memory, conversations, photos, face data.
+         *
+         *     Each step runs on its own; `status` is "erased", or "partial" with the `pending` steps that
+         *     will be retried (on Try again and on the next visit) instead of a bare 500.
          */
         delete: operations["erase_api_v1_me_data_delete"];
         options?: never;
