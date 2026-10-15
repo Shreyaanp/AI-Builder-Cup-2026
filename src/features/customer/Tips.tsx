@@ -64,7 +64,10 @@ export function Tips({ shop }: { shop: string }) {
       await load()
     } catch (error) {
       const status = error instanceof Error ? error.message : ''
-      setNotice({ kind: 'error', text: status === '503' ? t.tipUnavailable : t.tipRejected })
+      setNotice({
+        kind: 'error',
+        text: status === '422' || status === '400' ? t.tipRejected : t.tipUnavailable,
+      })
     } finally {
       setBusy(false)
     }

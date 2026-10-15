@@ -270,11 +270,29 @@ export function nivaTheme(
             transition:
               'background-color 150ms ease, box-shadow 120ms ease, border-color 150ms ease, transform 120ms ease',
           },
-          contained: {
-            boxShadow: `0 ${depth}px 0 ${edge}`,
-            '&:hover': { boxShadow: `0 ${depth}px 0 ${edge}` },
-            '&:active': { transform: `translateY(${depth - 1}px)`, boxShadow: `0 1px 0 ${edge}` },
-            '&.Mui-disabled': { boxShadow: 'none' },
+          contained: ({ theme, ownerState }) => {
+            // M3 hover state layer: the container keeps its colour and gets an 8% tint of its
+            // label colour. MUI's default (a darker container) drops the dark-mode sunflower
+            // button below AA contrast for its dark label.
+            const color = ownerState.color
+            const palette =
+              color && color !== 'inherit' && color in theme.palette
+                ? (theme.palette[color as 'primary'] as { main: string; contrastText: string })
+                : null
+            const layer = palette ? alpha(palette.contrastText, 0.08) : null
+            return {
+              boxShadow: `0 ${depth}px 0 ${edge}`,
+              '&:hover': {
+                boxShadow: `0 ${depth}px 0 ${edge}`,
+                ...(palette &&
+                  layer && {
+                    backgroundColor: palette.main,
+                    backgroundImage: `linear-gradient(${layer}, ${layer})`,
+                  }),
+              },
+              '&:active': { transform: `translateY(${depth - 1}px)`, boxShadow: `0 1px 0 ${edge}` },
+              '&.Mui-disabled': { boxShadow: 'none', backgroundImage: 'none' },
+            }
           },
           outlined: { borderColor: roles.outline, borderWidth: audience === 'customer' ? 2 : 1 },
         },

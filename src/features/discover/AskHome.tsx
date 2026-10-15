@@ -29,6 +29,7 @@ import { locallyMadeLabel } from '../public/locallyMade'
 import type { Locale } from '../../i18n/locales'
 import type { FoundPlace } from './PlaceSearch'
 import { TodayDeck } from '../passport/TodayDeck'
+import { dealIn, chalkWrite } from '../../design/chalkMotion'
 
 type Item = { name: string; price: number; unit: string; available: boolean }
 type Pick = {
@@ -121,8 +122,10 @@ function speechRecognition(): (new () => SpeechRecognitionLike) | null {
 /** The customer front door: say or type what you need; the AI curates nearby results. */
 export default function AskHome({
   initialLocation,
+  onLocationChange,
 }: {
   initialLocation?: CustomerLocation | null
+  onLocationChange?: (location: CustomerLocation) => void
 }) {
   const locale = useLocale()
   const t = askCopy(locale)
@@ -159,7 +162,7 @@ export default function AskHome({
     return () => clearInterval(timer)
   }, [phase, t.thinking.length])
 
-  async function ask(text: string) {
+  async function ask(text: string, searchPlace = place) {
     const q = text.trim()
     if (!q || phase === 'thinking') return
     setQuery(q)
@@ -168,11 +171,11 @@ export default function AskHome({
     setPhase('thinking')
     const started = performance.now()
     try {
-      await ensureDemoWorld(place.lat, place.lng, place.label)
+      await ensureDemoWorld(searchPlace.lat, searchPlace.lng, searchPlace.label)
       // Signed-in customers get "For you" ranking and stated preferences remembered.
       const data = await account.api<Answer>('/api/v1/discover/ask', {
         method: 'POST',
-        body: JSON.stringify({ q, lat: place.lat, lng: place.lng, language: locale }),
+        body: JSON.stringify({ q, lat: searchPlace.lat, lng: searchPlace.lng, language: locale }),
       })
       if (data.personal) {
         // Keep the profile sheet in step with what was just remembered.
@@ -256,13 +259,11 @@ export default function AskHome({
               borderRadius: '50%',
               filter: 'blur(60px)',
               opacity: 1,
-              // Monochrome theme: a soft ink glow that still reads in light and dark.
-              background: `radial-gradient(circle, ${alpha(roles.onSurface, n ? 0.1 : 0.14)} 0%, transparent 62%)`,
-              transition: `top 700ms ${EASE}`,
+              background: `radial-gradient(circle, ${alpha(n ? roles.tertiary : roles.primary, 0.14)} 0%, transparent 62%)`,
               animation:
                 phase === 'thinking'
                   ? `askPulse 1.6s ${EASE} infinite`
-                  : `askDrift ${n ? 14 : 18}s ease-in-out infinite alternate`,
+                  : `askDrift 4s ease-in-out both`,
             }}
           />
         ))}
@@ -271,8 +272,7 @@ export default function AskHome({
       <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 720, mx: 'auto', px: 4 }}>
         <Box
           sx={{
-            pt: compact ? 'max(20px, env(safe-area-inset-top))' : 'max(18vh, 72px)',
-            transition: `padding-top 600ms ${EASE}`,
+            pt: compact ? 'max(72px, env(safe-area-inset-top))' : 'max(18vh, 72px)',
           }}
         >
           {!compact && (
@@ -282,7 +282,7 @@ export default function AskHome({
               sx={{
                 fontWeight: 500,
                 letterSpacing: '-0.02em',
-                animation: `askRise 600ms ${EASE} both`,
+                ...chalkWrite,
               }}
             >
               {t.title}
@@ -298,8 +298,6 @@ export default function AskHome({
             }}
             sx={{
               mt: compact ? 0 : 5,
-              // Leave room for the fixed profile and light/dark buttons once the search sits at the top.
-              mr: compact ? '104px' : 0,
               display: 'flex',
               alignItems: 'center',
               gap: 1,
@@ -309,8 +307,8 @@ export default function AskHome({
               borderRadius: 999,
               bgcolor: roles.surfaceContainerHigh,
               boxShadow: listening ? `0 0 0 3px ${roles.primary}` : '0 6px 24px rgba(0,0,0,0.08)',
-              transition: `box-shadow 300ms ${EASE}, margin 600ms ${EASE}`,
-              animation: `askRise 600ms ${EASE} 80ms both`,
+              transition: `box-shadow 300ms ${EASE}`,
+              ...dealIn,
             }}
           >
             <InputBase
@@ -319,13 +317,14 @@ export default function AskHome({
               onChange={(event) => setQuery(event.target.value)}
               placeholder={listening ? t.listening : t.placeholder}
               inputProps={{ 'aria-label': t.title, enterKeyHint: 'search', maxLength: 300 }}
-              sx={{ flex: 1, fontSize: 18 }}
+              sx={{ flex: 1, minWidth: 0, fontSize: 18 }}
             />
             {Speech && (
               <IconButton
                 aria-label={t.speak}
                 aria-pressed={listening}
                 onClick={listen}
+                disabled={phase === 'thinking'}
                 sx={{ color: listening ? roles.primary : undefined }}
               >
                 <Mic size={22} />
@@ -375,9 +374,10 @@ export default function AskHome({
                 value={place.label}
                 onFound={(found) => {
                   setPlace(found)
+                  onLocationChange?.({ gps: null, place: found })
                   rememberPlace(found)
                   setChanging(false)
-                  if (query.trim() && phase === 'results') void ask(query)
+                  if (query.trim() && phase === 'results') void ask(query, found)
                 }}
               />
             </Box>
@@ -394,8 +394,8 @@ export default function AskHome({
                   sx={{
                     minHeight: 40,
                     bgcolor: roles.surfaceContainer,
-                    animation: `askRise 500ms ${EASE} both`,
-                    animationDelay: `${240 + index * 70}ms`,
+                    ...dealIn,
+                    '--deal-index': index,
                   }}
                 />
               ))}
@@ -450,11 +450,7 @@ export default function AskHome({
         {phase === 'results' && answer && (
           <Box sx={{ mt: 4 }}>
             {answer.mode === 'ai' && answer.intent.summary && (
-              <Typography
-                variant="titleMedium"
-                sx={{ animation: `askRise 500ms ${EASE} both` }}
-                aria-live="polite"
-              >
+              <Typography variant="titleMedium" sx={chalkWrite} aria-live="polite">
                 {answer.intent.summary}
               </Typography>
             )}
@@ -522,8 +518,8 @@ export default function AskHome({
                 aria-label={group.id === 'for_you' ? accountCopy.forYou : t[group.id]}
                 sx={{
                   mt: 5,
-                  animation: `askRise 500ms ${EASE} both`,
-                  animationDelay: `${groupIndex * 140}ms`,
+                  ...dealIn,
+                  '--deal-index': groupIndex * 2,
                 }}
               >
                 <Typography component="h2" variant="titleLarge">
@@ -638,7 +634,7 @@ function PickCard({
           overflow: 'hidden',
           bgcolor: roles.surfaceContainerLow,
           border: `1px solid ${roles.outlineVariant}`,
-          animation: `askRise 500ms ${EASE} both`,
+          ...dealIn,
           animationDelay: `${delay}ms`,
           transition: `transform 200ms ${EASE}`,
           '&:active': { transform: 'scale(0.98)' },

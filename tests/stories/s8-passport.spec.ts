@@ -1,6 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Browser, type Page } from '@playwright/test'
-import { closeSheet, enter, localOnly, phone, shareSigned, shot } from './support.js'
+import { closeSheet, enter, localOnly, phone, shareSigned } from './support.js'
 
 /**
  * Seeds one shared shop at its own map pin, away from every other test shop, so Today's 7 near
@@ -76,8 +76,10 @@ async function setup(page: Page, browser: Browser, mode: Mode) {
   await closeSheet(page)
   const context = await browser.newContext({
     ...phone,
-    isMobile: true,
-    hasTouch: true,
+    viewport:
+      test.info().project.name === 'desktop' ? { width: 1440, height: 1000 } : phone.viewport,
+    isMobile: test.info().project.name !== 'desktop',
+    hasTouch: test.info().project.name !== 'desktop',
     // The app follows its saved choice (default light), not the system scheme.
     colorScheme: mode === 'dark' ? 'light' : 'dark',
     permissions: ['geolocation'],
@@ -93,7 +95,28 @@ async function setup(page: Page, browser: Browser, mode: Mode) {
 /** Screenshot plus a WCAG 2 A/AA axe pass of whatever is on screen (dialogs included). */
 function recorder(mode: Mode) {
   return async (page: Page, step: string | number) => {
-    await shot(page, 8, mode === 'light' ? step : `${step}-dark`)
+    await page.evaluate(async () => {
+      await document.fonts.ready
+      // Finish finite CSS transitions (including the dialog fade), then let Chrome paint
+      // the skipped GSAP end state before checking raster contrast. Infinite focus ripples
+      // are decorative and must not hold up evidence capture.
+      await Promise.all(
+        document
+          .getAnimations()
+          .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+          .map((animation) => animation.finished.catch(() => undefined)),
+      )
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      )
+    })
+    await page.screenshot({
+      path: `docs/stories/customer-${test.info().project.name}-${mode}-stamp-${step}.png`,
+      animations: 'disabled',
+    })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+      true,
+    )
     const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
     expect(
       violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
@@ -116,6 +139,15 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     await find.scrollIntoViewIfNeeded()
     await evidence(customer, 1)
   })
+  await test.step('1b · Ask matches the real offline menu at this location', async () => {
+    await customer.getByRole('search').getByRole('textbox').fill('Honey cake')
+    await customer.getByRole('button', { name: 'Search', exact: true }).click()
+    const match = customer.getByRole('link', { name: new RegExp(shopName) })
+    await expect(match).toContainText('Honey cake slice')
+    await expect(match).toContainText('₹40.00')
+    await evidence(customer, '1-search')
+    await customer.getByRole('button', { name: 'New search', exact: true }).click()
+  })
   await test.step('2 · a find opens its shop', async () => {
     const today = customer.getByRole('region', { name: /^Today near/ })
     const find = today.getByRole('listitem').filter({ hasText: shopName }).first()
@@ -135,6 +167,9 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     await expect(moment.getByRole('progressbar')).toHaveCount(0)
     // A tap skips the celebration to its end state.
     await moment.getByRole('heading').first().click()
+    // Visibility alone accepts opacity:0. A skipped celebration must finish visibly.
+    for (const line of await moment.locator('.stamp-line').all())
+      await expect(line).toHaveCSS('opacity', '1', { timeout: 500 })
     await expect(moment.getByRole('heading', { name: 'First try!' })).toBeVisible()
     await expect(moment.getByText('+50 points')).toBeVisible()
     await expect(
@@ -165,8 +200,12 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     await evidence(customer, '4-book')
     const quests = customer.getByRole('region', { name: 'Quests' })
     await expect(quests.getByRole('heading', { name: 'Weekly breakthrough' })).toBeVisible()
-    // The quests in order: this week's breakthrough has the one verified visit.
-    await expect(quests.getByRole('progressbar', { name: '1 of 3' })).toHaveCount(1)
+    // This week's breakthrough has the one verified visit. (The early-bird crawl may also count it
+    // when the run happens before 10am shop time, so the check is scoped to the breakthrough card.)
+    const breakthrough = quests
+      .getByRole('heading', { name: 'Weekly breakthrough' })
+      .locator('xpath=..')
+    await expect(breakthrough.getByRole('progressbar')).toHaveAccessibleName('1 of 3')
     await quests.scrollIntoViewIfNeeded()
     // Chrome rasterises freshly scrolled layers (opacity, progress bars) a beat later.
     await customer.waitForTimeout(400)
@@ -184,8 +223,6 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
   })
 }
 
-test.use(phone)
-test.skip(({ isMobile }) => !isMobile, 'Story evidence uses the phone project')
 for (const mode of ['light', 'dark'] as const) {
   test(`S8 · Today's 7, a shop, the stamp moment and the passport (${mode})`, async ({
     page,

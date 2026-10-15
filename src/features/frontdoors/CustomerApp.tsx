@@ -152,12 +152,16 @@ function CustomerPages() {
           ) : saved ? (
             <Saved />
           ) : passport ? (
-            <Passport />
+            <Passport initialLocation={locationChoice} />
           ) : browse ? (
-            <Discover initialLocation={locationChoice} interests={interests} />
+            <Discover
+              initialLocation={locationChoice}
+              interests={interests}
+              onLocationChange={setLocationChoice}
+            />
           ) : (
             // AI-first front door (user decision, Oct 15); the full list is one tap away.
-            <AskHome initialLocation={locationChoice} />
+            <AskHome initialLocation={locationChoice} onLocationChange={setLocationChoice} />
           )}
         </Suspense>
       </div>
