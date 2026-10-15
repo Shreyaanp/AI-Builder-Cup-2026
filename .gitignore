@@ -47,3 +47,5 @@ graphify-out/
 
 # Local agent tooling config
 .codex/
+output/
+.playwright-cli/
