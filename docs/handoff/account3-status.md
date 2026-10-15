@@ -78,8 +78,21 @@ interests now seed the front-door chips.
 
 ## Results
 
-See the PR description for the final numbers of `npm run check`, `npm run test:qa` (fresh DBs)
-and the backend suite.
+Branch rebased on `fa60840` (origin/main). Node 24.21.0, Python 3.13, local offline servers on
+3477/3577, fresh SQLite databases for each gate.
+
+- Backend: Ruff check/format and mypy clean; **pytest 626 passed, 169 skipped**.
+- `npm run check`: lint, TypeScript/production build and hook rules passed; browser suite
+  **360 passed, 4 failed, 80 skipped**. All 4 failures were `page.goto` timeouts in the same
+  minute while I was building the code graph alongside (budget, B30, B37, B8, none touching
+  changed code). Re-run in isolation: budget/B30/B8 passed; B37 (owner Google simulator) failed
+  once under the batch and then **passed 3/3 alone**.
+- `npm run test:qa` (fresh DBs): **173 passed, 3 failed**; the 3 were owner coach/close-day
+  `page.goto` timeouts; re-run alone: **12/12 passed**.
+- New customer tests: `tests/customer-ask.spec.ts` 14/14 (phone + desktop); all updated customer
+  stories (S3, S8, customer-flow, frontdoors) pass inside the runs above.
+- Heatmap audit: 48/48 after captures, 40/40 before captures.
+- Earlier B31 flake ("Follow grey flash") was fixed on main by f1868cf; it passes after the rebase.
 
 ## Not done / honest limits
 
