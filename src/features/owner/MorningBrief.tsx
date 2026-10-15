@@ -104,7 +104,7 @@ export function MorningBrief({
               <Typography variant="bodyLarge" sx={{ flex: 1, minWidth: 0 }} noWrap>
                 {row.name}
               </Typography>
-              <Typography variant="titleMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+              <Typography component="p" variant="titleMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                 {number(row.quantity)} {row.unit}
               </Typography>
               {row.lower != null && row.upper != null && (
@@ -130,7 +130,7 @@ export function MorningBrief({
             body: (
               <Stack spacing={1}>
                 <Stack direction="row" sx={{ gap: 2, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                  <Typography variant="headlineSmall" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <Typography component="p" variant="headlineSmall" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                     {new Intl.NumberFormat(locale, {
                       style: 'unit',
                       unit: 'celsius',
@@ -224,7 +224,7 @@ export function MorningBrief({
     <Box
       ref={scope}
       component="section"
-      aria-labelledby="brief-title"
+      aria-label={t.brief}
       aria-roledescription="carousel"
       sx={{
         borderRadius: `${shape.lgIncreased}px`,
@@ -352,7 +352,7 @@ function BestAction({ action, onGo }: { action: Action; onGo: () => void }) {
   return (
     <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
       <Stack direction="row" sx={{ gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Typography variant="titleMedium">{text}</Typography>
+        <Typography component="p" variant="titleMedium">{text}</Typography>
         {action.demo && <Chip size="small" label={t.demo} />}
       </Stack>
       {button && (

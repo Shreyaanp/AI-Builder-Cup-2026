@@ -9,15 +9,14 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
+import { visuallyHidden } from '@mui/utils'
 import { gsap } from 'gsap'
 import { Clock, Leaf, LocateFixed, MapPin, MessageCircle, Store } from 'lucide-react'
 import { dealIn, useChalkTimeline } from '../../design/chalkMotion'
 import { chalkDust } from '../../design/chalkboard'
 import { HAND_FONT } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
-import { useCustomer } from '../customer/account'
 import { chatPath, go } from '../customer/paths'
-import { SignInSheet } from '../customer/SignIn'
 import { ensureDemoWorld } from '../discover/demoWorld'
 import { fill, usePassportCopy } from '../passport/copy'
 import { usePassport } from '../passport/store'
@@ -46,6 +45,16 @@ function savedPlace(): Place {
   return FALLBACK
 }
 
+/** The same remembered place as the Ask home, so both tabs show one neighbourhood. */
+function rememberPlace(place: Place) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(FILTERS) || '{}') as object
+    localStorage.setItem(FILTERS, JSON.stringify({ ...saved, place }))
+  } catch {
+    /* Optional storage. */
+  }
+}
+
 /** Ending soonest Ã— distance: a deal 5 min away that ends in 20 min beats one 2 km off. */
 function rank(row: PublicRescue, now: number) {
   const minutes = Math.max(1, (row.deal.ends * 1000 - now) / 60_000)
@@ -61,19 +70,17 @@ export function RescueScreen() {
   const t = useRescueCopy()
   const roles = useTheme().material
   const online = useOnline()
-  const account = useCustomer()
   const [place, setPlace] = useState(savedPlace)
   const [rows, setRows] = useState<PublicRescue[] | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [attempt, setAttempt] = useState(0)
   const [locating, setLocating] = useState(false)
   const [holding, setHolding] = useState<PublicRescue | null>(null)
-  const [signIn, setSignIn] = useState<PublicRescue | null>(null)
   const [focus, setFocus] = useState<string | null>(null)
   const myHolds = useHolds()
   const now = useNow()
   useEffect(() => {
-    document.title = `${t.title} Â· Chalkboard`
+    document.title = `${t.title} · Chalkboard`
   }, [t.title])
 
   useEffect(() => {
@@ -123,21 +130,18 @@ export function RescueScreen() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocating(false)
-        setPlace({
+        const here = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
           label: t.here,
-        })
+        }
+        rememberPlace(here)
+        setPlace(here)
       },
       () => setLocating(false),
       { timeout: 15_000, maximumAge: 30_000, enableHighAccuracy: true },
     )
   }, [t.here])
-
-  function hold(row: PublicRescue) {
-    if (account.status !== 'signed-in') setSignIn(row)
-    else setHolding(row)
-  }
 
   function pick(id: string) {
     setFocus(id)
@@ -215,7 +219,7 @@ export function RescueScreen() {
                     focused={focus === row.deal.id}
                     held={myHolds.find((h) => h.rescue === row.deal.id) ?? null}
                     canHold={online}
-                    onHold={() => hold(row)}
+                    onHold={() => setHolding(row)}
                   />
                 ))}
               </Stack>
@@ -223,16 +227,6 @@ export function RescueScreen() {
           </Box>
         )}
       </Stack>
-      <SignInSheet
-        open={signIn !== null}
-        onClose={() => setSignIn(null)}
-        onSignedIn={() => {
-          setHolding(signIn)
-          setSignIn(null)
-        }}
-        title={t.signInTitle}
-        body={t.signInBody}
-      />
       {holding && (
         <HoldSheet
           row={holding}
@@ -328,7 +322,12 @@ function Impact({ place }: { place: Place }) {
         <Leaf size={18 + growth * 6} />
       </Box>
       <Box sx={{ minWidth: 0 }}>
-        <Typography className="impact-count" variant="titleMedium" sx={{ fontWeight: 700 }}>
+        <Typography
+          className="impact-count"
+          component="p"
+          variant="titleMedium"
+          sx={{ fontWeight: 700 }}
+        >
           {fill(p.meals, { n: new Intl.NumberFormat(locale).format(meals) })}
         </Typography>
         {meals > 0 && (
@@ -336,7 +335,7 @@ function Impact({ place }: { place: Place }) {
             {fill(p.co2, { kg: new Intl.NumberFormat(locale).format(view.impact.co2_kg) })}
             {Object.entries(view.impact.saved).map(
               ([currency, minor]) =>
-                ` Â· ${fill(p.moneySaved, { amount: formatPrice(minor, currency, locale) })}`,
+                ` · ${fill(p.moneySaved, { amount: formatPrice(minor, currency, locale) })}`,
             )}
           </Typography>
         )}
@@ -371,13 +370,13 @@ function Holds({ holds, now }: { holds: Hold[]; now: number }) {
             }}
           >
             <Stack direction="row" sx={{ gap: 2, alignItems: 'baseline', flexWrap: 'wrap' }}>
-              <Typography variant="titleMedium" sx={{ flex: 1, minWidth: 0 }}>
+              <Typography component="p" variant="titleMedium" sx={{ flex: 1, minWidth: 0 }}>
                 {fill(t.portions, { n: hold.qty, item: hold.item })}
               </Typography>
               {hold.demo && <Chip size="small" label={t.demo} />}
             </Stack>
             <Typography variant="bodyMedium" sx={{ color: roles.onSurfaceVariant }}>
-              {hold.shopName} Â·{' '}
+              {hold.shopName} ·{' '}
               {hold.ends * 1000 > now
                 ? fill(t.heldUntil, { time: clock(hold.ends, locale) })
                 : t.ended}
@@ -544,7 +543,7 @@ function RescueMap({
             type="button"
             className="rescue-pin"
             aria-label={fill(t.pin, {
-              shop: row.shop_name,
+              shop: row.shop_name.replace(/\s*\(Demo\)$/, ''),
               item: item.name,
               time: countdown(seconds * 1000, locale),
             })}
@@ -683,12 +682,14 @@ function DealCard({
             }}
           >
             <Typography
+              component="p"
               variant="titleLarge"
               sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
             >
               {item.name}
             </Typography>
             <Typography
+              component="p"
               variant="titleLarge"
               sx={{ fontFamily: HAND_FONT, fontWeight: 700, color: coral.main, fontSize: 28 }}
             >
@@ -698,7 +699,7 @@ function DealCard({
               variant="bodyMedium"
               sx={{ color: roles.onSurfaceVariant, textDecoration: 'line-through' }}
             >
-              <Box component="span" sx={visually}>
+              <Box component="span" sx={visuallyHidden}>
                 {fill(t.was, { price: '' })}
               </Box>
               {formatPrice(item.was, deal.currency, locale)}
@@ -756,6 +757,7 @@ function DealCard({
         >
           <Clock size={18} aria-hidden="true" />
           <Typography
+            component="p"
             variant="titleMedium"
             sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}
           >
@@ -768,7 +770,7 @@ function DealCard({
             startIcon={<MessageCircle size={18} />}
             onClick={() => go(chatPath(held.shop, held.thread))}
           >
-            {`${t.held} Â· ${t.openChat}`}
+            {`${t.held} · ${t.openChat}`}
           </Button>
         ) : (
           <Button
@@ -790,12 +792,3 @@ function DealCard({
     </Box>
   )
 }
-
-const visually = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-  whiteSpace: 'nowrap',
-} as const

@@ -55,6 +55,7 @@ export const rescueStrings = {
   rescued: 'Rescued!',
   rescuedBody: 'Meals you kept out of the bin: {n}',
   pickupNote: 'From the shop: {note}',
+  holdRequest: 'Hold request: {n} × {item}',
 }
 
 export type RescueStrings = typeof rescueStrings

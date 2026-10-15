@@ -355,7 +355,7 @@ function NewRescue({ used, onSent }: { used: Set<string>; onSent: () => void }) 
               <Typography
                 aria-label={fill(t.qty, { item: row.name })}
                 role="status"
-                variant="titleMedium"
+                component="p" variant="titleMedium"
                 sx={{ minWidth: 28, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}
               >
                 {row.qty}

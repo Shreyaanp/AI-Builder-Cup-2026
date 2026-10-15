@@ -90,6 +90,7 @@ export const ownerStrings = {
   addToMenu: 'Add to my menu',
   addDraft: 'Add {item} to my menu',
   demoActivity: 'Demo activity',
+  holdRequest: 'Rescue hold: {n} × {item}',
   // Shared
   loadFailed: 'Couldn’t load this.',
   retry: 'Try again',

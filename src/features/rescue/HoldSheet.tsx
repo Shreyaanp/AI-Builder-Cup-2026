@@ -4,6 +4,7 @@ import { Check, Leaf, MessageCircle, Minus, Plus } from 'lucide-react'
 import { popIn } from '../../design/chalkMotion'
 import { useLocale } from '../../state/hooks'
 import { useCustomer } from '../customer/account'
+import { SignInButton } from '../customer/SignIn'
 import { chatPath, go } from '../customer/paths'
 import type { ChatSummary } from '../customer/types'
 import { fill } from '../passport/copy'
@@ -18,6 +19,7 @@ const MAX_PER_HOLD = 5
 /**
  * "Hold one for me": the templated message goes to the shop in the customer's own chat, then
  * the hold is recorded against that chat (the server caps portions atomically). No payment.
+ * Signed out, the same sheet asks for sign-in first (one sheet, so Back closes one thing).
  */
 export function HoldSheet({
   row,
@@ -35,7 +37,8 @@ export function HoldSheet({
   const theme = useTheme()
   const roles = theme.material
   const coral = theme.chalk.coral
-  const { api } = useCustomer()
+  const { api, status } = useCustomer()
+  const signedIn = status === 'signed-in'
   const items = row.deal.items.filter((item) => item.qty_left > 0)
   const [name, setName] = useState(items[0]?.name ?? '')
   const [qty, setQty] = useState(1)
@@ -89,9 +92,11 @@ export function HoldSheet({
       open
       onClose={onClose}
       titleId="rescue-hold-title"
-      title={held ? t.rescued : t.holdTitle}
+      title={held ? t.rescued : signedIn ? t.holdTitle : t.signInTitle}
       actions={
-        held ? (
+        !signedIn ? (
+          <Button onClick={onClose}>{t.cancel}</Button>
+        ) : held ? (
           <>
             <Button onClick={onClose}>{t.done}</Button>
             <Button
@@ -126,7 +131,12 @@ export function HoldSheet({
         )
       }
     >
-      {held ? (
+      {!signedIn ? (
+        <Stack spacing={3}>
+          <Typography variant="bodyLarge">{t.signInBody}</Typography>
+          <SignInButton />
+        </Stack>
+      ) : held ? (
         <Stack spacing={3} sx={{ alignItems: 'flex-start' }} aria-live="polite">
           <Box
             aria-hidden="true"
@@ -143,7 +153,7 @@ export function HoldSheet({
           >
             <Check size={32} />
           </Box>
-          <Typography variant="titleMedium">
+          <Typography component="p" variant="titleMedium">
             {fill(t.portions, { n: qty, item: item?.name ?? '' })} · {shop}
           </Typography>
           <Typography variant="bodyLarge">{fill(t.heldUntil, { time: until })}</Typography>
@@ -197,6 +207,7 @@ export function HoldSheet({
             <Typography
               role="status"
               aria-labelledby="rescue-hold-qty"
+              component="p"
               variant="titleLarge"
               sx={{ minWidth: 32, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}
             >
