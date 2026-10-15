@@ -4606,6 +4606,331 @@
         }
       }
     },
+    "/api/v1/customer/games/scratch/{ticket_id}/reveal": {
+      "post": {
+        "summary": "Scratch",
+        "operationId": "scratch_api_v1_customer_games_scratch__ticket_id__reveal_post",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticket Id"
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "UTC",
+              "title": "Tz"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/games/freeze": {
+      "post": {
+        "summary": "Freeze",
+        "operationId": "freeze_api_v1_customer_games_freeze_post",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "UTC",
+              "title": "Tz"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FreezeInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FreezeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/games/coop/claim": {
+      "post": {
+        "summary": "Claim Coop Reward",
+        "description": "Everyone who helped this week's goal collects the shared reward, once.",
+        "operationId": "claim_coop_reward_api_v1_customer_games_coop_claim_post",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "UTC",
+              "title": "Tz"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoopClaimInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassportView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/games/perks/{perk_id}/use": {
+      "post": {
+        "summary": "Use Won Perk",
+        "description": "Counter staff saw the won perk on the phone: it is marked used.",
+        "operationId": "use_won_perk_api_v1_customer_games_perks__perk_id__use_post",
+        "parameters": [
+          {
+            "name": "perk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Perk Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassportView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/shops/{business_id}/games": {
+      "get": {
+        "summary": "Shop Games",
+        "operationId": "shop_games_api_v1_public_shops__business_id__games_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopGames"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/public/today": {
       "get": {
         "summary": "Today",
@@ -6514,6 +6839,101 @@
         ],
         "title": "ConsentRequest"
       },
+      "CoopClaimInput": {
+        "properties": {
+          "area": {
+            "type": "string",
+            "maxLength": 12,
+            "minLength": 1,
+            "title": "Area"
+          },
+          "week": {
+            "type": "string",
+            "pattern": "^\\d{4}-W\\d{2}$",
+            "title": "Week"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "area",
+          "week"
+        ],
+        "title": "CoopClaimInput"
+      },
+      "CoopView": {
+        "properties": {
+          "area": {
+            "type": "string",
+            "title": "Area"
+          },
+          "area_name": {
+            "type": "string",
+            "title": "Area Name"
+          },
+          "week": {
+            "type": "string",
+            "title": "Week"
+          },
+          "ends": {
+            "type": "string",
+            "title": "Ends"
+          },
+          "goal": {
+            "type": "integer",
+            "title": "Goal"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "demo_visits": {
+            "type": "integer",
+            "title": "Demo Visits"
+          },
+          "you": {
+            "type": "integer",
+            "title": "You"
+          },
+          "helpers": {
+            "type": "integer",
+            "title": "Helpers"
+          },
+          "reached": {
+            "type": "boolean",
+            "title": "Reached"
+          },
+          "claimed": {
+            "type": "boolean",
+            "title": "Claimed"
+          },
+          "bonus": {
+            "type": "integer",
+            "title": "Bonus"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "area",
+          "area_name",
+          "week",
+          "ends",
+          "goal",
+          "total",
+          "demo_visits",
+          "you",
+          "helpers",
+          "reached",
+          "claimed",
+          "bonus",
+          "demo"
+        ],
+        "title": "CoopView"
+      },
       "CustomFact": {
         "properties": {
           "key": {
@@ -7254,6 +7674,111 @@
         ],
         "title": "Forecast"
       },
+      "FreezeInput": {
+        "properties": {
+          "week": {
+            "type": "string",
+            "enum": [
+              "this",
+              "next"
+            ],
+            "title": "Week"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "week"
+        ],
+        "title": "FreezeInput"
+      },
+      "FreezeResult": {
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "frozen",
+              "no_freezes",
+              "already",
+              "not_needed"
+            ],
+            "title": "Verdict"
+          },
+          "passport": {
+            "$ref": "#/components/schemas/PassportView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "verdict",
+          "passport"
+        ],
+        "title": "FreezeResult"
+      },
+      "GamesView": {
+        "properties": {
+          "scratch": {
+            "items": {
+              "$ref": "#/components/schemas/ScratchView"
+            },
+            "type": "array",
+            "title": "Scratch"
+          },
+          "sets": {
+            "items": {
+              "$ref": "#/components/schemas/SetView"
+            },
+            "type": "array",
+            "title": "Sets"
+          },
+          "coop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoopView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "won_perks": {
+            "items": {
+              "$ref": "#/components/schemas/WonPerk"
+            },
+            "type": "array",
+            "title": "Won Perks"
+          },
+          "next_reward": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextReward"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nudge": {
+            "type": "boolean",
+            "title": "Nudge"
+          },
+          "welcome_stamps": {
+            "type": "integer",
+            "title": "Welcome Stamps",
+            "default": 2
+          }
+        },
+        "type": "object",
+        "required": [
+          "scratch",
+          "sets",
+          "coop",
+          "won_perks",
+          "next_reward",
+          "nudge"
+        ],
+        "title": "GamesView"
+      },
       "Group": {
         "properties": {
           "id": {
@@ -7762,6 +8287,45 @@
         ],
         "title": "NewThread"
       },
+      "NextReward": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "card",
+              "set",
+              "level"
+            ],
+            "title": "Kind"
+          },
+          "left": {
+            "type": "integer",
+            "title": "Left"
+          },
+          "reward": {
+            "type": "string",
+            "title": "Reward"
+          },
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id",
+            "default": ""
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "left",
+          "reward"
+        ],
+        "title": "NextReward",
+        "description": "The single next named reward (\"2 more stamps → free bun maska\")."
+      },
       "Observation": {
         "properties": {
           "date": {
@@ -7822,6 +8386,31 @@
           "status"
         ],
         "title": "Observation"
+      },
+      "Odd": {
+        "properties": {
+          "prize": {
+            "type": "string",
+            "enum": [
+              "points_10",
+              "points_25",
+              "perk",
+              "freeze",
+              "again"
+            ],
+            "title": "Prize"
+          },
+          "percent": {
+            "type": "integer",
+            "title": "Percent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prize",
+          "percent"
+        ],
+        "title": "Odd"
       },
       "Opportunity": {
         "properties": {
@@ -8087,6 +8676,16 @@
             "type": "boolean",
             "title": "Flagged",
             "default": false
+          },
+          "games": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GamesView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -8122,7 +8721,12 @@
               "regular",
               "full_card",
               "quest_finale",
-              "rescue_hero"
+              "rescue_hero",
+              "third_visit",
+              "tip",
+              "follow",
+              "scratch",
+              "set_complete"
             ],
             "title": "Trigger"
           },
@@ -8154,7 +8758,7 @@
               "$ref": "#/components/schemas/Perk"
             },
             "type": "array",
-            "maxItems": 8,
+            "maxItems": 12,
             "title": "Perks"
           }
         },
@@ -8182,7 +8786,12 @@
               "regular",
               "full_card",
               "quest_finale",
-              "rescue_hero"
+              "rescue_hero",
+              "third_visit",
+              "tip",
+              "follow",
+              "scratch",
+              "set_complete"
             ],
             "title": "Trigger"
           },
@@ -9506,6 +10115,22 @@
         ],
         "title": "RescueSuggestion"
       },
+      "RevealResult": {
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/ScratchView"
+          },
+          "passport": {
+            "$ref": "#/components/schemas/PassportView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "card",
+          "passport"
+        ],
+        "title": "RevealResult"
+      },
       "SaleLine": {
         "properties": {
           "item": {
@@ -9533,6 +10158,81 @@
           "amount"
         ],
         "title": "SaleLine"
+      },
+      "ScratchView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          },
+          "first": {
+            "type": "boolean",
+            "title": "First"
+          },
+          "odds": {
+            "items": {
+              "$ref": "#/components/schemas/Odd"
+            },
+            "type": "array",
+            "title": "Odds"
+          },
+          "revealed": {
+            "type": "boolean",
+            "title": "Revealed"
+          },
+          "prize": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "points_10",
+                  "points_25",
+                  "perk",
+                  "freeze",
+                  "again"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prize"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points",
+            "default": 0
+          },
+          "perk_text": {
+            "type": "string",
+            "title": "Perk Text",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "shop_id",
+          "shop_name",
+          "demo",
+          "first",
+          "odds",
+          "revealed"
+        ],
+        "title": "ScratchView",
+        "description": "A scratch card. Before it is scratched, the prize stays on the server; the odds that\napply to this card are always shown."
       },
       "Search": {
         "properties": {
@@ -9567,6 +10267,106 @@
           "message_id"
         ],
         "title": "Seen"
+      },
+      "SetStop": {
+        "properties": {
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done",
+            "default": false
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop_id",
+          "name"
+        ],
+        "title": "SetStop"
+      },
+      "SetView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "art": {
+            "type": "string",
+            "title": "Art"
+          },
+          "have": {
+            "type": "integer",
+            "title": "Have"
+          },
+          "need": {
+            "type": "integer",
+            "title": "Need"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done"
+          },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/SetStop"
+            },
+            "type": "array",
+            "title": "Stops"
+          },
+          "festival": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Festival"
+          },
+          "ends": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends"
+          },
+          "approximate": {
+            "type": "boolean",
+            "title": "Approximate",
+            "default": false
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "art",
+          "have",
+          "need",
+          "done"
+        ],
+        "title": "SetView"
       },
       "ShareRequest": {
         "properties": {
@@ -9631,6 +10431,75 @@
         ],
         "title": "ShopCard"
       },
+      "ShopGames": {
+        "properties": {
+          "welcome": {
+            "type": "integer",
+            "title": "Welcome"
+          },
+          "needed": {
+            "type": "integer",
+            "title": "Needed"
+          },
+          "reward": {
+            "type": "string",
+            "title": "Reward"
+          },
+          "tried": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tried"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          },
+          "perks": {
+            "items": {
+              "$ref": "#/components/schemas/Perk"
+            },
+            "type": "array",
+            "title": "Perks"
+          },
+          "odds": {
+            "items": {
+              "$ref": "#/components/schemas/Odd"
+            },
+            "type": "array",
+            "title": "Odds"
+          },
+          "first_prize": {
+            "type": "string",
+            "enum": [
+              "points_10",
+              "points_25",
+              "perk",
+              "freeze",
+              "again"
+            ],
+            "title": "First Prize"
+          }
+        },
+        "type": "object",
+        "required": [
+          "welcome",
+          "needed",
+          "reward",
+          "tried",
+          "demo",
+          "perks",
+          "odds",
+          "first_prize"
+        ],
+        "title": "ShopGames",
+        "description": "What a shop page shows about its games, signed in or not."
+      },
       "ShopStamp": {
         "properties": {
           "id": {
@@ -9680,6 +10549,21 @@
           "last_day": {
             "type": "string",
             "title": "Last Day"
+          },
+          "needed": {
+            "type": "integer",
+            "title": "Needed",
+            "default": 8
+          },
+          "welcome": {
+            "type": "integer",
+            "title": "Welcome",
+            "default": 2
+          },
+          "reward": {
+            "type": "string",
+            "title": "Reward",
+            "default": ""
           }
         },
         "type": "object",
@@ -10295,6 +11179,11 @@
             "type": "string",
             "title": "Country",
             "default": ""
+          },
+          "made": {
+            "type": "boolean",
+            "title": "Made",
+            "default": false
           }
         },
         "type": "object",
@@ -10333,6 +11222,23 @@
               }
             ],
             "title": "Receipt"
+          },
+          "scratch": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScratchView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sets_completed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sets Completed"
           }
         },
         "type": "object",
@@ -10429,6 +11335,11 @@
             "type": "integer",
             "title": "Rain Checks"
           },
+          "freezes": {
+            "type": "integer",
+            "title": "Freezes",
+            "default": 0
+          },
           "this_week": {
             "type": "boolean",
             "title": "This Week"
@@ -10439,12 +11350,20 @@
               "enum": [
                 "done",
                 "rain",
+                "frozen",
                 "missed",
                 "current"
               ]
             },
             "type": "array",
             "title": "Row"
+          },
+          "planned": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Planned"
           }
         },
         "type": "object",
@@ -10980,6 +11899,58 @@
           "rain_probability"
         ],
         "title": "Weather"
+      },
+      "WonPerk": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name",
+            "default": ""
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "scratch",
+              "set"
+            ],
+            "title": "Source"
+          },
+          "day": {
+            "type": "string",
+            "title": "Day"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          },
+          "used": {
+            "type": "boolean",
+            "title": "Used",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "shop_id",
+          "text",
+          "source",
+          "day"
+        ],
+        "title": "WonPerk"
       },
       "WorldReceipt": {
         "properties": {

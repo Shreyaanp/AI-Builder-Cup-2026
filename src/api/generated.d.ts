@@ -1601,6 +1601,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer/games/scratch/{ticket_id}/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Scratch */
+        post: operations["scratch_api_v1_customer_games_scratch__ticket_id__reveal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/games/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Freeze */
+        post: operations["freeze_api_v1_customer_games_freeze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/games/coop/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Claim Coop Reward
+         * @description Everyone who helped this week's goal collects the shared reward, once.
+         */
+        post: operations["claim_coop_reward_api_v1_customer_games_coop_claim_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/games/perks/{perk_id}/use": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Use Won Perk
+         * @description Counter staff saw the won perk on the phone: it is marked used.
+         */
+        post: operations["use_won_perk_api_v1_customer_games_perks__perk_id__use_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/shops/{business_id}/games": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shop Games */
+        get: operations["shop_games_api_v1_public_shops__business_id__games_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/today": {
         parameters: {
             query?: never;
@@ -2283,6 +2374,42 @@ export interface components {
             /** Privacy */
             privacy: boolean;
         };
+        /** CoopClaimInput */
+        CoopClaimInput: {
+            /** Area */
+            area: string;
+            /** Week */
+            week: string;
+        };
+        /** CoopView */
+        CoopView: {
+            /** Area */
+            area: string;
+            /** Area Name */
+            area_name: string;
+            /** Week */
+            week: string;
+            /** Ends */
+            ends: string;
+            /** Goal */
+            goal: number;
+            /** Total */
+            total: number;
+            /** Demo Visits */
+            demo_visits: number;
+            /** You */
+            you: number;
+            /** Helpers */
+            helpers: number;
+            /** Reached */
+            reached: boolean;
+            /** Claimed */
+            claimed: boolean;
+            /** Bonus */
+            bonus: number;
+            /** Demo */
+            demo: boolean;
+        };
         /**
          * CustomFact
          * @description A fact this kind of business's customers ask about (e.g. a salon's walk-in policy).
@@ -2572,6 +2699,41 @@ export interface components {
             /** Confidence Level */
             confidence_level?: number | null;
         };
+        /** FreezeInput */
+        FreezeInput: {
+            /**
+             * Week
+             * @enum {string}
+             */
+            week: "this" | "next";
+        };
+        /** FreezeResult */
+        FreezeResult: {
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "frozen" | "no_freezes" | "already" | "not_needed";
+            passport: components["schemas"]["PassportView"];
+        };
+        /** GamesView */
+        GamesView: {
+            /** Scratch */
+            scratch: components["schemas"]["ScratchView"][];
+            /** Sets */
+            sets: components["schemas"]["SetView"][];
+            coop: components["schemas"]["CoopView"] | null;
+            /** Won Perks */
+            won_perks: components["schemas"]["WonPerk"][];
+            next_reward: components["schemas"]["NextReward"] | null;
+            /** Nudge */
+            nudge: boolean;
+            /**
+             * Welcome Stamps
+             * @default 2
+             */
+            welcome_stamps: number;
+        };
         /** Group */
         Group: {
             /**
@@ -2793,6 +2955,31 @@ export interface components {
              */
             language: string;
         };
+        /**
+         * NextReward
+         * @description The single next named reward ("2 more stamps → free bun maska").
+         */
+        NextReward: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "card" | "set" | "level";
+            /** Left */
+            left: number;
+            /** Reward */
+            reward: string;
+            /**
+             * Shop Id
+             * @default
+             */
+            shop_id: string;
+            /**
+             * Shop Name
+             * @default
+             */
+            shop_name: string;
+        };
         /** Observation */
         Observation: {
             /**
@@ -2815,6 +3002,16 @@ export interface components {
              * @enum {string}
              */
             source: "owner" | "demo";
+        };
+        /** Odd */
+        Odd: {
+            /**
+             * Prize
+             * @enum {string}
+             */
+            prize: "points_10" | "points_25" | "perk" | "freeze" | "again";
+            /** Percent */
+            percent: number;
         };
         /** Opportunity */
         Opportunity: {
@@ -2928,6 +3125,7 @@ export interface components {
              * @default false
              */
             flagged: boolean;
+            games?: components["schemas"]["GamesView"] | null;
         };
         /** Perk */
         Perk: {
@@ -2937,7 +3135,7 @@ export interface components {
              * Trigger
              * @enum {string}
              */
-            trigger: "regular" | "full_card" | "quest_finale" | "rescue_hero";
+            trigger: "regular" | "full_card" | "quest_finale" | "rescue_hero" | "third_visit" | "tip" | "follow" | "scratch" | "set_complete";
             /** Text */
             text: string;
             /**
@@ -2963,7 +3161,7 @@ export interface components {
              * Trigger
              * @enum {string}
              */
-            trigger: "regular" | "full_card" | "quest_finale" | "rescue_hero";
+            trigger: "regular" | "full_card" | "quest_finale" | "rescue_hero" | "third_visit" | "tip" | "follow" | "scratch" | "set_complete";
             /** Text */
             text: string;
             /** Demo */
@@ -3497,6 +3695,11 @@ export interface components {
              */
             estimate: boolean;
         };
+        /** RevealResult */
+        RevealResult: {
+            card: components["schemas"]["ScratchView"];
+            passport: components["schemas"]["PassportView"];
+        };
         /** SaleLine */
         SaleLine: {
             /** Item */
@@ -3505,6 +3708,39 @@ export interface components {
             quantity: number;
             /** Amount */
             amount: number;
+        };
+        /**
+         * ScratchView
+         * @description A scratch card. Before it is scratched, the prize stays on the server; the odds that
+         *     apply to this card are always shown.
+         */
+        ScratchView: {
+            /** Id */
+            id: string;
+            /** Shop Id */
+            shop_id: string;
+            /** Shop Name */
+            shop_name: string;
+            /** Demo */
+            demo: boolean;
+            /** First */
+            first: boolean;
+            /** Odds */
+            odds: components["schemas"]["Odd"][];
+            /** Revealed */
+            revealed: boolean;
+            /** Prize */
+            prize?: ("points_10" | "points_25" | "perk" | "freeze" | "again") | null;
+            /**
+             * Points
+             * @default 0
+             */
+            points: number;
+            /**
+             * Perk Text
+             * @default
+             */
+            perk_text: string;
         };
         /** Search */
         Search: {
@@ -3517,6 +3753,52 @@ export interface components {
         Seen: {
             /** Message Id */
             message_id: string;
+        };
+        /** SetStop */
+        SetStop: {
+            /** Shop Id */
+            shop_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Done
+             * @default false
+             */
+            done: boolean;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+        };
+        /** SetView */
+        SetView: {
+            /** Id */
+            id: string;
+            /** Art */
+            art: string;
+            /** Have */
+            have: number;
+            /** Need */
+            need: number;
+            /** Done */
+            done: boolean;
+            /** Stops */
+            stops?: components["schemas"]["SetStop"][];
+            /** Festival */
+            festival?: string | null;
+            /** Ends */
+            ends?: string | null;
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate: boolean;
+            /**
+             * Points
+             * @default 0
+             */
+            points: number;
         };
         /** ShareRequest */
         ShareRequest: {
@@ -3552,6 +3834,31 @@ export interface components {
              */
             demo: boolean;
         };
+        /**
+         * ShopGames
+         * @description What a shop page shows about its games, signed in or not.
+         */
+        ShopGames: {
+            /** Welcome */
+            welcome: number;
+            /** Needed */
+            needed: number;
+            /** Reward */
+            reward: string;
+            /** Tried */
+            tried: number | null;
+            /** Demo */
+            demo: boolean;
+            /** Perks */
+            perks: components["schemas"]["Perk"][];
+            /** Odds */
+            odds: components["schemas"]["Odd"][];
+            /**
+             * First Prize
+             * @enum {string}
+             */
+            first_prize: "points_10" | "points_25" | "perk" | "freeze" | "again";
+        };
         /** ShopStamp */
         ShopStamp: {
             /** Id */
@@ -3578,6 +3885,21 @@ export interface components {
             rescues: number;
             /** Last Day */
             last_day: string;
+            /**
+             * Needed
+             * @default 8
+             */
+            needed: number;
+            /**
+             * Welcome
+             * @default 2
+             */
+            welcome: number;
+            /**
+             * Reward
+             * @default
+             */
+            reward: string;
         };
         /** SimAction */
         SimAction: {
@@ -3865,6 +4187,11 @@ export interface components {
              * @default
              */
             country: string;
+            /**
+             * Made
+             * @default false
+             */
+            made: boolean;
         };
         /** StampResult */
         StampResult: {
@@ -3872,6 +4199,9 @@ export interface components {
             passport?: components["schemas"]["PassportView"] | null;
             /** Receipt */
             receipt?: string | null;
+            scratch?: components["schemas"]["ScratchView"] | null;
+            /** Sets Completed */
+            sets_completed?: string[];
         };
         /** StockAlertInput */
         StockAlertInput: {
@@ -3913,10 +4243,17 @@ export interface components {
             weeks: number;
             /** Rain Checks */
             rain_checks: number;
+            /**
+             * Freezes
+             * @default 0
+             */
+            freezes: number;
             /** This Week */
             this_week: boolean;
             /** Row */
-            row: ("done" | "rain" | "missed" | "current")[];
+            row: ("done" | "rain" | "frozen" | "missed" | "current")[];
+            /** Planned */
+            planned?: string[];
         };
         /** Suggestions */
         Suggestions: {
@@ -4131,6 +4468,37 @@ export interface components {
             demo: boolean;
             /** Sales Effect */
             sales_effect?: string | null;
+        };
+        /** WonPerk */
+        WonPerk: {
+            /** Id */
+            id: string;
+            /** Shop Id */
+            shop_id: string;
+            /**
+             * Shop Name
+             * @default
+             */
+            shop_name: string;
+            /** Text */
+            text: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "scratch" | "set";
+            /** Day */
+            day: string;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+            /**
+             * Used
+             * @default false
+             */
+            used: boolean;
         };
         /** WorldReceipt */
         WorldReceipt: {
@@ -7446,6 +7814,177 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PerkList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scratch_api_v1_customer_games_scratch__ticket_id__reveal_post: {
+        parameters: {
+            query?: {
+                lat?: number | null;
+                lng?: number | null;
+                tz?: string;
+            };
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevealResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    freeze_api_v1_customer_games_freeze_post: {
+        parameters: {
+            query?: {
+                lat?: number | null;
+                lng?: number | null;
+                tz?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FreezeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FreezeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    claim_coop_reward_api_v1_customer_games_coop_claim_post: {
+        parameters: {
+            query?: {
+                lat?: number | null;
+                lng?: number | null;
+                tz?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoopClaimInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    use_won_perk_api_v1_customer_games_perks__perk_id__use_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                perk_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shop_games_api_v1_public_shops__business_id__games_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopGames"];
                 };
             };
             /** @description Validation Error */
