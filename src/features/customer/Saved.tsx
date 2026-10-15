@@ -7,7 +7,8 @@ import { customerNavigate } from '../frontdoors/navigation'
 import { formatPrice } from '../v1/format'
 import { useCustomer } from './account'
 import { ShopAvatar } from './Chats'
-import { accountCopy as t, timeAgo } from './copy'
+import { useAccountCopy, timeAgo } from './copy'
+import type { AccountCopy } from './copy'
 import { SignInButton } from './SignIn'
 import './customer.css'
 
@@ -21,6 +22,7 @@ function openShop(event: MouseEvent<HTMLAnchorElement>, id: string) {
 function describe(
   update: Update,
   shop: ShopCard | undefined,
+  t: AccountCopy,
 ): {
   icon: ReactNode
   title: string
@@ -66,12 +68,15 @@ const EMPTY: Feed = { shops: [], updates: [] }
 export function Saved() {
   const roles = useTheme().material
   const account = useCustomer()
+  const t = useAccountCopy()
   const [loaded, setFeed] = useState<Feed | null>(null)
   const [failed, setFailed] = useState(false)
+  // Bumped by Retry to fetch the feed again.
+  const [attempt, setAttempt] = useState(0)
   const key = account.follows.join(',')
   useEffect(() => {
     document.title = `${t.savedTitle} · Chalkboard`
-  }, [])
+  }, [t])
   useEffect(() => {
     if (account.status === 'loading') return
     if (!key) return
@@ -86,7 +91,7 @@ export function Saved() {
         if (!abort.signal.aborted) setFailed(true)
       })
     return () => abort.abort()
-  }, [key, account.status])
+  }, [key, account.status, attempt])
 
   // No follows: nothing to fetch, an empty feed.
   const feed = key ? loaded : account.status === 'loading' ? null : EMPTY
@@ -100,13 +105,35 @@ export function Saved() {
       >
         {t.savedTitle}
       </Typography>
-      {failed && <Alert severity="error">{t.chatLost}</Alert>}
+      {failed && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => {
+                setFailed(false)
+                setAttempt((n) => n + 1)
+              }}
+            >
+              {t.retry}
+            </Button>
+          }
+        >
+          {t.feedFailed}
+        </Alert>
+      )}
       {!feed ? (
-        <Stack spacing={2}>
-          <Skeleton variant="rounded" height={96} />
-          <Skeleton variant="rounded" height={120} />
-          <Skeleton variant="rounded" height={120} />
-        </Stack>
+        // The follows stay saved; only the feed is missing, so no endless placeholders.
+        failed ? null : (
+          <Stack spacing={2}>
+            <Skeleton variant="rounded" height={96} />
+            <Skeleton variant="rounded" height={120} />
+            <Skeleton variant="rounded" height={120} />
+          </Stack>
+        )
       ) : feed.shops.length === 0 ? (
         <Stack spacing={2} className="c-rise" sx={{ px: 1, pt: 4, textAlign: 'center' }}>
           <Box
@@ -223,7 +250,7 @@ export function Saved() {
               <Stack component="ul" spacing={1.5} sx={{ listStyle: 'none', m: 0, mt: 1.5, p: 0 }}>
                 {feed.updates.map((update, index) => {
                   const shop = shops.get(update.shop_id)
-                  const { icon, title, body } = describe(update, shop)
+                  const { icon, title, body } = describe(update, shop, t)
                   return (
                     <li
                       key={update.id}
@@ -274,7 +301,7 @@ export function Saved() {
                               {shop?.name}
                             </Typography>
                             <Typography variant="labelSmall" color="text.secondary">
-                              {timeAgo(update.created)}
+                              {timeAgo(update.created, t)}
                             </Typography>
                           </Stack>
                           <Stack

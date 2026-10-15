@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button, IconButton, Tooltip, useTheme } from '@mui/material'
 import { Check, Plus } from 'lucide-react'
 import { useCustomer } from './account'
-import { accountCopy as t } from './copy'
+import { useAccountCopy } from './copy'
 
 /**
  * Follow a shop. Signed in: synced to the account. Signed out: kept on this device and moved into
@@ -20,6 +20,7 @@ export function FollowButton({
 }) {
   const roles = useTheme().material
   const account = useCustomer()
+  const t = useAccountCopy()
   const following = account.follows.includes(id)
   const [busy, setBusy] = useState(false)
   const [changed, setChanged] = useState(0)

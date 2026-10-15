@@ -28,6 +28,8 @@ from pydantic import BaseModel, ConfigDict, Field
 MAX_FOLLOWS = 100
 MAX_SEARCHES = 10
 MAX_THREADS = 50
+# A start that died mid-way frees its shop after this long, so the customer can try again.
+CLAIM_SECONDS = 30
 TRANSACTION_ATTEMPTS = 10
 DAY = 86_400
 
@@ -51,6 +53,10 @@ class Documents(Protocol):
         ...
 
     def delete(self, kind: str, key: str) -> None: ...
+    def delete_scope(self, kind: str, scope: str) -> None:
+        """Delete every document of this kind in the scope (for erasure)."""
+        ...
+
     def scoped(self, kind: str, scope: str, limit: int = 200) -> list[dict[str, Any]]: ...
 
 
@@ -111,6 +117,10 @@ class SqliteDocuments:
         with self.connect() as db:
             db.execute("DELETE FROM community WHERE kind=? AND key=?", (kind, key))
 
+    def delete_scope(self, kind: str, scope: str) -> None:
+        with self.connect() as db:
+            db.execute("DELETE FROM community WHERE kind=? AND scope=?", (kind, scope))
+
     def scoped(self, kind: str, scope: str, limit: int = 200) -> list[dict[str, Any]]:
         with self.connect() as db:
             rows = db.execute(
@@ -164,6 +174,20 @@ class FirestoreDocuments:
 
     def delete(self, kind: str, key: str) -> None:
         self.ref(kind, key).delete()
+
+    def delete_scope(self, kind: str, scope: str) -> None:
+        from google.cloud.firestore_v1.base_query import FieldFilter
+
+        query = self.root.collection(kind).where(filter=FieldFilter("scope", "==", scope))
+        while True:
+            # Pages of 400 stay under the 500-write batch limit.
+            snapshots = list(query.limit(400).stream())
+            if not snapshots:
+                return
+            batch = self.client.batch()
+            for snapshot in snapshots:
+                batch.delete(snapshot.reference)
+            batch.commit()
 
     def ordered(self, kind: str, scope: str, limit: int) -> list[dict[str, Any]]:
         from google.cloud import firestore
@@ -428,9 +452,71 @@ class Community:
 
     # Owned threads: the index proves which signed-in customer owns which shop thread.
 
+    # One thread per shop and at most MAX_THREADS: both live in one small per-customer document
+    # changed atomically, so two tabs (or two server instances) starting at once never duplicate a
+    # shop thread or pass the cap. A slot is {"iid"} once created, {"claim", "at"} meanwhile.
+
+    def reserve_thread(self, uid: str, bid: str) -> tuple[Literal["existing", "mine", "wait"], str]:
+        """("existing", iid) to continue it; ("mine", claim) to create it; ("wait", "") while
+        another request is creating it."""
+        legacy: dict[str, Any] = {}
+        if self.docs.get("threadslots", uid) is None:
+            # Customers from before slots existed: their current threads fill the first slots.
+            legacy = {t["bid"]: {"iid": t["iid"]} for t in self.threads(uid)}
+        claim = uuid4().hex
+        outcome: tuple[Literal["existing", "mine", "wait"], str] = ("wait", "")
+
+        def change(data: dict[str, Any] | None) -> tuple[float, dict[str, Any]] | None:
+            nonlocal outcome
+            shops = dict((data or {}).get("shops", legacy))
+            now = time.time()
+            slot = shops.get(bid)
+            if slot and "iid" in slot:
+                outcome = ("existing", slot["iid"])
+                return None
+            if slot and now - slot["at"] < CLAIM_SECONDS:
+                outcome = ("wait", "")
+                return None
+            if not slot and len(shops) >= MAX_THREADS:
+                raise HTTPException(409, "Too many conversations. Delete an old one first.")
+            shops[bid] = {"claim": claim, "at": now}
+            outcome = ("mine", claim)
+            return now, {"shops": shops}
+
+        with self.lock:
+            self.docs.update("threadslots", uid, uid, change)
+        return outcome
+
+    def release_thread(self, uid: str, bid: str, claim: str) -> None:
+        """A start that failed gives its shop slot back."""
+        self.edit_slot(uid, bid, lambda slot: (slot or {}).get("claim") == claim)
+
+    def edit_slot(
+        self,
+        uid: str,
+        bid: str,
+        remove: Callable[[dict[str, Any] | None], bool],
+        value: dict[str, Any] | None = None,
+    ) -> None:
+        """Sets the shop's slot to value, or removes it when remove(slot) says so."""
+
+        def change(data: dict[str, Any] | None) -> tuple[float, dict[str, Any]] | None:
+            if data is None:
+                return None
+            shops = dict(data.get("shops", {}))
+            if value is not None:
+                shops[bid] = value
+            elif remove(shops.get(bid)):
+                shops.pop(bid, None)
+            else:
+                return None
+            return time.time(), {"shops": shops}
+
+        with self.lock:
+            self.docs.update("threadslots", uid, uid, change)
+
     def add_thread(self, uid: str, bid: str, iid: str, token: str, seen: str) -> None:
-        if len(self.docs.scoped("thread", uid, MAX_THREADS + 1)) >= MAX_THREADS:
-            raise HTTPException(409, "Too many conversations. Delete an old one first.")
+        """Records ownership, then fills the shop's slot so waiting starts continue this thread."""
         self.docs.put(
             "thread",
             thread_key(uid, iid),
@@ -438,6 +524,7 @@ class Community:
             time.time(),
             {"bid": bid, "iid": iid, "token": token, "seen": seen, "created": time.time()},
         )
+        self.edit_slot(uid, bid, lambda _: False, {"iid": iid})
 
     def thread(self, uid: str, bid: str, iid: str) -> dict[str, Any]:
         data = self.docs.get("thread", thread_key(uid, iid))
@@ -458,8 +545,16 @@ class Community:
         with self.lock:
             self.docs.update("thread", thread_key(uid, iid), uid, change)
 
-    def drop_thread(self, uid: str, iid: str) -> None:
+    def drop_thread(self, uid: str, bid: str, iid: str) -> None:
         self.docs.delete("thread", thread_key(uid, iid))
+        self.edit_slot(uid, bid, lambda slot: (slot or {}).get("iid") == iid)
+
+    # Owner erasure: copies of the shop's public data and what neighbours wrote about it.
+
+    def erase_shop(self, bid: str) -> None:
+        self.docs.delete("snapshot", bid)
+        self.docs.delete_scope("update", bid)
+        self.docs.delete_scope("tip", bid)
 
     def thread_for_shop(self, uid: str, bid: str) -> dict[str, Any] | None:
         return next((t for t in self.threads(uid) if t["bid"] == bid), None)

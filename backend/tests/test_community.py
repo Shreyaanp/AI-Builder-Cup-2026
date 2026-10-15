@@ -350,11 +350,64 @@ def test_marking_a_deleted_thread_seen_does_not_bring_it_back(docs) -> None:
     assert community.thread("asha", "bid", "iid")["seen"] == "m2"
     with pytest.raises(HTTPException):
         community.mark_seen("asha", "other-bid", "iid", "m3")
-    community.drop_thread("asha", "iid")
+    community.drop_thread("asha", "bid", "iid")
     with pytest.raises(HTTPException) as missing:
         community.mark_seen("asha", "bid", "iid", "m3")
     assert missing.value.status_code == 404
     assert community.threads("asha") == []
+
+
+def test_thread_slots_converge_and_hold_the_cap_across_instances(docs) -> None:
+    from fastapi import HTTPException
+
+    from app.community import MAX_THREADS
+
+    first, second = Community(docs), Community(docs)
+    # A customer from before slots: the existing thread is found, not duplicated.
+    first.add_thread("asha", "old-shop", "old-iid", "token", "m1")
+    assert first.reserve_thread("asha", "old-shop") == ("existing", "old-iid")
+    for n in range(MAX_THREADS - 2):
+        state, claim = first.reserve_thread("asha", f"shop-{n}")
+        assert state == "mine"
+        first.add_thread("asha", f"shop-{n}", f"iid-{n}", "token", "m1")
+    start = Barrier(2)
+
+    def reserve(instance: Community, bid: str):
+        start.wait()
+        try:
+            return instance.reserve_thread("asha", bid)
+        except HTTPException as error:
+            return ("refused", str(error.status_code))
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        # Two tabs, one shop: one creates, the other waits for it.
+        same = sorted(r[0] for r in pool.map(reserve, [first, second], ["new-shop", "new-shop"]))
+        assert same == ["mine", "wait"]
+        # The 50th slot is now taken: two more shops at once can never reach 51.
+        other = list(pool.map(reserve, [first, second], ["shop-a", "shop-b"]))
+        assert [r[0] for r in other] == ["refused", "refused"]
+    first.add_thread("asha", "new-shop", "new-iid", "token", "m1")
+    assert second.reserve_thread("asha", "new-shop") == ("existing", "new-iid")
+    # Deleting a chat frees its slot; a failed start gives its claim back.
+    second.drop_thread("asha", "shop-0", "iid-0")
+    state, claim = first.reserve_thread("asha", "shop-a")
+    assert state == "mine"
+    first.release_thread("asha", "shop-a", claim)
+    assert second.reserve_thread("asha", "shop-a")[0] == "mine"
+
+
+def test_shop_erasure_removes_its_community_copies(docs) -> None:
+    community = Community(docs)
+    shop = {"products": [{"name": "Tea", "price": 100, "available": True, "unit": "cup"}]}
+    for bid in ["gone", "kept"]:
+        community.observe(bid, shop)
+        community.observe(bid, {"products": [{**shop["products"][0], "price": 90}]})
+        docs.put("tip", f"{bid}\0asha", bid, time.time(), {"id": "t", "text": "Nice"})
+    community.erase_shop("gone")
+    assert docs.get("snapshot", "gone") is None
+    assert community.updates(["gone"]) == [] and community.tips("gone") == []
+    assert docs.get("snapshot", "kept") is not None
+    assert len(community.updates(["kept"])) == 1 and len(docs.scoped("tip", "kept")) == 1
 
 
 def test_demo_reply_understands_plurals_and_sold_out() -> None:
