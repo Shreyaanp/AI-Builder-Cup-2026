@@ -17,6 +17,12 @@ COOKIE = "ogoogle_preview_session"
 class Principal:
     uid: str
     source: str
+    # Verified Google profile fields; used only for a customer's display name and reply contact.
+    email: str = ""
+    name: str = ""
+
+
+CUSTOMER_COOKIE = "chalkboard_customer"
 
 
 class IdentityService:
@@ -82,7 +88,12 @@ class IdentityService:
                 "email_verified"
             ):
                 raise HTTPException(403, "Use a verified Google sign-in for this app.")
-            return Principal(str(claims["uid"]), "firebase")
+            return Principal(
+                str(claims["uid"]),
+                "firebase",
+                str(claims.get("email", ""))[:254],
+                str(claims.get("name", ""))[:100],
+            )
         except HTTPException:
             raise
         except Exception as error:
@@ -95,6 +106,47 @@ class IdentityService:
         if not authorization.startswith("Bearer "):
             raise HTTPException(401, "Sign in before starting a conversation.")
         return await self.bearer_principal(authorization[7:])
+
+    # Customers: browsing needs no account; chatting, following and tips need Google sign-in.
+    # Local mode stands in for Google with an explicit signed cookie, so the gate is real in tests.
+    def customer_signer(self) -> URLSafeTimedSerializer:
+        return URLSafeTimedSerializer(self.signer.secret_key, salt="customer")
+
+    def start_local_customer(self, response: Response, name: str) -> Principal:
+        if self.settings.auth_mode != "local":
+            raise HTTPException(404, "Use Google sign-in.")
+        principal = Principal(
+            "local-customer-" + secrets.token_hex(8), "local", "customer@example.test", name
+        )
+        response.set_cookie(
+            CUSTOMER_COOKIE,
+            self.customer_signer().dumps([principal.uid, principal.name]),
+            httponly=True,
+            samesite="strict",
+            secure=self.settings.app_env == "production",
+            max_age=30 * 86400,
+        )
+        return principal
+
+    async def customer(self, request: Request) -> Principal | None:
+        if self.settings.auth_mode == "local":
+            try:
+                uid, name = self.customer_signer().loads(
+                    request.cookies.get(CUSTOMER_COOKIE, ""), max_age=30 * 86400
+                )
+                return Principal(str(uid), "local", "customer@example.test", str(name))
+            except (BadSignature, ValueError, TypeError):
+                return None
+        authorization = request.headers.get("authorization", "")
+        if not authorization.startswith("Bearer "):
+            return None
+        return await self.bearer_principal(authorization[7:])
+
+    async def require_customer(self, request: Request) -> Principal:
+        principal = await self.customer(request)
+        if principal is None:
+            raise HTTPException(401, "SIGN_IN_REQUIRED")
+        return principal
 
     async def require_websocket(self, websocket: WebSocket) -> Principal:
         if self.settings.auth_mode == "local":

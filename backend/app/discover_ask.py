@@ -16,6 +16,7 @@ import structlog
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from .community import Community, Profile, stated_preferences
 from .discover import (
     CATEGORIES,
     DiscoveryPlace,
@@ -63,17 +64,62 @@ class AskRequest(BaseModel):
 class Pick(DiscoveryPlace):
     matched: list[TopItem] = []
     score: float = 0
+    # Why a signed-in customer sees this "For you": followed, vegetarian, halal, budget.
+    reasons: list[str] = []
 
 
 class Group(BaseModel):
-    id: Literal["best", "open", "more"]
+    id: Literal["for_you", "best", "open", "more"]
     places: list[Pick]
+
+
+class Personal(BaseModel):
+    """What the signed-in customer's profile changed: never applied when signed out."""
+
+    applied: list[str] = []
+    saved: list[str] = []
 
 
 class AskResponse(BaseModel):
     intent: Intent
     mode: Literal["ai", "keywords"]
     groups: list[Group]
+    personal: Personal | None = None
+
+
+def personal_reasons(shop: dict[str, Any], pick: Pick, profile: Profile) -> list[str]:
+    prefs = profile.preferences
+    facts = shop.get("facts") or {}
+    reasons = []
+    if shop["id"] in profile.follows:
+        reasons.append("followed")
+    if prefs.vegetarian and facts.get("vegetarian_options"):
+        reasons.append("vegetarian")
+    if prefs.halal and facts.get("halal") in {"yes", "muslim_owned"}:
+        reasons.append("halal")
+    if prefs.budget is not None:
+        limit = round(prefs.budget * 10 ** exponent(shop["currency"]))
+        if any(p.price <= limit for p in (pick.matched or pick.items)):
+            reasons.append("budget")
+    return reasons
+
+
+async def customer_profile(request: Request, q: str) -> tuple[Profile | None, list[str]]:
+    """Signed-in customers: save stated preferences and the search, then personalise."""
+    community: Community | None = getattr(request.app.state, "community", None)
+    if community is None:
+        return None, []
+    try:
+        principal = await request.app.state.services.identity.customer(request)
+    except HTTPException:
+        principal = None
+    if principal is None:
+        return None, []
+    stated = stated_preferences(q)
+    if stated:
+        await anyio.to_thread.run_sync(community.set_preferences, principal.uid, stated)
+    profile = await anyio.to_thread.run_sync(community.remember_search, principal.uid, q)
+    return profile, sorted(stated)
 
 
 PROMPT = """You turn a customer's request into a search for nearby local shops.
@@ -234,6 +280,29 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
         and distance(body.lat, body.lng, shop["lat"], shop["lng"]) <= body.radius
         and (pick := shop_pick(shop, intent, body.lat, body.lng)) is not None
     ]
+    profile, saved = await customer_profile(request, body.q)
+    personal: Personal | None = None
+    for_you: list[Pick] = []
+    if profile is not None:
+        by_id = {shop["id"]: shop for shop in shops}
+        for pick in picks:
+            pick.reasons = personal_reasons(by_id[pick.id], pick, profile)
+            pick.score += 2 * len(pick.reasons)
+        for_you = sorted((p for p in picks if p.reasons), key=lambda p: (-p.score, p.distance_m))
+        prefs = profile.preferences
+        personal = Personal(
+            applied=[
+                name
+                for name, on in (
+                    ("vegetarian", prefs.vegetarian),
+                    ("halal", prefs.halal),
+                    ("budget", prefs.budget is not None),
+                    ("followed", bool(profile.follows)),
+                )
+                if on
+            ],
+            saved=saved,
+        )
     picks.sort(key=lambda p: (-p.score, p.distance_m))
     maps: MapsService = request.app.state.maps
     query = " ".join(intent.keywords) or body.q
@@ -273,9 +342,13 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
             )
         )
     others.sort(key=lambda p: p.distance_m)
+    shown = {p.id for p in for_you[:6]}
     groups = [
-        Group(id="best", places=picks[:8]),
+        Group(id="for_you", places=for_you[:6]),
+        Group(id="best", places=[p for p in picks if p.id not in shown][:8]),
         Group(id="open", places=[p for p in others if p.open_now][:10]),
         Group(id="more", places=[p for p in others if not p.open_now][:10]),
     ]
-    return AskResponse(intent=intent, mode=mode, groups=[g for g in groups if g.places])
+    return AskResponse(
+        intent=intent, mode=mode, groups=[g for g in groups if g.places], personal=personal
+    )

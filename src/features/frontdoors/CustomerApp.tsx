@@ -22,10 +22,17 @@ import { useFrontCopy } from './strings'
 import { BrandSplash } from './Splash'
 import { currentPath, subscribePath } from './navigation'
 import './frontdoors.css'
+import { CustomerAccountProvider } from '../customer/account'
+import { CustomerNav } from '../customer/CustomerNav'
+import type { CustomerTab } from '../customer/CustomerNav'
+import { ProfileButton } from '../customer/Profile'
 
 const Discover = lazy(() => import('../discover/Discover'))
 const AskHome = lazy(() => import('../discover/AskHome'))
 const PublicShop = lazy(() => import('../public/PublicShop'))
+const ChatList = lazy(() => import('../customer/Chats').then((m) => ({ default: m.ChatList })))
+const ChatThread = lazy(() => import('../customer/Chats').then((m) => ({ default: m.ChatThread })))
+const Saved = lazy(() => import('../customer/Saved').then((m) => ({ default: m.Saved })))
 const journeyKey = 'chalkboard.customer.journey'
 export type CustomerLocation = { gps: [number, number] | null; place: FoundPlace | null }
 function firstRun() {
@@ -53,10 +60,12 @@ export default function CustomerApp() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box data-customer>
-        <AppearanceToggle />
-        <CustomerPages />
-      </Box>
+      <CustomerAccountProvider>
+        <Box data-customer>
+          <AppearanceToggle />
+          <CustomerPages />
+        </Box>
+      </CustomerAccountProvider>
     </ThemeProvider>
   )
 }
@@ -70,6 +79,11 @@ function CustomerPages() {
   const t = useFrontCopy()
   // Shop IDs are server UUIDs, or the fixed `demo-…` IDs of seeded demo shops.
   const id = /^\/explore\/s\/([0-9a-f-]{36}|demo-[a-z0-9-]{1,40})\/?$/i.exec(path)?.[1]
+  // Chats tab, one thread (shop ID / thread UUID), and Saved.
+  const thread =
+    /^\/explore\/chats\/([0-9a-f-]{36}|demo-[a-z0-9-]{1,40})\/([0-9a-f-]{36})\/?$/i.exec(path)
+  const chats = /^\/explore\/chats\/?$/.test(path)
+  const saved = /^\/explore\/saved\/?$/.test(path)
   // The full list: its own path, or any shared list link with filters (?category=, ?area=…).
   const browse =
     /^\/explore\/browse\/?$/.test(path) ||
@@ -87,7 +101,7 @@ function CustomerPages() {
     window.addEventListener('popstate', restore)
     return () => window.removeEventListener('popstate', restore)
   }, [])
-  if (!id && setup)
+  if (!id && !thread && !chats && !saved && setup)
     return (
       <CustomerWelcome
         onComplete={(value, picks) => {
@@ -103,6 +117,14 @@ function CustomerPages() {
         }}
       />
     )
+  // Top-level destinations get the navigation bar; a shop or a thread is a full-screen detail.
+  const tab: CustomerTab | null = chats
+    ? 'chats'
+    : saved
+      ? 'saved'
+      : !id && !thread && !browse
+        ? 'ask'
+        : null
   return (
     <>
       <a href="#customer-content" className="skip-link">
@@ -117,8 +139,14 @@ function CustomerPages() {
       )}
       <div id="customer-content" tabIndex={-1}>
         <Suspense fallback={<BrandSplash />}>
-          {id ? (
+          {thread ? (
+            <ChatThread key={thread[2]} shop={thread[1]!} thread={thread[2]!} />
+          ) : id ? (
             <PublicShop key={id} id={id} />
+          ) : chats ? (
+            <ChatList />
+          ) : saved ? (
+            <Saved />
           ) : browse ? (
             <Discover initialLocation={locationChoice} interests={interests} />
           ) : (
@@ -127,6 +155,12 @@ function CustomerPages() {
           )}
         </Suspense>
       </div>
+      {tab && (
+        <>
+          <ProfileButton />
+          <CustomerNav active={tab} />
+        </>
+      )}
     </>
   )
 }
