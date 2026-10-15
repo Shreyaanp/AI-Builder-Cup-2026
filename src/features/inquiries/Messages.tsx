@@ -569,7 +569,8 @@ export function Messages({ businessId }: { businessId: string }) {
                 </Typography>
                 <Typography variant="bodyMedium">{item.contact}</Typography>
                 <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap' }}>
-                  {item.messages?.at(-1)?.text ?? item.message}
+                  {/* The latest words from a person, not the AI's instant answer. */}
+                  {item.messages?.filter((m) => m.kind !== 'ai').at(-1)?.text ?? item.message}
                 </Typography>
                 <Typography variant="labelMedium">
                   {item.blocked ? t.blocked : item.done ? t.closed : item.unread ? t.unread : ''}

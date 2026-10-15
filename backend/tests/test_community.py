@@ -188,3 +188,21 @@ def test_sqlite_documents_scope(tmp_path: Path) -> None:
     assert [d["n"] for d in docs.scoped("k", "s")] == [2, 1]
     docs.delete("k", "a")
     assert docs.get("k", "a") is None
+
+
+def test_demo_reply_understands_plurals_and_sold_out() -> None:
+    from app.community_routes import demo_reply_text
+
+    shop = {
+        "currency": "SGD",
+        "hours": "08:00–18:00",
+        "products": [
+            {"name": "Butter croissant", "available": True, "price": 450, "unit": "piece"},
+            {"name": "Kaya bun", "available": False, "price": 220, "unit": "piece"},
+        ],
+    }
+    assert "Butter croissant is on today (SGD 4.50 per" in demo_reply_text(
+        shop, "Any croissants this afternoon?"
+    )
+    assert "sold out" in demo_reply_text(shop, "Do you have kaya buns?")
+    assert "08:00–18:00" in demo_reply_text(shop, "Are you open on Sunday?")
