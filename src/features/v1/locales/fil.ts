@@ -432,4 +432,20 @@ export const fil: Copy = {
   loadFailed:
     'Hindi na-load ang mga tindahan. Ligtas ang data — suriin ang koneksyon at subukan muli.',
   retryLoad: 'Subukan muli',
+  erasing: 'Binubura ang data mo… Maaaring tumagal ito nang isang minuto.',
+  eraseDone: 'Nabura na ang lahat ng data mo. Nagsisimula muli…',
+  erasePartialTitle: 'May ilang data mo pang binubura',
+  erasePartialBody: (items: string) =>
+    `Hinihintay pa: ${items}. Nabura na ang lahat ng iba. Awtomatiko kaming susubok muli, o puwede mong subukan muli ngayon.`,
+  eraseFailed: 'Hindi natapos ang pagbura. Tingnan ang koneksyon at subukan muli.',
+  eraseRetry: 'Subukan muli',
+  eraseSteps: {
+    face: 'face data',
+    photos: 'mga larawan',
+    records: 'mga tindahan at produkto',
+    gallery: 'mga larawan sa gallery ng tindahan',
+    community: 'mga pampublikong kopya ng tindahan',
+    memory: 'memory ng assistant',
+    conversations: 'mga usapan',
+  } as Record<string, string>,
 }

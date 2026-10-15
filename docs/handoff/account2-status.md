@@ -34,6 +34,32 @@ New strings in all 15 locales (`newShopCopy.ts`).
 **Not validated:** real Gemini Live greeting/turn-taking, ASR, speaker echo on a real phone, live
 coaching quality, native-speaker review of the new translations.
 
+## Erase hardening (`fix/erase-hardening`, 15 Oct evening; owner rule: no new features)
+
+"Delete all my data" returned 500 in production (face worker, then a GCS 403). Now:
+
+- **Backend** (`backend/app/erasure.py`, route `DELETE /api/v1/me/data`): seven steps (face,
+  photos, records, gallery, community, memory, conversations) each run on their own with logging
+  (`erase_step_failed`, `erase_finished`). Response: `status` `erased` | `partial`, `erased`,
+  `pending`, `retry_saved` and the counts. Never a bare 500.
+- **Retry queue**: failed steps are saved per owner (community documents, kind `erase_pending`)
+  with the shop IDs they still need, so gallery/community copies are finished even after the shop
+  records are gone. Retried on Try again (same DELETE, all steps) and quietly in the background on
+  the owner's next `GET /me` (pending steps only, remembered shops only, never `records` — a shop
+  saved since must not vanish without a new request). `GET /me` returns `erase_pending`.
+- **Privacy screen**: progress bar + "Deleting your data…", success "All your data was deleted.
+  Restarting…", partial warning naming what is pending (localized step names) with Try again,
+  network failure with Try again; 15 locales; Try again sits under the text (long Tamil copy).
+- **Tests**: `backend/tests/test_erasure.py` (face worker down, storage 403, Firestore error on
+  records, pending list not saved, conversation delete failing, background retry spares a new
+  shop); `tests/qa/privacy.spec.ts` (progress + success and partial + Try again, light and dark,
+  phone and desktop, axe via `audit`; network failure).
+
+**Checks (fresh SQLite DBs, WEB_PORT=3447 API_PORT=3547):** backend 614 passed / 164 skipped
+(ruff, mypy clean); phone suite 200 passed / 6 skipped / 0 failed; QA suite (fresh `.cache/qa`)
+132 passed. `tsc -b` and ESLint clean; contract regenerated. **Not run:** desktop project of the
+main suite, a live erase against production GCS/Firestore/face worker.
+
 ## Merge follow-up (`merge/passport`, on the calmer shop page `fe27b92`)
 
 Push only `origin/merge/passport`. The 31 phone failures after the merge were all the stamp/QR

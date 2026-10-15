@@ -68,7 +68,7 @@
     "/api/v1/me/data": {
       "delete": {
         "summary": "Erase",
-        "description": "Erase everything this owner stored: records, memory, conversations, photos, face data.",
+        "description": "Erase everything this owner stored: records, memory, conversations, photos, face data.\n\nEach step runs on its own; `status` is \"erased\", or \"partial\" with the `pending` steps that\nwill be retried (on Try again and on the next visit) instead of a bare 500.",
         "operationId": "erase_api_v1_me_data_delete",
         "responses": {
           "200": {

@@ -415,4 +415,20 @@ export const vi: Copy = {
   accountFailedBody: 'Bạn đã đăng nhập nhưng không tải được tài khoản. Dữ liệu vẫn an toàn.',
   loadFailed: 'Không tải được cửa hàng. Dữ liệu vẫn an toàn — kiểm tra kết nối và thử lại.',
   retryLoad: 'Thử lại',
+  erasing: 'Đang xóa dữ liệu của bạn… Có thể mất khoảng một phút.',
+  eraseDone: 'Đã xóa toàn bộ dữ liệu. Đang khởi động lại…',
+  erasePartialTitle: 'Một phần dữ liệu vẫn đang được xóa',
+  erasePartialBody: (items: string) =>
+    `Còn chờ: ${items}. Mọi thứ khác đã được xóa. Chúng tôi sẽ tự động thử lại, hoặc bạn có thể thử lại ngay.`,
+  eraseFailed: 'Chưa xóa xong. Kiểm tra kết nối và thử lại.',
+  eraseRetry: 'Thử lại',
+  eraseSteps: {
+    face: 'dữ liệu khuôn mặt',
+    photos: 'ảnh',
+    records: 'cửa hàng và sản phẩm',
+    gallery: 'ảnh thư viện cửa hàng',
+    community: 'bản sao công khai của cửa hàng',
+    memory: 'bộ nhớ trợ lý',
+    conversations: 'cuộc trò chuyện',
+  } as Record<string, string>,
 }

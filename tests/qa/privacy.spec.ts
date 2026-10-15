@@ -80,6 +80,90 @@ test('delete all owner data requires confirmation; cancel keeps shop; erase remo
   expect((await page.request.get(`/api/v1/public/shops/${id}`)).status()).toBe(404)
 })
 
+for (const appearance of ['light', 'dark'] as const) {
+  test(`delete all shows progress, then a clear success and restarts (${appearance})`, async ({
+    page,
+  }) => {
+    await page.addInitScript((value) => {
+      localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance: value }))
+    }, appearance)
+    await owner(page)
+    await page.getByRole('button', { name: 'Privacy', exact: true }).click()
+    // Hold the real request so the progress state can be checked.
+    let release = () => {}
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/api/v1/me/data', async (route) => {
+      await held
+      await route.fallback()
+    })
+    await page.getByRole('button', { name: 'Delete all my data' }).click()
+    await page.getByRole('button', { name: 'Delete permanently' }).click()
+    await expect(page.getByRole('progressbar', { name: /Deleting your data/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Delete all my data' })).toBeDisabled()
+    await audit(page)
+    release()
+    await expect(
+      page.getByRole('status').filter({ hasText: 'All your data was deleted' }),
+    ).toBeVisible()
+    await audit(page)
+    await expect(page.getByRole('button', { name: 'Continue local preview' })).toBeVisible()
+    expect(await (await page.request.get('/api/v1/businesses')).json()).toEqual([])
+  })
+
+  test(`partial erase names what is pending and Try again finishes (${appearance})`, async ({
+    page,
+  }) => {
+    await page.addInitScript((value) => {
+      localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance: value }))
+    }, appearance)
+    const id = await owner(page)
+    await page.getByRole('button', { name: 'Privacy', exact: true }).click()
+    // First attempt: the face worker and photo storage fail on the server.
+    await page.route(
+      '**/api/v1/me/data',
+      (route) =>
+        route.fulfill({
+          json: {
+            status: 'partial',
+            erased: ['records', 'gallery', 'community', 'memory', 'conversations'],
+            pending: ['face', 'photos'],
+            retry_saved: true,
+            businesses: 1,
+            photos: 0,
+            conversations: 0,
+          },
+        }),
+      { times: 1 },
+    )
+    await page.getByRole('button', { name: 'Delete all my data' }).click()
+    await page.getByRole('button', { name: 'Delete permanently' }).click()
+    const alert = page.getByRole('alert').filter({ hasText: 'still being deleted' })
+    await expect(alert).toContainText('Still pending: face data and photos')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await audit(page)
+    expect(await (await page.request.get('/api/v1/businesses')).json()).toHaveLength(1)
+    await alert.getByRole('button', { name: 'Try again' }).click()
+    await expect(
+      page.getByRole('status').filter({ hasText: 'All your data was deleted' }),
+    ).toBeVisible()
+    expect((await page.request.get(`/api/v1/public/shops/${id}`)).status()).toBe(404)
+  })
+}
+
+test('failed erase request offers Try again', async ({ page }) => {
+  await owner(page)
+  await page.getByRole('button', { name: 'Privacy', exact: true }).click()
+  await page.route('**/api/v1/me/data', (route) => route.abort(), { times: 1 })
+  await page.getByRole('button', { name: 'Delete all my data' }).click()
+  await page.getByRole('button', { name: 'Delete permanently' }).click()
+  const alert = page.getByRole('alert').filter({ hasText: 'Deletion didn’t finish' })
+  await expect(alert).toBeVisible()
+  await alert.getByRole('button', { name: 'Try again' }).click()
+  await expect(
+    page.getByRole('status').filter({ hasText: 'All your data was deleted' }),
+  ).toBeVisible()
+})
+
 test('Tamil privacy surface remains accessible', async ({ page }) => {
   await owner(page)
   await page.getByRole('button', { name: 'Privacy', exact: true }).click()

@@ -408,4 +408,20 @@ export const ko: Copy = {
   accountFailedBody: '로그인했지만 계정을 불러오지 못했어요. 데이터는 안전해요.',
   loadFailed: '가게를 불러오지 못했어요. 데이터는 안전하니 연결을 확인하고 다시 시도해 주세요.',
   retryLoad: '다시 시도',
+  erasing: '데이터를 삭제하는 중… 1분 정도 걸릴 수 있어요.',
+  eraseDone: '모든 데이터를 삭제했어요. 다시 시작하는 중…',
+  erasePartialTitle: '일부 데이터는 아직 삭제 중이에요',
+  erasePartialBody: (items: string) =>
+    `남은 항목: ${items}. 나머지는 모두 삭제했어요. 자동으로 계속 다시 시도하며, 지금 다시 시도할 수도 있어요.`,
+  eraseFailed: '삭제를 마치지 못했어요. 연결을 확인하고 다시 시도하세요.',
+  eraseRetry: '다시 시도',
+  eraseSteps: {
+    face: '얼굴 데이터',
+    photos: '사진',
+    records: '가게와 상품',
+    gallery: '가게 갤러리 사진',
+    community: '가게 공개 사본',
+    memory: '어시스턴트 메모리',
+    conversations: '대화',
+  } as Record<string, string>,
 }
