@@ -200,8 +200,12 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     await evidence(customer, '4-book')
     const quests = customer.getByRole('region', { name: 'Quests' })
     await expect(quests.getByRole('heading', { name: 'Weekly breakthrough' })).toBeVisible()
-    // The quests in order: this week's breakthrough has the one verified visit.
-    await expect(quests.getByRole('progressbar', { name: '1 of 3' })).toHaveCount(1)
+    // This week's breakthrough has the one verified visit. (The early-bird crawl may also count it
+    // when the run happens before 10am shop time, so the check is scoped to the breakthrough card.)
+    const breakthrough = quests
+      .getByRole('heading', { name: 'Weekly breakthrough' })
+      .locator('xpath=..')
+    await expect(breakthrough.getByRole('progressbar')).toHaveAccessibleName('1 of 3')
     await quests.scrollIntoViewIfNeeded()
     // Chrome rasterises freshly scrolled layers (opacity, progress bars) a beat later.
     await customer.waitForTimeout(400)
