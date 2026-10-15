@@ -56,7 +56,7 @@ async def test_device_point_is_sealed_reviewed_and_never_a_demo(tmp_path: Path, 
     fields = proposal["snapshot"]["business"]
     assert fields["lat"] == 12.9718234 and fields["lng"] == 77.6412345
     assert fields["pin_source"] == "device" and fields["pin_accuracy_m"] == 19.2
-    assert not fields.get("pin_demo") and fields["pin_label"] == "12.97182, 77.64123"
+    assert not fields.get("pin_demo") and fields["pin_label"] == "Near Indiranagar"
     if bid:
         assert store.context("alice", bid)["business"]["fields"]["lat"] == 1.28
     else:

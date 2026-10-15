@@ -1,3 +1,4 @@
+import { openNewShopReview } from './support.js'
 import { expect, test } from '@playwright/test'
 import {
   closeSheet,
@@ -21,7 +22,7 @@ for (const existing of [false, true]) {
     await enter(page)
     if (existing) await seedShop(page)
     await page.locator('input[type="file"][accept*="image/jpeg"]').setInputFiles(await image(page))
-    if (!existing) await page.getByRole('button', { name: 'Review my new shop' }).click()
+    if (!existing) await openNewShopReview(page)
     await confirm(page)
     const shop = (await (await page.request.get('/api/v1/businesses')).json())[0]
     expect(shop.gallery ?? []).toEqual([])

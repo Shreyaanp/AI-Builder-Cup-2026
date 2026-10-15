@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, IconButton, Snackbar, useTheme } from '@mui/material'
 import { X } from 'lucide-react'
@@ -11,6 +11,7 @@ import { ReviewDialog } from './ReviewDialog'
 import { BusinessDialog, ProductDialog } from './EditDialogs'
 import { FaceDialog } from './FaceDialog'
 import { customerShopLink, safeCustomerOrigin } from '../../app/router'
+import { overlayHandled } from './backStack'
 
 function readSpeak() {
   try {
@@ -37,7 +38,8 @@ export function WorkspaceProvider({
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [creatingShop, setCreatingShop] = useState(false)
+  const [creatingShop, setCreatingShop] = useState(location.pathname === '/new-shop')
+  const [newShopStep, setNewShopStep] = useState(1)
   const [shopReady, setShopReady] = useState(false)
   // Inventory is tagged with its shop so a switch never shows another shop's products.
   const [inventory, setInventory] = useState<{ bid: string | null; items: Product[] }>({
@@ -46,6 +48,33 @@ export function WorkspaceProvider({
   })
   const [destination, setDestination] = useState<Destination>('coach')
   const [proposal, setProposal] = useState<Proposal | null>(null)
+  // The route belongs to this workspace, so entering registration preserves the current
+  // shop's mounted coach and unsent draft. No merchant data is written to browser storage.
+  useLayoutEffect(() => {
+    const url = new URL(location.href)
+    url.pathname = creatingShop || shopReady ? '/new-shop' : '/'
+    if (creatingShop) url.searchParams.set('step', String(newShopStep))
+    else if (shopReady) url.searchParams.set('step', 'ready')
+    else url.searchParams.delete('step')
+    if (url.href !== location.href) {
+      if (creatingShop) history.pushState(null, '', url)
+      else history.replaceState(null, '', url)
+    }
+  }, [creatingShop, shopReady, newShopStep])
+  useEffect(() => {
+    const restore = (event: PopStateEvent) => {
+      if (overlayHandled(event)) return
+      const inFlow = location.pathname === '/new-shop'
+      const value = new URLSearchParams(location.search).get('step')
+      setCreatingShop(inFlow && value !== 'ready')
+      if (value !== 'ready') setShopReady(false)
+      const step = Math.max(1, Math.min(4, Number(value) || 1))
+      setNewShopStep(step === 4 && !proposal ? 3 : step)
+      if (!inFlow || step < 4) setProposal(null)
+    }
+    window.addEventListener('popstate', restore)
+    return () => window.removeEventListener('popstate', restore)
+  }, [proposal])
   const [toast, setToast] = useState('')
   const [photoPending, setPhotoPending] = useState(false)
   const consumePhotoRequest = useCallback(() => setPhotoPending(false), [])
@@ -95,6 +124,7 @@ export function WorkspaceProvider({
         if (abort.signal.aborted) return
         setBusinesses(items)
         setActiveId(items[0]?.id ?? null)
+        if (!items.length) setCreatingShop(true)
       })
       // A failed load must not look like an empty workspace (owners would recreate shops).
       .catch(() => {
@@ -189,14 +219,21 @@ export function WorkspaceProvider({
       activeId,
       active: businesses.find((item) => item.id === activeId) ?? null,
       creatingShop,
+      newShopStep,
+      setNewShopStep,
+      reviewingNewShop: Boolean(proposal?.new_shop),
+      newShopProposal: proposal?.new_shop ? proposal : null,
       newShopReady: shopReady,
       dismissNewShopReady: () => setShopReady(false),
       startNewShop: () => {
         setCoachActions(false)
+        setShopReady(false)
+        setNewShopStep(1)
         setCreatingShop(true)
         setDestination('coach')
       },
       cancelNewShop: () => {
+        setProposal(null)
         setCreatingShop(false)
         setDestination('coach')
       },
@@ -219,13 +256,20 @@ export function WorkspaceProvider({
       },
       select: (id) => {
         setCreatingShop(false)
+        setShopReady(false)
         setActiveId(id)
       },
       reload,
       setAvailability,
       setShared,
       shareUrl: activeId && customerOrigin ? customerShopLink(activeId, customerOrigin) : null,
-      review: setProposal,
+      review: (next) => {
+        const isNew = next.new_shop || (next.snapshot.kind === 'business' && next.snapshot.revision === 0)
+        if (isNew && creatingShop) {
+          setNewShopStep(4)
+          setProposal({ ...next, new_shop: true })
+        } else setProposal(next)
+      },
       confirm,
       notify: setToast,
       requestPhoto: () => {
@@ -258,6 +302,8 @@ export function WorkspaceProvider({
       loadError,
       activeId,
       creatingShop,
+      newShopStep,
+      proposal,
       shopReady,
       inventory,
       destination,
@@ -282,7 +328,10 @@ export function WorkspaceProvider({
       {children}
       <ReviewDialog
         proposal={proposal}
-        onClose={() => setProposal(null)}
+        onClose={() => {
+          setProposal(null)
+          if (proposal?.new_shop) setNewShopStep(3)
+        }}
         onSaved={async (businessId) => {
           const isNew = !businesses.some((shop) => shop.id === businessId)
           setProposal(null)

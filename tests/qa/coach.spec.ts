@@ -1,3 +1,4 @@
+import { reviewPanel, openNewShopReview } from './../stories/support.js'
 import {
   test,
   expect,
@@ -15,7 +16,7 @@ import {
 test('text upkeep reviews price and sold-out together before saving', async ({ page }) => {
   const id = await owner(page)
   await say(page, 'Kopi is 20 rupees now, kaya toast sold out')
-  const review = page.getByRole('dialog', { name: 'Check before saving' })
+  const review = reviewPanel(page)
   await expect(review).toContainText('₹20.00')
   const before = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
   expect(before.find((p: { name: string }) => p.name === 'Kopi').price).toBe(1800)
@@ -33,8 +34,8 @@ test('photo is explicitly an offline fixture at the approval boundary and cancel
     .locator('input[type=file]')
     .first()
     .setInputFiles(await image(page))
-  await page.getByRole('button', { name: 'Review my new shop' }).click()
-  const review = page.getByRole('dialog', { name: 'Check before saving' })
+  await openNewShopReview(page)
+  const review = reviewPanel(page)
   await expect(review).toContainText(/offline|fixture/i)
   await audit(page)
   await page.keyboard.press('Escape')
