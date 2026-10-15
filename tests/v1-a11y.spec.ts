@@ -1,3 +1,4 @@
+import { reviewPanel, openNewShopReview, confirm as approveReview } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -34,9 +35,9 @@ async function addShop(page: Page, name: string) {
   await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   await page.getByLabel('Shop name').fill(name)
   await page.getByRole('button', { name: 'Review', exact: true }).click()
-  const review = page.getByRole('dialog', { name: 'Check before saving' })
+  const review = reviewPanel(page)
   await expect(review).toContainText('Nothing is published to Google')
-  await review.getByRole('button', { name: 'Confirm and save' }).click()
+  await approveReview(page)
   await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
 }
 
@@ -53,9 +54,9 @@ async function sharedShop(page: Page) {
   await page.getByRole('combobox', { name: 'Unit' }).click()
   await page.getByRole('option', { name: 'cup', exact: true }).click()
   await page.getByRole('button', { name: 'Review', exact: true }).click()
-  const review = page.getByRole('dialog', { name: 'Check before saving' })
+  const review = reviewPanel(page)
   await expect(review).toContainText('Chai')
-  await review.getByRole('button', { name: 'Confirm and save' }).click()
+  await approveReview(page)
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: /^Menu/ }).click()
   // B28: the price is its own button on the item card.
@@ -120,8 +121,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
             mimeType: 'image/png',
             buffer: await png(page, 64),
           })
-          await page.getByRole('button', { name: 'Review my new shop' }).click()
-          await expect(page.getByRole('dialog', { name: 'Check before saving' })).toBeVisible()
+          await openNewShopReview(page)
+          await expect(reviewPanel(page)).toBeVisible()
           break
         default: {
           const shared = await sharedShop(page)

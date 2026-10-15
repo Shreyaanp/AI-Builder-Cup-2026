@@ -1,3 +1,4 @@
+import { reviewPanel, confirm as approveReview } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -186,11 +187,11 @@ test('owner reward edits require exact review before saving and clearing', async
   await expect(page.getByLabel('Stamps needed')).toHaveValue('8')
   await page.getByLabel('Stamps needed').fill('10')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
-  const review = page.getByRole('dialog', { name: 'Check before saving' })
+  const review = reviewPanel(page)
   await expect(review).toContainText('10th kopi free')
   await expect(review.getByText('10', { exact: true })).toBeVisible()
   expect(await (await page.request.get('/api/v1/businesses')).json()).toEqual([])
-  await review.getByRole('button', { name: 'Confirm and save' }).click()
+  await approveReview(page)
   await expect(page.getByRole('button', { name: 'Choose shop: Neighbourhood Kopi' })).toBeVisible()
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
@@ -204,7 +205,7 @@ test('owner reward edits require exact review before saving and clearing', async
   const before = await (await page.request.get('/api/v1/businesses')).json()
   expect(before[0].fields.reward_text).toBe('10th kopi free')
   expect(before[0].fields.stamps_needed).toBe(10)
-  await review.getByRole('button', { name: 'Confirm and save' }).click()
+  await approveReview(page)
   await expect(review).not.toBeVisible()
   const after = await (await page.request.get('/api/v1/businesses')).json()
   expect(after[0].fields.reward_text).toBeUndefined()

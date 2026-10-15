@@ -38,7 +38,7 @@ def test_new_shop_photo_proposes_its_location_as_the_pin(app) -> None:  # noqa: 
         proposal = upload(client, located_jpeg()).json()["proposal"]
         business = proposal["snapshot"]["business"]
         assert (business["lat"], business["lng"]) == (1.305, 103.905)
-        assert business["pin_label"] == "1.30500, 103.90500"  # demo maps: no address lookup
+        assert business["pin_label"] == "Near Katong"  # Offline area, measured coordinates unchanged.
         assert client.get("/api/v1/businesses").json() == []  # only proposed
         saved = client.post(
             f"/api/v1/proposals/{proposal['id']}/approve", json={"digest": proposal["digest"]}

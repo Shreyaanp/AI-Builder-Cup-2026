@@ -1,3 +1,4 @@
+import { reviewPanel } from './../stories/support.js'
 import { test, expect, enter, confirm, audit, evidence, owner, tamil } from './support.js'
 
 test('consent validates both choices and keyboard activation', async ({ page }) => {
@@ -30,7 +31,7 @@ test('empty shop validates name, cancel writes nothing, review saves once and re
   await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   await page.getByLabel('Shop name').fill('QA neighbourhood shop')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await expect(page.getByRole('dialog', { name: 'Check before saving' })).toContainText(
+  await expect(reviewPanel(page)).toContainText(
     'Nothing is published to Google',
   )
   await audit(page)

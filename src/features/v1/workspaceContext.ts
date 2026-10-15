@@ -14,6 +14,10 @@ export interface Workspace {
   activeId: string | null
   active: Business | null
   creatingShop: boolean
+  newShopStep: number
+  setNewShopStep: (step: number) => void
+  reviewingNewShop: boolean
+  newShopProposal: Proposal | null
   startNewShop: () => void
   cancelNewShop: () => void
   newShopReady: boolean
