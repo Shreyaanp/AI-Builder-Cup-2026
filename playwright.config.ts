@@ -6,6 +6,8 @@ const api = Number(process.env.API_PORT ?? 3300)
 
 export default defineConfig({
   testDir: './tests',
+  // The QA machine has its own servers and config: npm run test:qa
+  testIgnore: ['qa/**'],
   timeout: 30_000,
   // Each test gets its own browser context and workspace, so files run in parallel.
   workers: process.env.CI ? 3 : 4,
