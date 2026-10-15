@@ -277,6 +277,7 @@ export const en = {
   importNotes: 'Paste sales or menu notes',
   importReviewNotes: 'Review notes',
   importReviewFlags: 'Check uncertain rows carefully',
+  photoReviewNotes: 'From your photo — please check',
   prepPlan: 'Prep plan',
   prepTomorrow: 'Tomorrow',
   prepLoading: 'Preparing forecast…',

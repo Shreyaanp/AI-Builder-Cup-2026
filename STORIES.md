@@ -24,7 +24,7 @@ in `tests/stories/` that the overnight loop runs.
 **Connects to:** S3 (customers see it), S5 (Google flow reuses the details and photos).
 
 Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s1.spec.ts`.
-Gaps: [A10](docs/stories/AUDIT.md) — accessible extraction disclosure. A2 fixed: offline pins and
+A10 fixed: the review sheet itself shows what the photo reader was unsure of (or that it was an offline fixture). A2 fixed: offline pins and
 typed places work in all eight demo cities; exact photo GPS replaces an approximate demo pin. A6, A8 and A11 are fixed and live (99bed19). Sign-in, recognition,
 physical camera/GPS and hosted validation remain live-only.
 

@@ -263,6 +263,7 @@ export const vi: Copy = {
   importNotes: 'Dán ghi chú doanh số hoặc thực đơn',
   importReviewNotes: 'Xem lại ghi chú',
   importReviewFlags: 'Kiểm tra kỹ các dòng chưa chắc chắn',
+  photoReviewNotes: 'Từ ảnh của bạn — vui lòng kiểm tra',
   prepPlan: 'Kế hoạch chuẩn bị',
   prepTomorrow: 'Ngày mai',
   prepLoading: 'Đang chuẩn bị dự báo…',

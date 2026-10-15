@@ -260,6 +260,7 @@ export const ja: Copy = {
   importNotes: '売上やメニューのメモを貼り付け',
   importReviewNotes: 'メモを確認',
   importReviewFlags: '不確かな行をよく確認してください',
+  photoReviewNotes: '写真から読み取りました — 確認してください',
   prepPlan: '仕込み計画',
   prepTomorrow: '明日',
   prepLoading: '予測を準備中…',

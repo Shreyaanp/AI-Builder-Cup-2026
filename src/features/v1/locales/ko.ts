@@ -259,6 +259,7 @@ export const ko: Copy = {
   importNotes: '매출 또는 메뉴 메모 붙여넣기',
   importReviewNotes: '메모 검토',
   importReviewFlags: '불확실한 행을 꼼꼼히 확인하세요',
+  photoReviewNotes: '사진에서 읽은 내용 — 확인해 주세요',
   prepPlan: '준비 계획',
   prepTomorrow: '내일',
   prepLoading: '예측 준비 중…',
