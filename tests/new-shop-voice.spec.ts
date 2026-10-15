@@ -25,6 +25,16 @@ async function audit(page: Page) {
   await expect(page.getByRole('dialog')).toHaveCount(0)
 }
 
+/** The browser refuses the microphone, the same on every machine (CI has no audio device, which
+ * would otherwise read as "no microphone" instead of "blocked"). */
+async function blockedMicrophone(page: Page) {
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      throw new DOMException('Permission denied', 'NotAllowedError')
+    }
+  })
+}
+
 /** A granted microphone that hears silence (so "thinking" is not mistaken for talking). */
 async function quietMicrophone(page: Page) {
   await page.context().grantPermissions(['microphone'])
@@ -192,6 +202,7 @@ for (const scheme of ['light', 'dark'] as const) {
       localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance }))
     }, scheme)
     // No microphone permission in this context: the browser refuses it.
+    await blockedMicrophone(page)
     await enter(page)
     await openFlow(page)
     await page.getByRole('button', { name: 'Let’s begin' }).click()
@@ -378,6 +389,7 @@ const LOCALES = [
 for (const locale of LOCALES) {
   test(`voice-mode alert and controls in ${locale}`, async ({ page }, info) => {
     test.skip(info.project.name !== 'phone', 'Language coverage runs on the phone')
+    await blockedMicrophone(page)
     await enter(page)
     const copy = await page.evaluate(async (locale) => {
       // Through Vite, so the browser modules stay out of the Node test compilation.
