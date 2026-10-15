@@ -136,7 +136,7 @@ def test_guided_tools_accumulate_one_new_shop_without_writes(tmp_path: Path):
         current.reset(token)
 
 
-def test_menu_only_draft_suggests_name_but_preserves_an_explicit_name(tmp_path: Path):
+def test_menu_only_draft_never_invents_a_name_and_preserves_an_explicit_name(tmp_path: Path):
     context = MerchantContext(
         MerchantStore(str(tmp_path / "shops.sqlite")),
         "alice",
@@ -148,8 +148,7 @@ def test_menu_only_draft_suggests_name_but_preserves_an_explicit_name(tmp_path: 
         ),
     )
     suggestion = new_shop_call("Help with my shop", context)
-    assert suggestion and suggestion.function_call
-    assert suggestion.function_call.args["name"] == "Chai Corner"
+    assert suggestion is None
     explicit = new_shop_call("name: Actual Shop", context)
     assert explicit and explicit.function_call
     assert explicit.function_call.args["name"] == "Actual Shop"
@@ -266,11 +265,16 @@ def test_new_shop_coach_speaks_first_and_moves_on_when_the_owner_does_not_answer
         empty = {"business": None, "products": []}
         greeting, events = turn(client, "Hello! I want to open a new shop.", None, empty)
         sid = events[0]["session_id"]
-        assert "What do you sell?" in greeting and "Hi" in greeting
-        # Silence on the first question: a concrete suggestion, and the question stays open.
+        assert "What is your business called?" in greeting and "Hi" in greeting
+        # The name can wait when skipped; never invent one to move the conversation along.
         idea, _ = turn(client, "I'm not sure. Suggest something or skip it.", sid, empty)
-        assert "photo of your menu" in idea
-        _, events = turn(client, "I sell masala chai", sid, empty)
+        assert "leave the name out" in idea and "What kind of business" in idea
+        _, events = turn(client, "name: Chai Corner", sid, empty)
+        business = next(e for e in events if e["kind"] == "proposal")["data"]["snapshot"][
+            "business"
+        ]
+        empty = {"business": business, "products": []}
+        _, events = turn(client, "category: Tea stall", sid, empty)
         proposal = next(event for event in events if event["kind"] == "proposal")
         business = proposal["data"]["snapshot"]["business"]
         draft = {"business": business, "products": []}
