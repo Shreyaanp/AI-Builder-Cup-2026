@@ -14,23 +14,31 @@ import json
 import re
 import sqlite3
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Lock
 from typing import Any, Literal, Protocol
 from uuid import uuid4
 
+import structlog
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 MAX_FOLLOWS = 100
 MAX_SEARCHES = 10
 MAX_THREADS = 50
+TRANSACTION_ATTEMPTS = 10
 DAY = 86_400
+
+log = structlog.get_logger()
 
 
 # --- Storage: one tiny document store with SQLite (local) and Firestore (hosted) adapters. ---
+
+# Reads the current data (None when absent) and returns (created, new data), or None to keep it.
+# Firestore may call it more than once when a transaction retries, so it must not have effects.
+Change = Callable[[dict[str, Any] | None], tuple[float, dict[str, Any]] | None]
 
 
 class Documents(Protocol):
@@ -38,6 +46,10 @@ class Documents(Protocol):
     def put(
         self, kind: str, key: str, scope: str, created: float, data: dict[str, Any]
     ) -> None: ...
+    def update(self, kind: str, key: str, scope: str, change: Change) -> None:
+        """Read-modify-write atomically, across processes and Cloud Run instances."""
+        ...
+
     def delete(self, kind: str, key: str) -> None: ...
     def scoped(self, kind: str, scope: str, limit: int = 200) -> list[dict[str, Any]]: ...
 
@@ -80,6 +92,21 @@ class SqliteDocuments:
                 (kind, key, scope, created, json.dumps(data, ensure_ascii=False)),
             )
 
+    def update(self, kind: str, key: str, scope: str, change: Change) -> None:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")  # Writers queue here, so no update is lost.
+            row = db.execute(
+                "SELECT fields FROM community WHERE kind=? AND key=?", (kind, key)
+            ).fetchone()
+            result = change(json.loads(row[0]) if row else None)
+            if result is not None:
+                created, data = result
+                db.execute(
+                    "INSERT INTO community VALUES(?,?,?,?,?) ON CONFLICT(kind,key) DO UPDATE SET "
+                    "scope=excluded.scope, created=excluded.created, fields=excluded.fields",
+                    (kind, key, scope, created, json.dumps(data, ensure_ascii=False)),
+                )
+
     def delete(self, kind: str, key: str) -> None:
         with self.connect() as db:
             db.execute("DELETE FROM community WHERE kind=? AND key=?", (kind, key))
@@ -95,9 +122,17 @@ class SqliteDocuments:
 
 
 class FirestoreDocuments:
-    """Keys are hashed into document IDs, so customer IDs and text never name a path."""
+    """Keys are hashed into document IDs, so customer IDs and text never name a path.
+
+    Scoped lists need the composite indexes in firestore.indexes.json (scope ASC, created DESC on
+    the thread, update and tip collection groups). Until they are built, lists fall back to an
+    equality-only query sorted here, which is correct while a scope holds at most 500 documents.
+    """
+
+    FALLBACK_LIMIT = 500
 
     def __init__(self, client: Any, namespace: str) -> None:
+        self.client = client
         self.root = client.collection(namespace).document("community")
 
     def ref(self, kind: str, key: str) -> Any:
@@ -110,16 +145,58 @@ class FirestoreDocuments:
     def put(self, kind: str, key: str, scope: str, created: float, data: dict[str, Any]) -> None:
         self.ref(kind, key).set({"scope": scope, "created": created, "data": data})
 
+    def update(self, kind: str, key: str, scope: str, change: Change) -> None:
+        from google.cloud import firestore
+
+        ref = self.ref(kind, key)
+
+        @firestore.transactional
+        def run(transaction: Any) -> None:
+            snapshot = ref.get(transaction=transaction)
+            current = (snapshot.to_dict() or {}).get("data") if snapshot.exists else None
+            result = change(current)
+            if result is not None:
+                created, data = result
+                transaction.set(ref, {"scope": scope, "created": created, "data": data})
+
+        # One small document: contention is brief, so retry more than the default five times.
+        run(self.client.transaction(max_attempts=TRANSACTION_ATTEMPTS))
+
     def delete(self, kind: str, key: str) -> None:
         self.ref(kind, key).delete()
 
-    def scoped(self, kind: str, scope: str, limit: int = 200) -> list[dict[str, Any]]:
-        # Equality only (no composite index); sorted here. Scopes are small per customer/shop.
-        rows = [
-            s.to_dict() or {}
-            for s in self.root.collection(kind).where("scope", "==", scope).limit(500).stream()
-        ]
+    def ordered(self, kind: str, scope: str, limit: int) -> list[dict[str, Any]]:
+        from google.cloud import firestore
+        from google.cloud.firestore_v1.base_query import FieldFilter
+
+        query = (
+            self.root.collection(kind)
+            .where(filter=FieldFilter("scope", "==", scope))
+            .order_by("created", direction=firestore.Query.DESCENDING)
+            .limit(limit)
+        )
+        return [s.to_dict() or {} for s in query.stream()]
+
+    def unordered(self, kind: str, scope: str) -> list[dict[str, Any]]:
+        from google.cloud.firestore_v1.base_query import FieldFilter
+
+        query = (
+            self.root.collection(kind)
+            .where(filter=FieldFilter("scope", "==", scope))
+            .limit(self.FALLBACK_LIMIT)
+        )
+        rows = [s.to_dict() or {} for s in query.stream()]
         rows.sort(key=lambda r: -float(r.get("created", 0)))
+        return rows
+
+    def scoped(self, kind: str, scope: str, limit: int = 200) -> list[dict[str, Any]]:
+        from google.api_core.exceptions import FailedPrecondition
+
+        try:
+            rows = self.ordered(kind, scope, limit)
+        except FailedPrecondition:
+            log.warning("community_index_missing", kind=kind)
+            rows = self.unordered(kind, scope)
         return [r["data"] for r in rows[:limit] if "data" in r]
 
 
@@ -267,6 +344,11 @@ DEMO_TIPS = [
 ]
 
 
+def update_key(bid: str, update_id: str) -> str:
+    # Per shop: fixed demo IDs repeat across shops.
+    return f"{bid}\0{update_id}"
+
+
 def thread_key(uid: str, iid: str) -> str:
     return f"{uid}\0{iid}"
 
@@ -274,6 +356,7 @@ def thread_key(uid: str, iid: str) -> str:
 class Community:
     def __init__(self, documents: Documents) -> None:
         self.docs = documents
+        # Serialises edits within this process; transactions cover other server instances.
         self.lock = Lock()
 
     # Profile, follows, preferences and searches.
@@ -282,51 +365,66 @@ class Community:
         data = self.docs.get("profile", uid)
         return Profile.model_validate(data) if data else Profile()
 
-    def save_profile(self, uid: str, profile: Profile) -> Profile:
-        self.docs.put("profile", uid, uid, time.time(), profile.model_dump())
-        return profile
+    def edit_profile(self, uid: str, edit: Callable[[Profile], bool]) -> Profile:
+        """Atomic, so two devices (or two server instances) never overwrite each other."""
+        result = Profile()
+
+        def change(data: dict[str, Any] | None) -> tuple[float, dict[str, Any]] | None:
+            nonlocal result
+            result = Profile.model_validate(data) if data else Profile()
+            return (time.time(), result.model_dump()) if edit(result) else None
+
+        with self.lock:
+            self.docs.update("profile", uid, uid, change)
+        return result
 
     def touch(self, uid: str, name: str) -> Profile:
-        with self.lock:
-            profile = self.profile(uid)
-            if name and profile.name != name:
-                profile.name = name[:100]
-                self.save_profile(uid, profile)
-            return profile
+        def edit(profile: Profile) -> bool:
+            if not name or profile.name == name[:100]:
+                return False
+            profile.name = name[:100]
+            return True
+
+        return self.edit_profile(uid, edit)
 
     def follow(self, uid: str, bid: str, on: bool) -> Profile:
-        with self.lock:
-            profile = self.profile(uid)
+        def edit(profile: Profile) -> bool:
             follows = [b for b in profile.follows if b != bid]
             if on:
                 if len(follows) >= MAX_FOLLOWS:
                     raise HTTPException(409, "You follow the maximum number of shops.")
                 follows.insert(0, bid)
             profile.follows = follows
-            return self.save_profile(uid, profile)
+            return True
+
+        return self.edit_profile(uid, edit)
 
     def set_preferences(self, uid: str, changes: dict[str, Any]) -> Profile:
-        with self.lock:
-            profile = self.profile(uid)
+        def edit(profile: Profile) -> bool:
             profile.preferences = Preferences.model_validate(
                 {**profile.preferences.model_dump(), **changes}
             )
-            return self.save_profile(uid, profile)
+            return True
+
+        return self.edit_profile(uid, edit)
 
     def remember_search(self, uid: str, q: str) -> Profile:
-        with self.lock:
-            profile = self.profile(uid)
+        def edit(profile: Profile) -> bool:
             searches = [s for s in profile.searches if s.q.casefold() != q.casefold()]
             profile.searches = [Search(q=q[:300], at=time.time()), *searches][:MAX_SEARCHES]
-            return self.save_profile(uid, profile)
+            return True
+
+        return self.edit_profile(uid, edit)
 
     def clear_personal(self, uid: str) -> Profile:
         """Clears preferences and searches; follows stay until unfollowed."""
-        with self.lock:
-            profile = self.profile(uid)
+
+        def edit(profile: Profile) -> bool:
             profile.preferences = Preferences()
             profile.searches = []
-            return self.save_profile(uid, profile)
+            return True
+
+        return self.edit_profile(uid, edit)
 
     # Owned threads: the index proves which signed-in customer owns which shop thread.
 
@@ -351,8 +449,14 @@ class Community:
         return self.docs.scoped("thread", uid, MAX_THREADS)
 
     def mark_seen(self, uid: str, bid: str, iid: str, mid: str) -> None:
-        data = self.thread(uid, bid, iid)
-        self.docs.put("thread", thread_key(uid, iid), uid, data["created"], {**data, "seen": mid})
+        # Atomic, so marking seen never resurrects a conversation deleted meanwhile.
+        def change(data: dict[str, Any] | None) -> tuple[float, dict[str, Any]]:
+            if not data or data.get("bid") != bid:
+                raise HTTPException(404, "Conversation not found.")
+            return data["created"], {**data, "seen": mid}
+
+        with self.lock:
+            self.docs.update("thread", thread_key(uid, iid), uid, change)
 
     def drop_thread(self, uid: str, iid: str) -> None:
         self.docs.delete("thread", thread_key(uid, iid))
@@ -368,10 +472,21 @@ class Community:
             p["name"]: {"price": p["price"], "available": p["available"], "unit": p["unit"]}
             for p in shop.get("products", [])
         }
-        current = {"products": products, "last_confirmed": shop.get("last_confirmed") or ""}
+        # Stored as a list: product names are not safe Firestore field names ("__x__").
+        current = {
+            "products": [{"name": name, **value} for name, value in products.items()],
+            "last_confirmed": shop.get("last_confirmed") or "",
+        }
+        previous: dict[str, Any] | None = None
+
+        def change(data: dict[str, Any] | None) -> tuple[float, dict[str, Any]] | None:
+            # Atomic swap: concurrent looks never report the same change twice.
+            nonlocal previous
+            previous = data
+            return None if data == current else (time.time(), current)
+
         with self.lock:
-            previous = self.docs.get("snapshot", bid)
-            self.docs.put("snapshot", bid, bid, time.time(), current)
+            self.docs.update("snapshot", bid, bid, change)
         if previous is None:
             return []
         now = time.time()
@@ -391,7 +506,9 @@ class Community:
                 )
             )
 
-        old = previous.get("products", {})
+        stored = previous.get("products", [])
+        # Older snapshots keyed products by name.
+        old = stored if isinstance(stored, dict) else {p["name"]: p for p in stored}
         for name, value in products.items():
             before = old.get(name)
             if before is None:
@@ -411,7 +528,9 @@ class Community:
         if confirmed and confirmed != previous.get("last_confirmed"):
             event("menu_confirmed")
         for update in events[:10]:
-            self.docs.put("update", update.id, bid, update.created, update.model_dump())
+            self.docs.put(
+                "update", update_key(bid, update.id), bid, update.created, update.model_dump()
+            )
         return events
 
     def seed_demo_updates(self, bid: str, shop: dict[str, Any]) -> None:
@@ -425,13 +544,15 @@ class Community:
         if not products:
             return
         now = time.time()
+        # One set per week with fixed IDs, so concurrent first looks write the same documents.
+        week = int(now // (7 * DAY))
         currency = shop.get("currency", "")
         first = products[0]
         newest = products[-1]
         available = next((p for p in products[1:] if p["available"]), first)
         seeds = [
             Update(
-                id=str(uuid4()),
+                id=f"demo-{week}-0",
                 shop_id=bid,
                 kind="menu_confirmed",
                 created=now - 1800,
@@ -439,7 +560,7 @@ class Community:
                 demo=True,
             ),
             Update(
-                id=str(uuid4()),
+                id=f"demo-{week}-1",
                 shop_id=bid,
                 kind="price_change",
                 item=first["name"],
@@ -451,7 +572,7 @@ class Community:
                 demo=True,
             ),
             Update(
-                id=str(uuid4()),
+                id=f"demo-{week}-2",
                 shop_id=bid,
                 kind="back_in_stock",
                 item=available["name"],
@@ -462,7 +583,7 @@ class Community:
                 demo=True,
             ),
             Update(
-                id=str(uuid4()),
+                id=f"demo-{week}-3",
                 shop_id=bid,
                 kind="new_item",
                 item=newest["name"],
@@ -474,7 +595,9 @@ class Community:
             ),
         ]
         for update in seeds:
-            self.docs.put("update", update.id, bid, update.created, update.model_dump())
+            self.docs.put(
+                "update", update_key(bid, update.id), bid, update.created, update.model_dump()
+            )
 
     def updates(self, bids: list[str], limit: int = 40) -> list[Update]:
         rows = [
