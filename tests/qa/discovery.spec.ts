@@ -55,11 +55,12 @@ test.describe('Tamil customer front door', () => {
   test('customer navigation is translated alongside the Ask page', async ({ page }) => {
     await page.goto('/explore/')
     await expect(page.locator('html')).toHaveAttribute('lang', /^ta/)
-    await expect(page.getByRole('link', { name: 'Saved', exact: true })).toBeVisible()
+    // Fixed Q2: the navigation is translated with the Ask page.
+    await expect(page.getByRole('link', { name: 'சேமித்தவை', exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'அரட்டைகள்', exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Saved', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'சுயவிவரமும் விருப்பங்களும்' })).toBeVisible()
     await audit(page)
     await evidence(page, 'Q2-tamil-customer')
-    // BUG Q2: Customer account/navigation strings are hard-coded English in every locale.
-    test.fail()
-    await expect(page.getByRole('link', { name: 'Saved', exact: true })).toHaveCount(0)
   })
 })
