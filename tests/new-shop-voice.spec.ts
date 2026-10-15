@@ -144,7 +144,7 @@ for (const scheme of ['light', 'dark'] as const) {
         text: 'Lovely, masala chai! What do you call your shop?',
       }),
     )
-    live.current().send(coachAudio())
+    live.current().send(coachAudio(6))
     await expect(orb(page)).toHaveAttribute('data-phase', 'speaking')
     await expect(page.getByTestId('captions')).toContainText('What do you call your shop?')
     await capture('4-speaking')
