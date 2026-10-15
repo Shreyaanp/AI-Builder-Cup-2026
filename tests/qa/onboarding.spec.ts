@@ -49,9 +49,9 @@ test('missing shop name focuses the invalid field', async ({ page }) => {
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await expect(page.getByRole('alert')).toBeVisible()
   await evidence(page, 'Q7-name-focus')
-  // BUG Q7: Shop-name validation reports an error but leaves focus on Review.
-  test.fail()
   await expect(page.getByLabel('Shop name')).toBeFocused({ timeout: 1000 })
+  await expect(page.getByLabel('Shop name')).toHaveAttribute('aria-invalid', 'true')
+  await expect(page.getByLabel('Shop name')).toHaveAccessibleDescription('Enter a name.')
 })
 
 test('Tamil owner shell and settings wrap and return keyboard focus', async ({ page }) => {

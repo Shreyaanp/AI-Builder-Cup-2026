@@ -55,6 +55,7 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
   const { api, active, editor, openEditor, review } = useWorkspace()
   const compact = useCompact()
   const [fields, setFields] = useState(initial)
+  const nameInput = useRef<HTMLInputElement>(null)
   const [stampTarget, setStampTarget] = useState(String(initial.stamps_needed ?? 8))
   const stampInput = useRef<HTMLInputElement>(null)
   const invalidTarget =
@@ -83,6 +84,7 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
     if (busy) return
     if (!fields.name.trim()) {
       setError(t.enterName)
+      nameInput.current?.focus()
       return
     }
     if (invalidPayments || invalidDelivery) {
@@ -136,6 +138,14 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
                 value={fields[key]}
                 required={key === 'name'}
                 autoFocus={key === 'name'}
+                id={`business-${key}`}
+                inputRef={key === 'name' ? nameInput : undefined}
+                error={key === 'name' && error === t.enterName && !fields.name.trim()}
+                helperText={
+                  key === 'name' && error === t.enterName && !fields.name.trim()
+                    ? t.enterName
+                    : undefined
+                }
                 type={key === 'phone' ? 'tel' : 'text'}
                 autoComplete={
                   key === 'phone' ? 'tel' : key === 'location' ? 'street-address' : 'off'

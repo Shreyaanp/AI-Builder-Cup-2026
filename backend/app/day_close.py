@@ -8,6 +8,8 @@ as the same sealed proposals the rest of the app uses. The owner saves them with
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Literal
@@ -17,9 +19,9 @@ import structlog
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from .coordinator import MerchantContext, ProductInput, current, propose_products
 from .ingestion import IMAGE_TYPES, alias
 from .limits import enforce_limits
+from .merchant import ProductFields, ProposalRequest
 from .merchant_routes import consented_owner, store
 from .money import exponent
 from .photos import PhotoRejected, sanitize
@@ -227,39 +229,45 @@ async def prepare_day(business_id: str, body: DayClose, request: Request) -> dic
         }
     if body.stock:
         saved = {p["name"]: p for p in context["inventory"]}
-        items = []
+        items: dict[str, ProductFields] = {}
         for entry in body.stock:
             product = saved.get(entry.item)
             if not product:
                 continue  # stock only changes for items the shop already sells
-            current_stock = product.get("stock") or 0
+            current_stock = items[entry.item].stock if entry.item in items else product.get("stock")
             stock = (
                 int(entry.quantity)
                 if entry.mode == "count"
-                else current_stock + int(entry.quantity)
+                else (current_stock or 0) + int(entry.quantity)
             )
-            items.append(
-                ProductInput(
-                    name=product["name"],
-                    unit=product["unit"],
-                    stock=stock,
-                    available=stock > 0 or product.get("available", True),
-                )
+            items[entry.item] = ProductFields(
+                **{
+                    key: value
+                    for key, value in product.items()
+                    if key in ProductFields.model_fields and key not in ("stock", "available")
+                },
+                stock=stock,
+                available=stock > 0 or product.get("available", True),
             )
         if items:
-
-            def propose() -> dict[str, Any] | None:
-                ctx = MerchantContext(service, uid, business_id, [])
-                token = current.set(ctx)
-                try:
-                    outcome = propose_products(items)
-                    if outcome.get("status") != "needs_review":
-                        return None
-                    return dict(ctx.proposals[outcome["proposal_id"]])
-                finally:
-                    current.reset(token)
-
-            result["stock"] = await anyio.to_thread.run_sync(propose)
+            # The input, not the resulting stock, identifies this day's operation. Reuse the
+            # sealed proposal/receipt on retries, including after a lost approval response.
+            key = hashlib.sha256(
+                json.dumps(
+                    [day, [line.model_dump() for line in body.stock]], sort_keys=True
+                ).encode()
+            ).hexdigest()
+            result["stock"] = await anyio.to_thread.run_sync(
+                service.propose,
+                uid,
+                ProposalRequest(
+                    kind="inventory",
+                    business_id=business_id,
+                    revision=business["revision"],
+                    products=list(items.values()),
+                ),
+                f"day-stock:{key}",
+            )
     if not result["sales"] and not result["stock"]:
         raise HTTPException(422, "NOTHING_TO_SAVE")
     return result

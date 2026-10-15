@@ -82,9 +82,6 @@ export async function audit(page: Page, layoutBug?: 'Q11' | 'Q14') {
     if (layoutBug === 'Q11') {
       // BUG Q11: Hidden chat-author labels create desktop document overflow beyond 2300px.
       test.fail()
-    } else {
-      // BUG Q14: Desktop Tamil modal sheets intermittently add 2–3px horizontal document overflow.
-      test.fail()
     }
   }
   expect(bounds.scroll <= bounds.width + 1).toBe(true)

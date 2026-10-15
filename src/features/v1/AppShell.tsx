@@ -297,6 +297,7 @@ function TopBar() {
   const roles = useTheme().material
   const [shopMenu, setShopMenu] = useState<HTMLElement | null>(null)
   const [settings, setSettings] = useState<HTMLElement | null>(null)
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   // B36: share the banner's deferred prompt; dismissal only suppresses the banner.
   const installation = useSyncExternalStore(subscribeInstall, installState)
   const [installHelp, setInstallHelp] = useState(false)
@@ -396,6 +397,7 @@ function TopBar() {
 
       <Popover
         anchorEl={settings}
+        transitionDuration={reducedMotion ? 0 : undefined}
         open={Boolean(settings)}
         onClose={() => setSettings(null)}
         disableRestoreFocus={installHelp}
