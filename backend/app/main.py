@@ -54,6 +54,7 @@ from .memory_vectors import (
 from .merchant import MerchantRepository, MerchantStore
 from .merchant_firestore import FirestoreMerchantStore
 from .merchant_routes import router as merchant_router
+from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
 from .recap import RecapWriter
@@ -212,6 +213,7 @@ def create_app(
     app.include_router(day_close_router)
     app.include_router(demo_workspace_router)
     app.include_router(demo_world_router)
+    app.include_router(passport_router)
     app.include_router(sourcing_router)
     app.add_middleware(
         CORSMiddleware,
