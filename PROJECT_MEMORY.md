@@ -2,7 +2,12 @@
 
 Updated October 14, 2026. Confirmed decisions and evidence only; never record secrets or full conversations here.
 
-## Current deployment phase — supersedes earlier scope/status
+## October 15 overnight status — supersedes older status below
+
+- Live release `99bed19` (Cloud Run revision `ogoogle-ai-00041-48m`) carries the story polish gaps A3/A4/A6/A8/A9/A11/A12; both domains returned 200.
+- Live voice evidence (Vertex, `gemini-3.8-live`, 2026-10-15): a spoken-style price/sold-out change made the model call `get_business_context` then `propose_products` with both items. Speech recognition on a phone is still unverified by us.
+- On main since that release (not yet shipped at the time of writing): offline daily-upkeep fixture (A1), eight-city offline places and pins plus exact photo GPS replacing a demo pin (A2), photo-reader disclosure inside the review sheet (A10), Indian languages hi/bn/te/mr/kn merged from Codex WIP plus Close the day, tour and photo prompts in six Indian languages. All 21 story walkthroughs and the full phone browser suite passed locally; backend suite passed.
+- Open: A5 customer sign-in/chats (account 2, `feat/customer-chat`), A7 multilingual offline replies, other APAC locales for Close the day and the tour.
 
 - Current CI follow-up: production secret `FIREBASE_WEB_API_KEY` and variables `FIREBASE_WEB_APP_ID`/`GCP_IDENTITY_PROVIDER` were confirmed present. Production environment now allows only main. No CLI token, service-account key or model key was uploaded; Google auth uses short-lived federation. Release now checks setting presence before building; bootstrap preserves environment protection.
 - User confirmed actual Google login and saved-conversation recovery work. This supersedes pending human-login notes in earlier records.
