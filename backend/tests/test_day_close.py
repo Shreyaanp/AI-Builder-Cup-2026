@@ -128,3 +128,26 @@ def test_day_delivery_retry_after_restart_and_sales_save_does_not_add_again(app)
         ]
         assert next_day["id"] != stock["id"]
         assert next_day["snapshot"]["products"][0]["stock"] == before + 40
+
+
+def test_one_odd_line_does_not_throw_away_the_whole_till_photo() -> None:
+    import json
+
+    from app.day_close import lenient_read
+
+    text = json.dumps(
+        {
+            "kind": "receipt",
+            "date": "15/10/2026",
+            "lines": [
+                {"item": "Masala chai", "quantity": 42, "amount": 840},
+                {"item": "", "quantity": None, "amount": 2130},
+                {"item": "Refund", "quantity": 1, "amount": -20},
+                {"item": "Samosa", "quantity": 30, "amount": 450},
+            ],
+        }
+    )
+    read = lenient_read(text, "sales")
+    assert read is not None and read.kind == "sales"
+    assert [line.item for line in read.lines] == ["Masala chai", "Samosa"]
+    assert lenient_read("not json", "sales") is None

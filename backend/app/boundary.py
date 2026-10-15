@@ -63,6 +63,10 @@ class RequestBoundary:
             if (
                 path == "/api/v1/photos"
                 or path.endswith("/import")
+                # Close the day photos and shop gallery photos: real phone photos are megabytes,
+                # far over the JSON limit (they were rejected with 413 before reaching the route).
+                or (path.startswith("/api/v1/businesses/") and path.endswith("/day/read"))
+                or (path.startswith("/api/v1/businesses/") and path.endswith("/gallery"))
                 or (path.startswith("/api/v1/face/challenges/") and path.endswith("/capture"))
             ):
                 # The authenticated route consumes a bounded in-memory stream. Do not

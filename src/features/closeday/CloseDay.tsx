@@ -403,6 +403,11 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
                 {failed}
               </Alert>
             )}
+            {sales.length === 0 && stock.length === 0 && (
+              <Alert severity="warning" sx={{ mb: 3 }}>
+                {t.reviewEmpty}
+              </Alert>
+            )}
             {sales.length > 0 && (
               <Box>
                 <Typography variant="labelLarge" color="text.secondary">
