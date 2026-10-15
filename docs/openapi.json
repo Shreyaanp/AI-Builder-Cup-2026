@@ -11069,7 +11069,8 @@
               "sourcing",
               "suppliers",
               "order",
-              "rescue_proposal"
+              "rescue_proposal",
+              "chart"
             ],
             "title": "Kind",
             "type": "string"

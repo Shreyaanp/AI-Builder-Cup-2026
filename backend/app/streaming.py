@@ -12,6 +12,7 @@ from google.genai import types
 
 from .agent import make_agent, ui_language
 from .auth import Principal
+from .charts import CHART_TOOLS, chart_card
 from .contracts import StreamEvent
 from .coordinator import current, ui_currency
 from .settings import Settings
@@ -55,6 +56,10 @@ def public_events(event: Event) -> list[StreamEvent]:
                     StreamEvent(kind="sourcing", data={"stage": "searching", "item": item})
                 )
             response = part.function_response
+            if response and response.name in CHART_TOOLS:
+                chart = chart_card(response.name, response.response)
+                if chart:
+                    output.append(StreamEvent(kind="chart", data=chart))
             if response and response.name == "propose_rescue_deal":
                 merchant = current.get()
                 card = (

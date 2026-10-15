@@ -4170,7 +4170,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal";
+            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "chart";
             /**
              * Session Id
              * @default null

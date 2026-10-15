@@ -59,6 +59,8 @@ class StreamEvent(StrictModel):
         "suppliers",
         "order",
         "rescue_proposal",
+        # A chart card (forecast, or how business is going) built from the tool result.
+        "chart",
     ]
     session_id: str | None = None
     text: str | None = None
