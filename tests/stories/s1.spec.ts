@@ -92,8 +92,10 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     await expect(review).toContainText('Swiggy')
     await expect(review).toContainText('07:00')
     await review.getByRole('button', { name: /Find.*pin/i }).click()
-    await expect(review.getByRole('alert')).toBeVisible()
-    gap('S1/6: offline map pin lookup rejects Bengaluru; photo GPS capture needs a physical phone')
+    // The offline map knows the demo neighbourhoods worldwide; the pin is labelled demo.
+    await expect(review).toContainText(/: Indiranagar ·/)
+    await expect(review.getByRole('alert')).toHaveCount(0)
+    liveOnly('Photo GPS capture needs a physical phone')
     await shot(page, 1, 6)
     await confirm(page)
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
