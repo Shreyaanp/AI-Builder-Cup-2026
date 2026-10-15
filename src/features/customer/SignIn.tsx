@@ -3,7 +3,7 @@ import { Alert, Box, Button, CircularProgress, Stack, Typography, useTheme } fro
 import { LockKeyhole } from 'lucide-react'
 import { Sheet } from '../v1/Sheet'
 import { useCustomer } from './account'
-import { accountCopy as t } from './copy'
+import { useAccountCopy } from './copy'
 
 function GoogleMark() {
   return (
@@ -37,6 +37,7 @@ export function SignInButton({
   fullWidth?: boolean
 }) {
   const account = useCustomer()
+  const t = useAccountCopy()
   const [busy, setBusy] = useState(false)
   return (
     <Button
@@ -71,8 +72,8 @@ export function SignInSheet({
   open,
   onClose,
   onSignedIn,
-  title = t.signInTitle,
-  body = t.signInBody,
+  title,
+  body,
 }: {
   open: boolean
   onClose: () => void
@@ -82,8 +83,14 @@ export function SignInSheet({
 }) {
   const roles = useTheme().material
   const { error } = useCustomer()
+  const t = useAccountCopy()
   return (
-    <Sheet open={open} onClose={onClose} titleId="customer-sign-in-title" title={title}>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      titleId="customer-sign-in-title"
+      title={title ?? t.signInTitle}
+    >
       <Stack spacing={3} sx={{ pb: 1 }}>
         <Box
           aria-hidden="true"
@@ -100,11 +107,15 @@ export function SignInSheet({
         >
           <LockKeyhole size={26} />
         </Box>
-        <Typography variant="bodyLarge">{body}</Typography>
+        <Typography variant="bodyLarge">{body ?? t.signInBody}</Typography>
         <Typography variant="bodySmall" color="text.secondary">
           {t.signInWhy}
         </Typography>
-        {error && <Alert severity="error">{error}</Alert>}
+        {error && (
+          <Alert severity="error">
+            {error === 'unavailable' ? t.signInUnavailable : t.signInUnfinished}
+          </Alert>
+        )}
         <SignInButton onSignedIn={onSignedIn} />
         <Button onClick={onClose}>{t.notNow}</Button>
       </Stack>

@@ -1,30 +1,23 @@
-import { accountCopy as t } from './copy'
+import type { AccountCopy } from './copy'
 import type { Profile } from './types'
-
-const languageNames: Record<string, string> = {
-  en: 'English',
-  hi: 'Hindi',
-  ta: 'Tamil',
-  te: 'Telugu',
-  kn: 'Kannada',
-  ml: 'Malayalam',
-  bn: 'Bengali',
-  mr: 'Marathi',
-  gu: 'Gujarati',
-  'zh-Hans': 'Chinese',
-  ms: 'Malay',
-  ja: 'Japanese',
-  ko: 'Korean',
-  th: 'Thai',
-  vi: 'Vietnamese',
-  id: 'Indonesian',
-  fil: 'Filipino',
-}
 
 export type PreferenceKey = keyof Profile['preferences']
 
+/** A remembered language code named in the viewer's own language ("Tamil", "தமிழ்"…). */
+function languageName(code: string, locale: string) {
+  try {
+    return new Intl.DisplayNames([locale], { type: 'language' }).of(code) ?? code
+  } catch {
+    return code
+  }
+}
+
 /** Labels for what the profile remembers, each removable on its own. */
-export function preferenceChips(profile: Profile | null): { key: PreferenceKey; label: string }[] {
+export function preferenceChips(
+  profile: Profile | null,
+  t: AccountCopy,
+  locale: string,
+): { key: PreferenceKey; label: string }[] {
   const prefs = profile?.preferences
   if (!prefs) return []
   return [
@@ -36,7 +29,7 @@ export function preferenceChips(profile: Profile | null): { key: PreferenceKey; 
     },
     prefs.language && {
       key: 'language' as const,
-      label: t.language.replace('{language}', languageNames[prefs.language] ?? prefs.language),
+      label: t.language.replace('{language}', languageName(prefs.language, locale)),
     },
   ].filter(Boolean) as { key: PreferenceKey; label: string }[]
 }

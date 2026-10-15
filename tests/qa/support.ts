@@ -41,7 +41,7 @@ export async function say(page: Page, message: string) {
   })
   await page.getByRole('button', { name: 'Send', exact: true }).click()
 }
-export async function audit(page: Page, layoutBug?: 'Q11' | 'Q14') {
+export async function audit(page: Page, layoutBug?: 'Q14') {
   await page.evaluate(async () => {
     await document.fonts.ready
   })
@@ -69,20 +69,12 @@ export async function audit(page: Page, layoutBug?: 'Q11' | 'Q14') {
     contentType: 'application/json',
   })
   expect(result.violations).toEqual([])
-  if (
-    test.info().project.name === 'desktop' &&
-    layoutBug &&
-    (layoutBug === 'Q11' || bounds.scroll > bounds.width + 1)
-  ) {
+  if (test.info().project.name === 'desktop' && layoutBug && bounds.scroll > bounds.width + 1) {
     await page.screenshot({
       path: `docs/qa/${layoutBug}-desktop-crop.png`,
       clip: { x: bounds.width - 390, y: 0, width: 390, height: 844 },
       animations: 'disabled',
     })
-    if (layoutBug === 'Q11') {
-      // BUG Q11: Hidden chat-author labels create desktop document overflow beyond 2300px.
-      test.fail()
-    }
   }
   expect(bounds.scroll <= bounds.width + 1).toBe(true)
 }

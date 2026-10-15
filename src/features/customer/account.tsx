@@ -15,7 +15,8 @@ export interface CustomerAccount {
   mode: 'local' | 'firebase'
   name: string
   profile: Profile | null
-  error: string
+  /** Why sign-in failed; the sign-in sheet says it in the viewer's language. */
+  error: '' | 'unavailable' | 'unfinished'
   signIn: () => Promise<boolean>
   signOut: () => Promise<void>
   /** Same-origin fetch with the customer's credentials. Throws `Error(status)` on failure. */
@@ -57,7 +58,7 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<CustomerAccount['mode']>('local')
   const [name, setName] = useState('')
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<'' | 'unavailable' | 'unfinished'>('')
   const [deviceFollows, setDeviceFollows] = useState<string[]>(localFollows)
   const [unread, setUnread] = useState(0)
   const firebase = useRef<Firebase | null>(null)
@@ -162,7 +163,7 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
       } catch {
         if (!abort.signal.aborted) {
           setStatus('signed-out')
-          setError('Sign-in is unavailable right now. Browsing still works.')
+          setError('unavailable')
         }
       }
     }
@@ -187,7 +188,7 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
       await load()
       return true
     } catch {
-      setError('Sign-in did not finish. Please try again.')
+      setError('unfinished')
       return false
     }
   }, [api, load, mode])

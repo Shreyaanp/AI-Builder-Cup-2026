@@ -10,6 +10,52 @@ customer decisions).
 emulation), in local auth mode with the offline AI. Live Google sign-in and live Gemini moderation
 were **not** run; see "Not verified" below.
 
+## Follow-up: QA fixes (`feat/customer-qa`, from `origin/main` at `fe69b03`)
+
+Fixes the customer/community findings in `docs/qa/QA-REPORT.md`: **Q2, Q3, Q4, Q5, Q9, Q10, Q11**,
+plus the open 50-conversation cap race noted below. Q8 (legacy anonymous inquiry route) was left
+alone, as agreed; its regression is still a strict `xfail`. Pushed to `origin/feat/customer-qa`
+only.
+
+| Commit    | What                                                                                                                                                                                                           |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `48fa21e` | Q10 + cap race: a per-customer `threadslots` document, changed atomically, picks the single creator of a shop thread and enforces `MAX_THREADS`. Q9: owner erasure calls `Community.erase_shop`.               |
+| `eb92d6d` | Q2: `copy.ts` holds the English source; `copyLocales.ts` has full translations for all 14 other locales (`useAccountCopy()`). Q3/Q4/Q5: errors with Try again. Q11: the hidden chat label no longer overflows. |
+| `1fd6cec` | QA browser cases for Q2–Q5 and Q11 assert the fixed behaviour and the recovery path.                                                                                                                           |
+| `a2f95b7` | New QA case: customer navigation and Saved in all 15 languages; refreshed Q2–Q5 screenshots.                                                                                                                   |
+
+**How Q10 and the cap work.** `start_thread` still takes the fast path when the customer already
+has a thread with the shop. Otherwise it calls `Community.reserve_thread`, which updates one
+document per customer (`threadslots`, `{shops: {bid: {iid} | {claim, at}}}`) through
+`Documents.update`. That is a Firestore transaction, or `BEGIN IMMEDIATE` on SQLite. The update
+returns one of three answers:
+
+- `existing`: post to that thread.
+- `mine`: create the inquiry, then `add_thread` fills the slot with its ID.
+- `wait`: another request holds a fresh claim. Poll every 0.1 s for up to 15 s, then continue its thread.
+
+A new shop over 50 slots gets a 409 inside the transaction, so two instances can never reach 51.
+A start that fails releases its claim, and a claim older than 30 s can be taken over. A customer
+with no slot document yet has one seeded from their existing threads. `drop_thread` now takes the
+shop ID so it frees the slot, and the Chats list drops entries whose inquiry is gone (erased shop)
+before checking whether the shop is shared. No new Firestore index is needed: `delete_scope` uses
+an equality-only query.
+
+**Results**
+
+- Backend, SQLite: **526 passed, 119 skipped, 1 xfailed (Q8)**. Emulator (`127.0.0.1:8557`,
+  Java 21 JRE at `%LOCALAPPDATA%\AIBuilderCupTools\java21\jdk-21.0.12.1+1-jre`): **608 passed,
+  37 skipped, 1 xfailed (Q8)**. `ruff check`, `ruff format --check` and `mypy app` are clean.
+- `tsc -b --noEmit`, ESLint and Prettier on the changed files are clean.
+- QA browser matrix: another worktree held 3437/3537, so I ran the QA specs from an uncommitted
+  wrapper config against private servers on 3447/3547. Result: **115 passed, 3 failed**. Every
+  Q2–Q5/Q11 case passed on phone and desktop. Two of the failures are `shop-details.spec.ts:4`
+  asserting the share link's port is `3437`, so they come from the alternate port. The third was an
+  intermittent Tamil 125% desktop overflow in owner Shop details (Q14 family), which passed 4/4 on
+  rerun.
+- Not verified: translation quality by native speakers. The strings are my own translations, and
+  plural rules are simplified to a `One` variant plus `{n}`.
+
 ## Follow-up: Firestore (`feat/customer-firestore`, from `feat/customer-chat`)
 
 Customer accounts now run, and are tested, on Firestore as well as SQLite. Pushed to
@@ -64,7 +110,7 @@ gcloud firestore indexes composite create --project=ichiropractic --collection-g
 - Full phone browser suite on `WEB_PORT=3447`, `API_PORT=3547`: **177 passed, 3 skipped,
   1 failed**. The failure is `discover:59` (my local Singapore demo seed, below). All eight
   port-3200 failures are fixed.
-- Not done: `add_thread`'s 50-conversation cap is still a count-then-write, so a race could reach 51.
+- ~~Not done: the 50-conversation cap was a count-then-write.~~ Fixed on `feat/customer-qa` (above).
 
 ## Commits
 
