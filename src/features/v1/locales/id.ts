@@ -419,4 +419,20 @@ export const id: Copy = {
   accountFailedBody: 'Anda sudah masuk, tetapi akun gagal dimuat. Data Anda aman.',
   loadFailed: 'Toko gagal dimuat. Data Anda aman — periksa koneksi lalu coba lagi.',
   retryLoad: 'Coba lagi',
+  erasing: 'Menghapus data Anda… Ini bisa memakan waktu satu menit.',
+  eraseDone: 'Semua data Anda dihapus. Memulai ulang…',
+  erasePartialTitle: 'Sebagian data Anda masih dihapus',
+  erasePartialBody: (items: string) =>
+    `Masih tertunda: ${items}. Semua yang lain sudah dihapus. Kami akan terus mencoba otomatis, atau Anda bisa coba lagi sekarang.`,
+  eraseFailed: 'Penghapusan belum selesai. Periksa koneksi dan coba lagi.',
+  eraseRetry: 'Coba lagi',
+  eraseSteps: {
+    face: 'data wajah',
+    photos: 'foto',
+    records: 'toko dan produk',
+    gallery: 'foto galeri toko',
+    community: 'salinan publik toko',
+    memory: 'memori asisten',
+    conversations: 'percakapan',
+  } as Record<string, string>,
 }

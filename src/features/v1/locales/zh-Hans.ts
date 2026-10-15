@@ -401,4 +401,20 @@ export const zhHans: Copy = {
   accountFailedBody: '您已登录，但账户加载失败。数据是安全的。',
   loadFailed: '无法加载店铺。数据是安全的，请检查网络后重试。',
   retryLoad: '重试',
+  erasing: '正在删除你的数据… 可能需要一分钟。',
+  eraseDone: '所有数据已删除。正在重新启动…',
+  erasePartialTitle: '部分数据仍在删除中',
+  erasePartialBody: (items: string) =>
+    `尚未完成：${items}。其余数据均已删除。我们会自动重试，你也可以立即重试。`,
+  eraseFailed: '删除未完成。请检查网络连接后重试。',
+  eraseRetry: '重试',
+  eraseSteps: {
+    face: '面部数据',
+    photos: '照片',
+    records: '店铺和商品',
+    gallery: '店铺相册照片',
+    community: '店铺公开副本',
+    memory: '助手记忆',
+    conversations: '对话',
+  } as Record<string, string>,
 }
