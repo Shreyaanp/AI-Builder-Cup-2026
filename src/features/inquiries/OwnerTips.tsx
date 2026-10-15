@@ -1,11 +1,12 @@
 import { Box, Chip, Rating, Stack, Typography, useTheme } from '@mui/material'
 import { Star } from 'lucide-react'
 import type { TipList } from '../customer/types'
-import { accountCopy as t, timeAgo } from '../customer/copy'
+import { useAccountCopy, timeAgo } from '../customer/copy'
 
 /** Neighbour tips about this shop, read-only for the owner under Messages. */
 export function OwnerTips({ list }: { list: TipList | null }) {
   const roles = useTheme().material
+  const t = useAccountCopy()
   if (!list || list.tips.length === 0) return null
   return (
     <Box component="section" aria-labelledby="owner-tips-title" sx={{ mt: 4 }}>
@@ -37,7 +38,7 @@ export function OwnerTips({ list }: { list: TipList | null }) {
                 <Rating value={tip.rating} readOnly size="small" aria-label={t.stars(tip.rating)} />
               )}
               <Typography variant="labelSmall" color="text.secondary">
-                {timeAgo(tip.created)}
+                {timeAgo(tip.created, t)}
               </Typography>
               {tip.demo && (
                 <Chip label={t.demoTip} size="small" sx={{ height: 20, fontSize: 11 }} />
