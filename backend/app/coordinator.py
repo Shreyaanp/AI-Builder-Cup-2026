@@ -650,6 +650,54 @@ def request_registration() -> dict[str, Any]:
     }
 
 
+async def propose_rescue_deal(
+    items: list[dict[str, Any]], discount_pct: int, until: str, pickup_note: str = ""
+) -> dict[str, Any]:
+    """Prepare a rescue review for leftover items (name, qty), discount 20/30/50 percent,
+    and a shop-local HH:MM deadline today. Never sends it: the owner must approve the exact
+    rescue digest. Use for text or voice such as '6 croissants at 30% off until 20:00'."""
+    import anyio
+
+    from . import rescue
+
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {"status": "needs_business"}
+    try:
+        context = await anyio.to_thread.run_sync(ctx.store.context, ctx.uid, ctx.business_id)
+        # Spoken plurals resolve to the existing spelling; ambiguous names still fail validation.
+        resolved = []
+        for item in items:
+            name = str(item.get("name", ""))
+            saved = [
+                p
+                for p in context["inventory"]
+                if p["name"].casefold().rstrip("s") == name.casefold().rstrip("s")
+            ]
+            resolved.append({**item, "name": saved[0]["name"] if len(saved) == 1 else name})
+        body = rescue.RescueInput.model_validate(
+            {
+                "items": resolved,
+                "discount_pct": discount_pct,
+                "until": until,
+                "pickup_note": pickup_note,
+            }
+        )
+        proposal = await anyio.to_thread.run_sync(
+            rescue.prepare, ctx.store, ctx.uid, ctx.business_id, body
+        )
+    except (ValidationError, HTTPException, ValueError) as error:
+        return _invalid(error, ctx)
+    card_id = _card(
+        ctx, "rescue_proposal", {**proposal.model_dump(mode="json"), "business_id": ctx.business_id}
+    )
+    return {
+        "status": "needs_review",
+        "card_id": card_id,
+        "instruction": "Ask the owner to review and approve; this rescue is not live.",
+    }
+
+
 # --- Sourcing: find suppliers, prepare order requests, talk to suppliers (sourcing.py) -------
 
 supplier_generator: SupplierGenerator | None = None
