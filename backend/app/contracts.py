@@ -59,6 +59,9 @@ class StreamEvent(StrictModel):
         "suppliers",
         "order",
         "rescue_proposal",
+        # Supply chain: a purchase order drafted from the forecast, a supplier rule change.
+        "purchase_order",
+        "supply_rules",
         # A chart card (forecast, or how business is going) built from the tool result.
         "chart",
     ]
