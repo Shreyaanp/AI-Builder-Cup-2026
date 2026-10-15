@@ -22,13 +22,14 @@ LOCATION = "asia-south1"
 
 # Parameterized inline data: no permanent or temporary merchant tables are written.
 QUERY = """SELECT item, DATE(forecast_timestamp) AS forecast_date,
-                  forecast_value, lower_bound, upper_bound FROM AI.FORECAST(
-  TABLE (SELECT DATE(JSON_VALUE(r, '$.date')) AS date,
-                JSON_VALUE(r, '$.item') AS item,
-                FLOAT64(JSON_VALUE(r, '$.quantity')) AS quantity
-         FROM UNNEST(JSON_QUERY_ARRAY(@sales)) AS r),
+                  forecast_value, prediction_interval_lower_bound AS lower_bound,
+                  prediction_interval_upper_bound AS upper_bound FROM AI.FORECAST(
+  (SELECT DATE(JSON_VALUE(r, '$.date')) AS date,
+          JSON_VALUE(r, '$.item') AS item,
+          CAST(JSON_VALUE(r, '$.quantity') AS FLOAT64) AS quantity
+   FROM UNNEST(JSON_QUERY_ARRAY(@sales)) AS r),
   data_col => 'quantity', timestamp_col => 'date', id_cols => ['item'],
-  horizon => @horizon, confidence_level => 0.9)
+  horizon => {horizon}, confidence_level => 0.9)
 """
 
 
@@ -112,7 +113,8 @@ class BigQueryClient:
 
         token = await anyio.to_thread.run_sync(credentials)
         body = {
-            "query": QUERY,
+            # AI.FORECAST accepts horizon only as a literal; it is a bounded integer we compute.
+            "query": QUERY.format(horizon=max(1, min(int(horizon), 60))),
             "useLegacySql": False,
             "location": LOCATION,
             "defaultDataset": {"projectId": PROJECT, "datasetId": DATASET},
@@ -124,11 +126,6 @@ class BigQueryClient:
                     "name": "sales",
                     "parameterType": {"type": "STRING"},
                     "parameterValue": {"value": json.dumps(rows)},
-                },
-                {
-                    "name": "horizon",
-                    "parameterType": {"type": "INT64"},
-                    "parameterValue": {"value": str(horizon)},
                 },
             ],
         }
