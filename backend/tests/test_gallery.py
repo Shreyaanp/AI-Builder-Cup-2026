@@ -89,3 +89,32 @@ def test_remove_and_limit(app) -> None:
         assert client.get(f"/api/v1/public/shops/{bid}/photos/{ids[0]}.jpg").status_code == 404
         assert client.get(f"/api/v1/public/shops/{bid}/photos/{ids[1]}.jpg").status_code == 200
         assert client.get(f"/api/v1/public/shops/{bid}/photos/../x.jpg").status_code == 404
+
+
+def phone_photo() -> bytes:
+    """A real-size phone photo (well over the 16 KB JSON body limit)."""
+    import random
+
+    rng = random.Random(7)
+    image = Image.new("RGB", (1600, 1200))
+    image.putdata([(rng.randrange(256), rng.randrange(256), rng.randrange(256))] * 1600 * 1200)
+    noise = Image.effect_noise((1600, 1200), 80).convert("RGB")
+    out = io.BytesIO()
+    Image.blend(image, noise, 0.6).save(out, "JPEG", quality=92)
+    return out.getvalue()
+
+
+def test_real_size_phone_photos_reach_the_gallery_and_close_the_day(app) -> None:
+    data = phone_photo()
+    assert len(data) > 200_000
+    with TestClient(app) as client:
+        join(client)
+        bid = shop(client)
+        added = add(client, bid, data)
+        assert added.status_code == 200, added.text
+        read = client.post(
+            f"/api/v1/businesses/{bid}/day/read?kind=sales",
+            content=data,
+            headers={"content-type": "image/jpeg"},
+        )
+        assert read.status_code == 200, read.text
