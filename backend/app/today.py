@@ -166,6 +166,27 @@ def matches_preferences(shop: dict[str, Any], ctx: Context) -> bool:
     )
 
 
+# Everyday items are never "the only one", even when the data says so.
+GENERIC = {
+    "tea",
+    "coffee",
+    "kopi",
+    "water",
+    "bread",
+    "rice",
+    "eggs",
+    "milk",
+    "juice",
+    "soda",
+    "bananas",
+    "tomatoes",
+    "haircut",
+    "light bulb",
+    "fried rice",
+    "fried noodles",
+}
+
+
 def norm(name: str) -> str:
     return " ".join(name.casefold().split())
 
@@ -189,10 +210,14 @@ def only_one_cards(shops: list[dict[str, Any]], ctx: Context, day: date) -> list
         closed_today = bool(shop.get("weekly_hours")) and closing_today(shop, ctx.now) is None
         if not unique or closed_today:
             continue
-        # A different unique item each day, so the card stays fresh.
-        pick = unique[
-            int(hashlib.sha256(f"{shop['id']}{day}".encode()).hexdigest(), 16) % len(unique)
-        ]
+        # Distinctive names make the surprise ("kouign-amann", not "tea"): prefer multi-word
+        # names, and rotate between the two best each day so the card stays fresh.
+        unique = [p for p in unique if norm(p["name"]) not in GENERIC] or []
+        if not unique:
+            continue
+        unique.sort(key=lambda p: (-len(p["name"].split()), -len(p["name"])))
+        top = unique[:2]
+        pick = top[int(hashlib.sha256(f"{shop['id']}{day}".encode()).hexdigest(), 16) % len(top)]
         find = Find(
             id=f"only_one:{shop['id']}:{norm(pick['name'])[:40]}",
             kind="only_one",

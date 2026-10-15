@@ -574,6 +574,6 @@ export const latin: Record<'ms' | 'id' | 'vi' | 'fil', PassportStrings> = {
     walk: '{n} minutong lakad',
     sourceDemo: 'Demo',
     sourceChalkboard: 'Chalkboard',
-    nav: 'Passport',
+    nav: 'Pasaporte',
   },
 }
