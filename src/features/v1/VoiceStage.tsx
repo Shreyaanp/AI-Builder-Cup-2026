@@ -433,9 +433,14 @@ export function ShopFill({
             component="p"
             sx={{
               fontFamily: HAND_FONT,
-              fontSize: { xs: '1.55rem', md: '2.1rem' },
+              fontSize: { xs: '1.45rem', md: '2.1rem' },
               lineHeight: 1.1,
               overflowWrap: 'anywhere',
+              // A long name stays two lines on a phone (the review shows it in full).
+              display: '-webkit-box',
+              WebkitBoxOrient: 'vertical',
+              WebkitLineClamp: { xs: 2, md: 'unset' },
+              overflow: 'hidden',
               color: business?.name ? 'text.primary' : 'text.secondary',
               ...(business?.name ? chalkWrite : {}),
             }}
