@@ -10,6 +10,62 @@ customer decisions).
 emulation), in local auth mode with the offline AI. Live Google sign-in and live Gemini moderation
 were **not** run; see "Not verified" below.
 
+## Follow-up: Firestore (`feat/customer-firestore`, from `feat/customer-chat`)
+
+Customer accounts now run, and are tested, on Firestore as well as SQLite. Pushed to
+`origin/feat/customer-firestore` only.
+
+| Commit    | What                                                                                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `935ac70` | `community.py` fixes for Firestore (below), `firestore.indexes.json`, and `test_community.py` running every customer test on SQLite and the emulator, plus seven new storage tests.        |
+| `93914ba` | `test_customer.py` and `test_threads.py` route tests also run against the emulator (`owner_of` helper replaces two SQLite-only lookups).                                                   |
+| `988257f` | The two-instance test sends paired simultaneous edits, as a person's two devices would.                                                                                                    |
+| `8d56db5` | Browser tests use the configured `baseURL`; `backend-dev.mjs` sets `CUSTOMER_ORIGIN` from `WEB_PORT`; S3 and S7 updated for the Ask home and sign-in to chat; S3/S7 screenshots refreshed. |
+
+**Differences found and fixed**
+
+1. **Reserved product names broke the updates feed.** The snapshot stored products as a map keyed
+   by name, and Firestore rejects field names like `__x__` (400), so Follow and the feed would have
+   failed for such a shop. Snapshots now store a list; older map snapshots are still read.
+2. **Lost updates across Cloud Run instances.** Profile edits (follow, preferences, searches,
+   name), `mark_seen` and the snapshot swap were read-modify-write behind a per-process lock.
+   Two instances (or two devices) could overwrite each other. They now use `Documents.update`: a
+   Firestore transaction (10 attempts), or `BEGIN IMMEDIATE` in SQLite. A process lock still
+   serialises edits within one instance. `mark_seen` no longer brings back a deleted conversation.
+3. **Ordering past 500 documents, and read cost.** Scoped lists read up to 500 documents per query
+   and sorted in memory. Past 500 the newest could be missing, and every feed call read up to 500
+   documents per shop. They now query `scope == x ORDER BY created DESC LIMIT n`.
+4. **Duplicate demo updates.** Concurrent first looks seeded random-ID demo updates twice. Demo
+   updates now have fixed IDs per week (`demo-<week>-<n>`), keyed per shop.
+
+**Composite indexes (needed in production):** `firestore.indexes.json` at the repo root, all
+`scope ASC, created DESC` on the `thread`, `update` and `tip` collection groups. Until they are
+built, `FirestoreDocuments.scoped` logs `community_index_missing` and falls back to the old
+equality-only query, so nothing breaks. The repo has no `firebase.json`, so create them per
+group:
+
+```
+gcloud firestore indexes composite create --project=ichiropractic --collection-group=thread --query-scope=COLLECTION --field-config=field-path=scope,order=ascending --field-config=field-path=created,order=descending
+```
+
+(repeat with `update` and `tip`). I did **not** create them in the cloud project.
+
+**Results**
+
+- Emulator: `FIRESTORE_EMULATOR_HOST=127.0.0.1:8547` (port 8547, so it doesn't collide with a
+  shared 8085), with Java 21 from `%LOCALAPPDATA%\AIBuilderCupTools\java21`.
+- Full backend `pytest` against the emulator: **570 passed, 37 skipped**. `ruff check`,
+  `ruff format --check` and `mypy app` are clean.
+- `test_community.py`: 29 tests (28 pass and 1 skips on SQLite only). Run against the old
+  `community.py`, 7 of the new storage tests fail, which shows they catch the bugs.
+- The emulator settles lock conflicts by timing out, while production aborts the younger
+  transaction at once. A burst of 8 simultaneous edits to one profile could therefore run out of
+  retries on the emulator, so the test uses two devices editing at once, over three rounds.
+- Full phone browser suite on `WEB_PORT=3447`, `API_PORT=3547`: **177 passed, 3 skipped,
+  1 failed**. The failure is `discover:59` (my local Singapore demo seed, below). All eight
+  port-3200 failures are fixed.
+- Not done: `add_thread`'s 50-conversation cap is still a count-then-write, so a race could reach 51.
+
 ## Commits
 
 | Commit    | What                                                                                                                                                                                                                                                  |
@@ -142,8 +198,10 @@ customer chat code. My capture cut off the pass/skip totals line.
 
 - **Hard-coded `http://127.0.0.1:3200` (8)**, so they reach another session's server or nothing:
   `demo-flow:28`, `i18n:80`, `stories/s1`, `s2`, `s3`, `s7`, `v1:172`, and the network allow-list
-  in `starter:83`. They need a rerun on the standard ports, or the same `baseURL` fix I applied to
-  `customer.spec.ts`.
+  in `starter:83`. **Fixed in `8d56db5`.** All eight pass. i18n, s1, s2 and v1 only needed the
+  dev backend's `CUSTOMER_ORIGIN`. s3 and s7 also had stale steps (`/explore/` is now the Ask
+  home, and messaging the owner needs sign-in). `frontdoors.spec.ts` keeps `127.0.0.1:3200` only as
+  sample input to the pure `resolveApp` host check.
 - **`discover:59` (open now → "No matches")**: caused by my local seeding of the Singapore demo
   shops, because the demo bakery is open now. `demo-shops.spec.ts` keeps demo shops out of the
   shared dev database on purpose, so run the story test against its own database or unseed after.
@@ -158,8 +216,8 @@ desktop) pass.
 
 - Real Google sign-in through Firebase in a hosted build. The code path is the owner app's.
 - Gemini safety moderation of tips: only the basic filter and the fixture path ran.
-- `FirestoreDocuments` (the customer data store when hosted): type-checked and mirrors SQLite,
-  but it was not run against the emulator.
+- `FirestoreDocuments` against a real Firestore database: it ran on the emulator only (see
+  "Follow-up: Firestore"). The composite indexes still need creating in the cloud project.
 - A real phone. The screenshots come from Chrome with Pixel 7 emulation.
 
 ## Screenshots (`docs/stories/`, phone, en-SG, offline AI)
@@ -208,4 +266,4 @@ Next, if wanted:
 - customer copy in the other locales;
 - push notifications for owner replies (the unread badge only updates in the app);
 - make the demo reply lazy-on-read like the supplier replies, for Cloud Run;
-- run the Firestore adapter against the emulator.
+- create the three composite indexes in the cloud project (`firestore.indexes.json`).
