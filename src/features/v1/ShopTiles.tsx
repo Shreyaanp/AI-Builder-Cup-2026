@@ -58,6 +58,9 @@ import { useRewardCopy } from '../rewards/strings'
 import { HoursList } from '../shop/Hours'
 import { hasHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
+import { MorningBrief } from '../owner/MorningBrief'
+import { RadarSheet, RadarTile } from '../owner/RadarTile'
+import { RescueTile } from '../owner/RescueTile'
 
 export type ShopSheetKind =
   'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
@@ -158,9 +161,11 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
   const t = useCopy()
   const ws = useWorkspace()
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
+  const [radar, setRadar] = useState(false)
   const { unread, refresh } = useUnread()
   return (
     <Stack spacing={4}>
+      <MorningBrief key={ws.active?.id} onSheet={setSheet} onRadar={() => setRadar(true)} />
       {!narrow && (
         <PendingCard
           compact
@@ -171,6 +176,7 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
       )}
       <ShopTiles unread={unread} onSheet={setSheet} />
       {!narrow && <FreshnessCard compact />}
+      <RadarSheet open={radar} onClose={() => setRadar(false)} />
       <ShopSheets
         kind={sheet}
         onClose={() => {
@@ -291,7 +297,9 @@ export function ShopTiles({
         {soldOut > 0 && <Supporting>{soldOutNames.join(' · ')}</Supporting>}
       </Tile>
       <CloseDayTile />
+      <RescueTile key={`rescue-${shop.id}`} />
       <PrepPlanTile key={shop.id} />
+      <RadarTile key={`radar-${shop.id}`} />
       <Tile
         icon={<Globe size={20} />}
         tour="customer"
