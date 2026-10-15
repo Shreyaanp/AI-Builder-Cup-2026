@@ -1,0 +1,92 @@
+# Owner notes (consolidated, newest first)
+
+Single place for everything the owner asked for in conversation. PLAN-V2.md holds the plan and
+status; this file holds the owner's intent so nothing is lost across resets. Keep both updated.
+
+## 16 Oct, ~02:30 (supply chain; owner is from the supply-chain industry: ask them domain questions)
+
+- **Connect your system**: shops that already run software (POS/billing/ERP: Petpooja, Tally,
+  Zoho, Square, Shopify, SAP…) plug it in instead of re-entering data. One AI connector: Gemini
+  maps any export/feed to our schema, owner confirms the mapping once, then it syncs.
+- **Supply chain, full linked loop**: TimesFM forecast + business rules draft the PO to the best
+  supplier → PO → order confirmation → ASN/dispatch → invoice, between parties on DIFFERENT
+  systems (e.g. SAP IDoc XML vs JSON/CSV/WhatsApp-style). The AI translates documents both ways,
+  flags uncertain fields, and the phone shows plain-language cards ("PO 4500012345: 20 kg flour by
+  Fri. Accept?"). Real-format sample files, labelled simulation (no live SAP by Saturday).
+- **Business rules (all must-haves)**: MOQ + lead time; price tiers + credit terms (cash/7/30 days,
+  credit limit); approval limits (above an amount or new supplier needs the owner tap);
+  substitutions + shortages (allowed substitutes, partial deliveries, back-orders). The coach
+  respects them when preparing orders and warns when one is broken.
+- **Payments and rides**: deep links inside the Features page (UPI/PhonePe pay link + QR with
+  amount; Rapido/Uber/Porter rider links). We never process money. UI/UX impeccably simple.
+
+## 16 Oct, ~02:00 (hackathon review: docs/HACKATHON-REVIEW.md, honest score ~6.5/10)
+
+- Approved spend (tiny, demo volume, with a budget alert): **BigQuery TimesFM forecasting ON**
+  and **Vertex AI embeddings / vector search** for the one shared search engine.
+- Add: **agent-to-agent shopping**, **visible multi-agent ADK design**, **Impact page with real
+  evaluation numbers**, **fraud checks that work** (duplicate-owner face check + Gemini
+  suspicious-listing checks). Owner also ticked "Other" without text: ask in the morning.
+- The assistant: never start coding past 85% of its budget; the last 10-15% is orchestration only.
+
+## 16 Oct, ~01:45 (before sleeping; "can I get everything tested and properly working by morning")
+
+Process
+
+- One feature = one agent/coding tool that does the whole thing end to end, pushes to GitHub and
+  opens a PR; the assistant reviews and merges. Plan each feature properly first (plan mode) and
+  complete the END-TO-END STORY, not fragments.
+- Think through every scenario (onboarding and everything else). The app must make sense; right
+  now flows are hard to follow and there is not much use for it yet.
+- Morning: a full status of everything, on request.
+
+Product
+
+1. **More dynamic and flashier for the demo**, every flow considered end to end.
+2. **Google flow complete**: at least an assisted flow that clearly works end to end (honest:
+   real publishing needs Google approval; the owner submits on Google's own pages).
+3. **Duplicate owner face check**: optional, but placed in a real flow and it must WORK; today it
+   has many issues. Fix properly.
+4. **Ultra-intelligent cards/questions**: e.g. a vegetarian shop must never get a halal card.
+   Cards and questions follow what the AI knows about the shop (business-type profiles).
+5. **Show what the AI can do**: an in-app, prominent "how to talk to the AI" demo/guide that
+   highlights forecast, demand, sourcing from other vendors, etc. Not buried in My shop.
+6. **Google tab becomes a Features page**: the Google icon opens our features page; "Get on
+   Google" is one feature among them. Coach and My shop are already full; add suggestions
+   (what to do next) there.
+7. **Landing page** updated to scream that both merchants and customers use this, with these
+   features.
+8. **Customer side**: finding products, producers and things in and around them; extremely
+   flashy, innovative UI/UX, designs and motion.
+9. **Vendor side**: very cut-to-the-chase.
+10. **One common search engine** for customers finding products AND vendor-to-vendor sourcing.
+11. **Stamp card / scratch card**: keep the concept, make it prominent and make it obvious how it
+    works.
+12. UI/UX rules: always the best possible; the app must be absolutely usable.
+
+## 16 Oct, ~00:30–01:30
+
+- Voice: one soft female voice everywhere (Gemini **Achernar**); conversation must be real
+  to-and-fro (react with knowledge, one natural question, no app narration, no gushing); never
+  invent a shop name. Text model: gemini-3.5-flash.
+- Onboarding = **voice mode like ChatGPT**: mic always on, reactive orb, the shop card ("cart")
+  fills up, the conversation stays scrollable; phone first; proper alerts with Try again / Type
+  instead / close for every failure (mic blocked, connection lost, rate limit).
+- Ask the shop NAME first, then the kind of business; build a profile per business type (not the
+  same questions for everyone: this is a general vendor platform).
+- Camera INSIDE the chat (inline viewfinder, guided shots), map INSIDE the chat (small and big
+  view, drop a pin), Google Maps safe hand-off (prefilled "Add a missing place"; owner submits).
+- Manual entry form is terrible on the phone: make it a guided, phone-friendly journey.
+- Coach shows forecast/sales/analysis as rich animated chart cards (like ChatGPT-style assistants).
+- Customer side: AI-first, like a chat; spacing/padding/heatmap audit to reduce eye strain.
+- "Journeys" = guided journeys (M3/MUI patterns). Personal touch, design, animation and motion
+  graphics matter a lot; the AI must be genuinely smart (use ADK fully).
+- Must work flawlessly: **voice mode** and **voice back**.
+- Workers: use Codex and accounts 2/3 fully; the assistant orchestrates only after 89% of its budget.
+  Regression runs every 3 h and before every release; never ship red.
+
+## 15 Oct
+
+- Feature freeze (later replaced by the final push above); Chalkboard theme + Direction 2 touches;
+  owner app calm, customer app flashy; light default, pleasing dark mode; works in any country
+  (Singapore/APAC only the demo default); honest labels for demo/simulated data.
