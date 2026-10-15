@@ -16,5 +16,5 @@ test('an unavailable shared shop gives the customer a route back to nearby shops
   await expect(back).toHaveAttribute('href', '/explore/')
   await back.focus()
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('heading', { name: 'What’s around me?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'What are you looking for?' })).toBeVisible()
 })

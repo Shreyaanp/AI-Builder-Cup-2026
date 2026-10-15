@@ -982,6 +982,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/discover/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask */
+        post: operations["ask_api_v1_discover_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/day/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read Day Photo */
+        post: operations["read_day_photo_api_v1_businesses__business_id__day_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/day/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prepare Day
+         * @description One combined review for the day. Nothing is saved until the owner approves.
+         */
+        post: operations["prepare_day_api_v1_businesses__business_id__day_prepare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/demo/workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Demo Workspace */
+        post: operations["demo_workspace_api_v1_demo_workspace_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/orders": {
         parameters: {
             query?: never;
@@ -1213,6 +1284,36 @@ export interface components {
             /** Digest */
             digest: string;
         };
+        /** AskRequest */
+        AskRequest: {
+            /** Q */
+            q: string;
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /**
+             * Radius
+             * @default 4000
+             */
+            radius: number;
+            /**
+             * Language
+             * @default en
+             */
+            language: string;
+        };
+        /** AskResponse */
+        AskResponse: {
+            intent: components["schemas"]["Intent"];
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "ai" | "keywords";
+            /** Groups */
+            groups: components["schemas"]["Group"][];
+        };
         /** AvailabilityRequest */
         AvailabilityRequest: {
             /** Available */
@@ -1383,6 +1484,18 @@ export interface components {
              */
             blocked: boolean;
         };
+        /** DayClose */
+        DayClose: {
+            /**
+             * Date
+             * @default
+             */
+            date: string;
+            /** Sales */
+            sales?: components["schemas"]["SaleLine"][];
+            /** Stock */
+            stock?: components["schemas"]["StockLine"][];
+        };
         /** DayHours */
         DayHours: {
             /**
@@ -1527,6 +1640,16 @@ export interface components {
             /** Confidence Level */
             confidence_level?: number | null;
         };
+        /** Group */
+        Group: {
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "best" | "open" | "more";
+            /** Places */
+            places: components["schemas"]["Pick"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1587,6 +1710,43 @@ export interface components {
              */
             status: "pending";
         };
+        /**
+         * Intent
+         * @description What the customer asked for. Prices are in the local currency's major units.
+         */
+        Intent: {
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+            /** Keywords */
+            keywords?: string[];
+            /**
+             * Category
+             * @default
+             */
+            category: string;
+            /** Max Price */
+            max_price?: number | null;
+            /**
+             * Halal
+             * @default false
+             */
+            halal: boolean;
+            /**
+             * Vegetarian
+             * @default false
+             */
+            vegetarian: boolean;
+            /**
+             * Open Now
+             * @default false
+             */
+            open_now: boolean;
+            /** Followups */
+            followups?: string[];
+        };
         /** Match */
         Match: {
             /** Id */
@@ -1638,6 +1798,71 @@ export interface components {
         OrderVersion: {
             /** Version */
             version: number;
+        };
+        /** Pick */
+        Pick: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "chalkboard" | "google";
+            /** Category */
+            category: string;
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /** Distance M */
+            distance_m: number;
+            /** Open Now */
+            open_now: boolean | null;
+            /** Currency */
+            currency?: string | null;
+            /** Items */
+            items: components["schemas"]["TopItem"][];
+            /** Sold Out */
+            sold_out: string[];
+            /** Rating */
+            rating?: number | null;
+            /** User Rating Count */
+            user_rating_count?: number | null;
+            /** Price Level */
+            price_level?: string | null;
+            /** Google Maps Uri */
+            google_maps_uri?: string | null;
+            /** Halal */
+            halal?: boolean | null;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+            /**
+             * Demo Shop
+             * @default false
+             */
+            demo_shop: boolean;
+            /** Photo Url */
+            photo_url?: string | null;
+            /**
+             * Photo Authors
+             * @default []
+             */
+            photo_authors: string[];
+            /**
+             * Matched
+             * @default []
+             */
+            matched: components["schemas"]["TopItem"][];
+            /**
+             * Score
+             * @default 0
+             */
+            score: number;
         };
         /** PlaceMatch */
         PlaceMatch: {
@@ -1788,6 +2013,15 @@ export interface components {
             quantity: number;
             /** Revenue */
             revenue: number;
+        };
+        /** SaleLine */
+        SaleLine: {
+            /** Item */
+            item: string;
+            /** Quantity */
+            quantity: number;
+            /** Amount */
+            amount: number;
         };
         /** ShareRequest */
         ShareRequest: {
@@ -2028,6 +2262,18 @@ export interface components {
              * @default in_page
              */
             delivery: string;
+        };
+        /** StockLine */
+        StockLine: {
+            /** Item */
+            item: string;
+            /** Quantity */
+            quantity: number;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "count" | "delivery";
         };
         /** ThreadMessage */
         ThreadMessage: {
@@ -4069,6 +4315,144 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ask_api_v1_discover_ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_day_photo_api_v1_businesses__business_id__day_read_post: {
+        parameters: {
+            query?: {
+                kind?: "sales" | "stock_count" | "delivery";
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prepare_day_api_v1_businesses__business_id__day_prepare_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DayClose"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_workspace_api_v1_demo_workspace_post: {
+        parameters: {
+            query?: {
+                zone?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
             };
             /** @description Validation Error */
             422: {
