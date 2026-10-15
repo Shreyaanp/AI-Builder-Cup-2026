@@ -36,6 +36,16 @@ generated demo data is fine and expected, as long as it is labelled as demo.
     publishing, no Claude co-author trailers in commits, free-tier constraints.
 11. **Rejected:** multilingual offline coach replies (QA Q1, won't fix).
 
+## New-shop onboarding (owner answers, 15 Oct ~20:00)
+
+- Kill the "Add my shop" form modal and whatever opens after the tour. No modal or sheet.
+- Big animated hero ("Let's open your shop"), then a full-screen AI chat.
+- The AI speaks first (voice greeting, captions, mute), asks one thing at a time.
+- Entry points: "+" in the header, end of the tour, empty My shop.
+- Owner's key point: the agent drives. Every agent reply and action appears in the chat; when the
+  owner does not answer, the agent still responds in the chat (suggests a default, moves on).
+- Full brief: scratchpad task-NEW-SHOP-OWNER-ANSWERS.md, being built by account 2 on PR #3.
+
 ## Visual decision (owner, 15 Oct afternoon)
 
 - **Direction 1 · Chalkboard** (docs/research/visual-motion.md, mockups/direction-1.html) plus two
