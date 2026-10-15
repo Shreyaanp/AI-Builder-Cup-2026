@@ -2,13 +2,12 @@
 
 from pathlib import Path
 
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 from google.api_core.exceptions import Forbidden, ServiceUnavailable
 
-from app import erasure, merchant_routes
+from app import erasure, trust
 from app.main import create_app
 from app.settings import Settings
 from tests.test_photos import join
@@ -36,26 +35,18 @@ def shop(client: TestClient, name: str = "Tea") -> str:
 
 
 @pytest.fixture
-def worker(monkeypatch):
-    """A face worker that is down until `up["ok"]` is set."""
+    """Face data erasure (the encrypted template store) fails until up["ok"] is set."""
+    """Face data erasure (encrypted template store) fails until  is set."""
     up = {"ok": False, "calls": 0}
+    real = trust.erase
 
-    def answer(request: httpx.Request) -> httpx.Response:
+    def erase(store, uid):
         up["calls"] += 1
         if not up["ok"]:
-            raise httpx.ConnectError("worker down", request=request)
-        return httpx.Response(200, json={"deleted": True})
+            raise ServiceUnavailable("template store unavailable")
+        real(store, uid)
 
-    real = httpx.AsyncClient
-
-    def with_worker(*args, **kwargs):
-        return real(*args, **{**kwargs, "transport": httpx.MockTransport(answer)})
-
-    async def headers(settings, uid):
-        return {"Authorization": "Bearer worker"}
-
-    monkeypatch.setattr(merchant_routes.httpx, "AsyncClient", with_worker)
-    monkeypatch.setattr(erasure, "worker_headers", headers)
+    monkeypatch.setattr(trust, "erase", erase)
     return up
 
 
@@ -70,7 +61,7 @@ def test_everything_erased_reports_each_step(tmp_path: Path) -> None:
         assert client.get("/api/v1/me").json()["erase_pending"] == []
 
 
-def test_face_worker_down_erases_the_rest_and_retries_face(tmp_path: Path, worker) -> None:
+def test_face_store_down_erases_the_rest_and_retries_face(tmp_path: Path, worker) -> None:
     with TestClient(make(tmp_path, face_worker_token="fixture-only")) as client:
         join(client)
         bid = shop(client)
@@ -164,6 +155,7 @@ def test_unsaved_retry_list_still_answers_with_what_is_pending(
         def broken(*args):
             raise ServiceUnavailable("Firestore unavailable")
 
+        # The erase-pending record cannot be written either.
         monkeypatch.setattr(app.state.community.docs, "put", broken)
         response = client.delete("/api/v1/me/data")
         assert response.status_code == 200

@@ -314,6 +314,10 @@ class MerchantRepository(Protocol):
         ...
 
     def shared_shops(self) -> list[dict[str, Any]]: ...
+    def owners(self, bid: str) -> list[str]:
+        """UIDs that own this shop (trust checks only; never shown to customers)."""
+        ...
+
     def seed_demo_shop(
         self, uid: str, bid: str, fields: BusinessFields, products: list[ProductFields]
     ) -> bool:
@@ -695,7 +699,6 @@ class MerchantStore:
                 "INSERT INTO challenges(id,uid,business_id,prompts,expires) VALUES(?,?,?,?,?)",
                 (cid, uid, bid, json.dumps(prompts), expires),
             )
-            db.execute("UPDATE businesses SET status='verification_pending' WHERE id=?", (bid,))
         return {
             "id": cid,
             "prompts": prompts,
@@ -722,10 +725,10 @@ class MerchantStore:
                 "UPDATE challenges SET result=? WHERE id=? AND uid=?",
                 (json.dumps(result), cid, uid),
             )
+            # The coach's request_registration tool reads this; the trust status is the source.
             db.execute(
-                "INSERT INTO people VALUES(?,'review_pending') ON CONFLICT(uid) "
-                "DO UPDATE SET verification='review_pending'",
-                (uid,),
+                "INSERT INTO people VALUES(?,?) ON CONFLICT(uid) DO UPDATE SET verification=?",
+                (uid, result.get("result", "not_started"), result.get("result", "not_started")),
             )
 
     def result(self, uid: str, cid: str) -> dict[str, Any]:
@@ -740,11 +743,6 @@ class MerchantStore:
     def invalidate_face(self, uid: str) -> None:
         with self.connect() as db:
             db.execute("UPDATE people SET verification='not_enrolled' WHERE uid=?", (uid,))
-            db.execute(
-                "UPDATE businesses SET status='verification_pending' WHERE id IN "
-                "(SELECT business_id FROM memberships WHERE uid=?)",
-                (uid,),
-            )
             db.execute("DELETE FROM challenges WHERE uid=?", (uid,))
 
     def consent(self, uid: str) -> dict[str, Any] | None:
@@ -830,6 +828,13 @@ class MerchantStore:
             else:
                 db.execute("DELETE FROM shares WHERE business_id=?", (bid,))
         return {"business_id": bid, "public": public}
+
+    def owners(self, bid: str) -> list[str]:
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT uid FROM memberships WHERE business_id=? AND role='owner'", (bid,)
+            ).fetchall()
+        return [row[0] for row in rows]
 
     def shared_shops(self) -> list[dict[str, Any]]:
         with self.connect() as db:

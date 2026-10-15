@@ -437,9 +437,9 @@ def test_face_challenge_is_single_use_and_deletion_invalidates(store: MerchantRe
     with pytest.raises(HTTPException) as replay:
         store.consume("alice", challenge["id"])
     assert replay.value.status_code == 409
-    store.face_result("alice", challenge["id"], {"status": "review_pending"})
-    assert store.result("alice", challenge["id"]) == {"status": "review_pending"}
-    assert store.context("alice", bid)["person_verification"] == "review_pending"
+    store.face_result("alice", challenge["id"], {"result": "in_review"})
+    assert store.result("alice", challenge["id"]) == {"result": "in_review"}
+    assert store.context("alice", bid)["person_verification"] == "in_review"
     store.invalidate_face("alice")
     assert store.context("alice", bid)["person_verification"] == "not_enrolled"
     with pytest.raises(HTTPException):

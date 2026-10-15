@@ -37,6 +37,15 @@ class Settings(BaseSettings):
     recall_path: str = "data/conversation-vectors"
     face_worker_url: str = "http://127.0.0.1:3401"
     face_worker_token: SecretStr = SecretStr("")
+    # "worker": the private face worker decides liveness and returns a template. "fixture"
+    # (local preview and tests only): every capture passes and the face is the owner's own,
+    # or the X-Face-Fixture name a browser test sends, so duplicate detection can be shown.
+    face_mode: Literal["worker", "fixture"] = "worker"
+    # Encrypts stored face templates (AES-256-GCM). Empty: derived from the worker token.
+    face_template_key: SecretStr = SecretStr("")
+    # Firebase UIDs who see the trust review queue (duplicate faces, listing flags).
+    # ["*"] (everyone) is for the local preview only.
+    trust_admins: list[str] = []
     firebase_web_api_key: str = ""
     firebase_web_app_id: str = ""
     firebase_auth_domain: str = ""
@@ -104,6 +113,8 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires dedicated Firebase browser configuration.")
             if os.getenv("FIRESTORE_EMULATOR_HOST") or os.getenv("FIREBASE_AUTH_EMULATOR_HOST"):
                 raise ValueError("Production cannot use local identity or database emulators.")
+            if self.face_mode == "fixture" or "*" in self.trust_admins:
+                raise ValueError("Production cannot use the face fixture or open trust reviews.")
             if not self.allowed_origins or any(
                 not url.startswith("https://") for url in self.allowed_origins
             ):
