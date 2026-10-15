@@ -41,13 +41,30 @@ async function poster(qr: string, name: string, caption: string): Promise<Blob> 
 
 /** QR code for the shared customer page, with share (Web Share) or download of a print PNG. */
 export function ShopQr({ url, name }: { url: string; name: string }) {
-  const qrUrl = new URL(url, location.origin)
-  qrUrl.searchParams.set('source', 'qr')
-  const stampedUrl = qrUrl.href
   const t = useCopy()
   const ws = useWorkspace()
+  const shopId = ws.active?.id
+  const api = ws.api
+  // The passport key printed into the QR: a scan plus a location fix at the shop earns a stamp.
+  const [passportKey, setPassportKey] = useState<{ shop: string; key: string } | null>(null)
+  useEffect(() => {
+    if (!shopId) return
+    let live = true
+    api<{ key: string }>(`/businesses/${encodeURIComponent(shopId)}/qr-key`)
+      .then((value) => live && setPassportKey({ shop: shopId, key: value.key }))
+      .catch(() => live && setPassportKey({ shop: shopId, key: '' }))
+    return () => {
+      live = false
+    }
+  }, [shopId, api])
+  const key = passportKey && passportKey.shop === shopId ? passportKey.key : null
+  const qrUrl = new URL(url, location.origin)
+  qrUrl.searchParams.set('source', 'qr')
+  if (key) qrUrl.searchParams.set('k', key)
+  const stampedUrl = qrUrl.href
   const [qr, setQr] = useState<{ url: string; data: string } | null>(null)
   useEffect(() => {
+    if (key === null && shopId) return
     let live = true
     // Loaded on demand so the QR encoder never ships in the main bundle.
     void import('qrcode')
@@ -59,7 +76,7 @@ export function ShopQr({ url, name }: { url: string; name: string }) {
     return () => {
       live = false
     }
-  }, [url, stampedUrl])
+  }, [url, stampedUrl, key, shopId])
   const data = qr?.url === url ? qr.data : null
   const file = `${name.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'shop'}-qr.png`
 

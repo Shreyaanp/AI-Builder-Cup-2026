@@ -3830,6 +3830,894 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/qr-key": {
+      "get": {
+        "summary": "Owner Qr Key",
+        "operationId": "owner_qr_key_api_v1_businesses__business_id__qr_key_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrKey"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/shops/{business_id}/demo-qr": {
+      "get": {
+        "summary": "Demo Qr Key",
+        "description": "Demo shops show their QR on screen for the demo, so their key is public.",
+        "operationId": "demo_qr_key_api_v1_public_shops__business_id__demo_qr_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrKey"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/passport/stamps": {
+      "post": {
+        "summary": "Stamp",
+        "operationId": "stamp_api_v1_customer_passport_stamps_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StampInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StampResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/passport/check": {
+      "post": {
+        "summary": "Check",
+        "description": "Signed-out scan: the same checks, a signed receipt for the phone, nothing stored.",
+        "operationId": "check_api_v1_public_passport_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StampInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StampResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/passport/preview": {
+      "post": {
+        "summary": "Preview",
+        "description": "The passport drawn from this phone's receipts (signed out: \"on this phone\").",
+        "operationId": "preview_api_v1_public_passport_preview_post",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "UTC",
+              "title": "Tz"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassportView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/passport/merge": {
+      "post": {
+        "summary": "Merge",
+        "description": "Once on sign-in: this phone's receipts are re-checked and each counts once, ever.",
+        "operationId": "merge_api_v1_customer_passport_merge_post",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "UTC",
+              "title": "Tz"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassportView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/passport": {
+      "get": {
+        "summary": "Passport",
+        "operationId": "passport_api_v1_customer_passport_get",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "UTC",
+              "title": "Tz"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassportView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Erase Passport",
+        "operationId": "erase_passport_api_v1_customer_passport_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Erase Passport Api V1 Customer Passport Delete"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/passport/shops/{business_id}/claim": {
+      "post": {
+        "summary": "Claim",
+        "description": "Counter staff saw the full card: it starts again.",
+        "operationId": "claim_api_v1_customer_passport_shops__business_id__claim_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassportView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/passport/rescues": {
+      "post": {
+        "summary": "Collect Rescue",
+        "description": "Scanning the shop QR during the pickup window collects the rescue: leaf stamp.",
+        "operationId": "collect_rescue_api_v1_customer_passport_rescues_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RescueStampInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StampResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/shops/{business_id}/tips/{tip_id}/helpful": {
+      "post": {
+        "summary": "Mark Helpful",
+        "operationId": "mark_helpful_api_v1_customer_shops__business_id__tips__tip_id__helpful_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "tip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tip Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Helpful"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/passport/leaderboard": {
+      "put": {
+        "summary": "Join Board",
+        "operationId": "join_board_api_v1_customer_passport_leaderboard_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoardInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassportView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/passport/board": {
+      "get": {
+        "summary": "Board",
+        "operationId": "board_api_v1_customer_passport_board_get",
+        "parameters": [
+          {
+            "name": "area",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Area"
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lng"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Board"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/perks": {
+      "get": {
+        "summary": "Owner Perks",
+        "operationId": "owner_perks_api_v1_businesses__business_id__perks_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerkList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Save Perks",
+        "operationId": "save_perks_api_v1_businesses__business_id__perks_put",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PerkList"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerkList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/shops/{business_id}/perks": {
+      "get": {
+        "summary": "Public Perks",
+        "operationId": "public_perks_api_v1_public_shops__business_id__perks_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerkList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/today": {
+      "get": {
+        "summary": "Today",
+        "description": "Anonymous; signed-in customers also get their follows, preferences and stamps applied,\nand the server remembers what they saw.",
+        "operationId": "today_api_v1_public_today_get",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "default": "UTC",
+              "title": "Tz"
+            }
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$",
+              "default": "USD",
+              "title": "Currency"
+            }
+          },
+          {
+            "name": "place",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120,
+              "default": "",
+              "title": "Place"
+            }
+          },
+          {
+            "name": "seen",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "Finds shown on earlier days",
+              "default": "",
+              "title": "Seen"
+            },
+            "description": "Finds shown on earlier days"
+          },
+          {
+            "name": "keep",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "Today's finds, to keep them",
+              "default": "",
+              "title": "Keep"
+            },
+            "description": "Today's finds, to keep them"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayFeed"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/orders": {
       "get": {
         "summary": "List Orders",
@@ -4425,6 +5313,39 @@
         ],
         "title": "Approval"
       },
+      "AreaView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "shops": {
+            "type": "integer",
+            "title": "Shops"
+          },
+          "stamps": {
+            "type": "integer",
+            "title": "Stamps"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "shops",
+          "stamps",
+          "demo"
+        ],
+        "title": "AreaView"
+      },
       "AskRequest": {
         "properties": {
           "q": {
@@ -4519,6 +5440,109 @@
           "available"
         ],
         "title": "AvailabilityRequest"
+      },
+      "Board": {
+        "properties": {
+          "area": {
+            "type": "string",
+            "title": "Area"
+          },
+          "week": {
+            "type": "string",
+            "title": "Week"
+          },
+          "joined": {
+            "type": "boolean",
+            "title": "Joined"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/BoardRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "you": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BoardRow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "area",
+          "week",
+          "joined",
+          "rows"
+        ],
+        "title": "Board"
+      },
+      "BoardInput": {
+        "properties": {
+          "on": {
+            "type": "boolean",
+            "title": "On"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "on"
+        ],
+        "title": "BoardInput"
+      },
+      "BoardRow": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "newcomer",
+              "regular",
+              "local_hero"
+            ],
+            "title": "Level"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points"
+          },
+          "stamps": {
+            "type": "integer",
+            "title": "Stamps"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          },
+          "you": {
+            "type": "boolean",
+            "title": "You",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "name",
+          "level",
+          "points",
+          "stamps"
+        ],
+        "title": "BoardRow"
       },
       "BusinessFields": {
         "properties": {
@@ -5335,6 +6359,167 @@
         ],
         "title": "Feed"
       },
+      "Find": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "only_one",
+              "rescue",
+              "hidden_gem",
+              "new_this_week",
+              "locally_made",
+              "festival",
+              "tip"
+            ],
+            "title": "Kind"
+          },
+          "shop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FindShop"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Params"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "chalkboard",
+              "demo"
+            ],
+            "title": "Source"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "go",
+              "hold",
+              "save",
+              "trail"
+            ],
+            "title": "Action"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "source",
+          "demo",
+          "action",
+          "score"
+        ],
+        "title": "Find"
+      },
+      "FindShop": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "default": ""
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          },
+          "distance_m": {
+            "type": "integer",
+            "title": "Distance M"
+          },
+          "walk_min": {
+            "type": "integer",
+            "title": "Walk Min"
+          },
+          "open_now": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Now"
+          },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "distance_m",
+          "walk_min"
+        ],
+        "title": "FindShop"
+      },
       "Forecast": {
         "properties": {
           "status": {
@@ -5448,6 +6633,45 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "Helpful": {
+        "properties": {
+          "helpful": {
+            "type": "integer",
+            "title": "Helpful"
+          }
+        },
+        "type": "object",
+        "required": [
+          "helpful"
+        ],
+        "title": "Helpful"
+      },
+      "Impact": {
+        "properties": {
+          "meals": {
+            "type": "integer",
+            "title": "Meals"
+          },
+          "co2_kg": {
+            "type": "number",
+            "title": "Co2 Kg"
+          },
+          "saved": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Saved"
+          }
+        },
+        "type": "object",
+        "required": [
+          "meals",
+          "co2_kg",
+          "saved"
+        ],
+        "title": "Impact"
       },
       "Inquiry": {
         "properties": {
@@ -5623,6 +6847,60 @@
         "title": "Intent",
         "description": "What the customer asked for. Prices are in the local currency's major units."
       },
+      "LevelView": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "newcomer",
+              "regular",
+              "local_hero"
+            ],
+            "title": "Key"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "newcomer",
+                  "regular",
+                  "local_hero"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next"
+          },
+          "next_requirement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Requirement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requirements": {
+            "items": {
+              "$ref": "#/components/schemas/Requirement"
+            },
+            "type": "array",
+            "title": "Requirements"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "next",
+          "next_requirement",
+          "requirements"
+        ],
+        "title": "LevelView"
+      },
       "LocalSignIn": {
         "properties": {
           "name": {
@@ -5701,6 +6979,29 @@
           "signed_in"
         ],
         "title": "Me"
+      },
+      "MergeInput": {
+        "properties": {
+          "receipts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 60,
+            "title": "Receipts"
+          },
+          "cards": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "maxProperties": 100,
+            "title": "Cards"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MergeInput"
       },
       "MessageInput": {
         "properties": {
@@ -5831,6 +7132,303 @@
           "version"
         ],
         "title": "OrderVersion"
+      },
+      "Outcome": {
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "stamped",
+              "card_only",
+              "already_today",
+              "too_far",
+              "low_accuracy",
+              "too_fast",
+              "daily_cap",
+              "bad_key",
+              "own_shop"
+            ],
+            "title": "Verdict"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points",
+            "default": 0
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          },
+          "first": {
+            "type": "boolean",
+            "title": "First",
+            "default": false
+          },
+          "stamp": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StampRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "level_before": {
+            "type": "string",
+            "enum": [
+              "newcomer",
+              "regular",
+              "local_hero"
+            ],
+            "title": "Level Before",
+            "default": "newcomer"
+          },
+          "level_after": {
+            "type": "string",
+            "enum": [
+              "newcomer",
+              "regular",
+              "local_hero"
+            ],
+            "title": "Level After",
+            "default": "newcomer"
+          },
+          "quests_completed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Quests Completed"
+          },
+          "milestone": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone"
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance M"
+          },
+          "card": {
+            "type": "integer",
+            "title": "Card",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "verdict"
+        ],
+        "title": "Outcome"
+      },
+      "PassportView": {
+        "properties": {
+          "signed_in": {
+            "type": "boolean",
+            "title": "Signed In"
+          },
+          "device_only": {
+            "type": "boolean",
+            "title": "Device Only",
+            "default": false
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points"
+          },
+          "demo_points": {
+            "type": "integer",
+            "title": "Demo Points"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "level": {
+            "$ref": "#/components/schemas/LevelView"
+          },
+          "streak": {
+            "$ref": "#/components/schemas/Streak"
+          },
+          "stamps": {
+            "items": {
+              "$ref": "#/components/schemas/StampRecord"
+            },
+            "type": "array",
+            "title": "Stamps"
+          },
+          "shops": {
+            "items": {
+              "$ref": "#/components/schemas/ShopStamp"
+            },
+            "type": "array",
+            "title": "Shops"
+          },
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/AreaView"
+            },
+            "type": "array",
+            "title": "Areas"
+          },
+          "quests": {
+            "items": {
+              "$ref": "#/components/schemas/Quest"
+            },
+            "type": "array",
+            "title": "Quests"
+          },
+          "impact": {
+            "$ref": "#/components/schemas/Impact"
+          },
+          "perks": {
+            "items": {
+              "$ref": "#/components/schemas/PerkView"
+            },
+            "type": "array",
+            "title": "Perks"
+          },
+          "leaderboard": {
+            "type": "boolean",
+            "title": "Leaderboard"
+          },
+          "flagged": {
+            "type": "boolean",
+            "title": "Flagged",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "signed_in",
+          "points",
+          "demo_points",
+          "total",
+          "level",
+          "streak",
+          "stamps",
+          "shops",
+          "areas",
+          "quests",
+          "impact",
+          "perks",
+          "leaderboard"
+        ],
+        "title": "PassportView"
+      },
+      "Perk": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[a-z0-9-]+$",
+            "title": "Id"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "regular",
+              "full_card",
+              "quest_finale",
+              "rescue_hero"
+            ],
+            "title": "Trigger"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 3,
+            "title": "Text"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "trigger",
+          "text"
+        ],
+        "title": "Perk"
+      },
+      "PerkList": {
+        "properties": {
+          "perks": {
+            "items": {
+              "$ref": "#/components/schemas/Perk"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Perks"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PerkList"
+      },
+      "PerkView": {
+        "properties": {
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "regular",
+              "full_card",
+              "quest_finale",
+              "rescue_hero"
+            ],
+            "title": "Trigger"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop_id",
+          "shop_name",
+          "id",
+          "trigger",
+          "text",
+          "demo"
+        ],
+        "title": "PerkView"
       },
       "Personal": {
         "properties": {
@@ -6345,6 +7943,136 @@
         ],
         "title": "ProposalRequest"
       },
+      "QrKey": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "title": "QrKey"
+      },
+      "Quest": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "breakthrough",
+              "crawl",
+              "rescue",
+              "makers",
+              "festival"
+            ],
+            "title": "Kind"
+          },
+          "festival": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Festival"
+          },
+          "art": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Art"
+          },
+          "have": {
+            "type": "integer",
+            "title": "Have"
+          },
+          "need": {
+            "type": "integer",
+            "title": "Need"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points"
+          },
+          "ends": {
+            "type": "string",
+            "title": "Ends"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done",
+            "default": false
+          },
+          "approximate": {
+            "type": "boolean",
+            "title": "Approximate",
+            "default": false
+          },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/QuestStop"
+            },
+            "type": "array",
+            "title": "Stops"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "have",
+          "need",
+          "points",
+          "ends"
+        ],
+        "title": "Quest"
+      },
+      "QuestStop": {
+        "properties": {
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done",
+            "default": false
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop_id",
+          "name"
+        ],
+        "title": "QuestStop"
+      },
       "Question": {
         "properties": {
           "question": {
@@ -6486,6 +8214,126 @@
         ],
         "title": "RecapItem"
       },
+      "Requirement": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "points",
+              "shops",
+              "repeat",
+              "areas",
+              "rescues_or_tips"
+            ],
+            "title": "Key"
+          },
+          "have": {
+            "type": "integer",
+            "title": "Have"
+          },
+          "need": {
+            "type": "integer",
+            "title": "Need"
+          },
+          "alt_have": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt Have"
+          },
+          "alt_need": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt Need"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "have",
+          "need"
+        ],
+        "title": "Requirement"
+      },
+      "RescueStampInput": {
+        "properties": {
+          "shop_id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Shop Id"
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Key",
+            "default": ""
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lng": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lng"
+          },
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "rescue_id": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Rescue Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "shop_id",
+          "rescue_id"
+        ],
+        "title": "RescueStampInput"
+      },
       "SaleLine": {
         "properties": {
           "item": {
@@ -6610,6 +8458,74 @@
           "name"
         ],
         "title": "ShopCard"
+      },
+      "ShopStamp": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "area": {
+            "type": "string",
+            "title": "Area"
+          },
+          "area_name": {
+            "type": "string",
+            "title": "Area Name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          },
+          "visits": {
+            "type": "integer",
+            "title": "Visits"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "card": {
+            "type": "integer",
+            "title": "Card"
+          },
+          "claimed": {
+            "type": "integer",
+            "title": "Claimed"
+          },
+          "rescues": {
+            "type": "integer",
+            "title": "Rescues"
+          },
+          "last_day": {
+            "type": "string",
+            "title": "Last Day"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "area",
+          "area_name",
+          "category",
+          "demo",
+          "visits",
+          "days",
+          "card",
+          "claimed",
+          "rescues",
+          "last_day"
+        ],
+        "title": "ShopStamp"
       },
       "SimAction": {
         "properties": {
@@ -7075,6 +8991,184 @@
         ],
         "title": "SpeakRequest"
       },
+      "StampInput": {
+        "properties": {
+          "shop_id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Shop Id"
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Key",
+            "default": ""
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lng": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lng"
+          },
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "shop_id"
+        ],
+        "title": "StampInput"
+      },
+      "StampRecord": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name",
+            "default": ""
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "visit",
+              "first",
+              "rescue",
+              "tip"
+            ],
+            "title": "Kind"
+          },
+          "day": {
+            "type": "string",
+            "title": "Day"
+          },
+          "week": {
+            "type": "string",
+            "title": "Week"
+          },
+          "hour": {
+            "type": "integer",
+            "title": "Hour",
+            "default": 12
+          },
+          "at": {
+            "type": "number",
+            "title": "At"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points",
+            "default": 0
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          },
+          "area": {
+            "type": "string",
+            "title": "Area",
+            "default": ""
+          },
+          "area_name": {
+            "type": "string",
+            "title": "Area Name",
+            "default": ""
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "default": ""
+          },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "shop_id",
+          "kind",
+          "day",
+          "week",
+          "at"
+        ],
+        "title": "StampRecord"
+      },
+      "StampResult": {
+        "properties": {
+          "outcome": {
+            "$ref": "#/components/schemas/Outcome"
+          },
+          "passport": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PassportView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receipt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outcome"
+        ],
+        "title": "StampResult"
+      },
       "StockAlertInput": {
         "properties": {
           "device_id": {
@@ -7152,6 +9246,43 @@
           "mode"
         ],
         "title": "StockLine"
+      },
+      "Streak": {
+        "properties": {
+          "weeks": {
+            "type": "integer",
+            "title": "Weeks"
+          },
+          "rain_checks": {
+            "type": "integer",
+            "title": "Rain Checks"
+          },
+          "this_week": {
+            "type": "boolean",
+            "title": "This Week"
+          },
+          "row": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "done",
+                "rain",
+                "missed",
+                "current"
+              ]
+            },
+            "type": "array",
+            "title": "Row"
+          }
+        },
+        "type": "object",
+        "required": [
+          "weeks",
+          "rain_checks",
+          "this_week",
+          "row"
+        ],
+        "title": "Streak"
       },
       "ThreadMessage": {
         "properties": {
@@ -7236,6 +9367,11 @@
             "type": "boolean",
             "title": "Mine",
             "default": false
+          },
+          "helpful": {
+            "type": "integer",
+            "title": "Helpful",
+            "default": 0
           }
         },
         "type": "object",
@@ -7302,6 +9438,74 @@
           "tips"
         ],
         "title": "TipList"
+      },
+      "TodayArea": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "demo"
+        ],
+        "title": "TodayArea"
+      },
+      "TodayFeed": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "title": "Day"
+          },
+          "next_drop": {
+            "type": "number",
+            "title": "Next Drop"
+          },
+          "area": {
+            "$ref": "#/components/schemas/TodayArea"
+          },
+          "finds": {
+            "items": {
+              "$ref": "#/components/schemas/Find"
+            },
+            "type": "array",
+            "title": "Finds"
+          },
+          "candidates": {
+            "type": "integer",
+            "title": "Candidates"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          },
+          "signed_in": {
+            "type": "boolean",
+            "title": "Signed In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "next_drop",
+          "area",
+          "finds",
+          "candidates",
+          "demo",
+          "signed_in"
+        ],
+        "title": "TodayFeed"
       },
       "TopItem": {
         "properties": {

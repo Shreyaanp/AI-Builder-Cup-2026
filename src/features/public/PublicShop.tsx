@@ -37,6 +37,7 @@ import { Tips } from '../customer/Tips'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
 import { customerTranslations } from './customerLocales'
 import { BackInStock, BadgeRow, StampCard, StockReminder } from '../rewards/Rewards'
+import { ShopStamp } from '../passport/ShopStamp'
 import { HoursList } from '../shop/Hours'
 import type { DayHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
@@ -931,6 +932,7 @@ export default function PublicShop({ id }: { id: string }) {
         reward={shop.reward_text}
         needed={shop.stamps_needed ?? 8}
       />
+      <ShopStamp shop={{ id, name: shop.name, category: shop.category, demo: shop.demo }} />
       {!stale && <BackInStock shop={id} products={shop.products} />}
       <BadgeRow shop={id} />
       <Tips shop={id} />
