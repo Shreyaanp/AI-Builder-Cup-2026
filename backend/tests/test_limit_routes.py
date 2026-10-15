@@ -142,6 +142,7 @@ def test_public_inquiry_limits(app: FastAPI) -> None:
         app.state.merchant.share("alice", bid, True)
         path = f"/api/v1/public/shops/{bid}/inquiries"
         body = {"contact": "customer@example.test", "message": "Hours?"}
+        client.post("/api/v1/customer/session", json={"name": "Asha"})
         # Inquiries are limited per shop and IP (30/day); other IPs are unaffected.
         fill(app, "inquire:ip", f"{bid}:testclient", remaining=1)
         assert client.post(path, json=body).status_code == 200

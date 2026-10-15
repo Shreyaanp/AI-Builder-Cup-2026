@@ -45,9 +45,7 @@ def qa_client(tmp_path: Path):
         yield client, bid
 
 
-@pytest.mark.xfail(
-    strict=True, raises=AssertionError, reason="BUG Q8: legacy public inquiry bypasses sign-in"
-)
+# Q8 fixed: the legacy route now requires a signed-in customer.
 def test_legacy_inquiry_requires_customer_identity(qa_client) -> None:
     client, bid = qa_client
     client.cookies.clear()
