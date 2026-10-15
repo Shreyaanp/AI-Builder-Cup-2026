@@ -22,6 +22,7 @@ from sse_starlette import EventSourceResponse, ServerSentEvent
 from . import coordinator
 from .auth import IdentityService
 from .boundary import RequestBoundary
+from .brief import BriefWriter, WeatherService
 from .business_profile import QuestionPlanner
 from .community import community_service
 from .community_routes import router as community_router
@@ -54,6 +55,7 @@ from .memory_vectors import (
 from .merchant import MerchantRepository, MerchantStore
 from .merchant_firestore import FirestoreMerchantStore
 from .merchant_routes import router as merchant_router
+from .owner_routes import router as owner_router
 from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
 from .recap import RecapWriter
@@ -152,6 +154,8 @@ def create_app(
         app.state.world_generator = WorldGenerator(settings)
         app.state.column_mapper = ColumnMapper(settings)
         app.state.forecaster = ForecastService(settings)
+        app.state.weather = WeatherService(settings)
+        app.state.brief_writer = BriefWriter(settings)
         coordinator.forecaster = app.state.forecaster
         app.state.recap_writer = RecapWriter(settings)
         app.state.speech = Speech(settings)
@@ -213,6 +217,7 @@ def create_app(
     app.include_router(demo_workspace_router)
     app.include_router(demo_world_router)
     app.include_router(sourcing_router)
+    app.include_router(owner_router)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
