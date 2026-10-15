@@ -2057,7 +2057,7 @@ export interface components {
             language: string;
             context?: components["schemas"]["Intent"] | null;
             /** Refine */
-            refine?: ("price" | "distance" | "transit" | "open" | "deals") | null;
+            refine?: ("price" | "distance" | "transit" | "open" | "deals" | "local") | null;
         };
         /** AskResponse */
         AskResponse: {
@@ -2071,6 +2071,22 @@ export interface components {
             groups: components["schemas"]["Group"][];
             personal?: components["schemas"]["Personal"] | null;
             anchor?: components["schemas"]["Anchor"] | null;
+        };
+        /**
+         * AskSuggestions
+         * @description What the front door can suggest here, from the area's own shops (never invented).
+         */
+        AskSuggestions: {
+            /** Items */
+            items: string[];
+            /** Shops */
+            shops: number;
+            /** Open Now */
+            open_now: number;
+            /** Locally Made */
+            locally_made: number;
+            /** Deals */
+            deals: number;
         };
         /** AvailabilityRequest */
         AvailabilityRequest: {
@@ -3993,6 +4009,22 @@ export interface components {
             /** Row */
             row: ("done" | "rain" | "missed" | "current")[];
         };
+        /** Suggestions */
+        Suggestions: {
+            /** Items */
+            items: components["schemas"]["RescueSuggestion"][];
+            /** Until */
+            until: string | null;
+            /** Demo */
+            demo: boolean;
+            /** Method */
+            method: string;
+            /**
+             * Note
+             * @default Estimate assumes saved stock is opening prepared quantity; confirm what remains. Missing sales or closing hours prevents an estimate.
+             */
+            note: string;
+        };
         /** ThreadMessage */
         ThreadMessage: {
             /** Text */
@@ -4222,38 +4254,6 @@ export interface components {
              * @default
              */
             place: string;
-        };
-        /**
-         * Suggestions
-         * @description What the front door can suggest here, from the area's own shops (never invented).
-         */
-        app__discover_ask__Suggestions: {
-            /** Items */
-            items: string[];
-            /** Shops */
-            shops: number;
-            /** Open Now */
-            open_now: number;
-            /** Locally Made */
-            locally_made: number;
-            /** Deals */
-            deals: number;
-        };
-        /** Suggestions */
-        app__rescue__Suggestions: {
-            /** Items */
-            items: components["schemas"]["RescueSuggestion"][];
-            /** Until */
-            until: string | null;
-            /** Demo */
-            demo: boolean;
-            /** Method */
-            method: string;
-            /**
-             * Note
-             * @default Estimate assumes saved stock is opening prepared quantity; confirm what remains. Missing sales or closing hours prevents an estimate.
-             */
-            note: string;
         };
         /** StreamEvent */
         StreamEvent: {
@@ -6914,7 +6914,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["app__discover_ask__Suggestions"];
+                    "application/json": components["schemas"]["AskSuggestions"];
                 };
             };
             /** @description Validation Error */
@@ -7922,7 +7922,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["app__rescue__Suggestions"];
+                    "application/json": components["schemas"]["Suggestions"];
                 };
             };
             /** @description Validation Error */

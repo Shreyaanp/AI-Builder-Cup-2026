@@ -152,3 +152,17 @@ def test_a_follow_up_chip_refines_in_any_language(
             body = {"q": "ஏதாவது", "context": first["intent"], "refine": refine, **TIONG_BAHRU}
             intent = client.post("/api/v1/discover/ask", json=body).json()["intent"]
             assert check(intent) and intent["keywords"] == ["kopi"], refine
+
+
+def test_a_first_chip_is_a_filter_not_a_keyword(store: MerchantRepository, tmp_path: Path) -> None:
+    bid = shared_shop(store)
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        app.state.merchant = store
+        body = {"q": "இப்போது திறந்தவை", "refine": "open", **TIONG_BAHRU}
+        answer = client.post("/api/v1/discover/ask", json=body).json()
+        assert answer["intent"]["keywords"] == [] and answer["intent"]["open_now"]
+        local = {"q": "உள்ளூர் தயாரிப்பு", "refine": "local", **TIONG_BAHRU}
+        made = client.post("/api/v1/discover/ask", json=local).json()
+        assert made["intent"]["locally_made"]
+        assert all(p["id"] != bid for g in made["groups"] for p in g["places"])  # not said

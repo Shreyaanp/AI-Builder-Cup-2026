@@ -75,7 +75,7 @@ class AskRequest(BaseModel):
     # The previous answer's intent when this message continues the same conversation.
     context: Intent | None = None
     # A tapped follow-up chip says exactly what it refines, whatever the language of its label.
-    refine: Literal["price", "distance", "transit", "open", "deals"] | None = None
+    refine: Literal["price", "distance", "transit", "open", "deals", "local"] | None = None
 
 
 class PickDeal(BaseModel):
@@ -455,7 +455,7 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
     intent = await ai_intent(request, body)
     mode: Literal["ai", "keywords"] = "ai" if intent else "keywords"
     intent = intent or keyword_intent(body.q)
-    if body.refine and body.context:
+    if body.refine:
         # A chip only refines: its label (any language) is never a new subject.
         intent = intent.model_copy(update={"keywords": [], "category": ""})
     intent = (
@@ -471,6 +471,8 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
         intent.open_now = True
     elif body.refine == "deals":
         intent.deals = True
+    elif body.refine == "local":
+        intent.locally_made = True
     if intent.category not in CATEGORIES:
         intent.category = ""
     maps: MapsService = request.app.state.maps
@@ -652,7 +654,7 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
     )
 
 
-class Suggestions(BaseModel):
+class AskSuggestions(BaseModel):
     """What the front door can suggest here, from the area's own shops (never invented)."""
 
     items: list[str]
@@ -662,12 +664,12 @@ class Suggestions(BaseModel):
     deals: int
 
 
-@router.get("/discover/suggest", response_model=Suggestions)
+@router.get("/discover/suggest", response_model=AskSuggestions)
 async def suggest(
     request: Request,
     lat: float = Query(ge=-90, le=90, allow_inf_nan=False),
     lng: float = Query(ge=-180, le=180, allow_inf_nan=False),
-) -> Suggestions:
+) -> AskSuggestions:
     await enforce_limits(request, [("discover:suggest", client_ip(request))], anonymous=True)
     repository: MerchantRepository | None = request.app.state.merchant
     shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
@@ -697,7 +699,7 @@ async def suggest(
         rescues = await live_rescues(request, near, lat, lng, time.time())
     except Exception:  # noqa: BLE001 - a missing deals count only hides one chip
         rescues = []
-    return Suggestions(
+    return AskSuggestions(
         items=ranked,
         shops=len(near),
         open_now=sum(

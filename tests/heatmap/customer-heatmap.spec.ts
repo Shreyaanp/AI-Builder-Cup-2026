@@ -14,7 +14,12 @@ const out = 'docs/qa/heatmap'
 const api = `http://127.0.0.1:${process.env.API_PORT ?? 3300}`
 const AREA = { lat: 1.2847, lng: 103.832, label: 'Tiong Bahru' }
 
-type Screen = { name: string; signedIn?: boolean; firstRun?: boolean; open: (page: Page) => Promise<void> }
+type Screen = {
+  name: string
+  signedIn?: boolean
+  firstRun?: boolean
+  open: (page: Page) => Promise<void>
+}
 
 async function demoShop(page: Page) {
   const receipt = await (
@@ -181,7 +186,10 @@ function measure() {
   const parse = (value: string) => {
     const m = value.match(/rgba?\(([^)]+)\)/)
     if (!m) return null
-    const [r, g, b, a = 1] = m[1]!.split(/[ ,/]+/).filter(Boolean).map(Number)
+    const [r, g, b, a = 1] = m[1]!
+      .split(/[ ,/]+/)
+      .filter(Boolean)
+      .map(Number)
     return { r: r! / 255, g: g! / 255, b: b! / 255, a }
   }
   const hsl = ({ r, g, b }: { r: number; g: number; b: number }) => {
@@ -213,8 +221,7 @@ function measure() {
       if (c.s > 0.35 && c.l > 0.15 && c.l < 0.88) {
         const bucket = Math.round(c.h / 30) % 12
         hues.set(bucket, (hues.get(bucket) ?? 0) + area)
-        if (/^(BUTTON|A)$/.test(el.tagName) || el.getAttribute('role') === 'button')
-          primaries += 1
+        if (/^(BUTTON|A)$/.test(el.tagName) || el.getAttribute('role') === 'button') primaries += 1
       }
     }
   }
