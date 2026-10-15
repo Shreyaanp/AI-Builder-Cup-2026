@@ -123,7 +123,9 @@ def test_voice_limit_and_disconnect_cleanup(app: FastAPI) -> None:
             socket.send_json({"kind": "close"})
         assert not app.state.services.registry.active
         with client.websocket_connect("/api/v1/voice", headers=headers) as socket:
-            assert socket.receive_json() == {"kind": "error", "code": "RATE_LIMITED"}
+            event = socket.receive_json()
+            assert event["kind"] == "error" and event["code"] == "RATE_LIMITED"
+            assert 1 <= event["data"]["retry_after"] <= 600
             with pytest.raises(WebSocketDisconnect) as closed:
                 socket.receive_json()
             assert closed.value.code == 1008

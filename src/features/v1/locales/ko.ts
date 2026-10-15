@@ -50,6 +50,11 @@ export const ko: Copy = {
   connectionReconnecting: '다시 연결 중…',
   voiceFailed: '음성 연결이 종료되었습니다. 다시 시도하거나 텍스트를 사용하세요.',
   voiceRestarted: '음성이 다시 연결되었습니다. 다시 말씀해 주세요.',
+  voiceMicDenied:
+    '마이크 접근이 차단되었습니다. 브라우저 설정에서 마이크를 허용하고 다시 시도하거나 텍스트를 입력하세요.',
+  voiceRateLimited: (seconds: number) =>
+    `음성 요청이 너무 많습니다. ${seconds}초 후에 다시 시도하거나 텍스트를 입력하세요.`,
+  conversationRolledOver: '이 대화가 한도에 도달했습니다. 계속할 수 있도록 새 대화를 시작했어요.',
   appName: 'Chalkboard',
   independent: '독립 시제품 · Google 제품이 아니에요',
   loading: '가게를 준비하고 있어요…',

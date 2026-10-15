@@ -50,6 +50,11 @@ export const bn: Copy = {
   connectionReconnecting: 'আবার সংযোগ হচ্ছে…',
   voiceFailed: 'কথার সংযোগ বন্ধ হয়েছে। আবার চেষ্টা করুন বা লিখুন।',
   voiceRestarted: 'কথার সংযোগ ফিরেছে। আবার বলুন।',
+  voiceMicDenied:
+    'মাইক্রোফোনের অনুমতি বন্ধ। ব্রাউজারের সেটিংসে অনুমতি দিয়ে আবার চেষ্টা করুন, বা লিখুন।',
+  voiceRateLimited: (seconds: number) =>
+    `অনেক ভয়েস অনুরোধ হয়েছে। ${seconds} সেকেন্ড পরে আবার চেষ্টা করুন বা লিখুন।`,
+  conversationRolledOver: 'এই কথোপকথন পূর্ণ। চালিয়ে যেতে নতুন কথোপকথন শুরু করেছি।',
   loading: 'আপনার দোকান তৈরি হচ্ছে…',
   // Onboarding
   welcomeTitle: 'এক কথোপকথনেই আপনার দোকান অনলাইনে',

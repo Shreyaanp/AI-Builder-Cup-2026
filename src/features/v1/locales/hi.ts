@@ -52,6 +52,11 @@ export const hi: Copy = {
   connectionReconnecting: 'फिर जुड़ रहा है…',
   voiceFailed: 'आवाज़ का कनेक्शन बंद हो गया। फिर कोशिश करें या लिखें।',
   voiceRestarted: 'आवाज़ फिर जुड़ गई। दोबारा बोलें।',
+  voiceMicDenied:
+    'माइक्रोफ़ोन की अनुमति बंद है। ब्राउज़र सेटिंग में अनुमति देकर फिर कोशिश करें, या लिखें।',
+  voiceRateLimited: (seconds: number) =>
+    `आवाज़ के बहुत अनुरोध हैं। ${seconds} सेकंड बाद फिर कोशिश करें या लिखें।`,
+  conversationRolledOver: 'यह बातचीत भर गई है। जारी रखने के लिए मैंने नई बातचीत शुरू की है।',
   loading: 'आपकी दुकान तैयार हो रही है…',
   // Onboarding
   welcomeTitle: 'एक बातचीत में आपकी दुकान ऑनलाइन',

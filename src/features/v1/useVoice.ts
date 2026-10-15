@@ -95,13 +95,20 @@ export function useVoice(
       current.socket.send(JSON.stringify({ kind: 'audio_end' }))
     setState('replying')
   }
-  async function start(sessionId?: string | null) {
+  async function start(sessionId: string | null = null) {
     if (owner.current) return
     const operation = new AbortController()
     owner.current = operation
     micOpen.current = !conversationRef.current
     setError('')
-    await connect(operation, false, sessionId ?? undefined)
+    try {
+      await connect(operation, false, sessionId ?? undefined)
+    } catch {
+      if (!operation.signal.aborted) {
+        setError(t.voiceFailed)
+        stop()
+      }
+    }
   }
   /** Conversation mode: a typed turn or an app note in the same live session (false: not open). */
   function sendText(text: string, draft?: NewShopDraft) {
@@ -141,9 +148,9 @@ export function useVoice(
     if (businessId) url.searchParams.set('business_id', businessId)
     if (newShop) url.searchParams.set('new_shop', 'true')
     if (sid) url.searchParams.set('session_id', sid)
+    const audio = new AudioContext()
     const socket = new WebSocket(url)
     socket.binaryType = 'arraybuffer'
-    const audio = new AudioContext()
     let sessionId = sid
     let lastMessage = 0
     const offline = () => socket.close(4000, 'Connection interrupted')
@@ -203,7 +210,8 @@ export function useVoice(
           return
         }
         if (event.kind === 'error' && event.code === 'RATE_LIMITED') {
-          setError(t.rateLimited)
+          const wait = Number(event.data?.retry_after)
+          setError(t.voiceRateLimited(Number.isFinite(wait) && wait > 0 ? Math.ceil(wait) : 60))
           stop()
           return
         }
@@ -211,7 +219,7 @@ export function useVoice(
         eventRef.current(event)
         if (event.kind === 'ready') {
           clearTimeout(current.deadline)
-          sessionId = event.session_id ?? undefined
+          sessionId = event.session_id ?? sessionId
           if (retry) setError(t.voiceRestarted)
           await audio.resume()
           await audio.audioWorklet.addModule('/audio-capture.worklet.js')
@@ -273,7 +281,12 @@ export function useVoice(
         if (socket.readyState === WebSocket.OPEN)
           socket.send(JSON.stringify({ kind: 'client_error', text: reason.slice(0, 200) }))
         console.warn('Voice stopped:', reason)
-        setError(t.voiceFailed)
+        setError(
+          failure instanceof DOMException &&
+            ['NotAllowedError', 'SecurityError'].includes(failure.name)
+            ? t.voiceMicDenied
+            : t.voiceFailed,
+        )
         stop()
       }
     }
@@ -288,7 +301,12 @@ export function useVoice(
         // The live session reached its time limit: the conversation carries on by text.
         stop()
       } else if (!retry && ![1000, 1001, 1008].includes(event.code)) {
-        void connect(operation, true, sessionId)
+        void connect(operation, true, sessionId).catch(() => {
+          if (!operation.signal.aborted) {
+            setError(t.voiceFailed)
+            stop()
+          }
+        })
       } else {
         setError(t.voiceFailed)
         stop()
