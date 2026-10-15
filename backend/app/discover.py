@@ -80,6 +80,29 @@ AREAS = {
     "Orchard": (1.3048, 103.8318),
     "Jurong East": (1.3331, 103.7423),
     "Tampines": (1.3547, 103.9437),
+    "Katong": (1.3052, 103.9045),
+    "Toa Payoh": (1.3343, 103.8563),
+    # The demo catalogue's neighbourhoods in every city, so offline previews work worldwide.
+    "Indiranagar": (12.9719, 77.6412),
+    "Koramangala": (12.9352, 77.6245),
+    "Hauz Khas": (28.5494, 77.2001),
+    "Bandra": (19.0596, 72.8295),
+    "Bangsar": (3.1302, 101.671),
+    "Kemang": (-6.2604, 106.813),
+    "Shimokitazawa": (35.6615, 139.6669),
+    "Ari": (13.7797, 100.5447),
+    # Whole cities (and common names) last: a typed neighbourhood wins over its city.
+    "Singapore": (1.2903, 103.8519),
+    "Bengaluru": (12.9716, 77.5946),
+    "Bangalore": (12.9716, 77.5946),
+    "New Delhi": (28.6139, 77.209),
+    "Delhi": (28.6139, 77.209),
+    "Mumbai": (19.076, 72.8777),
+    "Bombay": (19.076, 72.8777),
+    "Kuala Lumpur": (3.139, 101.6869),
+    "Jakarta": (-6.2088, 106.8456),
+    "Tokyo": (35.6762, 139.6503),
+    "Bangkok": (13.7563, 100.5018),
 }
 FIXTURE_PLACES = [
     {
@@ -262,7 +285,10 @@ class MapsService:
     async def geocode(self, location: str) -> dict[str, Any]:
         async def lookup() -> dict[str, Any]:
             if self.demo:
-                area = next((a for a in AREAS if a.lower() in location.lower()), None)
+                # Whole words only: "Marina" must not match Bangkok's "Ari".
+                area = next(
+                    (a for a in AREAS if re.search(rf"\b{re.escape(a)}\b", location, re.I)), None
+                )
                 if not area:
                     raise HTTPException(422, "PIN_NOT_FOUND")
                 lat, lng = AREAS[area]
@@ -397,6 +423,20 @@ async def prepare_pin(
     # The "Demo shop" label is server-owned too: only the seed script sets it, and an owner's
     # edit can neither add nor remove it.
     body.business.demo = bool(old.get("demo"))
+    exact = body.business
+    if (
+        old.get("pin_demo")
+        and old.get("location") == exact.location
+        and exact.lat is not None
+        and exact.lng is not None
+        and not exact.pin_demo
+        and not body.geocode_confirmed
+    ):
+        # A photo's exact GPS replaces an approximate demo pin; the owner reviews the point
+        # itself, so the label is the coordinates and no Places id is trusted from the client.
+        exact.place_id = None
+        exact.pin_label = f"{exact.lat:.5f}, {exact.lng:.5f}"
+        return
     if (
         old
         and old.get("location") == body.business.location
