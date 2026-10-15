@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.merchant import MerchantStore
 from tests.test_photo_location import located_jpeg
 from tests.test_photos import app, join, upload  # noqa: F401
 
@@ -75,3 +76,55 @@ def test_close_the_day_reads_photos_then_saves_sales_and_stock_after_one_review(
 
         empty = client.post(f"/api/v1/businesses/{bid}/day/prepare", json={"stock": []})
         assert empty.status_code == 422
+
+
+def test_day_delivery_retry_after_restart_and_sales_save_does_not_add_again(app) -> None:  # noqa: F811
+    with TestClient(app) as client:
+        join(client)
+        first = upload(client, located_jpeg(None)).json()["proposal"]
+        bid = client.post(
+            f"/api/v1/proposals/{first['id']}/approve", json={"digest": first["digest"]}
+        ).json()["business_id"]
+        base = f"/api/v1/businesses/{bid}"
+        body = {
+            "date": "2026-10-15",
+            "stock": [
+                {"item": "Chai", "quantity": 12, "mode": "delivery"},
+                {"item": "Chai", "quantity": 8, "mode": "delivery"},
+            ],
+        }
+        before = client.get(f"{base}/inventory").json()[0]["stock"] or 0
+        stock = client.post(f"{base}/day/prepare", json=body).json()["stock"]
+        # Two prepares before approval converge; approval may succeed despite a lost response.
+        assert client.post(f"{base}/day/prepare", json=body).json()["stock"] == stock
+        receipt = client.post(
+            f"/api/v1/proposals/{stock['id']}/approve", json={"digest": stock["digest"]}
+        ).json()
+        app.state.merchant = MerchantStore(app.state.merchant.path)
+        retry = client.post(f"{base}/day/prepare", json=body).json()["stock"]
+        assert retry == stock
+        assert (
+            client.post(
+                f"/api/v1/proposals/{retry['id']}/approve", json={"digest": retry["digest"]}
+            ).json()
+            == receipt
+        )
+        sale_body = {
+            "date": body["date"],
+            "sales": [{"item": "Chai", "quantity": 12, "amount": 180}],
+        }
+        for _ in range(2):
+            sales = client.post(f"{base}/day/prepare", json=sale_body).json()["sales"]
+            assert client.post(
+                f"{base}/import/{sales['import_id']}/approve", json={"digest": sales["digest"]}
+            ).is_success
+        assert client.get(f"{base}/sales").json() == [
+            {"date": body["date"], "item": "Chai", "quantity": 12, "revenue": 18000}
+        ]
+        assert client.post(f"{base}/day/prepare", json=body).json()["stock"] == stock
+        assert client.get(f"{base}/inventory").json()[0]["stock"] == before + 20
+        next_day = client.post(f"{base}/day/prepare", json={**body, "date": "2026-10-16"}).json()[
+            "stock"
+        ]
+        assert next_day["id"] != stock["id"]
+        assert next_day["snapshot"]["products"][0]["stock"] == before + 40

@@ -38,6 +38,44 @@ def create(store: MerchantRepository, uid: str, name: str = "Ram Tea Stall") -> 
     return str(store.commit(uid, proposal["id"], proposal["digest"])["business_id"])
 
 
+def test_keyed_proposals_converge_and_replay_after_reopening(store: MerchantRepository) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    bid = create(store, "alice")
+    request = ProposalRequest(
+        kind="inventory",
+        business_id=bid,
+        revision=1,
+        products=[ProductFields(name="Chai", price=1500, stock=12)],
+    )
+
+    def prepare():
+        return store.propose("alice", request, "day-stock:2026-10-15:delivery")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        proposals = list(pool.map(lambda _: prepare(), range(2)))
+    assert proposals[0] == proposals[1]
+    first = proposals[0]
+    receipt = store.commit("alice", first["id"], first["digest"])
+    reopened = (
+        MerchantStore(store.path)
+        if isinstance(store, MerchantStore)
+        else FirestoreMerchantStore(store.client, store.businesses.parent.parent.id)
+    )
+    request.revision = 2
+    request.products[0].stock = 24
+    retry = reopened.propose("alice", request, "day-stock:2026-10-15:delivery")
+    assert retry == first
+    assert reopened.commit("alice", retry["id"], retry["digest"]) == receipt
+    assert reopened.context("alice", bid)["inventory"][0]["stock"] == 12
+    other = create(store, "alice", "Other shop")
+    request.business_id, request.revision = other, 1
+    assert store.propose("alice", request, "day-stock:2026-10-15:delivery")["id"] != first["id"]
+    with pytest.raises(HTTPException) as denied:
+        store.propose("bob", request, "day-stock:2026-10-15:delivery")
+    assert denied.value.status_code == 404
+
+
 @pytest.mark.parametrize("needed", [3, 8, 20])
 def test_stamp_target_round_trip(store: MerchantRepository, needed: int) -> None:
     proposal = store.propose(

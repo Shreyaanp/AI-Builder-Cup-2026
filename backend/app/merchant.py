@@ -280,7 +280,9 @@ class MerchantRepository(Protocol):
     # Simulator records are isolated from confirmed merchant facts.
     def sim_state(self, uid: str, bid: str) -> dict[str, Any] | None: ...
     def save_sim_state(self, uid: str, bid: str, state: dict[str, Any]) -> None: ...
-    def propose(self, uid: str, request: ProposalRequest) -> dict[str, Any]: ...
+    def propose(
+        self, uid: str, request: ProposalRequest, idempotency_key: str | None = None
+    ) -> dict[str, Any]: ...
     def commit(self, uid: str, pid: str, digest: str) -> dict[str, Any]: ...
     def challenge(self, uid: str, bid: str) -> dict[str, Any]: ...
     def consume(self, uid: str, cid: str) -> dict[str, Any]: ...
@@ -561,20 +563,44 @@ class MerchantStore:
                 )
             ]
 
-    def propose(self, uid: str, request: ProposalRequest) -> dict[str, Any]:
+    def propose(
+        self, uid: str, request: ProposalRequest, idempotency_key: str | None = None
+    ) -> dict[str, Any]:
         validate_proposal(request)
+        pid = (
+            str(uuid5(NAMESPACE_URL, f"{uid}:{request.business_id}:{idempotency_key}"))
+            if idempotency_key
+            else str(uuid4())
+        )
         with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
             if request.business_id:
                 row = self.owned(db, uid, request.business_id)
+                prior = db.execute(
+                    "SELECT * FROM proposals WHERE id=? AND uid=?", (pid, uid)
+                ).fetchone()
+                if prior and (
+                    prior["receipt"]
+                    or (
+                        prior["expires"] >= time.time()
+                        and json.loads(prior["payload"])["revision"] == row["revision"]
+                    )
+                ):
+                    return {
+                        "id": pid,
+                        "digest": prior["digest"],
+                        "expires": prior["expires"],
+                        "snapshot": json.loads(prior["payload"]),
+                    }
                 if row["revision"] != request.revision:
                     raise HTTPException(409, "The business changed. Reload before reviewing.")
             elif request.revision != 0:
                 raise HTTPException(409, "A new business starts at revision zero.")
             payload, text, digest = seal_proposal(request)
-            pid = str(uuid4())
             expires = time.time() + PROPOSAL_SECONDS
             db.execute(
-                "INSERT INTO proposals VALUES(?,?,?,?,?,NULL)", (pid, uid, text, digest, expires)
+                "INSERT OR REPLACE INTO proposals VALUES(?,?,?,?,?,NULL)",
+                (pid, uid, text, digest, expires),
             )
         return {"id": pid, "digest": digest, "expires": expires, "snapshot": payload}
 

@@ -58,6 +58,10 @@ test('retry after sales failure must not count the same delivery twice', async (
   })
   await dialog.getByRole('button', { name: 'Save day' }).click()
   await expect(dialog.getByRole('alert').filter({ hasText: /try again/i })).toBeVisible()
+  const failure = dialog.getByRole('alert').filter({ hasText: /try again/i })
+  await expect(failure).toContainText('Stock changes: Saved')
+  await expect(failure).toContainText('Today’s sales: Not saved')
+  await expect(failure).not.toContainText('Nothing changed')
   await evidence(page, 'Q6-partial-save')
   const stockAfterFailure = (
     await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
@@ -69,9 +73,32 @@ test('retry after sales failure must not count the same delivery twice', async (
     await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
   ).map((p: { stock: number }) => p.stock)
   await evidence(page, 'Q6-close-day-retry')
-  // BUG Q6: Retrying Close the day after sales failure applies already-saved deliveries again.
-  test.fail()
   expect(stockAfterRetry).toEqual(stockAfterFailure)
+})
+
+test('lost stock approval response can be retried without adding the delivery again', async ({
+  page,
+}) => {
+  const id = await open(page)
+  const dialog = page.getByRole('dialog', { name: 'Close the day' })
+  await dialog.getByRole('button', { name: /Deliveries received/ }).click()
+  await dialog.locator('input[type=file]').setInputFiles(await image(page))
+  await expect(dialog.getByText(/\d+ lines$/)).toBeVisible()
+  await dialog.getByRole('button', { name: /^Review/ }).click()
+  await page.route('**/proposals/*/approve', async (route) => {
+    const saved = await route.fetch()
+    expect(saved.ok()).toBe(true)
+    await route.fulfill({ status: 503, json: {} })
+  })
+  await dialog.getByRole('button', { name: 'Save day' }).click()
+  await expect(dialog.getByRole('alert').filter({ hasText: /try again/i })).toContainText(
+    'Stock changes: Save not confirmed; retry safely',
+  )
+  const stock = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
+  await page.unroute('**/proposals/*/approve')
+  await dialog.getByRole('button', { name: 'Save day' }).click()
+  await expect(dialog.getByText('Day closed')).toBeVisible()
+  expect(await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()).toEqual(stock)
 })
 
 test('Tamil Close the day is localized and keyboard dismissible', async ({ page }) => {

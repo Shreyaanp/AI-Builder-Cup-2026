@@ -592,7 +592,9 @@ function CoachScreen({
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100%',
+        height:
+          'calc(100dvh - 64px - var(--nav-offset, 0px) - 12px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+        minHeight: 0,
         maxWidth: 760,
         mx: 'auto',
       }}
@@ -675,7 +677,7 @@ function CoachScreen({
         )}
       </Sheet>
 
-      <Box sx={{ flex: 1, pb: 4 }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', pb: 4 }}>
         {galleryPhoto && galleryPhoto.businessId === ws.active?.id && (
           <Alert severity="info" sx={{ mb: 2 }}>
             <Typography variant="titleSmall">{photoText.galleryOffer}</Typography>
@@ -831,7 +833,7 @@ function CoachScreen({
               <Box
                 sx={{
                   position: 'sticky',
-                  top: 'calc(64px + env(safe-area-inset-top))',
+                  top: 0,
                   zIndex: 2,
                   bgcolor: 'background.default',
                   pb: 2,
@@ -917,9 +919,8 @@ function CoachScreen({
 
       <Box
         sx={{
-          position: 'sticky',
-          // Sits directly above the compact navigation bar (84dp + safe area).
-          bottom: { xs: 'calc(var(--nav-offset, 84px) + env(safe-area-inset-bottom))', sm: 0 },
+          position: 'relative',
+          flexShrink: 0,
           pb: 2,
           pt: 1,
           bgcolor: 'background.default',
