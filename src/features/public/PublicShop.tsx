@@ -30,6 +30,8 @@ import { en as ownerEnglish } from '../v1/strings'
 import { translations as ownerTranslations } from '../v1/locales'
 import { shape } from '../../design/theme'
 import { ShopChat } from './ShopChat'
+import { FollowButton } from '../customer/FollowButton'
+import { Tips } from '../customer/Tips'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
 import { customerTranslations } from './customerLocales'
 import { BackInStock, BadgeRow, StampCard, StockReminder } from '../rewards/Rewards'
@@ -502,6 +504,9 @@ export default function PublicShop({ id }: { id: string }) {
           </Stack>
         </Box>
       </Stack>
+      <Box sx={{ mt: 2 }}>
+        <FollowButton id={id} name={shop.name} />
+      </Box>
       {/* Sample shops say so in words, not only with a chip. */}
       {shop.demo && (
         <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1.5 }}>
@@ -696,6 +701,7 @@ export default function PublicShop({ id }: { id: string }) {
         </CategoryGroups>
       )}
       <BadgeRow shop={id} />
+      <Tips shop={id} />
       <Stack
         direction="row"
         spacing={1}

@@ -18,6 +18,11 @@ import { PlaceImage } from '../frontdoors/PlaceImage'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { formatPrice } from '../v1/format'
 import { askCopy } from './askStrings'
+import { useCustomer } from '../customer/account'
+import { accountCopy } from '../customer/copy'
+import { FollowButton } from '../customer/FollowButton'
+import { preferenceChips } from '../customer/preferences'
+import { ProfileSheet } from '../customer/Profile'
 import { PlaceSearch } from './PlaceSearch'
 import type { FoundPlace } from './PlaceSearch'
 
@@ -36,11 +41,14 @@ type Pick = {
   demo_shop?: boolean
   items: Item[]
   matched: Item[]
+  /** Why it is "For you" (signed-in customers only). */
+  reasons?: string[]
 }
 type Answer = {
   intent: { summary: string; followups: string[] }
   mode: 'ai' | 'keywords'
-  groups: { id: 'best' | 'open' | 'more'; places: Pick[] }[]
+  groups: { id: 'for_you' | 'best' | 'open' | 'more'; places: Pick[] }[]
+  personal?: { applied: string[]; saved: string[] } | null
 }
 
 const EASE = 'cubic-bezier(0.2, 0, 0, 1)'
@@ -132,6 +140,8 @@ export default function AskHome({
   const input = useRef<HTMLInputElement>(null)
   const recognizer = useRef<SpeechRecognitionLike | null>(null)
   const Speech = speechRecognition()
+  const account = useCustomer()
+  const [profileOpen, setProfileOpen] = useState(false)
 
   useEffect(() => {
     document.title = `${t.title} · Chalkboard`
@@ -152,13 +162,21 @@ export default function AskHome({
     setPhase('thinking')
     const started = performance.now()
     try {
-      const response = await fetch('/api/v1/discover/ask', {
+      // Signed-in customers get "For you" ranking and stated preferences remembered.
+      const data = await account.api<Answer>('/api/v1/discover/ask', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ q, lat: place.lat, lng: place.lng, language: locale }),
       })
-      if (!response.ok) throw new Error('ask failed')
-      const data = (await response.json()) as Answer
+      if (data.personal) {
+        // Keep the profile sheet in step with what was just remembered.
+        void account
+          .api<{ profile?: unknown }>('/api/v1/customer/me')
+          .then((me) => {
+            if (me.profile)
+              account.setProfile(me.profile as Parameters<typeof account.setProfile>[0])
+          })
+          .catch(() => undefined)
+      }
       // Let the thinking motion read as a moment, not a flicker.
       const wait = Math.max(0, 1300 - (performance.now() - started))
       await new Promise((resolve) => setTimeout(resolve, wait))
@@ -209,9 +227,11 @@ export default function AskHome({
         minHeight: '100dvh',
         overflowX: 'hidden',
         bgcolor: roles.surface,
-        pb: 'max(32px, env(safe-area-inset-bottom))',
+        // Room for the navigation bar.
+        pb: 'calc(112px + env(safe-area-inset-bottom))',
       }}
     >
+      <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
       {/* Ambient glow: drifts while idle, pulses while thinking. */}
       <Box
         aria-hidden="true"
@@ -271,8 +291,8 @@ export default function AskHome({
             }}
             sx={{
               mt: compact ? 0 : 5,
-              // Leave room for the fixed light/dark switch once the search sits at the top.
-              mr: compact ? '52px' : 0,
+              // Leave room for the fixed profile and light/dark buttons once the search sits at the top.
+              mr: compact ? '104px' : 0,
               display: 'flex',
               alignItems: 'center',
               gap: 1,
@@ -448,6 +468,38 @@ export default function AskHome({
                 ))}
               </Stack>
             )}
+            {(answer.personal?.saved.length ?? 0) > 0 && (
+              <Stack
+                direction="row"
+                className="c-rise"
+                role="status"
+                sx={{
+                  mt: 2,
+                  gap: 1,
+                  alignItems: 'center',
+                  px: 2,
+                  py: 1,
+                  borderRadius: 999,
+                  bgcolor: roles.secondaryContainer,
+                  color: roles.onSecondaryContainer,
+                  width: 'fit-content',
+                  maxWidth: '100%',
+                }}
+              >
+                <Typography variant="labelLarge" noWrap>
+                  {accountCopy.remembered.replace(
+                    '{items}',
+                    preferenceChips(account.profile)
+                      .filter((chip) => answer.personal!.saved.includes(chip.key))
+                      .map((chip) => chip.label)
+                      .join(' · ') || answer.personal!.saved.join(' · '),
+                  )}
+                </Typography>
+                <Button size="small" onClick={() => setProfileOpen(true)} sx={{ minWidth: 0 }}>
+                  {accountCopy.manage}
+                </Button>
+              </Stack>
+            )}
             {total === 0 && (
               <Box sx={{ mt: 6, animation: `askRise 500ms ${EASE} both` }}>
                 <Typography variant="titleLarge">{t.nothing}</Typography>
@@ -460,7 +512,7 @@ export default function AskHome({
               <Box
                 key={group.id}
                 component="section"
-                aria-label={t[group.id]}
+                aria-label={group.id === 'for_you' ? accountCopy.forYou : t[group.id]}
                 sx={{
                   mt: 5,
                   animation: `askRise 500ms ${EASE} both`,
@@ -468,7 +520,7 @@ export default function AskHome({
                 }}
               >
                 <Typography component="h2" variant="titleLarge">
-                  {t[group.id]}
+                  {group.id === 'for_you' ? accountCopy.forYou : t[group.id]}
                 </Typography>
                 <Box
                   sx={{
@@ -559,82 +611,99 @@ function PickCard({
     maximumFractionDigits: 1,
   }).format(pick.distance_m < 1000 ? pick.distance_m : pick.distance_m / 1000)
   const chalkboard = pick.source === 'chalkboard'
+  const reason = pick.reasons?.[0]
   return (
-    <Box
-      component="a"
-      href={chalkboard ? `/explore/s/${pick.id}` : (pick.google_maps_uri ?? '#')}
-      onClick={chalkboard ? customerNavigate : undefined}
-      target={chalkboard ? undefined : '_blank'}
-      rel={chalkboard ? undefined : 'noopener noreferrer'}
-      sx={{
-        scrollSnapAlign: 'start',
-        display: 'block',
-        color: 'inherit',
-        textDecoration: 'none',
-        borderRadius: '20px',
-        overflow: 'hidden',
-        bgcolor: roles.surfaceContainerLow,
-        border: `1px solid ${roles.outlineVariant}`,
-        animation: `askRise 500ms ${EASE} both`,
-        animationDelay: `${delay}ms`,
-        transition: `transform 200ms ${EASE}`,
-        '&:active': { transform: 'scale(0.98)' },
-        '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: 2 },
-      }}
-    >
-      <Box sx={{ position: 'relative', aspectRatio: '16 / 11', overflow: 'hidden' }}>
-        <PlaceImage
-          id={pick.id}
-          category={pick.category}
-          photo={pick.photo_url}
-          authors={pick.photo_authors ?? []}
-          transition={chalkboard}
-          compact
-        />
-        {pick.demo_shop && (
-          <Chip
-            label={copy.demo}
-            size="small"
-            sx={{ position: 'absolute', top: 10, left: 10, bgcolor: roles.surface }}
+    <Box sx={{ position: 'relative', scrollSnapAlign: 'start' }}>
+      <Box
+        component="a"
+        href={chalkboard ? `/explore/s/${pick.id}` : (pick.google_maps_uri ?? '#')}
+        onClick={chalkboard ? customerNavigate : undefined}
+        target={chalkboard ? undefined : '_blank'}
+        rel={chalkboard ? undefined : 'noopener noreferrer'}
+        sx={{
+          scrollSnapAlign: 'start',
+          display: 'block',
+          color: 'inherit',
+          textDecoration: 'none',
+          borderRadius: '20px',
+          overflow: 'hidden',
+          bgcolor: roles.surfaceContainerLow,
+          border: `1px solid ${roles.outlineVariant}`,
+          animation: `askRise 500ms ${EASE} both`,
+          animationDelay: `${delay}ms`,
+          transition: `transform 200ms ${EASE}`,
+          '&:active': { transform: 'scale(0.98)' },
+          '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: 2 },
+        }}
+      >
+        <Box sx={{ position: 'relative', aspectRatio: '16 / 11', overflow: 'hidden' }}>
+          <PlaceImage
+            id={pick.id}
+            category={pick.category}
+            photo={pick.photo_url}
+            authors={pick.photo_authors ?? []}
+            transition={chalkboard}
+            compact
           />
-        )}
-      </Box>
-      <Box sx={{ p: 3 }}>
-        <Typography variant="titleMedium" noWrap>
-          {pick.name}
-        </Typography>
-        {item && pick.currency && (
-          <Typography variant="bodyMedium" sx={{ mt: 0.5, fontWeight: 600 }} noWrap>
-            {item.name} · {formatPrice(item.price, pick.currency)}
-          </Typography>
-        )}
-        <Stack direction="row" sx={{ mt: 1, gap: 1.5, alignItems: 'center' }}>
-          <Typography variant="bodySmall" color="text.secondary">
-            {distance}
-          </Typography>
-          {pick.open_now !== null && (
-            <Stack direction="row" sx={{ gap: 0.75, alignItems: 'center' }}>
-              <Box
-                aria-hidden="true"
-                sx={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  bgcolor: pick.open_now ? '#1e8e3e' : roles.outline,
-                }}
-              />
-              <Typography variant="bodySmall" color="text.secondary">
-                {pick.open_now ? copy.openNow : copy.closed}
-              </Typography>
-            </Stack>
+          {pick.demo_shop && (
+            <Chip
+              label={copy.demo}
+              size="small"
+              sx={{ position: 'absolute', top: 10, left: 10, bgcolor: roles.surface }}
+            />
           )}
-          {!chalkboard && (
-            <Typography variant="bodySmall" color="text.secondary" sx={{ ml: 'auto' }}>
-              {copy.from}
+        </Box>
+        {reason && (
+          <Typography
+            variant="labelMedium"
+            sx={{ px: 3, pt: 2, color: roles.primary, fontWeight: 700 }}
+          >
+            {accountCopy.reasons[reason] ?? reason}
+          </Typography>
+        )}
+        <Box sx={{ p: 3 }}>
+          <Typography variant="titleMedium" noWrap>
+            {pick.name}
+          </Typography>
+          {item && pick.currency && (
+            <Typography variant="bodyMedium" sx={{ mt: 0.5, fontWeight: 600 }} noWrap>
+              {item.name} · {formatPrice(item.price, pick.currency)}
             </Typography>
           )}
-        </Stack>
+          <Stack direction="row" sx={{ mt: 1, gap: 1.5, alignItems: 'center' }}>
+            <Typography variant="bodySmall" color="text.secondary">
+              {distance}
+            </Typography>
+            {pick.open_now !== null && (
+              <Stack direction="row" sx={{ gap: 0.75, alignItems: 'center' }}>
+                <Box
+                  aria-hidden="true"
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    bgcolor: pick.open_now ? '#1e8e3e' : roles.outline,
+                  }}
+                />
+                <Typography variant="bodySmall" color="text.secondary">
+                  {pick.open_now ? copy.openNow : copy.closed}
+                </Typography>
+              </Stack>
+            )}
+            {!chalkboard && (
+              <Typography variant="bodySmall" color="text.secondary" sx={{ ml: 'auto' }}>
+                {copy.from}
+              </Typography>
+            )}
+          </Stack>
+        </Box>
       </Box>
+      {chalkboard && (
+        // A sibling of the link (never nested inside it), floating over the photo.
+        <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
+          <FollowButton id={pick.id} name={pick.name} variant="icon" />
+        </Box>
+      )}
     </Box>
   )
 }
