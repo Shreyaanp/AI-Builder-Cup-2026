@@ -16,3 +16,5 @@ backend/.mypy_cache/
 backend/data/
 .deployment/
 gha-creds-*.json
+output/
+.playwright-cli/
