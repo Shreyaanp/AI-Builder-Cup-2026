@@ -179,6 +179,8 @@ def test_route_only_uses_saved_owned_sales(app):  # noqa: F811
         )
         assert response.status_code == 200
         assert "Kopi:" in response.text and "Method: weekday average" in response.text
+        # The forecast also arrives as a chart card beside the answer.
+        assert '"kind": "chart"' in response.text and '"type": "forecast"' in response.text
     with TestClient(app) as stranger:
         join(stranger)
         assert stranger.get(path).status_code == 404

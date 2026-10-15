@@ -45,6 +45,7 @@ import {
   ZapOff,
 } from 'lucide-react'
 import { visuallyHidden } from '@mui/utils'
+import { CoachChart, type CoachChartData } from '../CoachChart'
 import { RateLimitError, streamCoach } from '../../../api/stream'
 import type { CoachEvent } from '../../../api/stream'
 import { useIdentity } from '../../../auth/useIdentity'
@@ -85,6 +86,8 @@ type Message =
   // Sourcing cards live in the conversation; an order card always shows the order's latest state.
   | { role: 'suppliers'; result: SupplierResult; key: string }
   | { role: 'order'; orderId: string }
+  // A chart beside a forecast or "how is business" answer.
+  | { role: 'chart'; chart: CoachChartData; key: string }
 const REPLY_POLL_MS = 1500
 const REPLY_WAIT_MS = 45_000
 
@@ -219,6 +222,12 @@ function CoachScreen({
           [...items, { role: 'suppliers' as const, result, key: crypto.randomUUID() }].slice(-40),
         )
       }
+      if (event.kind === 'chart' && event.data) {
+        const chart = event.data as unknown as CoachChartData
+        setMessages((items) =>
+          [...items, { role: 'chart' as const, chart, key: crypto.randomUUID() }].slice(-40),
+        )
+      }
       if (event.kind === 'order') {
         const order = event.data as unknown as Order
         setOrders((known) => ({ ...known, [order.id]: order }))
@@ -239,6 +248,7 @@ function CoachScreen({
     [review, go, setFaceOpen, t.conversationRolledOver],
   )
   const voiceReply = useRef('')
+  const restored = useRef<Promise<unknown>>(Promise.resolve())
   const voice = useVoice(activeId, (event) => {
     receive(event)
     if (event.kind === 'ready') voiceReply.current = ''
@@ -264,7 +274,9 @@ function CoachScreen({
     const abort = new AbortController()
     controller.current?.abort()
     session.current = null
-    void api<Conversation[]>('/conversations', { signal: abort.signal })
+    // The mic waits for this before connecting, so voice joins the restored conversation; the
+    // button itself stays enabled (no disabled flash while history loads).
+    restored.current = api<Conversation[]>('/conversations', { signal: abort.signal })
       .then(async (items) => {
         if (abort.signal.aborted) return
         setHistory(items)
@@ -903,10 +915,15 @@ function CoachScreen({
                 <FreshnessCard key={`freshness-${ws.active.id}`} compact />
               </Box>
             )}
+            {/* The live region wraps the list: role="log" on the <ol> itself removed its list semantics. */}
             <Box role="log" aria-live="polite">
               <Stack component="ol" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0, pt: 2 }}>
                 {messages.map((message, index) =>
-                  message.role === 'suppliers' ? (
+                  message.role === 'chart' ? (
+                    <Box component="li" key={message.key} sx={{ display: 'flex' }}>
+                      <CoachChart chart={message.chart} />
+                    </Box>
+                  ) : message.role === 'suppliers' ? (
                     <SupplierCarousel
                       key={message.key}
                       result={message.result}
@@ -1202,7 +1219,8 @@ function CoachScreen({
                 disabled={busy !== 'idle'}
                 onClick={() => {
                   if (voice.state === 'recording') voice.finishRecording()
-                  else if (voice.state === 'idle') void voice.start(session.current)
+                  else if (voice.state === 'idle')
+                    void restored.current.then(() => voice.start(session.current))
                   else voice.stop()
                 }}
                 sx={

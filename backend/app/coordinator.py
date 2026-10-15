@@ -361,8 +361,17 @@ def get_insights() -> dict[str, Any]:
         for thread in waiting[-5:]
     ]
     shop = ctx.store.context(ctx.uid, ctx.business_id)["business"] or {}
+    # The last 14 sales days, for the trend chart shown beside the coach's answer.
+    by_day: dict[str, int] = {}
+    for row in sales:
+        by_day[row["date"]] = by_day.get(row["date"], 0) + int(row["revenue"])
+    daily = [
+        {"date": day, "revenue": to_major(total, currency)}
+        for day, total in sorted(by_day.items())[-14:]
+    ]
     return {
         **facts,
+        "daily_revenue": daily,
         "has_sales_data": bool(sales),
         "unanswered_customer_messages": len(waiting),
         "recent_customer_questions": recent,

@@ -299,6 +299,8 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
   const t = useAccountCopy()
   const [summary, setSummary] = useState<ChatSummary | null>(null)
   const [lost, setLost] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const [live, setLive] = useState(true)
   const [text, setText] = useState('')
   const [pending, setPending] = useState<Pending[]>([])
@@ -323,12 +325,14 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
     const abort = new AbortController()
     api<ChatSummary>(path, { signal: abort.signal })
       .then((value) => {
+        setLoadFailed(false)
         setInitial((current) => current ?? new Set(value.thread.messages.map((m) => m.id)))
         apply(value)
       })
       .catch((error: unknown) => {
-        if (!abort.signal.aborted && error instanceof Error && error.message === '404')
-          setLost(true)
+        if (abort.signal.aborted) return
+        if (error instanceof Error && error.message === '404') setLost(true)
+        else setLoadFailed(true)
       })
     // Owner replies arrive live over the same thread signal the owner app uses.
     void followInquiries(
@@ -348,7 +352,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
       setLive(false)
     })
     return () => abort.abort()
-  }, [signedIn, path, api, raw, apply])
+  }, [signedIn, path, api, raw, apply, attempt])
   const shopName = summary?.shop.name
   useEffect(() => {
     if (shopName) document.title = `${shopName} · ${t.chatsTitle}`
@@ -359,8 +363,11 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
     if (live || !signedIn) return
     const timer = setInterval(() => {
       void api<ChatSummary>(path)
-        .then(apply)
-        .catch(() => undefined)
+        .then((value) => {
+          apply(value)
+          setLoadFailed(false)
+        })
+        .catch(() => setLoadFailed(true))
     }, 5_000)
     return () => clearInterval(timer)
   }, [live, signedIn, api, path, apply])
@@ -380,7 +387,15 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
 
   async function send(value = text, retry?: string) {
     const body = value.trim()
-    if (!body || Array.from(body).length > 500) return
+    if (
+      !body ||
+      Array.from(body).length > 500 ||
+      !summary ||
+      lost ||
+      summary.thread.done ||
+      summary.thread.blocked
+    )
+      return
     const id = retry ?? `pending-${++sent.current}`
     setPending((list) =>
       retry
@@ -507,6 +522,25 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
             {t.chatLost}
           </Alert>
         )}
+        {loadFailed && !lost && (
+          <Alert
+            component="li"
+            severity="error"
+            action={
+              <Button color="inherit" onClick={() => setAttempt((n) => n + 1)}>
+                {t.retry}
+              </Button>
+            }
+          >
+            {t.chatsFailed}
+          </Alert>
+        )}
+        {!summary && !lost && !loadFailed && (
+          <Box component="li" aria-busy="true">
+            <Skeleton variant="rounded" height={64} />
+            <Skeleton variant="rounded" height={48} sx={{ mt: 2, ml: '25%' }} />
+          </Box>
+        )}
         {messages.map((message, index) => (
           <Bubble
             key={message.id}
@@ -620,6 +654,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
           >
             <InputBase
               inputRef={input}
+              disabled={!summary || lost}
               value={text}
               onChange={(event) => setText(event.target.value)}
               placeholder={t.messagePlaceholder}
@@ -649,7 +684,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
             <IconButton
               type="submit"
               aria-label={t.send}
-              disabled={!text.trim()}
+              disabled={!text.trim() || !summary || lost}
               sx={{
                 width: 48,
                 height: 48,
