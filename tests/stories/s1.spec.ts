@@ -1,3 +1,4 @@
+import { reviewPanel, openNewShopReview } from './support.js'
 import { expect, test } from '@playwright/test'
 import {
   closeSheet,
@@ -68,8 +69,8 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
   await test.step('4 · review name, category, price, unit and grouping', async () => {
     await expect(page.getByRole('dialog')).toHaveCount(0)
     expect(await (await page.request.get('/api/v1/businesses')).json()).toEqual([])
-    await page.getByRole('button', { name: 'Review my new shop' }).click()
-    const review = page.getByRole('dialog', { name: reviewName })
+    await openNewShopReview(page)
+    const review = reviewPanel(page)
     await expect(review).toContainText('New shop · step 4 of 4')
     await expect(review).toContainText('Your location')
     await expect(review).toContainText('within 20 m')
@@ -113,7 +114,7 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     await delivery.fill('Swiggy')
     await delivery.press('Enter')
     await page.getByRole('button', { name: 'Review', exact: true }).click()
-    const review = page.getByRole('dialog', { name: reviewName })
+    const review = reviewPanel(page)
     await expect(review).toContainText('UPI')
     await expect(review).toContainText('Swiggy')
     await expect(review).toContainText('07:00')
@@ -124,13 +125,13 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     await confirm(page)
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
     await page.locator('#coach input[type="file"]').setInputFiles(gpsBoardPath)
-    await expect(page.getByRole('dialog', { name: reviewName })).toContainText('Chai')
+    await expect(reviewPanel(page)).toContainText('Chai')
     await shot(page, 1, '6-photo-pin')
     await confirm(page)
     await expect(page.getByRole('button', { name: 'Review photo location' })).toHaveCount(0)
     await page.getByLabel('Message', { exact: true }).fill('Halal: yes')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
-    await expect(page.getByRole('dialog', { name: reviewName })).toContainText('Halal')
+    await expect(reviewPanel(page)).toContainText('Halal')
     await shot(page, 1, '6-facts')
     await confirm(page)
   })

@@ -4,6 +4,7 @@ import { LocateFixed, MapPin } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import type { Business, Proposal } from './api'
 import { useCopy } from './strings'
+import { useNewShopCopy } from './newShopCopy'
 import { useWorkspace } from './workspaceContext'
 
 export type OwnerLocation = { lat: number; lng: number; accuracy_m: number }
@@ -85,8 +86,12 @@ export function CurrentLocationAction({
 
 export function LocationPin({ fields }: { fields: Business['fields'] }) {
   const t = useCopy()
+  const f = useNewShopCopy()
   const locale = useLocale()
   if (fields.lat == null || fields.lng == null) return null
+  const raw = /^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/
+  const label = fields.pin_label && !raw.test(fields.pin_label) ? fields.pin_label : fields.location
+  const readable = !label || label === 'Your current location' ? f.current : label.startsWith('Near ') ? f.near(label.slice(5)) : label
   return (
     <Stack
       direction="row"
@@ -99,7 +104,7 @@ export function LocationPin({ fields }: { fields: Business['fields'] }) {
           {fields.pin_source === 'device' ? t.yourLocation : t.fields.location}
         </Typography>
         <Typography variant="bodyMedium">
-          {fields.pin_label || `${fields.lat.toFixed(5)}, ${fields.lng.toFixed(5)}`}
+          {readable}
         </Typography>
         {fields.pin_source === 'device' && fields.pin_accuracy_m != null && (
           <Typography variant="bodyMedium" color="text.secondary">
@@ -110,6 +115,9 @@ export function LocationPin({ fields }: { fields: Business['fields'] }) {
             )}
           </Typography>
         )}
+        <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
+          {fields.lat.toFixed(5)}, {fields.lng.toFixed(5)}
+        </Typography>
       </Box>
     </Stack>
   )
