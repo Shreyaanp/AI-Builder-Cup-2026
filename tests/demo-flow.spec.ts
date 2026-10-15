@@ -25,7 +25,11 @@ async function open(page: Page) {
   await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
 }
 
-test('demo: photo, price correction, customer page and availability', async ({ page, context }) => {
+test('demo: photo, price correction, customer page and availability', async ({
+  page,
+  context,
+  baseURL,
+}) => {
   // Allow cold local-server startup plus the complete two-page journey.
   test.setTimeout(60_000)
   await open(page)
@@ -69,7 +73,8 @@ test('demo: photo, price correction, customer page and availability', async ({ p
   await sharing.click()
   await expect(sharing).toBeChecked()
   const section = sheet('Customer page')
-  const shownLink = section.getByText(/^http:\/\/127\.0\.0\.1:3200\/(explore\/)?s\//)
+  const origin = baseURL!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const shownLink = section.getByText(new RegExp(`^${origin}/(explore/)?s/`))
   await expect(shownLink).toBeVisible()
   const url = (await shownLink.innerText()).trim()
   expect(url).toContain('/s/')
