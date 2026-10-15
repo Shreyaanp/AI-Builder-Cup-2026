@@ -28,6 +28,7 @@ import { ensureDemoWorld } from './demoWorld'
 import { locallyMadeLabel } from '../public/locallyMade'
 import type { Locale } from '../../i18n/locales'
 import type { FoundPlace } from './PlaceSearch'
+import { TodayDeck } from '../passport/TodayDeck'
 
 type Item = { name: string; price: number; unit: string; available: boolean }
 type Pick = {
@@ -580,6 +581,8 @@ export default function AskHome({
             </Stack>
           </Box>
         )}
+
+        {phase === 'idle' && <TodayDeck place={place} />}
 
         {phase === 'idle' && (
           <Box sx={{ mt: 8, animation: `askRise 600ms ${EASE} 600ms both` }}>
