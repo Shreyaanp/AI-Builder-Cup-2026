@@ -306,3 +306,61 @@ def test_new_shop_voice_draft_can_be_refreshed_mid_session(tmp_path: Path):
                     break
             socket.send_json({"kind": "close"})
         assert business and business["name"] == "Photo Kopi"
+
+
+def test_new_shop_voice_session_end_resumes_the_same_conversation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A Live socket always ends (time cap); the app reconnects to the same session id and the
+    conversation, its turns and the draft carry on. The open conversation also allows far more
+    turns than a press-to-talk coach session."""
+    monkeypatch.setattr("app.voice.VOICE_SESSION_CAP_SECONDS", 1)
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    origin = {"origin": "http://127.0.0.1:3200"}
+    with TestClient(app) as client:
+        join(client)
+        with client.websocket_connect("/api/v1/voice?new_shop=true", headers=origin) as socket:
+            socket.send_json({"kind": "new_shop", "draft": None})
+            sid = socket.receive_json()["session_id"]
+            socket.send_json({"kind": "text", "text": "Hello! I want to open a new shop."})
+            while socket.receive_json()["kind"] != "turn_complete":
+                pass
+            # The cap ends the socket with a reason the app treats as "reconnect".
+            while (event := socket.receive_json())["kind"] != "error":
+                pass
+            assert event["code"] == "SESSION_TIMEOUT"
+        assert not app.state.services.registry.active
+        monkeypatch.setattr("app.voice.VOICE_SESSION_CAP_SECONDS", 60)
+        with client.websocket_connect(
+            f"/api/v1/voice?new_shop=true&session_id={sid}", headers=origin
+        ) as socket:
+            socket.send_json({"kind": "new_shop", "draft": None})
+            ready = socket.receive_json()
+            assert ready["session_id"] == sid and "code" not in ready
+            for _ in range(14):
+                socket.send_json({"kind": "text", "text": "I'm not sure. Skip it."})
+                while socket.receive_json()["kind"] != "turn_complete":
+                    pass
+            socket.send_json({"kind": "close"})
+        history = client.get(f"/api/v1/conversations/{sid}").json()["messages"]
+        assert history[0]["text"] == "Hello! I want to open a new shop."
+        assert client.get("/api/v1/businesses").json() == []
+
+
+def test_press_to_talk_voice_keeps_its_small_turn_budget(tmp_path: Path):
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        join(client)
+        with client.websocket_connect(
+            "/api/v1/voice", headers={"origin": "http://127.0.0.1:3200"}
+        ) as socket:
+            assert socket.receive_json()["kind"] == "ready"
+            codes = []
+            for _ in range(13):
+                socket.send_json({"kind": "text", "text": "hello"})
+                while (event := socket.receive_json())["kind"] not in {"turn_complete", "error"}:
+                    pass
+                codes.append(event.get("code"))
+                if event["kind"] == "error":
+                    break
+            assert codes[-1] == "INVALID_FRAME" and len(codes) == 13
