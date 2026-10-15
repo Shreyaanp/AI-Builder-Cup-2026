@@ -131,9 +131,10 @@ class CoachRuntime:
                 raise HTTPException(404, "Conversation belongs to a different business.")
             if bool(existing.state.get("new_shop")) != new_shop:
                 raise HTTPException(404, "Conversation belongs to a different coach mode.")
-            if len(existing.events) > MAX_EVENTS:
-                raise HTTPException(429, "Start a new conversation to continue.")
-            return requested
+            if len(existing.events) < MAX_EVENTS:
+                return requested
+            # Ownership and shop scope were checked above. Keep the full history and start
+            # a fresh thread; transports announce the changed id in their ready event.
         listing = await self.sessions.list_sessions(app_name=APP_NAME, user_id=principal.uid)
         # Keep the newest conversations and quietly clear the oldest, instead of refusing every
         # new chat and voice session once an account had 20 (owner report, 15 Oct: the mic said

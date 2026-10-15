@@ -50,6 +50,12 @@ export const ms: Copy = {
   connectionReconnecting: 'Menyambung semula…',
   voiceFailed: 'Sambungan suara tamat. Cuba lagi atau gunakan teks.',
   voiceRestarted: 'Suara disambung semula. Sila sebut sekali lagi.',
+  voiceMicDenied:
+    'Akses mikrofon disekat. Benarkan mikrofon dalam tetapan pelayar dan cuba lagi, atau gunakan teks.',
+  voiceRateLimited: (seconds: number) =>
+    `Terlalu banyak permintaan suara. Tunggu ${seconds} saat, kemudian cuba lagi atau gunakan teks.`,
+  conversationRolledOver:
+    'Perbualan ini penuh. Saya telah memulakan perbualan baharu supaya kita boleh teruskan.',
   appName: 'Chalkboard',
   independent: 'Prototaip bebas · bukan produk Google',
   loading: 'Menyediakan kedai anda…',

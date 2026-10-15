@@ -331,7 +331,16 @@ def create_app(
                                 new_shop_draft=body.new_shop_draft,
                             )
                         )
-                    turn.append(StreamEvent(kind="ready", session_id=sid, mode=settings.coach_mode))
+                    turn.append(
+                        StreamEvent(
+                            kind="ready",
+                            session_id=sid,
+                            mode=settings.coach_mode,
+                            code="CONVERSATION_ROLLED_OVER"
+                            if body.session_id and str(body.session_id) != sid
+                            else None,
+                        )
+                    )
                     async for event in services.runtime.text_events(
                         principal, sid, body.message, body.language, body.currency
                     ):
@@ -467,6 +476,7 @@ def create_app(
                     kind="ready",
                     session_id=sid,
                     mode=settings.coach_mode,
+                    code="CONVERSATION_ROLLED_OVER" if requested and requested != sid else None,
                 ).payload()
             )
             log.info("voice_ready", business=bool(bid), resumed=bool(requested))
@@ -487,7 +497,15 @@ def create_app(
                 detail=str(getattr(error, "detail", error))[:200],
             )
             with suppress(RuntimeError, WebSocketDisconnect):
-                await websocket.send_json(StreamEvent(kind="error", code=code).payload())
+                await websocket.send_json(
+                    StreamEvent(
+                        kind="error",
+                        code=code,
+                        data={"retry_after": int((error.headers or {}).get("Retry-After", "60"))}
+                        if code == "RATE_LIMITED" and isinstance(error, HTTPException)
+                        else None,
+                    ).payload()
+                )
                 await websocket.close(code=1008, reason=code)
         except WebSocketDisconnect:
             log.info("voice_disconnected")

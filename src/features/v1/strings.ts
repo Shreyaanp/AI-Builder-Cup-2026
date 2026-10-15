@@ -56,6 +56,12 @@ export const en = {
   connectionReconnecting: 'Reconnecting…',
   voiceFailed: 'Voice connection ended. Try again or use text.',
   voiceRestarted: 'Voice reconnected. Please say that again.',
+  voiceMicDenied:
+    'Microphone access is blocked. Allow the microphone in browser settings and try again, or use text.',
+  voiceRateLimited: (seconds: number) =>
+    `Too many voice requests. Wait ${seconds} seconds, then try again or use text.`,
+  conversationRolledOver:
+    'This conversation is full. I started a new conversation so we can continue.',
   loading: 'Getting your shop ready…',
   // Onboarding
   welcomeTitle: 'Your shop, online in one conversation',

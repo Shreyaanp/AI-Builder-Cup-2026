@@ -63,6 +63,16 @@ import { utter } from './phoneVoice'
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 /** With no answer this long after the coach has spoken, the coach carries on by itself. */
 const SILENCE_MS = 9_000
+
+/** The browser's saved microphone choice for this site ('prompt' when it cannot tell). */
+async function micPermission(): Promise<PermissionState> {
+  try {
+    const status = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+    return status.state
+  } catch {
+    return 'prompt'
+  }
+}
 /** It does so at most this many times in a row, then waits for the owner. */
 const MAX_NUDGES = 2
 const EMPTY_BUSINESS: Business['fields'] = {
@@ -428,10 +438,13 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     Boolean(navigator.mediaDevices) &&
     typeof AudioContext !== 'undefined' &&
     typeof AudioWorkletNode !== 'undefined'
-  function begin() {
+  async function begin() {
     started.current = true
     ws.setNewShopPhase('chat')
-    if (canVoice) {
+    // A microphone the browser already blocks never opens: say how to allow it, carry on by text.
+    const blocked = canVoice && (await micPermission()) === 'denied'
+    if (blocked) setError(t.voiceMicDenied)
+    if (canVoice && !blocked) {
       wantVoice.current = true
       void voice.start()
     } else {
@@ -797,6 +810,12 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       {error && (
         <Alert severity="error" onClose={() => setError('')} sx={{ mb: 1.5 }}>
           {error}
+        </Alert>
+      )}
+      {/* Why the mic stopped (blocked in the browser, connection lost, rate limit): never silent. */}
+      {!error && voice.error && voice.state === 'idle' && (
+        <Alert severity="warning" sx={{ mb: 1.5 }}>
+          {voice.error}
         </Alert>
       )}
 
