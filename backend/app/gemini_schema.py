@@ -8,6 +8,7 @@ validate the reply with the full Pydantic model, so the limits still apply on ou
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
@@ -36,4 +37,26 @@ def parse_reply[Model: BaseModel](model: type[Model], response: Any) -> Model | 
     try:
         return model.model_validate_json(getattr(response, "text", None) or "")
     except (ValidationError, ValueError):
+        return None
+
+
+NUMBER = re.compile(r"-?\d+(?:[.,]\d+)*")
+
+
+def to_number(value: object) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value)
+    match = NUMBER.search(str(value or ""))
+    if not match:
+        return None
+    digits = match.group(0)
+    # "1,200" is a thousands separator; "12,50" is a decimal comma.
+    if "," in digits and "." not in digits:
+        head, _, tail = digits.rpartition(",")
+        digits = f"{head.replace(',', '')}.{tail}" if len(tail) != 3 else digits.replace(",", "")
+    try:
+        return float(digits.replace(",", ""))
+    except ValueError:
         return None

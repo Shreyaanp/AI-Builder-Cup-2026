@@ -19,7 +19,7 @@ import structlog
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from .gemini_schema import gemini_schema, parse_reply
+from .gemini_schema import to_number
 from .ingestion import IMAGE_TYPES, alias
 from .limits import enforce_limits
 from .merchant import ProductFields, ProposalRequest
@@ -45,6 +45,21 @@ class DayRead(BaseModel):
     kind: Kind
     date: str = ""
     lines: list[DayLine] = Field(default_factory=list, max_length=200)
+
+
+class _LineSpec(BaseModel):
+    item: str
+    quantity: str = Field(default="", description="Plain digits, e.g. 42 or 1.5; empty if none")
+    amount: str = Field(default="", description="Plain digits, e.g. 840 or 12.50; empty if none")
+
+
+class _ReadSpec(BaseModel):
+    """What Gemini fills. Numbers come back as short text: number fields sometimes made the
+    model repeat zeros ("42.0000…") until the reply was cut off (15 Oct 2026)."""
+
+    kind: str
+    date: str = ""
+    lines: list[_LineSpec] = Field(default_factory=list)
 
 
 PROMPT = """This photo is a small business's {hint}. Read it exactly; never guess.
@@ -108,9 +123,9 @@ async def read_photo(
                 ),
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_json_schema=gemini_schema(DayRead),
+                    response_json_schema=_ReadSpec.model_json_schema(),
                     temperature=0,
-                    max_output_tokens=8000,
+                    max_output_tokens=4000,
                 ),
             )
     except TimeoutError:
@@ -119,10 +134,40 @@ async def read_photo(
         # A model/API error is a clean "couldn't read", never a bare 500.
         log.warning("day_read_failed", error=str(error)[:300])
         raise HTTPException(503, "READ_UNAVAILABLE") from None
-    read = parse_reply(DayRead, response)
-    if read is None:
+    read = lenient_read(response.text or "", hint)
+    if read is None or not read.lines:
+        log.warning("day_read_unusable", kind=hint, reply=(response.text or "")[:400])
         raise HTTPException(422, "UNREADABLE_PHOTO")
     return read, False
+
+
+def lenient_read(text: str, hint: Kind) -> DayRead | None:
+    """Keep every readable line when one odd line (a TOTAL row, a refund, an unknown kind)
+    would otherwise throw away the whole photo. The owner reviews every line anyway."""
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    lines = []
+    for raw in data.get("lines") or []:
+        if not isinstance(raw, dict):
+            continue
+        try:
+            lines.append(
+                DayLine(
+                    item=str(raw.get("item") or "").strip()[:180],
+                    quantity=to_number(raw.get("quantity")),
+                    amount=to_number(raw.get("amount")),
+                )
+            )
+        except ValueError:
+            continue
+    raw_kind, raw_date = data.get("kind"), data.get("date")
+    kind: Kind = raw_kind if raw_kind in ("sales", "stock_count", "delivery") else hint
+    date = raw_date[:20] if isinstance(raw_date, str) else ""
+    return DayRead(kind=kind, date=date, lines=lines[:200])
 
 
 @router.post("/{business_id}/day/read")
@@ -159,8 +204,20 @@ async def read_day_photo(
     reading, fixture = await read_photo(request, image, kind, inventory)
     names = [p["name"] for p in context["inventory"]]
     lines = []
+    prices = {p["name"]: p for p in context["inventory"]}
+    currency = context["business"]["fields"].get("currency") or "SGD"
     for line in reading.lines:
         name, fuzzy = alias(line.item, names) if names else (line.item, False)
+        # A till slip with counts but no money column: price it from the saved menu, so the
+        # sale is not silently dropped from the review (the owner still checks every line).
+        if (
+            reading.kind == "sales"
+            and line.amount is None
+            and line.quantity is not None
+            and name in prices
+        ):
+            unit_price = prices[name]["price"] / 10 ** exponent(currency)
+            line = line.model_copy(update={"amount": round(unit_price * line.quantity, 2)})
         lines.append(
             {
                 **line.model_dump(),

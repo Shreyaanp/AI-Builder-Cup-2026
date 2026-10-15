@@ -28,6 +28,8 @@ const en = {
   fixture:
     'Offline mode: these lines are sample data from your own items, not read from the photo.',
   back: 'Add more',
+  reviewEmpty:
+    'Nothing to save yet: we could not read items with quantities. Add a clearer, flat photo of the report.',
   save: 'Save day',
   saving: 'Saving…',
   saveFailed: 'Couldn’t finish saving. Please try again.',

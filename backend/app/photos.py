@@ -18,6 +18,7 @@ import structlog
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field, field_validator
 
+from .gemini_schema import to_number
 from .product_units import UNITS, normalize_unit
 from .settings import Settings
 
@@ -75,7 +76,8 @@ class PhotoExtraction(BaseModel):
 
 class _ProductSpec(BaseModel):
     name: str
-    price: float | None = None
+    # Text, not a number: number fields sometimes made the model repeat zeros until cut off.
+    price: str = Field(default="", description="Plain digits as printed, e.g. 20 or 4.50")
     unit: Unit = "item"
     category: str = Field(default="", description="Menu section; always set")
 
@@ -98,8 +100,8 @@ def to_extraction(spec: _PhotoSpec) -> PhotoExtraction:
             ExtractedProduct(
                 name=product.name,
                 price=(
-                    product.price
-                    if product.price is not None and 0 <= product.price <= 100_000_000
+                    price
+                    if (price := to_number(product.price)) is not None and 0 <= price <= 100_000_000
                     else None
                 ),
                 unit=product.unit,
