@@ -48,3 +48,31 @@ def test_voice_agent_sends_no_thinking_level_but_text_agent_keeps_it() -> None:
         t.__name__  # type: ignore[union-attr]
         for t in make_agent(settings).tools
     ]
+
+
+def test_voice_starts_with_recent_turns_at_a_clean_owner_turn() -> None:
+    from google.genai import types
+
+    from app.agent import LIVE_HISTORY_TURNS
+
+    def say(role: str, text: str) -> types.Content:
+        return types.Content(role=role, parts=[types.Part(text=text)])
+
+    call = types.Content(
+        role="model",
+        parts=[types.Part(function_call=types.FunctionCall(name="get_forecast", args={}))],
+    )
+    result = types.Content(
+        role="user",
+        parts=[
+            types.Part(
+                function_response=types.FunctionResponse(name="get_forecast", response={"ok": 1})
+            )
+        ],
+    )
+    history = [say("user", f"turn {i}") for i in range(40)] + [call, result, say("model", "done")]
+    cleaned = live_history(history)
+    assert len(cleaned) <= LIVE_HISTORY_TURNS
+    first = cleaned[0]
+    assert first.role == "user" and not any(p.function_response for p in first.parts or [])
+    assert cleaned[-1].parts[0].text == "done"  # the newest turns are kept
