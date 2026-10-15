@@ -8,10 +8,23 @@ Firestore emulator 8567 (start: `java -Duser.language=en -cp <gcloud>/platform/c
 
 | Step | State | Commit |
 | ---- | ----- | ------ |
-| 1. Passport backend (`passport.py` rules, `passport_routes.py`, `rescue_feed.py`) + 34 tests (SQLite + emulator) | done | `07fc109` |
-| 2. Today's 7 backend (`today.py`) + tests | in progress | |
-| 3. Wait for `Chalkboard theme` commit on origin/main, merge it | waiting | |
-| 4. UI: passport, stamp moment, Today's 7 (15 locales) | not started | |
+| 1. Passport backend (`passport.py`, `passport_routes.py`, `rescue_feed.py`) + tests (SQLite + emulator) | done | `07fc109`, demo QR relax `+1` |
+| 2. Today's 7 backend (`today.py`) + tests | done | `ab425ac` |
+| 3. Merge `Chalkboard theme` (41f65fb) from origin/main | done | `a9d8725` |
+| 4. UI: Passport tab, stamp moment, Today's 7 deck, server stamp cards, owner QR key, 15 locales | done | see `git log` |
+
+**Checks run:** backend 568 passed / 136 skipped (SQLite); passport + Today 45 passed on the
+emulator; `tsc -b`, ESLint clean on changed files; QA "customer navigation in 15 languages"
+passes phone + desktop with the 4-tab nav. Screenshots checked at 390×844 (Today, passport,
+stamp moment). **Not run:** full `npm run check`, axe, the whole QA matrix, Firestore indexes for
+new kinds (they use equality/key lookups only), real-phone GPS.
+
+**Open / next:** weather (Open-Meteo), Wikipedia "history" and busiest-hour cards not built;
+rescue endpoint not on main yet (adapter falls back to labelled demo rescues); owner perk picker UI
+not built (API `GET/PUT /businesses/{id}/perks` exists; demo shops have fixed demo perks); the
+Rescue tab of nav option A is left to the rescue UI owner; story walkthrough test for the passport
+still to write. Local review: `MERCHANT_DATABASE=data/passport-merchant.sqlite3
+DEMO_WORLD_ENABLED=true WEB_PORT=3447 API_PORT=3547 node scripts/backend-dev.mjs` + `npx vite`.
 
 ## Resume notes
 
