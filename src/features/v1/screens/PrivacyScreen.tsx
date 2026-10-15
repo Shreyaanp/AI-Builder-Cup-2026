@@ -186,10 +186,7 @@ export function PrivacyScreen() {
             )}
           </Box>
           {(erase.kind === 'partial' || erase.kind === 'failed') && (
-            <Alert
-              severity={erase.kind === 'partial' ? 'warning' : 'error'}
-              sx={{ mt: 2 }}
-            >
+            <Alert severity={erase.kind === 'partial' ? 'warning' : 'error'} sx={{ mt: 2 }}>
               {erase.kind === 'partial' ? (
                 <>
                   <AlertTitle>{t.erasePartialTitle}</AlertTitle>
