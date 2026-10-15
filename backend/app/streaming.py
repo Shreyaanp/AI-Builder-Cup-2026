@@ -96,6 +96,11 @@ def public_events(event: Event) -> list[StreamEvent]:
     return output
 
 
+# Conversations kept per account (oldest cleared first) and events per conversation.
+MAX_CONVERSATIONS = 20
+MAX_EVENTS = 400
+
+
 class CoachRuntime:
     def __init__(self, settings: Settings, sessions: BaseSessionService) -> None:
         self.settings = settings
@@ -120,14 +125,19 @@ class CoachRuntime:
                 raise HTTPException(404, "Conversation not found in this workspace.")
             if existing.state.get("business_id") != business_id:
                 raise HTTPException(404, "Conversation belongs to a different business.")
-            if len(existing.events) > 60:
+            if len(existing.events) > MAX_EVENTS:
                 raise HTTPException(429, "Start a new conversation to continue.")
             return requested
         listing = await self.sessions.list_sessions(app_name=APP_NAME, user_id=principal.uid)
-        if len(listing.sessions) >= 20:
-            raise HTTPException(
-                429, "This preview supports 20 conversations per private workspace."
-            )
+        # Keep the newest conversations and quietly clear the oldest, instead of refusing every
+        # new chat and voice session once an account had 20 (owner report, 15 Oct: the mic said
+        # "Too many requests" forever). Shop records live elsewhere; only old chat history goes.
+        if len(listing.sessions) >= MAX_CONVERSATIONS:
+            oldest = sorted(listing.sessions, key=lambda item: item.last_update_time or 0)
+            for stale in oldest[: len(listing.sessions) - MAX_CONVERSATIONS + 1]:
+                await self.sessions.delete_session(
+                    app_name=APP_NAME, user_id=principal.uid, session_id=stale.id
+                )
         session_id = str(uuid4())
         await self.sessions.create_session(
             app_name=APP_NAME,
