@@ -94,6 +94,15 @@ honest demo labels, reduced motion, axe clean, a story walkthrough test, live on
 
 ## Status log (newest first)
 
+- 15 Oct (late): owner reported broken photo upload, slow mic, "too many requests", and an
+  overloaded shop page. Fixed and live (0cdc4b1): Vertex rejects list-length limits in response
+  schemas (photos, Close the day, imports, suppliers, demo world all 400ed) so every call now uses
+  app/gemini_schema.py (stripped schema + full validation; guard test); stale live streams are
+  replaced instead of refused; voice limit 30/10 min; voice sessions start with the 16 most recent
+  turns. Demo world generator live with real Gemini (DEMO_WORLD_ENABLED=true on Cloud Run).
+  Calmer shop page on main (d063575). Passport + Today's 7 merged on branch merge/passport;
+  account 2 is fixing 31 stamp/QR tests there plus an s8 passport walkthrough and dark mode.
+  Codex hit its usage limit; WIP saved on wip/owner-backends, auto-resume scheduled 16:47.
 - 15 Oct (evening): all QA findings fixed except Q1 (won't fix) and merged. Chalkboard theme
   foundation on main (41f65fb): src/design/chalkboard.ts (roles + theme.chalk feature tones:
   sunflower passport/rewards, coral rescue, mint fresh/local, sky chats, lilac AI insights),
