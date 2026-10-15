@@ -30,6 +30,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from .customer import InquiryInput
+from .gemini_schema import gemini_schema, parse_reply
 from .merchant import BusinessFields, CustomFact, MerchantRepository, ProductFields
 from .money import exponent, to_major, to_minor
 from .product_units import UNITS, normalize_unit
@@ -509,12 +510,12 @@ class SupplierGenerator:
                 config=types.GenerateContentConfig(
                     system_instruction=PROMPT,
                     response_mime_type="application/json",
-                    response_schema=DemoSuppliers,
+                    response_json_schema=gemini_schema(DemoSuppliers),
                     temperature=0.4,
                     max_output_tokens=3000,
                 ),
             )
-            parsed = response.parsed
+            parsed = parse_reply(DemoSuppliers, response)
             if isinstance(parsed, DemoSuppliers) and any(
                 matches(p.name, item) for s in parsed.suppliers for p in s.products
             ):

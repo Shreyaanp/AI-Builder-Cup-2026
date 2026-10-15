@@ -9,6 +9,7 @@ from typing import Any, Literal
 import anyio
 from pydantic import BaseModel, Field
 
+from .gemini_schema import gemini_schema, parse_reply
 from .imports import (
     MAX_BYTES,
     MAX_MEDIA_BYTES,
@@ -83,7 +84,7 @@ async def extract(
             config=types.GenerateContentConfig(
                 system_instruction=PROMPT,
                 response_mime_type="application/json",
-                response_schema=Extraction,
+                response_json_schema=gemini_schema(Extraction),
                 temperature=0,
                 max_output_tokens=16000,
             ),
@@ -95,9 +96,10 @@ async def extract(
             word in reason for word in ("SAFETY", "PROHIBITED")
         ):
             raise ImportRejected(422, "DOCUMENT_BLOCKED")
-        if "MAX_TOKENS" in reason or not isinstance(response.parsed, Extraction):
+        extraction = parse_reply(Extraction, response)
+        if "MAX_TOKENS" in reason or extraction is None:
             raise ImportRejected(503, "EXTRACTION_UNAVAILABLE")
-        return response.parsed
+        return extraction
     except ImportRejected:
         raise
     except Exception:
