@@ -1,0 +1,44 @@
+name: Review impact
+# Every feature branch reaches main through a pull request. This job builds the code knowledge
+# graph (graphify, code only, no LLM or keys) and comments which areas, files and tests the
+# change can affect, so the review checks everything the diff touches indirectly.
+on:
+  pull_request:
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: impact-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  impact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: '0.13.0'
+      - name: Build the code graph
+        run: uv run --no-project --python 3.13 --with graphifyy==0.9.89 python scripts/build_graph.py
+      - name: Impact report
+        run: >
+          uv run --no-project --python 3.13 python scripts/impact.py
+          origin/${{ github.base_ref }} --head HEAD --out impact.md
+      - uses: actions/upload-artifact@v6
+        with:
+          name: impact-report
+          path: impact.md
+      - name: Comment on the pull request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs')
+            const body = '<!-- impact-review -->\n' + fs.readFileSync('impact.md', 'utf8')
+            const { owner, repo } = context.repo
+            const issue_number = context.issue.number
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number })
+            const mine = comments.find((c) => c.body?.startsWith('<!-- impact-review -->'))
+            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body })
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body })
