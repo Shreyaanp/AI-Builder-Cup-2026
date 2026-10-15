@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react'
 import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/material'
 import { LocateFixed, MapPin } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
@@ -6,10 +5,11 @@ import type { Business, Proposal } from './api'
 import { useCopy } from './strings'
 import { useNewShopCopy } from './newShopCopy'
 import { useWorkspace } from './workspaceContext'
+import { readablePlace, useMeasureLocation, type OwnerLocation } from './location'
 
-export type OwnerLocation = { lat: number; lng: number; accuracy_m: number }
+export type { OwnerLocation }
 
-/** A single explicit measurement. Late callbacks cannot change a closed shop or draft. */
+/** A single explicit measurement, with its reason shown before the request. */
 export function CurrentLocationAction({
   onLocation,
   disabled = false,
@@ -18,54 +18,7 @@ export function CurrentLocationAction({
   disabled?: boolean
 }) {
   const t = useCopy()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const alive = useRef(false)
-  const pending = useRef(false)
-  const operation = useRef<AbortController | null>(null)
-  useEffect(() => {
-    alive.current = true
-    return () => {
-      alive.current = false
-      operation.current?.abort()
-    }
-  }, [])
-  async function locate() {
-    if (pending.current || disabled) return
-    setError('')
-    if (!navigator.geolocation) {
-      setError(t.locationFailed)
-      return
-    }
-    pending.current = true
-    const abort = new AbortController()
-    operation.current = abort
-    setBusy(true)
-    try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 15_000,
-          maximumAge: 0,
-        }),
-      )
-      if (!alive.current) return
-      const { latitude: lat, longitude: lng, accuracy: accuracy_m } = position.coords
-      if (![lat, lng, accuracy_m].every(Number.isFinite) || accuracy_m < 0)
-        throw new Error('INVALID_LOCATION')
-      await onLocation({ lat, lng, accuracy_m }, abort.signal)
-    } catch (cause) {
-      if (alive.current)
-        setError(
-          cause && typeof cause === 'object' && 'code' in cause && cause.code === 1
-            ? t.locationDenied
-            : t.locationFailed,
-        )
-    } finally {
-      pending.current = false
-      if (alive.current) setBusy(false)
-    }
-  }
+  const { locate, busy, error } = useMeasureLocation(onLocation)
   return (
     <Stack spacing={1}>
       <Typography variant="bodyMedium" color="text.secondary">
@@ -89,9 +42,7 @@ export function LocationPin({ fields }: { fields: Business['fields'] }) {
   const f = useNewShopCopy()
   const locale = useLocale()
   if (fields.lat == null || fields.lng == null) return null
-  const raw = /^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/
-  const label = fields.pin_label && !raw.test(fields.pin_label) ? fields.pin_label : fields.location
-  const readable = !label || label === 'Your current location' ? f.current : label.startsWith('Near ') ? f.near(label.slice(5)) : label
+  const readable = readablePlace(fields, f)
   return (
     <Stack
       direction="row"
@@ -103,9 +54,7 @@ export function LocationPin({ fields }: { fields: Business['fields'] }) {
         <Typography variant="titleSmall">
           {fields.pin_source === 'device' ? t.yourLocation : t.fields.location}
         </Typography>
-        <Typography variant="bodyMedium">
-          {readable}
-        </Typography>
+        <Typography variant="bodyMedium">{readable}</Typography>
         {fields.pin_source === 'device' && fields.pin_accuracy_m != null && (
           <Typography variant="bodyMedium" color="text.secondary">
             {t.locationAccuracy(

@@ -2,17 +2,10 @@ import type { Copy } from '../strings'
 
 export const hi: Copy = {
   newShopMode: 'नई दुकान',
-  newShopIntro: 'आइए आपकी नई दुकान ऑनलाइन लाएँ। पहले फ़ोटो लें या बताएँ कि आप क्या बेचते हैं।',
-  newShopCamera: 'मेन्यू या दुकान के सामने की फ़ोटो लें',
-  newShopVoice: 'अपनी दुकान के बारे में बताएँ',
-  newShopForm: 'इसके बजाय फ़ॉर्म भरें',
-  newShopCancel: 'मेरी मौजूदा दुकान पर लौटें',
-  newShopReview: 'मेरी नई दुकान की समीक्षा करें',
   newShopReady: 'आपकी नई दुकान तैयार है',
   newShopReadyBody:
     'अब आप अपनी नई दुकान में काम कर रहे हैं। तैयार होने पर उसका ग्राहक पेज साझा करें।',
   newShopContinue: 'मेरी दुकान के साथ जारी रखें',
-  newShopPhotoNext: 'आप ग्राहकों को अपनी दुकान के बारे में क्या बताना चाहेंगे?',
   useCurrentLocation: 'मेरी वर्तमान लोकेशन इस्तेमाल करें',
   locationReason:
     'दुकान पर हैं? पिन लगाने के लिए लोकेशन की अनुमति दें। सहेजने से पहले आप समीक्षा करेंगे।',
@@ -21,7 +14,6 @@ export const hi: Copy = {
   locationFailed: 'लोकेशन नहीं मिल सकी। फिर कोशिश करें, पता लिखें या GPS वाली फ़ोटो इस्तेमाल करें।',
   yourLocation: 'आपकी लोकेशन',
   description: 'विवरण',
-  newShopStep: (n: number) => `नई दुकान · चरण ${n}/4`,
   locationAccuracy: (m: string) => `${m} मीटर के भीतर`,
   installApp: 'ऐप इंस्टॉल करें',
   installIos: 'Safari में शेयर → होम स्क्रीन पर जोड़ें चुनें, फिर जोड़ें दबाएँ।',
@@ -272,7 +264,6 @@ export const hi: Copy = {
   stock: 'स्टॉक',
   // Shop
   shopEmptyTitle: 'आपकी दुकान जोड़ें',
-  shopEmptyBody: 'बोर्ड की फ़ोटो से शुरू करें या खुद जानकारी भरें।',
   addShop: 'दुकान की जानकारी जोड़ें',
   startPhoto: 'फ़ोटो से शुरू करें',
   editDetails: 'जानकारी बदलें',

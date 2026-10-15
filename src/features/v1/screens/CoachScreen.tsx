@@ -50,11 +50,9 @@ import type { CoachEvent } from '../../../api/stream'
 import { useIdentity } from '../../../auth/useIdentity'
 import { useLocale } from '../../../state/hooks'
 import { ApiError } from '../api'
-import type { Business, Conversation, PhotoResult, Product, Proposal } from '../api'
-import { defaultCurrency, toMinor } from '../format'
+import type { Conversation, PhotoResult, Proposal } from '../api'
+import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
-import { useNewShopCopy } from '../newShopCopy'
-import { NewShopReady } from '../NewShopStage'
 import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
 import { SalesImportSheet } from '../ImportMenu'
@@ -70,7 +68,6 @@ import { useVoice } from '../useVoice'
 import { useOnline } from '../useOnline'
 import { useWorkspace } from '../workspaceContext'
 import { OwnerJourney } from '../../frontdoors/OwnerJourney'
-import { CurrentLocationAction, LocationPin, type OwnerLocation } from '../CurrentLocation'
 import { LoadError } from '../LoadError'
 import { enterRise, shape, windowClass } from '../../../design/theme'
 import { useSourcingCopy } from '../../sourcing/copy'
@@ -90,90 +87,43 @@ type Message =
 const REPLY_POLL_MS = 1500
 const REPLY_WAIT_MS = 45_000
 
-type GalleryPhoto = { file: File; businessId: string; newShop?: boolean }
+/** A shop photo the owner may later choose to show customers (offered once, never automatic). */
+export type GalleryPhoto = { file: File; businessId: string }
 
-// The extraction file survives the new-shop confirmation, which changes the chat's key.
+// The extraction file survives a new shop's approval (the flow hands it over with the new ID).
 // It stays local to this coach workspace and never enters preference storage.
-export function CoachWorkspace() {
-  const t = useCopy()
-  const { activeId, creatingShop, loading, loadError, newShopReady } = useWorkspace()
-  const newShop = !loading && !loadError && creatingShop
-  const [galleryPhoto, setGalleryPhoto] = useState<GalleryPhoto | null>(null)
-  if (newShopReady && activeId && galleryPhoto?.newShop) {
-    setGalleryPhoto({ ...galleryPhoto, businessId: activeId, newShop: false })
-  }
-  if (loading) return <CircularProgress aria-label={t.loading} sx={{ m: 3 }} />
-  if (loadError) return <LoadError />
-  return (
-    <>
-      {newShopReady && <NewShopReady />}
-      {(activeId || !newShop) && (
-        <Box hidden={newShop || newShopReady} sx={{ height: '100%' }}>
-          <CoachScreen
-            key={activeId}
-            newShop={false}
-            visible={!newShop}
-            galleryPhoto={galleryPhoto}
-            setGalleryPhoto={setGalleryPhoto}
-          />
-        </Box>
-      )}
-      {newShop && (
-        <CoachScreen
-          newShop
-          visible
-          galleryPhoto={galleryPhoto}
-          setGalleryPhoto={setGalleryPhoto}
-        />
-      )}
-    </>
-  )
-}
-
-function CoachScreen({
-  newShop,
-  visible,
+export function CoachWorkspace({
   galleryPhoto,
   setGalleryPhoto,
 }: {
-  newShop: boolean
-  visible: boolean
   galleryPhoto: GalleryPhoto | null
   setGalleryPhoto: (value: GalleryPhoto | null) => void
 }) {
   const t = useCopy()
-  const flow = useNewShopCopy()
+  const { activeId, loading, loadError } = useWorkspace()
+  if (loading) return <CircularProgress aria-label={t.loading} sx={{ m: 3 }} />
+  if (loadError) return <LoadError />
+  return (
+    <CoachScreen key={activeId} galleryPhoto={galleryPhoto} setGalleryPhoto={setGalleryPhoto} />
+  )
+}
+
+function CoachScreen({
+  galleryPhoto,
+  setGalleryPhoto,
+}: {
+  galleryPhoto: GalleryPhoto | null
+  setGalleryPhoto: (value: GalleryPhoto | null) => void
+}) {
+  const t = useCopy()
   const theme = useTheme()
   const roles = theme.material
   const identity = useIdentity()
   const language = useLocale()
   const photoText = photoCopy(language)
   const ws = useWorkspace()
-  const step = ws.newShopStep
-  const [draft, setDraft] = useState<{ business: Business['fields'] | null; products: Product[] }>({
-    business: null,
-    products: [],
-  })
-  const [draftProposal, setDraftProposal] = useState<Proposal | null>(null)
-  if (newShop && ws.newShopProposal && ws.newShopProposal.id !== draftProposal?.id) {
-    setDraftProposal(ws.newShopProposal)
-    setDraft({ business: ws.newShopProposal.snapshot.business, products: ws.newShopProposal.snapshot.products })
-  }
-  const [ownerLocation, setOwnerLocation] = useState<OwnerLocation | null>(null)
-  const [photoNotes, setPhotoNotes] = useState<string[]>([])
-  const guidedDraft = {
-    ...draft,
-    business:
-      draft.business && ownerLocation
-        ? {
-            ...draft.business,
-            lat: ownerLocation.lat,
-            lng: ownerLocation.lng,
-            pin_source: 'device' as const,
-            pin_accuracy_m: ownerLocation.accuracy_m,
-          }
-        : draft.business,
-  }
+  // Hidden behind the full-screen new-shop flow: no voice, no pickers, no draft prompts.
+  const visible = !ws.creatingShop && !ws.newShopReady
   const [messages, setMessages] = useState<Message[]>([])
   const [reply, setReply] = useState('')
   const [note, setNote] = useState('')
@@ -222,7 +172,7 @@ function CoachScreen({
   const [sales, setSales] = useState<SalesImport | null>(null)
   const importer = useImport({ onSales: setSales })
   const picking = useRef<'photo' | 'document'>('photo')
-  const choices = touch || (!newShop && Boolean(ws.active))
+  const choices = touch || Boolean(ws.active)
   function choosePhoto(anchor: HTMLElement | null) {
     if (choices && anchor) setPhotoMenu(anchor)
     else pick('library')
@@ -241,32 +191,7 @@ function CoachScreen({
   }
   const speaking = useRef<HTMLAudioElement | null>(null)
   const end = useRef<HTMLDivElement>(null)
-  const { api, review: openReview, setFaceOpen, go, speakReplies } = ws
-  const activeId = newShop ? null : ws.activeId
-  const acceptProposal = useCallback(
-    (proposal: Proposal) => {
-      if (!newShop) {
-        openReview(proposal)
-        return
-      }
-      // A new shop has no saved ID or revision. All proposals accumulate locally until review.
-      setDraftProposal(proposal)
-      setDraft((previous) => {
-        const products = new Map(
-          previous.products.map((p) => [`${p.name.toLocaleLowerCase()}|${p.unit}`, p]),
-        )
-        proposal.snapshot.products.forEach((p) =>
-          products.set(`${p.name.toLocaleLowerCase()}|${p.unit}`, p),
-        )
-        return {
-          business: proposal.snapshot.business ?? previous.business,
-          products: [...products.values()],
-        }
-      })
-    },
-    [newShop, openReview],
-  )
-  const review = acceptProposal
+  const { api, activeId, review, setFaceOpen, go, speakReplies } = ws
   // One "+" sheet (opened from the top bar) holds every coach action: add shop/product, new
   // chat, earlier chats.
   const actionsOpen = ws.coachActions && visible
@@ -310,7 +235,7 @@ function CoachScreen({
     },
     [review, go, setFaceOpen],
   )
-  const voice = useVoice(activeId, receive, newShop ? guidedDraft : undefined)
+  const voice = useVoice(activeId, receive)
   const stopVoice = voice.stop
   useEffect(() => {
     if (!visible) {
@@ -321,7 +246,6 @@ function CoachScreen({
 
   // Each shop has its own conversation thread.
   useEffect(() => {
-    if (newShop) return
     const abort = new AbortController()
     controller.current?.abort()
     session.current = null
@@ -342,7 +266,7 @@ function CoachScreen({
     }
     // `restore` is a plain function re-created each render; this runs once per shop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api, activeId, newShop])
+  }, [api, activeId])
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
   }, [messages, reply, reducedMotion])
@@ -399,17 +323,12 @@ function CoachScreen({
 
   // A typed draft: Back asks "Discard changes?" before leaving, and so does closing the tab.
   useBackClose(
-    visible && !newShop && Boolean(note.trim()),
+    visible && Boolean(note.trim()),
     () => {
-      if (newShop && ws.active) {
-        ws.cancelNewShop()
-        return
-      }
       setNote('')
       window.history.back()
     },
-    Boolean(note.trim()) ||
-      (newShop && Boolean(draft.business || messages.length || ownerLocation)),
+    true,
   )
 
   function resetThread() {
@@ -447,19 +366,16 @@ function CoachScreen({
     speechSynthesis.speak(utterance)
   }
 
-  async function send(text = note, guidance = false, nextDraft = guidedDraft) {
+  async function send(text = note) {
     const message = text.trim()
-    if (!message || (busy !== 'idle' && !(guidance && busy === 'photo')) || voice.state !== 'idle')
-      return
+    if (!message || busy !== 'idle' || voice.state !== 'idle') return
     const abort = new AbortController()
     controller.current = abort
     setBusy('reply')
     setReply('')
     setError('')
-    if (!guidance) {
-      setMessages((items) => [...items, { role: 'user' as const, text: message }].slice(-40))
-      setNote('')
-    }
+    setMessages((items) => [...items, { role: 'user' as const, text: message }].slice(-40))
+    setNote('')
     let finalReply = ''
     let proposed = false
     try {
@@ -470,8 +386,6 @@ function CoachScreen({
           currency: defaultCurrency(),
           session_id: session.current,
           business_id: activeId,
-          new_shop: newShop,
-          new_shop_draft: newShop ? nextDraft : null,
         },
         abort.signal,
         (event) => {
@@ -500,10 +414,8 @@ function CoachScreen({
       if (!abort.signal.aborted) {
         setError(cause instanceof RateLimitError ? t.rateLimited : t.replyFailed)
         // Keep the unsent message available for a retry.
-        if (!guidance) {
-          setMessages((items) => items.slice(0, -1))
-          setNote(message)
-        }
+        setMessages((items) => items.slice(0, -1))
+        setNote(message)
       }
     } finally {
       if (controller.current === abort) {
@@ -605,17 +517,7 @@ function CoachScreen({
         businessId &&
         ['storefront', 'signboard', 'menu', 'price_list'].includes(result.photo_kind)
       )
-        setGalleryPhoto({ file, businessId, newShop })
-      if (newShop) setPhotoNotes(result.extraction.uncertain.slice(0, 5))
-      let nextDraft = guidedDraft
-      if (newShop && !result.proposal) {
-        const currency = draft.business?.currency ?? defaultCurrency()
-        const products = (result.extraction.products ?? [])
-          .filter((p) => p.price != null)
-          .map((p) => ({ ...p, price: toMinor(p.price!, currency), stock: null }))
-        setDraft((previous) => ({ ...previous, products: [...previous.products, ...products] }))
-        nextDraft = { ...guidedDraft, products: [...draft.products, ...products] }
-      }
+        setGalleryPhoto({ file, businessId })
       setMessages((items) =>
         [
           ...items,
@@ -628,14 +530,6 @@ function CoachScreen({
       // The review sheet carries the reader's doubts, so the decision surface discloses them.
       if (result.proposal)
         review({ ...result.proposal, photo_notes: result.extraction.uncertain.slice(0, 5) })
-      if (newShop) {
-        if (result.proposal)
-          nextDraft = {
-            business: result.proposal.snapshot.business,
-            products: result.proposal.snapshot.products,
-          }
-        await send(t.newShopPhotoNext, true, nextDraft)
-      }
     } catch (cause) {
       const code = cause instanceof ApiError ? cause.code : ''
       setError(
@@ -669,7 +563,7 @@ function CoachScreen({
   // Suggestion chips are rules only (no AI): they come from the current shop state, never a
   // fixed list, and at most three show. Each one either opens the right sheet or starts a note.
   type Suggestion = 'reply' | 'menu' | 'soldOut' | 'price' | 'share' | 'photo' | 'name'
-  const shop = newShop ? null : ws.active
+  const shop = ws.active
   const rules: [Suggestion, boolean][] = shop
     ? [
         // On an empty thread the pending card already says customers are waiting.
@@ -731,38 +625,6 @@ function CoachScreen({
   const voiceText =
     voice.state === 'recording' ? t.listening : voice.state === 'replying' ? t.speaking : ''
 
-  async function reviewNewShop() {
-    if (!draft.business || busy !== 'idle' || voice.state !== 'idle') return
-    setBusy('reply')
-    setError('')
-    try {
-      // Reuse an unchanged sealed draft (including a photo's server-read GPS); reseal measured
-      // device coordinates through prepare_pin. Saving is exclusively in ReviewDialog.
-      const unchanged =
-        draftProposal &&
-        JSON.stringify(draftProposal.snapshot.business) === JSON.stringify(draft.business) &&
-        JSON.stringify(draftProposal.snapshot.products) === JSON.stringify(draft.products)
-      const proposal =
-        !ownerLocation && unchanged
-          ? draftProposal
-          : await api<Proposal>('/proposals', {
-              method: 'POST',
-              body: JSON.stringify({
-                kind: 'business',
-                business_id: null,
-                revision: 0,
-                ...draft,
-                owner_location: ownerLocation,
-              }),
-            })
-      if (alive.current) openReview({ ...proposal, photo_notes: photoNotes, new_shop: true })
-    } catch {
-      setError(t.actionFailed)
-    } finally {
-      setBusy('idle')
-    }
-  }
-
   return (
     <Box
       id={visible ? 'coach' : undefined}
@@ -771,14 +633,14 @@ function CoachScreen({
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: newShop ? 'auto' :
+        height:
           'calc(100dvh - 64px - var(--nav-offset, 0px) - 12px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
-        minHeight: newShop ? { xs: 420, md: 620 } : 0,
+        minHeight: 0,
         maxWidth: 760,
         mx: 'auto',
       }}
     >
-      {!newShop && <OwnerJourney />}
+      <OwnerJourney />
       {/* One quiet line: which coach is answering. Every other action is behind the top bar's +. */}
       {!empty && (
         <Typography
@@ -807,7 +669,7 @@ function CoachScreen({
           >
             {t.addShop}
           </Button>
-          {ws.active && !newShop && (
+          {ws.active && (
             <Button
               startIcon={<PackagePlus size={18} />}
               onClick={() => {
@@ -858,52 +720,7 @@ function CoachScreen({
 
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', pb: 4 }}>
         {ws.loadError && <LoadError />}
-        {newShop && (
-          <Stack spacing={3} sx={{ pt: 3, pb: 3 }}>
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
-              <Avatar sx={{ bgcolor: roles.primaryContainer, color: roles.onPrimaryContainer }} aria-hidden="true"><Leaf size={22} /></Avatar>
-              <Box>
-                <Typography variant="labelLarge" color="text.secondary">{t.coach}</Typography>
-                <Typography component="h2" variant="titleLarge" sx={{ mt: 1, textWrap: 'balance' }}>{flow.prompts[Math.min(step, 3) - 1]}</Typography>
-              </Box>
-            </Stack>
-            {step < 3 && (
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <Button variant="contained" startIcon={<Mic size={28} />} disabled={busy !== 'idle' || voice.state !== 'idle'} onClick={() => void voice.start()} sx={{ flex: 1, minHeight: 76, borderRadius: `${shape.lg}px` }}>{t.newShopVoice}</Button>
-                <Button variant="outlined" startIcon={<Camera size={28} />} disabled={busy !== 'idle' || voice.state !== 'idle'} onClick={() => pick(touch ? 'camera' : 'library')} sx={{ flex: 1, minHeight: 76, borderRadius: `${shape.lg}px` }}>{t.newShopCamera}</Button>
-              </Stack>
-            )}
-            {step === 3 && (
-              <>
-                <CurrentLocationAction disabled={busy !== 'idle' || voice.state !== 'idle'} onLocation={async (point, signal) => {
-                  setOwnerLocation(point)
-                  // Resolve a readable label through the same consented, sealed proposal path.
-                  const pinned = await api<Proposal>('/proposals', {
-                    method: 'POST', signal,
-                    body: JSON.stringify({ kind: 'business', business_id: null, revision: 0,
-                      business: draft.business ?? { name: '', category: '', location: '', hours: '', phone: '' },
-                      products: draft.products, owner_location: point }),
-                  })
-                  signal.throwIfAborted()
-                  setDraftProposal(pinned)
-                  if (pinned.snapshot.business) setDraft((previous) => ({ ...previous, business: pinned.snapshot.business }))
-                }} />
-                {draftProposal?.snapshot.business && <LocationPin fields={draftProposal.snapshot.business} />}
-              </>
-            )}
-            {draft.business && (
-              <Box sx={{ borderLeft: `3px solid ${roles.primary}`, pl: 3 }}>
-                <Typography variant="titleMedium">{draft.business.name}</Typography>
-                <Typography variant="bodyMedium" color="text.secondary">{[draft.business.category, t.itemCount(draft.products.length)].filter(Boolean).join(' ? ')}</Typography>
-              </Box>
-            )}
-            <Button variant="contained" disabled={busy !== 'idle' || voice.state !== 'idle' || !draft.business?.name} onClick={() => step < 3 ? ws.setNewShopStep(step + 1) : void reviewNewShop()}>
-              {step < 3 ? flow.next : t.newShopReview}
-            </Button>
-            <Button size="small" sx={{ alignSelf: 'flex-start' }} onClick={() => ws.openEditor({ kind: 'business', fields: null })}>{t.newShopForm}</Button>
-          </Stack>
-        )}
-        {!newShop && galleryPhoto && galleryPhoto.businessId === ws.active?.id && (
+        {galleryPhoto && galleryPhoto.businessId === ws.active?.id && (
           <Alert severity="info" sx={{ mb: 2 }}>
             <Typography variant="titleSmall">{photoText.galleryOffer}</Typography>
             <Typography variant="bodySmall">{photoText.galleryNote}</Typography>
@@ -989,7 +806,7 @@ function CoachScreen({
             </Alert>
           )}
         {empty ? (
-          newShop || ws.loading || ws.loadError ? null : (
+          ws.loading || ws.loadError ? null : (
             <Stack spacing={{ xs: 3, sm: 5 }} sx={{ pt: { xs: 1, sm: 10 }, pb: 4 }}>
               {/* With a shop, the top bar already names it: no greeting line, only a heading for
                 screen readers. Before a shop exists the greeting introduces the coach. */}
@@ -1054,7 +871,7 @@ function CoachScreen({
           )
         ) : (
           <>
-            {ws.active && !newShop && (
+            {ws.active && (
               // Stays under the app bar while the conversation scrolls, filling in as
               // proposals are confirmed.
               <Box
@@ -1071,56 +888,56 @@ function CoachScreen({
               </Box>
             )}
             <Box role="log" aria-live="polite">
-            <Stack
-              component="ol"
-              spacing={3}
-              sx={{ listStyle: 'none', m: 0, p: 0, pt: 2 }}
-            >
-              {messages.map((message, index) =>
-                message.role === 'suppliers' ? (
-                  <SupplierCarousel
-                    key={message.key}
-                    result={message.result}
-                    onChoose={(card) => {
-                      const amount = message.result.quantity
-                        ? `${message.result.quantity} ${message.result.unit} `
-                        : ''
-                      setNote(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
-                      messageInput.current?.focus()
-                    }}
-                  />
-                ) : message.role === 'order' ? (
-                  orders[message.orderId] && (
-                    <OrderCard
-                      key={message.orderId}
-                      order={orders[message.orderId]!}
-                      onSend={sendOrder}
-                      onDiscard={discardOrder}
-                      onOpen={(order) => setThread(order.id)}
-                      onReceived={(order) =>
-                        void receiveOrder(order).then((received) => {
-                          if (received)
-                            setOrders((known) => ({ ...known, [received.id]: received }))
-                        })
-                      }
+              <Stack component="ol" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0, pt: 2 }}>
+                {messages.map((message, index) =>
+                  message.role === 'suppliers' ? (
+                    <SupplierCarousel
+                      key={message.key}
+                      result={message.result}
+                      onChoose={(card) => {
+                        const amount = message.result.quantity
+                          ? `${message.result.quantity} ${message.result.unit} `
+                          : ''
+                        setNote(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
+                        messageInput.current?.focus()
+                      }}
                     />
-                  )
-                ) : (
-                  <Bubble key={index} message={message} you={t.you} coach={t.coach} />
-                ),
-              )}
-              {searching !== null && <SearchingSuppliers item={searching} />}
-              {reply && (
-                <Bubble message={{ role: 'assistant', text: reply }} you={t.you} coach={t.coach} />
-              )}
-              {busy === 'reply' && !reply && searching === null && (
-                <Box component="li" sx={{ pl: 10 }}>
-                  <CircularProgress size={20} aria-label={t.speaking} />
-                </Box>
-              )}
-            </Stack>
+                  ) : message.role === 'order' ? (
+                    orders[message.orderId] && (
+                      <OrderCard
+                        key={message.orderId}
+                        order={orders[message.orderId]!}
+                        onSend={sendOrder}
+                        onDiscard={discardOrder}
+                        onOpen={(order) => setThread(order.id)}
+                        onReceived={(order) =>
+                          void receiveOrder(order).then((received) => {
+                            if (received)
+                              setOrders((known) => ({ ...known, [received.id]: received }))
+                          })
+                        }
+                      />
+                    )
+                  ) : (
+                    <Bubble key={index} message={message} you={t.you} coach={t.coach} />
+                  ),
+                )}
+                {searching !== null && <SearchingSuppliers item={searching} />}
+                {reply && (
+                  <Bubble
+                    message={{ role: 'assistant', text: reply }}
+                    you={t.you}
+                    coach={t.coach}
+                  />
+                )}
+                {busy === 'reply' && !reply && searching === null && (
+                  <Box component="li" sx={{ pl: 10 }}>
+                    <CircularProgress size={20} aria-label={t.speaking} />
+                  </Box>
+                )}
+              </Stack>
             </Box>
-            {lastIsReply && !newShop && <Box sx={{ pt: 4, pl: 10 }}>{chips}</Box>}
+            {lastIsReply && <Box sx={{ pt: 4, pl: 10 }}>{chips}</Box>}
           </>
         )}
         <div ref={end} />
@@ -1268,7 +1085,7 @@ function CoachScreen({
               </ListItemIcon>
               <ListItemText primary={t.photoUpload} />
             </MenuItem>
-            {ws.active && !newShop && (
+            {ws.active && (
               <MenuItem onClick={() => pick('document')} sx={{ minHeight: 48 }}>
                 <ListItemIcon>
                   <FileSpreadsheet size={20} />

@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert, AlertTitle, Box, Button, Divider, Stack, Typography } from '@mui/material'
 import { ShieldCheck } from 'lucide-react'
@@ -17,7 +16,6 @@ import { HoursList } from '../shop/Hours'
 import { categoryLabel, useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { CurrentLocationAction, LocationPin } from './CurrentLocation'
-import { useNewShopCopy } from './newShopCopy'
 
 /**
  * The only place a change is saved: the owner confirms the exact digest the server sealed.
@@ -33,9 +31,6 @@ export function ReviewDialog({
   onSaved: (businessId: string) => Promise<void>
 }) {
   const t = useCopy()
-  const flow = useNewShopCopy()
-  const ws = useWorkspace()
-  const title = useRef<HTMLHeadingElement>(null)
   const rewards = useRewardCopy()
   const shopCopy = useShopCopy()
   const pinCopy = discoverCopy(useLocale())
@@ -49,9 +44,6 @@ export function ReviewDialog({
   // A new shop carries its currency in the proposal; edits use the saved shop's.
   const currency = snapshot?.business?.currency ?? shopCurrency(target)
   const open = proposal !== null
-  useEffect(() => {
-    if (proposal?.new_shop) title.current?.focus()
-  }, [proposal?.id, proposal?.new_shop])
   async function findPin() {
     if (!proposal || busy) return
     setBusy(true)
@@ -65,7 +57,7 @@ export function ReviewDialog({
           geocode_confirmed: true,
         }),
       })
-      review({ ...pinned, new_shop: proposal.new_shop, photo_notes: proposal.photo_notes })
+      review({ ...pinned, photo_notes: proposal.photo_notes })
     } catch {
       setError(pinCopy.pinError)
     } finally {
@@ -97,9 +89,6 @@ export function ReviewDialog({
 
   const body: ReactNode = snapshot && (
     <Stack spacing={3}>
-      {!target && snapshot.kind === 'business' && (
-        <Typography variant="labelLarge">{t.newShopStep(4)}</Typography>
-      )}
       {Boolean(proposal?.photo_notes?.length) && (
         <Alert severity="info">
           <AlertTitle>{t.photoReviewNotes}</AlertTitle>
@@ -140,11 +129,7 @@ export function ReviewDialog({
                   }),
                 })
                 signal.throwIfAborted()
-                review({
-                  ...next,
-                  new_shop: proposal?.new_shop,
-                  photo_notes: proposal?.photo_notes,
-                })
+                review({ ...next, photo_notes: proposal?.photo_notes })
               } finally {
                 setBusy(false)
               }
@@ -257,73 +242,6 @@ export function ReviewDialog({
     </>
   )
 
-  if (proposal?.new_shop && snapshot?.business) {
-    const fields = snapshot.business
-    const host = document.getElementById('new-shop-review-host')
-    const edit = (step: number) => {
-      close()
-      ws.setNewShopStep(step)
-    }
-    const sectionTitle = (label: string, step: number) => (
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-        <Typography component="h3" variant="titleMedium">{label}</Typography>
-        <Button disabled={busy} aria-label={`${t.editProduct}: ${label}`} onClick={() => edit(step)}>{t.editProduct}</Button>
-      </Stack>
-    )
-    // Portal into the stage's normal document flow, never a sheet or dialog. The coach stays
-    // mounted behind its hidden region, preserving the conversation when a section is edited.
-    return host && createPortal(
-      <Stack component="section" aria-labelledby="new-shop-preview-title" data-testid="new-shop-review" spacing={3}>
-        <Typography ref={title} tabIndex={-1} id="new-shop-preview-title" component="h2" variant="headlineMedium" sx={{ '&:focus': { outline: 'none' } }}>{flow.steps[3]}</Typography>
-        <Typography variant="bodyMedium" color="text.secondary">{t.reviewNote}</Typography>
-        <Box sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 4, overflow: 'hidden' }}>
-          <Box sx={{ p: 4, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
-            <Typography component="h3" variant="headlineMedium" sx={{ overflowWrap: 'anywhere' }}>{fields.name}</Typography>
-            <Typography variant="bodyLarge" sx={{ mt: 1 }}>{fields.category}</Typography>
-          </Box>
-          <Stack spacing={3} sx={{ p: { xs: 3, sm: 4 } }}>
-            <Box>
-              {sectionTitle(t.editDetails, 1)}
-              {fields.description && <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{fields.description}</Typography>}
-              {fields.phone && <Typography>{fields.phone}</Typography>}
-              {fields.hours && <Typography>{fields.hours}</Typography>}
-              <HoursList hours={fields.weekly_hours} />
-            </Box>
-            <Divider />
-            <Box>
-              {sectionTitle(t.products, 2)}
-              <Stack component="ul" spacing={2} sx={{ p: 0, my: 2, listStyle: 'none' }}>
-                {snapshot.products.map((product) => (
-                  <Box component="li" key={product.name + product.unit} sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
-                    <Typography sx={{ overflowWrap: 'anywhere', minWidth: 0 }}>{product.name}</Typography>
-                    <Typography sx={{ flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{formatPrice(product.price, currency)} / {unitLabel(product.unit, shopCopy)}</Typography>
-                  </Box>
-                ))}
-              </Stack>
-              {!snapshot.products.length && <Typography color="text.secondary">{t.itemCount(0)}</Typography>}
-            </Box>
-            <Divider />
-            <Box>
-              {sectionTitle(t.fields.location, 3)}
-              <Box sx={{ my: 2, p: 2, borderRadius: 2, bgcolor: 'action.hover' }}>
-                {fields.lat != null ? <LocationPin fields={fields} /> : <Typography>{fields.location || flow.prompts[2]}</Typography>}
-                {fields.pin_demo && <Typography variant="bodySmall">{pinCopy.demo}</Typography>}
-              </Box>
-              {fields.location && (!fields.pin_label || fields.pin_demo) && <Button disabled={busy} onClick={() => void findPin()}>{pinCopy.findPin}</Button>}
-            </Box>
-            <Divider />
-            <Box>
-              {sectionTitle(t.factsTitle, 2)}
-              <FactList fields={fields} />
-            </Box>
-          </Stack>
-        </Box>
-        {Boolean(proposal.photo_notes?.length) && <Alert severity="info"><AlertTitle>{t.photoReviewNotes}</AlertTitle>{proposal.photo_notes?.map((note) => <Typography key={note} variant="bodySmall">{note}</Typography>)}</Alert>}
-        {error && <Alert severity="error">{error}</Alert>}
-        <Button variant="contained" disabled={busy} onClick={() => void confirm()}>{flow.open}</Button>
-      </Stack>, host,
-    )
-  }
   return (
     <Sheet
       open={open}

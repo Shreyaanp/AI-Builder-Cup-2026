@@ -1,4 +1,3 @@
-import { reviewPanel } from './../stories/support.js'
 import { test, expect, owner, audit, tamil } from './support.js'
 
 test('CSV sales total is exact, approval is required, saved history feeds forecast', async ({
@@ -55,7 +54,7 @@ test('menu CSV imports through UI and never saves on cancel', async ({ page }) =
     mimeType: 'text/csv',
     buffer: Buffer.from('Item Name,Price\nQA tea,19.25\n'),
   })
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('₹19.25')
   await page.keyboard.press('Escape')
   const products = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()

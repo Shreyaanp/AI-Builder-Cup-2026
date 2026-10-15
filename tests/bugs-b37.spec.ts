@@ -1,3 +1,4 @@
+import { createShop } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -20,12 +21,7 @@ async function shop(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).tap()
-  await page.getByRole('button', { name: 'Fill in a form instead' }).tap()
-  await page.getByLabel('Shop name').fill('Katong Kopi')
-  await page.getByLabel('Category').fill('Kopi shop')
-  await page.getByLabel('Address or area').fill('Katong, Singapore')
-  await page.getByRole('button', { name: 'Review', exact: true }).tap()
-  await page.getByRole('button', { name: 'Confirm and save' }).tap()
+  await createShop(page, 'name: Katong Kopi; category: Kopi shop; location: Katong, Singapore')
   await page.getByRole('button', { name: 'Google', exact: true }).tap()
 }
 

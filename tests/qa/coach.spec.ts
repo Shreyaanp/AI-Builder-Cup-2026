@@ -1,4 +1,3 @@
-import { reviewPanel, openNewShopReview } from './../stories/support.js'
 import {
   test,
   expect,
@@ -16,7 +15,7 @@ import {
 test('text upkeep reviews price and sold-out together before saving', async ({ page }) => {
   const id = await owner(page)
   await say(page, 'Kopi is 20 rupees now, kaya toast sold out')
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('₹20.00')
   const before = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
   expect(before.find((p: { name: string }) => p.name === 'Kopi').price).toBe(1800)
@@ -34,8 +33,7 @@ test('photo is explicitly an offline fixture at the approval boundary and cancel
     .locator('input[type=file]')
     .first()
     .setInputFiles(await image(page))
-  await openNewShopReview(page)
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText(/offline|fixture/i)
   await audit(page)
   await page.keyboard.press('Escape')
@@ -63,8 +61,7 @@ test('coach server failure preserves draft and retry recovers', async ({ page })
   )
   await page.unroute('**/coach/stream')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(page.getByRole('log')).toContainText('Offline template')
-  await expect(page.getByRole('log')).toContainText('What do you sell?')
+  await expect(page.getByRole('log')).toContainText('scripted reply')
 })
 
 test('Tamil coach responds in the selected language', async ({ page }) => {
@@ -96,6 +93,5 @@ test('actual offline coach preserves a failed draft and reconnect retry works', 
     await context.setOffline(false)
   }
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(page.getByRole('log')).toContainText('Offline template')
-  await expect(page.getByRole('log')).toContainText('What do you sell?')
+  await expect(page.getByRole('log')).toContainText('scripted reply')
 })

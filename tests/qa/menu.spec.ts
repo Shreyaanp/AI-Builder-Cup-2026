@@ -1,4 +1,3 @@
-import { reviewPanel } from './../stories/support.js'
 import { test, expect, owner, approve, prepare, audit, tamil, evidence } from './support.js'
 
 test('menu inline edit rejects invalid price, Escape cancels, approved edit persists', async ({
@@ -11,7 +10,7 @@ test('menu inline edit rejects invalid price, Escape cancels, approved edit pers
   const price = page.getByRole('textbox', { name: 'Edit price: Kopi', exact: true })
   await price.fill('-1')
   await price.press('Enter')
-  await expect(reviewPanel(page)).toHaveCount(0)
+  await expect(page.getByRole('dialog', { name: 'Check before saving' })).toHaveCount(0)
   await price.fill('21.50')
   await price.press('Enter')
   await expect(page.getByRole('button', { name: 'Save ₹21.50', exact: true })).toBeVisible()

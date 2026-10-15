@@ -1,4 +1,4 @@
-import { reviewPanel, confirm as approveReview } from './stories/support.js'
+import { createShop } from './stories/support.js'
 import { expect, test, type Page } from '@playwright/test'
 
 async function shopWithoutMenu(page: Page) {
@@ -7,10 +7,7 @@ async function shopWithoutMenu(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
-  await page.getByLabel('Shop name').fill('Ah Seng Kopi')
-  await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await approveReview(page)
+  await createShop(page, 'name: Ah Seng Kopi')
   await page.getByRole('button', { name: 'My shop' }).click()
   await page.getByRole('button', { name: /^Menu/ }).click()
   // The sheet's compact "Import" action opens its choices in the sheet (B28).
@@ -28,7 +25,7 @@ test('a POS menu export becomes a proposal the owner reviews', async ({ page }) 
   await page
     .locator('input[type="file"][accept*=".xlsx"]')
     .setInputFiles(csv('Item Name,Price\nKopi,1.80\nKaya toast,2.50\n'))
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('Kopi')
   await expect(review).toContainText('Kaya toast')
   await expect(review).toContainText('$2.50')

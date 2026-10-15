@@ -240,3 +240,69 @@ def test_invalid_device_location_is_rejected(tmp_path: Path, point: dict):
             ).status_code
             == 422
         )
+
+
+def test_new_shop_coach_speaks_first_and_moves_on_when_the_owner_does_not_answer(tmp_path: Path):
+    app = create_app(settings(tmp_path), InMemorySessionService())
+
+    def turn(client: TestClient, message: str, sid: str | None, draft: dict) -> tuple[str, list]:
+        response = client.post(
+            "/api/v1/coach/stream",
+            json={
+                "message": message,
+                "new_shop": True,
+                "session_id": sid,
+                "new_shop_draft": draft,
+            },
+        )
+        events = [
+            json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")
+        ]
+        reply = next(event["text"] for event in reversed(events) if event["kind"] == "reply")
+        return reply, events
+
+    with TestClient(app) as client:
+        join(client)
+        empty = {"business": None, "products": []}
+        greeting, events = turn(client, "Hello! I want to open a new shop.", None, empty)
+        sid = events[0]["session_id"]
+        assert "What do you sell?" in greeting and "Hi" in greeting
+        # Silence on the first question: a concrete suggestion, and the question stays open.
+        idea, _ = turn(client, "I'm not sure. Suggest something or skip it.", sid, empty)
+        assert "photo of your menu" in idea
+        _, events = turn(client, "I sell masala chai", sid, empty)
+        proposal = next(event for event in events if event["kind"] == "proposal")
+        business = proposal["data"]["snapshot"]["business"]
+        draft = {"business": business, "products": []}
+        # Silence on location: the coach leaves it out, says so and asks the next question.
+        moved, _ = turn(client, "I'm not sure. Suggest something or skip it.", sid, draft)
+        assert "leave the location out" in moved and "opening hours" in moved
+        # Skipped questions stay skipped on later turns.
+        _, events = turn(client, "hours: 7am-9pm", sid, draft)
+        later = next(event["text"] for event in reversed(events) if event["kind"] == "reply")
+        assert "How can customers pay?" in later
+        assert client.get("/api/v1/businesses").json() == []
+
+
+def test_new_shop_voice_draft_can_be_refreshed_mid_session(tmp_path: Path):
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        join(client)
+        with client.websocket_connect(
+            "/api/v1/voice?new_shop=true", headers={"origin": "http://127.0.0.1:3200"}
+        ) as socket:
+            socket.send_json({"kind": "new_shop", "draft": None})
+            assert socket.receive_json()["kind"] == "ready"
+            socket.send_json(
+                {"kind": "new_shop", "draft": {"business": {"name": "Photo Kopi"}, "products": []}}
+            )
+            socket.send_json({"kind": "text", "text": "hours: 8am-6pm"})
+            business = None
+            while True:
+                event = socket.receive_json()
+                if event["kind"] == "proposal":
+                    business = event["data"]["snapshot"]["business"]
+                if event["kind"] == "turn_complete":
+                    break
+            socket.send_json({"kind": "close"})
+        assert business and business["name"] == "Photo Kopi"

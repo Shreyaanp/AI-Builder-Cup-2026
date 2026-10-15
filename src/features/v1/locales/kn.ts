@@ -2,16 +2,9 @@ import type { Copy } from '../strings'
 
 export const kn: Copy = {
   newShopMode: 'ಹೊಸ ಅಂಗಡಿ',
-  newShopIntro: 'ನಿಮ್ಮ ಹೊಸ ಅಂಗಡಿಯನ್ನು ಆನ್‌ಲೈನ್‌ಗೆ ತರೋಣ. ಫೋಟೋ ನೀಡಿ ಅಥವಾ ಏನು ಮಾರುತ್ತೀರಿ ಹೇಳಿ.',
-  newShopCamera: 'ಮೆನು ಅಥವಾ ಅಂಗಡಿ ಮುಂಭಾಗದ ಫೋಟೋ ತೆಗೆಯಿರಿ',
-  newShopVoice: 'ನಿಮ್ಮ ಅಂಗಡಿಯ ಬಗ್ಗೆ ಹೇಳಿ',
-  newShopForm: 'ಬದಲಿಗೆ ಫಾರ್ಮ್ ತುಂಬಿ',
-  newShopCancel: 'ನನ್ನ ಈಗಿನ ಅಂಗಡಿಗೆ ಹಿಂತಿರುಗಿ',
-  newShopReview: 'ನನ್ನ ಹೊಸ ಅಂಗಡಿಯನ್ನು ಪರಿಶೀಲಿಸಿ',
   newShopReady: 'ನಿಮ್ಮ ಹೊಸ ಅಂಗಡಿ ಸಿದ್ಧವಾಗಿದೆ',
   newShopReadyBody: 'ಈಗ ನೀವು ಹೊಸ ಅಂಗಡಿಯಲ್ಲಿ ಕೆಲಸ ಮಾಡುತ್ತಿದ್ದೀರಿ. ಸಿದ್ಧವಾದಾಗ ಗ್ರಾಹಕ ಪುಟ ಹಂಚಿಕೊಳ್ಳಿ.',
   newShopContinue: 'ನನ್ನ ಅಂಗಡಿಯೊಂದಿಗೆ ಮುಂದುವರಿಸಿ',
-  newShopPhotoNext: 'ನಿಮ್ಮ ಅಂಗಡಿಯ ಬಗ್ಗೆ ಗ್ರಾಹಕರಿಗೆ ಏನು ತಿಳಿಸಲು ಬಯಸುತ್ತೀರಿ?',
   useCurrentLocation: 'ನನ್ನ ಈಗಿನ ಸ್ಥಳ ಬಳಸಿ',
   locationReason: 'ಅಂಗಡಿಯಲ್ಲಿದ್ದೀರಾ? ಪಿನ್ ಇಡಲು ಸ್ಥಳದ ಅನುಮತಿ ನೀಡಿ. ಉಳಿಸುವ ಮೊದಲು ಪರಿಶೀಲಿಸುತ್ತೀರಿ.',
   locating: 'ನಿಮ್ಮ ಸ್ಥಳ ಹುಡುಕಲಾಗುತ್ತಿದೆ…',
@@ -19,7 +12,6 @@ export const kn: Copy = {
   locationFailed: 'ಸ್ಥಳ ಸಿಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ, ವಿಳಾಸ ಬರೆಯಿರಿ ಅಥವಾ GPS ಇರುವ ಫೋಟೋ ಬಳಸಿ.',
   yourLocation: 'ನಿಮ್ಮ ಸ್ಥಳ',
   description: 'ವಿವರಣೆ',
-  newShopStep: (n: number) => `ಹೊಸ ಅಂಗಡಿ · ಹಂತ ${n}/4`,
   locationAccuracy: (m: string) => `${m} ಮೀ ಒಳಗೆ`,
   installApp: 'ಆ್ಯಪ್ ಸ್ಥಾಪಿಸಿ',
   installIos: 'Safariಯಲ್ಲಿ ಹಂಚಿಕೊಳ್ಳಿ → ಹೋಮ್ ಸ್ಕ್ರೀನ್‌ಗೆ ಸೇರಿಸಿ ಆಯ್ದು, ಸೇರಿಸಿ ಒತ್ತಿ.',
@@ -272,7 +264,6 @@ export const kn: Copy = {
   stock: 'ದಾಸ್ತಾನು',
   // Shop
   shopEmptyTitle: 'ನಿಮ್ಮ ಅಂಗಡಿ ಸೇರಿಸೋಣ',
-  shopEmptyBody: 'ಫಲಕದ ಫೋಟೋದಿಂದ ಆರಂಭಿಸಿ ಅಥವಾ ನೀವೇ ವಿವರ ತುಂಬಿ.',
   addShop: 'ಅಂಗಡಿ ವಿವರ ಸೇರಿಸಿ',
   startPhoto: 'ಫೋಟೋದಿಂದ ಆರಂಭಿಸಿ',
   editDetails: 'ವಿವರ ತಿದ್ದಿ',

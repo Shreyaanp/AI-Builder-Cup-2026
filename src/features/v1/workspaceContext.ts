@@ -2,6 +2,7 @@ import { createContext, use } from 'react'
 import type { Api, Business, Me, Product, Proposal } from './api'
 
 export type Destination = 'coach' | 'shop' | 'google' | 'privacy'
+export type NewShopPhase = 'hero' | 'chat' | 'review'
 
 export interface Workspace {
   api: Api
@@ -13,13 +14,14 @@ export interface Workspace {
   retryLoad: () => Promise<void>
   activeId: string | null
   active: Business | null
+  /** The full-screen new-shop flow is open (hero, conversation, review). */
   creatingShop: boolean
-  newShopStep: number
-  setNewShopStep: (step: number) => void
-  reviewingNewShop: boolean
-  newShopProposal: Proposal | null
+  newShopPhase: NewShopPhase
+  setNewShopPhase: (phase: NewShopPhase) => void
   startNewShop: () => void
   cancelNewShop: () => void
+  /** The owner approved the new shop: select it and show the ready moment. */
+  finishNewShop: (businessId: string) => Promise<void>
   newShopReady: boolean
   dismissNewShopReady: () => void
   products: Product[]

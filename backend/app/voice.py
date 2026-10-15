@@ -12,7 +12,8 @@ from google.genai import types
 from pydantic import ValidationError
 
 from .auth import Principal
-from .contracts import StreamEvent, VoiceControl
+from .contracts import NewShopVoiceContext, StreamEvent, VoiceControl
+from .coordinator import current
 from .streaming import CoachRuntime, public_events
 
 log = structlog.get_logger()
@@ -23,6 +24,20 @@ VOICE_IDLE_SECONDS = 45
 
 class VoiceIdle(TimeoutError):
     pass
+
+
+def refresh_new_shop_draft(raw: str) -> bool:
+    """A new-shop socket may resend its draft (a photo or a measured location changed it), so
+    the tools keep building on what the owner sees. Only the session's own new-shop context moves.
+    """
+    if '"new_shop"' not in raw[:40]:
+        return False
+    update = NewShopVoiceContext.model_validate_json(raw)
+    merchant = current.get()
+    if not merchant or not merchant.new_shop:
+        raise ValueError("Draft update outside a new-shop session")
+    merchant.new_shop_draft = update.draft
+    return True
 
 
 async def receive_frame(websocket: WebSocket) -> MutableMapping[str, Any]:
@@ -55,6 +70,8 @@ async def offline_voice(
         text = frame.get("text", "")
         if len(text) > 5000:
             raise ValueError("Frame too large")
+        if refresh_new_shop_draft(text):
+            continue
         command = VoiceControl.model_validate_json(text)
         if command.kind == "close":
             return
@@ -103,6 +120,8 @@ async def gemini_voice(
             raw = frame.get("text", "")
             if len(raw) > 5000:
                 raise ValueError("Frame too large")
+            if refresh_new_shop_draft(raw):
+                continue
             command = VoiceControl.model_validate_json(raw)
             if command.kind == "close":
                 return

@@ -1,4 +1,4 @@
-import { reviewPanel, openNewShopReview, confirm as approveReview } from './stories/support.js'
+import { openNewShopReview, createShopFromReview } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -28,16 +28,13 @@ async function open(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await agree.click()
-  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
 }
 
 async function addShop(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
-  await page.getByLabel('Shop name').fill(name)
-  await page.getByRole('button', { name: 'Review', exact: true }).click()
-  const review = reviewPanel(page)
-  await expect(review).toContainText('Nothing is published to Google')
-  await approveReview(page)
+  await openNewShopReview(page, `name: ${name}`)
+  await expect(page.getByTestId('new-shop-review')).toContainText('Nothing is published to Google')
+  await createShopFromReview(page)
   await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
 }
 
@@ -54,9 +51,9 @@ async function sharedShop(page: Page) {
   await page.getByRole('combobox', { name: 'Unit' }).click()
   await page.getByRole('option', { name: 'cup', exact: true }).click()
   await page.getByRole('button', { name: 'Review', exact: true }).click()
-  const review = reviewPanel(page)
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('Chai')
-  await approveReview(page)
+  await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: /^Menu/ }).click()
   // B28: the price is its own button on the item card.
@@ -112,7 +109,9 @@ for (const colorScheme of ['light', 'dark'] as const) {
         case 'Coach':
           await open(page)
           await expect(page.getByRole('log')).toHaveCount(0)
-          await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
+          await expect(
+            page.getByRole('region', { name: 'Scan your menu or shop board' }),
+          ).toBeVisible()
           break
         case 'Review':
           await open(page)
@@ -121,8 +120,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
             mimeType: 'image/png',
             buffer: await png(page, 64),
           })
-          await openNewShopReview(page)
-          await expect(reviewPanel(page)).toBeVisible()
+          await expect(page.getByRole('dialog', { name: 'Check before saving' })).toBeVisible()
           break
         default: {
           const shared = await sharedShop(page)

@@ -43,8 +43,8 @@ import { useCopy } from './strings'
 import { isLanguagePref, LOCALE_NAMES, LOCALES, systemLocale } from '../../i18n/locales'
 import { useWorkspace } from './workspaceContext'
 import type { Destination } from './workspaceContext'
-import { CoachWorkspace } from './screens/CoachScreen'
-import { NewShopHeading, NewShopNavigation } from './NewShopStage'
+import { CoachWorkspace, type GalleryPhoto } from './screens/CoachScreen'
+import { NewShopFlow } from './NewShopFlow'
 import { TourHost, TourMenuButton } from '../tour/Tour'
 import { ShopScreen } from './screens/ShopScreen'
 import { ShopOverview } from './ShopTiles'
@@ -60,7 +60,10 @@ export function AppShell() {
   const roles = useTheme().material
   const rail = useMediaQuery(`(min-width:${windowClass.medium}px)`)
   const keyboard = useKeyboardOpen()
+  // The new-shop flow takes the whole screen; the workspace stays mounted (hidden) behind it,
+  // so the current shop's coach keeps its conversation and unsent note.
   const inFlow = ws.creatingShop || ws.newShopReady
+  const [galleryPhoto, setGalleryPhoto] = useState<GalleryPhoto | null>(null)
   const showNavBar = !rail && !keyboard && !inFlow
   // Large windows: My shop tiles beside the coach (phones keep the coach to one card).
   const supporting = useMediaQuery(`(min-width:${windowClass.large}px)`)
@@ -81,126 +84,118 @@ export function AppShell() {
         ]
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: roles.surface }}>
-      <a href="#main" className="skip-link">
-        Skip to content
-      </a>
-      {rail && !inFlow && (
-        <Box
-          component="nav"
-          aria-label="Main"
-          sx={{
-            width: 96,
-            flexShrink: 0,
-            position: 'sticky',
-            top: 0,
-            height: '100dvh',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 1.5,
-            pt: 'calc(16px + env(safe-area-inset-top))',
-            pl: 'env(safe-area-inset-left)',
-          }}
-        >
-          <Box aria-hidden="true" sx={{ color: roles.primary, mb: 3, mt: 1 }}>
-            <Leaf size={28} />
-          </Box>
-          {destinations.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              selected={ws.destination === item.id}
-              onSelect={ws.go}
-              rail
-            />
-          ))}
-        </Box>
-      )}
-      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <TopBar />
-        <TourHost />
-        <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
+    <>
+      {inFlow && <NewShopFlow setGalleryPhoto={setGalleryPhoto} />}
+      <Box sx={{ display: inFlow ? 'none' : 'flex', minHeight: '100dvh', bgcolor: roles.surface }}>
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
+        {rail && (
           <Box
-            component="main"
-            id="main"
-            tabIndex={-1}
+            component="nav"
+            aria-label="Main"
             sx={{
-              flex: 1,
-              minWidth: 0,
-              px: { xs: 2, sm: 3, md: 4 },
-              pb: inFlow ? 'calc(24px + env(safe-area-inset-bottom))' : rail ? 3 : 'calc(96px + env(safe-area-inset-bottom))',
-              ...(inFlow && !ws.newShopReady ? {
-                display: 'grid',
-                gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(260px, 0.85fr) minmax(0, 1.15fr)' },
-                alignContent: 'start',
-                gap: { xs: 0, md: 6 },
-                width: '100%',
-                maxWidth: 1200,
-                mx: 'auto',
-              } : {}),
-              outline: 'none',
+              width: 96,
+              flexShrink: 0,
+              position: 'sticky',
+              top: 0,
+              height: '100dvh',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 1.5,
+              pt: 'calc(16px + env(safe-area-inset-top))',
+              pl: 'env(safe-area-inset-left)',
             }}
           >
-            {inFlow && !ws.newShopReady && <NewShopHeading />}
-            {/* Coach stays mounted while hidden so drafts, replies and voice survive tab
-                changes; keyed by shop so each shop has its own thread. */}
-            <Box hidden={ws.destination !== 'coach' || ws.reviewingNewShop} sx={{ height: '100%', minWidth: 0 }}>
-              <CoachWorkspace />
+            <Box aria-hidden="true" sx={{ color: roles.primary, mb: 3, mt: 1 }}>
+              <Leaf size={28} />
             </Box>
-            <Box id="new-shop-review-host" hidden={!ws.reviewingNewShop} sx={{ minWidth: 0, py: 3 }} />
-            {screen}
+            {destinations.map((item) => (
+              <NavItem
+                key={item.id}
+                item={item}
+                selected={ws.destination === item.id}
+                onSelect={ws.go}
+                rail
+              />
+            ))}
           </Box>
-          {supporting && ws.destination === 'coach' && ws.active && !inFlow && (
+        )}
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <TopBar />
+          <TourHost />
+          <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
             <Box
-              component="aside"
-              aria-label={t.navShop}
+              component="main"
+              id={inFlow ? undefined : 'main'}
+              tabIndex={-1}
               sx={{
-                width: 400,
-                flexShrink: 0,
-                m: 4,
-                ml: 0,
-                alignSelf: 'flex-start',
-                position: 'sticky',
-                top: 80,
-                maxHeight: 'calc(100dvh - 96px)',
-                overflowY: 'auto',
+                flex: 1,
+                minWidth: 0,
+                px: { xs: 2, sm: 3, md: 4 },
+                pb: rail ? 3 : 'calc(96px + env(safe-area-inset-bottom))',
+                outline: 'none',
               }}
             >
-              <ShopOverview key={ws.active.id} narrow />
+              {/* Coach stays mounted while hidden so drafts, replies and voice survive tab
+                changes; keyed by shop so each shop has its own thread. */}
+              <Box hidden={ws.destination !== 'coach'} sx={{ height: '100%' }}>
+                <CoachWorkspace galleryPhoto={galleryPhoto} setGalleryPhoto={setGalleryPhoto} />
+              </Box>
+              {screen}
             </Box>
-          )}
+            {supporting && ws.destination === 'coach' && ws.active && !inFlow && (
+              <Box
+                component="aside"
+                aria-label={t.navShop}
+                sx={{
+                  width: 400,
+                  flexShrink: 0,
+                  m: 4,
+                  ml: 0,
+                  alignSelf: 'flex-start',
+                  position: 'sticky',
+                  top: 80,
+                  maxHeight: 'calc(100dvh - 96px)',
+                  overflowY: 'auto',
+                }}
+              >
+                <ShopOverview key={ws.active.id} narrow />
+              </Box>
+            )}
+          </Box>
         </Box>
+        {showNavBar && (
+          <Box
+            component="nav"
+            aria-label="Main"
+            sx={{
+              position: 'fixed',
+              insetInline: 0,
+              bottom: 0,
+              zIndex: 10,
+              display: 'grid',
+              gridTemplateColumns: `repeat(${destinations.length}, 1fr)`,
+              bgcolor: roles.surfaceContainer,
+              pt: 1.5,
+              pb: 'calc(16px + env(safe-area-inset-bottom))',
+              px: 'env(safe-area-inset-left)',
+            }}
+          >
+            {destinations.map((item) => (
+              <NavItem
+                key={item.id}
+                item={item}
+                selected={ws.destination === item.id}
+                onSelect={ws.go}
+              />
+            ))}
+          </Box>
+        )}
+        <DiscardPrompt />
       </Box>
-      {showNavBar && (
-        <Box
-          component="nav"
-          aria-label="Main"
-          sx={{
-            position: 'fixed',
-            insetInline: 0,
-            bottom: 0,
-            zIndex: 10,
-            display: 'grid',
-            gridTemplateColumns: `repeat(${destinations.length}, 1fr)`,
-            bgcolor: roles.surfaceContainer,
-            pt: 1.5,
-            pb: 'calc(16px + env(safe-area-inset-bottom))',
-            px: 'env(safe-area-inset-left)',
-          }}
-        >
-          {destinations.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              selected={ws.destination === item.id}
-              onSelect={ws.go}
-            />
-          ))}
-        </Box>
-      )}
-      <DiscardPrompt />
-    </Box>
+    </>
   )
 }
 
@@ -304,7 +299,6 @@ function NavItem({
 function TopBar() {
   const t = useCopy()
   const ws = useWorkspace()
-  const inFlow = ws.creatingShop || ws.newShopReady
   const identity = useIdentity()
   const preferences = usePreferences()
   const dispatch = usePreferencesDispatch()
@@ -339,9 +333,7 @@ function TopBar() {
         pt: 'env(safe-area-inset-top)',
       }}
     >
-      {ws.creatingShop && <NewShopNavigation />}
-      {ws.newShopReady && <Box sx={{ flex: 1 }} />}
-      {!inFlow && <Button
+      <Button
         onClick={(event) => setShopMenu(event.currentTarget)}
         endIcon={<ChevronDown size={18} />}
         aria-haspopup="menu"
@@ -349,28 +341,27 @@ function TopBar() {
         sx={{ color: roles.onSurface, minWidth: 0, maxWidth: 'min(70vw, 420px)', px: 1.5 }}
       >
         <Typography variant="titleLarge" noWrap component="span">
-          {ws.creatingShop ? t.newShopMode : (ws.active?.fields.name ?? t.appName)}
+          {ws.active?.fields.name ?? t.appName}
         </Typography>
-      </Button>}
-      {!inFlow && <Box sx={{ flex: 1 }} />}
-      {!inFlow && ws.destination === 'coach' && (
+      </Button>
+      <Box sx={{ flex: 1 }} />
+      {ws.destination === 'coach' && (
         <Tooltip title={t.newChat}>
-          <IconButton aria-label={t.newChat} aria-haspopup="dialog" onClick={() => ws.setCoachActions(true)}>
+          <IconButton
+            aria-label={t.newChat}
+            aria-haspopup="dialog"
+            onClick={() => ws.setCoachActions(true)}
+          >
             <MessageCircle size={22} />
           </IconButton>
         </Tooltip>
       )}
-      {/* New chat and the other coach actions, next to settings (only where the coach is). */}
-      {!inFlow && (
-        <Tooltip title={t.addShop}>
-          <IconButton
-            aria-label={t.addShop}
-            onClick={ws.startNewShop}
-          >
-            <Plus size={22} />
-          </IconButton>
-        </Tooltip>
-      )}
+      {/* "+" opens the full-screen new-shop flow (never a form dialog). */}
+      <Tooltip title={t.addShop}>
+        <IconButton aria-label={t.addShop} onClick={ws.startNewShop}>
+          <Plus size={22} />
+        </IconButton>
+      </Tooltip>
       <Tooltip title={t.settings}>
         <IconButton
           ref={settingsButton}

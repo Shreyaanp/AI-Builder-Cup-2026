@@ -79,30 +79,56 @@ export async function enter(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
 }
 
-/** Existing-shop edits use a sheet; registration reviews are a dedicated step page. */
-export function reviewPanel(page: Page) {
-  return page.getByTestId('new-shop-review').or(page.getByRole('dialog', { name: reviewName }))
+export async function confirm(page: Page) {
+  const review = page.getByRole('dialog', { name: reviewName })
+  await review.getByRole('button', { name: 'Confirm and save' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
 }
 
-export async function openNewShopReview(page: Page) {
-  for (let step = 1; step < 3; step++) {
-    await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeEnabled()
-    await page.getByRole('button', { name: 'Continue', exact: true }).click()
-  }
-  await page.getByRole('button', { name: 'Review my new shop' }).click()
+/**
+ * Opens the full-screen new-shop flow from the header "+" (unless it is already open), lets the
+ * coach greet, answers in the chat and opens the full-screen review. The offline coach reads
+ * "name: …; location: …" notes into the draft.
+ */
+export async function openNewShopReview(
+  page: Page,
+  details = 'name: Courtyard Chai; category: Tea stall; location: Indiranagar, Bengaluru',
+) {
+  const begin = page.getByRole('button', { name: 'Let’s begin' })
+  if (!(await begin.isVisible()))
+    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await begin.click()
+  await expect(page.getByRole('log')).toContainText('What do you sell?')
+  await page.getByLabel('Message', { exact: true }).fill(details)
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByTestId('agent-action').last()).toBeVisible()
+  await page.getByRole('button', { name: 'Review my shop' }).click()
   await expect(page.getByTestId('new-shop-review')).toBeVisible()
 }
 
-export async function confirm(page: Page, keepReady = false) {
-  const review = reviewPanel(page)
-  const isNew = await page.getByTestId('new-shop-review').isVisible()
-  await review.getByRole('button', { name: isNew ? 'Open my shop' : 'Confirm and save' }).click()
-  await expect(review).toBeHidden()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
-  if (isNew && !keepReady) await page.getByRole('button', { name: 'Continue with my shop' }).click()
+/** A whole new shop through the flow: chat, review, "Open my shop", back to the workspace. */
+export async function createShop(page: Page, details?: string) {
+  await openNewShopReview(page, details)
+  await createShopFromReview(page)
+}
+
+/** The saved shop's details form (My shop → Shop details → Edit details). */
+export async function editShopDetails(page: Page) {
+  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: /^Shop details/ }).click()
+  await page.getByRole('button', { name: 'Edit details' }).click()
+  await expect(page.getByLabel('Shop name')).toBeVisible()
+}
+
+/** From the flow's review page: "Open my shop", the ready moment, then the workspace. */
+export async function createShopFromReview(page: Page) {
+  await page.getByRole('button', { name: 'Open my shop' }).click()
+  await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeVisible()
+  await page.getByRole('button', { name: 'Continue with my shop' }).click()
+  await expect(page.getByTestId('new-shop-flow')).toHaveCount(0)
 }
 
 export async function closeSheet(page: Page) {
@@ -204,8 +230,7 @@ export async function seedShop(page: Page, withPhotoPin = false, name = shopName
       ).ok(),
     ).toBe(true)
   }
-  // Return to the workspace after arranging a saved shop, rather than re-entering /new-shop.
-  await page.goto('/')
+  await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
 }
