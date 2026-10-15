@@ -122,3 +122,39 @@ test('reduced motion: the thread and Saved still work without animation', async 
   )
   expect(running).toBe(0)
 })
+
+test('personalisation: stated preferences are remembered, rank For you, and can be cleared', async ({
+  page,
+  isMobile,
+}) => {
+  test.setTimeout(60_000)
+  await page.goto('/explore/')
+  await expect(page.getByRole('heading', { name: 'What are you looking for?' })).toBeVisible({
+    timeout: 30_000,
+  })
+  // Sign in (local stand-in for Google) and follow the demo bakery.
+  expect(
+    (await page.request.post('/api/v1/customer/session', { data: { name: 'Asha' } })).ok(),
+  ).toBeTruthy()
+  expect((await page.request.put(`/api/v1/customer/follows/${SHOP}`)).ok()).toBeTruthy()
+  await page.reload()
+  await page.getByRole('search').getByRole('textbox').fill("I'm vegetarian, croissant in Tiong Bahru")
+  await page.getByRole('search').getByRole('button', { name: 'Search' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Remembered:' })).toContainText(
+    'Vegetarian',
+    { timeout: 15_000 },
+  )
+  const forYou = page.getByRole('region', { name: 'For you' })
+  await expect(forYou).toBeVisible()
+  await expect(forYou.getByText(/You follow this shop|Vegetarian options/).first()).toBeVisible()
+  await page.waitForTimeout(1600)
+  if (isMobile) await page.screenshot({ path: shots('C-8-for-you') })
+  await axe(page)
+  await page.getByRole('button', { name: 'Manage' }).click()
+  const sheet = page.getByRole('dialog')
+  await expect(sheet.getByText('Vegetarian', { exact: true })).toBeVisible()
+  await page.waitForTimeout(600)
+  if (isMobile) await page.screenshot({ path: shots('C-9-profile') })
+  await sheet.getByRole('button', { name: 'Clear preferences and searches' }).click()
+  await expect(sheet.getByText('Cleared. Follows stay until you unfollow.')).toBeVisible()
+})
