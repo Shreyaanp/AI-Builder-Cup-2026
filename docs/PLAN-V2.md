@@ -83,6 +83,11 @@ honest demo labels, reduced motion, axe clean, a story walkthrough test, live on
 
 ## Status log (newest first)
 
+- 15 Oct (afternoon): research done: docs/research/visual-motion.md (+ 3 mockups, recommends
+  Direction 1 Chalkboard with Direction 2 buttons/stickers), customer.md (Today's 7 feed, passport
+  rules, rescue, generator), owner-supplier.md (radar k-anonymity, rescue, brief, price check, group
+  buying, supplier radar). Waiting on owner: pick visual direction. Demo world generator on main
+  (c100540; enable in prod with DEMO_WORLD_ENABLED=true). Q8 fixed and live.
 - 15 Oct: live `e6722cb`, which carries customer sign-in/chats/follow/tips, Firestore fixes,
   locally made badge and the Q8 fix. QA machine (`npm run test:qa`, 118 cases) found 14 issues.
   In progress: Codex → owner QA fixes (Q6, Q7, Q12–Q14); account 2 → customer QA fixes (Q2–Q5,
