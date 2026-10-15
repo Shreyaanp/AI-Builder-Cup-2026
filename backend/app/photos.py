@@ -73,6 +73,45 @@ class PhotoExtraction(BaseModel):
     uncertain: list[str] = Field(default_factory=list, max_length=20)
 
 
+class _ProductSpec(BaseModel):
+    name: str
+    price: float | None = None
+    unit: Unit = "item"
+    category: str = Field(default="", description="Menu section; always set")
+
+
+class _PhotoSpec(BaseModel):
+    """What Gemini fills: plain types only (it rejects length/range limits in response
+    schemas with a bare 400); `to_extraction` applies the limits afterwards."""
+
+    photo_kind: Literal["signboard", "menu", "price_list", "product", "storefront", "other"]
+    business: ExtractedBusiness = Field(default_factory=ExtractedBusiness)
+    products: list[_ProductSpec] = Field(default_factory=list)
+    uncertain: list[str] = Field(default_factory=list)
+
+
+def to_extraction(spec: _PhotoSpec) -> PhotoExtraction:
+    return PhotoExtraction(
+        photo_kind=spec.photo_kind,
+        business=spec.business,
+        products=[
+            ExtractedProduct(
+                name=product.name,
+                price=(
+                    product.price
+                    if product.price is not None and 0 <= product.price <= 100_000_000
+                    else None
+                ),
+                unit=product.unit,
+                category=product.category[:80],
+            )
+            for product in spec.products[:200]
+            if product.name.strip()
+        ],
+        uncertain=[note[:300] for note in spec.uncertain[:20]],
+    )
+
+
 PROMPT = """You review a photo sent by a small-business owner for their own business listing.
 Classify photo_kind. Use "other" for anything that is not a signboard, menu, price list,
 product or storefront (for example selfies, people, documents, screenshots or scenery).
@@ -181,24 +220,29 @@ class PhotoPipeline:
                 if self.settings.gemini_backend == "vertex"
                 else genai.Client(api_key=self.settings.google_api_key.get_secret_value())
             )
-        response = await self._genai.aio.models.generate_content(
-            model=self.settings.google_text_model,
-            contents=[types.Part.from_bytes(data=image, mime_type="image/jpeg"), PROMPT],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=PhotoExtraction,
-                temperature=0,
-                max_output_tokens=16000,
-            ),
-        )
+        try:
+            response = await self._genai.aio.models.generate_content(
+                model=self.settings.google_text_model,
+                contents=[types.Part.from_bytes(data=image, mime_type="image/jpeg"), PROMPT],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=_PhotoSpec,
+                    temperature=0,
+                    max_output_tokens=16000,
+                ),
+            )
+        except Exception as error:
+            # Never a bare 500: the owner sees "couldn't read this photo, try again".
+            log.warning("photo_extraction_failed", error=str(error)[:300])
+            raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE") from None
         feedback = getattr(response, "prompt_feedback", None)
         candidate = (response.candidates or [None])[0]
         reason = str(getattr(candidate, "finish_reason", "") or "")
         if (feedback and feedback.block_reason) or "SAFETY" in reason or "PROHIBITED" in reason:
             raise PhotoRejected(422, "PHOTO_BLOCKED")
-        if not isinstance(response.parsed, PhotoExtraction):
+        if not isinstance(response.parsed, _PhotoSpec):
             raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE")
-        return response.parsed
+        return to_extraction(response.parsed)
 
     # --- storage ----------------------------------------------------------------------
     def store_sync(self, uid: str, bid: str | None, image: bytes) -> str | None:

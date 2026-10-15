@@ -8,6 +8,7 @@ from typing import Any, Literal
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from .gemini_schema import gemini_schema, parse_reply
 from .money import DEFAULT_CURRENCY, to_major
 from .settings import Settings
 
@@ -496,14 +497,15 @@ class CustomerAnswers:
                     config=types.GenerateContentConfig(
                         system_instruction=RULES + json.dumps(facts, ensure_ascii=False),
                         response_mime_type="application/json",
-                        response_schema=Answer,
+                        response_json_schema=gemini_schema(Answer),
                         temperature=0,
                         max_output_tokens=600,
                     ),
                 )
-                if not isinstance(response.parsed, Answer):
+                answer = parse_reply(Answer, response)
+                if answer is None:
                     raise ValueError("Missing structured answer")
-                return Answer(answer=response.parsed.answer)
+                return Answer(answer=answer.answer)
         except Exception:
             # Do not disclose provider errors, questions or answers in logs or responses.
             raise HTTPException(

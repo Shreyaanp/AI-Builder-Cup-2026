@@ -28,6 +28,7 @@ from .customer import (
     Question,
 )
 from .customer_routes import STREAM_RESPONSES, public_thread, shared, thread_stream
+from .gemini_schema import gemini_schema, parse_reply
 from .limits import client_ip, enforce_limits
 from .merchant import DEMO_ID
 from .merchant_routes import owner, store
@@ -551,14 +552,14 @@ async def moderate(request: Request, text: str) -> None:
                         "advertising. Honest mild criticism of food or service is allowed."
                     ),
                     response_mime_type="application/json",
-                    response_schema=Verdict,
+                    response_json_schema=gemini_schema(Verdict),
                     temperature=0,
                     max_output_tokens=50,
                 ),
             )
     except Exception:  # noqa: BLE001 - never publish unchecked when live checks fail
         raise HTTPException(503, "Tips can't be checked right now. Please try later.") from None
-    verdict = response.parsed
+    verdict = parse_reply(Verdict, response)
     blocked = any(
         getattr(rating, "blocked", False)
         for candidate in (response.candidates or [])

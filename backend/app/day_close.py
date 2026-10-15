@@ -19,6 +19,7 @@ import structlog
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from .gemini_schema import gemini_schema, parse_reply
 from .ingestion import IMAGE_TYPES, alias
 from .limits import enforce_limits
 from .merchant import ProductFields, ProposalRequest
@@ -107,16 +108,21 @@ async def read_photo(
                 ),
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=DayRead,
+                    response_json_schema=gemini_schema(DayRead),
                     temperature=0,
                     max_output_tokens=8000,
                 ),
             )
     except TimeoutError:
         raise HTTPException(504, "READ_TIMEOUT") from None
-    if not isinstance(response.parsed, DayRead):
+    except Exception as error:
+        # A model/API error is a clean "couldn't read", never a bare 500.
+        log.warning("day_read_failed", error=str(error)[:300])
+        raise HTTPException(503, "READ_UNAVAILABLE") from None
+    read = parse_reply(DayRead, response)
+    if read is None:
         raise HTTPException(422, "UNREADABLE_PHOTO")
-    return response.parsed, False
+    return read, False
 
 
 @router.post("/{business_id}/day/read")

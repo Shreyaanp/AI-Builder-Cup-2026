@@ -18,6 +18,7 @@ from typing import Any, Literal
 import structlog
 from pydantic import BaseModel, Field
 
+from .gemini_schema import gemini_schema, parse_reply
 from .product_categories import suggest_category
 from .product_units import normalize_unit
 from .settings import Settings
@@ -264,12 +265,12 @@ class ColumnMapper:
                 config=types.GenerateContentConfig(
                     system_instruction=PROMPT,
                     response_mime_type="application/json",
-                    response_schema=ColumnMap,
+                    response_json_schema=gemini_schema(ColumnMap),
                     temperature=0,
                     max_output_tokens=300,
                 ),
             )
-            mapped = response.parsed
+            mapped = parse_reply(ColumnMap, response)
             if isinstance(mapped, ColumnMap) and mapped.name is not None:
                 return mapped
         except Exception:
@@ -292,12 +293,12 @@ class ColumnMapper:
                 config=types.GenerateContentConfig(
                     system_instruction=CATEGORY_PROMPT,
                     response_mime_type="application/json",
-                    response_schema=Sections,
+                    response_json_schema=gemini_schema(Sections),
                     temperature=0,
                     max_output_tokens=4000,
                 ),
             )
-            parsed = response.parsed
+            parsed = parse_reply(Sections, response)
             if isinstance(parsed, Sections) and len(parsed.sections) == len(names):
                 return [
                     suggest_category(name, section)
