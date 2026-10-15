@@ -4,7 +4,7 @@ import { mkdirSync } from 'node:fs'
 mkdirSync('.cache/qa', { recursive: true })
 const env = {
   ...process.env,
-  API_PORT: '3537',
+  API_PORT: process.env.API_PORT ?? '3537',
   COACH_MODE: 'offline',
   AUTH_MODE: 'local',
   APP_ENV: 'test',
@@ -21,8 +21,8 @@ const env = {
   MAPS_SERVER_KEY: '',
   MAPS_BROWSER_KEY: '',
   GOOGLE_API_KEY: '',
-  CUSTOMER_ORIGIN: 'http://127.0.0.1:3437',
-  ALLOWED_ORIGINS: '["http://127.0.0.1:3437"]',
+  CUSTOMER_ORIGIN: `http://127.0.0.1:${process.env.WEB_PORT ?? '3437'}`,
+  ALLOWED_ORIGINS: JSON.stringify([`http://127.0.0.1:${process.env.WEB_PORT ?? '3437'}`]),
 }
 delete env.FIRESTORE_EMULATOR_HOST
 const child = process.env.QA_PYTHON
