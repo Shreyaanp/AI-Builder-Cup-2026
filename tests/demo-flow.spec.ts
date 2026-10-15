@@ -51,6 +51,7 @@ test('demo: photo, price correction, customer page and availability', async ({
   const menu = page.getByRole('button', { name: /^Menu/ })
   const sheet = (name: string) => page.getByRole('dialog', { name })
   const closeSheet = async () => {
+    await page.bringToFront()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
   }
@@ -103,6 +104,7 @@ test('demo: photo, price correction, customer page and availability', async ({
     await customer.reload()
     await expect(product).toContainText('Sold out')
 
+    await page.bringToFront()
     await page.getByRole('button', { name: /^Customer page/ }).click()
     await sharing.click()
     await expect(sharing).not.toBeChecked()
