@@ -7,7 +7,7 @@ import {
   localOnly,
   phone,
   seedShop,
-  share,
+  shareSigned,
   shopName as shopPrefix,
   shot,
 } from './support.js'
@@ -20,7 +20,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
   await enter(page)
   const shopName = `${shopPrefix} ${Date.now().toString().slice(-5)}`
   await seedShop(page, true, shopName)
-  const url = await share(page)
+  const { url, qr } = await shareSigned(page)
   await closeSheet(page)
   const customerContext = await browser.newContext({
     ...phone,
@@ -156,11 +156,22 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       await shot(page, 3, '6-owner')
       await shot(customer, 3, 6)
     })
-    await test.step('7 · QR stamp card is honestly device-only', async () => {
-      await customer.goto(`${url}?source=qr`)
+    await test.step('7 · signed QR stamp moment and an honest card', async () => {
+      // The owner's poster QR is signed: the stamp moment checks it, then the card counts it.
+      await customer.goto(qr)
+      const moment = customer.getByRole('dialog')
+      await expect(moment.getByRole('button', { name: 'Done' })).toBeVisible()
+      await expect(moment.getByRole('progressbar')).toHaveCount(0)
+      // A tap skips the celebration to its end state. The customer signed in to chat (step 5),
+      // so this verified stamp lands on their account card, not only this phone.
+      await moment.getByRole('heading').first().click()
+      await expect(moment.getByText('+50 points')).toBeVisible()
+      await shot(customer, 3, '7-stamp-moment')
+      await moment.getByRole('button', { name: 'Done' }).click()
+      await expect(customer).not.toHaveURL(/[?&]k=/)
       const card = customer.getByRole('region', { name: 'Stamp card' })
       await expect(card.getByRole('status')).toHaveText('1 stamps')
-      await expect(customer.getByText('This card is stored on this phone.')).toBeVisible()
+      await expect(customer.getByText('This card is saved to your account.')).toBeVisible()
       await shot(customer, 3, 7)
       await customer.reload()
       await expect(card.getByRole('status')).toHaveText('1 stamps')

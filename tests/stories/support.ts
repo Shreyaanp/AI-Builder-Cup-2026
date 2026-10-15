@@ -204,6 +204,17 @@ export async function share(page: Page) {
   return new URL(href!, page.url()).toString()
 }
 
+/** share(), plus the signed QR link the owner's poster encodes (`?source=qr&k=…`). */
+export async function shareSigned(page: Page) {
+  const keyed = page.waitForResponse((r) => /\/businesses\/[^/]+\/qr-key$/.test(r.url()) && r.ok())
+  const url = await share(page)
+  const { key } = (await (await keyed).json()) as { key: string }
+  const qr = new URL(url)
+  qr.searchParams.set('source', 'qr')
+  qr.searchParams.set('k', key)
+  return { url, qr: qr.toString() }
+}
+
 export const phone = {
   viewport: { width: 390, height: 844 },
   locale: 'en-IN',

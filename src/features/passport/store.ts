@@ -1,0 +1,141 @@
+import { useCallback, useEffect, useSyncExternalStore } from 'react'
+import type { components } from '../../api/generated'
+import { useCustomer } from '../customer/account'
+import { useRewards } from '../rewards/storage'
+
+type Schemas = components['schemas']
+export type PassportView = Schemas['PassportView']
+export type StampResult = Schemas['StampResult']
+export type Outcome = Schemas['Outcome']
+export type Quest = Schemas['Quest']
+export type Requirement = Schemas['Requirement']
+export type Board = Schemas['Board']
+export type LevelKey = PassportView['level']['key']
+
+/**
+ * The passport on the client. Signed in: the server's passport. Signed out: drawn by the server
+ * from this phone's signed visit receipts ("on this phone"), which merge once on sign-in.
+ */
+const RECEIPTS = 'chalkboard.passport.receipts.v1'
+const change = 'chalkboard-passport-change'
+const MAX_RECEIPTS = 60
+
+type State = {
+  view: PassportView | null
+  status: 'idle' | 'loading' | 'ready' | 'error'
+  key: string
+}
+let state: State = { view: null, status: 'idle', key: '' }
+const listeners = new Set<() => void>()
+function emit(next: Partial<State>) {
+  state = { ...state, ...next }
+  listeners.forEach((listener) => listener())
+}
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+export function receipts(): string[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(RECEIPTS) || '[]')
+    return Array.isArray(value)
+      ? value.filter((v): v is string => typeof v === 'string').slice(-MAX_RECEIPTS)
+      : []
+  } catch {
+    return []
+  }
+}
+export function keepReceipt(receipt: string) {
+  try {
+    const list = [...receipts().filter((r) => r !== receipt), receipt].slice(-MAX_RECEIPTS)
+    localStorage.setItem(RECEIPTS, JSON.stringify(list))
+  } catch {
+    /* The stamp still shows; it just can't be kept on this phone. */
+  }
+  window.dispatchEvent(new Event(change))
+}
+function clearReceipts() {
+  try {
+    localStorage.removeItem(RECEIPTS)
+  } catch {
+    /* Nothing to clear. */
+  }
+}
+
+/** The phone's own timezone and, when known, where the person is browsing. */
+export function where(place?: { lat: number; lng: number } | null) {
+  const params = new URLSearchParams({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone })
+  if (place) {
+    params.set('lat', place.lat.toFixed(5))
+    params.set('lng', place.lng.toFixed(5))
+  }
+  return params.toString()
+}
+
+export function setPassport(view: PassportView) {
+  emit({ view, status: 'ready' })
+}
+
+type Api = ReturnType<typeof useCustomer>['api']
+
+async function load(api: Api, signedIn: boolean, cards: Record<string, number>, query: string) {
+  const pending = receipts()
+  if (signedIn) {
+    if (pending.length || Object.keys(cards).length) {
+      // Once, on sign-in: this phone's verified visits move into the account.
+      const view = await api<PassportView>(`/api/v1/customer/passport/merge?${query}`, {
+        method: 'POST',
+        body: JSON.stringify({ receipts: pending, cards }),
+      })
+      clearReceipts()
+      return view
+    }
+    return api<PassportView>(`/api/v1/customer/passport?${query}`)
+  }
+  return api<PassportView>(`/api/v1/public/passport/preview?${query}`, {
+    method: 'POST',
+    body: JSON.stringify({ receipts: pending, cards }),
+  })
+}
+
+/** Loads (and keeps fresh) the passport for the current account state. */
+export function usePassport(place?: { lat: number; lng: number } | null) {
+  const account = useCustomer()
+  const { data } = useRewards()
+  const current = useSyncExternalStore(subscribe, () => state)
+  const signedIn = account.status === 'signed-in'
+  const query = where(place)
+  const cards = signedIn
+    ? {}
+    : Object.fromEntries(
+        Object.entries(data.shops)
+          .filter(([, card]) => card.stamps > 0)
+          .map(([id, card]) => [id, card.stamps]),
+      )
+  const cardKey = JSON.stringify(cards)
+  const key = `${account.status}|${query}|${cardKey}`
+  const refresh = useCallback(() => {
+    if (account.status === 'loading') return
+    emit({ status: 'loading', key })
+    load(account.api, signedIn, JSON.parse(cardKey) as Record<string, number>, query)
+      .then((view) => emit({ view, status: 'ready' }))
+      .catch(() => emit({ status: 'error' }))
+  }, [account.api, account.status, signedIn, cardKey, query, key])
+  useEffect(() => {
+    if (state.key !== key) refresh()
+  }, [key, refresh])
+  useEffect(() => {
+    const again = () => refresh()
+    window.addEventListener(change, again)
+    return () => window.removeEventListener(change, again)
+  }, [refresh])
+  return { ...current, refresh, signedIn }
+}
+
+/** The demo QR flow: demo shops show their QR on screen, so this fetches the demo key. */
+export async function demoKey(shop: string): Promise<string> {
+  const response = await fetch(`/api/v1/public/shops/${encodeURIComponent(shop)}/demo-qr`)
+  if (!response.ok) throw new Error(String(response.status))
+  return ((await response.json()) as { key: string }).key
+}

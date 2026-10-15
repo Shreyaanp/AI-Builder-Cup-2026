@@ -100,9 +100,11 @@ async def erase(request: Request) -> dict[str, Any]:
     if token:
         try:
             async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+                # Same two auth layers as capture: Cloud Run identity token + worker token
+                # (without the identity token Cloud Run answered 401 and erasure stopped).
                 response = await client.delete(
                     settings.face_worker_url + "/template",
-                    headers={"Authorization": "Bearer " + token, "X-Owner": uid},
+                    headers=await worker_headers(settings, uid),
                 )
             if not response.is_success:
                 raise HTTPException(503, "Face data deletion could not be confirmed. Retry.")

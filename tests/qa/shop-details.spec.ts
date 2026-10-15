@@ -25,7 +25,7 @@ test('hours, custom payment and delivery are reviewed then appear on the shared 
   await expect(review).toContainText(/Indiranagar/)
   await confirm(page)
   const url = await share(page)
-  expect(new URL(url).port).toBe('3437')
+  expect(new URL(url).port).toBe(process.env.WEB_PORT ?? '3437')
   await closeSheet(page)
   await page.goto(url)
   await expect(page.getByText('QA Pay', { exact: true })).toBeVisible()
