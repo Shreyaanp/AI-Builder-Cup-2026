@@ -14,10 +14,12 @@ async function openChat(page: Page) {
   await expect(page.getByRole('dialog', { name: 'Chat with the shop' })).toBeVisible()
 }
 
-/** In the chat, contact details are asked only when the customer chooses the owner. */
+/** Choosing the owner asks for sign-in once (local stand-in for Google), then the message. */
 async function toOwner(page: Page) {
   await page.getByRole('button', { name: 'Ask the owner' }).last().click()
-  await expect(page.getByLabel('Phone or email')).toBeVisible()
+  await expect(page.getByText('Owners reply to a real person')).toBeVisible()
+  await page.getByRole('button', { name: /Continue with Google/ }).click()
+  await expect(page.getByText('Signed in as Asha')).toBeVisible()
 }
 
 async function sharedShop(page: Page, phone = '+65 6123 4567') {
@@ -57,19 +59,25 @@ async function sharedShop(page: Page, phone = '+65 6123 4567') {
   return id as string
 }
 
-test('Anonymous customer and owner have a live two-way conversation', async ({ page, browser }) => {
+test('Signed-in customer and owner have a live two-way conversation', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
   const id = await sharedShop(page)
-  const anonymous = await browser.newContext({
+  const signedOut = await browser.newContext({
+    baseURL,
     viewport: { width: 412, height: 915 },
     locale: 'en-SG',
     timezoneId: 'Asia/Singapore',
   })
   try {
-    const customer = await anonymous.newPage()
+    const customer = await signedOut.newPage()
     await localOnly(customer)
-    await customer.goto(`http://127.0.0.1:3200/s/${id}`)
+    await customer.goto(`/s/${id}`)
     await expect(customer.getByRole('heading', { name: 'Tiong Bahru Kopi' })).toBeVisible()
-    await expect(customer.getByRole('button', { name: /sign in/i })).toHaveCount(0)
+    // Browsing and instant answers need no account.
+    await expect(customer.getByText('Owners reply to a real person')).toHaveCount(0)
     // Header actions: call and WhatsApp the shop (one place, not on every menu row).
     await expect(customer.getByRole('link', { name: 'Call', exact: true })).toHaveAttribute(
       'href',
@@ -101,14 +109,24 @@ test('Anonymous customer and owner have a live two-way conversation', async ({ p
       'Please contact the shop',
     )
 
-    // No name is required; plain text must remain plain text in both interfaces.
+    // Messaging the owner needs sign-in (A5), checked on the server too.
+    expect(
+      (
+        await customer.request.post(`/api/v1/customer/shops/${id}/threads`, {
+          data: { text: 'Hello' },
+        })
+      ).status(),
+    ).toBe(401)
     await toOwner(customer)
-    await customer.getByLabel('Phone or email').fill('customer@example.test')
+    // Plain text must remain plain text in both interfaces.
     await customer
       .getByRole('textbox', { name: 'Message', exact: true })
       .fill('Could I ask about kopi? <script>hello</script>')
     await customer.getByRole('button', { name: 'Send message', exact: true }).click()
-    await expect(customer.getByText("Sent to the shop — they haven't replied yet")).toBeVisible()
+    await expect(customer).toHaveURL(new RegExp(`/explore/chats/${id}/`))
+    const thread = customer.getByRole('list', { name: 'Tiong Bahru Kopi' })
+    await expect(thread).toContainText('Could I ask about kopi? <script>hello</script>')
+    await expect(customer.getByText('Sent. The owner replies here')).toBeVisible()
     expect(
       (
         await customer.request.get(`/api/v1/businesses/${id}/inquiries`, {
@@ -125,50 +143,38 @@ test('Anonymous customer and owner have a live two-way conversation', async ({ p
     // The Messages tile shows the unread count and opens the inbox sheet.
     await page.getByRole('button', { name: /^Messages 1/ }).click()
     const messages = page.getByRole('region', { name: /Messages/ })
-    await expect(messages).toContainText('customer@example.test')
+    // The owner sees the customer's Google name (the local stand-in is Asha).
+    await expect(messages).toContainText('Asha')
     await expect(messages).toContainText('Could I ask about kopi? <script>hello</script>')
     await expect(messages).toContainText('Unread')
     await messages.getByRole('button', { name: 'Open conversation', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Messages (0)' })).toBeVisible()
-    await customer.getByRole('button', { name: 'Open conversation', exact: true }).click()
-    const chat = customer.getByRole('dialog', { name: 'Conversation', exact: true })
-    await expect(chat).toContainText('Could I ask about kopi? <script>hello</script>')
     await messages
       .getByLabel('Reply', { exact: true })
       .fill('Yes, kopi is available. How can I help?')
     await messages.getByRole('button', { name: 'Send message', exact: true }).click()
-    // 5s is less than the 15s polling fallback: this checks actual SSE delivery.
-    await expect(chat).toContainText('Yes, kopi is available. How can I help?', { timeout: 5_000 })
-    await chat.getByLabel('Reply', { exact: true }).fill('Thank you!')
-    await chat.getByRole('button', { name: 'Send message', exact: true }).click()
+    // 5s is less than the polling fallback: this checks actual live delivery.
+    await expect(thread).toContainText('Yes, kopi is available. How can I help?', {
+      timeout: 5_000,
+    })
+    const composer = customer.getByRole('textbox', { name: 'Message', exact: true })
+    await composer.fill('Thank you!')
+    await composer.press('Enter')
     await expect(messages).toContainText('Thank you!', { timeout: 5_000 })
-    await chat.getByRole('button', { name: 'See translation', exact: true }).last().click()
-    await expect(chat).toContainText(
+    await messages.getByRole('button', { name: 'See translation', exact: true }).last().click()
+    await expect(messages).toContainText(
       'Simulated translation \u00b7 offline fixture, no live AI connected',
     )
-    await chat.getByRole('button', { name: 'See original', exact: true }).click()
     await messages.getByRole('button', { name: 'Close conversation', exact: true }).click()
-    await expect(chat).toContainText('Conversation closed', { timeout: 5_000 })
-    await expect(chat.getByLabel('Reply', { exact: true })).toHaveCount(0)
-    await chat.getByRole('button', { name: 'Back', exact: true }).click()
-    await customer.reload()
-    await openChat(customer)
-    await customer.getByRole('button', { name: 'Open conversation', exact: true }).click()
-    await expect(customer.getByRole('dialog', { name: 'Conversation', exact: true })).toContainText(
-      'Thank you!',
-    )
-    await chat.getByRole('button', { name: 'Delete this conversation', exact: true }).click()
-    await chat
-      .getByRole('group', { name: 'Delete this conversation permanently?' })
-      .getByRole('button', { name: 'Delete this conversation', exact: true })
-      .click()
-    await expect(customer.getByRole('button', { name: 'Ask the owner' })).toBeVisible()
-    await customer.reload()
-    await expect(
-      customer.getByRole('button', { name: 'Open conversation', exact: true }),
-    ).toHaveCount(0)
+    await expect(customer.getByText('This conversation is closed.')).toBeVisible({
+      timeout: 5_000,
+    })
+    await expect(composer).toHaveCount(0)
+    // The thread lives in Chats.
+    await customer.goto('/explore/chats')
+    await expect(customer.getByRole('list', { name: 'Chats' })).toContainText('Tiong Bahru Kopi')
   } finally {
-    await anonymous.close()
+    await signedOut.close()
   }
 })
 
@@ -233,49 +239,49 @@ test('H09: changed facts clear an old answer; errors preserve input and offer re
   // A failed question stays in the box to retry.
   await expect(question).toHaveValue('How much is kopi?')
   await toOwner(page)
+  const message = page.getByRole('textbox', { name: 'Message', exact: true })
+  await message.fill(' ')
   await page.getByRole('button', { name: 'Send message', exact: true }).click()
-  await expect(page.getByLabel('Phone or email')).toBeFocused()
-  await expect(
-    page.getByText('Enter a phone number with country code or an email address.'),
-  ).toBeVisible()
-  await page.getByLabel('Phone or email').fill('+65 8123 4567')
-  await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Hello')
-  await page.route('**/public/shops/*/inquiries', (route) =>
+  await expect(page.getByText('Enter a message of up to 500 characters.')).toBeVisible()
+  await expect(message).toBeFocused()
+  await message.fill('Hello')
+  await page.route('**/customer/shops/*/threads', (route) =>
     route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }),
   )
-  await page.getByRole('textbox', { name: 'Message', exact: true }).press('Control+Enter')
+  await message.press('Control+Enter')
   await expect(
     page.getByText('Could not send. Check your connection and try again, or contact the shop.'),
   ).toBeVisible()
-  await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('Hello')
-  await page.unroute('**/public/shops/*/inquiries')
+  await expect(message).toHaveValue('Hello')
+  await page.unroute('**/customer/shops/*/threads')
   await page.getByRole('button', { name: 'Send message', exact: true }).click()
-  await expect(page.getByText("Sent to the shop — they haven't replied yet")).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`/explore/chats/${id}/`))
+  await expect(page.getByText('Sent. The owner replies here')).toBeVisible()
 })
 
-test('Polling recovers when SSE fails and blocked contacts cannot create another thread', async ({
+test('Polling recovers when the live stream fails, and a blocked customer cannot send', async ({
   page,
   browser,
+  baseURL,
 }) => {
   const id = await sharedShop(page)
-  const anonymous = await browser.newContext({ viewport: { width: 412, height: 915 } })
+  const signedOut = await browser.newContext({ baseURL, viewport: { width: 412, height: 915 } })
   try {
-    const customer = await anonymous.newPage()
+    const customer = await signedOut.newPage()
     await localOnly(customer)
-    await customer.route('**/inquiries/*/stream', (route) =>
+    await customer.route('**/threads/*/stream', (route) =>
       route.fulfill({ status: 503, body: '{}' }),
     )
-    await customer.goto(`http://127.0.0.1:3200/s/${id}`)
+    await customer.goto(`/s/${id}`)
     await openChat(customer)
     await toOwner(customer)
-    await customer.getByLabel('Phone or email').fill('blocked@example.test')
     await customer
       .getByRole('textbox', { name: 'Message', exact: true })
       .fill('Hello from fallback')
     await customer.getByRole('button', { name: 'Send message', exact: true }).click()
-    await customer.getByRole('button', { name: 'Open conversation', exact: true }).click()
-    const chat = customer.getByRole('dialog', { name: 'Conversation', exact: true })
-    await expect(chat).toContainText('checking every 15 seconds')
+    await expect(customer).toHaveURL(new RegExp(`/explore/chats/${id}/`))
+    const thread = customer.getByRole('list', { name: 'Tiong Bahru Kopi' })
+    await expect(thread).toContainText('Hello from fallback')
     await page.reload()
     await page.getByRole('button', { name: 'Continue local preview' }).click()
     await page.getByRole('button', { name: 'My shop', exact: true }).click()
@@ -284,27 +290,22 @@ test('Polling recovers when SSE fails and blocked contacts cannot create another
     await messages.getByRole('button', { name: 'Open conversation', exact: true }).click()
     await messages.getByLabel('Reply', { exact: true }).fill('Reply through polling')
     await messages.getByRole('button', { name: 'Send message', exact: true }).click()
-    await expect(chat).toContainText('Reply through polling', { timeout: 17_000 })
+    await expect(thread).toContainText('Reply through polling', { timeout: 12_000 })
     await messages.getByRole('button', { name: 'Block customer', exact: true }).click()
     await messages
       .getByRole('group', { name: 'Block this customer from sending more messages?' })
       .getByRole('button', { name: 'Block customer', exact: true })
       .click()
     await expect(messages).toContainText('Customer blocked')
-    await chat.getByRole('button', { name: 'Delete this conversation', exact: true }).click()
-    await chat
-      .getByRole('group', { name: 'Delete this conversation permanently?' })
-      .getByRole('button', { name: 'Delete this conversation', exact: true })
-      .click()
-    await toOwner(customer)
-    await customer.getByLabel('Phone or email').fill('BLOCKED@example.test')
-    await customer.getByRole('textbox', { name: 'Message', exact: true }).fill('Try again')
-    await customer.getByRole('button', { name: 'Send message', exact: true }).click()
-    await expect(customer.getByRole('alert')).toBeVisible()
-    await expect(customer.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue(
-      'Try again',
-    )
+    await expect(customer.getByText('This conversation is closed.')).toBeVisible({
+      timeout: 12_000,
+    })
+    // Starting again continues the same blocked thread, so the server refuses it.
+    const again = await customer.request.post(`/api/v1/customer/shops/${id}/threads`, {
+      data: { text: 'Try again' },
+    })
+    expect(again.ok()).toBeFalsy()
   } finally {
-    await anonymous.close()
+    await signedOut.close()
   }
 })

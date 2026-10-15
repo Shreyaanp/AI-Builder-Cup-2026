@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from typing import Any
 
 import anyio
@@ -30,7 +31,7 @@ from .customer_routes import STREAM_RESPONSES, public_thread, shared, thread_str
 from .limits import client_ip, enforce_limits
 from .merchant import DEMO_ID
 from .merchant_routes import owner, store
-from .money import to_major
+from .money import exponent, to_major
 from .threads import thread_signals
 
 log = structlog.get_logger()
@@ -214,18 +215,39 @@ async def act(
     return record
 
 
+def money(minor: int, currency: str) -> str:
+    """ "SGD 4.50": the currency's own decimals, never "4.5"."""
+    return f"{currency} {to_major(minor, currency):,.{exponent(currency)}f}".strip()
+
+
+def _stem(word: str) -> str:
+    return word[:-2] if word.endswith("es") and len(word) > 5 else word.rstrip("s")
+
+
+def mentions(name: str, text: str) -> bool:
+    """The whole name, or one of its distinctive words in any plural ("croissants")."""
+    if name.casefold() in text:
+        return True
+    said = {_stem(w) for w in re.findall(r"\w+", text)}
+    return any(_stem(w) in said for w in re.findall(r"\w+", name.casefold()) if len(w) >= 4)
+
+
 def demo_reply_text(shop: dict[str, Any], message: str) -> str:
     text = message.casefold()
     currency = shop.get("currency", "")
-    for product in shop.get("products", []):
-        if product["name"].casefold() in text:
-            if not product["available"]:
-                return f"Sorry, {product['name']} is sold out today. Try again tomorrow morning!"
-            price = to_major(product["price"], currency)
-            return (
-                f"Hi! Yes, {product['name']} is on today ({currency} {price} per "
-                f"{product['unit']}). Shall I keep one for you?"
-            )
+    products = shop.get("products", [])
+    # Exact names first, so "butter croissant" wins over another item that shares a word.
+    exact = [p for p in products if p["name"].casefold() in text]
+    matched = exact or [p for p in products if mentions(p["name"], text)]
+    if matched:
+        product = matched[0]
+        if not product["available"]:
+            return f"Sorry, {product['name']} is sold out today. Try again tomorrow morning!"
+        price = money(product["price"], currency)
+        return (
+            f"Hi! Yes, {product['name']} is on today ({price} per "
+            f"{product['unit']}). Shall I keep one for you?"
+        )
     hours = shop.get("hours") or "our listed hours"
     return f"Hi! Thanks for your message. We're open {hours}. Drop by any time!"
 
@@ -247,7 +269,7 @@ async def shop_side_replies(
             text = answer.answer
             if answer.price is not None:
                 currency = shop.get("currency", "")
-                text += f" {currency} {to_major(answer.price, currency)}"
+                text += f" {money(answer.price, currency)}"
                 text += f" / {answer.unit}" if answer.unit else ""
             await act(request, bid, entry, "ai_answer", text[:500])
     except HTTPException:
