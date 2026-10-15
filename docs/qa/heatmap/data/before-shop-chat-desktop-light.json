@@ -1,0 +1,36 @@
+{
+ "label": "before",
+ "screen": "shop-chat",
+ "project": "desktop",
+ "theme": "light",
+ "marks": 65,
+ "words": 155,
+ "busiest": 2,
+ "busyCells": 0,
+ "accentFamilies": 2,
+ "filledActions": 2,
+ "typeSizes": 7,
+ "weights": 4,
+ "spacingValues": 168,
+ "offGrid": 50,
+ "offValues": [
+  "6px×28",
+  "3px×10",
+  "11px×8",
+  "2px×3",
+  "5px×1"
+ ],
+ "smallTargets": 7,
+ "smallNames": [
+  "a “Directions” 143×40",
+  "button “Weekly hours · 07:00–19:00” 199×40",
+  "div “Price” 57×40",
+  "div “Hours” 62×40",
+  "div “Location” 80×40",
+  "div “Ask the owner” 130×40",
+  "input “Your question” 490×32"
+ ],
+ "pageHeight": 1431,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

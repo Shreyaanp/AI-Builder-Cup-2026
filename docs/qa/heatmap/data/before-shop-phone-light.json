@@ -1,0 +1,29 @@
+{
+ "label": "before",
+ "screen": "shop",
+ "project": "phone",
+ "theme": "light",
+ "marks": 42,
+ "words": 81,
+ "busiest": 2,
+ "busyCells": 0,
+ "accentFamilies": 2,
+ "filledActions": 1,
+ "typeSizes": 7,
+ "weights": 4,
+ "spacingValues": 120,
+ "offGrid": 36,
+ "offValues": [
+  "6px×24",
+  "3px×10",
+  "2px×2"
+ ],
+ "smallTargets": 2,
+ "smallNames": [
+  "a “Directions” 143×40",
+  "button “Weekly hours · 07:00–19:00” 199×40"
+ ],
+ "pageHeight": 1588,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

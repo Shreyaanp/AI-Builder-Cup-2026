@@ -1,0 +1,29 @@
+{
+ "label": "before",
+ "screen": "ask-results",
+ "project": "desktop",
+ "theme": "light",
+ "marks": 45,
+ "words": 58,
+ "busiest": 2,
+ "busyCells": 0,
+ "accentFamilies": 1,
+ "filledActions": 1,
+ "typeSizes": 5,
+ "weights": 4,
+ "spacingValues": 115,
+ "offGrid": 27,
+ "offValues": [
+  "2px×10",
+  "3px×8",
+  "6px×8",
+  "5px×1"
+ ],
+ "smallTargets": 1,
+ "smallNames": [
+  "input “What are you looking for?” 564×35"
+ ],
+ "pageHeight": 1369,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

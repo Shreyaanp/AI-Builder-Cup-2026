@@ -1,0 +1,31 @@
+{
+ "label": "before",
+ "screen": "passport",
+ "project": "desktop",
+ "theme": "dark",
+ "marks": 40,
+ "words": 93,
+ "busiest": 2,
+ "busyCells": 0,
+ "accentFamilies": 3,
+ "filledActions": 0,
+ "typeSizes": 8,
+ "weights": 4,
+ "spacingValues": 84,
+ "offGrid": 12,
+ "offValues": [
+  "2px×8",
+  "6px×4"
+ ],
+ "smallTargets": 5,
+ "smallNames": [
+  "a “Petal & Stem” 106×36",
+  "a “Sunrise Bakehouse” 146×36",
+  "a “Stitch Corner” 111×36",
+  "a “Corner Cup” 99×36",
+  "a “Lane 4 Street Kitchen” 163×36"
+ ],
+ "pageHeight": 2413,
+ "contrastIssues": 0,
+ "axeViolations": []
+}
