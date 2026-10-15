@@ -71,12 +71,19 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
       current.socket.send(JSON.stringify({ kind: 'audio_end' }))
     setState('replying')
   }
-  async function start() {
+  async function start(sessionId: string | null = null) {
     if (owner.current) return
     const operation = new AbortController()
     owner.current = operation
     setError('')
-    await connect(operation, false)
+    try {
+      await connect(operation, false, sessionId ?? undefined)
+    } catch {
+      if (!operation.signal.aborted) {
+        setError(t.voiceFailed)
+        stop()
+      }
+    }
   }
   async function connect(operation: AbortController, retry: boolean, sid?: string) {
     if (operation.signal.aborted) return
@@ -102,9 +109,9 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
     if (businessId) url.searchParams.set('business_id', businessId)
     if (sid) url.searchParams.set('session_id', sid)
+    const audio = new AudioContext()
     const socket = new WebSocket(url)
     socket.binaryType = 'arraybuffer'
-    const audio = new AudioContext()
     let sessionId = sid
     let lastMessage = 0
     const offline = () => socket.close(4000, 'Connection interrupted')
@@ -163,7 +170,8 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
           return
         }
         if (event.kind === 'error' && event.code === 'RATE_LIMITED') {
-          setError(t.rateLimited)
+          const wait = Number(event.data?.retry_after)
+          setError(t.voiceRateLimited(Number.isFinite(wait) && wait > 0 ? Math.ceil(wait) : 60))
           stop()
           return
         }
@@ -171,7 +179,7 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
         eventRef.current(event)
         if (event.kind === 'ready') {
           clearTimeout(current.deadline)
-          sessionId = event.session_id ?? undefined
+          sessionId = event.session_id ?? sessionId
           if (retry) setError(t.voiceRestarted)
           await audio.resume()
           await audio.audioWorklet.addModule('/audio-capture.worklet.js')
@@ -218,7 +226,12 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
         if (socket.readyState === WebSocket.OPEN)
           socket.send(JSON.stringify({ kind: 'client_error', text: reason.slice(0, 200) }))
         console.warn('Voice stopped:', reason)
-        setError(t.voiceFailed)
+        setError(
+          failure instanceof DOMException &&
+            ['NotAllowedError', 'SecurityError'].includes(failure.name)
+            ? t.voiceMicDenied
+            : t.voiceFailed,
+        )
         stop()
       }
     }
@@ -230,7 +243,12 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
       if (current.complete) {
         stop()
       } else if (!retry && ![1000, 1001, 1008].includes(event.code)) {
-        void connect(operation, true, sessionId)
+        void connect(operation, true, sessionId).catch(() => {
+          if (!operation.signal.aborted) {
+            setError(t.voiceFailed)
+            stop()
+          }
+        })
       } else {
         setError(t.voiceFailed)
         stop()
