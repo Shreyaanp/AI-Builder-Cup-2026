@@ -247,13 +247,11 @@ function Celebration({
     (root) => {
       const timeline = gsap.timeline()
       timeline
-        .from(root.querySelector('.stamp-sticker'), {
-          scale: 1.9,
-          rotate: -16,
-          opacity: 0,
-          duration: 0.32,
-          ease: 'power3.in',
-        })
+        .fromTo(
+          root.querySelector('.stamp-sticker'),
+          { scale: 1.9, rotate: -16, opacity: 0 },
+          { scale: 1, rotate: 0, opacity: 1, duration: 0.32, ease: 'power3.in' },
+        )
         .to(root.querySelector('.stamp-sticker'), {
           scale: 1,
           duration: 0.28,
@@ -272,11 +270,12 @@ function Celebration({
           },
           '<-0.15',
         )
-        .from(
+        .fromTo(
           root.querySelectorAll('.stamp-line'),
+          { y: 12, opacity: 0 },
           {
-            y: 12,
-            opacity: 0,
+            y: 0,
+            opacity: 1,
             duration: 0.25,
             stagger: 0.08,
           },
@@ -303,6 +302,7 @@ function Celebration({
       // A tap anywhere skips straight to the end.
       const skip = () => timeline.progress(1)
       root.addEventListener('pointerdown', skip, { once: true })
+      return () => root.removeEventListener('pointerdown', skip)
     },
     [],
   )

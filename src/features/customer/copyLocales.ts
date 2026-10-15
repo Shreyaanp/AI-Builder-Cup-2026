@@ -4,6 +4,8 @@ import type { AccountStrings } from './copy'
 /** Every customer account, chats, saved, tips and profile string, per supported locale. */
 export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> = {
   hi: {
+    actionFailed: 'अनुरोध पूरा नहीं हो सका। कनेक्शन जाँचें और फिर कोशिश करें।',
+    followFailed: 'फ़ॉलो की गई दुकानों को अपडेट नहीं कर सके। कनेक्शन जाँचें और फिर कोशिश करें।',
     nav: 'मुख्य',
     ask: 'पूछें',
     chats: 'चैट',
@@ -124,6 +126,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'कल',
   },
   bn: {
+    actionFailed: 'অনুরোধ সম্পূর্ণ করা যায়নি। সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।',
+    followFailed: 'ফলো করা দোকান আপডেট করা যায়নি। সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।',
     nav: 'প্রধান',
     ask: 'জিজ্ঞাসা',
     chats: 'চ্যাট',
@@ -244,6 +248,9 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'গতকাল',
   },
   te: {
+    actionFailed: 'అభ్యర్థన పూర్తి కాలేదు. కనెక్షన్ తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.',
+    followFailed:
+      'ఫాలో చేస్తున్న షాపులను అప్‌డేట్ చేయలేకపోయాం. కనెక్షన్ తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.',
     nav: 'ప్రధాన',
     ask: 'అడగండి',
     chats: 'చాట్‌లు',
@@ -365,6 +372,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'నిన్న',
   },
   mr: {
+    actionFailed: 'विनंती पूर्ण करता आली नाही. कनेक्शन तपासून पुन्हा प्रयत्न करा.',
+    followFailed: 'फॉलो केलेली दुकाने अपडेट करता आली नाहीत. कनेक्शन तपासून पुन्हा प्रयत्न करा.',
     nav: 'मुख्य',
     ask: 'विचारा',
     chats: 'चॅट',
@@ -486,6 +495,9 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'काल',
   },
   kn: {
+    actionFailed: 'ವಿನಂತಿ ಪೂರ್ಣಗೊಳಿಸಲು ಆಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    followFailed:
+      'ಫಾಲೋ ಮಾಡಿದ ಅಂಗಡಿಗಳನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಲು ಆಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
     nav: 'ಮುಖ್ಯ',
     ask: 'ಕೇಳಿ',
     chats: 'ಚಾಟ್‌ಗಳು',
@@ -608,6 +620,9 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'ನಿನ್ನೆ',
   },
   ta: {
+    actionFailed: 'கோரிக்கையை முடிக்க முடியவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயலவும்.',
+    followFailed:
+      'பின்தொடரும் கடைகளைப் புதுப்பிக்க முடியவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயலவும்.',
     nav: 'முதன்மை',
     ask: 'கேளுங்கள்',
     chats: 'அரட்டைகள்',
@@ -735,6 +750,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'நேற்று',
   },
   'zh-Hans': {
+    actionFailed: '无法完成请求。请检查网络连接后重试。',
+    followFailed: '无法更新关注的店铺。请检查网络连接后重试。',
     nav: '主导航',
     ask: '提问',
     chats: '聊天',
@@ -855,6 +872,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: '昨天',
   },
   ms: {
+    actionFailed: 'Permintaan tidak dapat diselesaikan. Semak sambungan dan cuba lagi.',
+    followFailed: 'Kedai yang diikuti tidak dapat dikemas kini. Semak sambungan dan cuba lagi.',
     nav: 'Utama',
     ask: 'Tanya',
     chats: 'Sembang',
@@ -977,6 +996,9 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'semalam',
   },
   ja: {
+    actionFailed: 'リクエストを完了できませんでした。接続を確認して、もう一度お試しください。',
+    followFailed:
+      'フォロー中のお店を更新できませんでした。接続を確認して、もう一度お試しください。',
     nav: 'メイン',
     ask: '質問',
     chats: 'チャット',
@@ -1098,6 +1120,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: '昨日',
   },
   ko: {
+    actionFailed: '요청을 완료하지 못했어요. 연결을 확인하고 다시 시도하세요.',
+    followFailed: '팔로우하는 가게를 업데이트하지 못했어요. 연결을 확인하고 다시 시도하세요.',
     nav: '기본',
     ask: '질문',
     chats: '채팅',
@@ -1218,6 +1242,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: '어제',
   },
   id: {
+    actionFailed: 'Permintaan tidak dapat diselesaikan. Periksa koneksi dan coba lagi.',
+    followFailed: 'Tidak dapat memperbarui toko yang diikuti. Periksa koneksi dan coba lagi.',
     nav: 'Utama',
     ask: 'Tanya',
     chats: 'Obrolan',
@@ -1342,6 +1368,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'kemarin',
   },
   th: {
+    actionFailed: 'ดำเนินการไม่ได้ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง',
+    followFailed: 'อัปเดตร้านที่ติดตามไม่ได้ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง',
     nav: 'หลัก',
     ask: 'ถาม',
     chats: 'แชท',
@@ -1462,6 +1490,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'เมื่อวาน',
   },
   vi: {
+    actionFailed: 'Không thể hoàn tất yêu cầu. Hãy kiểm tra kết nối và thử lại.',
+    followFailed: 'Không thể cập nhật cửa hàng đang theo dõi. Hãy kiểm tra kết nối và thử lại.',
     nav: 'Chính',
     ask: 'Hỏi',
     chats: 'Trò chuyện',
@@ -1583,6 +1613,9 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'hôm qua',
   },
   fil: {
+    actionFailed: 'Hindi makumpleto ang kahilingan. Tingnan ang koneksyon at subukan muli.',
+    followFailed:
+      'Hindi ma-update ang mga sinusundang tindahan. Tingnan ang koneksyon at subukan muli.',
     nav: 'Pangunahin',
     ask: 'Magtanong',
     chats: 'Mga chat',

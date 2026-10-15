@@ -48,6 +48,7 @@ export const accountStrings = {
   clearFailed: 'Couldn’t clear your preferences and searches. Nothing was deleted.',
   removeFailed: 'Couldn’t remove “{item}”. It is still saved.',
   retry: 'Try again',
+  actionFailed: 'Couldn’t complete that request. Check your connection and try again.',
   // Chats
   chatsTitle: 'Chats',
   chatsSignedOut: 'Your chats with shops live here',
@@ -83,6 +84,7 @@ export const accountStrings = {
   followShop: 'Follow {shop}',
   unfollowShop: 'Unfollow {shop}',
   followedDevice: 'Saved on this device',
+  followFailed: 'Couldn’t update your followed shops. Check your connection and try again.',
   // Saved
   savedTitle: 'Saved',
   followingTitle: 'Following',
