@@ -25,6 +25,8 @@ config = {
     "V1_ENABLED": "true",
     "MERCHANT_BACKEND": "firestore",
     "MODERATION_MODE": "vision",
+    # Demand forecast with TimesFM in BigQuery (AI.FORECAST); owner approved, budget alert set.
+    "FORECAST_BACKEND": "bigquery",
     "MEDIA_BUCKET": "ichiropractic-shop-photos",
     "GOOGLE_CLOUD_PROJECT": target["projectId"],
     "FIRESTORE_DATABASE": target["firestoreDatabase"],

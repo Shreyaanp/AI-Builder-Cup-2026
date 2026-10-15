@@ -26,9 +26,13 @@ export function customerNavigate(event: MouseEvent<HTMLElement>) {
   const old = { ...(history.state as object | null), scrollY: window.scrollY }
   history.replaceState(old, '')
   const update = () => {
-    history.pushState({}, '', url.pathname + url.search)
+    history.pushState({}, '', url.pathname + url.search + url.hash)
     dispatchEvent(new PopStateEvent('popstate'))
     window.scrollTo({ top: 0, behavior: 'instant' })
+    if (url.hash)
+      requestAnimationFrame(() =>
+        document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView(),
+      )
   }
   if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches)
     document.startViewTransition(update)

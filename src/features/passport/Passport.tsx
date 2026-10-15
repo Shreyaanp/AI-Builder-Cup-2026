@@ -15,7 +15,9 @@ import { Check, CloudRain, Gift, Leaf, Trophy } from 'lucide-react'
 import { useChalkTimeline, dealIn } from '../../design/chalkMotion'
 import { HAND_FONT } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
+import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { useCustomer } from '../customer/account'
+import { useAccountCopy } from '../customer/copy'
 import { SignInSheet } from '../customer/SignIn'
 import { customerNavigate } from '../frontdoors/navigation'
 import { formatPrice } from '../v1/format'
@@ -42,10 +44,14 @@ function lastPlace(): { lat: number; lng: number } | null {
 }
 
 /** The neighbourhood passport: level, weekly streak, stamp book, quests, rescues, perks, board. */
-export function Passport() {
+export function Passport({ initialLocation }: { initialLocation?: CustomerLocation | null }) {
   const t = usePassportCopy()
   const roles = useTheme().material
-  const [place] = useState(lastPlace)
+  const [place] = useState(() =>
+    initialLocation?.gps
+      ? { lat: initialLocation.gps[0], lng: initialLocation.gps[1] }
+      : (initialLocation?.place ?? lastPlace()),
+  )
   const { view, status, refresh, signedIn } = usePassport(place)
   const [signIn, setSignIn] = useState(false)
   useEffect(() => {
@@ -72,7 +78,7 @@ export function Passport() {
         </Typography>
         {view?.device_only && <Chip size="small" label={t.onThisPhone} />}
       </Stack>
-      {status === 'error' && !view && (
+      {status === 'error' && (
         <Alert
           severity="error"
           sx={{ mt: 4 }}
@@ -403,6 +409,10 @@ function questBody(quest: Quest, t: PassportStrings) {
 }
 
 function Quests({ quests }: { quests: Quest[] }) {
+  useEffect(() => {
+    if (location.hash === '#quests')
+      document.getElementById('quests')?.scrollIntoView({ block: 'start', behavior: 'instant' })
+  }, [])
   const t = usePassportCopy()
   const locale = useLocale()
   const theme = useTheme()
@@ -418,7 +428,7 @@ function Quests({ quests }: { quests: Quest[] }) {
     )
   return (
     <Section title={t.quests}>
-      <Stack spacing={3} id="quests">
+      <Stack spacing={3} id="quests" sx={{ scrollMarginTop: 72 }}>
         {ordered.map((quest) => {
           const tone =
             quest.kind === 'festival'
@@ -631,8 +641,11 @@ function Leaderboard({
   const t = usePassportCopy()
   const locale = useLocale()
   const account = useCustomer()
+  const accountCopy = useAccountCopy()
   const roles = useTheme().material
   const [board, setBoard] = useState<Board | null>(null)
+  const [failure, setFailure] = useState<'load' | 'save' | null>(null)
+  const [attempt, setAttempt] = useState(0)
   const [busy, setBusy] = useState(false)
   const signedIn = account.status === 'signed-in'
   const api = account.api
@@ -642,14 +655,19 @@ function Leaderboard({
     if (!signedIn) return
     let live = true
     api<Board>(`/api/v1/customer/passport/board?${query}`)
-      .then((data) => live && setBoard(data))
-      .catch(() => live && setBoard(null))
+      .then((data) => {
+        if (!live) return
+        setBoard(data)
+        setFailure((current) => (current === 'load' ? null : current))
+      })
+      .catch(() => live && setFailure('load'))
     return () => {
       live = false
     }
-  }, [api, signedIn, joined, query])
+  }, [api, signedIn, joined, query, attempt])
   async function toggle(on: boolean) {
     setBusy(true)
+    setFailure(null)
     try {
       setPassport(
         await api<PassportView>('/api/v1/customer/passport/leaderboard', {
@@ -658,7 +676,7 @@ function Leaderboard({
         }),
       )
     } catch {
-      /* The switch stays as it was. */
+      setFailure('save')
     } finally {
       setBusy(false)
     }
@@ -666,6 +684,27 @@ function Leaderboard({
   return (
     <Section title={t.board}>
       <Box sx={{ p: 4, borderRadius: '20px', bgcolor: roles.surfaceContainerLow }}>
+        {failure && (
+          <Alert
+            severity="error"
+            sx={{ mb: 2 }}
+            action={
+              <Button
+                color="inherit"
+                onClick={() =>
+                  failure === 'save' ? void toggle(!joined) : setAttempt((n) => n + 1)
+                }
+              >
+                {t.retry}
+              </Button>
+            }
+          >
+            {accountCopy.actionFailed}
+            <Button component="a" href="/explore/" onClick={customerNavigate} color="inherit">
+              {accountCopy.findShops}
+            </Button>
+          </Alert>
+        )}
         {signedIn ? (
           <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
             <Typography variant="bodyMedium" sx={{ flex: 1 }}>
@@ -687,42 +726,46 @@ function Leaderboard({
           </Stack>
         )}
         {signedIn && board && (
-          <Box component="ol" sx={{ listStyle: 'none', p: 0, m: 0, mt: 3 }}>
+          <Box sx={{ mt: 3 }}>
             {board.rows.length === 0 && (
               <Typography variant="bodyMedium" color="text.secondary">
                 {t.boardEmpty}
               </Typography>
             )}
-            {board.rows.slice(0, 10).map((row) => (
-              <Stack
-                component="li"
-                key={`${row.rank}-${row.name}`}
-                direction="row"
-                sx={{
-                  py: 1.5,
-                  gap: 2,
-                  alignItems: 'center',
-                  borderBottom: `1px solid ${roles.outlineVariant}`,
-                  fontWeight: row.you ? 700 : 400,
-                }}
-              >
-                <Typography
-                  sx={{ width: 32, fontFamily: HAND_FONT, fontSize: 22, fontWeight: 700 }}
-                >
-                  {new Intl.NumberFormat(locale).format(row.rank)}
-                </Typography>
-                <Typography variant="bodyLarge" sx={{ flex: 1, fontWeight: 'inherit' }}>
-                  {row.name}
-                </Typography>
-                {row.demo && <Chip size="small" label={t.demo} />}
-                <Typography variant="labelLarge" color="text.secondary">
-                  {t[row.level]}
-                </Typography>
-                <Typography variant="labelLarge" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {new Intl.NumberFormat(locale).format(row.points)}
-                </Typography>
-              </Stack>
-            ))}
+            {board.rows.length > 0 && (
+              <Box component="ol" sx={{ listStyle: 'none', p: 0, m: 0 }}>
+                {board.rows.slice(0, 10).map((row) => (
+                  <Stack
+                    component="li"
+                    key={`${row.rank}-${row.name}`}
+                    direction="row"
+                    sx={{
+                      py: 1.5,
+                      gap: 2,
+                      alignItems: 'center',
+                      borderBottom: `1px solid ${roles.outlineVariant}`,
+                      fontWeight: row.you ? 700 : 400,
+                    }}
+                  >
+                    <Typography
+                      sx={{ width: 32, fontFamily: HAND_FONT, fontSize: 22, fontWeight: 700 }}
+                    >
+                      {new Intl.NumberFormat(locale).format(row.rank)}
+                    </Typography>
+                    <Typography variant="bodyLarge" sx={{ flex: 1, fontWeight: 'inherit' }}>
+                      {row.name}
+                    </Typography>
+                    {row.demo && <Chip size="small" label={t.demo} />}
+                    <Typography variant="labelLarge" color="text.secondary">
+                      {t[row.level]}
+                    </Typography>
+                    <Typography variant="labelLarge" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {new Intl.NumberFormat(locale).format(row.points)}
+                    </Typography>
+                  </Stack>
+                ))}
+              </Box>
+            )}
             {!joined && (
               <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
                 {t.boardHidden}

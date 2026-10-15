@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Button, CssBaseline, ThemeProvider, Typography } from '@mui/material'
+import { Button, CssBaseline, ThemeProvider, Typography, useTheme } from '@mui/material'
+import type { Theme } from '@mui/material'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -12,36 +13,33 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { LOCALE_NAMES, LOCALES } from '../../i18n/locales'
-import { nivaTheme } from '../../design/theme'
 import { formatPrice } from '../v1/format'
 import { useFrontCopy } from './strings'
 import './landing.css'
 
 const businessUrl = 'https://business.chalkboard.shreyaan.work'
-// The landing page is always light: it is the brand's first impression, not an app surface.
-const lightTheme = nivaTheme('light')
 // Demo prices are shown as a Singapore shop would see them.
 const sgd = (minor: number) => formatPrice(minor, 'SGD', 'en-SG')
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches
-const roles = lightTheme.material
-// Material 3 light roles as CSS variables for the page's own stylesheet.
-const brandVars = {
-  colorScheme: 'light',
-  '--ink': roles.onSurface,
-  '--muted': roles.onSurfaceVariant,
-  '--surface': roles.surface,
-  '--surface-low': roles.surfaceContainerLow,
-  '--surface-high': roles.surfaceContainerHigh,
-  '--primary': roles.primary,
-  '--on-primary': roles.onPrimary,
-  '--primary-c': roles.primaryContainer,
-  '--on-primary-c': roles.onPrimaryContainer,
-  '--secondary-c': roles.secondaryContainer,
-  '--tertiary-c': roles.tertiaryContainer,
-  '--error-c': roles.errorContainer,
-  '--on-error-c': roles.onErrorContainer,
-  '--outline': roles.outlineVariant,
-} as CSSProperties
+// The same semantic roles and appearance as the app, including a remembered dark theme.
+const brandVars = (roles: Theme['material'], mode: Theme['palette']['mode']) =>
+  ({
+    colorScheme: mode,
+    '--ink': roles.onSurface,
+    '--muted': roles.onSurfaceVariant,
+    '--surface': roles.surface,
+    '--surface-low': roles.surfaceContainerLow,
+    '--surface-high': roles.surfaceContainerHigh,
+    '--primary': roles.primary,
+    '--on-primary': roles.onPrimary,
+    '--primary-c': roles.primaryContainer,
+    '--on-primary-c': roles.onPrimaryContainer,
+    '--secondary-c': roles.secondaryContainer,
+    '--tertiary-c': roles.tertiaryContainer,
+    '--error-c': roles.errorContainer,
+    '--on-error-c': roles.onErrorContainer,
+    '--outline': roles.outlineVariant,
+  }) as CSSProperties
 
 /** Scroll progress (0 → 1) of an element through the viewport, written to a CSS variable. */
 function useScrollProgress(onStep?: (progress: number) => void) {
@@ -207,6 +205,7 @@ function StoryScreen({ step }: { step: number }) {
 }
 
 export default function Marketing() {
+  const theme = useTheme()
   const t = useFrontCopy()
   const page = useRef<HTMLDivElement>(null)
   const [step, setStep] = useState(0)
@@ -235,9 +234,9 @@ export default function Marketing() {
     'Handa na ang kape?',
   ]
   return (
-    <ThemeProvider theme={lightTheme}>
+    <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div ref={page} className="lp" style={brandVars}>
+      <div ref={page} className="lp" style={brandVars(theme.material, theme.palette.mode)}>
         <a className="lp-skip" href="#main">
           {t.skip}
         </a>

@@ -57,6 +57,18 @@ test('Prep plan uses approved sales, labels its method and passes axe on phone',
   await expect(
     page.getByText(/Offline coach:.*Kopi: 30 item.*Method: weekday average/),
   ).toBeVisible()
+  // The numbers behind the answer, drawn as a chart card in the chat (owner, 16 Oct).
+  const chart = page.getByRole('figure', { name: /^Forecast chart: Kopi/ })
+  await expect(chart).toBeVisible()
+  await expect(chart).toContainText('Next 7 days')
+  await expect(chart).toContainText('Weekday average')
+  await chart.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(1500)
+  await page.screenshot({
+    path: `docs/stories/coach-chart-forecast-${test.info().project.name}.png`,
+  })
+  const chartAudit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
+  expect(chartAudit.violations).toEqual([])
 })
 
 test('phone import offers capture and pasted notes with review warnings before saving', async ({
