@@ -21,5 +21,5 @@ instance and resume fails. Make the replay buffer shared:
    expiry. Keep CI offline.
 4. Document in deployment notes that the lead must enable a Firestore TTL policy on
    `stream_replay.expires_at` (one gcloud command — write it out).
-Run only: ruff, ruff format --check, mypy app, pytest on the touched test files (with the emulator if present;
-say if not), and nothing in the browser.
+   Run only: ruff, ruff format --check, mypy app, pytest on the touched test files (with the emulator if present;
+   say if not), and nothing in the browser.

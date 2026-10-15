@@ -9,7 +9,7 @@ checks run, open questions).
 ## Read first (short)
 
 - `AGENTS.md` / `../rules.md` if present, and `docs/codex/CONVENTIONS.md` — product rules: the AI
-  only *prepares* changes, the owner confirms a sealed proposal; never claim Google publishing;
+  only _prepares_ changes, the owner confirms a sealed proposal; never claim Google publishing;
   APAC/Singapore market (kopi, kaya toast, SGD), English default, all copy via
   `src/features/v1/strings.ts` + the 9 locale files in `src/features/v1/locales/` (typed `Copy`,
   so new keys must be added to every locale — write real translations, not English).

@@ -39,6 +39,7 @@ it). Offline coach fixture: handle at least "halal yes" so the browser test can 
 
 On the coach screen (below the single shop card, max ONE extra card at a time, dismissible) and in
 My shop tiles, show the most important pending item, in this order:
+
 1. Unanswered customer messages ("2 customers are waiting").
 2. Sold-out sweep (see 3).
 3. Missing customer facts ("Customers ask: halal? payment?") → opens the coach with that question.
