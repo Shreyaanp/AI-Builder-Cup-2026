@@ -41,6 +41,7 @@ from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .forecast import ForecastService
 from .forecast_routes import router as forecast_router
 from .frontend import serve_frontend
+from .games_routes import router as games_router
 from .google_profile import BusinessProfileAdapter, SimulatedBusinessProfile
 from .google_sim_routes import router as google_sim_router
 from .imports import ColumnMapper
@@ -220,6 +221,7 @@ def create_app(
     app.include_router(demo_workspace_router)
     app.include_router(demo_world_router)
     app.include_router(passport_router)
+    app.include_router(games_router)
     app.include_router(today_router)
     app.include_router(sourcing_router)
     app.include_router(owner_router)
