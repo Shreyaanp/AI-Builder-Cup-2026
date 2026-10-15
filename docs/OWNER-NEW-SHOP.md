@@ -14,13 +14,37 @@ not match the answers was replaced.
 2. **Hero** (`NewShopFlow.tsx` → `Hero`): full screen, "Let’s open your shop". A shop is drawn in
    chalk, the title written out, sparkles pop (GSAP through `useChalkTimeline`, nothing runs with
    reduced motion). One button: "Let’s begin" (it is also the gesture that unlocks audio and mic).
-3. **Conversation** (`Journey`): full screen, calm. The coach speaks first. With a microphone it
-   opens one Gemini Live session (`useVoice` conversation mode): once the mic is granted the app
-   sends the opening ("Hello! I want to open a new shop.", localized), the coach greets out loud,
-   and the mic opens when the greeting has finished playing; turns then end by Live's own voice
-   detection. Without a mic (refused, unsupported, session limit) the same conversation carries
-   on by text and replies are read aloud by `/tts` (phone voice as fallback). Visible: mute
-   (coach voice), mic on/off, live captions bar, and a composer that is always there.
+3. **Conversation = voice mode** (`Journey`, owner 16 Oct: "like ChatGPT voice mode"). One open,
+   continuous conversation: the mic is on the whole time (never turns itself off; the owner can
+   pause it). The coach speaks first. Phone (390×844), top to bottom: the shop card, the
+   conversation (scrolls, takes the height it needs), the **stage** (a chalk orb with the live
+   caption; it fills the remaining height, so a short conversation gets a big orb and a long one a
+   compact orb, never dead space), quick actions, and the call controls: keyboard (type
+   instead), mic (pause/resume, `aria-pressed`), coach voice (mute) and End voice. Desktop: the
+   conversation, the stage and the shop card side by side (`VoiceStage.tsx`).
+   - **Orb** (`VoiceOrb`): reacts to real audio levels every frame (mic analyser and the coach's
+     playback bus, written to a CSS variable, no re-render per frame). Listening = mint, ripples
+     with the owner's voice; thinking = lilac, a ring drawn over and over (the owner stopped
+     talking and the coach is due); speaking = sunflower, swells with the coach's voice;
+     connecting/reconnecting = sky, a dashed ring turning; paused/typing = quiet outline. Reduced
+     motion keeps colour and shape only. Captions show both sides (the owner's live transcript in
+     italics, the coach's words as it speaks).
+   - **Shop card** (`ShopFill`): places for products and prices, location, hours, payment and
+     delivery start as dashed chalk outlines; each answer lands in its place with a small stamp
+     and glow, the name is written in chalk, and a tally shows how much is filled. Phone: one row
+     that scrolls sideways; desktop: a full column with every item and price.
+   - **Typing**: the keyboard button (or any voice failure) shows the composer with "Talk instead",
+     mute and send. Typed turns go into the same live session when it is open.
+   - **Reconnects** (`useVoice` conversation mode): the microphone, audio context and meters live
+     for the whole conversation; when a Live socket ends (150 s cap, network, idle) the hook
+     reconnects to the **same session id** with the mic still on, at once after a planned end and
+     with growing pauses after failures (4 tries). The orb shows "Reconnecting…" meanwhile. A
+     turn the coach never answered is sent again; a reply cut off mid-way stays in the chat.
+   - **Alerts** (`VoiceAlert`, in the page, dismissible, never a modal): mic blocked (how to allow
+     it: lock icon → Microphone → Allow; Try again / Type instead; detected before any session
+     when the browser already says "denied"), no microphone, connection lost after the retries
+     (Reconnect / Type instead), rate limited (counts down the wait), voice unavailable (carry on
+     typing; Try again). The conversation always continues by text meanwhile.
 4. **The agent drives and acts in the chat.** One question at a time (what you sell → location →
    hours → payment → delivery → halal for food). Every proposal the coach makes is shown as an
    action card in the chat ("Added to your shop · Shop name: … · Category: …"); a menu photo is
@@ -42,14 +66,21 @@ not match the answers was replaced.
   remembers questions the owner left unanswered (read from the session's own turns).
 - Voice socket: a `{"kind": "new_shop", "draft": …}` frame may be resent mid-session so the tools
   keep building on what the owner sees after a photo or location (`refresh_new_shop_draft`).
+- New-shop voice sessions (voice.py): the full 150 s window (kept under Cloud Run's 180 s request
+  cap), 40 model calls and 40 text turns per socket instead of 8 and 12; the app reconnects to the
+  same session when a socket ends, so the conversation is unbounded in practice.
 
 ## Evidence
 
-Story `tests/stories/s10-new-shop.spec.ts` (phone, screenshots `docs/stories/S10-*.png`):
+Voice mode `tests/new-shop-voice.spec.ts` (phone + desktop, light + dark, axe): every state as
+`docs/stories/new-shop-{1-hero,2-listening,3-thinking,4-speaking,5-reconnecting,6-mic-blocked,
+7-typing,8-review,9-ready}-{light,dark}[-desktop].png`; mic blocked (refused and already denied)
+→ alert + typing; the session ending twice → same session id, mic still on, conversation and
+server history intact; lost connection → retries then Reconnect; rate limit countdown; voice
+unavailable; the alert in all 15 languages. Story `tests/stories/s10-new-shop.spec.ts` (phone, screenshots `docs/stories/S10-*.png`):
 "+" → hero → coach greets (mic on) → owner answers → action card → silence → coach moves on →
 location and menu photo → review page → ready; plus tour end and empty My shop entries. Light and
-dark captures of hero, chat, review and ready on phone and desktop with an axe pass:
-`tests/new-shop.spec.ts` → `docs/stories/new-shop-{1-hero,2-chat,3-review,4-ready}-{light,dark}[-desktop].png`.
+dark axe passes of hero, chat, review and ready on phone and desktop: `tests/new-shop.spec.ts`.
 
 ## Not validated
 
