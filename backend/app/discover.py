@@ -165,6 +165,8 @@ class DiscoveryPlace(BaseModel):
     price_level: str | None = None
     google_maps_uri: str | None = None
     halal: bool | None = None
+    # The owner said they make what they sell or source it from local makers.
+    locally_made: bool = False
     demo: bool = False
     # A seeded sample shop (labelled "Demo shop"), as opposed to demo map data above.
     demo_shop: bool = False
@@ -532,6 +534,7 @@ async def discover(
             ),
             currency=shop["currency"],
             halal={"yes": True, "no": False}.get(shop.get("facts", {}).get("halal")),
+            locally_made=bool(shop.get("facts", {}).get("locally_made")),
             # The owner's first gallery photo, served only because the shop is shared.
             photo_url=(
                 f"/api/v1/public/shops/{shop['id']}/photos/{shop['gallery'][0]}.jpg"

@@ -1666,6 +1666,8 @@ export interface components {
             halal?: ("yes" | "no" | "muslim_owned" | "not_stated") | null;
             /** Vegetarian Options */
             vegetarian_options?: boolean | null;
+            /** Locally Made */
+            locally_made?: boolean | null;
             /** Delivery */
             delivery?: string | null;
             /**
@@ -1864,6 +1866,11 @@ export interface components {
             /** Halal */
             halal?: boolean | null;
             /**
+             * Locally Made
+             * @default false
+             */
+            locally_made: boolean;
+            /**
              * Demo
              * @default false
              */
@@ -2034,6 +2041,11 @@ export interface components {
              */
             vegetarian: boolean;
             /**
+             * Locally Made
+             * @default false
+             */
+            locally_made: boolean;
+            /**
              * Open Now
              * @default false
              */
@@ -2180,6 +2192,11 @@ export interface components {
             google_maps_uri?: string | null;
             /** Halal */
             halal?: boolean | null;
+            /**
+             * Locally Made
+             * @default false
+             */
+            locally_made: boolean;
             /**
              * Demo
              * @default false

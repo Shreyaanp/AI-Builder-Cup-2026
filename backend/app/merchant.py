@@ -45,6 +45,7 @@ Payment = Annotated[str, Field(min_length=1, max_length=40)]
 FACT_KEYS = (
     "halal",
     "vegetarian_options",
+    "locally_made",
     "delivery",
     "delivery_note",
     "preorders",
@@ -109,6 +110,8 @@ class BusinessFields(BaseModel):
     currency: str = Field(default="SGD", pattern=r"^[A-Z]{3}$")
     halal: Halal | None = None
     vegetarian_options: bool | None = None
+    # The owner makes or sources what they sell locally (home-made, made in-house, local makers).
+    locally_made: bool | None = None
     delivery: Delivery | None = None
     delivery_note: str = Field(default="", max_length=80)
     preorders: bool | None = None

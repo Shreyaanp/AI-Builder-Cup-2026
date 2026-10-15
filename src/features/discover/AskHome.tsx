@@ -24,6 +24,8 @@ import { FollowButton } from '../customer/FollowButton'
 import { preferenceChips } from '../customer/preferences'
 import { ProfileSheet } from '../customer/Profile'
 import { PlaceSearch } from './PlaceSearch'
+import { locallyMadeLabel } from '../public/locallyMade'
+import type { Locale } from '../../i18n/locales'
 import type { FoundPlace } from './PlaceSearch'
 
 type Item = { name: string; price: number; unit: string; available: boolean }
@@ -31,6 +33,7 @@ type Pick = {
   id: string
   name: string
   source: 'chalkboard' | 'google'
+  locally_made?: boolean
   category: string
   distance_m: number
   open_now: boolean | null
@@ -645,12 +648,23 @@ function PickCard({
             transition={chalkboard}
             compact
           />
-          {pick.demo_shop && (
-            <Chip
-              label={copy.demo}
-              size="small"
-              sx={{ position: 'absolute', top: 10, left: 10, bgcolor: roles.surface }}
-            />
+          {(pick.demo_shop || pick.locally_made) && (
+            <Stack direction="row" sx={{ position: 'absolute', top: 10, left: 10, gap: 1 }}>
+              {pick.locally_made && (
+                <Chip
+                  label={locallyMadeLabel(locale as Locale)}
+                  size="small"
+                  sx={{
+                    bgcolor: roles.tertiaryContainer,
+                    color: roles.onTertiaryContainer,
+                    fontWeight: 600,
+                  }}
+                />
+              )}
+              {pick.demo_shop && (
+                <Chip label={copy.demo} size="small" sx={{ bgcolor: roles.surface }} />
+              )}
+            </Stack>
           )}
         </Box>
         {reason && (

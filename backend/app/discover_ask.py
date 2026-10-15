@@ -49,6 +49,7 @@ class Intent(BaseModel):
     max_price: float | None = Field(default=None, ge=0)
     halal: bool = False
     vegetarian: bool = False
+    locally_made: bool = False
     open_now: bool = False
     followups: list[str] = Field(default_factory=list, max_length=3)
 
@@ -129,9 +130,20 @@ Reply in JSON matching the schema. Rules:
 - category: one of {categories} or "".
 - max_price: a number only if the customer gave a budget ("under 100", "cheap" → null).
 - halal / vegetarian / open_now: true only if asked.
+- locally_made: true only if they want home-made, handmade, made in-house or local makers.
 - summary: one short friendly line, in language "{language}", restating what you will look for.
 - followups: up to 3 short refinements in language "{language}" (e.g. "Open now", "Under ₹100").
 Request: {q}"""
+
+
+LOCALLY_MADE = re.compile(
+    r"\b(locally[ -]made|local makers?|home[ -]?made|hand[ -]?made"
+    r"|made (?:here|in[ -]house)|artisan)\b"
+)
+DIET_AND_ORIGIN_WORDS = {
+    *("halal", "vegetarian", "veg", "vegan", "locally", "local", "made", "homemade"),
+    *("home", "handmade", "hand", "artisan", "makers", "maker", "house"),
+}
 
 
 def keyword_intent(q: str) -> Intent:
@@ -145,11 +157,12 @@ def keyword_intent(q: str) -> Intent:
     )
     return Intent(
         summary=q.strip()[:160],
-        keywords=[w for w in words if w not in {"halal", "vegetarian", "veg", "vegan"}][:6],
+        keywords=[w for w in words if w not in DIET_AND_ORIGIN_WORDS][:6],
         category=category,
         max_price=float(budget.group(1).replace(",", ".")) if budget else None,
         halal="halal" in text,
         vegetarian=bool(re.search(r"\b(veg|vegetarian|vegan)\b", text)),
+        locally_made=bool(LOCALLY_MADE.search(text)),
         open_now=bool(re.search(r"\b(open now|right now|now)\b", text)),
     )
 
@@ -208,6 +221,8 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
         return None
     if intent.vegetarian and not facts.get("vegetarian_options"):
         return None
+    if intent.locally_made and not facts.get("locally_made"):
+        return None
     is_open = open_now(shop["hours"], shop["timezone"], weekly_hours=shop.get("weekly_hours"))
     if intent.open_now and is_open is False:
         return None
@@ -257,6 +272,7 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
         items=[TopItem(**p) for p in shop["products"][:3]],
         sold_out=[p["name"] for p in shop["products"] if not p["available"]],
         halal=facts.get("halal") in {"yes", "muslim_owned"} if facts.get("halal") else None,
+        locally_made=bool(facts.get("locally_made")),
         matched=[TopItem(**p) for p in (matched or [])[:3]],
         score=score,
     )

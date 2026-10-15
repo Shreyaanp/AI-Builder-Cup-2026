@@ -133,6 +133,7 @@ export const ASK_ORDER = [
   'payment_methods',
   'delivery',
   'vegetarian_options',
+  'locally_made',
   'preorders',
   'busy_hours',
 ] as const
@@ -181,6 +182,8 @@ export function factEntries(
     })
   if (fields.vegetarian_options != null)
     entries.push({ key: 'vegetarian_options', value: yesNo(fields.vegetarian_options) })
+  if (fields.locally_made != null)
+    entries.push({ key: 'locally_made', value: yesNo(fields.locally_made) })
   if (fields.preorders != null)
     entries.push({
       key: 'preorders',

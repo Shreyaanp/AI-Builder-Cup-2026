@@ -4655,6 +4655,17 @@
             ],
             "title": "Vegetarian Options"
           },
+          "locally_made": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locally Made"
+          },
           "delivery": {
             "anyOf": [
               {
@@ -5181,6 +5192,11 @@
             ],
             "title": "Halal"
           },
+          "locally_made": {
+            "type": "boolean",
+            "title": "Locally Made",
+            "default": false
+          },
           "demo": {
             "type": "boolean",
             "title": "Demo",
@@ -5543,6 +5559,11 @@
           "vegetarian": {
             "type": "boolean",
             "title": "Vegetarian",
+            "default": false
+          },
+          "locally_made": {
+            "type": "boolean",
+            "title": "Locally Made",
             "default": false
           },
           "open_now": {
@@ -5919,6 +5940,11 @@
               }
             ],
             "title": "Halal"
+          },
+          "locally_made": {
+            "type": "boolean",
+            "title": "Locally Made",
+            "default": false
           },
           "demo": {
             "type": "boolean",
