@@ -40,30 +40,37 @@ export function SignInButton({
   const t = useAccountCopy()
   const [busy, setBusy] = useState(false)
   return (
-    <Button
-      variant="contained"
-      size="large"
-      fullWidth={fullWidth}
-      disabled={busy || account.status === 'loading'}
-      startIcon={
-        busy ? (
-          <CircularProgress size={18} color="inherit" />
-        ) : (
-          <Box sx={{ display: 'grid', p: 0.5, bgcolor: '#fff', borderRadius: '50%' }}>
-            <GoogleMark />
-          </Box>
-        )
-      }
-      onClick={async () => {
-        setBusy(true)
-        const ok = await account.signIn()
-        setBusy(false)
-        if (ok) onSignedIn?.()
-      }}
-      sx={{ minHeight: 52 }}
-    >
-      {account.mode === 'local' ? t.signInLocal : t.signIn}
-    </Button>
+    <>
+      {account.error && (
+        <Alert severity="error">
+          {account.error === 'unavailable' ? t.signInUnavailable : t.signInUnfinished}
+        </Alert>
+      )}
+      <Button
+        variant="contained"
+        size="large"
+        fullWidth={fullWidth}
+        disabled={busy || account.status === 'loading'}
+        startIcon={
+          busy ? (
+            <CircularProgress size={18} color="inherit" />
+          ) : (
+            <Box sx={{ display: 'grid', p: 0.5, bgcolor: '#fff', borderRadius: '50%' }}>
+              <GoogleMark />
+            </Box>
+          )
+        }
+        onClick={async () => {
+          setBusy(true)
+          const ok = await account.signIn()
+          setBusy(false)
+          if (ok) onSignedIn?.()
+        }}
+        sx={{ minHeight: 52 }}
+      >
+        {account.mode === 'local' ? t.signInLocal : t.signIn}
+      </Button>
+    </>
   )
 }
 
@@ -82,7 +89,6 @@ export function SignInSheet({
   body?: string
 }) {
   const roles = useTheme().material
-  const { error } = useCustomer()
   const t = useAccountCopy()
   return (
     <Sheet
@@ -111,11 +117,6 @@ export function SignInSheet({
         <Typography variant="bodySmall" color="text.secondary">
           {t.signInWhy}
         </Typography>
-        {error && (
-          <Alert severity="error">
-            {error === 'unavailable' ? t.signInUnavailable : t.signInUnfinished}
-          </Alert>
-        )}
         <SignInButton onSignedIn={onSignedIn} />
         <Button onClick={onClose}>{t.notNow}</Button>
       </Stack>

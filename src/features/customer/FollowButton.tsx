@@ -1,6 +1,16 @@
 import { useState } from 'react'
-import { Button, IconButton, Tooltip, useTheme } from '@mui/material'
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  Snackbar,
+  Tooltip,
+  useTheme,
+} from '@mui/material'
 import { Check, Plus } from 'lucide-react'
+import { popIn } from '../../design/chalkMotion'
 import { useCustomer } from './account'
 import { useAccountCopy } from './copy'
 
@@ -24,60 +34,83 @@ export function FollowButton({
   const following = account.follows.includes(id)
   const [busy, setBusy] = useState(false)
   const [changed, setChanged] = useState(0)
+  const [failed, setFailed] = useState(false)
   const label = (following ? t.unfollowShop : t.followShop).replace('{shop}', name)
   async function toggle() {
     if (busy) return
     setBusy(true)
+    setFailed(false)
     try {
       await account.setFollow(id, !following)
       setChanged((n) => n + 1)
     } catch {
-      /* Unchanged state stays visible. */
+      setFailed(true)
     } finally {
       setBusy(false)
     }
   }
-  const icon = following ? (
-    <Check key={`on-${changed}`} size={18} className={changed ? 'c-bounce' : undefined} />
+  const icon = busy ? (
+    <CircularProgress size={18} color="inherit" />
   ) : (
-    <Plus key={`off-${changed}`} size={18} />
+    <Box key={changed} component="span" sx={{ display: 'flex', ...(changed ? popIn : {}) }}>
+      {following ? <Check size={18} /> : <Plus size={18} />}
+    </Box>
   )
-  if (variant === 'icon')
-    return (
-      <Tooltip title={label}>
-        <IconButton
-          aria-label={label}
+  return (
+    <>
+      {variant === 'icon' ? (
+        <Tooltip title={label}>
+          <IconButton
+            aria-label={label}
+            aria-pressed={following}
+            aria-busy={busy}
+            disabled={busy || account.status === 'loading'}
+            onClick={() => void toggle()}
+            sx={{
+              width: 48,
+              height: 48,
+              bgcolor: following ? roles.primary : roles.surface,
+              color: following ? roles.onPrimary : roles.onSurface,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+              transition: 'background-color 200ms, color 200ms',
+              '&:hover': { bgcolor: following ? roles.primary : roles.surface },
+            }}
+          >
+            {icon}
+          </IconButton>
+        </Tooltip>
+      ) : (
+        <Button
           aria-pressed={following}
+          aria-label={label}
+          variant={following ? 'contained' : 'outlined'}
+          size="small"
+          startIcon={icon}
+          aria-busy={busy}
+          disabled={busy || account.status === 'loading'}
           onClick={() => void toggle()}
           sx={{
-            width: 40,
-            height: 40,
-            bgcolor: following ? roles.primary : roles.surface,
-            color: following ? roles.onPrimary : roles.onSurface,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
-            transition: 'background-color 200ms, color 200ms',
-            '&:hover': { bgcolor: following ? roles.primary : roles.surface },
+            minHeight: 48,
+            minWidth: 112,
+            transition: 'background-color 200ms, color 200ms, border-color 200ms',
           }}
         >
-          {icon}
-        </IconButton>
-      </Tooltip>
-    )
-  return (
-    <Button
-      aria-pressed={following}
-      aria-label={label}
-      variant={following ? 'contained' : 'outlined'}
-      size="small"
-      startIcon={icon}
-      onClick={() => void toggle()}
-      sx={{
-        minHeight: 40,
-        minWidth: 112,
-        transition: 'background-color 200ms, color 200ms, border-color 200ms',
-      }}
-    >
-      {following ? t.following : t.follow}
-    </Button>
+          {following ? t.following : t.follow}
+        </Button>
+      )}
+      <Snackbar open={failed} onClose={() => setFailed(false)}>
+        <Alert
+          severity="error"
+          onClose={() => setFailed(false)}
+          action={
+            <Button color="inherit" onClick={() => void toggle()}>
+              {t.retry}
+            </Button>
+          }
+        >
+          {t.followFailed}
+        </Alert>
+      </Snackbar>
+    </>
   )
 }
