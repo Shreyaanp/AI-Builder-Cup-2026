@@ -2,21 +2,22 @@ import { Box, Typography, useTheme } from '@mui/material'
 import { Bookmark, MessageCircle, Sparkles } from 'lucide-react'
 import { customerNavigate } from '../frontdoors/navigation'
 import { useCustomer } from './account'
-import { accountCopy as t } from './copy'
+import { useAccountCopy } from './copy'
 import './customer.css'
 
 export type CustomerTab = 'ask' | 'chats' | 'saved'
 
-const tabs: { id: CustomerTab; href: string; label: string; Icon: typeof Sparkles }[] = [
-  { id: 'ask', href: '/explore/', label: t.ask, Icon: Sparkles },
-  { id: 'chats', href: '/explore/chats', label: t.chats, Icon: MessageCircle },
-  { id: 'saved', href: '/explore/saved', label: t.saved, Icon: Bookmark },
+const tabs: { id: CustomerTab; href: string; Icon: typeof Sparkles }[] = [
+  { id: 'ask', href: '/explore/', Icon: Sparkles },
+  { id: 'chats', href: '/explore/chats', Icon: MessageCircle },
+  { id: 'saved', href: '/explore/saved', Icon: Bookmark },
 ]
 
 /** M3 navigation bar: three top-level customer destinations, unread badge on Chats. */
 export function CustomerNav({ active }: { active: CustomerTab }) {
   const roles = useTheme().material
   const { unread } = useCustomer()
+  const t = useAccountCopy()
   return (
     <Box
       component="nav"
@@ -47,7 +48,8 @@ export function CustomerNav({ active }: { active: CustomerTab }) {
           height: 80,
         }}
       >
-        {tabs.map(({ id, href, label, Icon }) => {
+        {tabs.map(({ id, href, Icon }) => {
+          const label = t[id]
           const current = id === active
           const badge = id === 'chats' && unread > 0
           return (

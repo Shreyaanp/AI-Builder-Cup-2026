@@ -20,7 +20,7 @@ import { formatPrice } from '../v1/format'
 import { CustomerConversation } from './CustomerConversation'
 import { accessKey, readAccess, type ThreadAccess } from './threadAccess'
 import { useCustomer } from '../customer/account'
-import { accountCopy } from '../customer/copy'
+import { useAccountCopy } from '../customer/copy'
 import { chatPath, go } from '../customer/paths'
 import { SignInButton } from '../customer/SignIn'
 import type { ChatSummary } from '../customer/types'
@@ -85,6 +85,7 @@ export function ShopChat({
   const input = useRef<HTMLInputElement>(null)
   const contactInput = useRef<HTMLTextAreaElement>(null)
   const account = useCustomer()
+  const accountCopy = useAccountCopy()
   const signedIn = account.status === 'signed-in'
   // A signed-in customer's existing chat with this shop (one per shop, like a messaging app).
   const [existing, setExisting] = useState<ChatSummary | null>(null)
