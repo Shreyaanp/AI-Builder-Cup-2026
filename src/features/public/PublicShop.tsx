@@ -618,7 +618,8 @@ export default function PublicShop({ id }: { id: string }) {
             compact
           />
         </Box>
-        <Box sx={{ minWidth: 0, flex: 1 }}>
+        {/* On a phone the floating theme button sits over the top-right corner: wrap before it. */}
+        <Box sx={{ minWidth: 0, flex: 1, pr: { xs: '44px', md: 0 } }}>
           <Typography component="h1" variant="titleLarge" sx={{ overflowWrap: 'anywhere' }}>
             {shop.name}
           </Typography>
@@ -659,9 +660,9 @@ export default function PublicShop({ id }: { id: string }) {
                 {openLabel}
               </Typography>
             )}
-            {[shop.category, shop.hours].filter(Boolean).map((text) => (
+            {[shop.category, shop.hours].filter(Boolean).map((text, index) => (
               <Typography key={text} variant="bodyMedium" color="text.secondary" noWrap>
-                · {text}
+                {openLabel || index > 0 ? `· ${text}` : text}
               </Typography>
             ))}
           </Stack>
