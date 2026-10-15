@@ -2,6 +2,30 @@ import { useLocale } from '../../state/hooks'
 import { translations } from './locales'
 
 export const en = {
+  newShopMode: 'New shop',
+  newShopIntro: 'Let’s bring your new shop online. Start with a photo, or tell me what you sell.',
+  newShopCamera: 'Snap your menu or shopfront',
+  newShopVoice: 'Tell me about your shop',
+  newShopForm: 'Fill in a form instead',
+  newShopCancel: 'Back to my current shop',
+  newShopReview: 'Review my new shop',
+  newShopReady: 'Your new shop is ready',
+  newShopReadyBody:
+    'You’re now working in your new shop. Share its customer page when you’re ready.',
+  newShopContinue: 'Continue with my shop',
+  newShopPhotoNext: 'What would you like customers to know about your shop?',
+  useCurrentLocation: 'Use my current location',
+  locationReason:
+    'At your shop? Allow location access to place its pin. You’ll review it before saving.',
+  locating: 'Finding your location…',
+  locationDenied:
+    'Location access was denied. You can type an address or use a photo with GPS instead.',
+  locationFailed:
+    'We couldn’t get your location. Try again, type an address, or use a photo with GPS.',
+  yourLocation: 'Your location',
+  description: 'Description',
+  newShopStep: (n: number) => `New shop · step ${n} of 4`,
+  locationAccuracy: (m: string) => `within ${m} m`,
   installApp: 'Install app',
   installIos: 'In Safari, tap Share → Add to Home Screen, then tap Add.',
   installUnavailable:

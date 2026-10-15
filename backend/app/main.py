@@ -26,7 +26,7 @@ from .brief import BriefWriter, WeatherService
 from .business_profile import QuestionPlanner
 from .community import community_service
 from .community_routes import router as community_router
-from .contracts import CoachTurn, StreamEvent
+from .contracts import CoachTurn, NewShopVoiceContext, StreamEvent
 from .coordinator import MerchantContext, current
 from .customer import CustomerAnswers
 from .customer_routes import router as customer_router
@@ -308,7 +308,7 @@ def create_app(
             return stream_response(turn, after)
         await enforce_limits(request, [("coach", principal.uid)])
         sid = await services.runtime.session(
-            principal, str(body.session_id) if body.session_id else None, bid
+            principal, str(body.session_id) if body.session_id else None, bid, body.new_shop
         )
         lease = await services.registry.acquire_async(principal.uid, sid)
 
@@ -322,7 +322,13 @@ def create_app(
                         )
                         token = current.set(
                             MerchantContext(
-                                app.state.merchant, principal.uid, bid, recall, body.message
+                                app.state.merchant,
+                                principal.uid,
+                                bid,
+                                recall,
+                                body.message,
+                                new_shop=body.new_shop,
+                                new_shop_draft=body.new_shop_draft,
                             )
                         )
                     turn.append(StreamEvent(kind="ready", session_id=sid, mode=settings.coach_mode))
@@ -374,6 +380,7 @@ def create_app(
                 "session_id": item.id,
                 "updated": item.last_update_time,
                 "business_id": item.state.get("business_id"),
+                "new_shop": bool(item.state.get("new_shop")),
             }
             for item in reversed(listing.sessions)
         ]
@@ -427,6 +434,16 @@ def create_app(
             if requested:
                 requested = str(UUID(requested))
             bid = websocket.query_params.get("business_id")
+            new_shop = websocket.query_params.get("new_shop") == "true"
+            if new_shop and bid:
+                raise ValueError("New shop mode cannot edit a business")
+            draft = None
+            if new_shop:
+                async with asyncio.timeout(5):
+                    raw_context = await websocket.receive_text()
+                    if len(raw_context) > 32_000:
+                        raise ValueError("Draft too large")
+                    draft = NewShopVoiceContext.model_validate_json(raw_context).draft
             if bid:
                 bid = str(UUID(bid))
                 if not app.state.merchant:
@@ -434,9 +451,16 @@ def create_app(
                 await anyio.to_thread.run_sync(app.state.merchant.context, principal.uid, bid)
             if app.state.merchant:
                 context_token = current.set(
-                    MerchantContext(app.state.merchant, principal.uid, bid, [])
+                    MerchantContext(
+                        app.state.merchant,
+                        principal.uid,
+                        bid,
+                        [],
+                        new_shop=new_shop,
+                        new_shop_draft=draft,
+                    )
                 )
-            sid = await services.runtime.session(principal, requested, bid)
+            sid = await services.runtime.session(principal, requested, bid, new_shop)
             lease = await services.registry.acquire_async(principal.uid, sid)
             await websocket.send_json(
                 StreamEvent(

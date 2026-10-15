@@ -89,10 +89,7 @@ function EmptyShop() {
         <Button variant="contained" startIcon={<Camera size={20} />} onClick={ws.requestPhoto}>
           {t.startPhoto}
         </Button>
-        <Button
-          variant="outlined"
-          onClick={() => ws.openEditor({ kind: 'business', fields: null })}
-        >
+        <Button variant="outlined" onClick={ws.startNewShop}>
           {t.addShop}
         </Button>
       </Stack>

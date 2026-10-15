@@ -5,7 +5,7 @@ test('hours, custom payment and delivery are reviewed then appear on the shared 
   page,
 }) => {
   await enter(page)
-  await page.getByRole('button', { name: 'Add my shop' }).click()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   await page.getByLabel('Shop name').fill('QA hours and facts')
   await page.getByLabel('Address or area').fill('Indiranagar, Bengaluru')
   await page.getByLabel('Set hours by weekday').check()

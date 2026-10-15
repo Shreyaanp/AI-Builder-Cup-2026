@@ -9,7 +9,7 @@ async function shop(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await page.getByRole('button', { name: 'Add my shop' }).click()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   await page.getByLabel('Shop name').fill('Ah Seng Kopi')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await page

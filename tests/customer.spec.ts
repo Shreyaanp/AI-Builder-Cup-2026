@@ -29,7 +29,7 @@ async function sharedShop(page: Page, phone = '+65 6123 4567') {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
   const prepared = await page.request.post('/api/v1/proposals', {
     data: {
       kind: 'business',

@@ -27,11 +27,11 @@ async function open(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await agree.click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
 }
 
 async function addShop(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Add my shop' }).click()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   await page.getByLabel('Shop name').fill(name)
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   const review = page.getByRole('dialog', { name: 'Check before saving' })
@@ -111,9 +111,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
         case 'Coach':
           await open(page)
           await expect(page.getByRole('log')).toHaveCount(0)
-          await expect(
-            page.getByRole('region', { name: 'Scan your menu or shop board' }),
-          ).toBeVisible()
+          await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
           break
         case 'Review':
           await open(page)
@@ -122,6 +120,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
             mimeType: 'image/png',
             buffer: await png(page, 64),
           })
+          await page.getByRole('button', { name: 'Review my new shop' }).click()
           await expect(page.getByRole('dialog', { name: 'Check before saving' })).toBeVisible()
           break
         default: {

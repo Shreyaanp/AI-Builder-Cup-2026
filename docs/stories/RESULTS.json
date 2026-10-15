@@ -1,8 +1,166 @@
 {
-  "capturedAt": "2026-10-14T22:38:28.982Z",
+  "capturedAt": "2026-10-15T12:45:55.315Z",
   "mode": "audit",
   "scope": "390×844 offline audit; annotated gaps and live-only paths are not verified story outcomes",
   "stories": [
+    {
+      "story": "A11 · preview labels are inert and Call is absent",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A11 · preview labels are inert and Call is shown",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A11 · Tamil composer and navigation have room for script metrics",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A12 · coach scroll and Google waiting motion: reduce",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A11 · customer light mode separates menu and background surfaces",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A12 · coach scroll and Google waiting motion: no-preference",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A4 · yes fact chip and offline answer agree",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A6 · an existing shop reviews menu and photo pin separately",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A8 · coach photo reuse is explicit for new shops",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A4 · no fact chip and offline answer agree",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A8 · coach photo reuse is explicit for existing shops",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A9 · daily check survives conversation and dismisses per shop and day",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A4 · muslim_owned fact chip and offline answer agree",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A3 · independent customer context polls visible prices and availability",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A4 · not_stated fact chip and offline answer agree",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A8 · header and discovery use the first gallery photo with removal/error fallback",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "S5 · shop details to Google preview and truthful handoff",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [
+        {
+          "title": "1 · details reuse the owner shop",
+          "status": "passed"
+        },
+        {
+          "title": "2 · photo upload persists for the profile",
+          "status": "passed"
+        },
+        {
+          "title": "3 · profile preview shows local prices and saved details",
+          "status": "passed"
+        },
+        {
+          "title": "4 · waiting state and official links",
+          "status": "passed"
+        }
+      ],
+      "annotations": [
+        {
+          "type": "live-only",
+          "description": "Google API access, business verification and publication; official links are inspected without opening them"
+        }
+      ]
+    },
     {
       "story": "S1 · owner sets up and shares a shop",
       "project": "phone",
@@ -48,46 +206,8 @@
           "description": "Photo recognition and microphone ASR accuracy; uploaded image uses the real offline extraction fixture"
         },
         {
-          "type": "gap",
-          "description": "S1/4: photo fixture disclosure is in the coach log behind the review sheet"
-        },
-        {
-          "type": "gap",
-          "description": "S1/6: offline map pin lookup rejects Bengaluru; photo GPS capture needs a physical phone"
-        },
-        {
-          "type": "gap",
-          "description": "S1/6: an existing shop menu-photo proposal drops GPS; combined business/inventory review needs a larger backend change"
-        }
-      ]
-    },
-    {
-      "story": "S5 · shop details to Google preview and truthful handoff",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [
-        {
-          "title": "1 · details reuse the owner shop",
-          "status": "passed"
-        },
-        {
-          "title": "2 · photo upload persists for the profile",
-          "status": "passed"
-        },
-        {
-          "title": "3 · profile preview shows local prices and saved details",
-          "status": "passed"
-        },
-        {
-          "title": "4 · waiting state and official links",
-          "status": "passed"
-        }
-      ],
-      "annotations": [
-        {
           "type": "live-only",
-          "description": "Google API access, business verification and publication; official links are inspected without opening them"
+          "description": "Location, microphone ASR and camera capture still need a physical phone"
         }
       ]
     },
@@ -118,11 +238,11 @@
           "status": "passed"
         },
         {
-          "title": "6 · question reaches Messages and owner reply reaches customer",
+          "title": "6 · signed-in question reaches Messages and owner reply reaches customer",
           "status": "passed"
         },
         {
-          "title": "7 · QR stamp card is honestly device-only",
+          "title": "7 · signed QR stamp moment and an honest card",
           "status": "passed"
         },
         {
@@ -134,22 +254,6 @@
         {
           "type": "live-only",
           "description": "Actual GPS accuracy and live Google Places; local map cards are fixtures"
-        },
-        {
-          "type": "gap",
-          "description": "S3/2: Bengaluru typed-city fallback fails in offline mode"
-        },
-        {
-          "type": "gap",
-          "description": "S3/4: owner-uploaded gallery is not displayed on the customer page; generic category artwork is used"
-        },
-        {
-          "type": "gap",
-          "description": "S3/5: the offline answer fixture says halal is not listed even though the public page shows the confirmed Halal fact"
-        },
-        {
-          "type": "gap",
-          "description": "S3/6: customer can message without signing in; STORIES explicitly disallows anonymous chat"
         }
       ]
     },
@@ -186,8 +290,8 @@
           "description": "Actual multilingual Gemini replies and audible TTS/ASR quality"
         },
         {
-          "type": "gap",
-          "description": "S7/3: eight-city catalogue exists in source but default SQLite preview is unseeded; offline typed-city lookup rejects all eight city names"
+          "type": "live-only",
+          "description": "Catalogue shops are seeded on the hosted demo; the local preview stays unseeded"
         }
       ]
     },
@@ -202,11 +306,11 @@
           "status": "passed"
         },
         {
-          "title": "2 · confirm a reviewed price via the manual fallback",
+          "title": "2 · one review card for both changes, one tap to confirm",
           "status": "passed"
         },
         {
-          "title": "3 · already-open customer page and manual refresh recovery",
+          "title": "3 · already-open customer page updates within five seconds",
           "status": "passed"
         },
         {
@@ -229,19 +333,7 @@
       "annotations": [
         {
           "type": "live-only",
-          "description": "Voice tool execution and ASR; daily text fixture is also incomplete"
-        },
-        {
-          "type": "gap",
-          "description": "S2/1–2: offline coach does not propose price or availability edits; manual review below is a fallback"
-        },
-        {
-          "type": "gap",
-          "description": "S2/3: an already-open customer page keeps its old price until Refresh or tab return"
-        },
-        {
-          "type": "gap",
-          "description": "S2/5: daily confirmation disappears from a non-empty coach thread; New conversation is needed to find it"
+          "description": "Speech recognition and live voice tool execution"
         },
         {
           "type": "live-only",

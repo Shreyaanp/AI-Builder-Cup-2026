@@ -1,6 +1,27 @@
 import type { Copy } from '../strings'
 
 export const vi: Copy = {
+  newShopMode: 'Cửa hàng mới',
+  newShopIntro: 'Cùng đưa cửa hàng mới của bạn lên mạng. Bắt đầu bằng ảnh hoặc kể bạn bán gì.',
+  newShopCamera: 'Chụp thực đơn hoặc mặt tiền',
+  newShopVoice: 'Kể về cửa hàng của bạn',
+  newShopForm: 'Điền biểu mẫu thay thế',
+  newShopCancel: 'Quay lại cửa hàng hiện tại',
+  newShopReview: 'Xem lại cửa hàng mới',
+  newShopReady: 'Cửa hàng mới của bạn đã sẵn sàng',
+  newShopReadyBody: 'Bạn đang quản lý cửa hàng mới. Chia sẻ trang khách hàng khi sẵn sàng.',
+  newShopContinue: 'Tiếp tục với cửa hàng',
+  newShopPhotoNext: 'Bạn muốn khách biết điều gì về cửa hàng?',
+  useCurrentLocation: 'Dùng vị trí hiện tại của tôi',
+  locationReason:
+    'Bạn đang ở cửa hàng? Cho phép truy cập vị trí để đặt ghim. Bạn sẽ xem lại trước khi lưu.',
+  locating: 'Đang tìm vị trí…',
+  locationDenied: 'Quyền vị trí bị từ chối. Bạn có thể nhập địa chỉ hoặc dùng ảnh có GPS.',
+  locationFailed: 'Không lấy được vị trí. Thử lại, nhập địa chỉ hoặc dùng ảnh có GPS.',
+  yourLocation: 'Vị trí của bạn',
+  description: 'Mô tả',
+  newShopStep: (n: number) => `Cửa hàng mới · bước ${n}/4`,
+  locationAccuracy: (m: string) => `trong khoảng ${m} m`,
   installApp: 'Cài ứng dụng',
   installIos: 'Trong Safari, chạm Chia sẻ → Thêm vào Màn hình chính, rồi chạm Thêm.',
   installUnavailable:

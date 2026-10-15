@@ -33,6 +33,7 @@ test('photo is explicitly an offline fixture at the approval boundary and cancel
     .locator('input[type=file]')
     .first()
     .setInputFiles(await image(page))
+  await page.getByRole('button', { name: 'Review my new shop' }).click()
   const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText(/offline|fixture/i)
   await audit(page)
@@ -61,7 +62,8 @@ test('coach server failure preserves draft and retry recovers', async ({ page })
   )
   await page.unroute('**/coach/stream')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(page.getByRole('log')).toContainText('scripted reply')
+  await expect(page.getByRole('log')).toContainText('Offline template')
+  await expect(page.getByRole('log')).toContainText('What do you sell?')
 })
 
 test('Tamil coach responds in the selected language', async ({ page }) => {
@@ -93,5 +95,6 @@ test('actual offline coach preserves a failed draft and reconnect retry works', 
     await context.setOffline(false)
   }
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(page.getByRole('log')).toContainText('scripted reply')
+  await expect(page.getByRole('log')).toContainText('Offline template')
+  await expect(page.getByRole('log')).toContainText('What do you sell?')
 })

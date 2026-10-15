@@ -32,7 +32,7 @@ async function axe(page: Page) {
 }
 
 async function saveShop(page: Page) {
-  await page.getByRole('button', { name: 'Add my shop' }).tap()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).tap()
   await page.getByLabel('Shop name').fill('Katong Kopi')
   await page.getByLabel('Address or area').fill('Katong, Singapore')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
@@ -94,6 +94,8 @@ test('B2: the navigation stays after "Something changed" and returns when the ke
 test('B3: the composer is one line (even with a long translated hint), grows for multi-line text, and voice never moves it', async ({
   page,
 }) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
   // A local tone stands in for the microphone; the voice socket answers "ready" and waits.
   await page.addInitScript(() => {
     navigator.mediaDevices.getUserMedia = async () => {
@@ -136,10 +138,17 @@ test('B3: the composer is one line (even with a long translated hint), grows for
   const before = (await form.boundingBox())!
   const micBefore = (await mic.boundingBox())!
   // A long press shows no tooltip over the composer.
-  await mic.dispatchEvent('touchstart')
+  const touch = {
+    identifier: 1,
+    clientX: micBefore.x + micBefore.width / 2,
+    clientY: micBefore.y + micBefore.height / 2,
+    pageX: micBefore.x + micBefore.width / 2,
+    pageY: micBefore.y + micBefore.height / 2,
+  }
+  await mic.dispatchEvent('touchstart', { touches: [touch], changedTouches: [touch] })
   await page.waitForTimeout(1000)
   await expect(page.getByRole('tooltip')).toHaveCount(0)
-  await mic.dispatchEvent('touchend')
+  await mic.dispatchEvent('touchend', { touches: [], changedTouches: [touch] })
   await mic.tap()
   const finish = page.getByRole('button', { name: 'Finish speaking', exact: true })
   await expect(finish).toHaveAttribute('aria-pressed', 'true')
@@ -151,6 +160,7 @@ test('B3: the composer is one line (even with a long translated hint), grows for
   await finish.tap()
   await expect(form.getByRole('status')).toHaveText('Replying…')
   expect(await form.boundingBox()).toEqual(before)
+  expect(pageErrors).toEqual([])
 })
 
 test('B4: Back closes the top sheet or dialog first, and asks before throwing away unsaved input', async ({
@@ -300,13 +310,10 @@ test('B7: every photo entry offers Take photo (rear camera) and Upload', async (
   const upload = page.getByRole('menuitem', { name: 'Photo library' })
 
   // The start card's "Take a photo" (before a shop exists).
-  await page.getByRole('button', { name: 'Take a photo' }).tap()
-  await expect(take).toBeVisible()
-  await expect(upload).toBeVisible()
-  await axe(page)
   let chooser = page.waitForEvent('filechooser')
-  await take.tap()
+  await page.getByRole('button', { name: 'Snap your menu or shopfront' }).tap()
   await chooser
+  await axe(page)
   await expect(input).toHaveAttribute('capture', 'environment')
 
   // The composer's photo button.

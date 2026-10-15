@@ -8,6 +8,7 @@ async function openWithShop(page: Page) {
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
   await say(page, 'Shop name: Flour Test Bakery; category: Bakery')
+  await page.getByRole('button', { name: 'Review my new shop' }).click()
   const review = page.getByRole('dialog', { name: 'Check before saving' })
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(review).toBeHidden()

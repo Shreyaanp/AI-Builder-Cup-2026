@@ -3,6 +3,7 @@ import { useIdentity } from '../../auth/useIdentity'
 import { reconnectDelay, waitOnline } from '../../api/stream'
 import type { CoachEvent } from '../../api/stream'
 import { useCopy } from './strings'
+import type { Business, Product } from './api'
 
 interface VoiceRuntime {
   socket: WebSocket
@@ -15,7 +16,11 @@ interface VoiceRuntime {
   complete: boolean
 }
 
-export function useVoice(businessId: string | null, onEvent: (event: CoachEvent) => void) {
+export function useVoice(
+  businessId: string | null,
+  onEvent: (event: CoachEvent) => void,
+  newShop?: { business: Business['fields'] | null; products: Product[] },
+) {
   const identity = useIdentity()
   const t = useCopy()
   const owner = useRef<AbortController | null>(null)
@@ -101,6 +106,7 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
     const url = new URL('/api/v1/voice', location.href)
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
     if (businessId) url.searchParams.set('business_id', businessId)
+    if (newShop) url.searchParams.set('new_shop', 'true')
     if (sid) url.searchParams.set('session_id', sid)
     const socket = new WebSocket(url)
     socket.binaryType = 'arraybuffer'
@@ -138,6 +144,7 @@ export function useVoice(businessId: string | null, onEvent: (event: CoachEvent)
     socket.onopen = () => {
       lastMessage = performance.now()
       if (token) socket.send(JSON.stringify({ kind: 'authenticate', token }))
+      if (newShop) socket.send(JSON.stringify({ kind: 'new_shop', draft: newShop }))
     }
     socket.onmessage = async (message: MessageEvent<string | ArrayBuffer>) => {
       if (runtime.current !== current) return

@@ -17,7 +17,7 @@ async function enter(page: Page) {
 }
 
 async function saveShop(page: Page) {
-  await page.getByRole('button', { name: 'Add my shop' }).tap()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).tap()
   await page.getByLabel('Shop name').fill('Katong Kopi')
   await page.getByLabel('Address or area').fill('Katong, Singapore')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
@@ -208,7 +208,7 @@ test('PHONE-1-firebase: same-account identity refresh preserves an in-flight rep
   await expect(page.getByRole('log')).toContainText('Keep this conversation')
 })
 
-test('PHONE-2: every shop and product Add entry opens its form; coach plus opens actions', async ({
+test('PHONE-2: shop Add entries open guided setup and product Add opens its form; coach plus opens actions', async ({
   page,
 }) => {
   await enter(page)
@@ -216,14 +216,20 @@ test('PHONE-2: every shop and product Add entry opens its form; coach plus opens
   const actions = page.getByRole('dialog', { name: 'New conversation', exact: true })
   await expect(actions).toBeVisible()
   await actions.getByRole('button', { name: 'Add shop details', exact: true }).tap()
+  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).tap()
   await expect(page.getByRole('dialog', { name: 'Add shop details' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
   await page.getByRole('button', { name: 'My shop', exact: true }).tap()
   await page.getByRole('button', { name: 'Add shop details', exact: true }).tap()
+  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).tap()
   await expect(page.getByRole('dialog', { name: 'Add shop details' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
   await page.getByRole('button', { name: 'Google', exact: true }).tap()
   await page.getByRole('button', { name: 'Add shop details', exact: true }).tap()
+  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).tap()
   await expect(page.getByRole('dialog', { name: 'Add shop details' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
   await page.getByRole('button', { name: 'Coach', exact: true }).tap()
@@ -236,8 +242,11 @@ test('PHONE-2: every shop and product Add entry opens its form; coach plus opens
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
   await page.getByRole('button', { name: /Choose shop/ }).tap()
   await page.getByRole('menuitem', { name: 'New shop', exact: true }).tap()
+  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).tap()
   await expect(page.getByRole('dialog', { name: 'Add shop details' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
+  await page.getByRole('button', { name: 'Back to my current shop' }).tap()
   await page.getByRole('button', { name: 'Coach', exact: true }).tap()
   await page.getByRole('button', { name: 'New conversation', exact: true }).tap()
   await expect(actions).toBeVisible()
@@ -262,6 +271,8 @@ test('PHONE-2-google-empty: Google Add opens shop details directly', async ({ pa
   await enter(page)
   await page.getByRole('button', { name: 'Google', exact: true }).tap()
   await page.getByRole('button', { name: 'Add shop details', exact: true }).tap()
+  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).tap()
   await expect(page.getByRole('dialog', { name: 'Add shop details' })).toBeVisible()
 })
 
