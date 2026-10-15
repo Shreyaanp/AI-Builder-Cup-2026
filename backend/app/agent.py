@@ -425,6 +425,10 @@ def instruction(_: ReadonlyContext) -> str:
     return f"{INSTRUCTION}\nApp language (fallback only): {ui_language.get()}"
 
 
+# Most recent conversation turns a voice session starts with.
+LIVE_HISTORY_TURNS = 16
+
+
 def live_history(contents: list[types.Content]) -> list[types.Content]:
     """The shop's conversation as the Live (voice) model can accept it.
 
@@ -442,6 +446,21 @@ def live_history(contents: list[types.Content]) -> list[types.Content]:
         ]
         if parts:
             cleaned.append(content.model_copy(update={"parts": parts}))
+    # Voice starts every mic press as a new Live session; sending a long shop history made the
+    # first reply slower the more the app was used. Keep the recent turns, starting at a plain
+    # owner turn so no tool call is cut in half.
+    if len(cleaned) > LIVE_HISTORY_TURNS:
+        recent = cleaned[-LIVE_HISTORY_TURNS:]
+        start = next(
+            (
+                index
+                for index, content in enumerate(recent)
+                if content.role == "user"
+                and not any(part.function_response for part in content.parts or [])
+            ),
+            len(recent),
+        )
+        cleaned = recent[start:]
     return cleaned
 
 
