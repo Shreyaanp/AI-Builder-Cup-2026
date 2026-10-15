@@ -86,11 +86,16 @@ test('mic waits for saved conversation restoration before connecting', async ({ 
   })
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
+  // The mic stays enabled (no flash while history loads); a tap waits for the restore and then
+  // joins the restored conversation instead of opening a new one.
   const mic = page.getByRole('button', { name: 'Press to talk', exact: true })
-  await expect(mic).toBeDisabled()
-  release()
   await expect(mic).toBeEnabled()
-  await speak(page)
+  await mic.click()
+  await page.waitForTimeout(500)
+  expect(sessions).toEqual([])
+  release()
+  await page.getByRole('button', { name: 'Finish speaking', exact: true }).click()
+  await expect(mic).toBeVisible()
   expect(sessions).toEqual([conversation.session_id])
 })
 

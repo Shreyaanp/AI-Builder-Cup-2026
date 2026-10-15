@@ -227,6 +227,7 @@ function CoachScreen({
     [review, go, setFaceOpen, t.conversationRolledOver],
   )
   const voiceReply = useRef('')
+  const restored = useRef<Promise<unknown>>(Promise.resolve())
   const voice = useVoice(activeId, (event) => {
     receive(event)
     if (event.kind === 'ready') voiceReply.current = ''
@@ -245,7 +246,9 @@ function CoachScreen({
     const abort = new AbortController()
     controller.current?.abort()
     session.current = null
-    void api<Conversation[]>('/conversations', { signal: abort.signal })
+    // The mic waits for this before connecting, so voice joins the restored conversation; the
+    // button itself stays enabled (no disabled flash while history loads).
+    restored.current = api<Conversation[]>('/conversations', { signal: abort.signal })
       .then(async (items) => {
         if (abort.signal.aborted) return
         setHistory(items)
@@ -1170,7 +1173,8 @@ function CoachScreen({
                 disabled={busy !== 'idle'}
                 onClick={() => {
                   if (voice.state === 'recording') voice.finishRecording()
-                  else if (voice.state === 'idle') void voice.start(session.current)
+                  else if (voice.state === 'idle')
+                    void restored.current.then(() => voice.start(session.current))
                   else voice.stop()
                 }}
                 sx={
