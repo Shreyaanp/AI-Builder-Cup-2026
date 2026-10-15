@@ -1,4 +1,4 @@
-"""QA findings: these assert desired behavior and remain strict expected failures."""
+"""QA findings: these assert desired behavior. Open ones stay strict expected failures."""
 
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -63,11 +63,7 @@ def test_legacy_inquiry_requires_customer_identity(qa_client) -> None:
     assert response.status_code == 401
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="BUG Q9: erasure leaves shop community records behind",
-)
+# Fixed Q9: owner erasure also removes the shop's community snapshot, updates and tips.
 def test_owner_erasure_removes_derived_shop_community_records(qa_client) -> None:
     client, bid = qa_client
     service = client.app.state.community
@@ -75,33 +71,31 @@ def test_owner_erasure_removes_derived_shop_community_records(qa_client) -> None
     service.observe(bid, shop)
     # Snapshot contains the owner's approved public menu, copied into community storage.
     assert service.docs.get("snapshot", bid) is not None
-    assert "QA tea" in service.docs.get("snapshot", bid)["products"]
+    assert any(p["name"] == "QA tea" for p in service.docs.get("snapshot", bid)["products"])
     assert client.delete("/api/v1/me/data").is_success
     assert client.get(f"/api/v1/public/shops/{bid}").status_code == 404
     assert service.docs.get("snapshot", bid) is None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="BUG Q10: concurrent starts create duplicate shop threads",
-)
+# Fixed Q10: an atomic per-customer slot lets exactly one of two simultaneous starts create the
+# shop thread; the other waits for it and continues the same thread.
 def test_concurrent_starts_keep_one_customer_thread(
     qa_client, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client, bid = qa_client
     assert client.post("/api/v1/customer/session", json={"name": "QA customer"}).is_success
-    store = client.app.state.merchant
-    original = store.add_inquiry
+    service = client.app.state.community
+    original = service.thread_for_shop
     barrier = Barrier(2, timeout=10)
 
     def together(*args, **kwargs):
-        # Both requests have already read the empty per-customer index. Hold them at
-        # the real storage boundary to reproduce an ordinary concurrent start.
+        # Both requests read the empty per-customer index at the same moment, then race on
+        # to creation: an ordinary concurrent start from two tabs.
+        found = original(*args, **kwargs)
         barrier.wait()
-        return original(*args, **kwargs)
+        return found
 
-    monkeypatch.setattr(store, "add_inquiry", together)
+    monkeypatch.setattr(service, "thread_for_shop", together)
 
     def start(text: str):
         return client.post(f"/api/v1/customer/shops/{bid}/threads", json={"text": text})
@@ -111,3 +105,7 @@ def test_concurrent_starts_keep_one_customer_thread(
     assert all(response.is_success for response in responses)
     ids = [response.json()["thread"]["id"] for response in responses]
     assert ids[0] == ids[1]
+    chats = client.get("/api/v1/customer/threads").json()
+    assert len(chats) == 1
+    texts = [m["text"] for m in chats[0]["thread"]["messages"]]
+    assert "First tab" in texts and "Second tab" in texts
