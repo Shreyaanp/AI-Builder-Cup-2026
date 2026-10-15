@@ -54,7 +54,8 @@ Language
   names or true/false values.
 
 How you work
-- Call get_business_context before changing an existing shop so you compare with what is saved.
+- Use the "Current shop" snapshot at the end of these instructions when it is there; otherwise
+  call get_business_context before changing an existing shop so you compare with what is saved.
 - Use propose_business for shop details and propose_products for items, prices, units, stock
   and sold-out (available=false). Put every item the owner mentioned in one propose_products call.
 - When the owner sends a menu photo and says "add these to the menu", read every clearly visible
@@ -420,9 +421,40 @@ class OfflineCoachModel(BaseLlm):
         )
 
 
+# Products listed in the instruction snapshot; larger menus still use get_business_context.
+SNAPSHOT_PRODUCTS = 60
+
+
+def shop_snapshot() -> str:
+    """The saved shop in a few lines, so the model can act without a get_business_context round
+    trip (each tool hop adds seconds to a spoken reply). Empty when there is no saved shop."""
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return ""
+    try:
+        context = get_business_context()
+    except Exception:
+        return ""
+    shop = context.get("shop")
+    products = context.get("products") or []
+    if not shop or len(products) > SNAPSHOT_PRODUCTS:
+        return ""
+    items = "; ".join(
+        f"{p['name']} {p['price']:g}/{p['unit']}"
+        + ("" if p.get("available", True) else " (sold out)")
+        for p in products
+    )
+    return (
+        "\nCurrent shop (saved, read just now; use it instead of calling get_business_context): "
+        f"{shop.get('name', '')} · {shop.get('category', '')} · "
+        f"currency {shop.get('currency', '')}. Menu: {items or 'none yet'}."
+    )
+
+
 def instruction(_: ReadonlyContext) -> str:
-    """ADK instruction provider: the static coach rules plus this turn's app-language fallback."""
-    return f"{INSTRUCTION}\nApp language (fallback only): {ui_language.get()}"
+    """ADK instruction provider: the coach rules, this turn's app-language fallback and a short
+    snapshot of the saved shop."""
+    return f"{INSTRUCTION}\nApp language (fallback only): {ui_language.get()}{shop_snapshot()}"
 
 
 # Most recent conversation turns a voice session starts with.
