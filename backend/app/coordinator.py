@@ -60,6 +60,8 @@ class MerchantContext:
     proposals: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Supplier results and order cards for the chat, keyed by the card_id the model sees.
     cards: dict[str, tuple[str, dict[str, Any]]] = field(default_factory=dict)
+    new_shop: bool = False
+    new_shop_draft: Any = None
 
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)
@@ -181,6 +183,21 @@ class ProductInput(BaseModel):
         return normalize_unit(value) if isinstance(value, str) else value
 
 
+class AmbiguousUnitError(ValueError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.field = "unit"
+
+
+def _format_unit_options(units: list[str]) -> str:
+    deduped = list(dict.fromkeys(units))
+    if len(deduped) <= 1:
+        return f"per {deduped[0]}" if deduped else "per item"
+    if len(deduped) == 2:
+        return f"per {deduped[0]} or per {deduped[1]}"
+    return ", ".join(f"per {u}" for u in deduped[:-1]) + f" or per {deduped[-1]}"
+
+
 def _invalid(
     error: ValidationError | HTTPException | ValueError, ctx: MerchantContext
 ) -> dict[str, Any]:
@@ -198,6 +215,8 @@ def _invalid(
         ]
     elif isinstance(error, HTTPException):
         problems = [{"field": "record", "problem": str(error.detail)}]
+    elif hasattr(error, "field"):
+        problems = [{"field": str(error.field), "problem": str(error)}]
     else:
         problems = [{"field": "input", "problem": str(error)}]
     return {
@@ -553,7 +572,8 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
     the owner's menu section, or a suggested section for a new item. unit is one of the fixed
     selling units."""
     ctx = current.get()
-    if not ctx or not ctx.business_id:
+    has_draft = bool(ctx and ctx.new_shop and ctx.new_shop_draft)
+    if not ctx or (not ctx.business_id and not has_draft):
         return {
             "status": "needs_business",
             "instruction": "Ask for the shop name first and use propose_business.",
@@ -563,18 +583,34 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
         # instead of a crash that ends the owner's turn with no reply.
         items = TypeAdapter(list[ProductInput]).validate_python(items)
         context = ctx.store.context(ctx.uid, ctx.business_id)
-        currency = shop_currency(context["business"])
-        saved = {(p["name"].casefold(), p["unit"].casefold()): p for p in context["inventory"]}
+        draft = ctx.new_shop_draft if ctx.new_shop else None
+        draft_products = (
+            [p.model_dump() if hasattr(p, "model_dump") else p for p in draft.products]
+            if draft
+            else []
+        )
+        inventory = draft_products if draft else context["inventory"]
+        draft_business = getattr(draft, "business", None) if draft else None
+        draft_currency = getattr(draft_business, "currency", None) if draft_business else None
+        currency: str = (
+            str(draft_currency) if draft_currency else shop_currency(context["business"])
+        )
+        saved = {(p["name"].casefold(), p["unit"].casefold()): p for p in inventory}
         by_name: dict[str, list[dict[str, Any]]] = {}
-        for p in context["inventory"]:
+        for p in inventory:
             by_name.setdefault(p["name"].casefold(), []).append(p)
         products = []
         for item in items:
             name = item.name.strip().casefold()
             known = saved.get((name, item.unit.strip().casefold()))
-            if not known and len(by_name.get(name, [])) == 1:
+            matching = by_name.get(name, [])
+            if not known and len(matching) == 1:
                 # "Kaya toast is sold out" names the item but rarely its unit.
-                known = by_name[name][0]
+                known = matching[0]
+            elif not known and len(matching) > 1:
+                options = _format_unit_options([p["unit"] for p in matching])
+                matching_name = matching[0]["name"]
+                raise AmbiguousUnitError(f"{matching_name}: which unit? ({options})")
             if item.price is None and not known:
                 raise ValueError(f"{item.name}: a new item needs a price")
             products.append(
