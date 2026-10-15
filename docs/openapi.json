@@ -8667,6 +8667,10 @@
           },
           "source": {
             "type": "string",
+            "enum": [
+              "Open-Meteo",
+              "offline_fixture"
+            ],
             "title": "Source",
             "default": "Open-Meteo"
           },

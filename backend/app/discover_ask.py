@@ -373,22 +373,48 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
             pass
     if repository is not None and not is_owner:
         from .demand import capture
-        from .demand_terms import normalise
+        from .demand_terms import inferred_category, normalise
 
         timezone = valid_timezone(request.headers.get("x-client-timezone")) or "UTC"
         try:
             for term in normalise(intent.keywords):
                 words = " ".join(reversed(term.split("|")))
+                # The radar always covers 2 km and the entire menu, independently of the
+                # requested discovery radius and the three matches shown on a result card.
                 matched = sum(
-                    p.distance_m <= 2000
-                    and not p.demo_shop
-                    and any(term in normalise([item.name]) for item in p.matched)
-                    for p in picks
+                    1
+                    for shop in shops
+                    if not shop.get("demo")
+                    and shop.get("lat") is not None
+                    and shop.get("lng") is not None
+                    and distance(body.lat, body.lng, shop["lat"], shop["lng"]) <= 2000
+                    and shop_pick(
+                        shop,
+                        intent.model_copy(update={"keywords": [], "category": ""}),
+                        body.lat,
+                        body.lng,
+                    )
+                    is not None
+                    and any(
+                        item["available"]
+                        and term in normalise([item["name"]])
+                        and (
+                            intent.max_price is None
+                            or item["price"]
+                            <= round(intent.max_price * 10 ** exponent(shop["currency"]))
+                        )
+                        for item in shop["products"]
+                    )
                 )
                 await anyio.to_thread.run_sync(
                     capture,
                     repository.feature_docs,
-                    intent.model_copy(update={"keywords": [words]}),
+                    intent.model_copy(
+                        update={
+                            "keywords": [words],
+                            "category": inferred_category([term]) or intent.category,
+                        }
+                    ),
                     body.lat,
                     body.lng,
                     client_ip(request),

@@ -183,6 +183,7 @@ def create_app(
             await app.state.services.replay.close()
             await app.state.customer_answers.close()
             await app.state.recap_writer.close()
+            await app.state.brief_writer.close()
         await app.state.column_mapper.close()
         if coordinator.supplier_generator is not None:
             await coordinator.supplier_generator.close()

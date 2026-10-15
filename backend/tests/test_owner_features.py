@@ -4,7 +4,7 @@ import hashlib
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 import httpx
@@ -592,3 +592,82 @@ def test_radar_and_rescue_and_brief_reject_unauthenticated_owners(setup):
     client.app.state.services.identity.require = AsyncMock(side_effect=HTTPException(401))
     for path in ("radar", "brief", "rescue", "rescue/suggestions"):
         assert client.get(f"/api/v1/businesses/{bid}/{path}").status_code == 401
+
+
+@pytest.mark.parametrize("radius", [200, 2000])
+def test_capture_checks_full_nearby_menu_even_outside_requested_radius(setup, monkeypatch, radius):
+    client, store, bid, _ = setup
+    shop = next(s for s in store.shared_shops() if s["id"] == bid)
+    shop["lat"] += 0.005  # Within the radar's 2 km, outside a narrow discovery search.
+    shop["products"] = [
+        {"name": name, "price": 100, "unit": "item", "available": True}
+        for name in ("Bread", "Flour", "Coffee", "Cake")
+    ]
+    monkeypatch.setattr(store, "shared_shops", lambda: [shop])
+    client.app.state.services.identity.require = AsyncMock(side_effect=HTTPException(401))
+    result = client.post(
+        "/api/v1/discover/ask", json={"q": "bread flour coffee cake", **POINT, "radius": radius}
+    )
+    assert result.status_code == 200
+    rows = store.feature_docs.scoped("demand_real", demand.cell_for(**POINT)[:4])
+    assert len(rows) == 4 and all(r["matched_local"] == 1 for r in rows)
+
+
+def test_demand_day_uses_same_clock_as_rotating_actor(setup):
+    _, store, _, fixed = setup
+    local = fixed.astimezone(timezone(timedelta(hours=14)))
+    demand.capture(
+        store.feature_docs,
+        Intent(keywords=["cake"]),
+        **POINT,
+        identity="device",
+        matched_local=0,
+        matched_google=None,
+        now=local,
+    )
+    row = store.feature_docs.scoped("demand_real", demand.cell_for(**POINT)[:4])[0]
+    assert row["day"] == fixed.date().isoformat()
+
+
+def test_reservation_retry_uses_saved_item_spelling(setup):
+    client, _, bid, _ = setup
+    deal = approve(client, bid, proposal(client, bid))
+    client.post("/api/v1/customer/session", json={"name": "Asha"})
+    tid = client.post(
+        f"/api/v1/customer/shops/{bid}/threads", json={"text": "Rescue please"}
+    ).json()["thread"]["id"]
+    path = f"/api/v1/customer/shops/{bid}/rescue/{deal['id']}/hold"
+    body = {"thread_id": tid, "name": "Croissant", "qty": 2}
+    assert client.post(path, json=body).status_code == 200
+    assert client.post(path, json={**body, "name": "croissant"}).status_code == 200
+    chat = client.get(f"/api/v1/customer/shops/{bid}/threads/{tid}").json()["thread"]
+    assert sum("[rescue " in m["text"] for m in chat["messages"]) == 1
+
+
+def test_brief_keeps_low_stock_with_zero_forecast(setup, monkeypatch):
+    client, _, bid, _ = setup
+    prediction = Prediction(date=date.today(), item="Milk", quantity=0)
+    from app.forecast import Forecast
+
+    monkeypatch.setattr(
+        client.app.state.forecaster,
+        "forecast",
+        AsyncMock(
+            return_value=Forecast(
+                status="ready",
+                method="weekday_average",
+                training_cutoff=date.today(),
+                predictions=[prediction],
+            )
+        ),
+    )
+    result = client.get(f"/api/v1/businesses/{bid}/brief").json()
+    assert any(p["name"] == "Milk" for p in result["low_stock"])
+
+
+def test_brief_writer_is_closed_at_shutdown(app, monkeypatch):  # noqa: F811
+    close = AsyncMock()
+    monkeypatch.setattr(brief.BriefWriter, "close", close)
+    with TestClient(app):
+        pass
+    close.assert_awaited_once()

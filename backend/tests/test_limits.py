@@ -30,7 +30,7 @@ def limiter(request: pytest.FixtureRequest) -> Iterator[RateLimiter]:
     if request.param == "memory":
         yield InMemoryRateLimiter()
         return
-    if os.getenv("FIRESTORE_EMULATOR_HOST") != "127.0.0.1:8085":
+    if (os.getenv("FIRESTORE_EMULATOR_HOST") or "").split(":")[0] not in {"127.0.0.1", "localhost"}:
         pytest.skip("Requires the explicitly local Firestore emulator; never a cloud database.")
     client = firestore.Client(project="demo-ogoogle-local", credentials=AnonymousCredentials())
     service = FirestoreRateLimiter(client, "ogoogle_ai_test_" + uuid4().hex)

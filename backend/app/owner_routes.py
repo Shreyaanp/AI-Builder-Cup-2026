@@ -134,11 +134,12 @@ async def reserve_rescue(
     if record.done or record.blocked or len(record.messages) >= 400:
         raise HTTPException(409, "This conversation cannot take a reservation.")
     # A stable marker in chat makes retries safe if the response was lost after reserving.
-    marker = f"[rescue {rescue_id}] Hold {body.qty} {body.name}"
     with anyio.CancelScope(shield=True):
         result = await anyio.to_thread.run_sync(
             rescue.hold, store(request), business_id, rescue_id, body
         )
+        name = next(p.name for p in result.items if p.name.casefold() == body.name.casefold())
+        marker = f"[rescue {rescue_id}] Hold {body.qty} {name}"
         try:
             record = await act(request, business_id, entry, "get")
             if not any(m.text == marker for m in record.messages):

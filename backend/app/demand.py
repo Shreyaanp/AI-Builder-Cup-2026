@@ -88,7 +88,8 @@ def capture(
     if not terms:
         return
     cell = cell_for(lat, lng)
-    day = now.date().isoformat()
+    # Use the salt's UTC day, so changing a client timezone cannot multiply actor-days.
+    day = now.astimezone(UTC).date().isoformat()
     actor = actor_for(docs, identity, now)
     row = {
         "cell": cell,
@@ -118,7 +119,7 @@ def capture(
         "demand_real",
         key,
         cell[:4],
-        datetime.combine(now.date(), datetime.min.time(), now.tzinfo).timestamp(),
+        datetime.combine(date.fromisoformat(day), datetime.min.time(), UTC).timestamp(),
         row,
     )
 
