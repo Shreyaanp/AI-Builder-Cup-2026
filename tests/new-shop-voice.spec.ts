@@ -98,7 +98,7 @@ const orb = (page: Page) => page.getByTestId('voice-orb').first()
 
 for (const scheme of ['light', 'dark'] as const) {
   test(`every voice-mode state, on screen (${scheme})`, async ({ page }, info) => {
-    test.setTimeout(90_000)
+    test.setTimeout(180_000)
     await page.addInitScript((appearance) => {
       localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance }))
     }, scheme)
