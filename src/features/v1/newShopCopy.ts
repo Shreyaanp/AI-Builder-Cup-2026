@@ -597,3 +597,8 @@ const copy: Record<Locale, FlowCopy> = {
 export function useNewShopCopy() {
   return copy[useLocale()]
 }
+
+/** The flow's words in one language (tests read them through Vite). */
+export function newShopCopyFor(locale: Locale) {
+  return copy[locale]
+}
