@@ -37,6 +37,8 @@ import { Tips } from '../customer/Tips'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
 import { customerTranslations } from './customerLocales'
 import { BackInStock, BadgeRow, StampCard, StockReminder } from '../rewards/Rewards'
+import { StampPeek } from '../rewards/StampCard'
+import { ShopGames } from '../passport/games/ShopGames'
 import { ShopStamp } from '../passport/ShopStamp'
 import { HoursList } from '../shop/Hours'
 import type { DayHours } from '../shop/hoursModel'
@@ -693,6 +695,7 @@ export default function PublicShop({ id }: { id: string }) {
       {/* Follow and how to get there, side by side; wraps on narrow phones. */}
       <Stack direction="row" sx={{ mt: 2, gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
         <FollowButton id={id} name={shop.name} />
+        <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />
         {actions.map((action) => (
           <Button
             key={action.label}
@@ -934,6 +937,7 @@ export default function PublicShop({ id }: { id: string }) {
         needed={shop.stamps_needed ?? 8}
       />
       <ShopStamp shop={{ id, name: shop.name, category: shop.category, demo: shop.demo }} />
+      <ShopGames shop={id} />
       {!stale && <BackInStock shop={id} products={shop.products} />}
       <BadgeRow shop={id} />
       <Tips shop={id} />

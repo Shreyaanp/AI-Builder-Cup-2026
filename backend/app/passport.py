@@ -94,6 +94,11 @@ FOOD_WORDS = (
 )
 
 
+def makes_own(shop: dict[str, Any]) -> bool:
+    """The owner said they make what they sell (a top-level field, or a public shop fact)."""
+    return bool(shop.get("locally_made") or (shop.get("facts") or {}).get("locally_made"))
+
+
 def is_food(category: str) -> bool:
     text = category.casefold()
     return any(word in text for word in FOOD_WORDS)
@@ -760,7 +765,7 @@ def _record(
         area_name=area_name(shop),
         category=str(shop.get("category") or "")[:60],
         country=shop_country(shop),
-        made=bool(shop.get("locally_made")),
+        made=makes_own(shop),
     )
 
 
