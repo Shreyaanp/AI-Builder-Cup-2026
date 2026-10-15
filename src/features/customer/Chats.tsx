@@ -15,7 +15,7 @@ import {
 import { ArrowLeft, ArrowUp, Check, MessageCircle, RotateCcw, Sparkles, Store } from 'lucide-react'
 import { followInquiries } from '../../api/inquiryStream'
 import { useLocale } from '../../state/hooks'
-import { customerNavigate } from '../frontdoors/navigation'
+import { customerBack, customerNavigate } from '../frontdoors/navigation'
 import { PlaceImage } from '../frontdoors/PlaceImage'
 import { useCustomer } from './account'
 import { clockTime, useAccountCopy } from './copy'
@@ -461,8 +461,9 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
         <IconButton
           component="a"
           href="/explore/chats"
-          onClick={customerNavigate}
+          onClick={customerBack}
           aria-label={t.back}
+          sx={{ width: 48, height: 48 }}
         >
           <ArrowLeft size={22} />
         </IconButton>

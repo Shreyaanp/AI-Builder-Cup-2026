@@ -3674,7 +3674,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__discover_ask__Suggestions"
+                  "$ref": "#/components/schemas/AskSuggestions"
                 }
               }
             }
@@ -5221,7 +5221,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__rescue__Suggestions"
+                  "$ref": "#/components/schemas/Suggestions"
                 }
               }
             }
@@ -5945,7 +5945,8 @@
                   "distance",
                   "transit",
                   "open",
-                  "deals"
+                  "deals",
+                  "local"
                 ]
               },
               {
@@ -6011,6 +6012,43 @@
           "groups"
         ],
         "title": "AskResponse"
+      },
+      "AskSuggestions": {
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "shops": {
+            "type": "integer",
+            "title": "Shops"
+          },
+          "open_now": {
+            "type": "integer",
+            "title": "Open Now"
+          },
+          "locally_made": {
+            "type": "integer",
+            "title": "Locally Made"
+          },
+          "deals": {
+            "type": "integer",
+            "title": "Deals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "shops",
+          "open_now",
+          "locally_made",
+          "deals"
+        ],
+        "title": "AskSuggestions",
+        "description": "What the front door can suggest here, from the area's own shops (never invented)."
       },
       "AvailabilityRequest": {
         "properties": {
@@ -10643,6 +10681,49 @@
         ],
         "title": "Streak"
       },
+      "Suggestions": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RescueSuggestion"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          },
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": "Estimate assumes saved stock is opening prepared quantity; confirm what remains. Missing sales or closing hours prevents an estimate."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "until",
+          "demo",
+          "method"
+        ],
+        "title": "Suggestions"
+      },
       "ThreadMessage": {
         "properties": {
           "text": {
@@ -11191,86 +11272,6 @@
           "lng"
         ],
         "title": "WorldRequest"
-      },
-      "app__discover_ask__Suggestions": {
-        "properties": {
-          "items": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "shops": {
-            "type": "integer",
-            "title": "Shops"
-          },
-          "open_now": {
-            "type": "integer",
-            "title": "Open Now"
-          },
-          "locally_made": {
-            "type": "integer",
-            "title": "Locally Made"
-          },
-          "deals": {
-            "type": "integer",
-            "title": "Deals"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items",
-          "shops",
-          "open_now",
-          "locally_made",
-          "deals"
-        ],
-        "title": "Suggestions",
-        "description": "What the front door can suggest here, from the area's own shops (never invented)."
-      },
-      "app__rescue__Suggestions": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/RescueSuggestion"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "until": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Until"
-          },
-          "demo": {
-            "type": "boolean",
-            "title": "Demo"
-          },
-          "method": {
-            "type": "string",
-            "title": "Method"
-          },
-          "note": {
-            "type": "string",
-            "title": "Note",
-            "default": "Estimate assumes saved stock is opening prepared quantity; confirm what remains. Missing sales or closing hours prevents an estimate."
-          }
-        },
-        "type": "object",
-        "required": [
-          "items",
-          "until",
-          "demo",
-          "method"
-        ],
-        "title": "Suggestions"
       },
       "StreamEvent": {
         "additionalProperties": false,

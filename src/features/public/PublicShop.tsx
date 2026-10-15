@@ -15,7 +15,7 @@ import {
   useTheme,
 } from '@mui/material'
 import { ArrowLeft, ChevronDown, Leaf, MapPin, MessageCircle, Phone, RefreshCw } from 'lucide-react'
-import { customerNavigate } from '../frontdoors/navigation'
+import { customerBack, customerNavigate } from '../frontdoors/navigation'
 import type { ReactNode } from 'react'
 import { type Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
@@ -584,7 +584,7 @@ export default function PublicShop({ id }: { id: string }) {
       sx={{
         maxWidth: 720,
         mx: 'auto',
-        px: { xs: 2, sm: 3 },
+        px: 4,
         pt: 'calc(16px + env(safe-area-inset-top))',
         // Room for the pinned chat bar.
         pb: 'calc(104px + env(safe-area-inset-bottom))',
@@ -592,7 +592,13 @@ export default function PublicShop({ id }: { id: string }) {
     >
       {/* Compact header: who, open or not, how to get there. The menu is the page. */}
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-        <IconButton component="a" href="/explore/" onClick={customerNavigate} aria-label={t.back}>
+        <IconButton
+          component="a"
+          href="/explore/"
+          onClick={customerBack}
+          aria-label={t.back}
+          sx={{ width: 48, height: 48, flexShrink: 0 }}
+        >
           <ArrowLeft size={20} />
         </IconButton>
         <Box
@@ -619,21 +625,13 @@ export default function PublicShop({ id }: { id: string }) {
           />
         </Box>
         {/* On a phone the floating theme button sits over the top-right corner: wrap before it. */}
-        <Box sx={{ minWidth: 0, flex: 1, pr: { xs: '44px', md: 0 } }}>
+        <Box sx={{ minWidth: 0, flex: 1, pr: { xs: '52px', md: 0 } }}>
           <Typography component="h1" variant="titleLarge" sx={{ overflowWrap: 'anywhere' }}>
             {shop.name}
           </Typography>
           {shop.demo && (
-            <Chip
-              label={t.demoShop}
-              size="small"
-              sx={{
-                my: 0.5,
-                bgcolor: roles.tertiaryContainer,
-                color: roles.onTertiaryContainer,
-                fontWeight: 600,
-              }}
-            />
+            // Honest but quiet: one outlined label, not a second accent colour.
+            <Chip label={t.demoShop} size="small" variant="outlined" sx={{ my: 1 }} />
           )}
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
             {openLabel && (
@@ -654,7 +652,7 @@ export default function PublicShop({ id }: { id: string }) {
                     width: 8,
                     height: 8,
                     borderRadius: '50%',
-                    bgcolor: shop.open_now ? 'var(--customer-open)' : 'error.main',
+                    bgcolor: shop.open_now ? 'var(--customer-open)' : roles.outline,
                   }}
                 />
                 {openLabel}
@@ -691,7 +689,7 @@ export default function PublicShop({ id }: { id: string }) {
         </Typography>
       )}
       {/* Follow and how to get there, side by side; wraps on narrow phones. */}
-      <Stack direction="row" sx={{ mt: 2, gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+      <Stack direction="row" sx={{ mt: 4, gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <FollowButton id={id} name={shop.name} />
         {actions.map((action) => (
           <Button
@@ -702,7 +700,7 @@ export default function PublicShop({ id }: { id: string }) {
             href={action.href}
             target={action.href.startsWith('http') ? '_blank' : undefined}
             rel={action.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-            sx={{ minHeight: 40 }}
+            sx={{ minHeight: 48 }}
           >
             {action.label}
           </Button>
@@ -732,7 +730,7 @@ export default function PublicShop({ id }: { id: string }) {
               sx={{
                 flexShrink: 0,
                 px: 1.5,
-                py: 0.75,
+                py: 1,
                 borderRadius: `${shape.sm}px`,
                 bgcolor: roles.secondaryContainer,
                 color: roles.onSecondaryContainer,
@@ -761,7 +759,7 @@ export default function PublicShop({ id }: { id: string }) {
               }}
             />
           }
-          sx={{ px: 1, minHeight: 40, color: 'text.secondary', fontWeight: 500 }}
+          sx={{ px: 2, minHeight: 48, color: 'text.secondary', fontWeight: 500 }}
         >
           {shopCopy.weeklyHours}
           {shop.hours ? ` · ${shop.hours}` : ''}
