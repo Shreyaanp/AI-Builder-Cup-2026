@@ -75,6 +75,7 @@ import { OrdersSheet } from '../../sourcing/Orders'
 import { useReceiveOrder } from '../../sourcing/orderData'
 import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
+import { utter } from '../phoneVoice'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 // The composer grows with multi-line text up to this many lines, then scrolls.
@@ -361,8 +362,7 @@ function CoachScreen({
     } catch {
       // Fall through to on-device speech.
     }
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = language
+    const utterance = utter(text, language)
     speechSynthesis.speak(utterance)
   }
 

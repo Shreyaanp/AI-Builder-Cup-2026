@@ -325,7 +325,7 @@ export const hi: Copy = {
   // Next action (one obvious step)
   nextLabel: 'अगला कदम',
   nextScan: 'मेन्यू या बोर्ड स्कैन करें',
-  nextScanBody: 'नाम, समय और दाम पढ़ दूँगा, आप जाँचें।',
+  nextScanBody: 'नाम, समय और दाम पढ़ दूँगी, आप जाँचें।',
   nextScanAction: 'एक फ़ोटो लें',
   nextPrices: 'अपने दाम जोड़ें',
   nextPricesBody: 'दामों की सूची की फ़ोटो भेजें या सामान एक-एक करके जोड़ें।',
