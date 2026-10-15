@@ -340,6 +340,16 @@ class MerchantRepository(Protocol):
         self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""
     ) -> Inquiry: ...
 
+    # Connect your system: saved column and field mappings per shop and source
+    def get_connector_mapping(
+        self, uid: str, bid: str, source_label: str
+    ) -> dict[str, Any] | None: ...
+    def list_connector_mappings(self, uid: str, bid: str) -> list[dict[str, Any]]: ...
+    def save_connector_mapping(
+        self, uid: str, bid: str, mapping: dict[str, Any]
+    ) -> dict[str, Any]: ...
+    def record_connector_sync(self, uid: str, bid: str, source_label: str) -> None: ...
+
 
 def public_projection(
     bid: str, fields: dict[str, Any], products: list[dict[str, Any]]
@@ -473,6 +483,9 @@ class MerchantStore:
                 PRIMARY KEY(business_id,day));
             CREATE TABLE IF NOT EXISTS supplier_orders(id TEXT PRIMARY KEY,
                 business_id TEXT NOT NULL, created REAL NOT NULL, fields TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS connector_mappings(business_id TEXT NOT NULL,
+                source_label TEXT NOT NULL, fields TEXT NOT NULL, last_synced REAL,
+                updated REAL NOT NULL, PRIMARY KEY(business_id, source_label));
             """)
             if "last_confirmed" not in {
                 row[1] for row in db.execute("PRAGMA table_info(businesses)")
@@ -775,7 +788,13 @@ class MerchantStore:
             ]
             for bid in owned:
                 db.execute("DELETE FROM stock_alerts WHERE business_id=?", (bid,))
-                for table in ("sales_days", "sales_imports", "recaps", "sold_out_days"):
+                for table in (
+                    "sales_days",
+                    "sales_imports",
+                    "recaps",
+                    "sold_out_days",
+                    "connector_mappings",
+                ):
                     db.execute(f"DELETE FROM {table} WHERE business_id=?", (bid,))  # noqa: S608
                 db.execute("DELETE FROM inquiries WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM inquiry_blocks WHERE business_id=?", (bid,))
@@ -1243,3 +1262,73 @@ class MerchantStore:
                     (bid, pid, json.dumps(state)),
                 )
             return state
+
+    def get_connector_mapping(
+        self, uid: str, bid: str, source_label: str
+    ) -> dict[str, Any] | None:
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            row = db.execute(
+                "SELECT * FROM connector_mappings "
+                "WHERE business_id=? AND LOWER(source_label)=LOWER(?)",
+                (bid, source_label),
+            ).fetchone()
+            if not row:
+                return None
+            return {
+                "source_label": row["source_label"],
+                "fields": json.loads(row["fields"]),
+                "last_synced": row["last_synced"],
+                "updated": row["updated"],
+            }
+
+    def list_connector_mappings(self, uid: str, bid: str) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            rows = db.execute(
+                "SELECT * FROM connector_mappings WHERE business_id=? ORDER BY updated DESC",
+                (bid,),
+            ).fetchall()
+            return [
+                {
+                    "source_label": r["source_label"],
+                    "fields": json.loads(r["fields"]),
+                    "last_synced": r["last_synced"],
+                    "updated": r["updated"],
+                }
+                for r in rows
+            ]
+
+    def save_connector_mapping(
+        self, uid: str, bid: str, mapping: dict[str, Any]
+    ) -> dict[str, Any]:
+        source_label = mapping["source_label"]
+        now = time.time()
+        fields_json = json.dumps(mapping)
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            db.execute(
+                """
+                INSERT INTO connector_mappings(
+                    business_id, source_label, fields, last_synced, updated
+                )
+                VALUES (?, ?, ?, NULL, ?)
+                ON CONFLICT(business_id, source_label) DO UPDATE SET
+                    fields=excluded.fields,
+                    updated=excluded.updated
+                """,
+                (bid, source_label, fields_json, now),
+            )
+            return {"source_label": source_label, "updated": now, "fields": mapping}
+
+    def record_connector_sync(self, uid: str, bid: str, source_label: str) -> None:
+        now = time.time()
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            db.execute(
+                "UPDATE connector_mappings SET last_synced=? "
+                "WHERE business_id=? AND LOWER(source_label)=LOWER(?)",
+                (now, bid, source_label),
+            )
+
+
