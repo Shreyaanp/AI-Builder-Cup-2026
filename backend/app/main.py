@@ -445,18 +445,31 @@ def create_app(
                     mode=settings.coach_mode,
                 ).payload()
             )
+            log.info("voice_ready", business=bool(bid), resumed=bool(requested))
             await serve_voice(websocket, services.runtime, principal, sid)
+            log.info("voice_closed")
         except (HTTPException, ValueError, TimeoutError) as error:
             code = (
                 "RATE_LIMITED"
                 if isinstance(error, HTTPException) and error.status_code == 429
                 else "AUTH_OR_SESSION_ERROR"
             )
+            # Every rejected voice session says why in the logs (it was silent before).
+            log.warning(
+                "voice_rejected",
+                code=code,
+                error=type(error).__name__,
+                status=getattr(error, "status_code", None),
+                detail=str(getattr(error, "detail", error))[:200],
+            )
             with suppress(RuntimeError, WebSocketDisconnect):
                 await websocket.send_json(StreamEvent(kind="error", code=code).payload())
                 await websocket.close(code=1008, reason=code)
         except WebSocketDisconnect:
-            pass
+            log.info("voice_disconnected")
+        except Exception:
+            log.exception("voice_failed")
+            raise
         finally:
             if context_token is not None:
                 current.reset(context_token)
