@@ -563,6 +563,8 @@ export default function PublicShop({ id }: { id: string }) {
         <Box
           component="ul"
           aria-label={t.factsLabel}
+          // A scrolling row must be reachable by keyboard (axe scrollable-region-focusable).
+          tabIndex={0}
           sx={{
             listStyle: 'none',
             m: 0,

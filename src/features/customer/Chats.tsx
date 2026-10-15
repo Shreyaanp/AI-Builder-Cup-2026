@@ -296,7 +296,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
   const [pending, setPending] = useState<Pending[]>([])
   // Messages already there on open don't animate; new ones do.
   const [initial, setInitial] = useState<Set<string> | null>(null)
-  const end = useRef<HTMLDivElement>(null)
+  const end = useRef<HTMLLIElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const sent = useRef(0)
   const path = `/api/v1/customer/shops/${encodeURIComponent(shopId)}/threads/${encodeURIComponent(threadId)}`
@@ -571,7 +571,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
             )}
           </Box>
         )}
-        <div ref={end} />
+        <li ref={end} aria-hidden="true" />
       </Box>
 
       {/* Composer, pinned above the keyboard and the home indicator. */}
