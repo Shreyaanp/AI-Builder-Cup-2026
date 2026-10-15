@@ -263,7 +263,7 @@ export function TodayDeck({ place }: { place: Place }) {
           </Stack>
         </Box>
       )}
-      {status === 'error' && !feed && (
+      {status === 'error' && (
         <Alert
           severity="warning"
           sx={{ mt: 3 }}

@@ -32,7 +32,12 @@ POINT = {"lat": 1.2847, "lng": 103.832}
 
 @pytest.fixture
 def setup(app, monkeypatch):  # noqa: F811
-    fixed = datetime.now(UTC).replace(hour=18, minute=0, second=0, microsecond=0)
+    now = datetime.now(UTC)
+    fixed = now.replace(hour=18, minute=0, second=0, microsecond=0)
+    # The next 18:00, never one in the past: gRPC (Firestore emulator) computes call deadlines
+    # from time.time, so a frozen past clock expires every call after 18:00 UTC.
+    if fixed < now:
+        fixed += timedelta(days=1)
     monkeypatch.setattr(time, "time", lambda: fixed.timestamp())
     with TestClient(app) as client:
         store = app.state.merchant
