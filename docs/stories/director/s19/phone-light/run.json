@@ -1,0 +1,29 @@
+{
+  "id": "s19",
+  "title": "PO → confirmation → dispatch → invoice",
+  "variant": "phone-light",
+  "sha": "fa60840b0a231008e068275a62171790a36cd2e9",
+  "baseURL": "http://127.0.0.2:3537",
+  "serverRun": "1792101157322",
+  "started": "2026-10-15T22:05:51.139Z",
+  "status": "blocked",
+  "evidence": [
+    {
+      "name": "01-entry-boundary",
+      "visibleElements": 13,
+      "competingAccents": 1,
+      "spacingOn4pxRhythm": 0.708,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 0
+    }
+  ],
+  "gaps": [
+    "No named entry is exposed in main My shop/navigation for this contract. Feature branch or discoverable entry is required; do not infer backend absence."
+  ],
+  "checks": [],
+  "error": null,
+  "finished": "2026-10-15T22:05:55.066Z"
+}

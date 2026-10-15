@@ -1,0 +1,719 @@
+{
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "horizontalOverflow": false,
+  "visibleElements": 29,
+  "elementsPer100kPixels": 8.81,
+  "accentHueBins": {
+    "30": 5,
+    "150": 1
+  },
+  "competingAccents": 2,
+  "spacingOn4pxRhythm": 0.588,
+  "smallTargets": [
+    {
+      "tag": "a",
+      "role": null,
+      "x": 128.171875,
+      "y": 104,
+      "w": 142.59375,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(31, 92, 66)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        3,
+        24,
+        3,
+        24
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 186,
+      "w": 113.90625,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(74, 86, 77)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "target": true
+    }
+  ],
+  "grid": [
+    [
+      1,
+      0,
+      1,
+      1,
+      1,
+      2
+    ],
+    [
+      2,
+      2,
+      3,
+      2,
+      2,
+      1
+    ],
+    [
+      4,
+      5,
+      4,
+      3,
+      4,
+      2
+    ],
+    [
+      2,
+      3,
+      2,
+      2,
+      2,
+      2
+    ],
+    [
+      3,
+      3,
+      3,
+      3,
+      4,
+      4
+    ],
+    [
+      3,
+      3,
+      3,
+      3,
+      4,
+      3
+    ],
+    [
+      3,
+      3,
+      3,
+      3,
+      4,
+      3
+    ],
+    [
+      2,
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    [
+      2,
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    [
+      2,
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ]
+  ],
+  "elements": [
+    {
+      "tag": "button",
+      "role": null,
+      "x": 334,
+      "y": 8,
+      "w": 48,
+      "h": 48,
+      "background": "rgb(245, 240, 226)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "x": 8,
+      "y": 30,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "h1",
+      "role": null,
+      "x": 144,
+      "y": 16,
+      "w": 194,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 22,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 144,
+      "y": 72,
+      "w": 30.59375,
+      "h": 20,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 100,
+      "w": 116.171875,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(31, 92, 66)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        3,
+        24,
+        3,
+        24
+      ],
+      "target": true
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "x": 128.171875,
+      "y": 104,
+      "w": 142.59375,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(31, 92, 66)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        3,
+        24,
+        3,
+        24
+      ],
+      "target": true
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 8,
+      "y": 156,
+      "w": 44.34375,
+      "h": 26,
+      "background": "rgb(255, 224, 138)",
+      "color": "rgb(38, 26, 0)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        3,
+        6,
+        3,
+        6
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 56.34375,
+      "y": 156,
+      "w": 97.90625,
+      "h": 26,
+      "background": "rgb(255, 224, 138)",
+      "color": "rgb(38, 26, 0)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        3,
+        6,
+        3,
+        6
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 158.25,
+      "y": 156,
+      "w": 137.546875,
+      "h": 26,
+      "background": "rgb(255, 224, 138)",
+      "color": "rgb(38, 26, 0)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        3,
+        6,
+        3,
+        6
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 299.796875,
+      "y": 156,
+      "w": 33.53125,
+      "h": 26,
+      "background": "rgb(255, 224, 138)",
+      "color": "rgb(38, 26, 0)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        3,
+        6,
+        3,
+        6
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 337.328125,
+      "y": 156,
+      "w": 45.109375,
+      "h": 26,
+      "background": "rgb(255, 224, 138)",
+      "color": "rgb(38, 26, 0)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        3,
+        6,
+        3,
+        6
+      ],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 186,
+      "w": 113.90625,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(74, 86, 77)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 125.90625,
+      "y": 198,
+      "w": 139.40625,
+      "h": 16,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 12,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "h2",
+      "role": null,
+      "x": 8,
+      "y": 254,
+      "w": 326,
+      "h": 24,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 334,
+      "y": 242,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "h3",
+      "role": null,
+      "x": 9,
+      "y": 295,
+      "w": 372,
+      "h": 28,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(74, 86, 77)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        4,
+        8,
+        4,
+        8
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 10,
+      "y": 324,
+      "w": 370,
+      "h": 62,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "8px",
+      "spacing": [
+        6,
+        8,
+        6,
+        8,
+        8,
+        8
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 18,
+      "y": 336,
+      "w": 287.3125,
+      "h": 22,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 15,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "h3",
+      "role": null,
+      "x": 313.3125,
+      "y": 343,
+      "w": 58.6875,
+      "h": 24,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "h3",
+      "role": null,
+      "x": 9,
+      "y": 397,
+      "w": 372,
+      "h": 28,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(74, 86, 77)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        4,
+        8,
+        4,
+        8
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 10,
+      "y": 426,
+      "w": 370,
+      "h": 62,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "8px",
+      "spacing": [
+        6,
+        8,
+        6,
+        8,
+        8,
+        8
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 18,
+      "y": 438,
+      "w": 287.3125,
+      "h": 22,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 15,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "h3",
+      "role": null,
+      "x": 313.3125,
+      "y": 445,
+      "w": 58.6875,
+      "h": 24,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "h2",
+      "role": null,
+      "x": 25,
+      "y": 519,
+      "w": 340,
+      "h": 24,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": "status",
+      "x": 25,
+      "y": 543,
+      "w": 340,
+      "h": 32,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 25,
+      "y": 627,
+      "w": 340,
+      "h": 22,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 15,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 25,
+      "y": 653,
+      "w": 340,
+      "h": 32,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 12,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 8,
+      "y": 710,
+      "w": 100.625,
+      "h": 32,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 780,
+      "w": 374,
+      "h": 52,
+      "background": "rgb(31, 92, 66)",
+      "color": "rgb(255, 255, 255)",
+      "font": 15,
+      "gap": "normal",
+      "spacing": [
+        8,
+        24,
+        8,
+        24
+      ],
+      "target": true
+    }
+  ],
+  "loadedFonts": [
+    "Google Sans Flex Variable"
+  ],
+  "method": "DOM viewport density proxy; overlapping parent/child elements count separately. Not eye tracking or a medical eye-strain measurement.",
+  "contrast": {
+    "violations": [],
+    "manualReview": []
+  },
+  "accessibility": []
+}

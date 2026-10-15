@@ -1,0 +1,727 @@
+{
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "horizontalOverflow": false,
+  "visibleElements": 24,
+  "elementsPer100kPixels": 7.29,
+  "accentHueBins": {
+    "150": 2
+  },
+  "competingAccents": 1,
+  "spacingOn4pxRhythm": 0.733,
+  "smallTargets": [
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 48,
+      "y": 464,
+      "w": 181.015625,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 48,
+      "y": 512,
+      "w": 146.21875,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 48,
+      "y": 560,
+      "w": 209.25,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "target": true
+    }
+  ],
+  "grid": [
+    [
+      1,
+      1,
+      1,
+      1,
+      2,
+      2
+    ],
+    [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    [
+      2,
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    [
+      1,
+      1,
+      2,
+      1,
+      1,
+      2
+    ],
+    [
+      3,
+      3,
+      3,
+      4,
+      4,
+      4
+    ],
+    [
+      3,
+      3,
+      3,
+      3,
+      2,
+      2
+    ],
+    [
+      3,
+      3,
+      3,
+      2,
+      0,
+      0
+    ],
+    [
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+    ],
+    [
+      2,
+      1,
+      1,
+      1,
+      2,
+      2
+    ],
+    [
+      3,
+      3,
+      2,
+      2,
+      4,
+      3
+    ],
+    [
+      1,
+      2,
+      1,
+      1,
+      2,
+      1
+    ]
+  ],
+  "elements": [
+    {
+      "tag": "button",
+      "role": null,
+      "x": 4,
+      "y": 8,
+      "w": 273,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 286,
+      "y": 8,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 338,
+      "y": 8,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 8,
+      "y": 108,
+      "w": 374,
+      "h": 32,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 12,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 172,
+      "w": 374,
+      "h": 56,
+      "background": "rgb(239, 233, 217)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13.3333,
+      "gap": "12px",
+      "spacing": [
+        8,
+        12,
+        8,
+        12,
+        12,
+        12
+      ],
+      "target": true
+    },
+    {
+      "tag": "h2",
+      "role": null,
+      "x": 16,
+      "y": 250,
+      "w": 306,
+      "h": 20,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 326,
+      "y": 236,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 16,
+      "y": 284,
+      "w": 132.015625,
+      "h": 48,
+      "background": "rgb(31, 92, 66)",
+      "color": "rgb(255, 255, 255)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        6,
+        24,
+        6,
+        24
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 152.015625,
+      "y": 284,
+      "w": 184.0625,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(31, 92, 66)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        6,
+        24,
+        6,
+        24
+      ],
+      "target": true
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 8,
+      "y": 356,
+      "w": 374,
+      "h": 34,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 232.65625,
+      "y": 362,
+      "w": 139.34375,
+      "h": 22,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 15,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 8,
+      "y": 402,
+      "w": 374,
+      "h": 46,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 48,
+      "y": 404,
+      "w": 334,
+      "h": 44,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 15,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 48,
+      "y": 464,
+      "w": 181.015625,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 48,
+      "y": 512,
+      "w": 146.21875,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 48,
+      "y": 560,
+      "w": 209.25,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 12,
+      "y": 688,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "textarea",
+      "role": null,
+      "x": 62,
+      "y": 664,
+      "w": 216,
+      "h": 72,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        12,
+        4,
+        12,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 280,
+      "y": 688,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 330,
+      "y": 688,
+      "w": 48,
+      "h": 48,
+      "background": "rgb(31, 92, 66)",
+      "color": "rgb(255, 255, 255)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 0,
+      "y": 772,
+      "w": 97.5,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [
+        0,
+        0,
+        0,
+        0,
+        2,
+        2
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 97.5,
+      "y": 772,
+      "w": 97.5,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(74, 86, 77)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [
+        0,
+        0,
+        0,
+        0,
+        2,
+        2
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 195,
+      "y": 772,
+      "w": 97.5,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(74, 86, 77)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [
+        0,
+        0,
+        0,
+        0,
+        2,
+        2
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 292.5,
+      "y": 772,
+      "w": 97.5,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(74, 86, 77)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [
+        0,
+        0,
+        0,
+        0,
+        2,
+        2
+      ],
+      "target": true
+    }
+  ],
+  "loadedFonts": [
+    "Google Sans Flex Variable"
+  ],
+  "method": "DOM viewport density proxy; overlapping parent/child elements count separately. Not eye tracking or a medical eye-strain measurement.",
+  "contrast": {
+    "violations": [],
+    "manualReview": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "8.3pt (11px)",
+                  "fontWeight": "normal",
+                  "messageKey": "imgNode",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<svg class=\"MuiCircularProgress-svg css-54pwck-MuiCircularProgress-svg\" viewBox=\"22 22 44 44\">",
+                    "target": [
+                      ".css-127c9vx-MuiCircularProgress-root > .MuiCircularProgress-svg.css-54pwck-MuiCircularProgress-svg[viewBox=\"22 22 44 44\"]"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because element contains an image node"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-labelSmall css-142x06r-MuiTypography-root\" aria-hidden=\"true\">5/6</span>",
+            "target": [
+              ".MuiTypography-labelSmall"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because element contains an image node"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-labelMedium css-1z07d8r-MuiTypography-root\">My shop</span>",
+            "target": [
+              "button[data-tour=\"nav-shop\"] > .css-1z07d8r-MuiTypography-root.MuiTypography-labelMedium.MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          }
+        ]
+      }
+    ]
+  },
+  "accessibility": []
+}

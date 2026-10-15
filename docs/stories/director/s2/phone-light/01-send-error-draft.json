@@ -1,0 +1,684 @@
+{
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "horizontalOverflow": false,
+  "visibleElements": 24,
+  "elementsPer100kPixels": 7.29,
+  "accentHueBins": {
+    "150": 2
+  },
+  "competingAccents": 1,
+  "spacingOn4pxRhythm": 0.636,
+  "smallTargets": [
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 20,
+      "y": 167,
+      "w": 53.109375,
+      "h": 32,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 81.109375,
+      "y": 167,
+      "w": 92.421875,
+      "h": 32,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 8,
+      "y": 279,
+      "w": 181.015625,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 197.015625,
+      "y": 279,
+      "w": 146.21875,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 8,
+      "y": 327,
+      "w": 209.25,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "target": true
+    }
+  ],
+  "grid": [
+    [
+      1,
+      1,
+      1,
+      1,
+      2,
+      2
+    ],
+    [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    [
+      2,
+      3,
+      2,
+      0,
+      0,
+      0
+    ],
+    [
+      2,
+      2,
+      2,
+      1,
+      1,
+      1
+    ],
+    [
+      2,
+      2,
+      2,
+      2,
+      1,
+      1
+    ],
+    [
+      2,
+      2,
+      2,
+      2,
+      2,
+      1
+    ],
+    [
+      2,
+      2,
+      2,
+      2,
+      3,
+      2
+    ],
+    [
+      2,
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    [
+      1,
+      1,
+      1,
+      1,
+      1,
+      2
+    ],
+    [
+      3,
+      2,
+      2,
+      2,
+      3,
+      4
+    ],
+    [
+      3,
+      3,
+      2,
+      2,
+      4,
+      3
+    ],
+    [
+      1,
+      2,
+      1,
+      1,
+      2,
+      1
+    ]
+  ],
+  "elements": [
+    {
+      "tag": "button",
+      "role": null,
+      "x": 4,
+      "y": 8,
+      "w": 273,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 286,
+      "y": 8,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 338,
+      "y": 8,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 8,
+      "y": 108,
+      "w": 374,
+      "h": 32,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 12,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 20,
+      "y": 167,
+      "w": 53.109375,
+      "h": 32,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 81.109375,
+      "y": 167,
+      "w": 92.421875,
+      "h": 32,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 20,
+      "y": 207,
+      "w": 169.1875,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(31, 92, 66)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        6,
+        8,
+        6,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 8,
+      "y": 279,
+      "w": 181.015625,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 197.015625,
+      "y": 279,
+      "w": 146.21875,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "button",
+      "x": 8,
+      "y": 327,
+      "w": 209.25,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "h2",
+      "role": null,
+      "x": 20,
+      "y": 403,
+      "w": 298,
+      "h": 24,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 322,
+      "y": 391,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 20,
+      "y": 447,
+      "w": 350,
+      "h": 48,
+      "background": "rgb(31, 92, 66)",
+      "color": "rgb(255, 255, 255)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        6,
+        24,
+        6,
+        24
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 20,
+      "y": 499,
+      "w": 350,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(31, 92, 66)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        6,
+        24,
+        6,
+        24
+      ],
+      "target": true
+    },
+    {
+      "tag": "div",
+      "role": "alert",
+      "x": 8,
+      "y": 586,
+      "w": 374,
+      "h": 68,
+      "background": "rgb(249, 236, 236)",
+      "color": "rgb(79, 28, 28)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        6,
+        16,
+        6,
+        16
+      ],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 326,
+      "y": 596,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(79, 28, 28)",
+      "font": 18,
+      "gap": "normal",
+      "spacing": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 12,
+      "y": 688,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "textarea",
+      "role": null,
+      "x": 62,
+      "y": 664,
+      "w": 216,
+      "h": 72,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        12,
+        4,
+        12,
+        4
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 280,
+      "y": 688,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 330,
+      "y": 688,
+      "w": 48,
+      "h": 48,
+      "background": "rgb(31, 92, 66)",
+      "color": "rgb(255, 255, 255)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 0,
+      "y": 772,
+      "w": 97.5,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [
+        0,
+        0,
+        0,
+        0,
+        2,
+        2
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 97.5,
+      "y": 772,
+      "w": 97.5,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(74, 86, 77)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [
+        0,
+        0,
+        0,
+        0,
+        2,
+        2
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 195,
+      "y": 772,
+      "w": 97.5,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(74, 86, 77)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [
+        0,
+        0,
+        0,
+        0,
+        2,
+        2
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 292.5,
+      "y": 772,
+      "w": 97.5,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(74, 86, 77)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [
+        0,
+        0,
+        0,
+        0,
+        2,
+        2
+      ],
+      "target": true
+    }
+  ],
+  "loadedFonts": [
+    "Google Sans Flex Variable"
+  ],
+  "method": "DOM viewport density proxy; overlapping parent/child elements count separately. Not eye tracking or a medical eye-strain measurement.",
+  "contrast": {
+    "violations": [],
+    "manualReview": []
+  },
+  "accessibility": []
+}

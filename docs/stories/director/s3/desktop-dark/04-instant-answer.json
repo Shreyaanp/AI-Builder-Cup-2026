@@ -1,0 +1,820 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "horizontalOverflow": false,
+  "visibleElements": 12,
+  "elementsPer100kPixels": 0.83,
+  "accentHueBins": {
+    "60": 1
+  },
+  "competingAccents": 1,
+  "spacingOn4pxRhythm": 0.808,
+  "smallTargets": [
+    {
+      "tag": "input",
+      "role": null,
+      "x": 452,
+      "y": 629,
+      "w": 490,
+      "h": 32,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        4,
+        0,
+        5,
+        0
+      ],
+      "target": true
+    }
+  ],
+  "grid": [
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      1,
+      1,
+      2,
+      0
+    ],
+    [
+      0,
+      2,
+      2,
+      2,
+      3,
+      0
+    ],
+    [
+      0,
+      4,
+      4,
+      6,
+      3,
+      0
+    ],
+    [
+      0,
+      5,
+      5,
+      4,
+      0,
+      0
+    ],
+    [
+      0,
+      3,
+      3,
+      3,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      1,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  ],
+  "elements": [
+    {
+      "tag": "button",
+      "role": null,
+      "x": 964,
+      "y": 321,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "h2",
+      "role": null,
+      "x": 420,
+      "y": 313,
+      "w": 600,
+      "h": 64,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        16,
+        64,
+        16,
+        24
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 444,
+      "y": 377,
+      "w": 552,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 936.5,
+      "y": 425,
+      "w": 59.5,
+      "h": 36,
+      "background": "rgb(90, 69, 0)",
+      "color": "rgb(255, 231, 161)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        6,
+        8,
+        6,
+        8
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 944.5,
+      "y": 431,
+      "w": 43.5,
+      "h": 24,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 231, 161)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 444,
+      "y": 467,
+      "w": 469.1875,
+      "h": 144,
+      "background": "rgb(42, 64, 51)",
+      "color": "rgb(241, 238, 227)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        6,
+        8,
+        6,
+        8
+      ],
+      "target": false
+    },
+    {
+      "tag": "div",
+      "role": "status",
+      "x": 452,
+      "y": 473,
+      "w": 453.1875,
+      "h": 82,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 452,
+      "y": 473,
+      "w": 453.1875,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 452,
+      "y": 523,
+      "w": 453.1875,
+      "h": 32,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 12,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 448,
+      "y": 557,
+      "w": 159.15625,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(246, 201, 69)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        4,
+        24,
+        4,
+        24
+      ],
+      "target": true
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "x": 452,
+      "y": 629,
+      "w": 490,
+      "h": 32,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        4,
+        0,
+        5,
+        0
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 946,
+      "y": 619,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    }
+  ],
+  "loadedFonts": [
+    "Google Sans Flex Variable"
+  ],
+  "method": "DOM viewport density proxy; overlapping parent/child elements count separately. Not eye tracking or a medical eye-strain measurement.",
+  "contrast": {
+    "violations": [],
+    "manualReview": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "16.5pt (22px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body style=\"overflow: hidden;\">",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<h1 class=\"MuiTypography-root MuiTypography-titleLarge css-1l5ynx0-MuiTypography-root\">Director Chai · synthetic demo</h1>",
+            "target": [
+              "h1"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body style=\"overflow: hidden;\">",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<p class=\"MuiTypography-root MuiTypography-bodyMedium MuiTypography-noWrap css-1yn56zu-MuiTypography-root\">Cafe</p>",
+            "target": [
+              ".MuiTypography-noWrap"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.8pt (13px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body style=\"overflow: hidden;\">",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<button class=\"MuiButtonBase-root M...\" tabindex=\"0\" type=\"button\" aria-pressed=\"false\" aria-label=\"Follow Director Chai...\" aria-busy=\"false\">",
+            "target": [
+              ".MuiButton-outlined"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.8pt (13px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body style=\"overflow: hidden;\">",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<button class=\"MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-sizeSmall MuiButton-colorPrimary MuiButton-disableElevation css-h6ce1r-MuiButtonBase-root-MuiButton-root\" tabindex=\"0\" type=\"button\" aria-expanded=\"false\">",
+            "target": [
+              ".css-h6ce1r-MuiButtonBase-root-MuiButton-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body style=\"overflow: hidden;\">",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<p class=\"MuiTypography-root MuiTypography-bodySmall css-pl8748-MuiTypography-root\">Menu not confirmed yet</p>",
+            "target": [
+              ".css-pl8748-MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.8pt (13px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div title=\"A visit before 9am at the shop.\" class=\"MuiChip-root MuiChip-filled MuiChip-sizeMedium MuiChip-colorDefault css-90df-MuiChip-root\">",
+                    "target": [
+                      ".MuiChip-root"
+                    ]
+                  },
+                  {
+                    "html": "<body style=\"overflow: hidden;\">",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiChip-label css-1dybbl5-MuiChip-label\">Early bird</span>",
+            "target": [
+              ".MuiChip-label"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "16.5pt (22px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body style=\"overflow: hidden;\">",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<h2 class=\"MuiTypography-root MuiTypography-titleLarge css-1vb2hm5-MuiTypography-root\" id=\"tips-title\">Neighbour tips</h2>",
+            "target": [
+              "#tips-title"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body style=\"overflow: hidden;\">",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<p class=\"MuiTypography-root MuiTypography-body1 css-1mfa079-MuiTypography-root\">No tips yet. Be the first to help a neighbour.</p>",
+            "target": [
+              ".MuiTypography-body1"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body style=\"overflow: hidden;\">",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<p class=\"MuiTypography-root MuiTypography-bodyMedium css-13kojk-MuiTypography-root\">Sign in to leave a tip for neighbours.</p>",
+            "target": [
+              ".css-73htpq-MuiStack-root > .css-13kojk-MuiTypography-root.MuiTypography-bodyMedium"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body style=\"overflow: hidden;\">",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<p class=\"MuiTypography-root MuiTypography-bodySmall css-1bjd29j-MuiTypography-root\">Prepared by the shop owner with Chalkboard · independent prototype, not a Google product</p>",
+            "target": [
+              ".css-1bjd29j-MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "11.3pt (15px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<button class=\"MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-sizeLarge MuiButton-colorPrimary MuiButton-disableElevation MuiButton-fullWidth css-1433kt1-MuiButtonBase-root-MuiButton-root\" tabindex=\"0\" type=\"button\">",
+            "target": [
+              ".MuiButton-fullWidth"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": "elmPartiallyObscuring",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it partially overlaps other elements"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<p class=\"MuiTypography-root MuiTypography-bodyMedium css-13kojk-MuiTypography-root\">Get an instant answer from the shop’s listed details, or send a message the owner replies to.</p>",
+            "target": [
+              ".MuiDialogContent-root > .css-13kojk-MuiTypography-root.MuiTypography-bodyMedium"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": "elmPartiallyObscuring",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it partially overlaps other elements"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<p class=\"MuiTypography-root MuiTypography-bodyLarge css-1yxqq32-MuiTypography-root\">Halal, according to the owner. Not certified or verified by Chalkboard; ask the shop about certification.</p>",
+            "target": [
+              ".css-1yxqq32-MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "elmPartiallyObscuring",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it partially overlaps other elements"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<p class=\"MuiTypography-root MuiTypography-bodySmall css-13r6x1f-MuiTypography-root\">Instant answer · Answer based on the shop's listed details · Simulated answer · offline fixture, no live AI connected</p>",
+            "target": [
+              ".css-13r6x1f-MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+          }
+        ]
+      }
+    ]
+  },
+  "accessibility": []
+}

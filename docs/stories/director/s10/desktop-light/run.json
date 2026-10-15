@@ -1,0 +1,53 @@
+{
+  "id": "s10",
+  "title": "Morning brief and rich coaching",
+  "variant": "desktop-light",
+  "sha": "fa60840b0a231008e068275a62171790a36cd2e9",
+  "baseURL": "http://127.0.0.2:3537",
+  "serverRun": "1792101157322",
+  "started": "2026-10-15T22:03:51.885Z",
+  "status": "partial",
+  "evidence": [
+    {
+      "name": "01-forecast-answer",
+      "visibleElements": 30,
+      "competingAccents": 2,
+      "spacingOn4pxRhythm": 0.853,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 0
+    },
+    {
+      "name": "02-prep-empty",
+      "visibleElements": 34,
+      "competingAccents": 1,
+      "spacingOn4pxRhythm": 0.86,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 3
+    },
+    {
+      "name": "90-reduced-motion",
+      "visibleElements": 34,
+      "competingAccents": 1,
+      "spacingOn4pxRhythm": 0.86,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 3
+    }
+  ],
+  "gaps": [
+    "No seeded sales history: this records the insufficient-history boundary, not a rich forecast or daily brief."
+  ],
+  "checks": [
+    "Reduced-motion final state: 0 running infinite animations (manual interpretation required)"
+  ],
+  "error": null,
+  "finished": "2026-10-15T22:04:01.056Z"
+}

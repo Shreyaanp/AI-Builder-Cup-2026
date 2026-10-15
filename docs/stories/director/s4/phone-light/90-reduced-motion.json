@@ -1,0 +1,422 @@
+{
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "horizontalOverflow": false,
+  "visibleElements": 4,
+  "elementsPer100kPixels": 1.22,
+  "accentHueBins": {},
+  "competingAccents": 0,
+  "spacingOn4pxRhythm": 1,
+  "smallTargets": [],
+  "grid": [
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    [
+      1,
+      1,
+      1,
+      1,
+      1,
+      2
+    ],
+    [
+      3,
+      3,
+      3,
+      3,
+      3,
+      3
+    ],
+    [
+      2,
+      2,
+      2,
+      2,
+      2,
+      2
+    ]
+  ],
+  "elements": [
+    {
+      "tag": "button",
+      "role": null,
+      "x": 334,
+      "y": 628,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgba(0, 0, 0, 0.54)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "h2",
+      "role": null,
+      "x": 0,
+      "y": 648,
+      "w": 390,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [
+        8,
+        64,
+        16,
+        24
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 24,
+      "y": 704,
+      "w": 342,
+      "h": 124,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(27, 42, 34)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 24,
+      "y": 704,
+      "w": 342,
+      "h": 124,
+      "background": "rgb(239, 233, 217)",
+      "color": "rgb(27, 42, 34)",
+      "font": 13.3333,
+      "gap": "12px",
+      "spacing": [
+        12,
+        16,
+        12,
+        16,
+        12,
+        12
+      ],
+      "target": true
+    }
+  ],
+  "loadedFonts": [
+    "Google Sans Flex Variable"
+  ],
+  "method": "DOM viewport density proxy; overlapping parent/child elements count separately. Not eye tracking or a medical eye-strain measurement.",
+  "contrast": {
+    "violations": [],
+    "manualReview": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "shortTextContent",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element content is too short to determine if it is actual text content"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span aria-hidden=\"true\" class=\"MuiBadge-badge MuiBa...\" style=\"--Badge-translate: 5...\">",
+            "target": [
+              ".css-10bds8p-MuiButtonBase-root[type=\"button\"]:nth-child(7) > .css-1rlitzi-MuiStack-root.MuiStack-root > .css-yynmf8.MuiBox-root[aria-hidden=\"true\"] > .css-63ezxx-MuiBadge-root.MuiBadge-root[aria-hidden=\"true\"] > .MuiBadge-standard.css-1ilfzt5-MuiBadge-badge.MuiBadge-badge"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "shortTextContent",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element content is too short to determine if it is actual text content"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span aria-hidden=\"true\" class=\"MuiBadge-badge MuiBa...\" style=\"--Badge-translate: 5...\">",
+            "target": [
+              "button[data-tour=\"orders\"] > .css-1rlitzi-MuiStack-root.MuiStack-root > .css-yynmf8.MuiBox-root[aria-hidden=\"true\"] > .css-63ezxx-MuiBadge-root.MuiBadge-root[aria-hidden=\"true\"] > .MuiBadge-standard.css-1ilfzt5-MuiBadge-badge.MuiBadge-badge"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-labelLarge css-2jteeo-MuiTypography-root\">Orders</span>",
+            "target": [
+              "button[data-tour=\"orders\"] > .css-1rlitzi-MuiStack-root.MuiStack-root > .css-2jteeo-MuiTypography-root.MuiTypography-labelLarge.MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "16.5pt (22px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-titleLarge css-1pdd326-MuiTypography-root\">1 open</span>",
+            "target": [
+              "button[data-tour=\"orders\"] > .css-1pdd326-MuiTypography-root.MuiTypography-titleLarge.MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-bodyMedium css-1isgelf-MuiTypography-root\">Lakshmi Cash &amp; Carry · Confirmed</span>",
+            "target": [
+              "button[data-tour=\"orders\"] > .css-1isgelf-MuiTypography-root.MuiTypography-bodyMedium.MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-labelMedium css-10m0t4w-MuiTypography-root\">My shop</span>",
+            "target": [
+              ".css-10m0t4w-MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": "elmPartiallyObscuring",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it partially overlaps other elements"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiBox-root css-xazw3i\">Lakshmi Cash &amp; Carry</span>",
+            "target": [
+              ".css-xazw3i"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": "elmPartiallyObscuring",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it partially overlaps other elements"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiBox-root css-13o7eu2\">₹1,145.00 · Fri, Oct 16, 4:00 PM</span>",
+            "target": [
+              ".css-13o7eu2"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+          }
+        ]
+      }
+    ]
+  },
+  "accessibility": []
+}

@@ -1,0 +1,680 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "horizontalOverflow": false,
+  "visibleElements": 13,
+  "elementsPer100kPixels": 0.9,
+  "accentHueBins": {},
+  "competingAccents": 0,
+  "spacingOn4pxRhythm": 0.875,
+  "smallTargets": [],
+  "grid": [
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      2,
+      2,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      3,
+      3,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      4,
+      4,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      2,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      2,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      2,
+      2,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  ],
+  "elements": [
+    {
+      "tag": "h1",
+      "role": null,
+      "x": 480,
+      "y": 172,
+      "w": 480,
+      "h": 36,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 28,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 480,
+      "y": 214,
+      "w": 480,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 492,
+      "y": 290,
+      "w": 456,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 520,
+      "y": 290,
+      "w": 428,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 492,
+      "y": 338,
+      "w": 456,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 520,
+      "y": 338,
+      "w": 428,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "li",
+      "role": null,
+      "x": 492,
+      "y": 386,
+      "w": 456,
+      "h": 21,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 520,
+      "y": 386,
+      "w": 394.90625,
+      "h": 20,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 880.390625,
+      "y": 435,
+      "w": 79.609375,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(246, 201, 69)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        4,
+        24,
+        4,
+        24
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 880.390625,
+      "y": 485,
+      "w": 79.609375,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(246, 201, 69)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        4,
+        24,
+        4,
+        24
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 480,
+      "y": 549,
+      "w": 480,
+      "h": 48,
+      "background": "rgba(241, 238, 227, 0.12)",
+      "color": "rgba(241, 238, 227, 0.38)",
+      "font": 15,
+      "gap": "normal",
+      "spacing": [
+        8,
+        24,
+        8,
+        24
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 480,
+      "y": 603,
+      "w": 480,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(246, 201, 69)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [
+        6,
+        24,
+        6,
+        24
+      ],
+      "target": true
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 480,
+      "y": 667,
+      "w": 480,
+      "h": 16,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 12,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    }
+  ],
+  "loadedFonts": [
+    "Google Sans Flex Variable",
+    "Roboto Variable"
+  ],
+  "method": "DOM viewport density proxy; overlapping parent/child elements count separately. Not eye tracking or a medical eye-strain measurement.",
+  "contrast": {
+    "violations": [],
+    "manualReview": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-labelMedium css-sbk5tz-MuiTypography-root\">Step 2 of 5</span>",
+            "target": [
+              ".MuiTypography-labelMedium"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "21.0pt (28px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "3:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<h1 class=\"MuiTypography-root MuiTypography-headlineMedium css-x96bix-MuiTypography-root\">Before we start</h1>",
+            "target": [
+              "h1"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<p class=\"MuiTypography-root MuiTypography-bodyLarge css-n4gh98-MuiTypography-root\">Here is what Chalkboard keeps and why. You can delete everything at any time.</p>",
+            "target": [
+              ".MuiTypography-bodyLarge"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-1p4tk6q-MuiTypography-root\">I agree to the Terms</span>",
+            "target": [
+              ".css-1jv2z0n-MuiStack-root.MuiStack-root:nth-child(1) > label > .MuiTypography-body1.MuiFormControlLabel-label.css-1p4tk6q-MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.8pt (13px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<button class=\"MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-sizeSmall MuiButton-colorPrimary MuiButton-disableElevation css-pbh3br-MuiButtonBase-root-MuiButton-root\" tabindex=\"0\" type=\"button\" aria-label=\"Read: Terms\">Read</button>",
+            "target": [
+              "button[aria-label=\"Read: Terms\"]"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-1p4tk6q-MuiTypography-root\">I have read the Privacy Notice</span>",
+            "target": [
+              ".css-1jv2z0n-MuiStack-root.MuiStack-root:nth-child(2) > label > .MuiTypography-body1.MuiFormControlLabel-label.css-1p4tk6q-MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.8pt (13px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<button class=\"MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-sizeSmall MuiButton-colorPrimary MuiButton-disableElevation css-pbh3br-MuiButtonBase-root-MuiButton-root\" tabindex=\"0\" type=\"button\" aria-label=\"Read: Privacy Notice\">Read</button>",
+            "target": [
+              "button[aria-label=\"Read: Privacy Notice\"]"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<button class=\"MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-sizeMedium MuiButton-colorPrimary MuiButton-disableElevation css-1wkorlh-MuiButtonBase-root-MuiButton-root\" tabindex=\"0\" type=\"button\">Not now</button>",
+            "target": [
+              ".MuiButton-sizeMedium"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgImage",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element's background color could not be determined due to a background image"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<p class=\"MuiTypography-root MuiTypography-bodySmall css-1bjd29j-MuiTypography-root\">Draft for the prototype — pending legal review.</p>",
+            "target": [
+              ".MuiTypography-bodySmall"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background image"
+          }
+        ]
+      }
+    ]
+  },
+  "accessibility": []
+}

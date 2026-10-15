@@ -1,0 +1,380 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "horizontalOverflow": false,
+  "visibleElements": 7,
+  "elementsPer100kPixels": 0.49,
+  "accentHueBins": {},
+  "competingAccents": 0,
+  "spacingOn4pxRhythm": 0.409,
+  "smallTargets": [],
+  "grid": [
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      1,
+      3
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      3,
+      3
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      2,
+      2
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  ],
+  "elements": [
+    {
+      "tag": "button",
+      "role": null,
+      "x": 1152,
+      "y": 176,
+      "w": 60.984375,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        7,
+        7,
+        7,
+        7
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 1211.984375,
+      "y": 176,
+      "w": 46.984375,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        7,
+        7,
+        7,
+        7
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 1257.96875,
+      "y": 176,
+      "w": 44.921875,
+      "h": 48,
+      "background": "rgba(241, 238, 227, 0.16)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13,
+      "gap": "normal",
+      "spacing": [
+        7,
+        7,
+        7,
+        7
+      ],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 1144,
+      "y": 276,
+      "w": 280,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [
+        0,
+        8,
+        0,
+        8,
+        8,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 1178,
+      "y": 288,
+      "w": 99,
+      "h": 24,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 16,
+      "gap": "normal",
+      "spacing": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 1144,
+      "y": 324,
+      "w": 280,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "normal",
+      "spacing": [
+        0,
+        8,
+        0,
+        8
+      ],
+      "target": true
+    },
+    {
+      "tag": "p",
+      "role": null,
+      "x": 1144,
+      "y": 372,
+      "w": 280,
+      "h": 38,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 12,
+      "gap": "normal",
+      "spacing": [
+        4,
+        8,
+        2,
+        8
+      ],
+      "target": false
+    }
+  ],
+  "loadedFonts": [
+    "Google Sans Flex Variable",
+    "Roboto Variable"
+  ],
+  "method": "DOM viewport density proxy; overlapping parent/child elements count separately. Not eye tracking or a medical eye-strain measurement.",
+  "contrast": {
+    "violations": [],
+    "manualReview": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiBox-root css-1o4wo1x\">Add your phone</span>",
+            "target": [
+              ".css-1o4wo1x"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "shortTextContent",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element content is too short to determine if it is actual text content"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span aria-hidden=\"true\" class=\"MuiBadge-badge MuiBa...\" style=\"--Badge-translate: 5...\">",
+            "target": [
+              ".css-s13u7i-MuiButtonBase-root[type=\"button\"]:nth-child(7) > .css-1rlitzi-MuiStack-root.MuiStack-root > .css-1bks13r.MuiBox-root[aria-hidden=\"true\"] > .MuiBadge-root.css-63ezxx-MuiBadge-root[aria-hidden=\"true\"] > .MuiBadge-badge.MuiBadge-standard.MuiBadge-invisible"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "shortTextContent",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element content is too short to determine if it is actual text content"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span aria-hidden=\"true\" class=\"MuiBadge-badge MuiBa...\" style=\"--Badge-translate: 5...\">",
+            "target": [
+              "button[data-tour=\"orders\"] > .css-1rlitzi-MuiStack-root.MuiStack-root > .css-1bks13r.MuiBox-root[aria-hidden=\"true\"] > .MuiBadge-root.css-63ezxx-MuiBadge-root[aria-hidden=\"true\"] > .MuiBadge-badge.MuiBadge-standard.MuiBadge-invisible"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div tabindex=\"0\" role=\"combobox\" aria-expanded=\"false\" aria-haspopup=\"listbox\" aria-labelledby=\"_r_17_-label\" id=\"_r_17_\" ...>",
+            "target": [
+              "#_r_17_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          }
+        ]
+      }
+    ]
+  },
+  "accessibility": []
+}
