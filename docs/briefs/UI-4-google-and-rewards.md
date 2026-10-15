@@ -14,6 +14,7 @@ Rules that still apply: we must never claim real Google verification/publication
 not really connected must be labelled — but **once, clearly**, not on every line.
 
 Redesign:
+
 1. **One real path first.** The tab is a short, honest checklist toward getting on Google:
    (1) Shop details complete (readiness from our data, tap to fix), (2) Photos & menu ready,
    (3) **"Add or claim on Google"** — the official Google Business Profile flow opened in the
@@ -26,11 +27,12 @@ Redesign:
 4. Copy-ready listing: one card with name, category, hours, phone, address, description and
    menu link, each with a copy button (for pasting into Google's form).
 5. Material 3 tiles + sheets like My shop; motion tokens; 9 locales; remove now-unused strings.
-Tests: update `tests/google-sim.spec.ts` / `tests/v1.spec.ts` labels as needed; axe light/dark.
+   Tests: update `tests/google-sim.spec.ts` / `tests/v1.spec.ts` labels as needed; axe light/dark.
 
 ## Part B — Customer rewards (gamification) + back-in-stock alerts (customer side)
 
 Keep it light, on-device first, no customer accounts:
+
 1. **Stamp card per shop** (localStorage): a stamp when the customer opens the shop page via
    the shop's QR (`?source=qr`) at most once per day; 5 / 10 stamps show a celebratory
    animation + badge. Owner can optionally set a reward text in My shop ("10th kopi free")
