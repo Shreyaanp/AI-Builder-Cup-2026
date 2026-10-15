@@ -90,21 +90,22 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
       await discovery.addInitScript(() =>
         localStorage.setItem('chalkboard.customer.journey', 'done'),
       )
-      await discovery.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/`)
+      await discovery.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/browse`)
       await expect(discovery.getByText('Demo data', { exact: true })).toBeVisible()
+      const place = discovery.getByRole('textbox', { name: 'City or area' })
       for (const city of cities) {
-        await discovery.getByRole('textbox', { name: 'City or area' }).fill(city)
-        await discovery.getByRole('textbox', { name: 'City or area' }).press('Enter')
+        // Typed loosely, found and named properly: the offline map knows every demo city.
+        await place.fill(city.toLowerCase())
+        await place.press('Enter')
+        await expect(place).toHaveValue(city)
         await expect(
           discovery.getByText('Couldn’t find that place. Try a city or neighbourhood name.', {
             exact: true,
           }),
-        ).toBeVisible()
+        ).toHaveCount(0)
         await shot(discovery, 7, `3-${city.toLowerCase().replaceAll(' ', '-')}`)
       }
-      gap(
-        'S7/3: eight-city catalogue exists in source but default SQLite preview is unseeded; offline typed-city lookup rejects all eight city names',
-      )
+      liveOnly('Catalogue shops are seeded on the hosted demo; the local preview stays unseeded')
       expect(new Set(catalogue.map((entry) => entry.city)).size).toBe(8)
       for (const entry of catalogue) {
         await discovery.route(`**/api/v1/public/shops/${entry.shop.id}`, (route) =>

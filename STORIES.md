@@ -24,8 +24,8 @@ in `tests/stories/` that the overnight loop runs.
 **Connects to:** S3 (customers see it), S5 (Google flow reuses the details and photos).
 
 Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s1.spec.ts`.
-Gaps: [A2, A10](docs/stories/AUDIT.md) — international offline pins and accessible extraction
-disclosure. A6, A8 and A11 are fixed and live (99bed19). Sign-in, recognition,
+Gaps: [A10](docs/stories/AUDIT.md) — accessible extraction disclosure. A2 fixed: offline pins and
+typed places work in all eight demo cities; exact photo GPS replaces an approximate demo pin. A6, A8 and A11 are fixed and live (99bed19). Sign-in, recognition,
 physical camera/GPS and hosted validation remain live-only.
 
 ## S2 · Daily upkeep in seconds (text or voice)
@@ -61,7 +61,7 @@ Photo/PDF import and on-device speech recognition remain live-only evidence.
 **Connects to:** S1/S2 (owner data), S6 (personalisation, later).
 
 Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s3.spec.ts`.
-Gaps: [A2, A5](docs/stories/AUDIT.md) — typed-city fixtures and required customer sign-in.
+Gaps: [A5](docs/stories/AUDIT.md) — required customer sign-in (account 2). A2 typed places fixed.
 A3, A4, A8, A11 and A12 are fixed and live (99bed19).
 Messages/replies, QR stamps and both themes are exercised. Confirmed-halal discovery filtering,
 unavailable-page recovery and Indian date formatting are fixed and live (99bed19); real Places/GPS remain live-only.
@@ -105,7 +105,7 @@ Status ☐ · the user tests the face scan on a phone
 3. Demo shops exist in 8 cities.
 
 Status ◐ · 2026-10-15 · Offline phone walkthrough: `tests/stories/s7.spec.ts`.
-Gaps: [A2, A7](docs/stories/AUDIT.md) — eight-city discoverability and multilingual offline
+Gaps: [A7](docs/stories/AUDIT.md) — (A2 eight-city places fixed) multilingual offline
 replies/15-language coverage. A11 Tamil text metrics are fixed and live (99bed19). INR/UPI, Tamil UI, speech locale dispatch
 and eight labelled catalogue fixture pages are exercised; audible/live speech is unvalidated.
 Indian languages remain in progress with the locale worker; their files were not edited.

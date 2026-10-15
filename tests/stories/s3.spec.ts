@@ -41,19 +41,23 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
     await test.step('2 · GPS discovery and typed city fallback', async () => {
       await customer.getByRole('button', { name: 'Use my location' }).click()
       await customer.getByRole('button', { name: 'Explore my neighbourhood' }).click()
+      // The front door is an AI ask; browsing everything nearby is one tap away.
+      await expect(
+        customer.getByRole('heading', { name: 'What are you looking for?' }),
+      ).toBeVisible()
+      await shot(customer, 3, '1-ask')
+      await customer.getByRole('link', { name: 'Browse everything nearby' }).first().click()
       await expect(customer.getByRole('heading', { name: shopName })).toBeVisible()
       await expect(customer.getByText('Demo data', { exact: true })).toBeVisible()
       await shot(customer, 3, 2)
       liveOnly('Actual GPS accuracy and live Google Places; local map cards are fixtures')
-      // The offline map path accepts SG areas; Indian typed cities currently fail (S1/6, S7/3).
-      await customer.getByRole('textbox', { name: 'City or area' }).fill('Bengaluru')
+      // A typed neighbourhood anywhere in the demo world recentres discovery.
+      await customer.getByRole('textbox', { name: 'City or area' }).fill('indiranagar, bengaluru')
       await customer.getByRole('textbox', { name: 'City or area' }).press('Enter')
-      await expect(
-        customer.getByText('Couldn’t find that place. Try a city or neighbourhood name.', {
-          exact: true,
-        }),
-      ).toBeVisible()
-      gap('S3/2: Bengaluru typed-city fallback fails in offline mode')
+      await expect(customer.getByRole('textbox', { name: 'City or area' })).toHaveValue(
+        'Indiranagar',
+      )
+      await expect(customer.getByRole('heading', { name: shopName })).toBeVisible()
       await customer.getByRole('textbox', { name: 'City or area' }).fill('Tiong Bahru')
       await customer.getByRole('textbox', { name: 'City or area' }).press('Enter')
       const shops = customer.getByRole('list').getByRole('button').getByRole('heading')

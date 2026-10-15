@@ -713,7 +713,8 @@ function CoachScreen({
         )}
         {photoPin &&
           ws.active?.id === photoPin.snapshot.business_id &&
-          ws.active.fields.lat == null && (
+          // A precise photo location also replaces an approximate demo pin.
+          (ws.active.fields.lat == null || ws.active.fields.pin_demo) && (
             <Alert severity="info" sx={{ mb: 2 }}>
               {photoText.pinOffer}
               <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>

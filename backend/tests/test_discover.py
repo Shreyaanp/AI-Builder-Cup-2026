@@ -380,6 +380,82 @@ def test_fixture_pin_and_missing_one_key(tmp_path: Path) -> None:
         assert client.get("/api/v1/bootstrap").json()["maps_mode"] == "demo"
 
 
+def test_offline_place_search_knows_every_demo_city(tmp_path: Path) -> None:
+    config = settings(tmp_path).model_copy(update={"rate_limits_enabled": False})
+    app = create_app(config, InMemorySessionService())
+    with TestClient(app) as client:
+
+        def place(q: str) -> dict[str, object]:
+            response = client.get("/api/v1/discover/place", params={"q": q})
+            assert response.status_code == 200, (q, response.text)
+            return response.json()
+
+        for city in ["Singapore", "Bengaluru", "Delhi", "Mumbai", "Kuala Lumpur", "Jakarta"]:
+            assert place(city)["label"] == city
+        assert place("tokyo")["label"] == "Tokyo"
+        assert place("Bangalore")["lat"] == place("Bengaluru")["lat"]
+        # A neighbourhood wins over its city; whole words only.
+        assert place("Indiranagar, Bengaluru")["label"] == "Indiranagar"
+        assert place("Bandra West, Mumbai")["label"] == "Bandra"
+        assert client.get("/api/v1/discover/place", params={"q": "Marina"}).status_code == 422
+        join(client)
+        response = client.post(
+            "/api/v1/proposals",
+            json={
+                "kind": "business",
+                "geocode_confirmed": True,
+                "business": {"name": "Dosa Corner", "location": "100 Feet Road, Indiranagar"},
+            },
+        )
+        business = response.json()["snapshot"]["business"]
+        assert business["pin_demo"] is True
+        assert round(business["lat"], 1) == 13.0
+
+
+def test_exact_photo_point_replaces_only_an_approximate_demo_pin(tmp_path: Path) -> None:
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        join(client)
+
+        def propose(body: dict[str, object]) -> dict[str, object]:
+            response = client.post("/api/v1/proposals", json={"kind": "business", **body})
+            assert response.status_code == 200, response.text
+            return response.json()
+
+        location = "100 Feet Road, Indiranagar"
+        made = propose(
+            {"geocode_confirmed": True, "business": {"name": "Dosa", "location": location}}
+        )
+        receipt = client.post(
+            f"/api/v1/proposals/{made['id']}/approve", json={"digest": made["digest"]}
+        ).json()
+        bid, revision = receipt["business_id"], receipt["revision"]
+        exact = {"lat": 12.97181, "lng": 77.64122, "place_id": "forged", "pin_label": "Forged"}
+        proposal = propose(
+            {
+                "business_id": bid,
+                "revision": revision,
+                "business": {"name": "Dosa", "location": location, **exact},
+            }
+        )
+        pinned = proposal["snapshot"]["business"]
+        assert (pinned["lat"], pinned.get("pin_demo", False)) == (12.97181, False)
+        assert pinned["pin_label"] == "12.97181, 77.64122"  # the point, never client text
+        assert pinned.get("place_id") is None
+        receipt = client.post(
+            f"/api/v1/proposals/{proposal['id']}/approve", json={"digest": proposal["digest"]}
+        ).json()
+        # Once the pin is exact, client coordinates never move it again.
+        moved = propose(
+            {
+                "business_id": bid,
+                "revision": receipt["revision"],
+                "business": {"name": "Dosa", "location": location, "lat": 1.0, "lng": 1.0},
+            }
+        )["snapshot"]["business"]
+        assert (moved["lat"], moved["lng"]) == (12.97181, 77.64122)
+
+
 def test_demo_pin_can_be_reviewed_again_when_connected(
     store: MerchantRepository, tmp_path: Path
 ) -> None:

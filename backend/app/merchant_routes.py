@@ -388,7 +388,10 @@ async def photo(
 
         proposal = await anyio.to_thread.run_sync(propose_menu)
     pin_proposal = None
-    if business is not None and products and pin and business["fields"].get("lat") is None:
+    saved_fields = business["fields"] if business is not None else {}
+    # A photo's precise GPS is offered when the shop has no pin or only an approximate demo pin.
+    unpinned = saved_fields.get("lat") is None or bool(saved_fields.get("pin_demo"))
+    if business is not None and products and pin and unpinned:
         # Linked to this photo's menu review, but sealed/approved independently. Approving
         # either makes the other stale; the owner must explicitly review it again.
         allowed = BusinessFields.model_fields
