@@ -12,17 +12,45 @@ from google.genai import types
 from pydantic import ValidationError
 
 from .auth import Principal
-from .contracts import StreamEvent, VoiceControl
+from .contracts import NewShopVoiceContext, StreamEvent, VoiceControl
+from .coordinator import current
 from .streaming import CoachRuntime, public_events
 
 log = structlog.get_logger()
 
 VOICE_PING_SECONDS = 20
 VOICE_IDLE_SECONDS = 45
+# Leave time for teardown before Cloud Run's 180-second request cap.
+VOICE_SESSION_CAP_SECONDS = 150
+# A press-to-talk coach turn needs a few model calls; the new-shop flow is one long open
+# conversation (the app reconnects to the same session when a socket ends), so it gets more.
+VOICE_LLM_CALLS = 8
+NEW_SHOP_LLM_CALLS = 40
+VOICE_TEXT_TURNS = 12
+NEW_SHOP_TEXT_TURNS = 40
+
+
+def is_new_shop() -> bool:
+    merchant = current.get()
+    return bool(merchant and merchant.new_shop)
 
 
 class VoiceIdle(TimeoutError):
     pass
+
+
+def refresh_new_shop_draft(raw: str) -> bool:
+    """A new-shop socket may resend its draft (a photo or a measured location changed it), so
+    the tools keep building on what the owner sees. Only the session's own new-shop context moves.
+    """
+    if '"new_shop"' not in raw[:40]:
+        return False
+    update = NewShopVoiceContext.model_validate_json(raw)
+    merchant = current.get()
+    if not merchant or not merchant.new_shop:
+        raise ValueError("Draft update outside a new-shop session")
+    merchant.new_shop_draft = update.draft
+    return True
 
 
 async def receive_frame(websocket: WebSocket) -> MutableMapping[str, Any]:
@@ -38,6 +66,7 @@ async def offline_voice(
     """Exercise the same socket contract without recording or interpreting audio."""
     total_audio = 0
     text_turns = 0
+    max_text_turns = NEW_SHOP_TEXT_TURNS if is_new_shop() else VOICE_TEXT_TURNS
     while True:
         frame = await receive_frame(websocket)
         if frame["type"] == "websocket.disconnect":
@@ -55,6 +84,8 @@ async def offline_voice(
         text = frame.get("text", "")
         if len(text) > 5000:
             raise ValueError("Frame too large")
+        if refresh_new_shop_draft(text):
+            continue
         command = VoiceControl.model_validate_json(text)
         if command.kind == "close":
             return
@@ -70,7 +101,7 @@ async def offline_voice(
             await websocket.send_json(StreamEvent(kind="turn_complete").payload())
         if command.kind == "text":
             text_turns += 1
-            if text_turns > 12 or not command.text.strip():
+            if text_turns > max_text_turns or not command.text.strip():
                 raise ValueError("Text turn limit exceeded")
             async for event in runtime.text_events(principal, sid, command.text, "en"):
                 await websocket.send_json(event.payload())
@@ -82,6 +113,8 @@ async def gemini_voice(
     queue = LiveRequestQueue()
     total_audio = 0
     text_turns = 0
+    new_shop = is_new_shop()
+    max_text_turns = NEW_SHOP_TEXT_TURNS if new_shop else VOICE_TEXT_TURNS
 
     async def upstream() -> None:
         nonlocal total_audio, text_turns
@@ -103,6 +136,8 @@ async def gemini_voice(
             raw = frame.get("text", "")
             if len(raw) > 5000:
                 raise ValueError("Frame too large")
+            if refresh_new_shop_draft(raw):
+                continue
             command = VoiceControl.model_validate_json(raw)
             if command.kind == "close":
                 return
@@ -113,7 +148,7 @@ async def gemini_voice(
                 await websocket.send_json(StreamEvent(kind="pong").payload())
             if command.kind == "text":
                 text_turns += 1
-                if text_turns > 12 or not command.text.strip():
+                if text_turns > max_text_turns or not command.text.strip():
                     raise ValueError("Text turn limit exceeded")
                 queue.send_content(
                     types.Content(role="user", parts=[types.Part(text=command.text)])
@@ -128,9 +163,16 @@ async def gemini_voice(
             live_request_queue=queue,
             run_config=RunConfig(
                 response_modalities=[types.Modality.AUDIO],
-                max_llm_calls=8,
+                max_llm_calls=NEW_SHOP_LLM_CALLS if new_shop else VOICE_LLM_CALLS,
                 input_audio_transcription=types.AudioTranscriptionConfig(),
                 output_audio_transcription=types.AudioTranscriptionConfig(),
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name=runtime.settings.voice_name
+                        )
+                    )
+                ),
                 save_live_blob=False,
             ),
         )
@@ -192,9 +234,14 @@ async def serve_voice(
         ),
     ]
     code, reason = 1000, "Voice session ended"
+    # The new-shop conversation uses the whole window; the app reconnects when it ends.
+    seconds = (
+        VOICE_SESSION_CAP_SECONDS
+        if is_new_shop()
+        else min(runtime.settings.max_voice_seconds, VOICE_SESSION_CAP_SECONDS)
+    )
     try:
-        # Leave time for teardown before Cloud Run's 180-second request cap.
-        async with asyncio.timeout(min(runtime.settings.max_voice_seconds, 150)):
+        async with asyncio.timeout(seconds):
             done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             for task in done:
                 task.result()

@@ -1,3 +1,4 @@
+import { createShop } from './stories/support.js'
 import { expect, test, type Page } from '@playwright/test'
 
 async function shopWithoutMenu(page: Page) {
@@ -6,13 +7,7 @@ async function shopWithoutMenu(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await page.getByRole('button', { name: 'Add my shop' }).click()
-  await page.getByLabel('Shop name').fill('Ah Seng Kopi')
-  await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await page
-    .getByRole('dialog', { name: 'Check before saving' })
-    .getByRole('button', { name: 'Confirm and save' })
-    .click()
+  await createShop(page, 'name: Ah Seng Kopi')
   await page.getByRole('button', { name: 'My shop' }).click()
   await page.getByRole('button', { name: /^Menu/ }).click()
   // The sheet's compact "Import" action opens its choices in the sheet (B28).
