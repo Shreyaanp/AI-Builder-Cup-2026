@@ -3293,8 +3293,9 @@ export interface components {
             /**
              * Source
              * @default Open-Meteo
+             * @enum {string}
              */
-            source: string;
+            source: "Open-Meteo" | "offline_fixture";
             /**
              * Attribution
              * @default Weather data by Open-Meteo (CC BY 4.0)

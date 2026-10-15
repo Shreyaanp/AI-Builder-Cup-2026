@@ -39,7 +39,9 @@ class WeatherService:
     async def get(self, fields: dict[str, Any], today: date) -> Weather | None:
         if self.settings.weather_backend == "offline":
             return Weather(
-                temperature_c=27, rain_probability=70, demo=True,
+                temperature_c=27,
+                rain_probability=70,
+                demo=True,
                 source="offline_fixture",
                 attribution="Offline weather fixture. Live weather uses Open-Meteo (CC BY 4.0).",
             )
@@ -168,7 +170,7 @@ def facts(
             if total >= stock:
                 runs_out = row.date
                 break
-        if runs_out is not None or (not rows and stock <= 5):
+        if runs_out is not None or stock <= 5:
             low.append(LowStock(name=product["name"], stock=stock, runs_out=runs_out))
     signals = store.recap_signals(uid, bid)
     waiting = [
