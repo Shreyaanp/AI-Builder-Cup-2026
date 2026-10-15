@@ -78,7 +78,16 @@ export async function enter(page: Page) {
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
+  // Consent saves and then reloads the account before the workspace can appear.
+  const consent = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/v1/consent') && response.request().method() === 'POST',
+  )
+  const account = page.waitForResponse((response) => response.url().endsWith('/api/v1/me'))
   await page.getByRole('button', { name: 'Agree and continue' }).click()
+  const [accepted, loaded] = await Promise.all([consent, account])
+  expect(accepted.ok()).toBe(true)
+  expect(loaded.ok()).toBe(true)
   await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
 }
 
@@ -196,7 +205,21 @@ export async function share(page: Page) {
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
   await page.getByRole('button', { name: /^Customer page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
-  if (!(await sharing.isChecked())) await sharing.click()
+  if (!(await sharing.isChecked())) {
+    // The controlled switch reflects the saved shop, after POST /share and the list reload.
+    const saved = page.waitForResponse(
+      (response) =>
+        /\/api\/v1\/businesses\/[^/]+\/share$/.test(response.url()) &&
+        response.request().method() === 'POST',
+    )
+    const reloaded = page.waitForResponse((response) =>
+      response.url().endsWith('/api/v1/businesses'),
+    )
+    await sharing.click()
+    const [save, shops] = await Promise.all([saved, reloaded])
+    expect(save.ok()).toBe(true)
+    expect(shops.ok()).toBe(true)
+  }
   await expect(sharing).toBeChecked()
   const href = await page.getByRole('link', { name: 'Open page' }).getAttribute('href')
   expect(href).toBeTruthy()

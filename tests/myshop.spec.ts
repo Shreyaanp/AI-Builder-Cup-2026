@@ -121,6 +121,10 @@ test('B27: the tile grid sizes to its content at 390, 600 and desktop widths', a
   await enter(page)
   await seedShop(page)
   await myShop(page)
+  // Measure saved content, not the shorter placeholders while inventory/forecast load.
+  await expect(page.getByRole('button', { name: /^Menu/ })).toContainText('7 items')
+  await expect(page.getByRole('button', { name: /^Prep plan/ })).toContainText('Weekday average')
+  await page.evaluate(() => document.fonts.ready)
   for (const [width, height] of [
     [390, 844],
     [600, 900],
