@@ -60,17 +60,22 @@ test('tips validate abuse, publish literal text, persist, reach owner and delete
 test('tips load failure must be distinct from an empty community', async ({ page }) => {
   const id = await owner(page)
   await publish(page, id)
-  await page.route('**/public/shops/*/tips', (r) => r.fulfill({ status: 503, json: {} }))
+  let outage = true
+  await page.route('**/public/shops/*/tips', (r) =>
+    outage ? r.fulfill({ status: 503, json: {} }) : r.fallback(),
+  )
   await page.goto(`/s/${id}`)
-  await expect(page.getByText('No tips yet. Be the first to help a neighbour.')).toBeVisible()
-  await page.getByRole('heading', { name: 'Neighbour tips' }).scrollIntoViewIfNeeded()
-  if (test.info().project.name === 'phone')
-    await page
-      .getByRole('region', { name: 'Neighbour tips' })
-      .screenshot({ path: 'docs/qa/Q3-tips-outage.png', animations: 'disabled' })
-  // BUG Q3: Tips fetch errors are presented as a successful empty community.
-  test.fail()
+  const tips = page.getByRole('region', { name: 'Neighbour tips' })
+  // Fixed Q3: a failed load says so and offers Retry; it never claims an empty community.
+  await expect(tips.getByRole('alert')).toContainText('Tips couldn’t load')
   await expect(page.getByText('No tips yet. Be the first to help a neighbour.')).toHaveCount(0)
+  await tips.scrollIntoViewIfNeeded()
+  if (test.info().project.name === 'phone')
+    await tips.screenshot({ path: 'docs/qa/Q3-tips-outage.png', animations: 'disabled' })
+  outage = false
+  await tips.getByRole('button', { name: 'Try again' }).click()
+  await expect(tips.getByRole('alert')).toHaveCount(0)
+  await expect(page.getByText('No tips yet. Be the first to help a neighbour.')).toBeVisible()
 })
 
 test('Saved outage has a retry action and accurately describes the failed feed', async ({
@@ -82,13 +87,23 @@ test('Saved outage has a retry action and accurately describes the failed feed',
     (id) => localStorage.setItem('chalkboard.customer.follows', JSON.stringify([id])),
     id,
   )
-  await page.route('**/public/updates?*', (r) => r.fulfill({ status: 503, json: {} }))
+  let outage = true
+  await page.route('**/public/updates?*', (r) =>
+    outage ? r.fulfill({ status: 503, json: {} }) : r.fallback(),
+  )
   await page.goto('/explore/saved')
-  await expect(page.getByRole('alert')).toContainText('This chat is no longer available.')
+  // Fixed Q4: the feed failure is described as such, placeholders stop, and Retry recovers.
+  await expect(page.getByRole('alert')).toContainText('Updates couldn’t load')
+  await expect(page.getByText('This chat is no longer available.')).toHaveCount(0)
+  await expect(page.locator('.MuiSkeleton-root')).toHaveCount(0)
   await evidence(page, 'Q4-saved-outage')
-  // BUG Q4: Saved feed failure reports a lost chat, leaves skeletons and has no retry action.
-  test.fail()
-  await expect(page.getByRole('button', { name: /Retry|Try again/ })).toBeVisible({ timeout: 1000 })
+  outage = false
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Following' })).toBeVisible()
+  expect(await page.evaluate(() => localStorage.getItem('chalkboard.customer.follows'))).toContain(
+    id,
+  )
 })
 
 test('clear preferences reports server failure instead of silently doing nothing', async ({
@@ -98,13 +113,21 @@ test('clear preferences reports server failure instead of silently doing nothing
   await page.request.put('/api/v1/customer/preferences', { data: { vegetarian: true } })
   await page.goto('/explore/')
   await page.getByRole('button', { name: 'Profile and preferences' }).click()
-  await page.route('**/customer/preferences', (r) => r.fulfill({ status: 503, json: {} }))
+  let outage = true
+  await page.route('**/customer/preferences', (r) =>
+    outage ? r.fulfill({ status: 503, json: {} }) : r.fallback(),
+  )
   await page.getByRole('button', { name: 'Clear preferences and searches' }).click()
-  await expect(page.getByRole('dialog')).toContainText('Vegetarian')
+  const dialog = page.getByRole('dialog')
+  // Fixed Q5: the refused deletion is announced, the preference stays, and Retry completes it.
+  await expect(dialog.getByRole('alert')).toContainText('Couldn’t clear')
+  await expect(dialog).toContainText('Vegetarian')
   await evidence(page, 'Q5-clear-preferences')
-  // BUG Q5: Failed privacy preference deletion is silently swallowed.
-  test.fail()
-  await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible({ timeout: 1000 })
+  outage = false
+  await dialog.getByRole('button', { name: 'Try again' }).click()
+  await expect(dialog.getByRole('alert')).toHaveCount(0)
+  await expect(dialog).toContainText('Cleared. Follows stay until you unfollow.')
+  await expect(dialog.getByText('Vegetarian', { exact: true })).toHaveCount(0)
 })
 
 test.describe('Tamil community', () => {
@@ -112,10 +135,12 @@ test.describe('Tamil community', () => {
   test('Saved empty state is localized', async ({ page }) => {
     await page.goto('/explore/saved')
     await expect(page.locator('html')).toHaveAttribute('lang', /^ta/)
-    await expect(page.getByText('Follow shops to see their news here')).toBeVisible()
-    await audit(page)
-    // BUG Q2: Customer account/navigation strings are hard-coded English in every locale.
-    test.fail()
+    // Fixed Q2: customer account and community copy follows the selected language.
+    await expect(page.getByRole('heading', { name: 'சேமித்தவை', level: 1 })).toBeVisible()
+    await expect(
+      page.getByText('கடைகளின் செய்திகளை இங்கே பார்க்க அவற்றைப் பின்தொடருங்கள்'),
+    ).toBeVisible()
     await expect(page.getByText('Follow shops to see their news here')).toHaveCount(0)
+    await audit(page)
   })
 })
