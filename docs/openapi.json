@@ -4215,6 +4215,472 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/radar": {
+      "get": {
+        "tags": [
+          "owner features"
+        ],
+        "summary": "Get Radar",
+        "operationId": "get_radar_api_v1_businesses__business_id__radar_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Radar"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/rescue/suggestions": {
+      "get": {
+        "tags": [
+          "owner features"
+        ],
+        "summary": "Rescue Suggestions",
+        "operationId": "rescue_suggestions_api_v1_businesses__business_id__rescue_suggestions_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Suggestions"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/rescue": {
+      "post": {
+        "tags": [
+          "owner features"
+        ],
+        "summary": "Propose Rescue",
+        "operationId": "propose_rescue_api_v1_businesses__business_id__rescue_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RescueInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RescueProposal"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "owner features"
+        ],
+        "summary": "List Rescue",
+        "operationId": "list_rescue_api_v1_businesses__business_id__rescue_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Deal"
+                  },
+                  "title": "Response List Rescue Api V1 Businesses  Business Id  Rescue Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/rescue/{rescue_id}/approve": {
+      "post": {
+        "tags": [
+          "owner features"
+        ],
+        "summary": "Approve Rescue",
+        "operationId": "approve_rescue_api_v1_businesses__business_id__rescue__rescue_id__approve_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "rescue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rescue Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Approval"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deal"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/rescue/{rescue_id}": {
+      "delete": {
+        "tags": [
+          "owner features"
+        ],
+        "summary": "End Rescue",
+        "operationId": "end_rescue_api_v1_businesses__business_id__rescue__rescue_id__delete",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "rescue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rescue Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deal"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/rescue": {
+      "get": {
+        "tags": [
+          "owner features"
+        ],
+        "summary": "Public Rescue",
+        "operationId": "public_rescue_api_v1_public_rescue_get",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "radius",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 200,
+              "default": 2000,
+              "title": "Radius"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicRescue"
+                  },
+                  "title": "Response Public Rescue Api V1 Public Rescue Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/shops/{business_id}/rescue/{rescue_id}/hold": {
+      "post": {
+        "tags": [
+          "owner features"
+        ],
+        "summary": "Reserve Rescue",
+        "operationId": "reserve_rescue_api_v1_customer_shops__business_id__rescue__rescue_id__hold_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "rescue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rescue Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HoldInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deal"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/brief": {
+      "get": {
+        "tags": [
+          "owner features"
+        ],
+        "summary": "Morning Brief",
+        "operationId": "morning_brief_api_v1_businesses__business_id__brief_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Brief"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "summary": "Health",
@@ -4519,6 +4985,134 @@
           "available"
         ],
         "title": "AvailabilityRequest"
+      },
+      "BestAction": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "reply",
+              "order",
+              "radar",
+              "reduce_prep",
+              "confirm_menu",
+              "record_sales",
+              "none"
+            ],
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "item": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "title"
+        ],
+        "title": "BestAction"
+      },
+      "Brief": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "prep_plan": {
+            "items": {
+              "$ref": "#/components/schemas/PrepRow"
+            },
+            "type": "array",
+            "title": "Prep Plan"
+          },
+          "forecast_status": {
+            "type": "string",
+            "title": "Forecast Status"
+          },
+          "forecast_method": {
+            "type": "string",
+            "title": "Forecast Method"
+          },
+          "low_stock": {
+            "items": {
+              "$ref": "#/components/schemas/LowStock"
+            },
+            "type": "array",
+            "title": "Low Stock"
+          },
+          "weather": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Weather"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "best_action": {
+            "$ref": "#/components/schemas/BestAction"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "gemini"
+            ],
+            "title": "Mode",
+            "default": "offline"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          },
+          "unavailable_rules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unavailable Rules",
+            "default": [
+              "group_buy",
+              "price_check"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "prep_plan",
+          "forecast_status",
+          "forecast_method",
+          "low_stock",
+          "weather",
+          "best_action",
+          "summary",
+          "demo"
+        ],
+        "title": "Brief"
       },
       "BusinessFields": {
         "properties": {
@@ -5057,6 +5651,72 @@
         ],
         "title": "DayHours"
       },
+      "Deal": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RescueItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "starts": {
+            "type": "number",
+            "title": "Starts"
+          },
+          "ends": {
+            "type": "number",
+            "title": "Ends"
+          },
+          "pickup_note": {
+            "type": "string",
+            "title": "Pickup Note"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "live",
+              "ended",
+              "expired"
+            ],
+            "title": "Status"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          },
+          "countdown_seconds": {
+            "type": "integer",
+            "title": "Countdown Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "shop_id",
+          "items",
+          "currency",
+          "starts",
+          "ends",
+          "pickup_note",
+          "status",
+          "demo",
+          "countdown_seconds"
+        ],
+        "title": "Deal"
+      },
       "Decision": {
         "properties": {
           "source": {
@@ -5449,6 +6109,36 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HoldInput": {
+        "properties": {
+          "thread_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Thread Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "qty": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Qty"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "thread_id",
+          "name",
+          "qty"
+        ],
+        "title": "HoldInput"
+      },
       "Inquiry": {
         "properties": {
           "id": {
@@ -5636,6 +6326,37 @@
         "type": "object",
         "title": "LocalSignIn"
       },
+      "LowStock": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "stock": {
+            "type": "integer",
+            "title": "Stock"
+          },
+          "runs_out": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runs Out"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "stock",
+          "runs_out"
+        ],
+        "title": "LowStock"
+      },
       "Match": {
         "properties": {
           "id": {
@@ -5800,6 +6521,61 @@
           "status"
         ],
         "title": "Observation"
+      },
+      "Opportunity": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "band": {
+            "type": "string",
+            "enum": [
+              "5–9",
+              "10–19",
+              "20+"
+            ],
+            "title": "Band"
+          },
+          "unmet_share": {
+            "type": "number",
+            "title": "Unmet Share"
+          },
+          "google_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Google Count"
+          },
+          "fit": {
+            "type": "number",
+            "title": "Fit"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "band",
+          "unmet_share",
+          "google_count",
+          "fit",
+          "demo"
+        ],
+        "title": "Opportunity"
       },
       "OrderMessage": {
         "properties": {
@@ -6194,6 +6970,56 @@
         "type": "object",
         "title": "Preferences"
       },
+      "PrepRow": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity"
+          },
+          "demand": {
+            "type": "number",
+            "title": "Demand"
+          },
+          "lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lower"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "quantity",
+          "demand",
+          "unit"
+        ],
+        "title": "PrepRow"
+      },
       "ProductFields": {
         "properties": {
           "name": {
@@ -6345,6 +7171,43 @@
         ],
         "title": "ProposalRequest"
       },
+      "PublicRescue": {
+        "properties": {
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "distance_m": {
+            "type": "number",
+            "title": "Distance M"
+          },
+          "deal": {
+            "$ref": "#/components/schemas/Deal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop_id",
+          "shop_name",
+          "lat",
+          "lng",
+          "distance_m",
+          "deal"
+        ],
+        "title": "PublicRescue"
+      },
       "Question": {
         "properties": {
           "question": {
@@ -6366,6 +7229,52 @@
           "question"
         ],
         "title": "Question"
+      },
+      "Radar": {
+        "properties": {
+          "area_label": {
+            "type": "string",
+            "title": "Area Label"
+          },
+          "approximate": {
+            "type": "boolean",
+            "title": "Approximate"
+          },
+          "radius": {
+            "type": "integer",
+            "title": "Radius",
+            "default": 2000
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days",
+            "default": 14
+          },
+          "minimum_askers": {
+            "type": "integer",
+            "title": "Minimum Askers",
+            "default": 5
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          },
+          "opportunities": {
+            "items": {
+              "$ref": "#/components/schemas/Opportunity"
+            },
+            "type": "array",
+            "title": "Opportunities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "area_label",
+          "approximate",
+          "demo",
+          "opportunities"
+        ],
+        "title": "Radar"
       },
       "Recap": {
         "properties": {
@@ -6485,6 +7394,200 @@
           "revenue"
         ],
         "title": "RecapItem"
+      },
+      "RescueInput": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RescueItemInput"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Items"
+          },
+          "discount_pct": {
+            "type": "integer",
+            "enum": [
+              20,
+              30,
+              50
+            ],
+            "title": "Discount Pct",
+            "default": 30
+          },
+          "until": {
+            "type": "string",
+            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Until",
+            "description": "Today's pickup deadline in shop-local HH:MM; no overnight deals"
+          },
+          "pickup_note": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Pickup Note",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "until"
+        ],
+        "title": "RescueInput"
+      },
+      "RescueItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "qty": {
+            "type": "integer",
+            "title": "Qty"
+          },
+          "qty_left": {
+            "type": "integer",
+            "title": "Qty Left"
+          },
+          "price": {
+            "type": "integer",
+            "title": "Price"
+          },
+          "was": {
+            "type": "integer",
+            "title": "Was"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "qty",
+          "qty_left",
+          "price",
+          "was",
+          "unit"
+        ],
+        "title": "RescueItem"
+      },
+      "RescueItemInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "qty": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Qty"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "qty"
+        ],
+        "title": "RescueItemInput"
+      },
+      "RescueProposal": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "needs_review",
+            "title": "Status",
+            "default": "needs_review"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "digest": {
+            "type": "string",
+            "title": "Digest"
+          },
+          "expires": {
+            "type": "number",
+            "title": "Expires"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/Deal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "digest",
+          "expires",
+          "snapshot"
+        ],
+        "title": "RescueProposal"
+      },
+      "RescueSuggestion": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity"
+          },
+          "forecast": {
+            "type": "number",
+            "title": "Forecast"
+          },
+          "prepared": {
+            "type": "number",
+            "title": "Prepared"
+          },
+          "sold": {
+            "type": "number",
+            "title": "Sold"
+          },
+          "expected_rest": {
+            "type": "number",
+            "title": "Expected Rest"
+          },
+          "buffer": {
+            "type": "integer",
+            "title": "Buffer"
+          },
+          "discount_pct": {
+            "type": "integer",
+            "enum": [
+              20,
+              30,
+              50
+            ],
+            "title": "Discount Pct"
+          },
+          "estimate": {
+            "type": "boolean",
+            "title": "Estimate",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "quantity",
+          "forecast",
+          "prepared",
+          "sold",
+          "expected_rest",
+          "buffer",
+          "discount_pct"
+        ],
+        "title": "RescueSuggestion"
       },
       "SaleLine": {
         "properties": {
@@ -7153,6 +8256,49 @@
         ],
         "title": "StockLine"
       },
+      "Suggestions": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RescueSuggestion"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          },
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": "Estimate assumes saved stock is opening prepared quantity; confirm what remains. Missing sales or closing hours prevents an estimate."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "until",
+          "demo",
+          "method"
+        ],
+        "title": "Suggestions"
+      },
       "ThreadMessage": {
         "properties": {
           "text": {
@@ -7386,9 +8532,32 @@
               "price_change",
               "back_in_stock",
               "new_item",
-              "menu_confirmed"
+              "menu_confirmed",
+              "rescue_deal"
             ],
             "title": "Kind"
+          },
+          "rescue_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rescue Id"
+          },
+          "ends": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends"
           },
           "item": {
             "type": "string",
@@ -7486,6 +8655,55 @@
         ],
         "title": "ValidationError"
       },
+      "Weather": {
+        "properties": {
+          "temperature_c": {
+            "type": "number",
+            "title": "Temperature C"
+          },
+          "rain_probability": {
+            "type": "integer",
+            "title": "Rain Probability"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "Open-Meteo"
+          },
+          "attribution": {
+            "type": "string",
+            "title": "Attribution",
+            "default": "Weather data by Open-Meteo (CC BY 4.0)"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "default": "https://open-meteo.com/"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          },
+          "sales_effect": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales Effect"
+          }
+        },
+        "type": "object",
+        "required": [
+          "temperature_c",
+          "rain_probability"
+        ],
+        "title": "Weather"
+      },
       "WorldReceipt": {
         "properties": {
           "shop_ids": {
@@ -7573,7 +8791,8 @@
               "workflow",
               "sourcing",
               "suppliers",
-              "order"
+              "order",
+              "rescue_proposal"
             ],
             "title": "Kind",
             "type": "string"

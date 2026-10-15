@@ -1461,6 +1461,143 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/radar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Radar */
+        get: operations["get_radar_api_v1_businesses__business_id__radar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/rescue/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rescue Suggestions */
+        get: operations["rescue_suggestions_api_v1_businesses__business_id__rescue_suggestions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/rescue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Rescue */
+        get: operations["list_rescue_api_v1_businesses__business_id__rescue_get"];
+        put?: never;
+        /** Propose Rescue */
+        post: operations["propose_rescue_api_v1_businesses__business_id__rescue_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/rescue/{rescue_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Rescue */
+        post: operations["approve_rescue_api_v1_businesses__business_id__rescue__rescue_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/rescue/{rescue_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** End Rescue */
+        delete: operations["end_rescue_api_v1_businesses__business_id__rescue__rescue_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/rescue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Rescue */
+        get: operations["public_rescue_api_v1_public_rescue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/shops/{business_id}/rescue/{rescue_id}/hold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reserve Rescue */
+        post: operations["reserve_rescue_api_v1_customer_shops__business_id__rescue__rescue_id__hold_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/brief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Morning Brief */
+        get: operations["morning_brief_api_v1_businesses__business_id__brief_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -1605,6 +1742,59 @@ export interface components {
         AvailabilityRequest: {
             /** Available */
             available: boolean;
+        };
+        /** BestAction */
+        BestAction: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "reply" | "order" | "radar" | "reduce_prep" | "confirm_menu" | "record_sales" | "none";
+            /** Title */
+            title: string;
+            /** Item */
+            item?: string | null;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+        };
+        /** Brief */
+        Brief: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Prep Plan */
+            prep_plan: components["schemas"]["PrepRow"][];
+            /** Forecast Status */
+            forecast_status: string;
+            /** Forecast Method */
+            forecast_method: string;
+            /** Low Stock */
+            low_stock: components["schemas"]["LowStock"][];
+            weather: components["schemas"]["Weather"] | null;
+            best_action: components["schemas"]["BestAction"];
+            /** Summary */
+            summary: string;
+            /**
+             * Mode
+             * @default offline
+             * @enum {string}
+             */
+            mode: "offline" | "gemini";
+            /** Demo */
+            demo: boolean;
+            /**
+             * Unavailable Rules
+             * @default [
+             *       "group_buy",
+             *       "price_check"
+             *     ]
+             */
+            unavailable_rules: string[];
         };
         /** BusinessFields */
         BusinessFields: {
@@ -1822,6 +2012,32 @@ export interface components {
             /** Close */
             close?: string | null;
         };
+        /** Deal */
+        Deal: {
+            /** Id */
+            id: string;
+            /** Shop Id */
+            shop_id: string;
+            /** Items */
+            items: components["schemas"]["RescueItem"][];
+            /** Currency */
+            currency: string;
+            /** Starts */
+            starts: number;
+            /** Ends */
+            ends: number;
+            /** Pickup Note */
+            pickup_note: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "live" | "ended" | "expired";
+            /** Demo */
+            demo: boolean;
+            /** Countdown Seconds */
+            countdown_seconds: number;
+        };
         /** Decision */
         Decision: {
             /**
@@ -1976,6 +2192,15 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HoldInput */
+        HoldInput: {
+            /** Thread Id */
+            thread_id: string;
+            /** Name */
+            name: string;
+            /** Qty */
+            qty: number;
+        };
         /** Inquiry */
         Inquiry: {
             /** Id */
@@ -2081,6 +2306,15 @@ export interface components {
              */
             name: string;
         };
+        /** LowStock */
+        LowStock: {
+            /** Name */
+            name: string;
+            /** Stock */
+            stock: number;
+            /** Runs Out */
+            runs_out: string | null;
+        };
         /** Match */
         Match: {
             /** Id */
@@ -2148,6 +2382,26 @@ export interface components {
              * @enum {string}
              */
             source: "owner" | "demo";
+        };
+        /** Opportunity */
+        Opportunity: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Band
+             * @enum {string}
+             */
+            band: "5–9" | "10–19" | "20+";
+            /** Unmet Share */
+            unmet_share: number;
+            /** Google Count */
+            google_count: number | null;
+            /** Fit */
+            fit: number;
+            /** Demo */
+            demo: boolean;
         };
         /** OrderMessage */
         OrderMessage: {
@@ -2319,6 +2573,21 @@ export interface components {
              */
             language: string;
         };
+        /** PrepRow */
+        PrepRow: {
+            /** Name */
+            name: string;
+            /** Quantity */
+            quantity: number;
+            /** Demand */
+            demand: number;
+            /** Lower */
+            lower?: number | null;
+            /** Upper */
+            upper?: number | null;
+            /** Unit */
+            unit: string;
+        };
         /** ProductFields */
         ProductFields: {
             /** Name */
@@ -2381,6 +2650,20 @@ export interface components {
             /** Products */
             products?: components["schemas"]["ProductFields"][];
         };
+        /** PublicRescue */
+        PublicRescue: {
+            /** Shop Id */
+            shop_id: string;
+            /** Shop Name */
+            shop_name: string;
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /** Distance M */
+            distance_m: number;
+            deal: components["schemas"]["Deal"];
+        };
         /** Question */
         Question: {
             /** Question */
@@ -2390,6 +2673,32 @@ export interface components {
              * @default en
              */
             language: string;
+        };
+        /** Radar */
+        Radar: {
+            /** Area Label */
+            area_label: string;
+            /** Approximate */
+            approximate: boolean;
+            /**
+             * Radius
+             * @default 2000
+             */
+            radius: number;
+            /**
+             * Days
+             * @default 14
+             */
+            days: number;
+            /**
+             * Minimum Askers
+             * @default 5
+             */
+            minimum_askers: number;
+            /** Demo */
+            demo: boolean;
+            /** Opportunities */
+            opportunities: components["schemas"]["Opportunity"][];
         };
         /** Recap */
         Recap: {
@@ -2432,6 +2741,92 @@ export interface components {
             quantity: number;
             /** Revenue */
             revenue: number;
+        };
+        /** RescueInput */
+        RescueInput: {
+            /** Items */
+            items: components["schemas"]["RescueItemInput"][];
+            /**
+             * Discount Pct
+             * @default 30
+             * @enum {integer}
+             */
+            discount_pct: 20 | 30 | 50;
+            /**
+             * Until
+             * @description Today's pickup deadline in shop-local HH:MM; no overnight deals
+             */
+            until: string;
+            /**
+             * Pickup Note
+             * @default
+             */
+            pickup_note: string;
+        };
+        /** RescueItem */
+        RescueItem: {
+            /** Name */
+            name: string;
+            /** Qty */
+            qty: number;
+            /** Qty Left */
+            qty_left: number;
+            /** Price */
+            price: number;
+            /** Was */
+            was: number;
+            /** Unit */
+            unit: string;
+        };
+        /** RescueItemInput */
+        RescueItemInput: {
+            /** Name */
+            name: string;
+            /** Qty */
+            qty: number;
+        };
+        /** RescueProposal */
+        RescueProposal: {
+            /**
+             * Status
+             * @default needs_review
+             * @constant
+             */
+            status: "needs_review";
+            /** Id */
+            id: string;
+            /** Digest */
+            digest: string;
+            /** Expires */
+            expires: number;
+            snapshot: components["schemas"]["Deal"];
+        };
+        /** RescueSuggestion */
+        RescueSuggestion: {
+            /** Name */
+            name: string;
+            /** Quantity */
+            quantity: number;
+            /** Forecast */
+            forecast: number;
+            /** Prepared */
+            prepared: number;
+            /** Sold */
+            sold: number;
+            /** Expected Rest */
+            expected_rest: number;
+            /** Buffer */
+            buffer: number;
+            /**
+             * Discount Pct
+             * @enum {integer}
+             */
+            discount_pct: 20 | 30 | 50;
+            /**
+             * Estimate
+             * @default true
+             */
+            estimate: boolean;
         };
         /** SaleLine */
         SaleLine: {
@@ -2735,6 +3130,22 @@ export interface components {
              */
             mode: "count" | "delivery";
         };
+        /** Suggestions */
+        Suggestions: {
+            /** Items */
+            items: components["schemas"]["RescueSuggestion"][];
+            /** Until */
+            until: string | null;
+            /** Demo */
+            demo: boolean;
+            /** Method */
+            method: string;
+            /**
+             * Note
+             * @default Estimate assumes saved stock is opening prepared quantity; confirm what remains. Missing sales or closing hours prevents an estimate.
+             */
+            note: string;
+        };
         /** ThreadMessage */
         ThreadMessage: {
             /** Text */
@@ -2828,7 +3239,11 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "price_change" | "back_in_stock" | "new_item" | "menu_confirmed";
+            kind: "price_change" | "back_in_stock" | "new_item" | "menu_confirmed" | "rescue_deal";
+            /** Rescue Id */
+            rescue_id?: string | null;
+            /** Ends */
+            ends?: number | null;
             /**
              * Item
              * @default
@@ -2869,6 +3284,35 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** Weather */
+        Weather: {
+            /** Temperature C */
+            temperature_c: number;
+            /** Rain Probability */
+            rain_probability: number;
+            /**
+             * Source
+             * @default Open-Meteo
+             */
+            source: string;
+            /**
+             * Attribution
+             * @default Weather data by Open-Meteo (CC BY 4.0)
+             */
+            attribution: string;
+            /**
+             * Url
+             * @default https://open-meteo.com/
+             */
+            url: string;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+            /** Sales Effect */
+            sales_effect?: string | null;
+        };
         /** WorldReceipt */
         WorldReceipt: {
             /** Shop Ids */
@@ -2907,7 +3351,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order";
+            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal";
             /**
              * Session Id
              * @default null
@@ -5920,6 +6364,302 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_radar_api_v1_businesses__business_id__radar_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Radar"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rescue_suggestions_api_v1_businesses__business_id__rescue_suggestions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Suggestions"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_rescue_api_v1_businesses__business_id__rescue_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deal"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    propose_rescue_api_v1_businesses__business_id__rescue_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RescueInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RescueProposal"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_rescue_api_v1_businesses__business_id__rescue__rescue_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                rescue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Approval"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deal"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    end_rescue_api_v1_businesses__business_id__rescue__rescue_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                rescue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deal"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_rescue_api_v1_public_rescue_get: {
+        parameters: {
+            query: {
+                lat: number;
+                lng: number;
+                radius?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicRescue"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reserve_rescue_api_v1_customer_shops__business_id__rescue__rescue_id__hold_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                rescue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HoldInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deal"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    morning_brief_api_v1_businesses__business_id__brief_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Brief"];
                 };
             };
             /** @description Validation Error */

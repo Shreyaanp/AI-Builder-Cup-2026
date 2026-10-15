@@ -44,6 +44,7 @@ Change = Callable[[dict[str, Any] | None], tuple[float, dict[str, Any]] | None]
 
 
 class Documents(Protocol):
+    def purge_before(self, kind: str, cutoff: float) -> None: ...
     def get(self, kind: str, key: str) -> dict[str, Any] | None: ...
     def put(
         self, kind: str, key: str, scope: str, created: float, data: dict[str, Any]
@@ -61,6 +62,10 @@ class Documents(Protocol):
 
 
 class SqliteDocuments:
+    def purge_before(self, kind: str, cutoff: float) -> None:
+        with self.connect() as db:
+            db.execute("DELETE FROM community WHERE kind=? AND created<?", (kind, cutoff))
+
     def __init__(self, path: str) -> None:
         self.path = path
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -140,6 +145,19 @@ class FirestoreDocuments:
     """
 
     FALLBACK_LIMIT = 500
+
+    def purge_before(self, kind: str, cutoff: float) -> None:
+        from google.cloud.firestore_v1.base_query import FieldFilter
+
+        query = self.root.collection(kind).where(filter=FieldFilter("created", "<", cutoff))
+        while True:
+            rows = list(query.limit(400).stream())
+            if not rows:
+                return
+            batch = self.client.batch()
+            for row in rows:
+                batch.delete(row.reference)
+            batch.commit()
 
     def __init__(self, client: Any, namespace: str) -> None:
         self.client = client
@@ -266,7 +284,9 @@ class Tip(BaseModel):
 class Update(BaseModel):
     id: str
     shop_id: str
-    kind: Literal["price_change", "back_in_stock", "new_item", "menu_confirmed"]
+    kind: Literal["price_change", "back_in_stock", "new_item", "menu_confirmed", "rescue_deal"]
+    rescue_id: str | None = None
+    ends: float | None = None
     item: str = ""
     price: int | None = None
     old_price: int | None = None
@@ -699,7 +719,19 @@ class Community:
             Update.model_validate(u) for bid in bids for u in self.docs.scoped("update", bid, 20)
         ]
         rows.sort(key=lambda u: -u.created)
-        return rows[:limit]
+        active = []
+        for row in rows:
+            if row.kind == "rescue_deal":
+                state = self.docs.get("rescue", row.shop_id) or {}
+                if not any(
+                    d["id"] == row.rescue_id
+                    and d["data"]["status"] == "live"
+                    and d["data"]["ends"] > time.time()
+                    for d in state.get("deals", [])
+                ):
+                    continue
+            active.append(row)
+        return active[:limit]
 
     # Neighbour tips.
 

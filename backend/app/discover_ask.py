@@ -9,6 +9,7 @@ or price; every result comes from a shop's own data or from Google.
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Any, Literal
 
 import anyio
@@ -28,6 +29,7 @@ from .discover import (
 from .limits import client_ip, enforce_limits
 from .merchant import MerchantRepository
 from .money import exponent
+from .shop_time import shop_timezone, valid_timezone
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/api/v1")
@@ -151,6 +153,8 @@ def keyword_intent(q: str) -> Intent:
     text = q.casefold()
     budget = re.search(r"(?:under|below|less than|max|<)\s*\D{0,3}(\d+(?:[.,]\d+)?)", text)
     words = [w for w in re.findall(r"[^\W\d_]+", text) if w not in STOP and len(w) > 1]
+    if re.search(r"egg[ -]?free|without eggs?|बिना अंडे", text):
+        words.insert(0, "eggless")
     category = next(
         (key for key in GENERIC["category"] if any(term in text for term in CATEGORIES[key][1])),
         "",
@@ -358,6 +362,42 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
             )
         )
     others.sort(key=lambda p: p.distance_m)
+    is_owner = False
+    if repository is not None:
+        try:
+            principal = await request.app.state.services.identity.require(request)
+            is_owner = bool(
+                await anyio.to_thread.run_sync(repository.list_businesses, principal.uid)
+            )
+        except HTTPException:
+            pass
+    if repository is not None and not is_owner:
+        from .demand import capture
+        from .demand_terms import normalise
+
+        timezone = valid_timezone(request.headers.get("x-client-timezone")) or "UTC"
+        try:
+            for term in normalise(intent.keywords):
+                words = " ".join(reversed(term.split("|")))
+                matched = sum(
+                    p.distance_m <= 2000
+                    and not p.demo_shop
+                    and any(term in normalise([item.name]) for item in p.matched)
+                    for p in picks
+                )
+                await anyio.to_thread.run_sync(
+                    capture,
+                    repository.feature_docs,
+                    intent.model_copy(update={"keywords": [words]}),
+                    body.lat,
+                    body.lng,
+                    client_ip(request),
+                    matched,
+                    None if maps.demo else sum(p.distance_m <= 2000 for p in others),
+                    datetime.now(shop_timezone(timezone)),
+                )
+        except Exception:  # noqa: BLE001 - demand capture must never break discovery
+            log.warning("demand_capture_unavailable")
     shown = {p.id for p in for_you[:6]}
     groups = [
         Group(id="for_you", places=for_you[:6]),
