@@ -89,7 +89,8 @@ test('instant facts remain anonymous; owner chat needs sign-in, replies arrive, 
     )
     await messages.getByRole('button', { name: 'Close conversation', exact: true }).click()
     await expect(customer.getByText('This conversation is closed.')).toBeVisible({ timeout: 6500 })
-    await audit(customer, 'Q11')
+    // Fixed Q11: hidden chat-author labels stay inside their bubbles; the page fits 1440px.
+    await audit(customer)
   } finally {
     await context.close()
   }

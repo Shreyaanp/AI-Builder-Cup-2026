@@ -381,9 +381,7 @@ def test_thread_slots_converge_and_hold_the_cap_across_instances(docs) -> None:
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         # Two tabs, one shop: one creates, the other waits for it.
-        same = sorted(
-            r[0] for r in pool.map(reserve, [first, second], ["new-shop", "new-shop"])
-        )
+        same = sorted(r[0] for r in pool.map(reserve, [first, second], ["new-shop", "new-shop"]))
         assert same == ["mine", "wait"]
         # The 50th slot is now taken: two more shops at once can never reach 51.
         other = list(pool.map(reserve, [first, second], ["shop-a", "shop-b"]))
