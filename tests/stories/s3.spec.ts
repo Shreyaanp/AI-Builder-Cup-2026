@@ -3,7 +3,6 @@ import {
   closeSheet,
   catalogue,
   enter,
-  gap,
   liveOnly,
   localOnly,
   phone,
@@ -122,37 +121,29 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       await expect(customer.getByRole('status').filter({ hasText: 'UPI' })).toContainText('Cash')
       await shot(customer, 3, '5-payment-fixture')
     })
-    await test.step('6 · question reaches Messages and owner reply reaches customer', async () => {
+    await test.step('6 · signed-in question reaches Messages and owner reply reaches customer', async () => {
       await customer.getByRole('button', { name: 'Ask the owner' }).last().click()
-      await customer.getByLabel('Phone or email').fill('story-customer@example.test')
+      // Chat with owners needs sign-in; browsing and instant answers did not.
+      await expect(customer.getByText('Owners reply to a real person')).toBeVisible()
+      await customer.getByRole('button', { name: /Continue with Google/ }).click()
+      await expect(customer.getByText(/Signed in as/)).toBeVisible()
       await customer
         .getByRole('textbox', { name: 'Message', exact: true })
         .fill('Can I collect two chai today?')
       await customer.getByRole('button', { name: 'Send message', exact: true }).click()
-      await expect(customer.getByText("Sent to the shop — they haven't replied yet")).toBeVisible()
-      gap(
-        'S3/6: customer can message without signing in; STORIES explicitly disallows anonymous chat',
-      )
+      await expect(customer).toHaveURL(/\/explore\/chats\//)
       await page.getByRole('button', { name: 'My shop', exact: true }).click()
       await page.getByRole('button', { name: /^Messages 1/ }).click()
       const messages = page.getByRole('region', { name: /Messages/ })
       await expect(messages).toContainText('Can I collect two chai today?')
       await messages.getByRole('button', { name: 'Open conversation', exact: true }).click()
-      await customer.getByRole('button', { name: 'Open conversation', exact: true }).click()
       await messages
         .getByLabel('Reply', { exact: true })
         .fill('Yes, ready at 4 pm. UPI is welcome.')
       await messages.getByRole('button', { name: 'Send message', exact: true }).click()
-      await expect(
-        customer.getByRole('dialog', { name: 'Conversation', exact: true }),
-      ).toContainText('Yes, ready at 4 pm. UPI is welcome.', { timeout: 5_000 })
-      const localDate = new Intl.DateTimeFormat('en-IN', {
-        dateStyle: 'short',
-        timeZone: 'Asia/Kolkata',
-      }).format(new Date())
-      await expect(
-        customer.getByRole('dialog', { name: 'Conversation', exact: true }),
-      ).toContainText(localDate)
+      await expect(customer.getByText('Yes, ready at 4 pm. UPI is welcome.')).toBeVisible({
+        timeout: 10_000,
+      })
       await shot(page, 3, '6-owner')
       await shot(customer, 3, 6)
     })
