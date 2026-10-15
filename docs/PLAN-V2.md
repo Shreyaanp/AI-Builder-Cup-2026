@@ -31,6 +31,17 @@ generated demo data is fine and expected, as long as it is labelled as demo.
     publishing, no Claude co-author trailers in commits, free-tier constraints.
 11. **Rejected:** multilingual offline coach replies (QA Q1, won't fix).
 
+## Visual decision (owner, 15 Oct afternoon)
+
+- **Direction 1 · Chalkboard** (docs/research/visual-motion.md, mockups/direction-1.html) plus two
+  touches from Direction 2: chunky press-down buttons and die-cut sticker badges in the passport.
+- Motion libraries allowed: GSAP (gated with gsap.matchMedia for reduced motion), three.js where it
+  earns its place, other open libraries; self-host fonts via @fontsource.
+- **Light and dark are interchangeable**; dark mode must be genuinely pleasing (current dark is not).
+  One default theme on first load, consistent across landing page, owner and customer.
+- **Owner (vendor) app: calm, simple, no information overload, peak UX but not flashy.**
+  **Customer app: flashy, animated, gamified, peak UX.**
+
 ## Build order (agreed)
 
 | Day    | Work                                                                                                                            |
