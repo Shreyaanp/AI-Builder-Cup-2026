@@ -64,6 +64,7 @@ from .settings import Settings
 from .sourcing import SupplierGenerator
 from .sourcing_routes import router as sourcing_router
 from .streaming import CoachRuntime
+from .today import router as today_router
 from .tts import Speech
 from .voice import serve_voice
 
@@ -214,6 +215,7 @@ def create_app(
     app.include_router(demo_workspace_router)
     app.include_router(demo_world_router)
     app.include_router(passport_router)
+    app.include_router(today_router)
     app.include_router(sourcing_router)
     app.add_middleware(
         CORSMiddleware,
