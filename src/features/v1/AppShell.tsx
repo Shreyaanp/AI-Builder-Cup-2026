@@ -44,6 +44,7 @@ import { isLanguagePref, LOCALE_NAMES, LOCALES, systemLocale } from '../../i18n/
 import { useWorkspace } from './workspaceContext'
 import type { Destination } from './workspaceContext'
 import { CoachWorkspace } from './screens/CoachScreen'
+import { NewShopHeading, NewShopNavigation } from './NewShopStage'
 import { TourHost, TourMenuButton } from '../tour/Tour'
 import { ShopScreen } from './screens/ShopScreen'
 import { ShopOverview } from './ShopTiles'
@@ -59,7 +60,8 @@ export function AppShell() {
   const roles = useTheme().material
   const rail = useMediaQuery(`(min-width:${windowClass.medium}px)`)
   const keyboard = useKeyboardOpen()
-  const showNavBar = !rail && !keyboard
+  const inFlow = ws.creatingShop || ws.newShopReady
+  const showNavBar = !rail && !keyboard && !inFlow
   // Large windows: My shop tiles beside the coach (phones keep the coach to one card).
   const supporting = useMediaQuery(`(min-width:${windowClass.large}px)`)
   useEffect(() => {
@@ -83,7 +85,7 @@ export function AppShell() {
       <a href="#main" className="skip-link">
         Skip to content
       </a>
-      {rail && (
+      {rail && !inFlow && (
         <Box
           component="nav"
           aria-label="Main"
@@ -127,18 +129,29 @@ export function AppShell() {
               flex: 1,
               minWidth: 0,
               px: { xs: 2, sm: 3, md: 4 },
-              pb: rail ? 3 : 'calc(96px + env(safe-area-inset-bottom))',
+              pb: inFlow ? 'calc(24px + env(safe-area-inset-bottom))' : rail ? 3 : 'calc(96px + env(safe-area-inset-bottom))',
+              ...(inFlow && !ws.newShopReady ? {
+                display: 'grid',
+                gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(260px, 0.85fr) minmax(0, 1.15fr)' },
+                alignContent: 'start',
+                gap: { xs: 0, md: 6 },
+                width: '100%',
+                maxWidth: 1200,
+                mx: 'auto',
+              } : {}),
               outline: 'none',
             }}
           >
+            {inFlow && !ws.newShopReady && <NewShopHeading />}
             {/* Coach stays mounted while hidden so drafts, replies and voice survive tab
                 changes; keyed by shop so each shop has its own thread. */}
-            <Box hidden={ws.destination !== 'coach'} sx={{ height: '100%' }}>
+            <Box hidden={ws.destination !== 'coach' || ws.reviewingNewShop} sx={{ height: '100%', minWidth: 0 }}>
               <CoachWorkspace />
             </Box>
+            <Box id="new-shop-review-host" hidden={!ws.reviewingNewShop} sx={{ minWidth: 0, py: 3 }} />
             {screen}
           </Box>
-          {supporting && ws.destination === 'coach' && ws.active && !ws.creatingShop && (
+          {supporting && ws.destination === 'coach' && ws.active && !inFlow && (
             <Box
               component="aside"
               aria-label={t.navShop}
@@ -291,6 +304,7 @@ function NavItem({
 function TopBar() {
   const t = useCopy()
   const ws = useWorkspace()
+  const inFlow = ws.creatingShop || ws.newShopReady
   const identity = useIdentity()
   const preferences = usePreferences()
   const dispatch = usePreferencesDispatch()
@@ -325,7 +339,9 @@ function TopBar() {
         pt: 'env(safe-area-inset-top)',
       }}
     >
-      <Button
+      {ws.creatingShop && <NewShopNavigation />}
+      {ws.newShopReady && <Box sx={{ flex: 1 }} />}
+      {!inFlow && <Button
         onClick={(event) => setShopMenu(event.currentTarget)}
         endIcon={<ChevronDown size={18} />}
         aria-haspopup="menu"
@@ -335,15 +351,21 @@ function TopBar() {
         <Typography variant="titleLarge" noWrap component="span">
           {ws.creatingShop ? t.newShopMode : (ws.active?.fields.name ?? t.appName)}
         </Typography>
-      </Button>
-      <Box sx={{ flex: 1 }} />
-      {/* New chat and the other coach actions, next to settings (only where the coach is). */}
-      {ws.destination === 'coach' && (
+      </Button>}
+      {!inFlow && <Box sx={{ flex: 1 }} />}
+      {!inFlow && ws.destination === 'coach' && (
         <Tooltip title={t.newChat}>
+          <IconButton aria-label={t.newChat} aria-haspopup="dialog" onClick={() => ws.setCoachActions(true)}>
+            <MessageCircle size={22} />
+          </IconButton>
+        </Tooltip>
+      )}
+      {/* New chat and the other coach actions, next to settings (only where the coach is). */}
+      {!inFlow && (
+        <Tooltip title={t.addShop}>
           <IconButton
-            aria-label={t.newChat}
-            aria-haspopup="dialog"
-            onClick={() => ws.setCoachActions(true)}
+            aria-label={t.addShop}
+            onClick={ws.startNewShop}
           >
             <Plus size={22} />
           </IconButton>

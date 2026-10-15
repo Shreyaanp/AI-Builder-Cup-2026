@@ -1,3 +1,4 @@
+import { reviewPanel } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -208,7 +209,7 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   await sheet.getByRole('button', { name: 'Edit details' }).tap()
   await form.getByLabel('Hours note (optional)').fill('7am–3pm')
   await form.getByRole('button', { name: 'Review', exact: true }).tap()
-  const review = page.getByRole('dialog', { name: 'Check before saving' })
+  const review = reviewPanel(page)
   await expect(review).toBeVisible()
   await page.goBack()
   await prompt.getByRole('button', { name: 'Discard' }).tap()
@@ -342,5 +343,5 @@ test('B7: every photo entry offers Take photo (rear camera) and Upload', async (
     mimeType: 'image/png',
     buffer: Buffer.from(png, 'base64'),
   })
-  await expect(page.getByRole('dialog', { name: 'Check before saving' })).toBeVisible()
+  await expect(reviewPanel(page)).toBeVisible()
 })

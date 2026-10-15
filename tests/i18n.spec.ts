@@ -1,3 +1,4 @@
+import { reviewPanel, confirm as approveReview } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -85,10 +86,7 @@ test('the customer page follows the customer’s phone language', async ({ page,
   await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   await page.getByLabel('Shop name').fill('Ah Ming Kopi')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await page
-    .getByRole('dialog', { name: 'Check before saving' })
-    .getByRole('button', { name: 'Confirm and save' })
-    .click()
+  await approveReview(page)
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
   await page.getByRole('button', { name: /^Customer page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })

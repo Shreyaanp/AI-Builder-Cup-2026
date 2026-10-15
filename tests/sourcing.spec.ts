@@ -1,3 +1,4 @@
+import { reviewPanel, openNewShopReview, confirm as approveReview } from './stories/support.js'
 import { expect, test, type Page } from '@playwright/test'
 
 // Offline coach script: the same tool calls Gemini makes, so the story runs without a model.
@@ -8,9 +9,9 @@ async function openWithShop(page: Page) {
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
   await say(page, 'Shop name: Flour Test Bakery; category: Bakery')
-  await page.getByRole('button', { name: 'Review my new shop' }).click()
-  const review = page.getByRole('dialog', { name: 'Check before saving' })
-  await review.getByRole('button', { name: 'Confirm and save' }).click()
+  await openNewShopReview(page)
+  const review = reviewPanel(page)
+  await approveReview(page)
   await expect(review).toBeHidden()
 }
 

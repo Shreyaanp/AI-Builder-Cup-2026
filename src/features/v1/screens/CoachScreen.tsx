@@ -53,6 +53,8 @@ import { ApiError } from '../api'
 import type { Business, Conversation, PhotoResult, Product, Proposal } from '../api'
 import { defaultCurrency, toMinor } from '../format'
 import { useCopy } from '../strings'
+import { useNewShopCopy } from '../newShopCopy'
+import { NewShopReady } from '../NewShopStage'
 import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
 import { SalesImportSheet } from '../ImportMenu'
@@ -95,7 +97,7 @@ type GalleryPhoto = { file: File; businessId: string; newShop?: boolean }
 export function CoachWorkspace() {
   const t = useCopy()
   const { activeId, creatingShop, loading, loadError, newShopReady } = useWorkspace()
-  const newShop = !loading && !loadError && (creatingShop || !activeId)
+  const newShop = !loading && !loadError && creatingShop
   const [galleryPhoto, setGalleryPhoto] = useState<GalleryPhoto | null>(null)
   if (newShopReady && activeId && galleryPhoto?.newShop) {
     setGalleryPhoto({ ...galleryPhoto, businessId: activeId, newShop: false })
@@ -104,8 +106,9 @@ export function CoachWorkspace() {
   if (loadError) return <LoadError />
   return (
     <>
-      {activeId && (
-        <Box hidden={newShop} sx={{ height: '100%' }}>
+      {newShopReady && <NewShopReady />}
+      {(activeId || !newShop) && (
+        <Box hidden={newShop || newShopReady} sx={{ height: '100%' }}>
           <CoachScreen
             key={activeId}
             newShop={false}
@@ -139,17 +142,23 @@ function CoachScreen({
   setGalleryPhoto: (value: GalleryPhoto | null) => void
 }) {
   const t = useCopy()
+  const flow = useNewShopCopy()
   const theme = useTheme()
   const roles = theme.material
   const identity = useIdentity()
   const language = useLocale()
   const photoText = photoCopy(language)
   const ws = useWorkspace()
+  const step = ws.newShopStep
   const [draft, setDraft] = useState<{ business: Business['fields'] | null; products: Product[] }>({
     business: null,
     products: [],
   })
   const [draftProposal, setDraftProposal] = useState<Proposal | null>(null)
+  if (newShop && ws.newShopProposal && ws.newShopProposal.id !== draftProposal?.id) {
+    setDraftProposal(ws.newShopProposal)
+    setDraft({ business: ws.newShopProposal.snapshot.business, products: ws.newShopProposal.snapshot.products })
+  }
   const [ownerLocation, setOwnerLocation] = useState<OwnerLocation | null>(null)
   const [photoNotes, setPhotoNotes] = useState<string[]>([])
   const guidedDraft = {
@@ -390,7 +399,7 @@ function CoachScreen({
 
   // A typed draft: Back asks "Discard changes?" before leaving, and so does closing the tab.
   useBackClose(
-    visible && (Boolean(note.trim()) || (newShop && Boolean(ws.active))),
+    visible && !newShop && Boolean(note.trim()),
     () => {
       if (newShop && ws.active) {
         ws.cancelNewShop()
@@ -762,31 +771,14 @@ function CoachScreen({
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height:
+        height: newShop ? 'auto' :
           'calc(100dvh - 64px - var(--nav-offset, 0px) - 12px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
-        minHeight: 0,
+        minHeight: newShop ? { xs: 420, md: 620 } : 0,
         maxWidth: 760,
         mx: 'auto',
       }}
     >
       {!newShop && <OwnerJourney />}
-      {newShop && (
-        <Stack
-          direction="row"
-          sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1, py: 2 }}
-        >
-          <Typography variant="labelLarge" role="status">
-            {t.newShopStep(
-              draft.business
-                ? ownerLocation || draft.business.lat != null || draft.business.location
-                  ? 3
-                  : 2
-                : 1,
-            )}
-          </Typography>
-          {ws.active && <Button onClick={ws.cancelNewShop}>{t.newShopCancel}</Button>}
-        </Stack>
-      )}
       {/* One quiet line: which coach is answering. Every other action is behind the top bar's +. */}
       {!empty && (
         <Typography
@@ -866,93 +858,49 @@ function CoachScreen({
 
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', pb: 4 }}>
         {ws.loadError && <LoadError />}
-        {ws.newShopReady && !newShop && (
-          <Alert severity="success" onClose={ws.dismissNewShopReady} sx={{ mt: 2 }}>
-            <Typography variant="titleMedium">{t.newShopReady}</Typography>
-            <Typography variant="bodyMedium">{t.newShopReadyBody}</Typography>
-            <Button
-              startIcon={<Share2 size={18} />}
-              onClick={() => {
-                ws.dismissNewShopReady()
-                setShopSheet('customer')
-              }}
-            >
-              {t.share}
-            </Button>
-          </Alert>
-        )}
-        {newShop && (empty || draft.business) && (
-          <Stack spacing={2} sx={{ pt: 2, pb: 3 }}>
-            <Typography component="h1" variant="headlineSmall">
-              {t.newShopMode}
-            </Typography>
-            {empty && (
+        {newShop && (
+          <Stack spacing={3} sx={{ pt: 3, pb: 3 }}>
+            <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
+              <Avatar sx={{ bgcolor: roles.primaryContainer, color: roles.onPrimaryContainer }} aria-hidden="true"><Leaf size={22} /></Avatar>
+              <Box>
+                <Typography variant="labelLarge" color="text.secondary">{t.coach}</Typography>
+                <Typography component="h2" variant="titleLarge" sx={{ mt: 1, textWrap: 'balance' }}>{flow.prompts[Math.min(step, 3) - 1]}</Typography>
+              </Box>
+            </Stack>
+            {step < 3 && (
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <Button variant="contained" startIcon={<Mic size={28} />} disabled={busy !== 'idle' || voice.state !== 'idle'} onClick={() => void voice.start()} sx={{ flex: 1, minHeight: 76, borderRadius: `${shape.lg}px` }}>{t.newShopVoice}</Button>
+                <Button variant="outlined" startIcon={<Camera size={28} />} disabled={busy !== 'idle' || voice.state !== 'idle'} onClick={() => pick(touch ? 'camera' : 'library')} sx={{ flex: 1, minHeight: 76, borderRadius: `${shape.lg}px` }}>{t.newShopCamera}</Button>
+              </Stack>
+            )}
+            {step === 3 && (
               <>
-                <Typography variant="bodyLarge">{t.newShopIntro}</Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<Camera size={22} />}
-                  disabled={busy !== 'idle' || voice.state !== 'idle'}
-                  onClick={() => pick(touch ? 'camera' : 'library')}
-                >
-                  {t.newShopCamera}
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<Mic size={22} />}
-                  disabled={busy !== 'idle' || voice.state !== 'idle'}
-                  onClick={() => void voice.start()}
-                >
-                  {t.newShopVoice}
-                </Button>
+                <CurrentLocationAction disabled={busy !== 'idle' || voice.state !== 'idle'} onLocation={async (point, signal) => {
+                  setOwnerLocation(point)
+                  // Resolve a readable label through the same consented, sealed proposal path.
+                  const pinned = await api<Proposal>('/proposals', {
+                    method: 'POST', signal,
+                    body: JSON.stringify({ kind: 'business', business_id: null, revision: 0,
+                      business: draft.business ?? { name: '', category: '', location: '', hours: '', phone: '' },
+                      products: draft.products, owner_location: point }),
+                  })
+                  signal.throwIfAborted()
+                  setDraftProposal(pinned)
+                  if (pinned.snapshot.business) setDraft((previous) => ({ ...previous, business: pinned.snapshot.business }))
+                }} />
+                {draftProposal?.snapshot.business && <LocationPin fields={draftProposal.snapshot.business} />}
               </>
             )}
-            <CurrentLocationAction
-              disabled={busy !== 'idle' || voice.state !== 'idle'}
-              onLocation={async (point) => {
-                setOwnerLocation(point)
-              }}
-            />
-            {ownerLocation && (
-              <LocationPin
-                fields={{
-                  name: '',
-                  category: '',
-                  location: '',
-                  hours: '',
-                  phone: '',
-                  lat: ownerLocation.lat,
-                  lng: ownerLocation.lng,
-                  pin_source: 'device',
-                  pin_accuracy_m: ownerLocation.accuracy_m,
-                }}
-              />
-            )}
             {draft.business && (
-              <Box sx={{ bgcolor: roles.surfaceContainer, borderRadius: `${shape.lg}px`, p: 2 }}>
+              <Box sx={{ borderLeft: `3px solid ${roles.primary}`, pl: 3 }}>
                 <Typography variant="titleMedium">{draft.business.name}</Typography>
-                <Typography variant="bodyMedium" color="text.secondary">
-                  {[draft.business.category, t.itemCount(draft.products.length)]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Typography>
-                <Button
-                  variant="contained"
-                  disabled={busy !== 'idle' || voice.state !== 'idle'}
-                  onClick={() => void reviewNewShop()}
-                >
-                  {t.newShopReview}
-                </Button>
+                <Typography variant="bodyMedium" color="text.secondary">{[draft.business.category, t.itemCount(draft.products.length)].filter(Boolean).join(' ? ')}</Typography>
               </Box>
             )}
-            <Button
-              size="small"
-              sx={{ alignSelf: 'flex-start' }}
-              onClick={() => ws.openEditor({ kind: 'business', fields: null })}
-            >
-              {t.newShopForm}
+            <Button variant="contained" disabled={busy !== 'idle' || voice.state !== 'idle' || !draft.business?.name} onClick={() => step < 3 ? ws.setNewShopStep(step + 1) : void reviewNewShop()}>
+              {step < 3 ? flow.next : t.newShopReview}
             </Button>
-            {empty && ws.businesses.length === 0 && <TourOffer />}
+            <Button size="small" sx={{ alignSelf: 'flex-start' }} onClick={() => ws.openEditor({ kind: 'business', fields: null })}>{t.newShopForm}</Button>
           </Stack>
         )}
         {!newShop && galleryPhoto && galleryPhoto.businessId === ws.active?.id && (
@@ -1122,10 +1070,9 @@ function CoachScreen({
                 <FreshnessCard key={`freshness-${ws.active.id}`} compact />
               </Box>
             )}
+            <Box role="log" aria-live="polite">
             <Stack
               component="ol"
-              role="log"
-              aria-live="polite"
               spacing={3}
               sx={{ listStyle: 'none', m: 0, p: 0, pt: 2 }}
             >
@@ -1172,6 +1119,7 @@ function CoachScreen({
                 </Box>
               )}
             </Stack>
+            </Box>
             {lastIsReply && !newShop && <Box sx={{ pt: 4, pl: 10 }}>{chips}</Box>}
           </>
         )}

@@ -1,3 +1,4 @@
+import { reviewPanel } from './support.js'
 import { expect, test } from '@playwright/test'
 import {
   confirm,
@@ -18,7 +19,7 @@ test('A6 · an existing shop reviews menu and photo pin separately', async ({ pa
   await seedShop(page)
   const before = (await (await page.request.get('/api/v1/businesses')).json())[0]
   await page.locator('input[type="file"][accept*="image/jpeg"]').setInputFiles(gpsBoardPath)
-  await expect(page.getByRole('dialog', { name: reviewName })).toContainText('Chai')
+  await expect(reviewPanel(page)).toContainText('Chai')
   await confirm(page)
   expect(
     (await (await page.request.get('/api/v1/businesses')).json())[0].fields.lat ?? null,
@@ -26,7 +27,7 @@ test('A6 · an existing shop reviews menu and photo pin separately', async ({ pa
   await expect(page.getByText(/This photo also has a location/)).toBeVisible()
   await shot(page, 1, 'A6-offer')
   await page.getByRole('button', { name: 'Review photo location' }).click()
-  await expect(page.getByRole('dialog', { name: reviewName })).toContainText('12.97180, 77.64120')
+  await expect(reviewPanel(page)).toContainText('12.97180, 77.64120')
   await shot(page, 1, 'A6-review')
   // Another owner action makes this exact review stale; approval must preserve the pin.
   const current = (await (await page.request.get('/api/v1/businesses')).json())[0]
@@ -57,7 +58,7 @@ test('A6 · an existing shop reviews menu and photo pin separately', async ({ pa
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Review photo location' }).click()
-  await expect(page.getByRole('dialog', { name: reviewName })).toContainText('+919876543210')
+  await expect(reviewPanel(page)).toContainText('+919876543210')
   await confirm(page)
   expect((await (await page.request.get('/api/v1/businesses')).json())[0].fields.lat).toBeCloseTo(
     12.9718,

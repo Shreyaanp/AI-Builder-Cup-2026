@@ -331,11 +331,17 @@ class MapsService:
         lookup is unavailable the pin keeps the coordinates with a plain label."""
 
         async def lookup() -> dict[str, Any]:
+            nearest = min(AREAS, key=lambda area: distance(lat, lng, *AREAS[area]))
+            label = (
+                f"Near {nearest}"
+                if distance(lat, lng, *AREAS[nearest]) <= 5000
+                else "Your current location"
+            )
             pin: dict[str, Any] = {
                 "lat": lat,
                 "lng": lng,
                 "place_id": None,
-                "pin_label": f"{lat:.5f}, {lng:.5f}",
+                "pin_label": label,
                 "pin_demo": False,
             }
             if self.demo:

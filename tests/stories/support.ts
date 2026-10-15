@@ -82,10 +82,27 @@ export async function enter(page: Page) {
   await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
 }
 
-export async function confirm(page: Page) {
-  const review = page.getByRole('dialog', { name: reviewName })
-  await review.getByRole('button', { name: 'Confirm and save' }).click()
+/** Existing-shop edits use a sheet; registration reviews are a dedicated step page. */
+export function reviewPanel(page: Page) {
+  return page.getByTestId('new-shop-review').or(page.getByRole('dialog', { name: reviewName }))
+}
+
+export async function openNewShopReview(page: Page) {
+  for (let step = 1; step < 3; step++) {
+    await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeEnabled()
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  }
+  await page.getByRole('button', { name: 'Review my new shop' }).click()
+  await expect(page.getByTestId('new-shop-review')).toBeVisible()
+}
+
+export async function confirm(page: Page, keepReady = false) {
+  const review = reviewPanel(page)
+  const isNew = await page.getByTestId('new-shop-review').isVisible()
+  await review.getByRole('button', { name: isNew ? 'Open my shop' : 'Confirm and save' }).click()
+  await expect(review).toBeHidden()
   await expect(page.getByRole('dialog')).toHaveCount(0)
+  if (isNew && !keepReady) await page.getByRole('button', { name: 'Continue with my shop' }).click()
 }
 
 export async function closeSheet(page: Page) {
@@ -187,7 +204,8 @@ export async function seedShop(page: Page, withPhotoPin = false, name = shopName
       ).ok(),
     ).toBe(true)
   }
-  await page.reload()
+  // Return to the workspace after arranging a saved shop, rather than re-entering /new-shop.
+  await page.goto('/')
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
 }

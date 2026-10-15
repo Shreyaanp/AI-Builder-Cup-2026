@@ -1,3 +1,4 @@
+import { reviewPanel } from './support.js'
 import { expect, test } from '@playwright/test'
 import {
   closeSheet,
@@ -42,7 +43,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
     await shot(page, 2, 1)
   })
   await test.step('2 · one review card for both changes, one tap to confirm', async () => {
-    const review = page.getByRole('dialog', { name: reviewName })
+    const review = reviewPanel(page)
     await expect(review).toContainText('₹20.00 / cup')
     await expect(review).toContainText(/Kaya toast/i)
     await shot(page, 2, 2)
@@ -94,7 +95,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
       mimeType: 'text/csv',
       buffer: Buffer.from('Item Name,Price\nMasala chai,35\n'),
     })
-    await expect(page.getByRole('dialog', { name: reviewName })).toContainText('₹35.00')
+    await expect(reviewPanel(page)).toContainText('₹35.00')
     await shot(page, 2, 7)
     await confirm(page)
     await customer.getByRole('button', { name: 'Refresh', exact: true }).click()
