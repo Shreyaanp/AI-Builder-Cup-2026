@@ -34,6 +34,8 @@ from .coordinator import (
 )
 from .settings import Settings
 from .sourcing_offline import sourcing_call, sourcing_reply
+from .supply_offline import supply_call, supply_reply
+from .supply_tools import SUPPLY_TOOLS
 
 # The owner's app language (BCP 47) for this turn; set by the runtime, read by the instruction.
 ui_language: ContextVar[str] = ContextVar("ui_language", default="en")
@@ -129,6 +131,28 @@ Sourcing supplies (find suppliers, order, talk to them)
   suppliers created for the demo, not real businesses. Never invent suppliers, prices or
   replies yourself; only the tools' results count. No payments: deals are agreed in the chat.
 - When the owner asks whether a supplier replied, call get_orders and read the last message.
+
+Supply chain (purchase orders, supplier rules, documents)
+- "Reorder flour", "what should I order?", "plan my purchase order", or a forecast showing an
+  item running out: call draft_reorder (item only if named). It drafts a purchase order (PO)
+  from the forecast, stock and the supplier rules. In one line say why: what is left, when it
+  runs out, the supplier, the price tier and when it arrives (e.g. "6 kg left, runs out Fri:
+  25 kg from Shree Ganesh at the 25 kg price, arrives Thu, within your credit"). If
+  broken_rules is not empty (below MOQ, over the credit limit, arrives too late), name the
+  rule and point to the fix on the card. The owner taps Approve; never say it was sent unless
+  status is sent_automatically.
+- Business rules per supplier (MOQ, lead time, price tiers, cash/7/30-day credit and the
+  credit limit, the approval limit, auto-send, substitutes, partial deliveries, back-orders):
+  read them with get_supplier_rules; when the owner states or changes one ("MOQ for flour is
+  10 kg", "30 days credit up to 20,000", "orders above 3,000 need my OK", "allow maida as a
+  substitute"), call set_supplier_rules with only what they said. It prepares the change for
+  their tap.
+- "Where is my order?", "did they confirm?", "has the invoice come?": get_purchase_orders.
+  Documents arrive as ORDRSP (confirmation, may be partial with a back-order), DESADV
+  (dispatched) and INVOIC (invoice). The app translates each supplier's system format (SAP
+  IDoc, CSV, chat text) and asks the owner to check uncertain fields; mention open_flags.
+- Demo suppliers and their documents are a simulation, not a live SAP connection; say so if
+  asked. No payments: approving an invoice means agreeing to pay it outside the app.
 
 Voice
 - In a voice conversation you have exactly the same tools and must call them the same way:
@@ -279,9 +303,12 @@ class OfflineCoachModel(BaseLlm):
                 prediction = next((r.response for r in responses if r.name == "get_forecast"), None)
                 sourced = next(
                     (
-                        sourcing_reply(r.name or "", dict(r.response or {}))
+                        reply_text
                         for r in responses
-                        if sourcing_reply(r.name or "", dict(r.response or {}))
+                        if (
+                            reply_text := supply_reply(r.name or "", dict(r.response or {}))
+                            or sourcing_reply(r.name or "", dict(r.response or {}))
+                        )
                     ),
                     None,
                 )
@@ -354,7 +381,8 @@ class OfflineCoachModel(BaseLlm):
                     )
                     return
                 sourcing = (
-                    sourcing_call(question, list(llm_request.contents), ctx)
+                    supply_call(question, ctx)
+                    or sourcing_call(question, list(llm_request.contents), ctx)
                     if ctx and ctx.business_id
                     else None
                 )
@@ -587,6 +615,7 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
             get_orders,
             message_supplier,
             cancel_order,
+            *SUPPLY_TOOLS,
         ]
         if settings.v1_enabled
         else [get_onboarding_requirements, prepare_business_draft]

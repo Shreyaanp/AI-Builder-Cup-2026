@@ -16,6 +16,7 @@ from .charts import CHART_TOOLS, chart_card
 from .contracts import StreamEvent
 from .coordinator import current, ui_currency
 from .settings import Settings
+from .supply_tools import SUPPLY_CARD_TOOLS
 
 APP_NAME = "ogoogle_ai"
 # Tools whose results reach the chat as supplier or order cards.
@@ -82,6 +83,15 @@ def public_events(event: Event) -> list[StreamEvent]:
                             kind="suppliers" if card[0] == "suppliers" else "order", data=card[1]
                         )
                     )
+            if response and response.name in SUPPLY_CARD_TOOLS:
+                merchant = current.get()
+                card = (
+                    merchant.cards.get(str((response.response or {}).get("card_id")))
+                    if merchant
+                    else None
+                )
+                if card:
+                    output.append(StreamEvent(kind=card[0], data=card[1]))  # type: ignore[arg-type]
             if response and response.name in {
                 "propose_business",
                 "propose_customer_facts",
