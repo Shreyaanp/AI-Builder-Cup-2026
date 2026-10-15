@@ -126,6 +126,7 @@ function CoachScreen({
   const [reconnecting, setReconnecting] = useState(false)
   const [mode, setMode] = useState<'offline' | 'gemini' | null>(null)
   const [history, setHistory] = useState<Conversation[]>([])
+  const [restoring, setRestoring] = useState(true)
   const s = useSourcingCopy()
   // Sourcing: the item being searched for, every order shown in the chat, the open thread.
   const [searching, setSearching] = useState<string | null>(null)
@@ -180,8 +181,10 @@ function CoachScreen({
   const receive = useCallback(
     (event: CoachEvent) => {
       if (event.kind === 'ready') {
-        session.current = event.session_id ?? null
+        session.current = event.session_id ?? session.current
         setMode(event.mode ?? 'offline')
+        if (event.code === 'CONVERSATION_ROLLED_OVER')
+          setMessages((items) => [...items, { role: 'assistant', text: t.conversationRolledOver }])
       }
       if (event.kind === 'delta') setReply((text) => text + (event.text ?? ''))
       if (event.kind === 'reply' || event.kind === 'output_transcript') setReply(event.text ?? '')
@@ -213,9 +216,21 @@ function CoachScreen({
         setFaceOpen(true)
       }
     },
-    [review, go, setFaceOpen],
+    [review, go, setFaceOpen, t.conversationRolledOver],
   )
-  const voice = useVoice(activeId, receive)
+  const voiceReply = useRef('')
+  const voice = useVoice(activeId, (event) => {
+    receive(event)
+    if (event.kind === 'ready') voiceReply.current = ''
+    if (event.kind === 'reply' || event.kind === 'output_transcript')
+      voiceReply.current = event.text ?? ''
+    if (event.kind === 'turn_complete') {
+      const text = voiceReply.current
+      if (text) setMessages((items) => [...items, { role: 'assistant' as const, text }].slice(-40))
+      voiceReply.current = ''
+      setReply('')
+    }
+  })
 
   // Each shop has its own conversation thread.
   useEffect(() => {
@@ -223,15 +238,18 @@ function CoachScreen({
     controller.current?.abort()
     session.current = null
     void api<Conversation[]>('/conversations', { signal: abort.signal })
-      .then((items) => {
+      .then(async (items) => {
         if (abort.signal.aborted) return
         setHistory(items)
         // Coming back (reload, another day) continues this shop's latest conversation instead of
         // a blank screen. Once per visit: "New chat" still starts fresh.
         const latest = items.find((entry) => (entry.business_id ?? null) === activeId)
-        if (latest && !session.current) void restore(latest.session_id)
+        if (latest && !session.current) await restore(latest.session_id)
       })
       .catch(() => undefined)
+      .finally(() => {
+        if (!abort.signal.aborted) setRestoring(false)
+      })
     return () => {
       abort.abort()
       speechSynthesis.cancel()
@@ -295,6 +313,7 @@ function CoachScreen({
 
   function resetThread() {
     controller.current?.abort()
+    voice.stop()
     session.current = null
     setSearching(null)
     setMessages([])
@@ -506,6 +525,8 @@ function CoachScreen({
 
   async function restore(id: string) {
     setActionsOpen(false)
+    voice.stop()
+    setRestoring(true)
     try {
       const data = await api<{ messages: Message[] }>(`/conversations/${id}`)
       controller.current?.abort()
@@ -514,6 +535,8 @@ function CoachScreen({
       setReply('')
     } catch {
       setError(t.actionFailed)
+    } finally {
+      setRestoring(false)
     }
   }
 
@@ -1137,10 +1160,10 @@ function CoachScreen({
                       : t.stopVoice
                 }
                 aria-pressed={voice.state === 'recording'}
-                disabled={busy !== 'idle'}
+                disabled={busy !== 'idle' || restoring}
                 onClick={() => {
                   if (voice.state === 'recording') voice.finishRecording()
-                  else if (voice.state === 'idle') void voice.start()
+                  else if (voice.state === 'idle') void voice.start(session.current)
                   else voice.stop()
                 }}
                 sx={

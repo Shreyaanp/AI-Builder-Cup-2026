@@ -39,6 +39,12 @@ export const id: Copy = {
   connectionReconnecting: 'Menghubungkan kembali…',
   voiceFailed: 'Koneksi suara berakhir. Coba lagi atau gunakan teks.',
   voiceRestarted: 'Suara terhubung kembali. Silakan ucapkan lagi.',
+  voiceMicDenied:
+    'Akses mikrofon diblokir. Izinkan mikrofon di pengaturan browser dan coba lagi, atau gunakan teks.',
+  voiceRateLimited: (seconds: number) =>
+    `Terlalu banyak permintaan suara. Tunggu ${seconds} detik, lalu coba lagi atau gunakan teks.`,
+  conversationRolledOver:
+    'Percakapan ini penuh. Saya memulai percakapan baru agar kita bisa melanjutkan.',
   loading: 'Menyiapkan toko Anda…',
   welcomeTitle: 'Toko Anda hadir online lewat satu percakapan',
   welcomeBody:
