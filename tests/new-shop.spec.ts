@@ -40,22 +40,13 @@ async function say(page: Page, text: string) {
 }
 
 for (const scheme of ['light', 'dark'] as const) {
-  test(`hero, conversation, review and ready pass axe (${scheme})`, async ({ page }, info) => {
+  // Screenshots of every state (voice mode included) come from tests/new-shop-voice.spec.ts.
+  test(`hero, conversation, review and ready pass axe (${scheme})`, async ({ page }) => {
     await page.addInitScript((appearance) => {
       localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance }))
     }, scheme)
     await enter(page)
-    const desktop = info.project.name === 'desktop' ? '-desktop' : ''
-    const capture = async (step: string) => {
-      await audit(page)
-      await page.evaluate(async () => {
-        await document.fonts.ready
-      })
-      await page.screenshot({
-        path: `docs/stories/new-shop-${step}-${scheme}${desktop}.png`,
-        animations: 'disabled',
-      })
-    }
+    const capture = (step: string) => test.step(`audit ${step}`, () => audit(page))
     await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
     await expect(page).toHaveURL(/\/new-shop\?step=hero/)
     await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeFocused()

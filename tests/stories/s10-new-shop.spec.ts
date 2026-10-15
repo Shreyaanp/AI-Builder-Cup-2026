@@ -29,7 +29,9 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
       return destination.stream
     }
   })
-  await context.grantPermissions(['geolocation'])
+  // Granting only geolocation would leave the microphone "denied" for the page, which the flow
+  // rightly reports as a blocked mic; the stand-in mic needs its permission too.
+  await context.grantPermissions(['geolocation', 'microphone'])
   await context.setGeolocation({ latitude: 12.9718234, longitude: 77.6412345, accuracy: 20 })
   await enter(page)
 
@@ -49,17 +51,21 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
     )
     await page.getByRole('button', { name: 'Let’s begin' }).click()
     await expect(page.getByRole('log')).toContainText('What do you sell?')
-    // One live voice session: the mic stays on after the greeting (mute and mic are visible).
-    await expect(page.getByRole('button', { name: 'Turn off the mic' })).toHaveAttribute(
+    // Voice mode: one open conversation; the mic stays on (not paused) after the greeting and
+    // the orb listens. Keyboard, mute and end voice are the other controls.
+    await expect(page.getByTestId('voice-orb').first()).toHaveAttribute('data-phase', 'listening')
+    await expect(page.getByRole('button', { name: 'Pause the mic' })).toHaveAttribute(
       'aria-pressed',
-      'true',
+      'false',
     )
     await expect(page.getByRole('button', { name: 'Mute the coach’s voice' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'End voice' })).toBeVisible()
     await shot(page, 10, '2-greeting')
   })
 
   await test.step('3 · the owner answers; the agent acts in the chat; the shop builds live', async () => {
     liveOnly('Speech recognition of the owner’s answer; the answer is typed into the live session')
+    await page.getByRole('button', { name: 'Type instead' }).click()
     await page.getByLabel('Message', { exact: true }).fill('I sell masala chai and snacks')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
     const action = page.getByTestId('agent-action').last()
