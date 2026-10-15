@@ -74,6 +74,8 @@ class AskRequest(BaseModel):
     language: str = Field(default="en", max_length=16)
     # The previous answer's intent when this message continues the same conversation.
     context: Intent | None = None
+    # A tapped follow-up chip says exactly what it refines, whatever the language of its label.
+    refine: Literal["price", "distance", "transit", "open", "deals"] | None = None
 
 
 class PickDeal(BaseModel):
@@ -453,11 +455,22 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
     intent = await ai_intent(request, body)
     mode: Literal["ai", "keywords"] = "ai" if intent else "keywords"
     intent = intent or keyword_intent(body.q)
+    if body.refine and body.context:
+        # A chip only refines: its label (any language) is never a new subject.
+        intent = intent.model_copy(update={"keywords": [], "category": ""})
     intent = (
         follow_up(body.q, body.context, intent)
         if body.context
         else refine(body.q.casefold(), intent)
     )
+    if body.refine in {"price", "distance"}:
+        intent.sort = "price" if body.refine == "price" else "distance"
+    elif body.refine == "transit":
+        intent.near = "transit"
+    elif body.refine == "open":
+        intent.open_now = True
+    elif body.refine == "deals":
+        intent.deals = True
     if intent.category not in CATEGORIES:
         intent.category = ""
     maps: MapsService = request.app.state.maps

@@ -5935,6 +5935,24 @@
                 "type": "null"
               }
             ]
+          },
+          "refine": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "price",
+                  "distance",
+                  "transit",
+                  "open",
+                  "deals"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refine"
           }
         },
         "type": "object",

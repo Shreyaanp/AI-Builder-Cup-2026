@@ -132,3 +132,23 @@ def test_suggestions_come_from_the_area_shops(store: MerchantRepository, tmp_pat
         assert "Kopi" in here["items"] and "Teh tarik" not in here["items"]  # sold out
         empty = client.get("/api/v1/discover/suggest", params={"lat": 12.97, "lng": 77.59}).json()
         assert empty == {"items": [], "shops": 0, "open_now": 0, "locally_made": 0, "deals": 0}
+
+
+def test_a_follow_up_chip_refines_in_any_language(
+    store: MerchantRepository, tmp_path: Path
+) -> None:
+    shared_shop(store)
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        app.state.merchant = store
+        first = client.post("/api/v1/discover/ask", json={"q": "kopi", **TIONG_BAHRU}).json()
+        for refine, check in [
+            ("price", lambda i: i["sort"] == "price"),
+            ("distance", lambda i: i["sort"] == "distance"),
+            ("transit", lambda i: i["near"] == "transit"),
+            ("open", lambda i: i["open_now"]),
+            ("deals", lambda i: i["deals"]),
+        ]:
+            body = {"q": "ஏதாவது", "context": first["intent"], "refine": refine, **TIONG_BAHRU}
+            intent = client.post("/api/v1/discover/ask", json=body).json()["intent"]
+            assert check(intent) and intent["keywords"] == ["kopi"], refine
