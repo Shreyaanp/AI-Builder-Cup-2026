@@ -124,7 +124,10 @@ async def get_question_plan() -> dict[str, Any]:
     ):
         return {
             "status": "needs_business",
-            "instruction": "Ask for the shop name first and use propose_business.",
+            "instruction": (
+                "Nothing was recorded yet: ask the owner for their shop's real name (never invent"
+                " or assume one), call propose_business with it, then repeat this call."
+            ),
         }
     shop = ctx.store.context(ctx.uid, ctx.business_id)["business"]
     fields = (
@@ -367,6 +370,14 @@ def get_insights() -> dict[str, Any]:
     }
 
 
+def _start_new_shop_draft() -> None:
+    """A new shop's items and answers can be recorded before the owner has said its name: start
+    an unnamed draft (the name is required only when the owner opens the shop)."""
+    ctx = current.get()
+    if ctx and ctx.new_shop and not (ctx.new_shop_draft and ctx.new_shop_draft.business):
+        _propose_shop(name="")
+
+
 def _propose_shop(
     name: str,
     category: str = "",
@@ -544,13 +555,17 @@ def propose_customer_facts(
     (e.g. UPI, PayPay, GCash, card, cash). Known keys remain compatible. busy_hours e.g.
     "12:00-13:30". custom_facts: answers to get_question_plan questions (key, label, value)."""
     ctx = current.get()
+    _start_new_shop_draft()
     if not ctx or (
         not ctx.business_id
         and not (ctx.new_shop and ctx.new_shop_draft and ctx.new_shop_draft.business)
     ):
         return {
             "status": "needs_business",
-            "instruction": "Ask for the shop name first and use propose_business.",
+            "instruction": (
+                "Nothing was recorded yet: ask the owner for their shop's real name (never invent"
+                " or assume one), call propose_business with it, then repeat this call."
+            ),
         }
     return _propose_shop(
         name="",
@@ -573,6 +588,7 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
     items mentioned together. Prices are in the shop's currency (major units). category is
     the owner's menu section, or a suggested section for a new item. unit is one of the fixed
     selling units."""
+    _start_new_shop_draft()
     ctx = current.get()
     if not ctx or (
         not ctx.business_id
@@ -580,7 +596,10 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
     ):
         return {
             "status": "needs_business",
-            "instruction": "Ask for the shop name first and use propose_business.",
+            "instruction": (
+                "Nothing was recorded yet: ask the owner for their shop's real name (never invent"
+                " or assume one), call propose_business with it, then repeat this call."
+            ),
         }
     try:
         # The model sometimes sends bare strings; validation turns that into a repairable error

@@ -6143,7 +6143,6 @@
           "name": {
             "type": "string",
             "maxLength": 180,
-            "minLength": 1,
             "title": "Name"
           },
           "category": {

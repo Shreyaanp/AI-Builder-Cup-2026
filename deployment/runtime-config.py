@@ -17,7 +17,7 @@ config = {
     "GEMINI_BACKEND": "vertex",
     # Chat + photo reading: the model the live coach evaluation passed with.
     "GOOGLE_CLOUD_LOCATION": "global",
-    "GOOGLE_TEXT_MODEL": "gemini-3.5-flash-lite",
+    "GOOGLE_TEXT_MODEL": "gemini-3.5-flash",
     # Live voice models are regional (not served at `global`).
     "GOOGLE_LIVE_LOCATION": "us-central1",
     "GOOGLE_LIVE_MODEL": "gemini-3.8-live",

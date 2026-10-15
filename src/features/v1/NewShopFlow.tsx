@@ -58,6 +58,7 @@ import { useCopy } from './strings'
 import { useVoice } from './useVoice'
 import { useWorkspace } from './workspaceContext'
 import type { GalleryPhoto } from './screens/CoachScreen'
+import { utter } from './phoneVoice'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 /** With no answer this long after the coach has spoken, the coach carries on by itself. */
@@ -303,8 +304,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     }
     await new Promise<void>((resolve) => {
       const finish = done(resolve)
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = language
+      const utterance = utter(text, language)
       utterance.onend = utterance.onerror = finish
       speechSynthesis.speak(utterance)
       // Some devices never report the end of speech.

@@ -150,6 +150,13 @@ async def gemini_voice(
                 max_llm_calls=8,
                 input_audio_transcription=types.AudioTranscriptionConfig(),
                 output_audio_transcription=types.AudioTranscriptionConfig(),
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name=runtime.settings.voice_name
+                        )
+                    )
+                ),
                 save_live_blob=False,
             ),
         )
