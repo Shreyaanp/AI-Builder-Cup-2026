@@ -114,6 +114,9 @@ async def erase(request: Request) -> dict[str, Any]:
         thread_signals(request).wake(bid)
         # Gallery photos of erased shops go too.
         await anyio.to_thread.run_sync(request.app.state.photos.delete_gallery_sync, bid)
+        # And the community copies: menu snapshot, update feed and neighbour tips.
+        if getattr(request.app.state, "community", None) is not None:
+            await anyio.to_thread.run_sync(request.app.state.community.erase_shop, bid)
     if request.app.state.recall:
         await anyio.to_thread.run_sync(request.app.state.recall.forget, uid, businesses)
     runtime = request.app.state.services.runtime

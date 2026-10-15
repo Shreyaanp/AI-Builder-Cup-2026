@@ -36,6 +36,8 @@ from .threads import thread_signals
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/api/v1")
+# How long a second, simultaneous start waits for the first to create the shop thread.
+START_WAIT_SECONDS = 15
 
 
 def identity(request: Request) -> IdentityService:
@@ -321,16 +323,19 @@ async def chats(request: Request) -> list[ChatSummary]:
     entries = await anyio.to_thread.run_sync(service.threads, principal.uid)
     summaries = []
     for entry in entries:
-        shop = await anyio.to_thread.run_sync(store(request).public_shop, entry["bid"])
-        if shop is None:
-            continue
         try:
             record = await act(request, entry["bid"], entry, "get")
         except HTTPException as error:
             if error.status_code == 404:
-                await anyio.to_thread.run_sync(service.drop_thread, principal.uid, entry["iid"])
+                # Deleted by the owner, or the shop was erased: free the slot too.
+                await anyio.to_thread.run_sync(
+                    service.drop_thread, principal.uid, entry["bid"], entry["iid"]
+                )
                 continue
             raise
+        shop = await anyio.to_thread.run_sync(store(request).public_shop, entry["bid"])
+        if shop is None:
+            continue
         thread = public_thread(record)
         summaries.append(
             ChatSummary(
@@ -366,34 +371,63 @@ async def start_thread(business_id: str, body: NewThread, request: Request) -> C
     if existing is not None:
         # One thread per shop, like a messaging app: continue it.
         return await post_message(business_id, existing["iid"], body, request)
-    await enforce_limits(
-        request,
-        [
-            ("inquire:ip", business_id + ":" + client_ip(request)),
-            ("thread:customer", principal.uid),
-        ],
-        anonymous=True,
-    )
-    receipt = await anyio.to_thread.run_sync(
-        store(request).add_inquiry,
-        business_id,
-        InquiryInput(
-            name=display_name(principal),
-            contact=principal.email or "customer@example.test",
-            message=body.text,
-        ),
-    )
-    record = await anyio.to_thread.run_sync(
-        store(request).thread_action, None, business_id, receipt.id, receipt.token, "get"
-    )
-    await anyio.to_thread.run_sync(
-        service.add_thread,
-        principal.uid,
-        business_id,
-        receipt.id,
-        receipt.token,
-        record.messages[-1].id,
-    )
+    # Two tabs can both get here; the atomic slot lets exactly one create the thread.
+    deadline = anyio.current_time() + START_WAIT_SECONDS
+    while True:
+        state, value = await anyio.to_thread.run_sync(
+            service.reserve_thread, principal.uid, business_id
+        )
+        if state == "mine":
+            break
+        if state == "existing":
+            try:
+                return await post_message(business_id, value, body, request)
+            except HTTPException as error:
+                if error.status_code != 404:
+                    raise
+                # The slot outlived its thread: free it and start again.
+                await anyio.to_thread.run_sync(
+                    service.drop_thread, principal.uid, business_id, value
+                )
+                continue
+        if anyio.current_time() > deadline:
+            raise HTTPException(409, "This chat is still starting. Try again in a moment.")
+        await anyio.sleep(0.1)
+    try:
+        await enforce_limits(
+            request,
+            [
+                ("inquire:ip", business_id + ":" + client_ip(request)),
+                ("thread:customer", principal.uid),
+            ],
+            anonymous=True,
+        )
+        receipt = await anyio.to_thread.run_sync(
+            store(request).add_inquiry,
+            business_id,
+            InquiryInput(
+                name=display_name(principal),
+                contact=principal.email or "customer@example.test",
+                message=body.text,
+            ),
+        )
+        record = await anyio.to_thread.run_sync(
+            store(request).thread_action, None, business_id, receipt.id, receipt.token, "get"
+        )
+        await anyio.to_thread.run_sync(
+            service.add_thread,
+            principal.uid,
+            business_id,
+            receipt.id,
+            receipt.token,
+            record.messages[-1].id,
+        )
+    except BaseException:
+        with anyio.CancelScope(shield=True):
+            await anyio.to_thread.run_sync(
+                service.release_thread, principal.uid, business_id, value
+            )
+        raise
     thread_signals(request).wake(business_id)
     entry = await owned(request, principal, business_id, receipt.id)
     await shop_side_replies(request, business_id, entry, shop, body)
@@ -449,7 +483,9 @@ async def delete_thread(business_id: str, inquiry_id: str, request: Request) -> 
     principal = await customer(request)
     entry = await owned(request, principal, business_id, inquiry_id)
     await act(request, business_id, entry, "delete")
-    await anyio.to_thread.run_sync(community(request).drop_thread, principal.uid, inquiry_id)
+    await anyio.to_thread.run_sync(
+        community(request).drop_thread, principal.uid, business_id, inquiry_id
+    )
     return {"deleted": True}
 
 
