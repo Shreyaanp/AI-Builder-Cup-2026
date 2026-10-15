@@ -40,6 +40,12 @@ export const fil: Copy = {
   connectionReconnecting: 'Muling kumokonekta…',
   voiceFailed: 'Natapos ang koneksyon sa boses. Subukan muli o gumamit ng teksto.',
   voiceRestarted: 'Nakakonekta muli ang boses. Pakisabi iyon muli.',
+  voiceMicDenied:
+    'Naka-block ang mikropono. Payagan ito sa mga setting ng browser at subukang muli, o mag-type.',
+  voiceRateLimited: (seconds: number) =>
+    `Masyadong maraming kahilingan sa boses. Maghintay ng ${seconds} segundo, saka subukang muli o mag-type.`,
+  conversationRolledOver:
+    'Puno na ang usapang ito. Nagsimula ako ng bagong usapan para makapagpatuloy tayo.',
   loading: 'Inihahanda ang tindahan mo…',
   welcomeTitle: 'Ipakilala online ang tindahan mo sa isang usapan',
   welcomeBody:
