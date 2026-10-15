@@ -46,6 +46,13 @@ generated demo data is fine and expected, as long as it is labelled as demo.
   owner does not answer, the agent still responds in the chat (suggests a default, moves on).
 - Full brief: scratchpad task-NEW-SHOP-OWNER-ANSWERS.md, being built by account 2 on PR #3.
 
+**Feedback after trying it (16 Oct ~01:30):** UI, UX and animation are decent; the conversation
+engine was not. Decisions: one soft female voice app-wide (Gemini **Achernar**: Live, Cloud TTS,
+phone fallback; feminine Hindi first person); real to-and-fro (react with knowledge of the
+business, one natural question, never narrate the app, no gushing); **never invent the shop
+name** (ask; items may be recorded before it; a name is required to open); text model switched
+to **gemini-3.5-flash** (owner OK; costs more per message than Flash-Lite). On PR #3 (df5b77b).
+
 ## Visual decision (owner, 15 Oct afternoon)
 
 - **Direction 1 · Chalkboard** (docs/research/visual-motion.md, mockups/direction-1.html) plus two
@@ -56,6 +63,23 @@ generated demo data is fine and expected, as long as it is labelled as demo.
   One default theme on first load, consistent across landing page, owner and customer.
 - **Owner (vendor) app: calm, simple, no information overload, peak UX but not flashy.**
   **Customer app: flashy, animated, gamified, peak UX.**
+
+## Final push plan (owner, 16 Oct ~02:30; replaces the freeze for the items below)
+
+Owner bar: "brutally good, no one sees a bug"; phone first; every flow is a guided journey with its
+own considered motion and personal touch; less eye strain (spacing/padding/heatmap audit on
+every screen). Owner decisions: Maps = safe hand-off (no server automation of Google Maps);
+"journeys" = guided journeys (M3/MUI patterns); customer side = AI-first, like a chat;
+account 3 added. Token policy: the assistant orchestrates and goes into saving mode after 85% usage;
+Codex and accounts 2/3 may be used fully.
+
+| Track                                  | Owner of work                           | Scope                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| A. Owner onboarding journey            | Account 2 (`feat/new-shop-flow`, PR #3) | Voice mode (mic always on, reactive orb, shop card filling, scrollable conversation), proper error alerts, then: camera INSIDE the chat (inline viewfinder, guided shots), map INSIDE the chat (small view, tap for big view, drop pin), Google Maps safe hand-off (prefilled "Add a missing place" at the pin; owner submits), phone-friendly manual form (guided steps, not a long form) |
+| B. Business-type profiles + name first | Codex                                   | Ask the shop NAME first, then the kind; derive a profile per business type (food: veg/halal only when relevant, never halal for a vegetarian shop; tailor, salon, retail, grocer, services…) driving questions, facts and the stored profile; generic for any vendor                                                                                                                       |
+| C. Coach rich answers                  | Codex (after B)                         | Forecast/sales/analysis as rich animated chart cards in the coach chat ("analyse my forecast", "how can I grow"), like ChatGPT-style assistants answers                                                                                                                                                                                                                                              |
+| D. Customer side, AI-first             | Account 3 (`feat/customer-ai-first`)    | Redesign around an AI chat front door; rich animated answer cards; heatmap/spacing audit of every customer screen; phone first                                                                                                                                                                                                                                                             |
+| E. Stability + release                 | The assistant                                  | Review, fix flaky/real bugs (B4 Back exits app intermittently; Follow grey flash), merge with green CI, ship, live browser tests of every flow                                                                                                                                                                                                                                             |
 
 ## Build order (agreed)
 

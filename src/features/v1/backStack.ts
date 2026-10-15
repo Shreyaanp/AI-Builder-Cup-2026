@@ -27,6 +27,10 @@ const queued: Entry[] = []
 let ignore = 0
 let nextId = 1
 let pending: Entry | null = null
+// Entries closed in this commit whose history slot is not yet given back. An overlay opening in the
+// same commit (a form handing over to its review) takes the slot over with replaceState instead
+// of back() then pushState(): a Back pressed in between can no longer leave the app.
+let handoff = 0
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((listener) => listener())
 
@@ -62,10 +66,22 @@ function listen() {
   window.addEventListener('beforeunload', onBeforeUnload)
 }
 
+function flushReleases() {
+  if (handoff === 0) return
+  const steps = handoff
+  handoff = 0
+  ignore += 1
+  history.go(-steps)
+}
+
 function register(close: () => void, dirty: () => boolean): number {
   listen()
   const entry = { id: nextId++, close, dirty }
-  if (ignore > 0) queued.push(entry)
+  if (handoff > 0) {
+    handoff -= 1
+    stack.push(entry)
+    history.replaceState({ ...(history.state as object | null), overlay: entry.id }, '')
+  } else if (ignore > 0) queued.push(entry)
   else pushState(entry)
   return entry.id
 }
@@ -86,8 +102,8 @@ function release(id: number) {
     return
   }
   stack.splice(index, 1)
-  ignore += 1
-  history.back()
+  handoff += 1
+  queueMicrotask(flushReleases)
 }
 
 /** Answer to "Discard changes?": keep editing (restore the entry) or discard (close). */
