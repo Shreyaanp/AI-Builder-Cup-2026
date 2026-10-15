@@ -2056,6 +2056,8 @@ export interface components {
              */
             language: string;
             context?: components["schemas"]["Intent"] | null;
+            /** Refine */
+            refine?: ("price" | "distance" | "transit" | "open" | "deals") | null;
         };
         /** AskResponse */
         AskResponse: {
