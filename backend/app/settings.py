@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     moderation_mode: Literal["vision", "fixture"] = "fixture"
     # Abuse protection; the local browser-test server turns it off (all tests share one IP).
     rate_limits_enabled: bool = True
+    # Showcase mode: generate labelled demo shops around each new visitor area (production only).
+    demo_world_enabled: bool = False
     # Modern phone photos are 4-15 MB; Cloud Run's request limit is 32 MB.
     max_photo_bytes: int = Field(default=20_000_000, ge=65_536, le=30_000_000)
     merchant_database: str = "data/merchant.sqlite3"

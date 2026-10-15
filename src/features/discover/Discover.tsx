@@ -28,6 +28,7 @@ import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { Sheet } from '../v1/Sheet'
 import { formatPrice } from '../v1/format'
 import { discoverCopy } from './strings'
+import { ensureDemoWorld } from './demoWorld'
 import { locallyMadeLabel } from '../public/locallyMade'
 import { PlaceSearch } from './PlaceSearch'
 import type { FoundPlace } from './PlaceSearch'
@@ -201,6 +202,7 @@ export default function Discover({
     async function load() {
       setStatus('loading')
       try {
+        await ensureDemoWorld(lat, lng)
         const response = await fetch('/api/v1/discover?' + params, { signal: abort.signal })
         if (!response.ok) throw new Error('Discovery unavailable')
         const data = (await response.json()) as Discovery
