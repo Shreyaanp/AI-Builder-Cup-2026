@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import {
+  Alert,
+  AlertTitle,
   Box,
   Button,
   Chip,
@@ -8,13 +10,15 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  LinearProgress,
   Stack,
   Typography,
   useTheme,
 } from '@mui/material'
-import { FileText, ScanFace, ShieldCheck, Trash2 } from 'lucide-react'
+import { FileText, RotateCcw, ScanFace, ShieldCheck, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useLocale } from '../../../state/hooks'
+import type { EraseResult } from '../api'
 import { formatDate } from '../format'
 import { LegalDialog } from '../LegalDialog'
 import type { LegalDocument } from '../LegalDialog'
@@ -51,6 +55,9 @@ function Section({
   )
 }
 
+type EraseState =
+  { kind: 'idle' | 'working' | 'done' | 'failed' } | { kind: 'partial'; pending: string[] }
+
 export function PrivacyScreen() {
   const t = useCopy()
   const language = useLocale()
@@ -59,6 +66,13 @@ export function PrivacyScreen() {
   // Destructive actions always confirm first.
   const [confirming, setConfirming] = useState<'none' | 'all' | 'face'>('none')
   const [busy, setBusy] = useState(false)
+  // "Delete all my data": each server step reports on its own, so a partial result is shown with
+  // what is still pending (the server also retries it) and a Try again.
+  const [erase, setErase] = useState<EraseState>(() =>
+    ws.me.erase_pending?.length
+      ? { kind: 'partial', pending: ws.me.erase_pending }
+      : { kind: 'idle' },
+  )
   const pending = ws.businesses.some((shop) => shop.registration === 'verification_pending')
   useBackClose(confirming !== 'none', () => !busy && setConfirming('none'))
 
@@ -77,18 +91,26 @@ export function PrivacyScreen() {
   }
 
   async function eraseEverything() {
-    setBusy(true)
+    setConfirming('none')
+    setErase({ kind: 'working' })
     try {
-      await ws.api('/me/data', { method: 'DELETE' })
-      ws.notify(t.deleted)
-      // Consent was erased too; restart into the welcome/consent flow.
-      setTimeout(() => location.reload(), 900)
+      const result = await ws.api<EraseResult>('/me/data', { method: 'DELETE' })
+      if (result.status === 'erased') {
+        setErase({ kind: 'done' })
+        // Consent was erased too; restart into the welcome/consent flow.
+        setTimeout(() => location.reload(), 1500)
+      } else {
+        setErase({ kind: 'partial', pending: result.pending })
+      }
     } catch {
-      ws.notify(t.actionFailed)
-      setBusy(false)
-      setConfirming('none')
+      setErase({ kind: 'failed' })
     }
   }
+
+  const pendingItems = (steps: string[]) =>
+    new Intl.ListFormat(language, { type: 'conjunction' }).format(
+      steps.map((step) => t.eraseSteps[step] ?? step),
+    )
 
   return (
     <Box component="section" aria-label={t.navPrivacy} sx={{ maxWidth: 760, mx: 'auto', pt: 2 }}>
@@ -138,15 +160,54 @@ export function PrivacyScreen() {
           <Typography variant="bodyMedium" color="text.secondary">
             {t.dataBody}
           </Typography>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<Trash2 size={18} />}
-            sx={{ mt: 2 }}
-            onClick={() => setConfirming('all')}
-          >
-            {t.deleteAll}
-          </Button>
+          {(erase.kind === 'idle' || erase.kind === 'working') && (
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<Trash2 size={18} />}
+              sx={{ mt: 2 }}
+              disabled={erase.kind === 'working'}
+              onClick={() => setConfirming('all')}
+            >
+              {t.deleteAll}
+            </Button>
+          )}
+          <Box role="status" aria-live="polite" sx={{ mt: erase.kind === 'idle' ? 0 : 2 }}>
+            {erase.kind === 'working' && (
+              <>
+                <Typography variant="bodyMedium">{t.erasing}</Typography>
+                <LinearProgress aria-label={t.erasing} sx={{ mt: 1, borderRadius: 1 }} />
+              </>
+            )}
+            {erase.kind === 'done' && (
+              <Alert severity="success" role="presentation">
+                {t.eraseDone}
+              </Alert>
+            )}
+          </Box>
+          {(erase.kind === 'partial' || erase.kind === 'failed') && (
+            <Alert severity={erase.kind === 'partial' ? 'warning' : 'error'} sx={{ mt: 2 }}>
+              {erase.kind === 'partial' ? (
+                <>
+                  <AlertTitle>{t.erasePartialTitle}</AlertTitle>
+                  {t.erasePartialBody(pendingItems(erase.pending))}
+                </>
+              ) : (
+                t.eraseFailed
+              )}
+              {/* Below the text, not as the Alert action: long translations stay readable. */}
+              <Box sx={{ mt: 1.5 }}>
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  startIcon={<RotateCcw size={18} />}
+                  onClick={() => void eraseEverything()}
+                >
+                  {t.eraseRetry}
+                </Button>
+              </Box>
+            </Alert>
+          )}
         </Section>
       </Stack>
 

@@ -405,4 +405,20 @@ export const ms: Copy = {
   accountFailedBody: 'Anda telah log masuk, tetapi akaun gagal dimuatkan. Data selamat.',
   loadFailed: 'Kedai gagal dimuatkan. Data selamat — semak sambungan dan cuba lagi.',
   retryLoad: 'Cuba lagi',
+  erasing: 'Memadam data anda… Ini mungkin mengambil masa seminit.',
+  eraseDone: 'Semua data anda dipadam. Memulakan semula…',
+  erasePartialTitle: 'Sebahagian data anda masih sedang dipadam',
+  erasePartialBody: (items: string) =>
+    `Masih belum selesai: ${items}. Semua yang lain sudah dipadam. Kami akan terus mencuba secara automatik, atau anda boleh cuba lagi sekarang.`,
+  eraseFailed: 'Pemadaman tidak selesai. Semak sambungan dan cuba lagi.',
+  eraseRetry: 'Cuba lagi',
+  eraseSteps: {
+    face: 'data wajah',
+    photos: 'foto',
+    records: 'kedai dan produk',
+    gallery: 'foto galeri kedai',
+    community: 'salinan awam kedai',
+    memory: 'memori pembantu',
+    conversations: 'perbualan',
+  } as Record<string, string>,
 }

@@ -398,4 +398,20 @@ export const ja: Copy = {
   accountFailedBody: 'ログイン済みですが、アカウントを読み込めませんでした。データは安全です。',
   loadFailed: 'お店を読み込めませんでした。データは安全です。接続を確認して再試行してください。',
   retryLoad: '再試行',
+  erasing: 'データを削除しています… 1分ほどかかる場合があります。',
+  eraseDone: 'すべてのデータを削除しました。再起動しています…',
+  erasePartialTitle: '一部のデータはまだ削除中です',
+  erasePartialBody: (items: string) =>
+    `未完了: ${items}。それ以外はすべて削除しました。自動で再試行を続けます。今すぐ再試行することもできます。`,
+  eraseFailed: '削除が完了しませんでした。接続を確認して、もう一度お試しください。',
+  eraseRetry: 'もう一度試す',
+  eraseSteps: {
+    face: '顔データ',
+    photos: '写真',
+    records: 'お店と商品',
+    gallery: 'お店のギャラリー写真',
+    community: 'お店の公開コピー',
+    memory: 'アシスタントのメモリ',
+    conversations: '会話',
+  } as Record<string, string>,
 }
