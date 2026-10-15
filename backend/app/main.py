@@ -68,7 +68,7 @@ from .sourcing_routes import router as sourcing_router
 from .streaming import CoachRuntime
 from .today import router as today_router
 from .tts import Speech
-from .voice import serve_voice
+from .voice import VOICE_SESSION_CAP_SECONDS, serve_voice
 
 log = structlog.get_logger()
 SSE_HEARTBEAT_SECONDS = 15
@@ -170,7 +170,7 @@ def create_app(
                 client,
                 settings.firestore_namespace,
                 settings.max_active_runs,
-                max(settings.max_voice_seconds, settings.max_turn_seconds) + 10,
+                max(VOICE_SESSION_CAP_SECONDS, settings.max_turn_seconds) + 10,
             )
             if client
             else RunRegistry(settings.max_active_runs),
