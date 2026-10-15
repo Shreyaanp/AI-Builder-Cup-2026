@@ -45,9 +45,20 @@ async function axe(page: Page) {
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 }
+// Chalkboard theme (15 Oct): kraft paper light, chalkboard dark; one saved choice everywhere.
+const surface = { light: 'rgb(251, 247, 236)', dark: 'rgb(23, 39, 31)' }
+const primary = { light: 'rgb(31, 92, 66)', dark: 'rgb(246, 201, 69)' }
+const chrome = { light: '#FBF7EC', dark: '#17271F' }
 for (const mode of ['light', 'dark'] as const) {
   test(`B30 ${mode}: customer theme covers explore, shop and chat`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme: mode })
+    await page.addInitScript(
+      (appearance) =>
+        localStorage.setItem(
+          'niva.starter.preferences',
+          JSON.stringify({ appearance, language: 'en' }),
+        ),
+      mode,
+    )
     await page.goto('/explore/browse')
     await expect(
       page.getByRole('heading', { name: 'What’s around me?', exact: true }),
@@ -62,28 +73,20 @@ for (const mode of ['light', 'dark'] as const) {
       '/explore/',
     )
     expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(
-      mode === 'light' ? 'rgb(243, 243, 243)' : 'rgb(17, 17, 17)',
+      surface[mode],
     )
     const button = page.getByRole('button', { name: 'Chat with the shop' })
-    expect(await button.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(
-      mode === 'light' ? 'rgb(17, 17, 17)' : 'rgb(250, 250, 250)',
-    )
+    expect(await button.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(primary[mode])
     await axe(page)
     await mkdir('docs/bugs', { recursive: true })
     await page.screenshot({ path: `docs/bugs/B30-${mode}.png` })
     await button.click()
     await expect(page.getByLabel('Your question')).toBeVisible()
     await axe(page)
-    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
-      'content',
-      mode === 'light' ? '#f3f3f3' : '#111111',
-    )
-    const opposite = mode === 'light' ? 'dark' : 'light'
-    await page.emulateMedia({ colorScheme: opposite })
-    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
-      'content',
-      opposite === 'light' ? '#f3f3f3' : '#111111',
-    )
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', chrome[mode])
+    // The saved choice wins over the phone's system setting.
+    await page.emulateMedia({ colorScheme: mode === 'light' ? 'dark' : 'light' })
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', chrome[mode])
   })
 }
 
