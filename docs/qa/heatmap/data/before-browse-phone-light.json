@@ -4,11 +4,11 @@
  "project": "phone",
  "theme": "light",
  "marks": 20,
- "words": 50,
+ "words": 51,
  "busiest": 2,
  "busyCells": 0,
  "accentFamilies": 1,
- "filledActions": 4,
+ "filledActions": 0,
  "typeSizes": 5,
  "weights": 4,
  "spacingValues": 57,
@@ -18,7 +18,7 @@
  ],
  "smallTargets": 0,
  "smallNames": [],
- "pageHeight": 7482,
+ "pageHeight": 8619,
  "contrastIssues": 0,
  "axeViolations": []
 }

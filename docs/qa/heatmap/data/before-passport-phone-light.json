@@ -11,7 +11,7 @@
  "filledActions": 0,
  "typeSizes": 8,
  "weights": 4,
- "spacingValues": 55,
+ "spacingValues": 54,
  "offGrid": 10,
  "offValues": [
   "2px×8",
@@ -19,7 +19,7 @@
  ],
  "smallTargets": 0,
  "smallNames": [],
- "pageHeight": 2716,
+ "pageHeight": 2783,
  "contrastIssues": 0,
  "axeViolations": []
 }

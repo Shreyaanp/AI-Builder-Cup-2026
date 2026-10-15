@@ -3,15 +3,15 @@
  "screen": "ask",
  "project": "desktop",
  "theme": "light",
- "marks": 37,
- "words": 75,
+ "marks": 35,
+ "words": 68,
  "busiest": 2,
  "busyCells": 0,
  "accentFamilies": 1,
  "filledActions": 0,
- "typeSizes": 6,
+ "typeSizes": 5,
  "weights": 4,
- "spacingValues": 90,
+ "spacingValues": 84,
  "offGrid": 14,
  "offValues": [
   "2px×8",
@@ -21,12 +21,12 @@
  "smallTargets": 5,
  "smallNames": [
   "input “What are you looking for?” 564×35",
-  "div “Coffee near me” 125×40",
-  "div “Fresh bread” 101×40",
-  "div “Groceries open now” 155×40",
-  "div “Something sweet” 136×40"
+  "div “Coffee near me” 119×40",
+  "div “Fresh bread” 97×40",
+  "div “Groceries open now” 148×40",
+  "div “Something sweet” 130×40"
  ],
- "pageHeight": 3160,
+ "pageHeight": 3262,
  "contrastIssues": 0,
  "axeViolations": []
 }

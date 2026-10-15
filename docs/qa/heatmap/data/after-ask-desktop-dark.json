@@ -7,8 +7,8 @@
  "words": 46,
  "busiest": 2,
  "busyCells": 0,
- "accentFamilies": 1,
- "filledActions": 1,
+ "accentFamilies": 0,
+ "filledActions": 0,
  "typeSizes": 5,
  "weights": 4,
  "spacingValues": 71,
@@ -20,7 +20,7 @@
  ],
  "smallTargets": 0,
  "smallNames": [],
- "pageHeight": 1462,
+ "pageHeight": 1464,
  "contrastIssues": 0,
  "axeViolations": []
 }

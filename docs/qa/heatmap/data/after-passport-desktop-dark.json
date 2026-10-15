@@ -3,29 +3,23 @@
  "screen": "passport",
  "project": "desktop",
  "theme": "dark",
- "marks": 40,
- "words": 95,
+ "marks": 37,
+ "words": 87,
  "busiest": 2,
  "busyCells": 0,
  "accentFamilies": 3,
  "filledActions": 0,
  "typeSizes": 8,
  "weights": 4,
- "spacingValues": 84,
- "offGrid": 12,
+ "spacingValues": 80,
+ "offGrid": 11,
  "offValues": [
   "2px×8",
-  "6px×4"
+  "6px×3"
  ],
- "smallTargets": 5,
- "smallNames": [
-  "a “Petal & Stem” 106×36",
-  "a “Sunrise Bakehouse” 146×36",
-  "a “Stitch Corner” 111×36",
-  "a “Discovery phone Kopi 1792096” 266×36",
-  "a “Discovery desktop Kopi 17920” 279×36"
- ],
- "pageHeight": 2453,
+ "smallTargets": 0,
+ "smallNames": [],
+ "pageHeight": 2513,
  "contrastIssues": 0,
  "axeViolations": []
 }
