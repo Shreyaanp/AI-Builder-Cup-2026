@@ -164,25 +164,7 @@
   }
 }
 
-/* Shared journey: the conversation, a shop and a chat cross-fade and slide like one surface. */
-::view-transition-old(root) {
-  animation: 180ms var(--c-ease) both c-leave;
-}
-::view-transition-new(root) {
-  animation: 260ms var(--c-ease) both c-enter;
-}
-@keyframes c-leave {
-  to {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-}
-@keyframes c-enter {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-}
+/* Shared journey: a result card's photo morphs into the shop's hero (view-transition-name). */
 ::view-transition-group(*) {
   animation-duration: 320ms;
   animation-timing-function: var(--c-ease);
