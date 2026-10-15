@@ -257,6 +257,7 @@ export const th: Copy = {
   importNotes: 'วางบันทึกยอดขายหรือเมนู',
   importReviewNotes: 'ตรวจสอบบันทึก',
   importReviewFlags: 'ตรวจสอบแถวที่ไม่แน่ใจอย่างละเอียด',
+  photoReviewNotes: 'จากรูปของคุณ — โปรดตรวจสอบ',
   prepPlan: 'แผนเตรียมของ',
   prepTomorrow: 'พรุ่งนี้',
   prepLoading: 'กำลังเตรียมการคาดการณ์…',

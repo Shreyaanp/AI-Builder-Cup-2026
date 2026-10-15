@@ -265,6 +265,7 @@ export const ms: Copy = {
   importNotes: 'Tampal nota jualan atau menu',
   importReviewNotes: 'Semak nota',
   importReviewFlags: 'Semak baris yang tidak pasti dengan teliti',
+  photoReviewNotes: 'Daripada foto anda — sila semak',
   prepPlan: 'Pelan persediaan',
   prepTomorrow: 'Esok',
   prepLoading: 'Menyediakan ramalan…',

@@ -274,6 +274,7 @@ export const ta: Copy = {
   importNotes: 'விற்பனை அல்லது மெனு குறிப்புகளை ஒட்டு',
   importReviewNotes: 'குறிப்புகளைச் சரிபார்',
   importReviewFlags: 'உறுதியற்ற வரிகளை கவனமாகச் சரிபார்',
+  photoReviewNotes: 'உங்கள் புகைப்படத்திலிருந்து — சரிபார்க்கவும்',
   prepPlan: 'தயாரிப்புத் திட்டம்',
   prepTomorrow: 'நாளை',
   prepLoading: 'கணிப்பு தயாராகிறது…',

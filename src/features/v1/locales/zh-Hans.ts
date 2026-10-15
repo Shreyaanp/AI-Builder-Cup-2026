@@ -256,6 +256,7 @@ export const zhHans: Copy = {
   importNotes: '粘贴销售或菜单笔记',
   importReviewNotes: '查看笔记',
   importReviewFlags: '请仔细检查不确定的行',
+  photoReviewNotes: '来自您的照片——请核对',
   prepPlan: '备货计划',
   prepTomorrow: '明天',
   prepLoading: '正在预测…',

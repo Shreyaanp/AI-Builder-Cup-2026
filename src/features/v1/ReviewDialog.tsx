@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Alert, Box, Button, Divider, Stack, Typography } from '@mui/material'
+import { Alert, AlertTitle, Box, Button, Divider, Stack, Typography } from '@mui/material'
 import { ShieldCheck } from 'lucide-react'
 import type { Proposal } from './api'
 import { ApiError } from './api'
@@ -88,6 +88,16 @@ export function ReviewDialog({
 
   const body: ReactNode = snapshot && (
     <Stack spacing={3}>
+      {Boolean(proposal?.photo_notes?.length) && (
+        <Alert severity="info">
+          <AlertTitle>{t.photoReviewNotes}</AlertTitle>
+          <Box component="ul" sx={{ m: 0, pl: 2 }}>
+            {proposal?.photo_notes?.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </Box>
+        </Alert>
+      )}
       {Boolean(proposal?.import_flags?.length) && (
         <Alert severity="warning">
           {t.importReviewFlags}: {proposal?.import_flags?.map((flag) => flag.item).join(', ')}

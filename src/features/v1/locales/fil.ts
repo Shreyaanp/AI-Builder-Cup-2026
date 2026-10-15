@@ -269,6 +269,7 @@ export const fil: Copy = {
   importNotes: 'Idikit ang tala ng benta o menu',
   importReviewNotes: 'Suriin ang mga tala',
   importReviewFlags: 'Suriing mabuti ang mga hindi tiyak na hilera',
+  photoReviewNotes: 'Mula sa iyong larawan — pakisuri',
   prepPlan: 'Plano ng paghahanda',
   prepTomorrow: 'Bukas',
   prepLoading: 'Inihahanda ang pagtataya…',
