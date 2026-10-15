@@ -1,0 +1,26 @@
+{
+ "label": "after",
+ "screen": "saved",
+ "project": "phone",
+ "theme": "dark",
+ "marks": 22,
+ "words": 29,
+ "busiest": 1,
+ "busyCells": 0,
+ "accentFamilies": 3,
+ "filledActions": 0,
+ "typeSizes": 6,
+ "weights": 4,
+ "spacingValues": 52,
+ "offGrid": 17,
+ "offValues": [
+  "2px×12",
+  "3px×4",
+  "1px×1"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "pageHeight": 844,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

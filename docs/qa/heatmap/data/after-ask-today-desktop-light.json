@@ -1,0 +1,26 @@
+{
+ "label": "after",
+ "screen": "ask-today",
+ "project": "desktop",
+ "theme": "light",
+ "marks": 43,
+ "words": 93,
+ "busiest": 2,
+ "busyCells": 0,
+ "accentFamilies": 1,
+ "filledActions": 1,
+ "typeSizes": 7,
+ "weights": 4,
+ "spacingValues": 112,
+ "offGrid": 17,
+ "offValues": [
+  "2px×8",
+  "6px×8",
+  "5px×1"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "pageHeight": 5680,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

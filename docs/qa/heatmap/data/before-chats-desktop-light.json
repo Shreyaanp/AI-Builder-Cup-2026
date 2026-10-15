@@ -1,0 +1,26 @@
+{
+ "label": "before",
+ "screen": "chats",
+ "project": "desktop",
+ "theme": "light",
+ "marks": 16,
+ "words": 19,
+ "busiest": 1,
+ "busyCells": 0,
+ "accentFamilies": 1,
+ "filledActions": 0,
+ "typeSizes": 5,
+ "weights": 4,
+ "spacingValues": 28,
+ "offGrid": 13,
+ "offValues": [
+  "2px×8",
+  "6px×4",
+  "1px×1"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "pageHeight": 1000,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

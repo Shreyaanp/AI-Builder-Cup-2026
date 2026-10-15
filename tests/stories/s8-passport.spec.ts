@@ -132,6 +132,8 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/`)
     await customer.getByRole('button', { name: 'Use my location' }).click()
     await customer.getByRole('button', { name: 'Explore my neighbourhood' }).click()
+    // Today's 7 is one tap away in the conversation.
+    await customer.getByRole('button', { name: /Today’s 7 near you/ }).click()
     const today = customer.getByRole('region', { name: /^Today near/ })
     const find = today.getByRole('listitem').filter({ hasText: shopName }).first()
     await expect(find).toBeVisible({ timeout: 20_000 })
@@ -140,13 +142,13 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     await evidence(customer, 1)
   })
   await test.step('1b · Ask matches the real offline menu at this location', async () => {
-    await customer.getByRole('search').getByRole('textbox').fill('Honey cake')
-    await customer.getByRole('button', { name: 'Search', exact: true }).click()
+    await customer.getByRole('textbox', { name: 'Ask about anything nearby' }).fill('Honey cake')
+    await customer.getByRole('button', { name: 'Send', exact: true }).click()
     const match = customer.getByRole('link', { name: new RegExp(shopName) })
     await expect(match).toContainText('Honey cake slice')
     await expect(match).toContainText('₹40.00')
     await evidence(customer, '1-search')
-    await customer.getByRole('button', { name: 'New search', exact: true }).click()
+    // The finds stay earlier in the same conversation.
   })
   await test.step('2 · a find opens its shop', async () => {
     const today = customer.getByRole('region', { name: /^Today near/ })

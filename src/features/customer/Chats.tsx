@@ -15,7 +15,7 @@ import {
 import { ArrowLeft, ArrowUp, Check, MessageCircle, RotateCcw, Sparkles, Store } from 'lucide-react'
 import { followInquiries } from '../../api/inquiryStream'
 import { useLocale } from '../../state/hooks'
-import { customerNavigate } from '../frontdoors/navigation'
+import { customerBack, customerNavigate } from '../frontdoors/navigation'
 import { PlaceImage } from '../frontdoors/PlaceImage'
 import { useCustomer } from './account'
 import { clockTime, useAccountCopy } from './copy'
@@ -153,7 +153,7 @@ export function ChatList() {
       ) : !chats ? (
         <Stack spacing={1}>
           {[0, 1, 2].map((n) => (
-            <Stack key={n} direction="row" spacing={2} sx={{ p: 1.5, alignItems: 'center' }}>
+            <Stack key={n} direction="row" spacing={2} sx={{ p: 2, alignItems: 'center' }}>
               <Skeleton variant="circular" width={52} height={52} />
               <Box sx={{ flex: 1 }}>
                 <Skeleton width="50%" />
@@ -199,7 +199,7 @@ export function ChatList() {
                     display: 'flex',
                     gap: 2,
                     alignItems: 'center',
-                    p: 1.5,
+                    p: 2,
                     borderRadius: '20px',
                     color: 'inherit',
                     textDecoration: 'none',
@@ -264,7 +264,7 @@ export function ChatList() {
                           sx={{
                             minWidth: 22,
                             height: 22,
-                            px: 0.75,
+                            px: 1,
                             borderRadius: 999,
                             bgcolor: roles.primary,
                             color: roles.onPrimary,
@@ -444,7 +444,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
       {/* Header: back, the shop (shared element from the list), live state. */}
       <Stack
         direction="row"
-        spacing={1.5}
+        spacing={2}
         sx={{
           position: 'sticky',
           top: 0,
@@ -461,8 +461,9 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
         <IconButton
           component="a"
           href="/explore/chats"
-          onClick={customerNavigate}
+          onClick={customerBack}
           aria-label={t.back}
+          sx={{ width: 48, height: 48 }}
         >
           <ArrowLeft size={22} />
         </IconButton>
@@ -474,8 +475,9 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: 1.5,
+              gap: 2,
               minWidth: 0,
+              minHeight: 48,
               color: 'inherit',
               textDecoration: 'none',
               borderRadius: 2,
@@ -631,7 +633,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
           position: 'sticky',
           bottom: 0,
           zIndex: 3,
-          px: 1.5,
+          px: 2,
           pt: 1,
           pb: 'calc(env(safe-area-inset-bottom) + 10px)',
           bgcolor: roles.surfaceContainer,
@@ -642,7 +644,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
           <Typography
             variant="bodyMedium"
             color="text.secondary"
-            sx={{ p: 1.5, textAlign: 'center' }}
+            sx={{ p: 2, textAlign: 'center' }}
           >
             {t.closed}
           </Typography>
@@ -673,7 +675,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
               }}
               sx={{
                 flex: 1,
-                px: 2.5,
+                px: 3,
                 py: 1.25,
                 minHeight: 48,
                 borderRadius: '24px',
@@ -691,7 +693,6 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
                 bgcolor: roles.primary,
                 color: roles.onPrimary,
                 transition: 'transform 200ms var(--c-spring), background-color 200ms',
-                transform: text.trim() ? 'scale(1)' : 'scale(0.9)',
                 '&:hover': { bgcolor: roles.primary },
                 '&.Mui-disabled': {
                   bgcolor: roles.surfaceContainerHighest,
@@ -733,7 +734,7 @@ function Bubble({
       {(ai || demo) && (
         <Stack
           direction="row"
-          spacing={0.75}
+          spacing={1}
           sx={{
             alignItems: 'center',
             mb: 0.5,

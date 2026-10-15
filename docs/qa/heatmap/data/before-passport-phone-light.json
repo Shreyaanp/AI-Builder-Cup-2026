@@ -1,0 +1,25 @@
+{
+ "label": "before",
+ "screen": "passport",
+ "project": "phone",
+ "theme": "light",
+ "marks": 24,
+ "words": 50,
+ "busiest": 2,
+ "busyCells": 0,
+ "accentFamilies": 2,
+ "filledActions": 0,
+ "typeSizes": 8,
+ "weights": 4,
+ "spacingValues": 54,
+ "offGrid": 10,
+ "offValues": [
+  "2px×8",
+  "6px×2"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "pageHeight": 2783,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

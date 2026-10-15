@@ -6,17 +6,20 @@ test.beforeEach(async ({ page }) => {
 
 test('Ask blank input, empty results, loading and failed request recovery', async ({ page }) => {
   await page.goto('/explore/')
-  const search = page.getByRole('search')
-  await expect(search.getByRole('button', { name: 'Search', exact: true })).toBeDisabled()
+  const send = page.getByRole('button', { name: 'Send', exact: true })
+  await expect(send).toBeDisabled()
   await page.route('**/discover/ask', (route) => route.fulfill({ status: 503, json: {} }))
-  await search.getByRole('textbox').fill('QA nonexistent shop')
-  await search.getByRole('button', { name: 'Search', exact: true }).click()
-  await expect(page.getByRole('alert').first()).toBeVisible()
+  await page.getByRole('textbox', { name: 'Ask about anything nearby' }).fill('QA nonexistent shop')
+  await send.click()
+  const failed = page.getByRole('alert').filter({ hasText: 'That didn’t work.' })
+  await expect(failed).toBeVisible()
   await page.unroute('**/discover/ask')
-  await search.getByRole('button', { name: 'Search', exact: true }).click()
-  await expect(search.getByRole('button', { name: 'Search', exact: true })).toBeEnabled({
-    timeout: 15_000,
-  })
+  await failed.getByRole('button', { name: 'Try again', exact: true }).click()
+  // The same turn recovers in place: the error is replaced by the answer.
+  await expect(failed).toHaveCount(0, { timeout: 15_000 })
+  await expect(page.getByRole('article', { name: 'QA nonexistent shop' })).toContainText(
+    /Here’s what I found|Nothing nearby matches/,
+  )
   await audit(page)
 })
 
