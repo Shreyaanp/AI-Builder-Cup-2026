@@ -58,7 +58,7 @@ export function HoldSheet({
       // The customer's own words first (one thread per shop: it continues an earlier chat).
       const chat = await api<ChatSummary>(`${base}/threads`, {
         method: 'POST',
-        body: JSON.stringify({ text: message, language: locale }),
+        body: JSON.stringify({ text: message, language: locale, instant_answer: false }),
       })
       const deal = await api<Deal>(`${base}/rescue/${encodeURIComponent(row.deal.id)}/hold`, {
         method: 'POST',

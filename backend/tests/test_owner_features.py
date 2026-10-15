@@ -261,8 +261,11 @@ def test_held_rescue_is_collected_at_the_counter_once_sold_out(setup):
     # Scanning the counter QR without a hold in chat collects nothing.
     assert client.post(collect, json=scan).json()["detail"] == "NO_HOLD"
     thread = client.post(
-        f"/api/v1/customer/shops/{bid}/threads", json={"text": "Could you hold them?"}
+        f"/api/v1/customer/shops/{bid}/threads",
+        json={"text": "Could you hold 6 Croissant?", "instant_answer": False},
     ).json()["thread"]
+    # A hold asks about the rescue price: no instant answer quoting the listed one.
+    assert [m["author"] for m in thread["messages"]] == ["customer"]
     held = client.post(
         f"/api/v1/customer/shops/{bid}/rescue/{deal['id']}/hold",
         json={"thread_id": thread["id"], "name": "Croissant", "qty": 6},

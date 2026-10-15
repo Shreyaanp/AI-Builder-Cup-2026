@@ -267,17 +267,18 @@ async def shop_side_replies(
 ) -> None:
     """A labelled AI instant answer when the shop's facts answer it; demo shops also reply."""
     try:
-        answer = await request.app.state.customer_answers.answer(
-            shop, Question(question=body.text, language=body.language)
-        )
-        missing = FIXTURE_COPY.get(body.language, FIXTURE_COPY["en"])[0]
-        if answer.answer and answer.answer != missing:
-            text = answer.answer
-            if answer.price is not None:
-                currency = shop.get("currency", "")
-                text += f" {money(answer.price, currency)}"
-                text += f" / {answer.unit}" if answer.unit else ""
-            await act(request, bid, entry, "ai_answer", text[:500])
+        if body.instant_answer:
+            answer = await request.app.state.customer_answers.answer(
+                shop, Question(question=body.text, language=body.language)
+            )
+            missing = FIXTURE_COPY.get(body.language, FIXTURE_COPY["en"])[0]
+            if answer.answer and answer.answer != missing:
+                text = answer.answer
+                if answer.price is not None:
+                    currency = shop.get("currency", "")
+                    text += f" {money(answer.price, currency)}"
+                    text += f" / {answer.unit}" if answer.unit else ""
+                await act(request, bid, entry, "ai_answer", text[:500])
     except HTTPException:
         pass  # The owner still has the question; no instant answer is fine.
     if not DEMO_ID.fullmatch(bid):

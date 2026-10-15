@@ -119,6 +119,7 @@ async function ownerSends(page: Page, mode: Mode) {
     await expect(brief.getByRole('button', { name: /^Slide 1 of / })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Rescue/ })).toContainText('Leftovers?')
     await expect(page.getByRole('button', { name: /^Asked nearby/ })).toBeVisible()
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
     await evidence(page, '1-owner')
   })
   await test.step('2 · Rescue: pick what is left, 30% off, until closing', async () => {
