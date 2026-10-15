@@ -16,15 +16,18 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
+import type { Theme } from '@mui/material'
 import {
   ArrowLeft,
   ArrowUp,
   Camera,
   Check,
+  Keyboard,
   Leaf,
   LocateFixed,
   Mic,
   MicOff,
+  PhoneOff,
   SkipForward,
   Sparkles,
   Store,
@@ -39,8 +42,8 @@ import { RateLimitError, streamCoach } from '../../api/stream'
 import type { CoachEvent } from '../../api/stream'
 import { useIdentity } from '../../auth/useIdentity'
 import { useLocale } from '../../state/hooks'
-import { chalkWrite, useChalkTimeline } from '../../design/chalkMotion'
-import { enterRise, HAND_FONT, shape } from '../../design/theme'
+import { useChalkTimeline } from '../../design/chalkMotion'
+import { enterRise, fieldFade, HAND_FONT, motion, shape } from '../../design/theme'
 import { discoverCopy } from '../discover/strings'
 import { HoursList } from '../shop/Hours'
 import { useShopCopy } from '../shop/strings'
@@ -56,6 +59,10 @@ import { useNewShopCopy } from './newShopCopy'
 import { factEntries } from './shopProgress'
 import { useCopy } from './strings'
 import { useVoice } from './useVoice'
+import type { VoiceProblem } from './useVoice'
+import { ShopFill, VoiceAlert, VoiceOrb } from './VoiceStage'
+import type { OrbPhase } from './VoiceStage'
+import { useVoiceModeCopy } from './voiceModeCopy'
 import { useWorkspace } from './workspaceContext'
 import type { GalleryPhoto } from './screens/CoachScreen'
 import { utter } from './phoneVoice'
@@ -185,17 +192,26 @@ export function NewShopFlow({
 function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | null) => void }) {
   const t = useCopy()
   const f = useNewShopCopy()
+  const v = useVoiceModeCopy()
   const ws = useWorkspace()
   const { api } = ws
   const identity = useIdentity()
   const language = useLocale()
   const roles = useTheme().material
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const wide = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'))
   const describe = useDescribe()
   const phase = ws.newShopPhase
 
   const [lines, setLines] = useState<Line[]>([])
   const [live, setLiveText] = useState('')
+  // What the owner is saying right now (live transcript), for the caption.
+  const [heard, setHeard] = useState('')
+  // The owner chose the keyboard; without a live voice session typing is the only way anyway.
+  const [typing, setTyping] = useState(false)
+  // A microphone the browser already blocks, found before any session opened.
+  const [preflight, setPreflight] = useState<VoiceProblem | null>(null)
+  const [orbPhase, setOrbPhase] = useState<OrbPhase>('connecting')
   const liveRef = useRef('')
   const [draft, setDraftState] = useState<Draft>({ business: null, products: [] })
   const draftRef = useRef(draft)
@@ -260,7 +276,13 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   }
   // No answer: the coach responds in the chat anyway (a suggestion or a default) and moves on.
   function onSilence() {
-    if (busyRef.current !== 'idle' || noteRef.current.trim() || document.hidden) {
+    // A paused mic is the owner taking a moment on purpose: no nudge then.
+    if (
+      busyRef.current !== 'idle' ||
+      noteRef.current.trim() ||
+      document.hidden ||
+      voiceRef.current?.micPaused
+    ) {
       armSilence()
       return
     }
@@ -326,6 +348,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   function commitCoach(finished: boolean) {
     const text = liveRef.current.trim()
     setLive('')
+    setHeard('')
     ownerTurnOpen.current = false
     if (text) add({ role: 'coach', text })
     if (!finished) return
@@ -342,6 +365,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     nudges.current = 0
     const open = ownerTurnOpen.current
     ownerTurnOpen.current = true
+    setHeard((current) => (open ? mergeTranscript(current, text) : text))
     setLines((items) => {
       const last = items.at(-1)
       if (open && last?.role === 'owner' && !last.photo)
@@ -370,12 +394,19 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   }
 
   const voice = useVoice(null, receive, draft, {
-    // The coach speaks first: the opening goes out as soon as the live session is ready.
-    onReady: () => {
-      if (startSent.current) return
-      startSent.current = true
-      setBusy('reply')
-      if (voiceRef.current?.sendText(f.start, draftRef.current)) pending.current = f.start
+    onReady: (resumed) => {
+      // A socket ended (time cap, network) and the same session is back: what the coach had
+      // started saying stays in the chat (that turn was answered).
+      if (resumed && liveRef.current.trim()) commitCoach(true)
+      // The coach speaks first: the opening goes out as soon as the live session is ready.
+      if (!startSent.current) {
+        startSent.current = true
+        setBusy('reply')
+        if (voiceRef.current?.sendText(f.start, draftRef.current)) pending.current = f.start
+        return
+      }
+      // A turn sent while the session was (re)connecting, or one it never answered, goes now.
+      if (pending.current) voiceRef.current?.sendText(pending.current, draftRef.current)
     },
   })
   useEffect(() => {
@@ -391,6 +422,12 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     clearSilence()
     setError('')
     if (voiceRef.current?.sendText(message, draftRef.current)) {
+      pending.current = message
+      setBusy('reply')
+      return
+    }
+    // Voice is coming back in the same session: the turn waits for it (one stream per session).
+    if (['connecting', 'reconnecting'].includes(voiceRef.current?.state ?? '')) {
       pending.current = message
       setBusy('reply')
       return
@@ -443,7 +480,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     ws.setNewShopPhase('chat')
     // A microphone the browser already blocks never opens: say how to allow it, carry on by text.
     const blocked = canVoice && (await micPermission()) === 'denied'
-    if (blocked) setError(t.voiceMicDenied)
+    if (blocked) setPreflight({ kind: 'mic-blocked' })
     if (canVoice && !blocked) {
       wantVoice.current = true
       void voice.start()
@@ -485,7 +522,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       silenceAudio()
       stopVoice()
     } else if (started.current && wantVoice.current && greeted.current) {
-      void voice.start(session.current)
+      void voice.start(session.current, true)
     }
   })
   useEffect(() => {
@@ -663,6 +700,59 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     }
   }
 
+  // The orb reads real levels every frame (refs only: no re-render per frame).
+  const ttsRef = useRef('')
+  useEffect(() => {
+    ttsRef.current = ttsText
+  }, [ttsText])
+  const sampleOrb = () => {
+    const live = voiceRef.current
+    const levels = live?.levels() ?? { input: 0, output: 0 }
+    return {
+      ...levels,
+      speaking: (live?.playbackRemaining() ?? 0) > 0.05 || Boolean(ttsRef.current),
+      awaiting: ownerTurnOpen.current || busyRef.current === 'reply',
+    }
+  }
+  const [alertKey, setAlertKey] = useState(0)
+  const focusComposer = useRef(false)
+  useEffect(() => {
+    if (!focusComposer.current) return
+    focusComposer.current = false
+    messageInput.current?.focus()
+  })
+  function dismissProblem() {
+    setPreflight(null)
+    voice.clearProblem()
+  }
+  function typeInstead() {
+    dismissProblem()
+    focusComposer.current = true
+    setTyping(true)
+  }
+  /** From an alert or "Talk instead": voice again, in the same conversation. */
+  async function retryVoice() {
+    dismissProblem()
+    setAlertKey((key) => key + 1)
+    if ((await micPermission()) === 'denied') {
+      setPreflight({ kind: 'mic-blocked' })
+      return
+    }
+    wantVoice.current = true
+    setTyping(false)
+    void voice.start(session.current, startSent.current)
+  }
+  function talkInstead() {
+    if (voice.state !== 'idle') setTyping(false)
+    else void retryVoice()
+  }
+  function endVoice() {
+    wantVoice.current = false
+    stopVoice()
+    setTyping(true)
+  }
+  const coral = useTheme().chalk.coral
+
   if (phase === 'hero') return <Hero onBegin={begin} onCancel={ws.cancelNewShop} />
   if (phase === 'review' && review)
     return (
@@ -677,39 +767,117 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       />
     )
 
-  const live_ = voice.state !== 'idle'
+  const voiceOn = voice.state !== 'idle'
+  const typingView = typing || !voiceOn
+  const problem = preflight ?? voice.problem
   const lastCoach = [...lines].reverse().find((line) => line.role === 'coach')
-  const caption = live || ttsText
-  const status =
-    busy === 'photo'
-      ? t.checkingPhoto
-      : location.busy
-        ? t.locating
-        : busy === 'reply'
-          ? t.speaking
-          : voice.state === 'recording'
-            ? f.listening
-            : voice.state === 'idle'
-              ? f.micOff
-              : t.connectionReconnecting
+  const caption = (live || ttsText).trim()
   const idle = busy === 'idle' && !location.busy
   const canSend = Boolean(note.trim()) && idle
+  const orbBase: OrbPhase =
+    voice.state === 'reconnecting'
+      ? 'reconnecting'
+      : voice.state === 'connecting'
+        ? 'connecting'
+        : !idle
+          ? 'thinking'
+          : !voiceOn
+            ? 'off'
+            : voice.micPaused
+              ? 'paused'
+              : 'listening'
+  const status =
+    orbPhase === 'thinking' && busy === 'photo'
+      ? t.checkingPhoto
+      : orbPhase === 'thinking' && location.busy
+        ? t.locating
+        : v[orbPhase === 'off' ? 'typing' : orbPhase]
+  const toggleMuted = () => {
+    mutedRef.current = !muted
+    if (!muted) stopSpeaking()
+    setMuted(!muted)
+  }
+  const roundButton = (size: number, bg: string, fg: string) => ({
+    width: size,
+    height: size,
+    bgcolor: bg,
+    color: fg,
+    transition: `transform 160ms ${motion.easing.standard}, background-color 300ms`,
+    '&:hover': { bgcolor: bg, filter: 'brightness(0.96)' },
+    '&:active': { transform: 'scale(0.94)' },
+  })
+  const quickActions = (
+    <Stack
+      direction="row"
+      sx={{ gap: 1, flexWrap: 'wrap', justifyContent: { md: 'center' }, flexShrink: 0 }}
+    >
+      <Chip
+        icon={<Camera size={18} />}
+        label={f.photo}
+        variant="outlined"
+        disabled={!idle}
+        onClick={() => photoInput.current?.click()}
+        sx={{ height: 40, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
+      />
+      <Chip
+        icon={location.busy ? <CircularProgress size={16} /> : <LocateFixed size={18} />}
+        label={location.busy ? t.locating : f.location}
+        variant="outlined"
+        disabled={!idle}
+        onClick={() => void shareLocation()}
+        sx={{ height: 40, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
+      />
+      <Chip
+        icon={<SkipForward size={18} />}
+        label={f.skip}
+        variant="outlined"
+        disabled={!idle || !lastCoach}
+        onClick={skip}
+        sx={{ height: 40, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
+      />
+    </Stack>
+  )
 
   return (
     <Box
+      data-view={typingView ? 'typing' : 'voice'}
       sx={{
-        display: 'flex',
-        flexDirection: 'column',
+        display: 'grid',
         height: '100dvh',
-        maxWidth: 760,
+        width: '100%',
+        maxWidth: 1440,
         mx: 'auto',
-        px: { xs: 4, sm: 6 },
+        px: { xs: 4, md: 6 },
+        columnGap: { md: 5, lg: 6 },
+        rowGap: { xs: 1.5, md: 3 },
         pt: 'env(safe-area-inset-top)',
         pb: 'calc(12px + env(safe-area-inset-bottom))',
+        gridTemplateColumns: {
+          xs: 'minmax(0, 1fr)',
+          md: 'minmax(0, 1fr) minmax(0, 1fr)',
+          lg: 'minmax(0, 1fr) minmax(0, 1.2fr) minmax(300px, 380px)',
+        },
+        // Phone: the conversation takes the height it needs and the stage the rest, so a short
+        // conversation leaves a big orb (no dead space) and a long one a compact orb.
+        gridTemplateRows: {
+          xs: typingView
+            ? 'auto auto minmax(0, 1fr) auto auto'
+            : 'auto auto minmax(0, max-content) minmax(184px, 1fr) auto',
+          md: 'auto auto minmax(0, 1fr) auto',
+          lg: 'auto minmax(0, 1fr) auto',
+        },
+        gridTemplateAreas: {
+          xs: '"header" "card" "log" "stage" "controls"',
+          md: '"header header" "card stage" "log stage" "log controls"',
+          lg: '"header header header" "log stage card" "log controls card"',
+        },
         ...enterRise,
       }}
     >
-      <Box component="header" sx={{ display: 'flex', alignItems: 'center', gap: 1, minHeight: 56 }}>
+      <Box
+        component="header"
+        sx={{ gridArea: 'header', display: 'flex', alignItems: 'center', gap: 1, minHeight: 56 }}
+      >
         <Tooltip title={t.cancel}>
           <IconButton aria-label={t.cancel} onClick={ws.cancelNewShop} sx={{ ml: -1 }}>
             <X size={22} />
@@ -718,253 +886,336 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         <Typography component="h1" variant="titleMedium" sx={{ flex: 1 }}>
           {t.newShopMode}
         </Typography>
-        <Tooltip title={muted ? f.unmute : f.mute}>
-          <IconButton
-            aria-label={muted ? f.unmute : f.mute}
-            onClick={() => {
-              mutedRef.current = !muted
-              if (!muted) stopSpeaking()
-              setMuted(!muted)
-            }}
-          >
-            {muted ? <VolumeX size={22} /> : <Volume2 size={22} />}
-          </IconButton>
-        </Tooltip>
       </Box>
 
-      <ShopSoFar draft={draft} busy={!idle} onReview={() => void openReview()} />
-
-      <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', py: 2 }}>
-        <Box role="log" aria-live="polite" aria-label={t.navCoach}>
-          <Stack component="ol" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0 }}>
-            {lines.map((line) => (
-              <ChatLine key={line.id} line={line} />
-            ))}
-            {busy === 'reply' && !live && (
-              <Box component="li" sx={{ pl: 6 }}>
-                <CircularProgress size={20} aria-label={t.speaking} />
-              </Box>
-            )}
-          </Stack>
-        </Box>
-        <div ref={end} />
+      <Box sx={{ gridArea: 'card', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <ShopFill draft={draft} busy={!idle} onReview={() => void openReview()} />
       </Box>
 
-      {/* Live captions: what the coach is saying right now, word by word when it streams. */}
+      {/* The whole conversation stays on screen and scrolls; the newest line is at the bottom. */}
       <Box
-        data-testid="captions"
-        aria-hidden="true"
         sx={{
-          minHeight: 56,
-          px: 2,
-          py: 1.5,
-          mb: 1.5,
-          borderRadius: `${shape.lg}px`,
-          bgcolor: roles.surfaceContainerHighest,
+          gridArea: 'log',
+          minHeight: 0,
           display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
+          flexDirection: 'column',
+          borderRadius: { md: `${shape.lg}px` },
+          bgcolor: { md: roles.surfaceContainerLow },
+          px: { md: 4 },
+          pt: { md: 3 },
         }}
       >
-        <Box
-          sx={{
-            width: 10,
-            height: 10,
-            flexShrink: 0,
-            borderRadius: '50%',
-            bgcolor: voice.state === 'recording' && !caption ? roles.primary : roles.outline,
-            '@keyframes micPulse': { '50%': { transform: 'scale(1.6)', opacity: 0.5 } },
-            animation:
-              voice.state === 'recording' && !caption
-                ? 'micPulse 1.4s ease-in-out infinite'
-                : 'none',
-          }}
-        />
         <Typography
-          variant={caption ? 'bodyLarge' : 'labelLarge'}
-          color={caption ? 'text.primary' : 'text.secondary'}
+          component="h2"
+          variant="labelLarge"
+          color="text.secondary"
+          sx={{ display: { xs: 'none', md: 'block' }, mb: 1 }}
+        >
+          {v.conversation}
+        </Typography>
+        {/* Focusable so the conversation scrolls from the keyboard as well. */}
+        <Box
+          role="region"
+          aria-label={v.conversation}
+          tabIndex={0}
           sx={{
-            overflowWrap: 'anywhere',
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            '&:focus-visible': { outline: `2px solid ${roles.primary}`, outlineOffset: 2 },
+            overscrollBehavior: 'contain',
+            // The newest lines sit next to where the owner answers, like any chat.
+            display: 'flex',
+            flexDirection: 'column',
+            '& > [role="log"]': { mt: 'auto' },
+            py: 2,
+            maskImage: 'linear-gradient(to bottom, transparent 0, #000 20px, #000 100%)',
           }}
         >
-          {caption ? (
-            <>
+          <Box role="log" aria-live="polite" aria-label={t.navCoach}>
+            <Stack component="ol" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0 }}>
+              {lines.map((line) => (
+                <ChatLine key={line.id} line={line} />
+              ))}
+              {busy === 'reply' && !live && !voiceOn && (
+                <Box component="li" sx={{ pl: 6 }}>
+                  <CircularProgress size={20} aria-label={t.speaking} />
+                </Box>
+              )}
+            </Stack>
+          </Box>
+          <div ref={end} />
+        </Box>
+      </Box>
+
+      {/* The stage: the coach as a chalk orb that reacts to who is talking, and live captions. */}
+      <Box
+        sx={{
+          gridArea: 'stage',
+          minHeight: 0,
+          containerType: { xs: typingView ? 'normal' : 'size', md: 'size' },
+          display: 'flex',
+          flexDirection: { xs: typingView ? 'row' : 'column', md: 'column' },
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: { xs: typingView ? 2 : 1, md: 4 },
+          py: { md: 4 },
+        }}
+      >
+        <VoiceOrb
+          base={orbBase}
+          sample={sampleOrb}
+          onPhase={setOrbPhase}
+          reducedMotion={reducedMotion}
+          size={
+            typingView
+              ? { xs: 44, md: 'clamp(140px, calc(100cqh - 180px), 260px)' }
+              : {
+                  xs: 'clamp(104px, calc(100cqh - 72px), 220px)',
+                  md: 'clamp(140px, calc(100cqh - 180px), 260px)',
+                }
+          }
+        />
+        <Box
+          data-testid="captions"
+          aria-hidden="true"
+          sx={{
+            minHeight: { xs: typingView ? 0 : 48, md: 96 },
+            flex: { xs: typingView ? 1 : 'none', md: 'none' },
+            maxWidth: 560,
+            minWidth: 0,
+            textAlign: { xs: typingView ? 'start' : 'center', md: 'center' },
+          }}
+        >
+          {/* Typing on a phone: the words are already in the chat; the stage says what happens. */}
+          {(caption || heard) && !(typingView && !wide) ? (
+            <Typography
+              key={caption ? 'coach' : 'owner'}
+              sx={{
+                typography: { xs: 'bodyLarge', md: 'titleLarge' },
+                color: caption ? 'text.primary' : 'text.secondary',
+                fontStyle: caption ? 'normal' : 'italic',
+                overflowWrap: 'anywhere',
+                display: '-webkit-box',
+                WebkitLineClamp: { xs: 2, md: 4 },
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                ...fieldFade,
+              }}
+            >
               <Box component="span" sx={visuallyHidden}>
                 {f.captions}:{' '}
               </Box>
-              {caption.trim()}
-            </>
+              {caption || heard.trim()}
+            </Typography>
           ) : (
-            status
+            <Typography
+              variant="labelLarge"
+              color="text.secondary"
+              key={status}
+              sx={{ display: 'block', ...fieldFade }}
+            >
+              {status}
+            </Typography>
           )}
-        </Typography>
+        </Box>
       </Box>
       <Typography role="status" sx={visuallyHidden}>
         {status}
       </Typography>
 
-      {error && (
-        <Alert severity="error" onClose={() => setError('')} sx={{ mb: 1.5 }}>
-          {error}
-        </Alert>
-      )}
-      {/* Why the mic stopped (blocked in the browser, connection lost, rate limit): never silent. */}
-      {!error && voice.error && voice.state === 'idle' && (
-        <Alert severity="warning" sx={{ mb: 1.5 }}>
-          {voice.error}
-        </Alert>
-      )}
-
-      <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
-        <Chip
-          icon={<Camera size={18} />}
-          label={f.photo}
-          variant="outlined"
-          disabled={!idle}
-          onClick={() => photoInput.current?.click()}
-          sx={{ height: 40, px: 0.5, '& .MuiChip-icon': { color: roles.primary } }}
-        />
-        <Chip
-          icon={location.busy ? <CircularProgress size={16} /> : <LocateFixed size={18} />}
-          label={location.busy ? t.locating : f.location}
-          variant="outlined"
-          disabled={!idle}
-          onClick={() => void shareLocation()}
-          sx={{ height: 40, px: 0.5, '& .MuiChip-icon': { color: roles.primary } }}
-        />
-        <Chip
-          icon={<SkipForward size={18} />}
-          label={f.skip}
-          variant="outlined"
-          disabled={!idle || !lastCoach}
-          onClick={skip}
-          sx={{ height: 40, px: 0.5, '& .MuiChip-icon': { color: roles.primary } }}
-        />
-      </Stack>
-      <input
-        ref={photoInput}
-        type="file"
-        accept={PHOTO_TYPES.join(',')}
-        hidden
-        aria-hidden="true"
-        tabIndex={-1}
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0]
-          if (file) void uploadPhoto(file)
-        }}
-      />
-
       <Box
-        component="form"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void submit()
-        }}
         sx={{
+          gridArea: 'controls',
           display: 'flex',
-          alignItems: 'flex-end',
-          gap: 0.5,
-          bgcolor: roles.surfaceContainerHigh,
-          borderRadius: `${shape.xl}px`,
-          p: 1,
-          '&:has(textarea:focus-visible)': { outline: `2px solid ${roles.primary}` },
+          flexDirection: 'column',
+          gap: 1.5,
+          minWidth: 0,
+          pb: { md: 2 },
         }}
       >
-        <Tooltip title={live_ ? f.micStop : f.micOn} disableTouchListener>
-          <IconButton
-            aria-label={live_ ? f.micStop : f.micOn}
-            aria-pressed={live_}
-            onClick={() => {
-              if (live_) {
-                wantVoice.current = false
-                stopVoice()
-              } else {
-                wantVoice.current = true
-                void voice.start(session.current)
-              }
-            }}
-            sx={
-              live_
-                ? {
-                    bgcolor: roles.primaryContainer,
-                    color: roles.onPrimaryContainer,
-                    '&:hover': { bgcolor: roles.primaryContainer },
-                  }
-                : undefined
-            }
-          >
-            {live_ ? <Mic size={22} /> : <MicOff size={22} />}
-          </IconButton>
-        </Tooltip>
-        <Box
-          component="textarea"
-          ref={messageInput}
-          rows={1}
-          name="message"
-          autoComplete="off"
-          value={note}
-          onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
-            setNote(event.target.value)
-            if (event.target.value.trim()) clearSilence()
-          }}
-          onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
-            if (
-              event.key === 'Enter' &&
-              !event.shiftKey &&
-              !event.nativeEvent.isComposing &&
-              !matchMedia('(pointer: coarse)').matches
-            ) {
-              event.preventDefault()
-              void submit()
-            }
-          }}
-          placeholder={t.messagePlaceholder}
-          aria-label={t.message}
-          maxLength={2000}
-          sx={{
-            flex: 1,
-            minWidth: 0,
-            boxSizing: 'border-box',
-            height: '48px',
-            maxHeight: 'calc(5 * 1.5rem + 24px)',
-            m: 0,
-            px: 1,
-            py: 1.5,
-            border: 0,
-            outline: 0,
-            resize: 'none',
-            overflowY: 'auto',
-            bgcolor: 'transparent',
-            color: 'text.primary',
-            font: 'inherit',
-            fontSize: '1rem',
-            lineHeight: '1.5rem',
-            '&::placeholder': {
-              color: 'text.secondary',
-              opacity: 1,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            },
+        {problem && (
+          <VoiceAlert
+            key={`${problem.kind}:${alertKey}`}
+            problem={problem}
+            onRetry={() => void retryVoice()}
+            onType={typeInstead}
+            onClose={dismissProblem}
+          />
+        )}
+        {error && (
+          <Alert severity="error" onClose={() => setError('')} closeText={v.close}>
+            {error}
+          </Alert>
+        )}
+        {quickActions}
+        <input
+          ref={photoInput}
+          type="file"
+          accept={PHOTO_TYPES.join(',')}
+          hidden
+          aria-hidden="true"
+          tabIndex={-1}
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0]
+            if (file) void uploadPhoto(file)
           }}
         />
-        <IconButton
-          type="submit"
-          onMouseDown={(event) => event.preventDefault()}
-          aria-label={t.send}
-          disabled={!canSend}
-          sx={{
-            bgcolor: canSend ? roles.primary : 'transparent',
-            color: canSend ? roles.onPrimary : undefined,
-            '&:hover': { bgcolor: canSend ? roles.primary : undefined },
-          }}
-        >
-          <ArrowUp size={22} />
-        </IconButton>
+        {typingView ? (
+          <Box
+            component="form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void submit()
+            }}
+            sx={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              gap: 0.5,
+              bgcolor: roles.surfaceContainerHigh,
+              borderRadius: `${shape.xl}px`,
+              p: 1,
+              '&:has(textarea:focus-visible)': { outline: `2px solid ${roles.primary}` },
+              ...fieldFade,
+            }}
+          >
+            {canVoice && (
+              <Tooltip title={v.talkInstead} disableTouchListener>
+                <IconButton aria-label={v.talkInstead} onClick={talkInstead}>
+                  <Mic size={22} />
+                </IconButton>
+              </Tooltip>
+            )}
+            <Box
+              component="textarea"
+              ref={messageInput}
+              rows={1}
+              name="message"
+              autoComplete="off"
+              value={note}
+              onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
+                setNote(event.target.value)
+                if (event.target.value.trim()) clearSilence()
+              }}
+              onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
+                if (
+                  event.key === 'Enter' &&
+                  !event.shiftKey &&
+                  !event.nativeEvent.isComposing &&
+                  !matchMedia('(pointer: coarse)').matches
+                ) {
+                  event.preventDefault()
+                  void submit()
+                }
+              }}
+              placeholder={t.messagePlaceholder}
+              aria-label={t.message}
+              maxLength={2000}
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                boxSizing: 'border-box',
+                height: '48px',
+                maxHeight: 'calc(5 * 1.5rem + 24px)',
+                m: 0,
+                px: 1,
+                py: 1.5,
+                border: 0,
+                outline: 0,
+                resize: 'none',
+                overflowY: 'auto',
+                bgcolor: 'transparent',
+                color: 'text.primary',
+                font: 'inherit',
+                fontSize: '1rem',
+                lineHeight: '1.5rem',
+                '&::placeholder': {
+                  color: 'text.secondary',
+                  opacity: 1,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                },
+              }}
+            />
+            <Tooltip title={muted ? f.unmute : f.mute} disableTouchListener>
+              <IconButton aria-label={muted ? f.unmute : f.mute} onClick={toggleMuted}>
+                {muted ? <VolumeX size={22} /> : <Volume2 size={22} />}
+              </IconButton>
+            </Tooltip>
+            <IconButton
+              type="submit"
+              onMouseDown={(event) => event.preventDefault()}
+              aria-label={t.send}
+              disabled={!canSend}
+              sx={{
+                bgcolor: canSend ? roles.primary : 'transparent',
+                color: canSend ? roles.onPrimary : undefined,
+                '&:hover': { bgcolor: canSend ? roles.primary : undefined },
+              }}
+            >
+              <ArrowUp size={22} />
+            </IconButton>
+          </Box>
+        ) : (
+          // Voice mode controls, like a call: keyboard, the mic (always on unless paused), the
+          // coach's voice, and end voice (the conversation carries on by typing).
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: { xs: 3, md: 4 },
+              py: 1,
+              ...fieldFade,
+            }}
+          >
+            <Tooltip title={v.typeInstead}>
+              <IconButton
+                aria-label={v.typeInstead}
+                onClick={typeInstead}
+                sx={roundButton(56, roles.surfaceContainerHigh, roles.onSurface)}
+              >
+                <Keyboard size={24} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={v.pauseMic}>
+              <IconButton
+                aria-label={v.pauseMic}
+                aria-pressed={voice.micPaused}
+                onClick={() => voice.setMicPaused(!voice.micPaused)}
+                sx={
+                  voice.micPaused
+                    ? {
+                        ...roundButton(72, roles.surface, roles.onSurface),
+                        border: `2px solid ${roles.outline}`,
+                      }
+                    : roundButton(72, roles.primary, roles.onPrimary)
+                }
+              >
+                {voice.micPaused ? <MicOff size={30} /> : <Mic size={30} />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={muted ? f.unmute : f.mute}>
+              <IconButton
+                aria-label={muted ? f.unmute : f.mute}
+                onClick={toggleMuted}
+                sx={roundButton(56, roles.surfaceContainerHigh, roles.onSurface)}
+              >
+                {muted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={v.endVoice}>
+              <IconButton
+                aria-label={v.endVoice}
+                onClick={endVoice}
+                sx={roundButton(56, coral.container, coral.onContainer)}
+              >
+                <PhoneOff size={24} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
       </Box>
     </Box>
   )
@@ -1103,92 +1354,6 @@ function Hero({ onBegin, onCancel }: { onBegin: () => void; onCancel: () => void
           {f.begin}
         </Button>
       </Stack>
-    </Box>
-  )
-}
-
-/** The shop, filling in while the owner talks. */
-function ShopSoFar({
-  draft,
-  busy,
-  onReview,
-}: {
-  draft: Draft
-  busy: boolean
-  onReview: () => void
-}) {
-  const t = useCopy()
-  const f = useNewShopCopy()
-  const roles = useTheme().material
-  const business = draft.business
-  const details = [
-    business?.category,
-    draft.products.length ? t.itemCount(draft.products.length) : null,
-    business && business.lat != null ? readablePlace(business, f) : business?.location,
-    business?.hours,
-    ...(business ? factEntries(business, t).map((entry) => entry.value) : []),
-  ].filter((value): value is string => Boolean(value))
-  return (
-    <Box
-      component="section"
-      aria-label={f.soFar}
-      data-testid="shop-so-far"
-      sx={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        columnGap: 3,
-        rowGap: 2,
-        p: 3,
-        borderRadius: `${shape.lg}px`,
-        bgcolor: roles.surfaceContainer,
-        border: `1.5px dashed ${roles.outlineVariant}`,
-      }}
-    >
-      <Avatar
-        sx={{ bgcolor: roles.primaryContainer, color: roles.onPrimaryContainer }}
-        aria-hidden="true"
-      >
-        <Store size={22} />
-      </Avatar>
-      <Box sx={{ flex: '1 1 180px', minWidth: 0 }}>
-        <Typography variant="labelMedium" color="text.secondary">
-          {f.soFar}
-        </Typography>
-        <Typography
-          key={business?.name}
-          component="p"
-          sx={{
-            fontFamily: HAND_FONT,
-            fontSize: { xs: '1.6rem', sm: '1.85rem' },
-            lineHeight: 1.15,
-            overflowWrap: 'anywhere',
-            color: business?.name ? 'text.primary' : 'text.secondary',
-            ...(business?.name ? chalkWrite : {}),
-          }}
-        >
-          {business?.name || f.unnamed}
-        </Typography>
-        {details.length > 0 && (
-          <Typography
-            variant="bodySmall"
-            color="text.secondary"
-            sx={{ mt: 0.5, overflowWrap: 'anywhere' }}
-          >
-            {details.join(' · ')}
-          </Typography>
-        )}
-      </Box>
-      {business?.name && (
-        <Button
-          variant="contained"
-          disabled={busy}
-          onClick={onReview}
-          sx={{ flexShrink: 0, ml: 'auto' }}
-        >
-          {f.review}
-        </Button>
-      )}
     </Box>
   )
 }
