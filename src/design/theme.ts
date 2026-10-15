@@ -1,9 +1,14 @@
-import { alpha, createTheme } from '@mui/material/styles'
+import { alpha, createTheme, darken } from '@mui/material/styles'
 import type { CSSProperties } from 'react'
-import generatedRoles from './material-roles.generated.json'
 import { FONT_STACK } from '../i18n/fonts'
+import { chalkDust, chalkRoles, chalkTones } from './chalkboard'
+import type { ChalkTone, FeatureKey } from './chalkboard'
 
 export type Appearance = 'light' | 'dark'
+/** Owner tools stay calm; the customer app gets the full chalk energy (owner decision). */
+export type Audience = 'owner' | 'customer'
+/** Handwritten chalk accent: short headings, prices and notes only. */
+export const HAND_FONT = `"Caveat", ${FONT_STACK}`
 /** The user's choice; `system` follows prefers-color-scheme. */
 export type ColorMode = Appearance | 'system'
 export const layout = { pageWidth: 1160, edge: 4, cardPadding: 6, gap: 4, target: 48 }
@@ -25,6 +30,9 @@ export const motion = {
     emphasizedAccelerate: 'cubic-bezier(0.3, 0, 0.8, 0.15)',
     standard: 'cubic-bezier(0.2, 0, 0, 1)',
     spring: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    // Rewards: a little past the target, then settle; and a fast-in stamp landing.
+    overshoot: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+    thud: 'cubic-bezier(0.7, 0, 0.84, 0)',
   },
   duration: { short: 200, medium: 300, enter: 400, exit: 200 },
 }
@@ -47,9 +55,9 @@ export const fieldFade = {
   animation: `fieldFade ${motion.duration.medium}ms ${motion.easing.emphasizedDecelerate} both`,
 }
 
-// Generated with Google's official color utilities; screens consume semantic roles.
+// Chalkboard roles (kraft-paper light, chalkboard dark); screens consume semantic roles.
 export function materialRoles(mode: Appearance) {
-  return generatedRoles[mode]
+  return chalkRoles[mode]
 }
 export type MaterialRoles = ReturnType<typeof materialRoles>
 
@@ -71,9 +79,13 @@ type TypeRole =
 declare module '@mui/material/styles' {
   interface Theme {
     material: MaterialRoles
+    chalk: Record<FeatureKey, ChalkTone>
+    audience: Audience
   }
   interface ThemeOptions {
     material?: MaterialRoles
+    chalk?: Record<FeatureKey, ChalkTone>
+    audience?: Audience
   }
   // MUI's documented pattern for custom typography variants is interface merging.
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -100,13 +112,13 @@ function role(size: number, line: number, weight: number, tracking: number): Typ
 
 /** M3 type scale (baseline). Google Sans Flex, Roboto fallback; CJK/Thai/Tamil script fonts load per locale. */
 const typeScale: Record<TypeRole, TypeStyle> = {
-  displaySmall: role(36, 44, 400, 0),
-  headlineLarge: role(32, 40, 400, 0),
-  headlineMedium: role(28, 36, 400, 0),
-  headlineSmall: role(24, 32, 400, 0),
-  titleLarge: role(22, 28, 400, 0),
-  titleMedium: role(16, 24, 500, 0.15),
-  titleSmall: role(14, 20, 500, 0.1),
+  displaySmall: role(36, 44, 700, -0.5),
+  headlineLarge: role(32, 40, 700, -0.25),
+  headlineMedium: role(28, 36, 650, 0),
+  headlineSmall: role(24, 32, 650, 0),
+  titleLarge: role(22, 28, 600, 0),
+  titleMedium: role(16, 24, 600, 0.15),
+  titleSmall: role(14, 20, 600, 0.1),
   bodyLarge: role(16, 24, 400, 0.5),
   bodyMedium: role(14, 20, 400, 0.25),
   bodySmall: role(12, 16, 400, 0.4),
@@ -130,9 +142,18 @@ const responsiveScale = Object.fromEntries(
   ]),
 ) as Record<TypeRole, CSSProperties>
 
-export function nivaTheme(mode: Appearance, roles = materialRoles(mode)) {
+export function nivaTheme(
+  mode: Appearance,
+  roles: MaterialRoles = materialRoles(mode),
+  audience: Audience = 'owner',
+) {
+  // Chunky press-down buttons (Direction 2 touch): a hard bottom edge that sinks on press.
+  const depth = audience === 'customer' ? 4 : 2
+  const edge = darken(roles.primary, mode === 'dark' ? 0.45 : 0.4)
   return createTheme({
     material: roles,
+    chalk: chalkTones[mode],
+    audience,
     spacing: 4,
     shape: { borderRadius: shape.lg },
     transitions: {
@@ -203,7 +224,13 @@ export function nivaTheme(mode: Appearance, roles = materialRoles(mode)) {
       MuiCssBaseline: {
         styleOverrides: {
           html: { colorScheme: mode },
-          body: { margin: 0, minWidth: 280, backgroundColor: roles.surface },
+          body: {
+            margin: 0,
+            minWidth: 280,
+            backgroundColor: roles.surface,
+            // A faint chalk grain on the board; paper stays clean.
+            ...(mode === 'dark' && { backgroundImage: chalkDust }),
+          },
           '*, *::before, *::after': { boxSizing: 'border-box' },
           'button, a, input, textarea': { WebkitTapHighlightColor: 'transparent' },
           ':focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: '2px' },
@@ -239,10 +266,17 @@ export function nivaTheme(mode: Appearance, roles = materialRoles(mode)) {
             minHeight: layout.target,
             borderRadius: shape.full,
             paddingInline: 24,
+            fontWeight: 600,
             transition:
-              'background-color 150ms ease, box-shadow 150ms ease, border-color 150ms ease',
+              'background-color 150ms ease, box-shadow 120ms ease, border-color 150ms ease, transform 120ms ease',
           },
-          outlined: { borderColor: roles.outline },
+          contained: {
+            boxShadow: `0 ${depth}px 0 ${edge}`,
+            '&:hover': { boxShadow: `0 ${depth}px 0 ${edge}` },
+            '&:active': { transform: `translateY(${depth - 1}px)`, boxShadow: `0 1px 0 ${edge}` },
+            '&.Mui-disabled': { boxShadow: 'none' },
+          },
+          outlined: { borderColor: roles.outline, borderWidth: audience === 'customer' ? 2 : 1 },
         },
       },
       MuiIconButton: {
@@ -259,10 +293,14 @@ export function nivaTheme(mode: Appearance, roles = materialRoles(mode)) {
       },
       MuiCard: {
         defaultProps: { elevation: 0 },
-        styleOverrides: { root: { borderRadius: shape.md, backgroundImage: 'none' } },
+        styleOverrides: { root: { borderRadius: shape.lgIncreased, backgroundImage: 'none' } },
       },
       MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
-      MuiChip: { styleOverrides: { root: { borderRadius: shape.sm } } },
+      MuiChip: {
+        styleOverrides: {
+          root: { borderRadius: audience === 'customer' ? shape.full : shape.sm, fontWeight: 500 },
+        },
+      },
       MuiDialog: {
         defaultProps: { fullWidth: true, maxWidth: 'sm' },
         styleOverrides: {
