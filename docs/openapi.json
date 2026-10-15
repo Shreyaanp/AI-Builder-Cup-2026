@@ -3950,13 +3950,13 @@
     "/api/v1/public/passport/check": {
       "post": {
         "summary": "Check",
-        "description": "Signed-out scan: the same checks, a signed receipt for the phone, nothing stored.",
+        "description": "Signed-out scan: the same checks, a signed receipt for the phone, nothing stored. The\nphone's earlier receipts are replayed first, so a second scan today is not a first visit.",
         "operationId": "check_api_v1_public_passport_check_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/StampInput"
+                "$ref": "#/components/schemas/PublicStampInput"
               }
             }
           },
@@ -7942,6 +7942,75 @@
           "kind"
         ],
         "title": "ProposalRequest"
+      },
+      "PublicStampInput": {
+        "properties": {
+          "shop_id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Shop Id"
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Key",
+            "default": ""
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lng": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lng"
+          },
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "receipts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 60,
+            "title": "Receipts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "shop_id"
+        ],
+        "title": "PublicStampInput"
       },
       "QrKey": {
         "properties": {

@@ -110,6 +110,12 @@ class StampInput(BaseModel):
     accuracy: float | None = Field(default=None, ge=0, le=100_000, allow_inf_nan=False)
 
 
+class PublicStampInput(StampInput):
+    # This phone's earlier receipts: a signed-out scan is judged against them (already today,
+    # first visit, daily cap, level), though nothing is stored.
+    receipts: list[str] = Field(default_factory=list, max_length=MAX_RECEIPTS)
+
+
 class RescueStampInput(StampInput):
     rescue_id: str = Field(min_length=1, max_length=160)
 
@@ -505,11 +511,15 @@ async def stamp(body: StampInput, request: Request) -> StampResult:
 
 
 @router.post("/public/passport/check", response_model=StampResult)
-async def check(body: StampInput, request: Request) -> StampResult:
-    """Signed-out scan: the same checks, a signed receipt for the phone, nothing stored."""
+async def check(body: PublicStampInput, request: Request) -> StampResult:
+    """Signed-out scan: the same checks, a signed receipt for the phone, nothing stored. The
+    phone's earlier receipts are replayed first, so a second scan today is not a first visit."""
     await enforce_limits(request, [("passport", client_ip(request))], anonymous=True)
     shop, visit = await verified_visit(request, body, None)
-    outcome = apply_visit(PassportState(), visit)
+    state = PassportState()
+    for _, earlier in await receipt_visits(request, body.receipts):
+        apply_visit(state, earlier)
+    outcome = apply_visit(state, visit)
     receipt = None
     if outcome.verdict == "stamped":
         receipt = receipt_signer(request).dumps(

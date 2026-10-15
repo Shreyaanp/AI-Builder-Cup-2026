@@ -9,7 +9,7 @@ import { useCustomer } from '../customer/account'
 import { SignInSheet } from '../customer/SignIn'
 import { Sticker } from './art'
 import { fill, requirementText, usePassportCopy } from './copy'
-import { keepReceipt, setPassport } from './store'
+import { keepReceipt, receipts, setPassport } from './store'
 import type { Outcome, StampResult } from './store'
 
 type Phase =
@@ -70,6 +70,8 @@ export function StampMoment({
           lng: position.coords.longitude,
           accuracy: Math.round(position.coords.accuracy),
         }),
+        // Signed out, the server judges the scan against this phone's earlier stamps.
+        ...(!signedIn && { receipts: receipts() }),
       })
       const path = signedIn ? '/api/v1/customer/passport/stamps' : '/api/v1/public/passport/check'
       try {
