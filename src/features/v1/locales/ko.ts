@@ -1,6 +1,20 @@
 import type { Copy } from '../strings'
 
 export const ko: Copy = {
+  newShopMode: '새 가게',
+  newShopReady: '새 가게가 준비됐어요',
+  newShopReadyBody: '새 가게로 전환됐어요. 준비되면 고객 페이지를 공유하세요.',
+  newShopContinue: '가게 관리 계속하기',
+  useCurrentLocation: '현재 위치 사용',
+  locationReason:
+    '가게에 계신가요? 핀을 놓기 위해 위치 접근을 허용해 주세요. 저장 전에 검토할 수 있어요.',
+  locating: '현재 위치를 찾는 중…',
+  locationDenied: '위치 접근이 거부됐어요. 주소를 입력하거나 GPS 정보가 있는 사진을 사용하세요.',
+  locationFailed:
+    '위치를 찾을 수 없어요. 다시 시도하거나 주소 또는 GPS 정보가 있는 사진을 사용하세요.',
+  yourLocation: '내 위치',
+  description: '설명',
+  locationAccuracy: (m: string) => `오차 ${m} m 이내`,
   installApp: '앱 설치',
   installIos: 'Safari에서 공유 → 홈 화면에 추가를 누른 다음 추가를 누르세요.',
   installUnavailable:
@@ -240,7 +254,6 @@ export const ko: Copy = {
   notProvided: '미입력',
   stock: '재고',
   shopEmptyTitle: '가게를 추가해 볼까요',
-  shopEmptyBody: '간판 사진으로 시작하거나 직접 내용을 입력해 주세요.',
   addShop: '가게 정보 추가',
   startPhoto: '사진으로 시작',
   editDetails: '정보 수정',

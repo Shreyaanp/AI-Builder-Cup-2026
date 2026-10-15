@@ -32,6 +32,11 @@ let pending: Entry | null = null
 // of back() then pushState(): a Back pressed in between can no longer leave the app.
 let handoff = 0
 const listeners = new Set<() => void>()
+const handledPops = new WeakSet<Event>()
+/** Routes ignore a pop already consumed by an overlay (including its cleanup). */
+export function overlayHandled(event: PopStateEvent) {
+  return handledPops.has(event)
+}
 const emit = () => listeners.forEach((listener) => listener())
 
 function pushState(entry: Entry) {
@@ -39,14 +44,16 @@ function pushState(entry: Entry) {
   history.pushState({ ...(history.state as object | null), overlay: entry.id }, '')
 }
 
-function onPopState() {
+function onPopState(event: PopStateEvent) {
   if (ignore > 0) {
+    handledPops.add(event)
     ignore -= 1
     if (ignore === 0) queued.splice(0).forEach(pushState)
     return
   }
   const top = stack.pop()
   if (!top) return
+  handledPops.add(event)
   if (top.dirty()) {
     // The entry is gone from history; "Keep editing" puts it back.
     pending = top
@@ -62,7 +69,7 @@ let listening = false
 function listen() {
   if (listening) return
   listening = true
-  window.addEventListener('popstate', onPopState)
+  window.addEventListener('popstate', onPopState, true)
   window.addEventListener('beforeunload', onBeforeUnload)
 }
 
@@ -102,6 +109,9 @@ function release(id: number) {
     return
   }
   stack.splice(index, 1)
+  // A route may already have been pushed above this overlay. Never pop that new page
+  // while cleaning up a hidden coach's draft guard or an older sheet.
+  if ((history.state as { overlay?: number } | null)?.overlay !== id) return
   handoff += 1
   queueMicrotask(flushReleases)
 }

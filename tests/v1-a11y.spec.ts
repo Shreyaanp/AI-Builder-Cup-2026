@@ -1,3 +1,4 @@
+import { openNewShopReview, createShopFromReview } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -31,12 +32,9 @@ async function open(page: Page) {
 }
 
 async function addShop(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Add my shop' }).click()
-  await page.getByLabel('Shop name').fill(name)
-  await page.getByRole('button', { name: 'Review', exact: true }).click()
-  const review = page.getByRole('dialog', { name: 'Check before saving' })
-  await expect(review).toContainText('Nothing is published to Google')
-  await review.getByRole('button', { name: 'Confirm and save' }).click()
+  await openNewShopReview(page, `name: ${name}`)
+  await expect(page.getByTestId('new-shop-review')).toContainText('Nothing is published to Google')
+  await createShopFromReview(page)
   await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
 }
 
