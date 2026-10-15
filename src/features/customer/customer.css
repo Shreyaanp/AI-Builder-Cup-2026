@@ -1,0 +1,152 @@
+/* Customer motion: transform/opacity only (compositor-friendly), emphasized easing,
+   finite loops except while something is genuinely in progress. Reduced motion: static. */
+:root {
+  --c-ease: cubic-bezier(0.2, 0, 0, 1);
+  --c-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.c-rise {
+  animation: c-rise 420ms var(--c-ease) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+@keyframes c-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Sent bubble: grows out of the composer corner. */
+.c-send {
+  transform-origin: bottom right;
+  animation: c-send 360ms var(--c-spring) both;
+}
+@keyframes c-send {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Received bubble: from the left edge. */
+.c-receive {
+  transform-origin: bottom left;
+  animation: c-receive 380ms var(--c-ease) both;
+}
+@keyframes c-receive {
+  from {
+    opacity: 0;
+    transform: translateX(-12px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.c-typing span {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 2px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.4;
+  animation: c-dot 1.1s ease-in-out infinite;
+}
+.c-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.c-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes c-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+
+.c-pop {
+  animation: c-pop 420ms var(--c-spring) both;
+}
+@keyframes c-pop {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Follow: the heart/check bounces once when it changes. */
+.c-bounce {
+  animation: c-bounce 460ms var(--c-spring) both;
+}
+@keyframes c-bounce {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Navigation bar active indicator: the pill grows from the icon centre. */
+.c-indicator {
+  transition:
+    transform 260ms var(--c-ease),
+    opacity 200ms var(--c-ease);
+  transform: scaleX(0.4);
+  opacity: 0;
+}
+[aria-current='page'] .c-indicator {
+  transform: scaleX(1);
+  opacity: 1;
+}
+
+.c-press {
+  transition: transform 160ms var(--c-ease);
+}
+.c-press:active {
+  transform: scale(0.97);
+}
+
+::view-transition-group(chat-avatar) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--c-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-rise,
+  .c-send,
+  .c-receive,
+  .c-pop,
+  .c-bounce {
+    animation: none !important;
+  }
+  .c-typing span {
+    animation: none;
+    opacity: 0.7;
+  }
+  .c-indicator,
+  .c-press {
+    transition: none;
+  }
+}
