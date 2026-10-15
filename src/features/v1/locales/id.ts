@@ -265,6 +265,7 @@ export const id: Copy = {
   importNotes: 'Tempel catatan penjualan atau menu',
   importReviewNotes: 'Tinjau catatan',
   importReviewFlags: 'Periksa baris yang tidak pasti dengan teliti',
+  photoReviewNotes: 'Dari foto Anda — mohon periksa',
   prepPlan: 'Rencana persiapan',
   prepTomorrow: 'Besok',
   prepLoading: 'Menyiapkan prakiraan…',

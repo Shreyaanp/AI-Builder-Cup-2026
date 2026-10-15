@@ -2,7 +2,6 @@ import { expect, test } from '@playwright/test'
 import {
   closeSheet,
   confirm,
-  gap,
   gpsBoardPath,
   image,
   liveOnly,
@@ -57,8 +56,9 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     await expect(review).toContainText('Offline Fixture Tea Stall')
     await expect(review).toContainText('Chai')
     await expect(review).toContainText('₹15.00 / cup')
-    gap('S1/4: photo fixture disclosure is in the coach log behind the review sheet')
-    await expect(page.getByRole('log', { includeHidden: true })).toContainText(
+    // The decision surface itself says what the reader was unsure of, or that it was a fixture.
+    await expect(review.getByRole('alert')).toContainText('From your photo — please check')
+    await expect(review.getByRole('alert')).toContainText(
       'Offline fixture: no model read this photo.',
     )
     await shot(page, 1, 4)

@@ -486,7 +486,9 @@ function CoachScreen({
           },
         ].slice(-40),
       )
-      if (result.proposal) review(result.proposal)
+      // The review sheet carries the reader's doubts, so the decision surface discloses them.
+      if (result.proposal)
+        review({ ...result.proposal, photo_notes: result.extraction.uncertain.slice(0, 5) })
     } catch (cause) {
       const code = cause instanceof ApiError ? cause.code : ''
       setError(

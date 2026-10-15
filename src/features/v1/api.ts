@@ -53,6 +53,8 @@ export interface Product {
 }
 export interface Proposal {
   import_flags?: { row: number; item: string; reasons: string[] }[]
+  /** Client-only: what the photo reader was unsure of (or that it was a fixture), shown in review. */
+  photo_notes?: string[]
   id: string
   digest: string
   expires: number
