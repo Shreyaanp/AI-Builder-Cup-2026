@@ -224,6 +224,8 @@ async def follow_threads(
             await asyncio.wait_for(changed.wait(), timeout=15)
         except TimeoutError:
             pass
+        if thread_signals(request).is_evicted(changed):
+            return  # A newer stream from the same person replaced this one.
         # Clear before reading so a write during the read cannot lose its wakeup.
         changed.clear()
         try:

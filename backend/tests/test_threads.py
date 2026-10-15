@@ -340,8 +340,19 @@ async def test_sse_customer_owner_delivery_resume_disconnect_and_erasure(app) ->
 def test_stream_subscription_capacity_and_idempotent_cleanup() -> None:
     signals = ThreadSignals()
     listeners = [signals.subscribe("shop", "principal") for _ in range(4)]
+    # A fifth stream from the same person replaces a stale one instead of locking them out.
+    newest = signals.subscribe("shop", "principal")
+    evicted = [event for event in listeners if signals.is_evicted(event)]
+    assert len(evicted) == 1 and evicted[0].is_set()
+    assert not signals.is_evicted(newest) and len(signals.watchers[("shop", "principal")]) == 4
+    signals.release("shop", "principal", evicted[0])
+    listeners = [event for event in listeners if event is not evicted[0]] + [newest]
+    # The whole process still has a hard cap across people.
+    crowd = ThreadSignals()
+    for index in range(128):
+        crowd.subscribe("shop", f"person-{index}")
     with pytest.raises(HTTPException) as busy:
-        signals.subscribe("shop", "principal")
+        crowd.subscribe("shop", "one-more")
     assert busy.value.status_code == 429
     signals.wake("other")
     assert not any(event.is_set() for event in listeners)

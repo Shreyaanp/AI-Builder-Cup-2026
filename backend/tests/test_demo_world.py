@@ -54,3 +54,24 @@ def test_world_seeds_labelled_demo_shops_once_per_area(tmp_path: Path) -> None:
         ask = client.post("/api/v1/discover/ask", json={"q": "croissant", **INDIRANAGAR}).json()
         best = [p["id"] for g in ask["groups"] for p in g["places"]]
         assert any(bid in receipt["shop_ids"] for bid in best)
+
+
+def test_model_output_is_trimmed_and_thin_shops_are_dropped() -> None:
+    from app.demo_world import _ItemSpec, _ShopSpec, _WorldSpec, from_spec
+
+    item = _ItemSpec(name="Filter coffee", price=60, unit="cup", category="Drinks")
+    full = _ShopSpec(
+        name="A" * 90,
+        category="Cafe",
+        opens="07:00",
+        closes="21:00",
+        halal=False,
+        vegetarian_options=True,
+        locally_made=True,
+        story="S" * 300,
+        items=[item] * 4,
+    )
+    thin = full.model_copy(update={"items": [item]})
+    world = from_spec(_WorldSpec(shops=[full, thin, full, full, full]))
+    assert len(world.shops) == 4
+    assert len(world.shops[0].name) == 60 and len(world.shops[0].story) == 120

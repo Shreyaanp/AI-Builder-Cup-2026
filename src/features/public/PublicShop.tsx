@@ -28,7 +28,8 @@ import { Sheet } from '../v1/Sheet'
 import type { ShopFacts } from '../v1/api'
 import { en as ownerEnglish } from '../v1/strings'
 import { translations as ownerTranslations } from '../v1/locales'
-import { shape } from '../../design/theme'
+import { HAND_FONT, shape } from '../../design/theme'
+import { chalkWrite } from '../../design/chalkMotion'
 import { ShopChat } from './ShopChat'
 import { FollowButton } from '../customer/FollowButton'
 import { Tips } from '../customer/Tips'
@@ -394,7 +395,8 @@ export default function PublicShop({ id }: { id: string }) {
     ...publicTranslations[locale],
     ...(locale === 'en' ? {} : customerTranslations[locale]),
   }
-  const roles = useTheme().material
+  const theme = useTheme()
+  const roles = theme.material
   const [shop, setShop] = useState<PublicShopData | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
   // Data shown may be older than the last attempt when a refresh failed (network/server).
@@ -534,12 +536,18 @@ export default function PublicShop({ id }: { id: string }) {
     )
 
   const currency = shop.currency ?? 'SGD'
+  // The public API names owner-written facts `custom` (owner records use `custom_facts`).
+  const custom =
+    (shop.facts as (ShopFacts & { custom?: ShopFacts['custom_facts'] }) | undefined)?.custom ??
+    shop.facts?.custom_facts ??
+    []
   const chips = [
     ...factChips(shop.facts ?? {}, t),
     // Type-specific facts the owner confirmed (e.g. a salon's walk-ins), label: value.
-    ...(shop.facts?.custom_facts ?? []).map((fact) => `${fact.label}: ${fact.value}`),
+    ...custom.filter((fact) => fact.key !== 'story').map((fact) => `${fact.label}: ${fact.value}`),
   ]
   // Available items first; sold-out items stay listed (customers ask about them) but last.
+  const story = custom.find((fact) => fact.key === 'story')?.value
   const menu = [...shop.products].sort((a, b) => Number(b.available) - Number(a.available))
   const openLabel = shop.open_now == null ? null : shop.open_now ? discovery.open : discovery.closed
   // Demo shops' numbers are fictional; never offer to call or message them.
@@ -653,33 +661,46 @@ export default function PublicShop({ id }: { id: string }) {
           </Stack>
         </Box>
       </Stack>
-      <Box sx={{ mt: 2 }}>
-        <FollowButton id={id} name={shop.name} />
-      </Box>
+      {/* One line a neighbour would say about the place, in chalk. */}
+      {story && (
+        <Typography
+          sx={{
+            ...chalkWrite,
+            mt: 2,
+            fontFamily: HAND_FONT,
+            fontSize: '1.375rem',
+            lineHeight: 1.25,
+            fontWeight: 600,
+            color: theme.chalk.sunflower.main,
+          }}
+        >
+          “{story}”
+        </Typography>
+      )}
       {/* Sample shops say so in words, not only with a chip. */}
       {shop.demo && (
         <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1.5 }}>
           {t.demoShopNote}
         </Typography>
       )}
-      {actions.length > 0 && (
-        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-          {actions.map((action) => (
-            <Button
-              key={action.label}
-              variant="outlined"
-              size="small"
-              startIcon={action.icon}
-              href={action.href}
-              target={action.href.startsWith('http') ? '_blank' : undefined}
-              rel={action.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-              sx={{ minHeight: 40, flex: { xs: 1, sm: 'none' } }}
-            >
-              {action.label}
-            </Button>
-          ))}
-        </Stack>
-      )}
+      {/* Follow and how to get there, side by side; wraps on narrow phones. */}
+      <Stack direction="row" sx={{ mt: 2, gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+        <FollowButton id={id} name={shop.name} />
+        {actions.map((action) => (
+          <Button
+            key={action.label}
+            variant="outlined"
+            size="small"
+            startIcon={action.icon}
+            href={action.href}
+            target={action.href.startsWith('http') ? '_blank' : undefined}
+            rel={action.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+            sx={{ minHeight: 40 }}
+          >
+            {action.label}
+          </Button>
+        ))}
+      </Stack>
       <Box sx={{ mt: 2 }}>
         <HoursList hours={shop.weekly_hours} />
       </Box>
