@@ -94,6 +94,14 @@ honest demo labels, reduced motion, axe clean, a story walkthrough test, live on
 
 ## Status log (newest first)
 
+- 15 Oct (evening): all QA findings fixed except Q1 (won't fix) and merged. Chalkboard theme
+  foundation on main (41f65fb): src/design/chalkboard.ts (roles + theme.chalk feature tones:
+  sunflower passport/rewards, coral rescue, mint fresh/local, sky chats, lilac AI insights),
+  chalkMotion.ts (useChalkTimeline GSAP gated for reduced motion; dealIn, chalkWrite, stampThud,
+  popIn), Caveat hand font (HAND_FONT), chunky buttons, light default first load. In progress:
+  Codex → owner backends (radar, rescue, morning brief); account 2 → passport + Today's 7 backend
+  then UI on the theme. Next for me: per-screen polish (customer shop page, owner tiles), owner UI
+  for radar/rescue/brief once Codex lands, enable DEMO_WORLD_ENABLED in production.
 - 15 Oct (afternoon): research done: docs/research/visual-motion.md (+ 3 mockups, recommends
   Direction 1 Chalkboard with Direction 2 buttons/stickers), customer.md (Today's 7 feed, passport
   rules, rescue, generator), owner-supplier.md (radar k-anonymity, rescue, brief, price check, group
