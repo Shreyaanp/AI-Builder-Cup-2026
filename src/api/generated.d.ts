@@ -1404,7 +1404,8 @@ export interface paths {
         put?: never;
         /**
          * Check
-         * @description Signed-out scan: the same checks, a signed receipt for the phone, nothing stored.
+         * @description Signed-out scan: the same checks, a signed receipt for the phone, nothing stored. The
+         *     phone's earlier receipts are replayed first, so a second scan today is not a first visit.
          */
         post: operations["check_api_v1_public_passport_check_post"];
         delete?: never;
@@ -2932,6 +2933,24 @@ export interface components {
             business?: components["schemas"]["BusinessFields"] | null;
             /** Products */
             products?: components["schemas"]["ProductFields"][];
+        };
+        /** PublicStampInput */
+        PublicStampInput: {
+            /** Shop Id */
+            shop_id: string;
+            /**
+             * Key
+             * @default
+             */
+            key: string;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
+            /** Accuracy */
+            accuracy?: number | null;
+            /** Receipts */
+            receipts?: string[];
         };
         /** QrKey */
         QrKey: {
@@ -6580,7 +6599,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["StampInput"];
+                "application/json": components["schemas"]["PublicStampInput"];
             };
         };
         responses: {

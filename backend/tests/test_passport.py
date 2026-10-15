@@ -413,6 +413,11 @@ def test_signed_out_receipts_preview_and_merge_once(client: TestClient) -> None:
         "/api/v1/public/passport/check", json={"shop_id": DEMO, "key": body["key"]}
     ).json()
     assert no_location["outcome"]["verdict"] == "stamped" and no_location["receipt"]  # demo shop
+    # With the phone's receipts, a second scan today is judged honestly: no new receipt.
+    again = client.post(
+        "/api/v1/public/passport/check", json={**body, "receipts": [receipt, "forged"]}
+    ).json()
+    assert again["outcome"]["verdict"] == "already_today" and again["receipt"] is None
     preview = client.post(
         "/api/v1/public/passport/preview",
         json={"receipts": [receipt, "forged"], "cards": {"demo-katong-tailor": 2}},
