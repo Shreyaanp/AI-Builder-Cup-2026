@@ -45,6 +45,7 @@ import { CloseDayTile } from '../closeday/CloseDay'
 import { OrdersTile } from '../sourcing/Orders'
 import { Sheet } from './Sheet'
 import { ShopQr } from './ShopQr'
+import { OwnerPerks } from '../passport/games/OwnerPerks'
 import { useUnread } from './useUnread'
 import { openNow, readiness } from './shopProgress'
 import { useCopy } from './strings'
@@ -696,6 +697,9 @@ function CustomerPage() {
           </Box>
         </>
       )}
+      <Box sx={{ mt: 6 }}>
+        <OwnerPerks />
+      </Box>
     </Box>
   )
 }

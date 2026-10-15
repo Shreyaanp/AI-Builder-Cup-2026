@@ -28,6 +28,7 @@ from .passport import (
     StampRecord,
     WonPerk,
     is_food,
+    makes_own,
     member_id,
     monday_of,
     streak,
@@ -211,7 +212,7 @@ def shop_in_set(set_id: str, shop: dict[str, Any]) -> bool:
     if set_id == "chai_trail":
         return any(word in category for word in TEA_WORDS)
     if set_id == "locally_made":
-        return bool(shop.get("locally_made"))
+        return makes_own(shop)
     if set_id == "night_market":
         return is_food(category)
     return False

@@ -10,8 +10,9 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { Check, X } from 'lucide-react'
-import { shape } from '../../design/theme'
+import { Check, Star, X } from 'lucide-react'
+import { HAND_FONT, shape } from '../../design/theme'
+import { stampThud } from '../../design/chalkMotion'
 import { useLocale } from '../../state/hooks'
 import { useRewardCopy } from './strings'
 import { celebrations, claimReward, useRewards, visit } from './storage'
@@ -19,6 +20,68 @@ import { useCopy } from '../v1/strings'
 import { useCustomer } from '../customer/account'
 import { setPassport, usePassport } from '../passport/store'
 import type { PassportView } from '../passport/store'
+import { fill } from '../passport/copy'
+import { useGamesCopy } from '../passport/games/copy'
+import { HowItWorks } from '../passport/games/HowItWorks'
+
+/** Endowed progress: 2 welcome stamps printed on every card, on top of the owner's target. */
+const WELCOME = 2
+
+/** This customer's stamps on a shop's card: the server's (signed in) or this phone's. */
+function useCardCount(shop: string, target: number) {
+  const { data } = useRewards()
+  const account = useCustomer()
+  const { view } = usePassport(null)
+  const signedIn = account.status === 'signed-in'
+  const server = signedIn ? view?.shops.find((card) => card.id === shop) : undefined
+  return {
+    signedIn,
+    count: Math.min(signedIn ? (server?.card ?? 0) : (data.shops[shop]?.stamps ?? 0), target),
+    claimed: signedIn ? (server?.claimed ?? 0) : (data.shops[shop]?.claimed ?? 0),
+  }
+}
+
+function validTarget(needed: number) {
+  return Number.isInteger(needed) && needed >= 3 && needed <= 20 ? needed : 8
+}
+
+/**
+ * The card's progress near the top of the shop page, so the stamp card is never buried under
+ * the menu: one tap jumps to the full card.
+ */
+export function StampPeek({ shop, needed = 8 }: { shop: string; needed?: number }) {
+  const t = useRewardCopy()
+  const locale = useLocale()
+  const gold = useTheme().chalk.sunflower
+  const target = validTarget(needed)
+  const { count } = useCardCount(shop, target)
+  const number = (value: number) => new Intl.NumberFormat(locale).format(value)
+  return (
+    <Button
+      href="#stamp-card"
+      size="small"
+      startIcon={<Star size={16} fill="currentColor" />}
+      onClick={(event) => {
+        event.preventDefault()
+        document.getElementById('stamp-card')?.scrollIntoView({
+          behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+          block: 'start',
+        })
+      }}
+      sx={{
+        minHeight: 40,
+        bgcolor: gold.container,
+        color: gold.onContainer,
+        '&:hover': { bgcolor: gold.container },
+      }}
+    >
+      {t.stampCard} ·{' '}
+      {t.progress
+        .replace('{count}', number(count + WELCOME))
+        .replace('{total}', number(target + WELCOME))}
+    </Button>
+  )
+}
 
 export function StampCard({
   shop,
@@ -33,14 +96,17 @@ export function StampCard({
   reward?: string
   needed?: number
 }) {
-  const { data, unavailable } = useRewards()
+  const { unavailable } = useRewards()
   const t = useRewardCopy()
+  const g = useGamesCopy()
   const common = useCopy()
   const locale = useLocale()
-  const roles = useTheme().material
+  const theme = useTheme()
+  const roles = theme.material
+  const gold = theme.chalk.sunflower
   const [redeeming, setRedeeming] = useState(false)
   const [failedClaim, setFailedClaim] = useState(false)
-  const target = Number.isInteger(needed) && needed >= 3 && needed <= 20 ? needed : 8
+  const target = validTarget(needed)
   useEffect(() => {
     visit(shop, new URLSearchParams(location.search).get('source') === 'qr', timezone, target)
   }, [shop, timezone, target])
@@ -52,12 +118,7 @@ export function StampCard({
   }, [redeeming])
   // Signed in: the server's card (verified visits); signed out: this phone's card.
   const account = useCustomer()
-  const { view } = usePassport(null)
-  const server =
-    account.status === 'signed-in' ? view?.shops.find((card) => card.id === shop) : undefined
-  const signedIn = account.status === 'signed-in'
-  const count = Math.min(signedIn ? (server?.card ?? 0) : (data.shops[shop]?.stamps ?? 0), target)
-  const claimed = signedIn ? (server?.claimed ?? 0) : (data.shops[shop]?.claimed ?? 0)
+  const { signedIn, count, claimed } = useCardCount(shop, target)
   const full = count >= target
   const number = (value: number) => new Intl.NumberFormat(locale).format(value)
   const close = () => {
@@ -67,19 +128,27 @@ export function StampCard({
   return (
     <Box
       component="section"
+      id="stamp-card"
       aria-label={t.stampCard}
       sx={{
         mt: 3,
         p: 4,
-        borderRadius: `${shape.lg}px`,
-        bgcolor: roles.surfaceContainer,
-        color: roles.onSurface,
-        border: `1px solid ${roles.outlineVariant}`,
+        scrollMarginTop: 72,
+        borderRadius: `${shape.xl}px`,
+        bgcolor: gold.container,
+        color: gold.onContainer,
+        boxShadow: `0 0 0 2px ${gold.main} inset`,
       }}
     >
-      <Typography component="h2" variant="titleMedium">
-        {t.stampCard}
-      </Typography>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+        <Typography
+          component="h2"
+          sx={{ flex: 1, fontFamily: HAND_FONT, fontWeight: 700, fontSize: 30, lineHeight: 1.1 }}
+        >
+          {t.stampCard}
+        </Typography>
+        <HowItWorks game="card" />
+      </Stack>
       <Typography
         component="p"
         variant="headlineSmall"
@@ -101,9 +170,35 @@ export function StampCard({
       <Stack
         direction="row"
         role="img"
-        aria-label={t.progress.replace('{count}', number(count)).replace('{total}', number(target))}
-        sx={{ flexWrap: 'wrap', gap: 2, my: 3 }}
+        aria-label={t.progress
+          .replace('{count}', number(count + WELCOME))
+          .replace('{total}', number(target + WELCOME))}
+        sx={{ flexWrap: 'wrap', gap: 1.5, my: 3 }}
       >
+        {/* The 2 welcome stamps come first, already pressed, in gold. */}
+        {Array.from({ length: WELCOME }, (_, index) => (
+          <Box
+            key={`welcome-${index}`}
+            component="span"
+            aria-hidden="true"
+            data-welcome="true"
+            title={g.welcomeStamp}
+            sx={{
+              width: 36,
+              height: 36,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '50%',
+              bgcolor: gold.main,
+              color: gold.onMain,
+              transform: `rotate(${index ? 8 : -10}deg)`,
+              boxShadow: '0 0 0 2px #FFFFFF',
+            }}
+          >
+            <Star size={18} fill="currentColor" />
+          </Box>
+        ))}
         {Array.from({ length: target }, (_, index) => (
           <Box
             key={index}
@@ -111,23 +206,27 @@ export function StampCard({
             aria-hidden="true"
             data-filled={index < count}
             sx={{
-              width: 28,
-              height: 28,
+              width: 36,
+              height: 36,
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: '50%',
-              border: `1px solid ${roles.outline}`,
-              bgcolor: index < count ? roles.primary : roles.surface,
-              color: index < count ? roles.onPrimary : roles.onSurfaceVariant,
+              border: index < count ? 'none' : `2px dashed ${gold.main}`,
+              bgcolor: index < count ? theme.chalk.mint.main : roles.surface,
+              color: index < count ? theme.chalk.mint.onMain : roles.onSurface,
               typography: 'labelMedium',
+              ...(index === count - 1 && celebrations.has(shop) ? stampThud : {}),
             }}
           >
-            {index < count ? <Check size={18} /> : number(index + 1)}
+            {index < count ? <Check size={18} /> : number(index + WELCOME + 1)}
           </Box>
         ))}
       </Stack>
-      <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
+      <Typography variant="labelLarge" component="p" sx={{ mb: 1 }}>
+        {fill(g.welcomeStamps, { n: number(WELCOME) })}
+      </Typography>
+      <Typography variant="titleMedium" sx={{ overflowWrap: 'anywhere', fontWeight: 700 }}>
         {reward
           ? full
             ? reward
@@ -135,7 +234,7 @@ export function StampCard({
           : t.noReward}
       </Typography>
       {/* One short line; the full "not proof of purchase" note is on the claim screen. */}
-      <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
+      <Typography variant="bodySmall" sx={{ mt: 1 }}>
         {t.qr} {signedIn ? t.account : t.phone}
       </Typography>
       {claimed > 0 && (
