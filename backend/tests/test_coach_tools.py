@@ -91,6 +91,7 @@ def test_context_exposes_only_readable_shop_and_major_unit_products(saved_shop, 
             "payment_methods",
             "delivery",
             "vegetarian_options",
+            "locally_made",
             "preorders",
             "busy_hours",
         ],
@@ -411,6 +412,7 @@ def test_customer_fact_is_a_reviewed_edit_that_keeps_everything_else(saved_shop)
     assert context["customer_facts_to_ask"] == [
         "delivery",
         "vegetarian_options",
+        "locally_made",
         "preorders",
         "busy_hours",
     ]
