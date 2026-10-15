@@ -726,42 +726,46 @@ function Leaderboard({
           </Stack>
         )}
         {signedIn && board && (
-          <Box component="ol" sx={{ listStyle: 'none', p: 0, m: 0, mt: 3 }}>
+          <Box sx={{ mt: 3 }}>
             {board.rows.length === 0 && (
               <Typography variant="bodyMedium" color="text.secondary">
                 {t.boardEmpty}
               </Typography>
             )}
-            {board.rows.slice(0, 10).map((row) => (
-              <Stack
-                component="li"
-                key={`${row.rank}-${row.name}`}
-                direction="row"
-                sx={{
-                  py: 1.5,
-                  gap: 2,
-                  alignItems: 'center',
-                  borderBottom: `1px solid ${roles.outlineVariant}`,
-                  fontWeight: row.you ? 700 : 400,
-                }}
-              >
-                <Typography
-                  sx={{ width: 32, fontFamily: HAND_FONT, fontSize: 22, fontWeight: 700 }}
-                >
-                  {new Intl.NumberFormat(locale).format(row.rank)}
-                </Typography>
-                <Typography variant="bodyLarge" sx={{ flex: 1, fontWeight: 'inherit' }}>
-                  {row.name}
-                </Typography>
-                {row.demo && <Chip size="small" label={t.demo} />}
-                <Typography variant="labelLarge" color="text.secondary">
-                  {t[row.level]}
-                </Typography>
-                <Typography variant="labelLarge" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {new Intl.NumberFormat(locale).format(row.points)}
-                </Typography>
-              </Stack>
-            ))}
+            {board.rows.length > 0 && (
+              <Box component="ol" sx={{ listStyle: 'none', p: 0, m: 0 }}>
+                {board.rows.slice(0, 10).map((row) => (
+                  <Stack
+                    component="li"
+                    key={`${row.rank}-${row.name}`}
+                    direction="row"
+                    sx={{
+                      py: 1.5,
+                      gap: 2,
+                      alignItems: 'center',
+                      borderBottom: `1px solid ${roles.outlineVariant}`,
+                      fontWeight: row.you ? 700 : 400,
+                    }}
+                  >
+                    <Typography
+                      sx={{ width: 32, fontFamily: HAND_FONT, fontSize: 22, fontWeight: 700 }}
+                    >
+                      {new Intl.NumberFormat(locale).format(row.rank)}
+                    </Typography>
+                    <Typography variant="bodyLarge" sx={{ flex: 1, fontWeight: 'inherit' }}>
+                      {row.name}
+                    </Typography>
+                    {row.demo && <Chip size="small" label={t.demo} />}
+                    <Typography variant="labelLarge" color="text.secondary">
+                      {t[row.level]}
+                    </Typography>
+                    <Typography variant="labelLarge" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {new Intl.NumberFormat(locale).format(row.points)}
+                    </Typography>
+                  </Stack>
+                ))}
+              </Box>
+            )}
             {!joined && (
               <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
                 {t.boardHidden}
