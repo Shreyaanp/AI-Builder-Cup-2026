@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
@@ -19,6 +20,7 @@ from app.merchant import (
     ProposalRequest,
 )
 from app.settings import Settings
+from tests.test_merchant_store import EMULATOR
 from tests.test_merchant_store import store as store
 from tests.test_photos import join
 
@@ -61,8 +63,18 @@ def create_shop(
     return service.commit(uid, proposal["id"], proposal["digest"])["business_id"]
 
 
-@pytest.fixture
-def app(tmp_path: Path):
+@pytest.fixture(params=["sqlite", "firestore"])
+def app(request: pytest.FixtureRequest, tmp_path: Path):
+    """Customer routes on SQLite (local) and the explicitly local Firestore emulator."""
+    hosted: dict = {}
+    if request.param == "firestore":
+        if not EMULATOR:
+            pytest.skip("Requires the explicitly local Firestore emulator; never a cloud database.")
+        hosted = {
+            "merchant_backend": "firestore",
+            "google_cloud_project": "demo-ogoogle-local",
+            "firestore_namespace": "ogoogle_ai_test_" + uuid4().hex,
+        }
     return create_app(
         Settings(
             app_env="test",
@@ -71,9 +83,19 @@ def app(tmp_path: Path):
             merchant_database=str(tmp_path / "merchant.sqlite3"),
             recall_path=str(tmp_path / "recall"),
             _env_file=None,
+            **hosted,
         ),
         InMemorySessionService(),
     )
+
+
+def owner_of(service: MerchantRepository, bid: str) -> str:
+    """The owning account's UID, read straight from either backend."""
+    if isinstance(service, MerchantStore):
+        with service.connect() as db:
+            row = db.execute("SELECT uid FROM memberships WHERE business_id=?", (bid,)).fetchone()
+        return str(row[0])
+    return str(service.businesses.document(bid).get().to_dict()["owners"][0])
 
 
 def test_inquiries_are_private_owned_independent_and_erased(store: MerchantRepository) -> None:
@@ -270,10 +292,7 @@ def test_inquiry_routes_consent_capability_and_owner_scope(app) -> None:
         client.cookies.update(owner_cookies)
         listed = client.get(owner_path).json()
         assert len(listed) == 2 and listed[0]["contact"] == body["contact"]
-        with app.state.merchant.connect() as db:
-            uid = db.execute("SELECT uid FROM memberships WHERE business_id=?", (bid,)).fetchone()[
-                0
-            ]
+        uid = owner_of(app.state.merchant, bid)
         app.state.merchant.record_consent(uid, "2020-01-01")
         assert client.get(owner_path).status_code == 200
         assert client.post(done_path).status_code == 428
