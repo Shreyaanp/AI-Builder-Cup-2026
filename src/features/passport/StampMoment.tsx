@@ -343,6 +343,7 @@ function Celebration({
         {shop.name}
       </Typography>
       <Typography
+        component="p"
         className="stamp-line stamp-points"
         variant="headlineSmall"
         sx={{ mt: 2, color: theme.chalk.sunflower.main, fontVariantNumeric: 'tabular-nums' }}

@@ -17,8 +17,11 @@ export function ShopStamp({
 }) {
   const t = usePassportCopy()
   const [scan] = useState(() => {
+    // Only a signed QR opens the moment. A bare `?source=qr` (posters printed before the key)
+    // still counts on this phone's card, as it always did, without a check that must fail.
     const params = new URLSearchParams(location.search)
-    return params.get('source') === 'qr' ? (params.get('k') ?? '') : null
+    const key = params.get('k')
+    return params.get('source') === 'qr' && key ? key : null
   })
   const [key, setKey] = useState(scan ?? '')
   const [open, setOpen] = useState(scan !== null)
