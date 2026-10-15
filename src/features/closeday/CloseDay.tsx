@@ -64,7 +64,7 @@ export function CloseDayTile() {
   return (
     <>
       <Tile
-        span="full"
+        span={2}
         tour="closeday"
         icon={<Moon size={20} />}
         label={t.title}
