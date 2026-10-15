@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Divider,
   IconButton,
   Stack,
@@ -16,7 +17,8 @@ import { History, UserRound } from 'lucide-react'
 import { Sheet } from '../v1/Sheet'
 import { useCustomer } from './account'
 import type { Profile } from './types'
-import { accountCopy as t } from './copy'
+import { useLocale } from '../../state/hooks'
+import { useAccountCopy } from './copy'
 import { SignInButton } from './SignIn'
 import { preferenceChips } from './preferences'
 import type { PreferenceKey } from './preferences'
@@ -25,6 +27,7 @@ import type { PreferenceKey } from './preferences'
 export function ProfileButton() {
   const roles = useTheme().material
   const account = useCustomer()
+  const t = useAccountCopy()
   const [open, setOpen] = useState(false)
   return (
     <>
@@ -73,12 +76,21 @@ export function ProfileButton() {
 export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const roles = useTheme().material
   const account = useCustomer()
-  const [notice, setNotice] = useState('')
+  const t = useAccountCopy()
+  const locale = useLocale()
+  // A deletion the server refused is said out loud, with a way to try it again.
+  const [notice, setNotice] = useState<{
+    kind: 'success' | 'error'
+    text: string
+    retry?: () => void
+  } | null>(null)
+  const [clearing, setClearing] = useState(false)
   const profile = account.profile
-  const chips = preferenceChips(profile)
-  async function remove(key: PreferenceKey) {
+  const chips = preferenceChips(profile, t, locale)
+  async function remove(key: PreferenceKey, label: string) {
     if (!profile) return
     const reset = { vegetarian: false, halal: false, budget: null, language: '' }[key]
+    setNotice(null)
     try {
       account.setProfile(
         await account.api<Profile>('/api/v1/customer/preferences', {
@@ -87,17 +99,26 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
         }),
       )
     } catch {
-      /* The chip stays; nothing changed. */
+      setNotice({
+        kind: 'error',
+        text: t.removeFailed.replace('{item}', label),
+        retry: () => void remove(key, label),
+      })
     }
   }
   async function clearAll() {
+    if (clearing) return
+    setClearing(true)
+    setNotice(null)
     try {
       account.setProfile(
         await account.api<Profile>('/api/v1/customer/preferences', { method: 'DELETE' }),
       )
-      setNotice(t.cleared)
+      setNotice({ kind: 'success', text: t.cleared })
     } catch {
-      /* Unchanged. */
+      setNotice({ kind: 'error', text: t.clearFailed, retry: () => void clearAll() })
+    } finally {
+      setClearing(false)
     }
   }
   return (
@@ -142,7 +163,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                       label={chip.label}
                       className="c-rise"
                       style={{ ['--i' as string]: index }}
-                      onDelete={() => void remove(chip.key)}
+                      onDelete={() => void remove(chip.key, chip.label)}
                       sx={{ bgcolor: roles.secondaryContainer, color: roles.onSecondaryContainer }}
                     />
                   </li>
@@ -173,13 +194,31 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
               </Stack>
             </Box>
           )}
-          <Box role="status">{notice && <Alert severity="success">{notice}</Alert>}</Box>
+          <Box role="status">
+            {notice?.kind === 'success' && <Alert severity="success">{notice.text}</Alert>}
+          </Box>
+          {notice?.kind === 'error' && (
+            <Alert
+              severity="error"
+              role="alert"
+              action={
+                notice.retry && (
+                  <Button color="inherit" size="small" onClick={notice.retry}>
+                    {t.retry}
+                  </Button>
+                )
+              }
+            >
+              {notice.text}
+            </Alert>
+          )}
           <Button
             variant="outlined"
             onClick={() => void clearAll()}
-            disabled={chips.length === 0 && !(profile?.searches.length ?? 0)}
+            disabled={clearing || (chips.length === 0 && !(profile?.searches.length ?? 0))}
+            startIcon={clearing ? <CircularProgress size={16} color="inherit" /> : undefined}
           >
-            {t.clear}
+            {clearing ? t.clearing : t.clear}
           </Button>
           <Button
             color="error"

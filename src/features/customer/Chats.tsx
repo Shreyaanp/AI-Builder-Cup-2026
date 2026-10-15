@@ -18,7 +18,8 @@ import { useLocale } from '../../state/hooks'
 import { customerNavigate } from '../frontdoors/navigation'
 import { PlaceImage } from '../frontdoors/PlaceImage'
 import { useCustomer } from './account'
-import { accountCopy as t, clockTime } from './copy'
+import { clockTime, useAccountCopy } from './copy'
+import type { AccountCopy } from './copy'
 import { SignInButton } from './SignIn'
 import { chatPath, reduceMotion } from './paths'
 import './customer.css'
@@ -55,7 +56,7 @@ export function ShopAvatar({
   )
 }
 
-function preview(message: Message | undefined) {
+function preview(message: Message | undefined, t: AccountCopy) {
   if (!message) return ''
   const prefix =
     message.author === 'customer'
@@ -73,6 +74,7 @@ export function ChatList() {
   const roles = useTheme().material
   const locale = useLocale()
   const account = useCustomer()
+  const t = useAccountCopy()
   const [chats, setChats] = useState<ChatSummary[] | null>(null)
   const [failed, setFailed] = useState(false)
   const signedIn = account.status === 'signed-in'
@@ -90,7 +92,7 @@ export function ChatList() {
   )
   useEffect(() => {
     document.title = `${t.chatsTitle} · Chalkboard`
-  }, [])
+  }, [t])
   useEffect(() => {
     if (!signedIn) return
     void load()
@@ -136,12 +138,17 @@ export function ChatList() {
         <Alert
           severity="error"
           action={
-            <Button color="inherit" onClick={() => void load()}>
-              <RotateCcw size={16} />
+            <Button
+              color="inherit"
+              size="small"
+              startIcon={<RotateCcw size={16} />}
+              onClick={() => void load()}
+            >
+              {t.retry}
             </Button>
           }
         >
-          {t.chatLost}
+          {t.chatsFailed}
         </Alert>
       ) : !chats ? (
         <Stack spacing={1}>
@@ -246,7 +253,7 @@ export function ChatList() {
                           fontWeight: chat.unread ? 600 : 400,
                         }}
                       >
-                        {preview(last)}
+                        {preview(last, t)}
                       </Typography>
                       {chat.unread > 0 && (
                         <Box
@@ -289,6 +296,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
   const roles = useTheme().material
   const locale = useLocale()
   const account = useCustomer()
+  const t = useAccountCopy()
   const [summary, setSummary] = useState<ChatSummary | null>(null)
   const [lost, setLost] = useState(false)
   const [live, setLive] = useState(true)
@@ -317,7 +325,6 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
       .then((value) => {
         setInitial((current) => current ?? new Set(value.thread.messages.map((m) => m.id)))
         apply(value)
-        document.title = `${value.shop.name} · ${t.chatsTitle}`
       })
       .catch((error: unknown) => {
         if (!abort.signal.aborted && error instanceof Error && error.message === '404')
@@ -342,6 +349,10 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
     })
     return () => abort.abort()
   }, [signedIn, path, api, raw, apply])
+  const shopName = summary?.shop.name
+  useEffect(() => {
+    if (shopName) document.title = `${shopName} · ${t.chatsTitle}`
+  }, [shopName, t])
 
   // Fallback polling only when the live stream is unavailable.
   useEffect(() => {
@@ -674,6 +685,7 @@ function Bubble({
   grouped: boolean
 }) {
   const roles = useTheme().material
+  const t = useAccountCopy()
   const mine = message.author === 'customer'
   const ai = message.kind === 'ai'
   const demo = message.kind === 'demo'
@@ -704,6 +716,8 @@ function Bubble({
       )}
       <Box
         sx={{
+          // Anchors the screen-reader label inside the bubble, so it can't widen the page.
+          position: 'relative',
           px: 2,
           py: 1.25,
           borderRadius: mine ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
@@ -741,10 +755,14 @@ function Bubble({
   )
 }
 
+// Pixel strings: in sx a bare 1 means 100%, which stretched these labels across the page.
 const visuallyHidden = {
   position: 'absolute',
-  width: 1,
-  height: 1,
+  width: '1px',
+  height: '1px',
+  m: '-1px',
+  p: 0,
+  border: 0,
   overflow: 'hidden',
   clip: 'rect(0 0 0 0)',
   whiteSpace: 'nowrap',
