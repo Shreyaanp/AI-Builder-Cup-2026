@@ -49,7 +49,7 @@ test('owner reviews custom payments and delivery; customer chips and answers kee
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await page.getByRole('button', { name: 'Add my shop' }).click()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   const name = `Global shop ${Date.now()}`
   await page.getByLabel('Shop name').fill(name)
   const payment = page.getByRole('combobox', { name: 'Payment', exact: true })

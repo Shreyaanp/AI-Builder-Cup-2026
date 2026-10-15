@@ -20,6 +20,8 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
   test.setTimeout(90_000)
   await localOnly(page)
   await voiceFixture(page)
+  await context.grantPermissions(['geolocation'])
+  await context.setGeolocation({ latitude: 12.9718234, longitude: 77.6412345, accuracy: 20 })
   await test.step('1 · open the business entry', async () => {
     await page.goto('/')
     await expect(
@@ -43,6 +45,18 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     )
     await expect(page.getByRole('button', { name: 'Press to talk' })).toBeVisible()
     await expect(page.getByLabel('Message', { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
+    await expect(page.getByText('New shop · step 1 of 4')).toBeVisible()
+    await page.getByRole('button', { name: 'Use my current location' }).click()
+    await expect(page.getByText('within 20 m')).toBeVisible()
+    await page.screenshot({ path: 'docs/stories/new-shop-light.png', animations: 'disabled' })
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await page.getByRole('button', { name: 'Dark', exact: true }).click()
+    await page.keyboard.press('Escape')
+    await page.screenshot({ path: 'docs/stories/new-shop-dark.png', animations: 'disabled' })
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await page.getByRole('button', { name: 'Light', exact: true }).click()
+    await page.keyboard.press('Escape')
     await tryVoice(page, 1)
     await page.getByRole('button', { name: 'Attach a photo or document' }).click()
     await expect(page.getByRole('menuitem', { name: 'Take photo' })).toBeVisible()
@@ -52,7 +66,14 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     await (await chooser).setFiles(await image(page))
   })
   await test.step('4 · review name, category, price, unit and grouping', async () => {
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(await (await page.request.get('/api/v1/businesses')).json()).toEqual([])
+    await page.getByRole('button', { name: 'Review my new shop' }).click()
     const review = page.getByRole('dialog', { name: reviewName })
+    await expect(review).toContainText('New shop · step 4 of 4')
+    await expect(review).toContainText('Your location')
+    await expect(review).toContainText('within 20 m')
+    await expect(review).toContainText('12.97182, 77.64123')
     await expect(review).toContainText('Offline Fixture Tea Stall')
     await expect(review).toContainText('Chai')
     await expect(review).toContainText('₹15.00 / cup')
@@ -62,7 +83,13 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
       'Offline fixture: no model read this photo.',
     )
     await shot(page, 1, 4)
+    await page.screenshot({
+      path: 'docs/stories/new-shop-review-light.png',
+      animations: 'disabled',
+    })
     await confirm(page)
+    await expect(page.getByText('Your new shop is ready', { exact: true })).toBeVisible()
+    await page.screenshot({ path: 'docs/stories/new-shop-ready.png', animations: 'disabled' })
   })
   await test.step('5 · My shop readiness and next action', async () => {
     await page.getByRole('button', { name: 'My shop', exact: true }).click()
@@ -76,7 +103,6 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
   await test.step('6 · local location, opening/closing hours, UPI and delivery', async () => {
     await page.getByRole('button', { name: /^Shop details/ }).click()
     await page.getByRole('button', { name: 'Edit details' }).click()
-    await page.getByLabel('Address or area').fill('Indiranagar, Bengaluru')
     await page.getByLabel('Set hours by weekday').check()
     await page.getByLabel('Opens', { exact: true }).fill('07:00')
     await page.getByLabel('Closes', { exact: true }).fill('20:00')
@@ -91,23 +117,17 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     await expect(review).toContainText('UPI')
     await expect(review).toContainText('Swiggy')
     await expect(review).toContainText('07:00')
-    await review.getByRole('button', { name: /Find.*pin/i }).click()
-    // The offline map knows the demo neighbourhoods worldwide; the pin is labelled demo.
-    await expect(review).toContainText(/: Indiranagar ·/)
-    await expect(review.getByRole('alert')).toHaveCount(0)
-    liveOnly('Photo GPS capture needs a physical phone')
+    await expect(review).toContainText('within 20 m')
+    await expect(review).toContainText('12.97182, 77.64123')
+    liveOnly('Location, microphone ASR and camera capture still need a physical phone')
     await shot(page, 1, 6)
     await confirm(page)
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
     await page.locator('#coach input[type="file"]').setInputFiles(gpsBoardPath)
-    await expect(page.getByRole('dialog', { name: reviewName })).not.toContainText(
-      '12.97180, 77.64120',
-    )
+    await expect(page.getByRole('dialog', { name: reviewName })).toContainText('Chai')
     await shot(page, 1, '6-photo-pin')
     await confirm(page)
-    await page.getByRole('button', { name: 'Review photo location' }).click()
-    await expect(page.getByRole('dialog', { name: reviewName })).toContainText('12.97180, 77.64120')
-    await confirm(page)
+    await expect(page.getByRole('button', { name: 'Review photo location' })).toHaveCount(0)
     await page.getByLabel('Message', { exact: true }).fill('Halal: yes')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
     await expect(page.getByRole('dialog', { name: reviewName })).toContainText('Halal')

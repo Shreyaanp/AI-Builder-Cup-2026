@@ -1,6 +1,26 @@
 import type { Copy } from '../strings'
 
 export const bn: Copy = {
+  newShopMode: 'নতুন দোকান',
+  newShopIntro: 'চলুন আপনার নতুন দোকান অনলাইনে আনি। ছবি দিন বা কী বিক্রি করেন বলুন।',
+  newShopCamera: 'মেনু বা দোকানের সামনের ছবি তুলুন',
+  newShopVoice: 'আপনার দোকান সম্পর্কে বলুন',
+  newShopForm: 'বরং ফর্ম পূরণ করুন',
+  newShopCancel: 'আমার বর্তমান দোকানে ফিরুন',
+  newShopReview: 'আমার নতুন দোকান যাচাই করুন',
+  newShopReady: 'আপনার নতুন দোকান তৈরি',
+  newShopReadyBody: 'এখন আপনি নতুন দোকানে কাজ করছেন। প্রস্তুত হলে গ্রাহক পেজ শেয়ার করুন।',
+  newShopContinue: 'আমার দোকানে এগিয়ে যান',
+  newShopPhotoNext: 'গ্রাহকদের আপনার দোকান সম্পর্কে কী জানাতে চান?',
+  useCurrentLocation: 'আমার বর্তমান অবস্থান ব্যবহার করুন',
+  locationReason: 'দোকানে আছেন? পিন বসাতে অবস্থানের অনুমতি দিন। সংরক্ষণের আগে যাচাই করবেন।',
+  locating: 'আপনার অবস্থান খোঁজা হচ্ছে…',
+  locationDenied: 'অবস্থানের অনুমতি মেলেনি। ঠিকানা লিখুন বা GPS থাকা ছবি দিন।',
+  locationFailed: 'অবস্থান পাওয়া যায়নি। আবার চেষ্টা করুন, ঠিকানা লিখুন বা GPS থাকা ছবি দিন।',
+  yourLocation: 'আপনার অবস্থান',
+  description: 'বিবরণ',
+  newShopStep: (n: number) => `নতুন দোকান · ধাপ ${n}/4`,
+  locationAccuracy: (m: string) => `${m} মিটারের মধ্যে`,
   installApp: 'অ্যাপ ইনস্টল করুন',
   installIos: 'Safari-তে শেয়ার → হোম স্ক্রিনে যোগ করুন বেছে নিয়ে যোগ করুন চাপুন।',
   installUnavailable:

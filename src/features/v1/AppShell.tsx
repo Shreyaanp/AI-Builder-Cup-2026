@@ -138,7 +138,7 @@ export function AppShell() {
             </Box>
             {screen}
           </Box>
-          {supporting && ws.destination === 'coach' && ws.active && (
+          {supporting && ws.destination === 'coach' && ws.active && !ws.creatingShop && (
             <Box
               component="aside"
               aria-label={t.navShop}
@@ -333,7 +333,7 @@ function TopBar() {
         sx={{ color: roles.onSurface, minWidth: 0, maxWidth: 'min(70vw, 420px)', px: 1.5 }}
       >
         <Typography variant="titleLarge" noWrap component="span">
-          {ws.active?.fields.name ?? t.appName}
+          {ws.creatingShop ? t.newShopMode : (ws.active?.fields.name ?? t.appName)}
         </Typography>
       </Button>
       <Box sx={{ flex: 1 }} />
@@ -385,7 +385,7 @@ function TopBar() {
         <MenuItem
           onClick={() => {
             setShopMenu(null)
-            ws.openEditor({ kind: 'business', fields: null })
+            ws.startNewShop()
           }}
         >
           <ListItemIcon>

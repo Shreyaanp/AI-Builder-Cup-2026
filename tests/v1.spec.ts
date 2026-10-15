@@ -23,11 +23,11 @@ async function open(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await agree.click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
 }
 
 async function addShop(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Add my shop' }).click()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   await page.getByLabel('Shop name').fill(name)
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   const review = page.getByRole('dialog', { name: 'Check before saving' })
@@ -73,6 +73,7 @@ test('a shop photo becomes a reviewable draft; an explicit photo is refused', as
     mimeType: 'image/png',
     buffer: await png(page, 64),
   })
+  await page.getByRole('button', { name: 'Review my new shop' }).click()
   const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('Offline Fixture Tea Stall')
   // The modal hides the page from assistive tech; check the coach note once it closes.
@@ -84,6 +85,7 @@ test('the coach turns a typed description into a proposal, never a save', async 
   await open(page)
   await page.getByLabel('Message').fill('name: Sharma Bakery; category: Bakery; location: Pune')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await page.getByRole('button', { name: 'Review my new shop' }).click()
   const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('Sharma Bakery')
   await review.getByRole('button', { name: 'Cancel' }).click()
@@ -123,6 +125,8 @@ test('switching shops never shows the other shop’s products or conversation', 
   // Second shop via the shop switcher.
   await page.getByRole('button', { name: /Choose shop/ }).click()
   await page.getByRole('menuitem', { name: 'New shop' }).click()
+  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   await page.getByLabel('Shop name').fill('Beta Bakery')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await page

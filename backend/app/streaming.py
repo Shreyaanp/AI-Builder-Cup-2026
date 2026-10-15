@@ -108,7 +108,11 @@ class CoachRuntime:
         )
 
     async def session(
-        self, principal: Principal, requested: str | None, business_id: str | None = None
+        self,
+        principal: Principal,
+        requested: str | None,
+        business_id: str | None = None,
+        new_shop: bool = False,
     ) -> str:
         if requested:
             existing = await self.sessions.get_session(
@@ -120,6 +124,8 @@ class CoachRuntime:
                 raise HTTPException(404, "Conversation not found in this workspace.")
             if existing.state.get("business_id") != business_id:
                 raise HTTPException(404, "Conversation belongs to a different business.")
+            if bool(existing.state.get("new_shop")) != new_shop:
+                raise HTTPException(404, "Conversation belongs to a different coach mode.")
             if len(existing.events) > 60:
                 raise HTTPException(429, "Start a new conversation to continue.")
             return requested
@@ -133,7 +139,7 @@ class CoachRuntime:
             app_name=APP_NAME,
             user_id=principal.uid,
             session_id=session_id,
-            state={"business_id": business_id},
+            state={"business_id": business_id, "new_shop": new_shop},
         )
         return session_id
 
@@ -147,6 +153,10 @@ class CoachRuntime:
     ) -> AsyncIterator[StreamEvent]:
         # The app language reaches the instruction via a context variable, never the owner's
         # message (models echo bracketed prefixes back into replies).
+        merchant = current.get()
+        if merchant:
+            # Socket text controls exercise the same offline tools as HTTP turns.
+            merchant.message = text
         ui_language.set(language)
         run = self.text_runner.run_async(
             user_id=principal.uid,

@@ -214,7 +214,7 @@ for (const mode of ['offline', 'gemini']) {
 
 test('B11: weekday hours are reviewed, saved and shown publicly', async ({ page }) => {
   await enter(page, false)
-  await page.getByRole('button', { name: 'Add my shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Fill in a form instead', exact: true }).click()
   await page.getByLabel('Shop name').fill('Katong Night Kopi')
   await page.getByLabel('Hours note (optional)', { exact: true }).fill('Ask about holiday hours')
   await page.getByLabel('Set hours by weekday').check()

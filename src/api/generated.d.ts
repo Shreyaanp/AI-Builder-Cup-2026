@@ -2159,6 +2159,15 @@ export interface components {
              * @default false
              */
             pin_demo: boolean;
+            /** Pin Source */
+            pin_source?: "device" | null;
+            /** Pin Accuracy M */
+            pin_accuracy_m?: number | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
             /**
              * Demo
              * @default false
@@ -2270,6 +2279,12 @@ export interface components {
             session_id?: string | null;
             /** Business Id */
             business_id?: string | null;
+            /**
+             * New Shop
+             * @default false
+             */
+            new_shop: boolean;
+            new_shop_draft?: components["schemas"]["NewShopDraft"] | null;
         };
         /** ConsentRequest */
         ConsentRequest: {
@@ -2780,6 +2795,12 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** NewShopDraft */
+        NewShopDraft: {
+            business?: components["schemas"]["BusinessFields"] | null;
+            /** Products */
+            products?: components["schemas"]["ProductFields"][];
+        };
         /** NewThread */
         NewThread: {
             /** Text */
@@ -2889,6 +2910,15 @@ export interface components {
              * @default 0
              */
             card: number;
+        };
+        /** OwnerLocation */
+        OwnerLocation: {
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /** Accuracy M */
+            accuracy_m: number;
         };
         /** PassportView */
         PassportView: {
@@ -3199,6 +3229,7 @@ export interface components {
              * @default false
              */
             geocode_confirmed: boolean;
+            owner_location?: components["schemas"]["OwnerLocation"] | null;
             business?: components["schemas"]["BusinessFields"] | null;
             /** Products */
             products?: components["schemas"]["ProductFields"][];

@@ -180,7 +180,7 @@ test('owner reward edits require exact review before saving and clearing', async
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await page.getByRole('button', { name: 'Add my shop' }).click()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   await page.getByLabel('Shop name').fill('Neighbourhood Kopi')
   await page.getByLabel('Reward text (optional)').fill('10th kopi free')
   await expect(page.getByLabel('Stamps needed')).toHaveValue('8')

@@ -13,6 +13,11 @@ export interface Workspace {
   retryLoad: () => Promise<void>
   activeId: string | null
   active: Business | null
+  creatingShop: boolean
+  startNewShop: () => void
+  cancelNewShop: () => void
+  newShopReady: boolean
+  dismissNewShopReady: () => void
   products: Product[]
   destination: Destination
   speakReplies: boolean

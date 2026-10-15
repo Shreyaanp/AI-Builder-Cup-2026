@@ -21,6 +21,7 @@ for (const existing of [false, true]) {
     await enter(page)
     if (existing) await seedShop(page)
     await page.locator('input[type="file"][accept*="image/jpeg"]').setInputFiles(await image(page))
+    if (!existing) await page.getByRole('button', { name: 'Review my new shop' }).click()
     await confirm(page)
     const shop = (await (await page.request.get('/api/v1/businesses')).json())[0]
     expect(shop.gallery ?? []).toEqual([])

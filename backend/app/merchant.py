@@ -91,6 +91,9 @@ class BusinessFields(BaseModel):
     place_id: str | None = Field(default=None, max_length=300)
     pin_label: str | None = Field(default=None, max_length=300)
     pin_demo: bool = False
+    pin_source: Literal["device"] | None = None
+    pin_accuracy_m: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    description: str = Field(default="", max_length=500)
     # A clearly labelled sample shop (seed_demo_shops.py). Set only by the seed script, never by
     # an owner proposal (see merchant_routes.propose and coordinator.propose_business).
     demo: bool = False
@@ -145,7 +148,14 @@ class BusinessFields(BaseModel):
     def drop_unset_facts(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data: dict[str, Any] = handler(self)
         # Unset optional facts and an unset map pin are omitted, so older shops keep their shape.
-        pin_defaults = {"lat": None, "lng": None, "place_id": None, "pin_label": None}
+        pin_defaults = {
+            "lat": None,
+            "lng": None,
+            "place_id": None,
+            "pin_label": None,
+            "pin_source": None,
+            "pin_accuracy_m": None,
+        }
         return {
             key: value
             for key, value in data.items()
@@ -161,6 +171,7 @@ class BusinessFields(BaseModel):
             and not (key == "reward_text" and value == "")
             and not (key == "stamps_needed" and value == 8)
             and not (key == "weekly_hours" and value == [])
+            and not (key == "description" and value == "")
         }
 
     @model_validator(mode="after")
@@ -219,6 +230,19 @@ class ShareRequest(BaseModel):
     public: bool
 
 
+class OwnerLocation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    lat: float = Field(ge=-90, le=90, allow_inf_nan=False)
+    lng: float = Field(ge=-180, le=180, allow_inf_nan=False)
+    accuracy_m: float = Field(ge=0, allow_inf_nan=False)
+
+
+class NewShopDraft(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    business: BusinessFields | None = None
+    products: list[ProductFields] = Field(default_factory=list, max_length=200)
+
+
 class ProposalRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: str = Field(pattern="^(business|inventory)$")
@@ -226,6 +250,8 @@ class ProposalRequest(BaseModel):
     revision: int = Field(default=0, ge=0)
     # Separate consent to look up a pin; never inferred from approval to save.
     geocode_confirmed: bool = False
+    # Sent only after the owner's explicit browser-location action; always reviewed.
+    owner_location: OwnerLocation | None = None
     business: BusinessFields | None = None
     products: list[ProductFields] = Field(default_factory=list, max_length=200)
 

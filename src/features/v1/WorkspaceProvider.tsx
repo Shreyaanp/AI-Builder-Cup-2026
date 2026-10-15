@@ -37,6 +37,8 @@ export function WorkspaceProvider({
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [creatingShop, setCreatingShop] = useState(false)
+  const [shopReady, setShopReady] = useState(false)
   // Inventory is tagged with its shop so a switch never shows another shop's products.
   const [inventory, setInventory] = useState<{ bid: string | null; items: Product[] }>({
     bid: null,
@@ -186,6 +188,18 @@ export function WorkspaceProvider({
       },
       activeId,
       active: businesses.find((item) => item.id === activeId) ?? null,
+      creatingShop,
+      newShopReady: shopReady,
+      dismissNewShopReady: () => setShopReady(false),
+      startNewShop: () => {
+        setCoachActions(false)
+        setCreatingShop(true)
+        setDestination('coach')
+      },
+      cancelNewShop: () => {
+        setCreatingShop(false)
+        setDestination('coach')
+      },
       // Products shown always belong to the active shop.
       products: inventory.bid === activeId ? inventory.items : [],
       destination,
@@ -199,8 +213,14 @@ export function WorkspaceProvider({
           /* Preference stays for this session. */
         }
       },
-      go: setDestination,
-      select: setActiveId,
+      go: (next) => {
+        setShopReady(false)
+        setDestination(next)
+      },
+      select: (id) => {
+        setCreatingShop(false)
+        setActiveId(id)
+      },
       reload,
       setAvailability,
       setShared,
@@ -237,6 +257,8 @@ export function WorkspaceProvider({
       loading,
       loadError,
       activeId,
+      creatingShop,
+      shopReady,
       inventory,
       destination,
       speakReplies,
@@ -262,12 +284,18 @@ export function WorkspaceProvider({
         proposal={proposal}
         onClose={() => setProposal(null)}
         onSaved={async (businessId) => {
+          const isNew = !businesses.some((shop) => shop.id === businessId)
           setProposal(null)
           await reload()
           setActiveId(businessId)
+          if (isNew) {
+            setCreatingShop(false)
+            setShopReady(Boolean(proposal?.new_shop))
+            setDestination('coach')
+          }
           await loadProducts(businessId).catch(() => undefined)
           // Offer installation only after useful progress, never up front.
-          if (canOfferInstall()) setInstallOffer(true)
+          if (!isNew && canOfferInstall()) setInstallOffer(true)
           else setToast(t.saved)
         }}
       />

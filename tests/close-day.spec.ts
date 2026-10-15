@@ -20,7 +20,7 @@ test('Close the day: till photo, one review, saved', async ({ page }) => {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).tap()
-  await page.getByRole('button', { name: 'Add my shop' }).tap()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).tap()
   await page.getByLabel('Shop name').fill('Asha Bakery')
   await page.getByRole('button', { name: 'Review', exact: true }).tap()
   await page.getByRole('button', { name: 'Confirm and save' }).tap()

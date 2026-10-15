@@ -11,14 +11,14 @@ test('consent validates both choices and keyboard activation', async ({ page }) 
   await audit(page)
   await submit.focus()
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'New shop', exact: true })).toBeVisible()
 })
 
 test('empty shop validates name, cancel writes nothing, review saves once and reloads', async ({
   page,
 }) => {
   await enter(page)
-  await page.getByRole('button', { name: 'Add my shop' }).click()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await expect(page.getByRole('alert')).toBeVisible()
   await page.getByLabel('Shop name').fill('QA neighbourhood shop')
@@ -27,7 +27,7 @@ test('empty shop validates name, cancel writes nothing, review saves once and re
   const discard = page.getByRole('button', { name: /Discard/ })
   if (await discard.isVisible()) await discard.click()
   expect(await (await page.request.get('/api/v1/businesses')).json()).toEqual([])
-  await page.getByRole('button', { name: 'Add my shop' }).click()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   await page.getByLabel('Shop name').fill('QA neighbourhood shop')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Check before saving' })).toContainText(
@@ -45,7 +45,7 @@ test('empty shop validates name, cancel writes nothing, review saves once and re
 
 test('missing shop name focuses the invalid field', async ({ page }) => {
   await enter(page)
-  await page.getByRole('button', { name: 'Add my shop' }).click()
+  await page.getByRole('button', { name: 'Fill in a form instead' }).click()
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await expect(page.getByRole('alert')).toBeVisible()
   await evidence(page, 'Q7-name-focus')

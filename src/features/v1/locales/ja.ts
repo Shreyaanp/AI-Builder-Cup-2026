@@ -1,6 +1,30 @@
 import type { Copy } from '../strings'
 
 export const ja: Copy = {
+  newShopMode: '新しいお店',
+  newShopIntro:
+    '新しいお店をオンラインにしましょう。写真を撮るか、何を売っているか教えてください。',
+  newShopCamera: 'メニューや店頭を撮影',
+  newShopVoice: 'お店について話す',
+  newShopForm: '代わりにフォームに入力',
+  newShopCancel: '現在のお店に戻る',
+  newShopReview: '新しいお店を確認',
+  newShopReady: '新しいお店の準備ができました',
+  newShopReadyBody:
+    '新しいお店に切り替わりました。準備ができたらお客様向けページを共有しましょう。',
+  newShopContinue: 'お店の管理を続ける',
+  newShopPhotoNext: 'お店についてお客様に何を伝えたいですか？',
+  useCurrentLocation: '現在地を使用',
+  locationReason:
+    'お店にいますか？ピンを置くために位置情報を許可してください。保存前に確認できます。',
+  locating: '現在地を取得中…',
+  locationDenied: '位置情報が許可されませんでした。住所の入力や GPS 付き写真を利用できます。',
+  locationFailed:
+    '現在地を取得できませんでした。再試行するか、住所または GPS 付き写真を使ってください。',
+  yourLocation: 'あなたの現在地',
+  description: '説明',
+  newShopStep: (n: number) => `新しいお店 · ステップ ${n}/4`,
+  locationAccuracy: (m: string) => `誤差 ${m} m 以内`,
   installApp: 'アプリをインストール',
   installIos: 'Safariで共有 → ホーム画面に追加をタップし、追加をタップしてください。',
   installUnavailable:
