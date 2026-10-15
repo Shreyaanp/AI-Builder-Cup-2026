@@ -205,7 +205,13 @@ test('errors keep the conversation: retry, cancel, stop and offline recovery', a
 
 test('nothing found is a next step, not a dead end', async ({ page }) => {
   await page.route('**/api/v1/discover/ask', (route) =>
-    route.fulfill({ json: { ...answer(), groups: [] } }),
+    route.fulfill({
+      json: {
+        ...answer(),
+        intent: { ...answer().intent, keywords: ['snow', 'boots'] },
+        groups: [],
+      },
+    }),
   )
   await page.goto('/explore/')
   await ask(page, 'snow boots')
