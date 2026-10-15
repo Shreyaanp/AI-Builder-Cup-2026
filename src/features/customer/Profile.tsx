@@ -38,10 +38,10 @@ export function ProfileButton() {
           sx={{
             position: 'fixed',
             top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
-            right: 'calc(env(safe-area-inset-right, 0px) + 60px)',
+            right: 'calc(env(safe-area-inset-right, 0px) + 64px)',
             zIndex: 1200,
-            width: 44,
-            height: 44,
+            width: 48,
+            height: 48,
             p: 0,
             bgcolor: 'background.paper',
             border: 1,

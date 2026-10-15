@@ -161,7 +161,11 @@ function CustomerPages() {
             />
           ) : (
             // AI-first front door (user decision, Oct 15); the full list is one tap away.
-            <AskHome initialLocation={locationChoice} onLocationChange={setLocationChoice} />
+            <AskHome
+              initialLocation={locationChoice}
+              onLocationChange={setLocationChoice}
+              interests={interests}
+            />
           )}
         </Suspense>
       </div>
