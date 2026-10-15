@@ -3791,6 +3791,45 @@
         }
       }
     },
+    "/api/v1/demo/world": {
+      "post": {
+        "summary": "Demo World",
+        "description": "Make sure the visitor's ~2 km area has labelled demo shops (anonymous; rate limited).",
+        "operationId": "demo_world_api_v1_demo_world_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldReceipt"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/orders": {
       "get": {
         "summary": "List Orders",
@@ -7446,6 +7485,73 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WorldReceipt": {
+        "properties": {
+          "shop_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Shop Ids"
+          },
+          "created": {
+            "type": "boolean",
+            "title": "Created"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop_ids",
+          "created",
+          "source"
+        ],
+        "title": "WorldReceipt"
+      },
+      "WorldRequest": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lng"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "default": "USD"
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Timezone",
+            "default": "UTC"
+          },
+          "place": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Place",
+            "description": "Neighbourhood label if known",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "title": "WorldRequest"
       },
       "StreamEvent": {
         "additionalProperties": false,

@@ -1319,6 +1319,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/demo/world": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo World
+         * @description Make sure the visitor's ~2 km area has labelled demo shops (anonymous; rate limited).
+         */
+        post: operations["demo_world_api_v1_demo_world_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/orders": {
         parameters: {
             query?: never;
@@ -2848,6 +2868,38 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** WorldReceipt */
+        WorldReceipt: {
+            /** Shop Ids */
+            shop_ids: string[];
+            /** Created */
+            created: boolean;
+            /** Source */
+            source: string;
+        };
+        /** WorldRequest */
+        WorldRequest: {
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /**
+             * Place
+             * @description Neighbourhood label if known
+             * @default
+             */
+            place: string;
         };
         /** StreamEvent */
         StreamEvent: {
@@ -5582,6 +5634,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_world_api_v1_demo_world_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorldRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorldReceipt"];
                 };
             };
             /** @description Validation Error */
