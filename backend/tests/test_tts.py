@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import pytest
 
 from app.tts import best_voice, language_for, speakable
 from tests.test_photos import app, join  # noqa: F401  (fixture + consent helper)
@@ -9,6 +10,24 @@ VOICES = [
     ("ms-MY-Wavenet-A", ["ms-MY"]),
     ("ms-MY-Standard-A", ["ms-MY"]),
 ]
+
+
+@pytest.mark.parametrize(
+    ("locale", "text", "language"),
+    [
+        ("hi", "नमस्ते", "hi-IN"),
+        ("bn", "নমস্কার", "bn-IN"),
+        ("te", "నమస్కారం", "te-IN"),
+        ("mr", "नमस्कार", "mr-IN"),
+        ("kn", "ನಮಸ್ಕಾರ", "kn-IN"),
+    ],
+)
+def test_indian_languages_keep_their_voice(locale: str, text: str, language: str) -> None:
+    assert language_for("123", locale) == language
+    assert language_for("123", language) == language
+    assert language_for(text, locale) == language
+    assert language_for(text, language) == language
+    assert language_for("ನಮಸ್ಕಾರ", locale) == "kn-IN"
 
 
 def test_language_follows_the_reply_script_then_the_app() -> None:
