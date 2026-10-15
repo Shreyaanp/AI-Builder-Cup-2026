@@ -11,8 +11,6 @@ test('sourcing labels demo suppliers, reviews exact quantities, receives reply a
   const message = page.getByRole('textbox', { name: 'Message', exact: true })
   await message.fill('The second one looks good, order 20 kg flour and 5 kg sugar from them')
   if (info.project.name === 'phone') {
-    // BUG Q12: Supplier results overlay the phone composer and intercept touch Send.
-    test.fail()
     await page.getByRole('button', { name: 'Send', exact: true }).click({ timeout: 1500 })
   } else await message.press('Enter')
   await expect(page.getByText('Nothing is sent until you tap Send. No payment.')).toBeVisible()
@@ -27,7 +25,7 @@ test('sourcing labels demo suppliers, reviews exact quantities, receives reply a
   await expect(page.getByRole('dialog', { name: 'Orders' })).toContainText('Confirmed')
 })
 
-test('supplier results leave the touch Send control reachable', async ({ page }, info) => {
+test('supplier results leave the touch Send control reachable', async ({ page }) => {
   await owner(page)
   await say(page, 'My flour is running low')
   await expect(page.getByRole('list', { name: /suppliers nearby/ })).toBeVisible()
@@ -49,8 +47,8 @@ test('supplier results leave the touch Send control reachable', async ({ page },
     .info()
     .attach('send-hit-target', { body: JSON.stringify(target), contentType: 'application/json' })
   await evidence(page, 'Q12-supplier-overlap')
-  // BUG Q12: Supplier results overlay the phone composer and intercept touch Send.
-  test.fail(info.project.name === 'phone')
+  expect(target.reachable).toBe(true)
+  await expect(send).toBeInViewport()
   await send.click({ timeout: 1500 })
 })
 
@@ -107,7 +105,9 @@ test('populated Orders has valid list semantics and keyboard-operable rows', asy
   await page.getByRole('button', { name: /^Orders/ }).click()
   await expect(page.getByRole('dialog', { name: 'Orders' })).toContainText('20 kg')
   await evidence(page, 'Q13-orders-list')
-  // BUG Q13: Populated Orders renders role=button rows directly inside a ul, failing axe list semantics.
-  test.fail()
   await audit(page)
+  const row = page.getByRole('dialog').getByRole('listitem').first().getByRole('button')
+  await row.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: 'Orders', exact: true })).toBeVisible()
 })

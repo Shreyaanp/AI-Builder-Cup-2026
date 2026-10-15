@@ -93,6 +93,8 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
   const input = useRef<HTMLInputElement>(null)
   const pending = useRef<Kind>('sales')
   const counter = useRef(0)
+  const progress = useRef({ stock: 'notSaved', sales: 'notSaved', date: '' })
+  const [saveStarted, setSaveStarted] = useState(false)
   if (!shop) return null
 
   async function read(kind: Kind, file: File) {
@@ -154,6 +156,7 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
   async function save() {
     if (!shop) return
     setPhase('saving')
+    setSaveStarted(true)
     setFailed('')
     const base = `/businesses/${encodeURIComponent(shop.id)}`
     const salesBody = sales.map(({ line }) => ({
@@ -166,33 +169,55 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
       .map(({ line, mode }) => ({ item: line.item, quantity: line.quantity ?? 0, mode }))
     try {
       // Stock first; saving it moves the shop's revision, so sales are sealed afterwards.
-      if (stockBody.length) {
-        const prepared = await ws.api<{ stock: Sealed | null }>(`${base}/day/prepare`, {
-          method: 'POST',
-          body: JSON.stringify({ date: day, stock: stockBody }),
-        })
-        if (prepared.stock)
+      if (stockBody.length && progress.current.stock !== 'saved') {
+        const prepared = await ws.api<{ stock: Sealed | null; date: string }>(
+          `${base}/day/prepare`,
+          {
+            method: 'POST',
+            body: JSON.stringify({ date: progress.current.date || day, stock: stockBody }),
+          },
+        )
+        progress.current.date = prepared.date
+        if (prepared.stock) {
+          progress.current.stock = 'unknown'
           await ws.api(`/proposals/${prepared.stock.id}/approve`, {
             method: 'POST',
             body: JSON.stringify({ digest: prepared.stock.digest }),
           })
+          progress.current.stock = 'saved'
+        }
       }
-      if (salesBody.length) {
-        const prepared = await ws.api<{ sales: { import_id: string; digest: string } | null }>(
-          `${base}/day/prepare`,
-          { method: 'POST', body: JSON.stringify({ date: day, sales: salesBody }) },
-        )
-        if (prepared.sales)
+      if (salesBody.length && progress.current.sales !== 'saved') {
+        const prepared = await ws.api<{
+          sales: { import_id: string; digest: string } | null
+          date: string
+        }>(`${base}/day/prepare`, {
+          method: 'POST',
+          body: JSON.stringify({ date: progress.current.date || day, sales: salesBody }),
+        })
+        progress.current.date = prepared.date
+        if (prepared.sales) {
+          progress.current.sales = 'unknown'
           await ws.api(`${base}/import/${prepared.sales.import_id}/approve`, {
             method: 'POST',
             body: JSON.stringify({ digest: prepared.sales.digest }),
           })
+          progress.current.sales = 'saved'
+        }
       }
       setSaved({ revenue, stock: stockBody.length })
       await ws.reload()
       setPhase('done')
     } catch {
-      setFailed(t.saveFailed)
+      const status = (value: string) =>
+        value === 'saved' ? t.savedState : value === 'unknown' ? t.unknownState : t.notSavedState
+      setFailed(
+        [
+          t.saveFailed,
+          ...(stockBody.length ? [`${t.stockTitle}: ${status(progress.current.stock)}.`] : []),
+          ...(salesBody.length ? [`${t.salesTitle}: ${status(progress.current.sales)}.`] : []),
+        ].join(' '),
+      )
       setPhase('review')
     }
   }
@@ -396,6 +421,7 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
                   }))}
                   onDrop={(k) => setDropped((all) => new Set(all).add(k))}
                   dropLabel={t.remove}
+                  disabled={saveStarted}
                 />
               </Box>
             )}
@@ -414,6 +440,7 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
                   }))}
                   onDrop={(k) => setDropped((all) => new Set(all).add(k))}
                   dropLabel={t.remove}
+                  disabled={saveStarted}
                 />
               </Box>
             )}
@@ -501,7 +528,7 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
         )}
         {(phase === 'review' || phase === 'saving') && (
           <>
-            <Button onClick={() => setPhase('capture')} disabled={phase === 'saving'}>
+            <Button onClick={() => setPhase('capture')} disabled={saveStarted}>
               {t.back}
             </Button>
             <Button
@@ -543,10 +570,12 @@ function ReviewList({
   rows,
   onDrop,
   dropLabel,
+  disabled,
 }: {
   rows: { key: string; label: string; sub: string; value: string; warn: boolean }[]
   onDrop: (key: string) => void
   dropLabel: string
+  disabled: boolean
 }) {
   const roles = useTheme().material
   return (
@@ -583,6 +612,7 @@ function ReviewList({
             size="small"
             aria-label={`${dropLabel}: ${row.label}`}
             onClick={() => onDrop(row.key)}
+            disabled={disabled}
           >
             <X size={16} />
           </IconButton>

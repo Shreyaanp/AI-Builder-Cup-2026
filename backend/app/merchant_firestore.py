@@ -13,7 +13,7 @@ import secrets
 import time
 from threading import Lock
 from typing import Any, cast
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from fastapi import HTTPException
 from google.cloud import firestore
@@ -148,21 +148,61 @@ class FirestoreMerchantStore:
         rows.sort(key=lambda row: (row[1].get("created", 0), row[0]))
         return [{"id": pid, **data["fields"]} for pid, data in rows]
 
-    def propose(self, uid: str, request: ProposalRequest) -> dict[str, Any]:
+    def propose(
+        self, uid: str, request: ProposalRequest, idempotency_key: str | None = None
+    ) -> dict[str, Any]:
         validate_proposal(request)
-        if request.business_id:
-            current = self.owned_business(uid, request.business_id)
-            if current["revision"] != request.revision:
-                raise HTTPException(409, "The business changed. Reload before reviewing.")
-        elif request.revision != 0:
-            raise HTTPException(409, "A new business starts at revision zero.")
-        payload, text, digest = seal_proposal(request)
-        pid = str(uuid4())
-        expires = time.time() + PROPOSAL_SECONDS
-        self.proposals.document(pid).create(
-            {"uid": uid, "payload": text, "digest": digest, "expires": expires, "receipt": None}
+        pid = (
+            str(uuid5(NAMESPACE_URL, f"{uid}:{request.business_id}:{idempotency_key}"))
+            if idempotency_key
+            else str(uuid4())
         )
-        return {"id": pid, "digest": digest, "expires": expires, "snapshot": payload}
+        ref = self.proposals.document(pid)
+
+        @firestore.transactional
+        def run(transaction: Any) -> dict[str, Any]:
+            if request.business_id:
+                business = self.businesses.document(
+                    document_id(request.business_id, "Business not found.")
+                )
+                current = self.owned(business.get(transaction=transaction), uid)
+                prior = ref.get(transaction=transaction).to_dict() if idempotency_key else None
+                if (
+                    prior
+                    and prior["uid"] == uid
+                    and (
+                        prior["receipt"]
+                        or (
+                            prior["expires"] >= time.time()
+                            and json.loads(prior["payload"])["revision"] == current["revision"]
+                        )
+                    )
+                ):
+                    return {
+                        "id": pid,
+                        "digest": prior["digest"],
+                        "expires": prior["expires"],
+                        "snapshot": json.loads(prior["payload"]),
+                    }
+                if current["revision"] != request.revision:
+                    raise HTTPException(409, "The business changed. Reload before reviewing.")
+            elif request.revision != 0:
+                raise HTTPException(409, "A new business starts at revision zero.")
+            payload, text, digest = seal_proposal(request)
+            expires = time.time() + PROPOSAL_SECONDS
+            transaction.set(
+                ref,
+                {
+                    "uid": uid,
+                    "payload": text,
+                    "digest": digest,
+                    "expires": expires,
+                    "receipt": None,
+                },
+            )
+            return {"id": pid, "digest": digest, "expires": expires, "snapshot": payload}
+
+        return run(self.client.transaction())
 
     def commit(self, uid: str, pid: str, digest: str) -> dict[str, Any]:
         proposal_ref = self.proposals.document(document_id(pid, "Proposal not found."))

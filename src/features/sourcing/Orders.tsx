@@ -6,6 +6,7 @@ import {
   Button,
   IconButton,
   List,
+  ListItem,
   ListItemButton,
   ListItemText,
   Stack,
@@ -136,57 +137,61 @@ export function OrdersSheet({
       ) : (
         <List disablePadding sx={{ display: 'grid', gap: 2 }}>
           {(orders ?? []).map((order, index) => (
-            <ListItemButton
-              key={order.id}
-              onClick={() => setPicked(order.id)}
-              sx={{
-                borderRadius: `${shape.lg}px`,
-                bgcolor: roles.surfaceContainer,
-                alignItems: 'flex-start',
-                gap: 3,
-                py: 3,
-                ...enterRise,
-                animationDelay: `${index * 50}ms`,
-              }}
-            >
-              <Badge
-                variant="dot"
-                color="primary"
-                invisible={!order.unread}
-                sx={{ mt: 1 }}
-                aria-hidden="true"
-              >
-                <Truck size={20} color={roles.primary} />
-              </Badge>
-              <ListItemText
-                primary={
-                  <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                    <Box
-                      component="span"
-                      sx={{ flex: 1, minWidth: 0, fontWeight: order.unread ? 700 : 500 }}
-                    >
-                      {order.supplier.name}
-                    </Box>
-                    <StatusChip status={order.status} />
-                  </Stack>
-                }
-                secondary={
-                  <>
-                    {order.lines
-                      .map((line) => `${line.quantity} ${line.unit} ${line.name}`)
-                      .join(', ')}
-                    <Box component="span" sx={{ display: 'block' }}>
-                      {formatPrice(order.total, order.currency, locale)} ·{' '}
-                      {deliveryLabel(order, locale)}
-                    </Box>
-                  </>
-                }
-                slotProps={{
-                  primary: { component: 'div' },
-                  secondary: { component: 'div' },
+            <ListItem key={order.id} disablePadding>
+              <ListItemButton
+                component="button"
+                onClick={() => setPicked(order.id)}
+                sx={{
+                  borderRadius: `${shape.lg}px`,
+                  bgcolor: roles.surfaceContainer,
+                  alignItems: 'flex-start',
+                  gap: 3,
+                  py: 3,
+                  width: '100%',
+                  textAlign: 'start',
+                  ...enterRise,
+                  animationDelay: `${index * 50}ms`,
                 }}
-              />
-            </ListItemButton>
+              >
+                <Badge
+                  variant="dot"
+                  color="primary"
+                  invisible={!order.unread}
+                  sx={{ mt: 1 }}
+                  aria-hidden="true"
+                >
+                  <Truck size={20} color={roles.primary} />
+                </Badge>
+                <ListItemText
+                  primary={
+                    <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                      <Box
+                        component="span"
+                        sx={{ flex: 1, minWidth: 0, fontWeight: order.unread ? 700 : 500 }}
+                      >
+                        {order.supplier.name}
+                      </Box>
+                      <StatusChip status={order.status} />
+                    </Stack>
+                  }
+                  secondary={
+                    <>
+                      {order.lines
+                        .map((line) => `${line.quantity} ${line.unit} ${line.name}`)
+                        .join(', ')}
+                      <Box component="span" sx={{ display: 'block' }}>
+                        {formatPrice(order.total, order.currency, locale)} ·{' '}
+                        {deliveryLabel(order, locale)}
+                      </Box>
+                    </>
+                  }
+                  slotProps={{
+                    primary: { component: 'div' },
+                    secondary: { component: 'div' },
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
           ))}
         </List>
       )}
