@@ -31,7 +31,8 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "stock:shop": ((300, 86_400),),
     "stock:read": ((60, 60),),
     "coach": ((20, 60), (300, 86_400)),
-    "voice": ((10, 3600),),
+    # Every mic press opens a session; owners test voice many times in a row.
+    "voice": ((30, 600), (300, 86_400)),
     "photo": ((10, 60), (60, 86_400)),
     # Shop gallery uploads (moderated, no AI extraction).
     "gallery": ((20, 60), (100, 86_400)),

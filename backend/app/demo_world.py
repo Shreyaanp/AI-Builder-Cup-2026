@@ -44,7 +44,7 @@ SPREAD = [
 
 class WorldItem(BaseModel):
     name: str = Field(min_length=2, max_length=60)
-    price: float = Field(gt=0, description="Price in the given currency, major units")
+    price: float = Field(ge=0, description="Price in the given currency, major units")
     unit: str = Field(max_length=20, description="cup, plate, piece, set, kg, bunch, item…")
     category: str = Field(max_length=40, description="Menu section, e.g. Drinks, Breakfast")
 
@@ -63,6 +63,62 @@ class WorldShop(BaseModel):
 
 class DemoWorld(BaseModel):
     shops: list[WorldShop] = Field(min_length=4, max_length=8)
+
+
+class _ItemSpec(BaseModel):
+    name: str
+    price: float = Field(description="Price in the given currency, major units")
+    unit: str = Field(description="cup, plate, piece, set, kg, bunch, item…")
+    category: str = Field(description="Menu section, e.g. Drinks, Breakfast")
+
+
+class _ShopSpec(BaseModel):
+    name: str = Field(description="Invented local shop name, under 40 characters")
+    category: str = Field(description="e.g. Bakery, Kopitiam, Florist, Tailor")
+    opens: str = Field(description="HH:MM, 24h")
+    closes: str = Field(description="HH:MM, 24h")
+    halal: bool
+    vegetarian_options: bool
+    locally_made: bool = Field(description="Makes its own goods or sells local makers' goods")
+    story: str = Field(description="One surprising, specific line, under 110 characters")
+    items: list[_ItemSpec] = Field(description="4 to 8 menu items")
+
+
+class _WorldSpec(BaseModel):
+    """Gemini's schema: plain types only (it rejects some JSON Schema limits); validated after."""
+
+    shops: list[_ShopSpec]
+
+
+def from_spec(spec: _WorldSpec) -> DemoWorld:
+    shops = []
+    for shop in spec.shops[:8]:
+        items = [
+            WorldItem(
+                name=item.name.strip()[:60] or "Item",
+                price=max(0.0, item.price),
+                unit=item.unit.strip()[:20] or "item",
+                category=item.category.strip()[:40],
+            )
+            for item in shop.items[:8]
+            if len(item.name.strip()) >= 2 and item.price > 0
+        ]
+        if len(items) < 4:
+            continue
+        shops.append(
+            WorldShop(
+                name=shop.name.strip()[:60],
+                category=shop.category.strip()[:40],
+                opens=shop.opens.strip()[:5],
+                closes=shop.closes.strip()[:5],
+                halal=shop.halal,
+                vegetarian_options=shop.vegetarian_options,
+                locally_made=shop.locally_made,
+                story=shop.story.strip()[:120],
+                items=items,
+            )
+        )
+    return DemoWorld(shops=shops)
 
 
 PROMPT = """You create clearly labelled DEMO shops for a hackathon demo of a local-shops app.
@@ -263,15 +319,15 @@ class WorldGenerator:
                     config=types.GenerateContentConfig(
                         system_instruction=PROMPT,
                         response_mime_type="application/json",
-                        response_schema=DemoWorld,
+                        response_schema=_WorldSpec,
                         temperature=0.8,
                         max_output_tokens=6000,
                     ),
                 )
-            if isinstance(response.parsed, DemoWorld):
-                return response.parsed, "gemini"
+            if isinstance(response.parsed, _WorldSpec):
+                return from_spec(response.parsed), "gemini"
         except Exception:
-            log.warning("demo_world_generation_failed")
+            log.warning("demo_world_generation_failed", exc_info=True)
         return fixture_world(currency), "fixture"
 
     async def close(self) -> None:
@@ -344,11 +400,22 @@ async def ensure_world(
     store: MerchantRepository, generator: WorldGenerator, body: WorldRequest
 ) -> WorldReceipt:
     first = world_id(body.lat, body.lng, 0)
-    if await anyio.to_thread.run_sync(store.public_shop, first):
+    stored = await anyio.to_thread.run_sync(store.public_shop, first)
+    # An area filled from the offline set is regenerated once the model is available.
+    offline_names = {f"{spec['name']} (Demo)" for spec in FIXTURE}
+    upgrade = (
+        stored is not None
+        and stored.get("name") in offline_names
+        and generator.settings.coach_mode == "gemini"
+    )
+    if stored and not upgrade:
         ids = [world_id(body.lat, body.lng, i) for i in range(len(SPREAD))]
         existing = [bid for bid in ids if await anyio.to_thread.run_sync(store.public_shop, bid)]
         return WorldReceipt(shop_ids=existing, created=False, source="existing")
     world, source = await generator.generate(body.place, body.currency)
+    if upgrade and source != "gemini":
+        ids = [world_id(body.lat, body.lng, i) for i in range(len(SPREAD))]
+        return WorldReceipt(shop_ids=ids, created=False, source="existing")
     records = world_records(world, body.lat, body.lng, body.currency, body.timezone, body.place)
     for bid, fields, products in records:
         await anyio.to_thread.run_sync(store.seed_demo_shop, WORLD_OWNER_UID, bid, fields, products)

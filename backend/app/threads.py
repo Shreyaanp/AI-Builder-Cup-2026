@@ -100,20 +100,32 @@ class ThreadSignals:
 
     def __init__(self) -> None:
         self.watchers: dict[tuple[str, str], set[asyncio.Event]] = {}
+        # Streams replaced by a newer connection from the same person; they end at once.
+        self.evicted: set[asyncio.Event] = set()
 
     def subscribe(self, bid: str, principal: str) -> asyncio.Event:
         key = (bid, principal)
-        if (
-            sum(len(events) for events in self.watchers.values()) >= 128
-            or len(self.watchers.get(key, set())) >= 4
-        ):
+        mine = self.watchers.setdefault(key, set())
+        # Phones drop connections without closing them; the newest connection always wins,
+        # so a person is never locked out by their own stale streams ("Too many requests").
+        while len(mine) >= 4:
+            stale = mine.pop()
+            self.evicted.add(stale)
+            stale.set()
+        if sum(len(events) for events in self.watchers.values()) >= 128:
+            if not mine:
+                del self.watchers[key]
             raise HTTPException(429, "Too many conversation streams.")
         event = asyncio.Event()
-        self.watchers.setdefault(key, set()).add(event)
+        mine.add(event)
         return event
+
+    def is_evicted(self, event: asyncio.Event) -> bool:
+        return event in self.evicted
 
     def release(self, bid: str, principal: str, event: asyncio.Event) -> None:
         key = (bid, principal)
+        self.evicted.discard(event)
         events = self.watchers.get(key)
         if events is not None:
             events.discard(event)
