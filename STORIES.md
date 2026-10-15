@@ -165,5 +165,7 @@ in [docs/qa/QA-REPORT.md](docs/qa/QA-REPORT.md); open bugs stay as expected fail
 
 ## Questions for the user
 
+- (15 Oct 22:00) PR #3 (new-shop flow) and PR #6 (voice continuity) are green (all CI + impact); merge + release and launching account 2 headless are blocked by auto mode: need owner approval or a permission rule. PR #6 and #3 both touch backend/app/streaming.py (small conflict to resolve on the second merge).
+
 - Next features: build (1) unmet-demand radar, (2) closing-time rescue deals and (3)
   neighbourhood passport badges, or swap in the morning brief, group buying or price check?
