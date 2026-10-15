@@ -19,7 +19,7 @@ import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { formatPrice } from '../v1/format'
 import { askCopy } from './askStrings'
 import { useCustomer } from '../customer/account'
-import { accountCopy } from '../customer/copy'
+import { accountCopyFor } from '../customer/copy'
 import { FollowButton } from '../customer/FollowButton'
 import { preferenceChips } from '../customer/preferences'
 import { ProfileSheet } from '../customer/Profile'
@@ -124,6 +124,7 @@ export default function AskHome({
 }) {
   const locale = useLocale()
   const t = askCopy(locale)
+  const accountCopy = accountCopyFor(locale)
   const roles = useTheme().material
   const [place, setPlace] = useState<FoundPlace>(
     () =>
@@ -492,7 +493,7 @@ export default function AskHome({
                 <Typography variant="labelLarge" noWrap>
                   {accountCopy.remembered.replace(
                     '{items}',
-                    preferenceChips(account.profile)
+                    preferenceChips(account.profile, accountCopy, locale)
                       .filter((chip) => answer.personal!.saved.includes(chip.key))
                       .map((chip) => chip.label)
                       .join(' · ') || answer.personal!.saved.join(' · '),
@@ -672,7 +673,7 @@ function PickCard({
             variant="labelMedium"
             sx={{ px: 3, pt: 2, color: roles.primary, fontWeight: 700 }}
           >
-            {accountCopy.reasons[reason] ?? reason}
+            {accountCopyFor(locale as Locale).reasons[reason] ?? reason}
           </Typography>
         )}
         <Box sx={{ p: 3 }}>

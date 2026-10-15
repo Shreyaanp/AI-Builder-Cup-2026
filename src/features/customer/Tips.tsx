@@ -15,7 +15,7 @@ import {
 import { Star } from 'lucide-react'
 import type { TipList } from './types'
 import { useCustomer } from './account'
-import { accountCopy as t, timeAgo } from './copy'
+import { useAccountCopy, timeAgo } from './copy'
 import { SignInButton } from './SignIn'
 import './customer.css'
 
@@ -23,7 +23,10 @@ import './customer.css'
 export function Tips({ shop }: { shop: string }) {
   const roles = useTheme().material
   const account = useCustomer()
+  const t = useAccountCopy()
   const [list, setList] = useState<TipList | null>(null)
+  // A failed load is not an empty community: say so and offer Retry.
+  const [loadFailed, setLoadFailed] = useState(false)
   const [text, setText] = useState('')
   const [rating, setRating] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
@@ -31,10 +34,13 @@ export function Tips({ shop }: { shop: string }) {
   const path = `/api/v1/public/shops/${encodeURIComponent(shop)}/tips`
   const load = useCallback(
     () =>
-      account
-        .api<TipList>(path)
-        .then(setList)
-        .catch(() => setList({ tips: [] })),
+      account.api<TipList>(path).then(
+        (value) => {
+          setList(value)
+          setLoadFailed(false)
+        },
+        () => setLoadFailed(true),
+      ),
     // Reload when the viewer changes so "mine" stays accurate.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [path, account.status],
@@ -83,7 +89,20 @@ export function Tips({ shop }: { shop: string }) {
           </Stack>
         )}
       </Stack>
-      {list && tips.length === 0 && (
+      {loadFailed && (
+        <Alert
+          severity="error"
+          sx={{ mt: 1.5 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => void load()}>
+              {t.retry}
+            </Button>
+          }
+        >
+          {t.tipsFailed}
+        </Alert>
+      )}
+      {list && !loadFailed && tips.length === 0 && (
         <Typography color="text.secondary" sx={{ mt: 1 }}>
           {t.tipsEmpty}
         </Typography>
@@ -123,7 +142,7 @@ export function Tips({ shop }: { shop: string }) {
                   />
                 )}
                 <Typography variant="labelSmall" color="text.secondary">
-                  {timeAgo(tip.created)}
+                  {timeAgo(tip.created, t)}
                 </Typography>
                 {tip.demo && (
                   <Chip
@@ -189,11 +208,14 @@ export function Tips({ shop }: { shop: string }) {
               size="small"
               sx={{ alignSelf: 'flex-start' }}
               onClick={async () => {
-                await account
-                  .api(`/api/v1/customer/shops/${encodeURIComponent(shop)}/tips`, {
+                setNotice(null)
+                try {
+                  await account.api(`/api/v1/customer/shops/${encodeURIComponent(shop)}/tips`, {
                     method: 'DELETE',
                   })
-                  .catch(() => undefined)
+                } catch {
+                  setNotice({ kind: 'error', text: t.removeTipFailed })
+                }
                 await load()
               }}
             >
