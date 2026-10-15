@@ -3,6 +3,27 @@
 Single place for everything the owner asked for in conversation. PLAN-V2.md holds the plan and
 status; this file holds the owner's intent so nothing is lost across resets. Keep both updated.
 
+## 16 Oct, ~03:10 (attribution)
+
+- Claude must NEVER appear as a contributor/co-author. Shared commit-msg hook strips AI trailers in
+  every worktree; accounts 2/3 settings disable attribution. **Before submission (after the last
+  merge, workers paused): rewrite main history to remove the 14 old Claude co-author lines and
+  force-push; verify GitHub shows only the owner.**
+
+## 16 Oct, ~02:45
+
+- Owner has a Google AI Pro plan: use Gemini CLI (installed; owner logs in once) for bug and
+  feature detection and PR review; optional Jules for small fixes. 2 days left to submission.
+
+## 16 Oct, ~02:40
+
+- Stories must stay complete and immersive as the app grows: story contracts, a UX research
+  refresh (components and aesthetic), a story director that walks and records every story and
+  files fixes.
+- Customer portal gamified properly with game theory (intuitive, prominent, obvious how it works).
+- Drain Codex and account 3 (both owner accounts; account 3 has a lot of limit; Codex has 2 more
+  weekly refreshes after the 7-day limit). Run multiple sessions in parallel.
+
 ## 16 Oct, ~02:30 (supply chain; owner is from the supply-chain industry: ask them domain questions)
 
 - **Connect your system**: shops that already run software (POS/billing/ERP: Petpooja, Tally,
