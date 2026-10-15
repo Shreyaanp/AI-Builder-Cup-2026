@@ -43,6 +43,7 @@ import { FreshnessCard, RecapTile } from '../sales/ShopInsights'
 import { PrepPlanTile } from '../forecast/PrepPlan'
 import { CloseDayTile } from '../closeday/CloseDay'
 import { OrdersTile } from '../sourcing/Orders'
+import { ConnectTile } from '../connect/ConnectTile'
 import { Sheet } from './Sheet'
 import { ShopQr } from './ShopQr'
 import { useUnread } from './useUnread'
@@ -310,6 +311,7 @@ export function ShopTiles({
         onClick={() => onSheet('messages')}
       />
       <OrdersTile key={`orders-${shop.id}`} />
+      <ConnectTile />
       <Tile
         icon={<CalendarClock size={20} />}
         label={plan.title}
