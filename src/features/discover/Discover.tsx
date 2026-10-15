@@ -28,6 +28,7 @@ import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { Sheet } from '../v1/Sheet'
 import { formatPrice } from '../v1/format'
 import { discoverCopy } from './strings'
+import { locallyMadeLabel } from '../public/locallyMade'
 import { PlaceSearch } from './PlaceSearch'
 import type { FoundPlace } from './PlaceSearch'
 import { mapsLink } from './types'
@@ -744,6 +745,17 @@ export default function Discover({
                       />
                       {place.demo && place.source === 'chalkboard' && (
                         <Chip label={`${t.pin} · ${t.demo}`} size="small" />
+                      )}
+                      {place.locally_made && (
+                        <Chip
+                          label={locallyMadeLabel(locale)}
+                          size="small"
+                          sx={{
+                            bgcolor: roles.secondaryContainer,
+                            color: roles.onSecondaryContainer,
+                            fontWeight: 600,
+                          }}
+                        />
                       )}
                       {place.demo_shop && (
                         <Chip

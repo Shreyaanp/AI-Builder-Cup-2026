@@ -152,6 +152,7 @@ export async function seedShop(page: Page, withPhotoPin = false, name = shopName
         currency: 'INR',
         timezone: 'Asia/Kolkata',
         halal: 'yes',
+        locally_made: true,
         phone: '',
         payment_methods: ['UPI', 'cash'],
         delivery: 'Swiggy',

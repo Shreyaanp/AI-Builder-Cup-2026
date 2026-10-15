@@ -45,6 +45,13 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
         customer.getByRole('heading', { name: 'What are you looking for?' }),
       ).toBeVisible()
       await shot(customer, 3, '1-ask')
+      // "Homemade" only finds shops whose owner said they make their own goods.
+      const ask = customer.getByRole('textbox', { name: 'What are you looking for?' })
+      await ask.fill('homemade chai')
+      await ask.press('Enter')
+      const pick = customer.getByRole('link').filter({ hasText: shopName }).first()
+      await expect(pick).toContainText('Locally made')
+      await shot(customer, 3, '1-ask-locally-made')
       await customer.getByRole('link', { name: 'Browse everything nearby' }).first().click()
       await expect(customer.getByRole('heading', { name: shopName })).toBeVisible()
       await expect(customer.getByText('Demo data', { exact: true })).toBeVisible()
@@ -84,6 +91,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
         '₹18.00',
       )
       await expect(customer.getByText('UPI', { exact: true })).toBeVisible()
+      await expect(customer.getByText('Locally made', { exact: true })).toBeVisible()
       await expect(customer.getByRole('heading', { name: 'Drinks', exact: true })).toBeVisible()
       await expect(customer.getByText('07:00–20:00', { exact: true })).toBeVisible()
       await expect(customer.getByRole('listitem').filter({ hasText: 'Kaya toast' })).toContainText(
