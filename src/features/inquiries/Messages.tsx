@@ -8,6 +8,8 @@ import type { components } from '../../api/generated'
 import type { Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
 import { useWorkspace } from '../v1/workspaceContext'
+import type { TipList } from '../customer/types'
+import { OwnerTips } from './OwnerTips'
 
 const en = {
   ...conversationEnglish,
@@ -372,6 +374,7 @@ export function Messages({ businessId }: { businessId: string }) {
   const [busy, setBusy] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const [confirmBlock, setConfirmBlock] = useState(false)
+  const [tips, setTips] = useState<TipList | null>(null)
   const lifetime = useRef<AbortController | null>(null)
   const path = `/businesses/${encodeURIComponent(businessId)}/inquiries`
   const load = useCallback(
@@ -388,8 +391,15 @@ export function Messages({ businessId }: { businessId: string }) {
         })
         .finally(() => {
           if (!signal.aborted) setLoading(false)
+          // Neighbour tips wake the same inbox signal; they never block the messages.
+          api<TipList>(`/businesses/${encodeURIComponent(businessId)}/tips`, { signal }).then(
+            (result) => {
+              if (!signal.aborted) setTips(result)
+            },
+            () => undefined,
+          )
         }),
-    [api, path],
+    [api, path, businessId],
   )
   useEffect(() => {
     const abort = new AbortController()
@@ -584,6 +594,7 @@ export function Messages({ businessId }: { businessId: string }) {
               </Box>
             ))}
           </Stack>
+          <OwnerTips list={tips} />
         </>
       )}
     </Box>
