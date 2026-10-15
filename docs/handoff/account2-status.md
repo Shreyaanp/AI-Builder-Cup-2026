@@ -1,4 +1,27 @@
-# Account 2 status: passport + Today's 7 (`feat/passport`)
+# Account 2 status: passport + Today's 7 (`feat/passport`, merged as `merge/passport`)
+
+## Merge follow-up (`merge/passport`, on the calmer shop page `fe27b92`)
+
+Push only `origin/merge/passport`. The 31 phone failures after the merge were all the stamp/QR
+flow; decided per case:
+
+| Case                                                                                 | Decision                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `?source=qr` without `k` (B31, rewards, translated cards): stamp card region missing | **Regression, product fixed.** A bare QR link opened the stamp moment with an empty key; its failing dialog hid the page (and the Stamp card region) behind a modal. Only a signed QR (`?source=qr&k=…`) opens the moment now; older unsigned posters keep counting on the phone card, as before. |
+| S3 step 7 (owner's QR)                                                               | **Intended change, test updated.** `shareSigned()` in `tests/stories/support.ts` takes the key the owner's QR screen fetches (`/businesses/{id}/qr-key`) and scans `?source=qr&k=…`; the step clears the stamp moment, then checks the card.                                                      |
+| Signed-in customer's card said "stored on this phone"                                | **Bug, product fixed.** The card is the server's for signed-in customers: "This card is saved to your account." (card + redeem screen, 15 locales, `rewards/cardCopy.ts`). Signed-out wording unchanged.                                                                                          |
+| Signed-out second scan the same day showed "First try! +50" again                    | **Bug, product fixed.** `POST /public/passport/check` takes the phone's `receipts` and replays them before judging the scan (already today, first visit, daily cap, level); nothing stored. Contract regenerated; backend test added.                                                             |
+
+Also: S8 passport story (`tests/stories/s8-passport.spec.ts`, screenshots `docs/stories/S8-*`):
+owner seeds a shop at its own pin → Today's 7 near it → Go → shop → signed QR → stamp moment →
+Passport (level, weekly streak, stamp book, quests) → honest second scan. Runs in light and in
+dark (`niva.starter.preferences {appearance:'dark'}`) with a WCAG 2 A/AA axe pass on every screen;
+no violations. Shop header wraps before the floating theme button; no leading "·" when a shop has
+no hours; stamp moment's points line is a paragraph, not a second h2. QA `shop-details` read a
+hard-coded web port 3437; it now uses `WEB_PORT`.
+
+**Checks (fresh SQLite DBs, WEB_PORT=3447 API_PORT=3547):** backend 573 passed / 136 skipped;
+full phone suite 200 passed / 6 skipped / 0 failed; QA suite (`npm run test:qa`, fresh `.cache/qa`) 122 passed. **Not run:** desktop project of the main suite, live Google sign-in, real-phone GPS.
 
 **Brief:** PLAN-V2 §customer + `docs/research/customer.md` §2.2, §3. **Branch:** `feat/passport`
 from `origin/main` at `3f29084`. Push only `origin/feat/passport`. Ports: web 3447, API 3547,
