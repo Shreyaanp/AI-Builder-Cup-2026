@@ -1,4 +1,5 @@
 import type { Locale } from '../../i18n/locales'
+import { closeDayApac } from './apacTranslations'
 import { closeDayTranslations } from './translations'
 
 /** Close the day. Languages without their own copy fall back to English. */
@@ -40,7 +41,10 @@ const en = {
 
 type Copy = typeof en
 
-const translations: Partial<Record<Locale, Partial<Copy>>> = closeDayTranslations
+const translations: Partial<Record<Locale, Partial<Copy>>> = {
+  ...closeDayTranslations,
+  ...closeDayApac,
+}
 
 export function closeDayCopy(locale: Locale): Copy {
   return { ...en, ...(translations[locale] ?? {}) }
