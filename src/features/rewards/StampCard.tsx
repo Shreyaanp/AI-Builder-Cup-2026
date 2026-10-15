@@ -16,6 +16,9 @@ import { useLocale } from '../../state/hooks'
 import { useRewardCopy } from './strings'
 import { celebrations, claimReward, useRewards, visit } from './storage'
 import { useCopy } from '../v1/strings'
+import { useCustomer } from '../customer/account'
+import { setPassport, usePassport } from '../passport/store'
+import type { PassportView } from '../passport/store'
 
 export function StampCard({
   shop,
@@ -47,8 +50,14 @@ export function StampCard({
     window.addEventListener('popstate', back)
     return () => window.removeEventListener('popstate', back)
   }, [redeeming])
-  const count = Math.min(data.shops[shop]?.stamps ?? 0, target)
-  const claimed = data.shops[shop]?.claimed ?? 0
+  // Signed in: the server's card (verified visits); signed out: this phone's card.
+  const account = useCustomer()
+  const { view } = usePassport(null)
+  const server =
+    account.status === 'signed-in' ? view?.shops.find((card) => card.id === shop) : undefined
+  const signedIn = account.status === 'signed-in'
+  const count = Math.min(signedIn ? (server?.card ?? 0) : (data.shops[shop]?.stamps ?? 0), target)
+  const claimed = signedIn ? (server?.claimed ?? 0) : (data.shops[shop]?.claimed ?? 0)
   const full = count >= target
   const number = (value: number) => new Intl.NumberFormat(locale).format(value)
   const close = () => {
@@ -201,8 +210,21 @@ export function StampCard({
             <Button
               variant="contained"
               onClick={() => {
-                if (claimReward(shop, target)) close()
-                else setFailedClaim(true)
+                if (!signedIn) {
+                  if (claimReward(shop, target)) close()
+                  else setFailedClaim(true)
+                  return
+                }
+                account
+                  .api<PassportView>(
+                    `/api/v1/customer/passport/shops/${encodeURIComponent(shop)}/claim`,
+                    { method: 'POST' },
+                  )
+                  .then((next) => {
+                    setPassport(next)
+                    close()
+                  })
+                  .catch(() => setFailedClaim(true))
               }}
             >
               {t.markUsed}
