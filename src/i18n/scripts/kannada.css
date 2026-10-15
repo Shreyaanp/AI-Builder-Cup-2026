@@ -1,0 +1,9 @@
+/* Local Noto when installed; otherwise use the platform script font. */
+@font-face {
+  font-family: 'Noto Sans Kannada';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Noto Sans Kannada');
+  unicode-range: U+0C80-0CFF, U+200C-200D;
+}

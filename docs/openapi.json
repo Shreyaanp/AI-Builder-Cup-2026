@@ -1826,7 +1826,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "pattern": "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil)$",
+              "pattern": "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil|hi|bn|te|mr|kn)$",
               "default": "en",
               "title": "Language"
             }
@@ -6055,7 +6055,7 @@
         "properties": {
           "language": {
             "type": "string",
-            "pattern": "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil)$",
+            "pattern": "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil|hi|bn|te|mr|kn)$",
             "title": "Language"
           }
         },

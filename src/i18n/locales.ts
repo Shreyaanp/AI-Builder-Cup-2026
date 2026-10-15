@@ -1,9 +1,25 @@
 /**
  * Supported UI locales. The app follows the phone's language setting (navigator.languages),
  * never location; English is the default and the source for every translation.
- * First set: Singapore's official languages + main APAC markets.
+ * Languages are available globally; a locale never chooses the default market.
  */
-export const LOCALES = ['en', 'zh-Hans', 'ms', 'ta', 'ja', 'ko', 'id', 'th', 'vi', 'fil'] as const
+export const LOCALES = [
+  'en',
+  'zh-Hans',
+  'ms',
+  'ta',
+  'ja',
+  'ko',
+  'id',
+  'th',
+  'vi',
+  'fil',
+  'hi',
+  'bn',
+  'te',
+  'mr',
+  'kn',
+] as const
 export type Locale = (typeof LOCALES)[number]
 /** User preference: follow the phone, or a fixed locale chosen in Settings. */
 export type LanguagePref = 'system' | Locale
@@ -20,6 +36,11 @@ export const LOCALE_NAMES: Record<Locale, string> = {
   th: 'ไทย',
   vi: 'Tiếng Việt',
   fil: 'Filipino',
+  hi: 'हिन्दी',
+  bn: 'বাংলা',
+  te: 'తెలుగు',
+  mr: 'मराठी',
+  kn: 'ಕನ್ನಡ',
 }
 
 /** Map a BCP 47 tag from the browser to a supported locale (undefined if unsupported). */

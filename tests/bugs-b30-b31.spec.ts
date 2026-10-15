@@ -269,9 +269,15 @@ for (const [locale, t] of Object.entries({ en: rewardCardEnglish, ...rewardCardT
     // One short line on the card: the QR rule plus where the card is stored.
     await expect(page.getByText(t.phone, { exact: false })).toBeVisible()
     await expect(
-      page.getByText(t.more.replace('{count}', '7').replace('{reward}', shop.reward_text), {
-        exact: true,
-      }),
+      // Counts use the language's own digits (৭ in Bengali, ७ in Marathi).
+      page.getByText(
+        t.more
+          .replace('{count}', new Intl.NumberFormat(locale).format(7))
+          .replace('{reward}', shop.reward_text),
+        {
+          exact: true,
+        },
+      ),
     ).toBeVisible()
     await page.evaluate(
       ({ key, id }) => {
