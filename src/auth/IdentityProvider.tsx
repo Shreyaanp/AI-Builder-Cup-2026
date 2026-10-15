@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Auth } from 'firebase/auth'
 import { IdentityContext } from './context'
+import { SignInOverlay } from './SignInOverlay'
 import type { Identity } from './context'
 
 type Operations = { auth: Auth; signIn: () => Promise<void>; signOut: () => Promise<void> }
@@ -14,6 +15,8 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     error: '',
   })
   const operations = useRef<Operations | null>(null)
+  // Google's window is open (waiting) or closed with an account still loading (finishing).
+  const [signing, setSigning] = useState<'idle' | 'waiting' | 'finishing'>('idle')
   useEffect(() => {
     const controller = new AbortController()
     let unsubscribe: (() => void) | undefined
@@ -104,11 +107,29 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function signIn() {
+    if (!operations.current || signing !== 'idle') return
+    setState((current) => ({ ...current, error: '' }))
+    setSigning('waiting')
     try {
-      if (!operations.current) return
       await operations.current.signIn()
-    } catch {
-      setState((current) => ({ ...current, error: 'Sign-in did not finish. Please try again.' }))
+      // The account arrives through onIdTokenChanged; keep the board up until it does, with a
+      // safety timeout so a slow token refresh never traps the screen.
+      setSigning('finishing')
+      setTimeout(() => setSigning('idle'), 8000)
+    } catch (error) {
+      setSigning('idle')
+      const code = (error as { code?: string } | null)?.code ?? ''
+      // Closing Google's window is a choice, not an error.
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
+      setState((current) => ({
+        ...current,
+        error:
+          code === 'auth/popup-blocked'
+            ? 'Your browser blocked the Google window. Allow pop-ups for this site, then try again.'
+            : code === 'auth/network-request-failed'
+              ? 'No connection to Google. Check your internet and try again.'
+              : 'Sign-in did not finish. Please try again.',
+      }))
     }
   }
   async function signOut() {
@@ -126,6 +147,11 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     return user.getIdToken()
   }, [state.mode, state.status])
   return (
-    <IdentityContext value={{ ...state, getToken, signIn, signOut }}>{children}</IdentityContext>
+    <IdentityContext value={{ ...state, getToken, signIn, signOut }}>
+      {children}
+      {(signing === 'waiting' || (signing === 'finishing' && state.status !== 'ready')) && (
+        <SignInOverlay phase={signing} />
+      )}
+    </IdentityContext>
   )
 }
