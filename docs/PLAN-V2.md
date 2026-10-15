@@ -84,6 +84,9 @@ honest demo labels, reduced motion, axe clean, a story walkthrough test, live on
 
 ## Workers and recovery
 
+- **Branches and review (owner decision 15 Oct):** every feature on its own feat/<name> branch,
+  merged only through a pull request with green checks and the graphify impact comment
+  (docs/REVIEW.md, scripts/build_graph.py, scripts/impact.py, npm run graph / npm run impact).
 - Account 2: headless `claude -p` with `CLAUDE_CONFIG_DIR=%USERPROFILE%\.claude-account2` in
   `%USERPROFILE%\work\chalkboard-ui`; claude.exe is under
   `%USERPROFILE%\.vscode\extensions\anthropic.claude-code-*\resources\native-binary\`. Logs in
