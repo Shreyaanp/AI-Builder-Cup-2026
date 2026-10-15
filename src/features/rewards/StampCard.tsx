@@ -136,7 +136,7 @@ export function StampCard({
       </Typography>
       {/* One short line; the full "not proof of purchase" note is on the claim screen. */}
       <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
-        {t.qr} {t.phone}
+        {t.qr} {signedIn ? t.account : t.phone}
       </Typography>
       {claimed > 0 && (
         <Typography variant="labelLarge" component="p" sx={{ mt: 2 }}>
@@ -204,7 +204,7 @@ export function StampCard({
             <Typography variant="bodyLarge">{t.show}</Typography>
             {redeeming && <LiveClock timezone={timezone} />}
             <Typography variant="bodySmall" color="text.secondary">
-              {t.phone} {t.honesty}
+              {signedIn ? `${t.account} ${t.accountHonesty}` : `${t.phone} ${t.honesty}`}
             </Typography>
             {failedClaim && <Alert severity="warning">{t.storage}</Alert>}
             <Button
