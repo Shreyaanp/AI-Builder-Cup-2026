@@ -160,13 +160,15 @@ test('first customer journey: denied location, interests, coach mark and return'
   await page.getByRole('button', { name: 'Coffee & tea', exact: true }).click()
   await page.getByRole('button', { name: 'Explore my neighbourhood' }).click()
   // AI-first front door after the welcome; returning skips the welcome.
-  await expect(page.getByRole('heading', { name: 'What are you looking for?' })).toBeVisible({
-    timeout: 30_000,
-  })
+  await expect(page.getByRole('heading', { name: 'What are you looking for nearby?' })).toBeVisible(
+    { timeout: 30_000 },
+  )
+  // The picked interest becomes a one-tap question.
+  await expect(page.getByRole('button', { name: 'Coffee & tea', exact: true })).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'What are you looking for?' })).toBeVisible({
-    timeout: 30_000,
-  })
+  await expect(page.getByRole('heading', { name: 'What are you looking for nearby?' })).toBeVisible(
+    { timeout: 30_000 },
+  )
   await expect(page.getByText('Step 1 of 2', { exact: true })).toHaveCount(0)
   expect(await page.evaluate(() => localStorage.getItem('chalkboard.customer.journey'))).toBe(
     'done',
