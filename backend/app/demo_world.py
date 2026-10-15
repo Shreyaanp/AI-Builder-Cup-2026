@@ -16,10 +16,12 @@ import structlog
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
+from .demand import seed_demo_signals
 from .limits import client_ip, enforce_limits
 from .merchant import BusinessFields, CustomFact, DayHours, MerchantRepository, ProductFields
 from .money import to_minor
 from .product_units import UNITS, normalize_unit
+from .rescue import seed_demo_deals
 from .settings import Settings
 from .sourcing import offset, region, seed_number
 
@@ -420,6 +422,8 @@ async def ensure_world(
     if stored and not upgrade:
         ids = [world_id(body.lat, body.lng, i) for i in range(len(SPREAD))]
         existing = [bid for bid in ids if await anyio.to_thread.run_sync(store.public_shop, bid)]
+        await anyio.to_thread.run_sync(seed_demo_signals, store, body.lat, body.lng)
+        await anyio.to_thread.run_sync(seed_demo_deals, store, WORLD_OWNER_UID, existing)
         return WorldReceipt(shop_ids=existing, created=False, source="existing")
     world, source = await generator.generate(body.place, body.currency)
     if upgrade and source != "gemini":
@@ -428,6 +432,8 @@ async def ensure_world(
     records = world_records(world, body.lat, body.lng, body.currency, body.timezone, body.place)
     for bid, fields, products in records:
         await anyio.to_thread.run_sync(store.seed_demo_shop, WORLD_OWNER_UID, bid, fields, products)
+    await anyio.to_thread.run_sync(seed_demo_signals, store, body.lat, body.lng)
+    await anyio.to_thread.run_sync(seed_demo_deals, store, WORLD_OWNER_UID, [r[0] for r in records])
     log.info("demo_world_created", source=source, shops=len(records))
     return WorldReceipt(shop_ids=[r[0] for r in records], created=True, source=source)
 

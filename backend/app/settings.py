@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_env: Literal["local", "test", "production"] = "local"
     coach_mode: Literal["offline", "gemini"] = "offline"
     forecast_backend: Literal["weekday_average", "bigquery"] = "weekday_average"
+    weather_backend: Literal["disabled", "offline", "open_meteo"] = "offline"
     auth_mode: Literal["local", "firebase"] = "local"
     session_database_url: str = "sqlite+aiosqlite:///./data/sessions.sqlite3"
     session_backend: Literal["sqlite", "firestore"] = "sqlite"
