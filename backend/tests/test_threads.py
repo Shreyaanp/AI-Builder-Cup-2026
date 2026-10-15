@@ -14,7 +14,7 @@ from app.customer import InquiryInput
 from app.merchant import MerchantRepository, MerchantStore
 from app.threads import ThreadSignals, token_hash
 from tests.test_customer import app as app
-from tests.test_customer import create_shop
+from tests.test_customer import create_shop, owner_of
 from tests.test_merchant_store import store as store
 from tests.test_photos import join
 
@@ -288,10 +288,7 @@ async def collect_stream(
 async def test_sse_customer_owner_delivery_resume_disconnect_and_erasure(app) -> None:
     with TestClient(app) as client:
         bid = owned_shop(client)
-        with app.state.merchant.connect() as db:
-            uid = db.execute("SELECT uid FROM memberships WHERE business_id=?", (bid,)).fetchone()[
-                0
-            ]
+        uid = owner_of(app.state.merchant, bid)
         access = app.state.merchant.add_inquiry(
             bid, InquiryInput(contact="customer@example.test", message="Hello")
         )
