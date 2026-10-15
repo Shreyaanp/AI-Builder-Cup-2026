@@ -180,8 +180,10 @@ function CoachScreen({
   const receive = useCallback(
     (event: CoachEvent) => {
       if (event.kind === 'ready') {
-        session.current = event.session_id ?? null
+        session.current = event.session_id ?? session.current
         setMode(event.mode ?? 'offline')
+        if (event.code === 'CONVERSATION_ROLLED_OVER')
+          setMessages((items) => [...items, { role: 'assistant', text: t.conversationRolledOver }])
       }
       if (event.kind === 'delta') setReply((text) => text + (event.text ?? ''))
       if (event.kind === 'reply' || event.kind === 'output_transcript') setReply(event.text ?? '')
@@ -213,9 +215,21 @@ function CoachScreen({
         setFaceOpen(true)
       }
     },
-    [review, go, setFaceOpen],
+    [review, go, setFaceOpen, t.conversationRolledOver],
   )
-  const voice = useVoice(activeId, receive)
+  const voiceReply = useRef('')
+  const voice = useVoice(activeId, (event) => {
+    receive(event)
+    if (event.kind === 'ready') voiceReply.current = ''
+    if (event.kind === 'reply' || event.kind === 'output_transcript')
+      voiceReply.current = event.text ?? ''
+    if (event.kind === 'turn_complete') {
+      const text = voiceReply.current
+      if (text) setMessages((items) => [...items, { role: 'assistant' as const, text }].slice(-40))
+      voiceReply.current = ''
+      setReply('')
+    }
+  })
 
   // Each shop has its own conversation thread.
   useEffect(() => {
@@ -223,13 +237,13 @@ function CoachScreen({
     controller.current?.abort()
     session.current = null
     void api<Conversation[]>('/conversations', { signal: abort.signal })
-      .then((items) => {
+      .then(async (items) => {
         if (abort.signal.aborted) return
         setHistory(items)
         // Coming back (reload, another day) continues this shop's latest conversation instead of
         // a blank screen. Once per visit: "New chat" still starts fresh.
         const latest = items.find((entry) => (entry.business_id ?? null) === activeId)
-        if (latest && !session.current) void restore(latest.session_id)
+        if (latest && !session.current) await restore(latest.session_id)
       })
       .catch(() => undefined)
     return () => {
@@ -295,6 +309,7 @@ function CoachScreen({
 
   function resetThread() {
     controller.current?.abort()
+    voice.stop()
     session.current = null
     setSearching(null)
     setMessages([])
@@ -506,6 +521,7 @@ function CoachScreen({
 
   async function restore(id: string) {
     setActionsOpen(false)
+    voice.stop()
     try {
       const data = await api<{ messages: Message[] }>(`/conversations/${id}`)
       controller.current?.abort()
@@ -1140,7 +1156,7 @@ function CoachScreen({
                 disabled={busy !== 'idle'}
                 onClick={() => {
                   if (voice.state === 'recording') voice.finishRecording()
-                  else if (voice.state === 'idle') void voice.start()
+                  else if (voice.state === 'idle') void voice.start(session.current)
                   else voice.stop()
                 }}
                 sx={
