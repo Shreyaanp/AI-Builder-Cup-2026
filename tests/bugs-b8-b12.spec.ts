@@ -289,6 +289,8 @@ test('B11: weekday hours are reviewed, saved and shown publicly', async ({ page 
     saved[0].id,
   )
   await page.goto(`/explore/s/${saved[0].id}`)
+  // Hours sit behind the Weekly hours toggle so the menu leads the page.
+  await page.getByRole('button', { name: /^Weekly hours/ }).click()
   await expect(page.getByRole('region', { name: 'Weekly hours' })).toContainText('22:00–02:00 (+1)')
   await expect(page.getByRole('region', { name: 'Weekly hours' })).toContainText('SundayClosed')
   expect(

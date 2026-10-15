@@ -264,6 +264,15 @@ FIXTURE: list[dict[str, Any]] = [
 ]
 
 
+def nice_price(amount: float) -> float:
+    """Prices a shop would actually write: 1.90, not 1.89; 45, not 44.7; 600, not 612."""
+    if amount < 20:
+        return round(amount * 10) / 10
+    if amount < 200:
+        return float(round(amount / 5) * 5)
+    return float(round(amount / 50) * 50)
+
+
 def fixture_world(currency: str) -> DemoWorld:
     place = region(currency)
     scale = place.rate * max(0.35, place.level)
@@ -280,7 +289,7 @@ def fixture_world(currency: str) -> DemoWorld:
                 locally_made=bool(spec["facts"].get("locally_made")),
                 story=spec["story"],
                 items=[
-                    WorldItem(name=n, price=round(p * scale, 2), unit=u, category=c)
+                    WorldItem(name=n, price=nice_price(p * scale), unit=u, category=c)
                     for n, p, u, c in spec["items"]
                 ],
             )
