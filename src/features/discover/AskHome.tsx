@@ -455,7 +455,7 @@ export default function AskHome({
                       variant="outlined"
                       onClick={() => send(chip.q, chip)}
                       disabled={busy}
-                      sx={{ minHeight: 48, borderRadius: 999, px: 4 }}
+                      sx={{ minHeight: 48, borderRadius: 999, px: 4, py: 2 }}
                     >
                       {chip.label}
                     </Button>
@@ -559,7 +559,7 @@ export default function AskHome({
             onChange={(event) => setDraft(event.target.value)}
             placeholder={listening ? t.listening : c.placeholder}
             inputProps={{ 'aria-label': c.composer, enterKeyHint: 'send', maxLength: 300 }}
-            sx={{ flex: 1, minWidth: 0, fontSize: 16, '& input': { py: 3 } }}
+            sx={{ flex: 1, minWidth: 0, minHeight: 48, fontSize: 16 }}
           />
           {Speech && !busy && (
             <IconButton
@@ -769,10 +769,8 @@ function AssistantTurn({
   const accountCopy = accountCopyFor(locale)
   if (turn.kind === 'today')
     return (
-      <Box sx={{ mt: 4 }}>
-        <Typography className="c-receive" variant="bodyLarge">
-          {fillIn(copy.todayIntro, { place: turn.place.label })}
-        </Typography>
+      // The deck carries its own title ("Today near …"): no second heading above it.
+      <Box className="c-receive" sx={{ mt: 2 }}>
         <TodayDeck place={turn.place} />
       </Box>
     )
@@ -966,7 +964,7 @@ function AssistantTurn({
                 <Button
                   variant="outlined"
                   onClick={() => onSend(chip.q, chip)}
-                  sx={{ minHeight: 48, borderRadius: 999, px: 4 }}
+                  sx={{ minHeight: 48, borderRadius: 999, px: 4, py: 2 }}
                 >
                   {chip.label}
                 </Button>
