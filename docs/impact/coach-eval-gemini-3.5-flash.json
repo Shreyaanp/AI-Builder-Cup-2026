@@ -1,0 +1,1071 @@
+[
+  {
+    "scenario": "bulk_menu_photo",
+    "passed": true,
+    "checks": {
+      "one bulk proposal": true,
+      "kopi extracted": true,
+      "toast extracted": true,
+      "all items together": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "propose_products"
+    ],
+    "tool_args": [
+      {
+        "name": "propose_products",
+        "args": {
+          "items": [
+            {
+              "price": 1.8,
+              "category": "Drinks",
+              "unit": "cup",
+              "name": "Kopi"
+            },
+            {
+              "category": "Food",
+              "name": "Kaya toast",
+              "unit": "set",
+              "price": 2.5
+            }
+          ]
+        }
+      }
+    ],
+    "reply": "I have prepared these two items from your menu photo for you to check:\n\n* **Kopi**: SGD 1.80 per cup\n* **Kaya toast**: SGD 2.50 per set\n\nPlease review and confirm them on your screen!",
+    "seconds": 84.72
+  },
+  {
+    "scenario": "memory_note",
+    "passed": true,
+    "checks": {
+      "saves a note": true,
+      "no record changes": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "remember_note"
+    ],
+    "tool_args": [
+      {
+        "name": "remember_note",
+        "args": {
+          "note": "closed every Monday during Ramadan"
+        }
+      }
+    ],
+    "reply": "I'll remember that you are closed every Monday during Ramadan.",
+    "seconds": 7.54
+  },
+  {
+    "scenario": "insights_no_sales",
+    "passed": true,
+    "checks": {
+      "checks insights": true,
+      "suggests importing sales": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "get_insights"
+    ],
+    "tool_args": [
+      {
+        "name": "get_insights",
+        "args": {}
+      }
+    ],
+    "reply": "To see how your business is doing this week, we need some sales data. \n\nHere is what you can do next:\n1. **Import your sales:** Upload a POS or Excel sales export so we can track your revenue and top sellers.\n2. **Confirm your menu:** Let me know if your current prices for Kopi ($2.00) and Kaya toast ($2.50) are still up to date.\n\nWould you like help importing your sales data?",
+    "seconds": 8.61
+  },
+  {
+    "scenario": "mandarin_new_shop",
+    "passed": true,
+    "checks": {
+      "proposes the shop": true,
+      "replies in Mandarin": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "propose_business"
+    ],
+    "tool_args": [
+      {
+        "name": "propose_business",
+        "args": {
+          "hours": "每天 07:00 - 21:00",
+          "weekly_hours": [
+            {
+              "closed": false,
+              "close": "21:00",
+              "open": "07:00",
+              "day": "mon"
+            },
+            {
+              "open": "07:00",
+              "closed": false,
+              "day": "tue",
+              "close": "21:00"
+            },
+            {
+              "day": "wed",
+              "open": "07:00",
+              "close": "21:00",
+              "closed": false
+            },
+            {
+              "open": "07:00",
+              "close": "21:00",
+              "closed": false,
+              "day": "thu"
+            },
+            {
+              "close": "21:00",
+              "open": "07:00",
+              "day": "fri",
+              "closed": false
+            },
+            {
+              "day": "sat",
+              "close": "21:00",
+              "open": "07:00",
+              "closed": false
+            },
+            {
+              "close": "21:00",
+              "open": "07:00",
+              "day": "sun",
+              "closed": false
+            }
+          ],
+          "currency": "SGD",
+          "category": "kopitiam",
+          "name": "阿明咖啡店",
+          "location": "新加坡 Tiong Bahru"
+        }
+      }
+    ],
+    "reply": "我已为您准备好了“阿明咖啡店”的信息：\n- **店名**：阿明咖啡店\n- **地点**：新加坡 Tiong Bahru\n- **营业时间**：每天 07:00 - 21:00\n- **币种**：SGD（新加坡元）\n\n请在屏幕上查看并确认。您的店里主要卖些什么？我们可以把菜单和价格也加进去。",
+    "seconds": 9.48
+  },
+  {
+    "scenario": "malay_menu_items",
+    "passed": true,
+    "checks": {
+      "proposes products": true,
+      "nasi lemak 4.50": true,
+      "teh tarik 1.80": true,
+      "replies in Malay": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "propose_products"
+    ],
+    "tool_args": [
+      {
+        "name": "propose_products",
+        "args": {
+          "items": [
+            {
+              "category": "Makanan",
+              "unit": "plate",
+              "price": 4.5,
+              "name": "nasi lemak"
+            },
+            {
+              "price": 1.8,
+              "unit": "cup",
+              "name": "teh tarik",
+              "category": "Minuman"
+            }
+          ]
+        }
+      }
+    ],
+    "reply": "Saya dah sediakan menu baru ini untuk semakan anda:\n\n* **nasi lemak**: SGD 4.50 sepinggan\n* **teh tarik**: SGD 1.80 secawan\n\nSila semak dan sahkan perubahan ini di skrin anda.",
+    "seconds": 8.87
+  },
+  {
+    "scenario": "tamil_price_correction",
+    "passed": true,
+    "checks": {
+      "proposes products": true,
+      "kopi corrected to 1.80 per cup": true,
+      "replies in Tamil": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "propose_products"
+    ],
+    "tool_args": [
+      {
+        "name": "propose_products",
+        "args": {
+          "items": [
+            {
+              "price": 1.8,
+              "unit": "cup",
+              "name": "Kopi"
+            }
+          ]
+        }
+      }
+    ],
+    "reply": "Kopi விலையை SGD 2லிருந்து SGD 1.80 ஆகக் குறைக்கத் தயாரித்துள்ளேன். \n\nமாற்றத்தைச் சரிபார்த்து, உங்கள் திரையில் உறுதிப்படுத்தவும்.",
+    "seconds": 7.5
+  },
+  {
+    "scenario": "japanese_sold_out",
+    "passed": true,
+    "checks": {
+      "proposes products": true,
+      "yakisoba unavailable": true,
+      "replies in Japanese": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "propose_products"
+    ],
+    "tool_args": [
+      {
+        "name": "propose_products",
+        "args": {
+          "items": [
+            {
+              "available": false,
+              "unit": "plate",
+              "name": "焼きそば"
+            }
+          ]
+        }
+      }
+    ],
+    "reply": "焼きそばを「売り切れ」として変更を準備しました。画面に表示されている内容を確認し、よろしければ確定してください。",
+    "seconds": 3.67
+  },
+  {
+    "scenario": "korean_shop_hours",
+    "passed": true,
+    "checks": {
+      "proposes shop changes": true,
+      "replies in Korean": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "propose_business"
+    ],
+    "tool_args": [
+      {
+        "name": "propose_business",
+        "args": {
+          "name": "",
+          "hours": "08:00 - 18:00"
+        }
+      }
+    ],
+    "reply": "영업시간을 오전 8시부터 오후 6시(08:00 - 18:00)로 변경하도록 준비했습니다. 화면에서 변경 내용을 확인하시고 승인해 주세요!",
+    "seconds": 7.18
+  },
+  {
+    "scenario": "indonesian_menu_items",
+    "passed": true,
+    "checks": {
+      "proposes products": true,
+      "nasi goreng 5": true,
+      "replies in Indonesian": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "propose_products"
+    ],
+    "tool_args": [
+      {
+        "name": "propose_products",
+        "args": {
+          "items": [
+            {
+              "price": 5,
+              "unit": "plate",
+              "name": "Nasi Goreng",
+              "category": "Makanan"
+            }
+          ]
+        }
+      }
+    ],
+    "reply": "Saya sudah menyiapkan perubahan menu untuk menambahkan **Nasi Goreng** seharga **SGD 5 per piring** di bawah kategori Makanan. \n\nSilakan periksa dan konfirmasi perubahan ini di layar Anda ya!",
+    "seconds": 2.96
+  },
+  {
+    "scenario": "thai_new_shop",
+    "passed": true,
+    "checks": {
+      "proposes the shop": true,
+      "replies in Thai": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "propose_business"
+    ],
+    "tool_args": [
+      {
+        "name": "propose_business",
+        "args": {
+          "name": "บ้านขนม",
+          "weekly_hours": [
+            {
+              "day": "mon",
+              "closed": false,
+              "close": "18:00",
+              "open": "08:00"
+            },
+            {
+              "close": "18:00",
+              "open": "08:00",
+              "closed": false,
+              "day": "tue"
+            },
+            {
+              "close": "18:00",
+              "day": "wed",
+              "open": "08:00",
+              "closed": false
+            },
+            {
+              "day": "thu",
+              "closed": false,
+              "close": "18:00",
+              "open": "08:00"
+            },
+            {
+              "day": "fri",
+              "open": "08:00",
+              "close": "18:00",
+              "closed": false
+            },
+            {
+              "open": "08:00",
+              "day": "sat",
+              "closed": false,
+              "close": "18:00"
+            },
+            {
+              "close": "18:00",
+              "open": "08:00",
+              "closed": false,
+              "day": "sun"
+            }
+          ],
+          "currency": "SGD",
+          "location": "บูกิส สิงคโปร์",
+          "category": "เบเกอรี่"
+        }
+      }
+    ],
+    "reply": "ฉันได้เตรียมข้อมูลร้าน \"บ้านขนม\" เรียบร้อยแล้วค่ะ โดยตั้งค่าเป็นร้านเบเกอรี่ ตั้งอยู่ที่บูกิส สิงคโปร์ (ใช้สกุลเงิน SGD) และเปิดให้บริการทุกวัน เวลา 08:00 - 18:00 น. \n\nรบกวนตรวจสอบและกดปุ่มยืนยันข้อมูลบนหน้าจอได้เลยนะคะ",
+    "seconds": 3.93
+  },
+  {
+    "scenario": "vietnamese_menu_items",
+    "passed": true,
+    "checks": {
+      "proposes products": true,
+      "banh mi 4": true,
+      "replies in Vietnamese": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "propose_products"
+    ],
+    "tool_args": [
+      {
+        "name": "propose_products",
+        "args": {
+          "items": [
+            {
+              "price": 4,
+              "unit": "piece",
+              "category": "Món ăn",
+              "name": "Bánh mì"
+            }
+          ]
+        }
+      }
+    ],
+    "reply": "Tôi đã chuẩn bị thêm món **Bánh mì** với giá **4 SGD mỗi cái** vào mục \"Món ăn\" trên thực đơn của bạn. \n\nBạn vui lòng kiểm tra và xác nhận thay đổi này trên màn hình nhé!",
+    "seconds": 5.18
+  },
+  {
+    "scenario": "filipino_sold_out",
+    "passed": true,
+    "checks": {
+      "proposes products": true,
+      "kaya toast unavailable": true,
+      "replies in Filipino": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "propose_products"
+    ],
+    "tool_args": [
+      {
+        "name": "propose_products",
+        "args": {
+          "items": [
+            {
+              "name": "Kaya toast",
+              "available": false
+            }
+          ]
+        }
+      }
+    ],
+    "reply": "Inihanda ko na ang pagbabago para markahang sold out ang **Kaya toast** ngayong araw. \n\nPaki-check at paki-pindot ang **Confirm** sa iyong screen para ma-update ito.",
+    "seconds": 2.68
+  },
+  {
+    "scenario": "ambiguous_asks_first",
+    "passed": true,
+    "checks": {
+      "does not guess a price": true,
+      "asks a question": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [],
+    "tool_args": [],
+    "reply": "What is the new price for Kopi?",
+    "seconds": 2.41
+  },
+  {
+    "scenario": "off_topic_declines",
+    "passed": true,
+    "checks": {
+      "no tool calls": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [],
+    "tool_args": [],
+    "reply": "I'd love to help you with your shop, Ah Ming Kopi, but I can only assist with things related to running your business—like setting up your menu, updating prices, or finding suppliers. \n\nWould you like to add some of your drinks or toast to your menu today?",
+    "seconds": 2.65
+  },
+  {
+    "scenario": "suspicious_price_is_flagged",
+    "passed": true,
+    "checks": {
+      "proposes products": true,
+      "proposes kopi 20": true,
+      "tool warned": true,
+      "asks the owner to confirm": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "propose_products"
+    ],
+    "tool_args": [
+      {
+        "name": "propose_products",
+        "args": {
+          "items": [
+            {
+              "name": "Kopi",
+              "price": 20,
+              "unit": "cup"
+            }
+          ]
+        }
+      }
+    ],
+    "reply": "I have prepared the price update for Kopi. \n\nIs SGD 20 the correct new price for a cup of Kopi?",
+    "seconds": 5.86
+  },
+  {
+    "scenario": "asks_one_customer_fact",
+    "passed": false,
+    "checks": {
+      "no record changes": true,
+      "reads the shop first": false,
+      "asks about halal first": true,
+      "one question only": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "get_question_plan"
+    ],
+    "tool_args": [
+      {
+        "name": "get_question_plan",
+        "args": {}
+      }
+    ],
+    "reply": "Is your food halal?",
+    "seconds": 2.52
+  },
+  {
+    "scenario": "records_halal_and_payment",
+    "passed": false,
+    "checks": {
+      "proposes shop facts": true,
+      "halal yes": true,
+      "cash and PayNow": false,
+      "keeps the shop": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "propose_customer_facts"
+    ],
+    "tool_args": [
+      {
+        "name": "propose_customer_facts",
+        "args": {
+          "halal": "yes",
+          "payment_methods": [
+            "cash",
+            "PayNow"
+          ]
+        }
+      }
+    ],
+    "reply": "I have prepared these details for your shop. Please review and confirm them on your screen:\n\n* **Halal:** Yes\n* **Payment Methods:** Cash, PayNow",
+    "seconds": 3.12
+  },
+  {
+    "scenario": "no_false_google_claims",
+    "passed": true,
+    "checks": {
+      "never claims to publish": true,
+      "no tool calls": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [],
+    "tool_args": [],
+    "reply": "I can't publish your shop to Google Maps directly. You can easily do this yourself by going to the Google tab in the app, which will guide you through Google's official registration page!",
+    "seconds": 2.02
+  },
+  {
+    "scenario": "running_low_finds_suppliers",
+    "passed": true,
+    "checks": {
+      "finds suppliers": true,
+      "for flour": true,
+      "says demo honestly": true,
+      "does not order yet": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "find_suppliers"
+    ],
+    "tool_args": [
+      {
+        "name": "find_suppliers",
+        "args": {
+          "item": "flour"
+        }
+      }
+    ],
+    "reply": "I found a few demo suppliers for flour (please note these are demo suppliers created for this demonstration):\n\n1. **Shree Ganesh Wholesale Traders** (1.4 km away) – ₹49.5 per kg\n2. **Lakshmi Cash & Carry** (2.9 km away) – ₹47 per kg\n3. **Kaveri Fresh & Dairy Supply** (4.6 km away) – ₹43 per kg\n\nWhich one would you like to order from, and how much flour do you need?",
+    "seconds": 3.8
+  },
+  {
+    "scenario": "need_quantity_by_tomorrow",
+    "passed": true,
+    "checks": {
+      "finds suppliers": true,
+      "keeps quantity": true,
+      "keeps unit": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "find_suppliers"
+    ],
+    "tool_args": [
+      {
+        "name": "find_suppliers",
+        "args": {
+          "unit": "kg",
+          "quantity": 20,
+          "item": "flour"
+        }
+      }
+    ],
+    "reply": "I found some demo suppliers for 20 kg of flour (prices in INR):\n\n1. **Shree Ganesh Wholesale Traders** (1.4 km away) — ₹49.5/kg (Total ₹990), next-day delivery.\n2. **Lakshmi Cash & Carry** (2.9 km away) — ₹47/kg (Total ₹940), same-day delivery.\n3. **Kaveri Fresh & Dairy Supply** (4.6 km away) — ₹43/kg (Total ₹860), daily delivery before 8am.\n\nThese are demo suppliers created for this demonstration. Which one would you like to order from?",
+    "seconds": 5.48
+  },
+  {
+    "scenario": "hindi_running_low",
+    "passed": true,
+    "checks": {
+      "finds suppliers": true,
+      "replies in Hindi": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "find_suppliers"
+    ],
+    "tool_args": [
+      {
+        "name": "find_suppliers",
+        "args": {
+          "item": "आटा"
+        }
+      }
+    ],
+    "reply": "मुझे आपके आस-पास आटे के लिए कुछ डेमो सप्लायर मिले हैं (ये डेमो के लिए बनाए गए हैं, असली नहीं हैं):\n\n1. **Shree Ganesh Wholesale Traders** (रैंक 1) - दूरी: 1.4 किमी, कीमत: ₹148/kg\n2. **Lakshmi Cash & Carry** (रैंक 2) - दूरी: 2.9 किमी, कीमत: ₹123/kg (सबसे सस्ता)\n\nआप किस सप्लायर से ऑर्डर करना चाहेंगे?",
+    "seconds": 6.33
+  },
+  {
+    "scenario": "unknown_item_asks_once",
+    "passed": true,
+    "checks": {
+      "no blind search": true,
+      "asks which item": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [],
+    "tool_args": [],
+    "reply": "What items do you need to restock? Let me know, and I can help you find suppliers nearby!",
+    "seconds": 2.43
+  },
+  {
+    "scenario": "same_as_last_time",
+    "passed": true,
+    "checks": {
+      "reads orders": true,
+      "prepares the order": true,
+      "never claims it was sent": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "get_orders",
+      "prepare_order"
+    ],
+    "tool_args": [
+      {
+        "name": "get_orders",
+        "args": {}
+      },
+      {
+        "name": "prepare_order",
+        "args": {
+          "items": [
+            {
+              "quantity": 20,
+              "name": "Wheat flour",
+              "unit": "kg"
+            }
+          ],
+          "supplier_id": "demo-sup-7cb1d9ed95-0"
+        }
+      }
+    ],
+    "reply": "I have prepared the order request for you to review. It is for **20 kg of Wheat flour** from **Shree Ganesh Wholesale Traders** (estimated total: ₹990). \n\nPlease note that this is a demo supplier. You can tap **Send** on your screen to confirm and place the order!",
+    "seconds": 4.69
+  },
+  {
+    "scenario": "ask_about_sunday",
+    "passed": true,
+    "checks": {
+      "prepares a supplier message": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "get_orders",
+      "message_supplier"
+    ],
+    "tool_args": [
+      {
+        "name": "get_orders",
+        "args": {}
+      },
+      {
+        "name": "message_supplier",
+        "args": {
+          "text": "Do you deliver on Sunday?",
+          "order_id": "241e10b8-1e2a-4183-856f-3495fb5f0ed4"
+        }
+      }
+    ],
+    "reply": "I have prepared the message to Shree Ganesh Wholesale Traders asking if they deliver on Sunday. Please tap Send on your screen to deliver it.",
+    "seconds": 4.37
+  },
+  {
+    "scenario": "change_draft_quantity",
+    "passed": true,
+    "checks": {
+      "replaces the draft": true,
+      "15 units": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "get_orders",
+      "prepare_order"
+    ],
+    "tool_args": [
+      {
+        "name": "get_orders",
+        "args": {}
+      },
+      {
+        "name": "prepare_order",
+        "args": {
+          "replaces_order_id": "8122ad86-42e1-4332-b763-189843ad1c38",
+          "items": [
+            {
+              "name": "Wheat flour",
+              "unit": "kg",
+              "quantity": 15
+            }
+          ],
+          "supplier_id": "demo-sup-7cb1d9ed95-0"
+        }
+      }
+    ],
+    "reply": "I have prepared the updated order request for Shree Ganesh Wholesale Traders with the quantity of wheat flour changed to 15 kg. \n\nPlease review and tap Send on the screen to confirm.",
+    "seconds": 4.74
+  },
+  {
+    "scenario": "cancel_that_order",
+    "passed": true,
+    "checks": {
+      "cancels": true,
+      "no internal fields or tags in reply": true,
+      "says prepared, not saved": true,
+      "prices in major units": true
+    },
+    "tools": [
+      "get_orders",
+      "cancel_order"
+    ],
+    "tool_args": [
+      {
+        "name": "get_orders",
+        "args": {}
+      },
+      {
+        "name": "cancel_order",
+        "args": {
+          "order_id": "09d31f44-8a67-4d5c-b496-8be9622940ed"
+        }
+      }
+    ],
+    "reply": "I have prepared the cancellation for your order of 20 kg Wheat flour from Shree Ganesh Wholesale Traders. Please tap **Send** on the screen to confirm and send the cancellation message.",
+    "seconds": 6.26
+  },
+  {
+    "scenario": "multi_turn_conversation",
+    "passed": true,
+    "final_inventory_matches": true,
+    "final_inventory": [
+      {
+        "id": "abd3da74-a4eb-4b44-9652-4247eb962f25",
+        "available": true,
+        "category": "Drinks",
+        "name": "kopi",
+        "price": 180,
+        "stock": null,
+        "unit": "cup"
+      },
+      {
+        "id": "423619d3-1ae2-4b4f-8b96-6b4da0f0b0da",
+        "available": false,
+        "category": "Mains",
+        "name": "kaya toast",
+        "price": 250,
+        "stock": null,
+        "unit": "piece"
+      },
+      {
+        "id": "098374b4-b7bc-4478-9292-e0ffb5742c16",
+        "available": true,
+        "category": "Snacks",
+        "name": "curry puff",
+        "price": 150,
+        "stock": null,
+        "unit": "piece"
+      }
+    ],
+    "turns": [
+      {
+        "message": "Hi! I run Sunrise Kopi in Tiong Bahru, Singapore. Open 7 am to 9 pm.",
+        "passed": true,
+        "checks": {
+          "proposes the shop": true,
+          "no internal fields or tags in reply": true,
+          "says prepared, not saved": true,
+          "prices in major units": true
+        },
+        "tools": [
+          "propose_business"
+        ],
+        "tool_args": [
+          {
+            "name": "propose_business",
+            "args": {
+              "hours": "7 am to 9 pm",
+              "currency": "SGD",
+              "weekly_hours": [
+                {
+                  "day": "mon",
+                  "close": "21:00",
+                  "open": "07:00",
+                  "closed": false
+                },
+                {
+                  "open": "07:00",
+                  "day": "tue",
+                  "closed": false,
+                  "close": "21:00"
+                },
+                {
+                  "open": "07:00",
+                  "closed": false,
+                  "day": "wed",
+                  "close": "21:00"
+                },
+                {
+                  "open": "07:00",
+                  "closed": false,
+                  "close": "21:00",
+                  "day": "thu"
+                },
+                {
+                  "closed": false,
+                  "open": "07:00",
+                  "close": "21:00",
+                  "day": "fri"
+                },
+                {
+                  "close": "21:00",
+                  "open": "07:00",
+                  "closed": false,
+                  "day": "sat"
+                },
+                {
+                  "open": "07:00",
+                  "closed": false,
+                  "day": "sun",
+                  "close": "21:00"
+                }
+              ],
+              "name": "Sunrise Kopi",
+              "location": "Tiong Bahru, Singapore"
+            }
+          }
+        ],
+        "reply": "Hi! I have prepared your shop details for Sunrise Kopi in Tiong Bahru, open daily from 7:00 AM to 9:00 PM. \n\nPlease review and confirm the details on your screen! What kind of drinks or food do you sell?",
+        "finish": [
+          "FinishReason.STOP",
+          "FinishReason.STOP"
+        ],
+        "seconds": 5.74
+      },
+      {
+        "message": "Menu: kopi SGD 2 per cup, kaya toast SGD 2.50 per piece",
+        "passed": true,
+        "checks": {
+          "proposes both items": true,
+          "kaya toast 2.50 per piece": true,
+          "no internal fields or tags in reply": true,
+          "says prepared, not saved": true,
+          "prices in major units": true
+        },
+        "tools": [
+          "propose_products"
+        ],
+        "tool_args": [
+          {
+            "name": "propose_products",
+            "args": {
+              "items": [
+                {
+                  "category": "Drinks",
+                  "name": "kopi",
+                  "unit": "cup",
+                  "price": 2
+                },
+                {
+                  "category": "Mains",
+                  "name": "kaya toast",
+                  "unit": "piece",
+                  "price": 2.5
+                }
+              ]
+            }
+          }
+        ],
+        "reply": "I have prepared your menu items:\n* **Kopi**: SGD 2.00 per cup\n* **Kaya Toast**: SGD 2.50 per piece\n\nPlease check and confirm them on your screen! Do you have any other items to add?",
+        "finish": [
+          "FinishReason.STOP",
+          "FinishReason.STOP"
+        ],
+        "seconds": 3.38
+      },
+      {
+        "message": "Actually kopi is SGD 1.80 now",
+        "passed": true,
+        "checks": {
+          "corrects kopi only": true,
+          "no internal fields or tags in reply": true,
+          "says prepared, not saved": true,
+          "prices in major units": true
+        },
+        "tools": [
+          "propose_products"
+        ],
+        "tool_args": [
+          {
+            "name": "propose_products",
+            "args": {
+              "items": [
+                {
+                  "name": "kopi",
+                  "price": 1.8,
+                  "unit": "cup"
+                }
+              ]
+            }
+          }
+        ],
+        "reply": "I have prepared the price update for your **Kopi** to SGD 1.80 per cup. \n\nPlease review and confirm this change on your screen!",
+        "finish": [
+          "FinishReason.STOP",
+          "FinishReason.STOP"
+        ],
+        "seconds": 3.55
+      },
+      {
+        "message": "Kaya toast is sold out today",
+        "passed": true,
+        "checks": {
+          "marks kaya toast sold out": true,
+          "no internal fields or tags in reply": true,
+          "says prepared, not saved": true,
+          "prices in major units": true
+        },
+        "tools": [
+          "propose_products"
+        ],
+        "tool_args": [
+          {
+            "name": "propose_products",
+            "args": {
+              "items": [
+                {
+                  "name": "kaya toast",
+                  "available": false
+                }
+              ]
+            }
+          }
+        ],
+        "reply": "I have prepared the update to mark **Kaya Toast** as sold out for today. \n\nPlease check and confirm this on your screen!",
+        "finish": [
+          "FinishReason.STOP",
+          "FinishReason.STOP"
+        ],
+        "seconds": 2.22
+      },
+      {
+        "message": "By the way, what's a good name for a cat?",
+        "passed": true,
+        "checks": {
+          "no record changes off-topic": true,
+          "no internal fields or tags in reply": true,
+          "says prepared, not saved": true,
+          "prices in major units": true
+        },
+        "tools": [],
+        "tool_args": [],
+        "reply": "That sounds like a fun question, but I'm here to help you manage your shop, menu, and suppliers! \n\nIs there anything else you'd like to update for Sunrise Kopi today?",
+        "finish": [
+          "FinishReason.STOP"
+        ],
+        "seconds": 1.9
+      },
+      {
+        "message": "Ok back to the menu - add curry puff SGD 1.50 per piece",
+        "passed": true,
+        "checks": {
+          "continues the right shop": true,
+          "does not recreate the shop": true,
+          "no internal fields or tags in reply": true,
+          "says prepared, not saved": true,
+          "prices in major units": true
+        },
+        "tools": [
+          "propose_products"
+        ],
+        "tool_args": [
+          {
+            "name": "propose_products",
+            "args": {
+              "items": [
+                {
+                  "category": "Snacks",
+                  "price": 1.5,
+                  "unit": "piece",
+                  "name": "curry puff"
+                }
+              ]
+            }
+          }
+        ],
+        "reply": "I have prepared the addition of **Curry Puff** at SGD 1.50 per piece to your menu. \n\nPlease review and confirm it on your screen!",
+        "finish": [
+          "FinishReason.STOP",
+          "FinishReason.STOP"
+        ],
+        "seconds": 3.97
+      }
+    ]
+  }
+]
