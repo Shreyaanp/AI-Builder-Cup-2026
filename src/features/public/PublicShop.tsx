@@ -5,6 +5,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Collapse,
   IconButton,
   List,
   ListItem,
@@ -13,7 +14,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { ArrowLeft, Leaf, MapPin, MessageCircle, Phone, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Leaf, MapPin, MessageCircle, Phone, RefreshCw } from 'lucide-react'
 import { customerNavigate } from '../frontdoors/navigation'
 import type { ReactNode } from 'react'
 import { type Locale } from '../../i18n/locales'
@@ -403,6 +404,7 @@ export default function PublicShop({ id }: { id: string }) {
   const [stale, setStale] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const previous = useRef<PublicShopData | null>(null)
   const [changedPrices, setChangedPrices] = useState<string[]>([])
   useEffect(() => {
@@ -544,7 +546,10 @@ export default function PublicShop({ id }: { id: string }) {
   const chips = [
     ...factChips(shop.facts ?? {}, t),
     // Type-specific facts the owner confirmed (e.g. a salon's walk-ins), label: value.
-    ...custom.filter((fact) => fact.key !== 'story').map((fact) => `${fact.label}: ${fact.value}`),
+    ...custom
+      // The story has its own line; the demo label is already in the header.
+      .filter((fact) => fact.key !== 'story' && fact.key !== 'demo_data')
+      .map((fact) => `${fact.label}: ${fact.value}`),
   ]
   // Available items first; sold-out items stay listed (customers ask about them) but last.
   const story = custom.find((fact) => fact.key === 'story')?.value
@@ -701,34 +706,6 @@ export default function PublicShop({ id }: { id: string }) {
           </Button>
         ))}
       </Stack>
-      <Box sx={{ mt: 2 }}>
-        <HoursList hours={shop.weekly_hours} />
-      </Box>
-      {shop.location && (
-        <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1.5 }}>
-          {shop.location}
-        </Typography>
-      )}
-      <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 0.5 }}>
-        {shop.last_confirmed
-          ? (() => {
-              // "Today" in the shop's own timezone, so a late-night check reads correctly.
-              const parts = new Intl.DateTimeFormat('en-CA', {
-                timeZone: shop.timezone ?? 'Asia/Singapore',
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-              }).formatToParts(new Date())
-              const part = (name: string) => parts.find((p) => p.type === name)?.value
-              const today = `${part('year')}-${part('month')}-${part('day')}`
-              const days = Math.max(
-                0,
-                Math.round((Date.parse(today) - Date.parse(shop.last_confirmed)) / 86_400_000),
-              )
-              return days === 0 ? freshnessCopy.updatedToday : freshnessCopy.updatedDays(days)
-            })()
-          : freshnessCopy.menuUnconfirmed}
-      </Typography>{' '}
       {chips.length > 0 && (
         <Box
           component="ul"
@@ -766,14 +743,58 @@ export default function PublicShop({ id }: { id: string }) {
           ))}
         </Box>
       )}
-      <StampCard
-        shop={id}
-        name={shop.name}
-        timezone={shop.timezone ?? 'Asia/Singapore'}
-        reward={shop.reward_text}
-        needed={shop.stamps_needed ?? 8}
-      />
-      {!stale && <BackInStock shop={id} products={shop.products} />}
+      {/* Hours and address on demand; freshness stays in view (trust). */}
+      <Stack direction="row" sx={{ mt: 1, alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Button
+          variant="text"
+          size="small"
+          onClick={() => setDetailsOpen((open) => !open)}
+          aria-expanded={detailsOpen}
+          endIcon={
+            <ChevronDown
+              size={18}
+              style={{
+                transform: detailsOpen ? 'rotate(180deg)' : 'none',
+                transition: 'transform 200ms ease',
+              }}
+            />
+          }
+          sx={{ px: 1, minHeight: 40, color: 'text.secondary', fontWeight: 500 }}
+        >
+          {shopCopy.weeklyHours}
+          {shop.hours ? ` · ${shop.hours}` : ''}
+        </Button>
+        <Typography variant="bodySmall" color="text.secondary">
+          {shop.last_confirmed
+            ? (() => {
+                // "Today" in the shop's own timezone, so a late-night check reads correctly.
+                const parts = new Intl.DateTimeFormat('en-CA', {
+                  timeZone: shop.timezone ?? 'Asia/Singapore',
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                }).formatToParts(new Date())
+                const part = (name: string) => parts.find((p) => p.type === name)?.value
+                const today = `${part('year')}-${part('month')}-${part('day')}`
+                const days = Math.max(
+                  0,
+                  Math.round((Date.parse(today) - Date.parse(shop.last_confirmed)) / 86_400_000),
+                )
+                return days === 0 ? freshnessCopy.updatedToday : freshnessCopy.updatedDays(days)
+              })()
+            : freshnessCopy.menuUnconfirmed}
+        </Typography>
+      </Stack>
+      <Collapse in={detailsOpen} unmountOnExit>
+        <Box sx={{ mt: 1 }}>
+          <HoursList hours={shop.weekly_hours} />
+        </Box>
+        {shop.location && (
+          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1.5 }}>
+            {shop.location}
+          </Typography>
+        )}
+      </Collapse>
       {/* Menu: dense, aligned prices, readable at a glance. */}
       <Stack
         direction="row"
@@ -902,6 +923,15 @@ export default function PublicShop({ id }: { id: string }) {
           )}
         </CategoryGroups>
       )}
+      {/* Rewards after the menu: earned, not in the way. */}
+      <StampCard
+        shop={id}
+        name={shop.name}
+        timezone={shop.timezone ?? 'Asia/Singapore'}
+        reward={shop.reward_text}
+        needed={shop.stamps_needed ?? 8}
+      />
+      {!stale && <BackInStock shop={id} products={shop.products} />}
       <BadgeRow shop={id} />
       <Tips shop={id} />
       <Stack

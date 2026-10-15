@@ -93,6 +93,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       await expect(customer.getByText('UPI', { exact: true })).toBeVisible()
       await expect(customer.getByText('Locally made', { exact: true })).toBeVisible()
       await expect(customer.getByRole('heading', { name: 'Drinks', exact: true })).toBeVisible()
+      await customer.getByRole('button', { name: /^Weekly hours/ }).click()
       await expect(customer.getByText('07:00–20:00', { exact: true })).toBeVisible()
       await expect(customer.getByRole('listitem').filter({ hasText: 'Kaya toast' })).toContainText(
         'Sold out',
