@@ -25,6 +25,7 @@ from .discover import (
     distance,
     open_now,
 )
+from .gemini_schema import gemini_schema, parse_reply
 from .limits import client_ip, enforce_limits
 from .merchant import MerchantRepository
 from .money import exponent
@@ -197,7 +198,7 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
                 ),
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=Intent,
+                    response_json_schema=gemini_schema(Intent),
                     temperature=0,
                     max_output_tokens=400,
                 ),
@@ -205,7 +206,7 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
     except Exception:  # noqa: BLE001 - the keyword parser is always a correct fallback
         log.warning("ask_intent_unavailable")
         return None
-    parsed = response.parsed
+    parsed = parse_reply(Intent, response)
     return parsed if isinstance(parsed, Intent) else None
 
 

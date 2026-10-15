@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
+from .gemini_schema import gemini_schema, parse_reply
 from .imports import ColumnMapper
 from .shop_time import shop_timezone
 
@@ -211,13 +212,14 @@ class RecapWriter(ColumnMapper):
                         "claiming full weekly revenue or reasons for changes. No tools or "
                         "business changes.",
                         response_mime_type="application/json",
-                        response_schema=Summary,
+                        response_json_schema=gemini_schema(Summary),
                         temperature=0.2,
                         max_output_tokens=600,
                     ),
                 )
-            if isinstance(response.parsed, Summary):
-                return response.parsed.text, "gemini"
+            summary = parse_reply(Summary, response)
+            if summary is not None:
+                return summary.text, "gemini"
         except Exception:
             pass
         return offline_summary(facts, language), "offline"

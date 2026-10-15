@@ -15,6 +15,7 @@ from typing import Any
 import structlog
 from pydantic import BaseModel, Field
 
+from .gemini_schema import gemini_schema, parse_reply
 from .settings import Settings
 
 log = structlog.get_logger()
@@ -187,13 +188,14 @@ class QuestionPlanner:
                 config=types.GenerateContentConfig(
                     system_instruction=PROMPT.format(size=PLAN_SIZE),
                     response_mime_type="application/json",
-                    response_schema=QuestionPlan,
+                    response_json_schema=gemini_schema(QuestionPlan),
                     temperature=0.2,
                     max_output_tokens=800,
                 ),
             )
-            if isinstance(response.parsed, QuestionPlan) and response.parsed.questions:
-                return response.parsed
+            plan = parse_reply(QuestionPlan, response)
+            if plan is not None and plan.questions:
+                return plan
         except Exception:
             # Never block onboarding on the planner; the catalogue is a sound default.
             log.warning("question_plan_failed")
