@@ -1,5 +1,51 @@
 # Account 2 status: passport + Today's 7 (`feat/passport`, merged as `merge/passport`)
 
+## Camera, map, Google Maps hand-off and a guided form inside the onboarding chat (`feat/onboarding-inchat`) — owner brief 16 Oct
+
+Brief: `docs/briefs/task-ONBOARDING-INCHAT.md`. Branched from `feat/new-shop-flow` after PR #3
+merged; `origin/main` merged in. Everything stays inside the voice-mode conversation; the mic keeps
+running throughout.
+
+- **Camera card** (`CameraCard.tsx`): when the coach asks for a photo (or the owner taps Photo) a
+  viewfinder opens as a card in the conversation, never full screen: the coach's instruction over a
+  guide frame ("Fit the whole price board in the frame"), shutter, retake, Use photo, and Upload as
+  the fallback. Guided two shots: price board, then shopfront. The reason comes before the camera
+  prompt; only video is requested, so the voice mic is untouched. Denied or no camera uses the
+  voice-alert pattern (Try again / Upload instead / Close).
+- **Map card** (`MapCard.tsx`, `PinMap.tsx`): a small map in the chat with a fixed centre pin (move
+  the map under it: drag, pinch, wheel, arrow keys, +/-), "Use my current location", accuracy
+  ("within 20 m") and the readable address under the pin (`GET /places/reverse`). "Bigger map"
+  opens a full-screen map for careful placing. Google's map when a live browser key exists,
+  otherwise OpenStreetMap tiles; offline it keeps a chalk grid and the pin still works. A pin the
+  owner moved is saved as `pin_source: pin` (no fake GPS accuracy); an untouched fix stays `device`
+  with its accuracy.
+- **Google Maps hand-off** (`MapsHandoff.tsx`; on the ready moment and in My shop → details):
+  Google's official Maps URL at the pin (`/maps/search/?api=1&query=lat,lng`), where the owner taps
+  "Add a missing place". Google has no URL that prefills a new place's name or category, so name,
+  category, address, phone and hours are one tap to copy. Says plainly "Not on Google yet" and that
+  the owner submits it on Google; never claims we published.
+- **Guided form** (`GuidedDetails.tsx`): one question per screen, big targets, Back/Next, progress
+  and a step row to jump anywhere, smart defaults. New shop: name, kind, items with prices,
+  location (the same map card), hours, phone, payment, delivery; reached by "Type it in instead" in
+  the conversation header. Edit details in My shop uses the same journey (plus reward) instead of
+  the long dialog. Nothing saves without the usual review.
+- Copy: `inChatCopy.ts`, every string × 15 locales (typed `Record<Locale, …>`).
+
+**Checks (16 Oct; ports 3449/3549, test backend on its own fresh data folder because another
+session's live server on 3547 holds `backend/data/conversation-vectors`):** backend **643 passed /
+165 skipped**, Ruff + mypy clean; ESLint (ignoring the untracked, gitignored `docs/launch/` GSAP
+bundle), `tsc -b`, Prettier, hook rules pass. BROWSER_RESULTS Evidence:
+`docs/stories/new-shop-camera-*.png`, `new-shop-map-*.png`, `new-shop-manual-*.png`, `S10-*.png`.
+
+Two test fixes on resume: the hand-pin test dragged the map leftwards and then pressed ArrowLeft,
+which cancel out (~4.5 m, under the 10 m "moved" threshold), so it now drags so both go west; S10
+expected `77.641235` for the 6-decimal pin, but `77.6412345` is stored as `77.64123449…`, so the
+link correctly reads `77.641234`.
+
+**Not validated:** a real phone camera and GPS (Playwright uses a fake camera and a set location),
+the live Google map engine (no live browser key here), Google's "Add a missing place" form itself,
+native-speaker review of the new strings.
+
 ## New-shop onboarding as "voice mode" (`feat/new-shop-flow`, PR #3) — owner brief 16 Oct ~02:00
 
 Brief: `docs/briefs/task-VOICE-MODE-ONBOARDING.md`; design and behaviour in `docs/OWNER-NEW-SHOP.md`.
