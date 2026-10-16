@@ -206,6 +206,11 @@ def test_new_tools_are_registered_and_explained():
         "open_screen",
         "explain_app",
         "suggest_starter_items",
+        # Release 2 features by voice: payment links, purchase orders, the shop playbook.
+        "prepare_payment_link",
+        "draft_reorder",
+        "get_purchase_orders",
+        "get_shop_playbook",
     } <= names
     for name in ("set_open_today", "open_screen", "explain_app", "prepare_customer_reply"):
         assert name in INSTRUCTION
@@ -250,12 +255,26 @@ def test_instant_closed_today_and_status(shop):
         ("Get me on Google", "google"),
         ("Delete my data", "privacy"),
         ("Connect my POS", "import"),
+        ("Open payments", "payments"),
+        ("Show purchase orders", "supply"),
     ],
 )
 def test_instant_opens_screens(shop, text, target):
     result = run(text, shop)
     assert result and result.events[0].kind == "action"
     assert result.events[0].data["target"] == target
+
+
+def test_instant_leaves_payment_links_to_the_payment_tool(shop):
+    # "Send ... link" is the customer page, except a payment or UPI link.
+    assert run("Send a payment link for 240 to the customer", shop) is None
+    assert run("share a UPI link for 50", shop) is None
+
+
+def test_shop_playbook_by_voice_is_read_only(shop):
+    from app.voice_tools import get_shop_playbook
+
+    assert get_shop_playbook()["status"] == "not_ready"
 
 
 def test_instant_guide_and_fallbacks(shop, ctx):
