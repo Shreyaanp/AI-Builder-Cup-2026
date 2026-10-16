@@ -68,6 +68,8 @@ import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
 import { useVoice } from '../useVoice'
+import { useSpokenReveal } from '../useSpokenReveal'
+import { cardWords, mergeTranscript } from '../speechReveal'
 import { useOnline } from '../useOnline'
 import { useWorkspace } from '../workspaceContext'
 import { OwnerJourney } from '../../frontdoors/OwnerJourney'
@@ -106,6 +108,16 @@ type Message =
   // An app action the coach prepared: a screen it opened, or a customer reply to send.
   | { role: 'action'; action: CoachAction; key: string }
   | { role: 'payment'; payment: PaymentLink; key: string }
+/** Cards a spoken reply refers to: shown when the voice reaches them, not before. */
+const SPOKEN_CARDS = new Set<CoachEvent['kind']>([
+  'proposal',
+  'suppliers',
+  'chart',
+  'order',
+  'action',
+  'workflow',
+  'payment_link',
+])
 // Coach actions that open a My shop sheet.
 const SHEETS: Partial<Record<CoachAction['target'], ShopSheetKind>> = {
   messages: 'messages',
@@ -335,20 +347,55 @@ function CoachScreen({
     },
     [review, go, setFaceOpen, t.conversationRolledOver],
   )
-  const voiceReply = useRef('')
   const restored = useRef<Promise<unknown>>(Promise.resolve())
-  const voice = useVoice(activeId, (event) => {
-    receive(event)
-    if (event.kind === 'ready') voiceReply.current = ''
-    if (event.kind === 'reply' || event.kind === 'output_transcript')
-      voiceReply.current = event.text ?? ''
-    if (event.kind === 'turn_complete') {
-      const text = voiceReply.current
-      if (text) setMessages((items) => [...items, { role: 'assistant' as const, text }].slice(-40))
-      voiceReply.current = ''
-      setReply('')
-    }
+  const addReply = useCallback((text: string) => {
+    if (text) setMessages((items) => [...items, { role: 'assistant' as const, text }].slice(-40))
+  }, [])
+  // The spoken reply appears word by word as it is said; its cards when the voice reaches them.
+  const playback = useRef<() => number>(() => 0)
+  const reveal = useSpokenReveal({
+    remaining: () => {
+      const seconds = playback.current()
+      return seconds > 0 ? seconds * 1000 : null
+    },
+    reducedMotion,
+    onDone: addReply,
   })
+  const voice = useVoice(activeId, (event) => {
+    if (event.kind === 'output_transcript' || event.kind === 'reply' || event.kind === 'delta') {
+      const heard = reveal.heard()
+      reveal.push(
+        event.kind === 'delta'
+          ? heard + (event.text ?? '')
+          : mergeTranscript(heard, event.text ?? ''),
+      )
+      return
+    }
+    if (SPOKEN_CARDS.has(event.kind)) {
+      // Words said before the card stay above it; the rest of the reply continues below.
+      reveal.cue(() => {
+        addReply(reveal.split())
+        receive(event)
+      }, cardWords(event.data))
+      return
+    }
+    if (event.kind === 'input_transcript' && reveal.active()) {
+      // The owner is talking: what the coach already said stays, in order, above it.
+      addReply(reveal.cut())
+    }
+    if (event.kind === 'interrupted') addReply(reveal.cut())
+    if (event.kind === 'ready') reveal.flush()
+    receive(event)
+    if (event.kind === 'turn_complete') reveal.finish()
+  })
+  useEffect(() => {
+    playback.current = voice.playbackRemaining
+  })
+  /** Stop: the voice and its words stop together; only what was said stays. */
+  function stopTalking() {
+    addReply(reveal.cut())
+    voice.stop()
+  }
   const stopVoice = voice.stop
   useEffect(() => {
     if (!visible) {
@@ -384,9 +431,9 @@ function CoachScreen({
   }, [api, activeId])
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
-  }, [messages, reply, reducedMotion])
+  }, [messages, reply, reveal.shown, reducedMotion])
   const revealReply = useEffectEvent(() => {
-    if (visible && (messages.length || reply))
+    if (visible && (messages.length || reply || reveal.shown))
       end.current?.scrollIntoView({ block: 'end', behavior: 'instant' })
   })
   useEffect(() => {
@@ -451,6 +498,7 @@ function CoachScreen({
   function resetThread() {
     setShowToday(false)
     controller.current?.abort()
+    reveal.discard()
     voice.stop()
     session.current = null
     setSearching(null)
@@ -691,6 +739,7 @@ function CoachScreen({
   async function restore(id: string) {
     setShowToday(false)
     setActionsOpen(false)
+    reveal.discard()
     voice.stop()
     try {
       const data = await api<{ messages: Message[] }>(`/conversations/${id}`)
@@ -704,7 +753,9 @@ function CoachScreen({
   }
 
   const shopHistory = history.filter((entry) => (entry.business_id ?? null) === activeId)
-  const empty = messages.length === 0 && !reply
+  // A typed reply streams as tokens; a spoken one appears as it is said.
+  const liveReply = reply || reveal.shown
+  const empty = messages.length === 0 && !liveReply
   // Suggestion chips are rules only (no AI): they come from the current shop state, never a
   // fixed list, and at most three show. Each one either opens the right sheet or starts a note.
   type Suggestion = 'reply' | 'menu' | 'soldOut' | 'price' | 'share' | 'photo' | 'name'
@@ -776,7 +827,8 @@ function CoachScreen({
     openSoldOut: () => setShopSheet('soldOut'),
     talk: () => void restored.current.then(() => voice.start(session.current)),
   }
-  const lastIsReply = messages.at(-1)?.role === 'assistant' && !reply && busy === 'idle'
+  const lastIsReply =
+    messages.at(-1)?.role === 'assistant' && !liveReply && !reveal.active() && busy === 'idle'
   const canSend = Boolean(note.trim()) && busy === 'idle' && voice.state === 'idle'
   const voiceText =
     voice.state === 'recording' ? t.listening : voice.state === 'replying' ? t.speaking : ''
@@ -1086,9 +1138,9 @@ function CoachScreen({
                   ),
                 )}
                 {searching !== null && <SearchingSuppliers item={searching} />}
-                {reply && (
+                {liveReply && (
                   <Bubble
-                    message={{ role: 'assistant', text: reply }}
+                    message={{ role: 'assistant', text: liveReply }}
                     you={t.you}
                     coach={t.coach}
                   />
@@ -1357,7 +1409,7 @@ function CoachScreen({
                   if (voice.state === 'recording') voice.finishRecording()
                   else if (voice.state === 'idle')
                     void restored.current.then(() => voice.start(session.current))
-                  else voice.stop()
+                  else stopTalking()
                 }}
                 sx={
                   voice.state === 'recording'

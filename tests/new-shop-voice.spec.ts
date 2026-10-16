@@ -156,7 +156,10 @@ for (const scheme of ['light', 'dark'] as const) {
     )
     live.current().send(coachAudio(6))
     await expect(orb(page)).toHaveAttribute('data-phase', 'speaking')
-    await expect(page.getByTestId('captions')).toContainText('What do you call your shop?')
+    // The caption follows the voice: the question's words arrive as they are said.
+    await expect(page.getByTestId('captions')).toContainText('What do you call your shop?', {
+      timeout: 10_000,
+    })
     await capture('4-speaking')
     live.current().send(JSON.stringify({ kind: 'turn_complete' }))
     await expect(page.getByRole('log')).toContainText('What do you call your shop?')
