@@ -65,6 +65,7 @@ from .recap import RecapWriter
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
 from .sales_routes import router as sales_router
 from .settings import Settings
+from .shop_language import ShopTranslator
 from .shop_today import router as shop_today_router
 from .sourcing import SupplierGenerator
 from .sourcing_routes import router as sourcing_router
@@ -150,6 +151,7 @@ def create_app(
         )
         app.state.photos = PhotoPipeline(settings) if settings.v1_enabled else None
         app.state.customer_answers = CustomerAnswers(settings)
+        app.state.shop_translator = ShopTranslator(settings)
         app.state.community = (
             await anyio.to_thread.run_sync(community_service, settings)
             if settings.v1_enabled
@@ -189,6 +191,7 @@ def create_app(
             await asyncio.gather(maintenance, return_exceptions=True)
             await app.state.services.replay.close()
             await app.state.customer_answers.close()
+            await app.state.shop_translator.close()
             await app.state.recap_writer.close()
             await app.state.brief_writer.close()
         await app.state.column_mapper.close()
