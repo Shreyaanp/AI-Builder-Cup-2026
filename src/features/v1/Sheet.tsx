@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import {
   Box,
+  Button,
   Dialog,
   DialogActions,
   DialogContent,
@@ -35,6 +36,7 @@ export function Sheet({
   onEntered,
   keepMounted = false,
   dirty = false,
+  dismissInActions = false,
 }: {
   open: boolean
   onClose: () => void
@@ -48,12 +50,15 @@ export function Sheet({
   keepMounted?: boolean
   /** Unsaved input inside: Back asks before closing. */
   dirty?: boolean
+  /** `actions` already hold a Cancel/Back/Done, so the phone sheet adds no Close of its own. */
+  dismissInActions?: boolean
 }) {
   const roles = useTheme().material
   const t = useCopy()
   const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
   useBackClose(open, onClose, dirty)
   // Swipe, Esc and the scrim also close; the button makes it obvious and works for everyone.
+  // Desktop keeps the corner X; a phone gets Close in the bottom row, inside the thumb zone.
   const close = (
     <IconButton
       aria-label={t.close}
@@ -77,7 +82,9 @@ export function Sheet({
         // Unmount when closed, like a dialog: no hidden copy left in the page.
         ModalProps={{ keepMounted }}
         slotProps={{
-          transition: { onEntered },
+          // A sheet mounted already open still slides in (and calls onEntered): the Drawer
+          // otherwise skips that first transition.
+          transition: { onEntered, appear: true },
           paper: {
             role: 'dialog',
             'aria-modal': true,
@@ -111,13 +118,12 @@ export function Sheet({
             mb: 2,
           }}
         />
-        {close}
         {title && (
           <Typography
             id={titleId}
             component="h2"
             variant="headlineSmall"
-            sx={{ px: 6, pr: 16, pt: 2, pb: 4 }}
+            sx={{ px: 6, pt: 2, pb: 4 }}
           >
             {title}
           </Typography>
@@ -135,11 +141,36 @@ export function Sheet({
         >
           {children}
         </Box>
-        {actions && (
+        {(actions || !dismissInActions) && (
           <Stack
             direction="row"
-            sx={{ justifyContent: 'flex-end', gap: 2, px: 6, pb: 6, pt: 2, flexShrink: 0 }}
+            sx={{
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 2,
+              px: 6,
+              pb: 6,
+              pt: 2,
+              flexShrink: 0,
+            }}
           >
+            {/* Beside other actions Close is a 48px X, so they stay one row (e.g. the menu's
+                Import and Add product); alone it is spelled out. */}
+            {!dismissInActions &&
+              (actions ? (
+                <IconButton
+                  aria-label={t.close}
+                  onClick={onClose}
+                  sx={{ width: 48, height: 48, mr: 'auto' }}
+                >
+                  <X size={20} />
+                </IconButton>
+              ) : (
+                <Button onClick={onClose} sx={{ minHeight: 48, mr: 'auto' }}>
+                  {t.close}
+                </Button>
+              ))}
             {actions}
           </Stack>
         )}

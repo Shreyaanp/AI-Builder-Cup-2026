@@ -191,6 +191,8 @@ async function openMenu(page: Page) {
   await page.getByRole('button', { name: /^Menu/ }).tap()
   const sheet = page.getByRole('dialog', { name: 'Menu' })
   await expect(sheet).toBeVisible()
+  // A phone sheet slides up; positions are measured once it has settled.
+  await expect(sheet).toHaveCSS('transform', 'none')
   return sheet
 }
 
