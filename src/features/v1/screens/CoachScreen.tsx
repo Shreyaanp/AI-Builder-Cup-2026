@@ -75,6 +75,9 @@ import { OrdersSheet } from '../../sourcing/Orders'
 import { useReceiveOrder } from '../../sourcing/orderData'
 import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
+import { PurchaseOrderCard } from '../../supply/PurchaseOrderCard'
+import { RulesChangeCard } from '../../supply/Supply'
+import type { PurchaseOrder, Relationship } from '../../supply/types'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 // The composer grows with multi-line text up to this many lines, then scrolls.
@@ -84,6 +87,9 @@ type Message =
   // Sourcing cards live in the conversation; an order card always shows the order's latest state.
   | { role: 'suppliers'; result: SupplierResult; key: string }
   | { role: 'order'; orderId: string }
+  // Supply chain: a purchase order (always its latest state) and a supplier rule change.
+  | { role: 'po'; poId: string }
+  | { role: 'rules'; row: Relationship; key: string }
   // A chart beside a forecast or "how is business" answer.
   | { role: 'chart'; chart: CoachChartData; key: string }
 const REPLY_POLL_MS = 1500
@@ -133,6 +139,7 @@ function CoachScreen({
   // Sourcing: the item being searched for, every order shown in the chat, the open thread.
   const [searching, setSearching] = useState<string | null>(null)
   const [orders, setOrders] = useState<Record<string, Order>>({})
+  const [pos, setPos] = useState<Record<string, PurchaseOrder>>({})
   const [thread, setThread] = useState<string | null>(null)
   const watching = useRef(new Set<string>())
   const receiveOrder = useReceiveOrder()
@@ -216,6 +223,22 @@ function CoachScreen({
             ...items.filter((item) => !(item.role === 'order' && item.orderId === order.id)),
             { role: 'order' as const, orderId: order.id },
           ].slice(-40),
+        )
+      }
+      if (event.kind === 'purchase_order') {
+        const po = event.data as unknown as PurchaseOrder
+        setPos((known) => ({ ...known, [po.id]: po }))
+        setMessages((items) =>
+          [
+            ...items.filter((item) => !(item.role === 'po' && item.poId === po.id)),
+            { role: 'po' as const, poId: po.id },
+          ].slice(-40),
+        )
+      }
+      if (event.kind === 'supply_rules') {
+        const row = event.data as unknown as Relationship
+        setMessages((items) =>
+          [...items, { role: 'rules' as const, row, key: crypto.randomUUID() }].slice(-40),
         )
       }
       if (event.kind === 'turn_complete') setSearching(null)
@@ -891,6 +914,30 @@ function CoachScreen({
                         messageInput.current?.focus()
                       }}
                     />
+                  ) : message.role === 'po' ? (
+                    pos[message.poId] && (
+                      <Box component="li" key={message.poId} sx={{ pl: { xs: 0, sm: 10 } }}>
+                        <PurchaseOrderCard
+                          order={pos[message.poId]!}
+                          onChange={(po) => setPos((known) => ({ ...known, [po.id]: po }))}
+                        />
+                      </Box>
+                    )
+                  ) : message.role === 'rules' ? (
+                    <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
+                      <RulesChangeCard
+                        row={message.row}
+                        onChange={(row) =>
+                          setMessages((items) =>
+                            items.map((item) =>
+                              item.role === 'rules' && item.key === message.key
+                                ? { ...item, row }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                    </Box>
                   ) : message.role === 'order' ? (
                     orders[message.orderId] && (
                       <OrderCard
