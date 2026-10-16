@@ -4,10 +4,12 @@
 
 **Scope**: 20-minute end-to-end verification run on a physical mobile phone (Chrome on Android or Safari on iOS).  
 **Live Sites**:
+
 - Owner app: `https://business.chalkboard.shreyaan.work`
 - Customer app: `https://chalkboard.shreyaan.work`
 
 **Rules for Tester**:
+
 - Follow steps in exact order.
 - Test using physical phone hardware (real microphone, camera/photo picker, touch gestures, network toggle).
 - Report any step where actual behaviour does not match the **Expected (Pass)** criteria.
@@ -16,9 +18,11 @@
 ---
 
 ## Part 1 · Voice-Mode Onboarding & Resilience (Steps 1–11)
-*Target: Owner App (`https://business.chalkboard.shreyaan.work`)*
+
+_Target: Owner App (`https://business.chalkboard.shreyaan.work`)_
 
 ### Step 1 · Open app & launch onboarding hero
+
 - [ ] ☐
 - **Action**: Open `https://business.chalkboard.shreyaan.work` in your mobile browser. Tap the **"+"** button in the header (or "Add shop details" / "Create your shop").
 - **Say / Upload**: None.
@@ -26,6 +30,7 @@
 - **Counts as Fail**: Opening a traditional pop-up form, layout overflow, or missing "Let’s begin" button.
 
 ### Step 2 · Mic permission & female voice greeting
+
 - [ ] ☐
 - **Action**: Tap **"Let’s begin"**. When the browser prompts for microphone access, tap **Allow**.
 - **Say / Upload**: Listen to the coach.
@@ -33,6 +38,7 @@
 - **Counts as Fail**: Robotic system voice, silent start without speaking, coach waiting for user to initiate, or mic immediately pausing.
 
 ### Step 3 · Natural conversation & shop card filling
+
 - [ ] ☐
 - **Action**: Speak clearly into the phone.
 - **Say / Upload**: "I sell sourdough bread and filter coffee"
@@ -40,6 +46,7 @@
 - **Counts as Fail**: Orb doesn't respond to audio levels, speech is ignored, or the shop card does not update with mentioned items.
 
 ### Step 4 · Silence handling
+
 - [ ] ☐
 - **Action**: Stay completely silent when the coach finishes asking the next question. Wait for 10–15 seconds.
 - **Say / Upload**: Nothing (silence).
@@ -47,6 +54,7 @@
 - **Counts as Fail**: Infinite silence, app freeze, disconnect error, or coach looping the identical prompt repeatedly.
 
 ### Step 5 · Barge-in / Interrupting the coach
+
 - [ ] ☐
 - **Action**: When the coach starts speaking its reply aloud, immediately speak over it loudly.
 - **Say / Upload**: "Wait, our shop name is Sunrise Bakery!"
@@ -54,6 +62,7 @@
 - **Counts as Fail**: Coach talks over you to the end of its sentence, ignores your speech, or crashes the audio session.
 
 ### Step 6 · Microphone blocked alert & recovery
+
 - [ ] ☐
 - **Action**: Tap browser permissions (lock icon in URL bar) -> Permissions -> set Microphone to **Block** (or deny mic). Return to tab or tap voice retry.
 - **Say / Upload**: None.
@@ -61,6 +70,7 @@
 - **Counts as Fail**: Silent crash, blank screen, infinite loading spinner, or no "Type instead" escape hatch.
 
 ### Step 7 · Re-enabling microphone
+
 - [ ] ☐
 - **Action**: Tap the lock icon in the URL bar, switch Microphone back to **Allow**, return to tab and tap **"Try again"**.
 - **Say / Upload**: "Can you hear me now?"
@@ -68,6 +78,7 @@
 - **Counts as Fail**: Alert stays stuck, microphone fails to re-acquire stream, or page refresh is forcibly required.
 
 ### Step 8 · Network drop resilience
+
 - [ ] ☐
 - **Action**: While the voice session is connected, swipe down phone quick settings and toggle **Airplane Mode ON** (or disconnect Wi-Fi and mobile data). Wait 5 seconds.
 - **Say / Upload**: None.
@@ -75,6 +86,7 @@
 - **Counts as Fail**: Erased draft, crash to blank screen, or losing all existing conversation messages.
 
 ### Step 9 · Network restoration & session resumption
+
 - [ ] ☐
 - **Action**: Toggle **Airplane Mode OFF** (reconnect mobile data/Wi-Fi). Tap **"Reconnect"**.
 - **Say / Upload**: "I am back"
@@ -82,6 +94,7 @@
 - **Counts as Fail**: Starting completely over from Step 1, or repeated failure to connect despite active internet.
 
 ### Step 10 · Voice rate limit handling
+
 - [ ] ☐
 - **Action**: If high volume occurs or simulated limit triggers (or verify message copy when busy).
 - **Say / Upload**: Rapid voice turns.
@@ -89,6 +102,7 @@
 - **Counts as Fail**: Unhandled 429/500 JSON dump, frozen button, or uncaught exception.
 
 ### Step 11 · Complete shop onboarding & review
+
 - [ ] ☐
 - **Action**: State or type location ("Indiranagar 100ft Road") and tap **"Review"** -> review shop card -> tap **"Open my shop"**.
 - **Say / Upload**: None.
@@ -98,9 +112,11 @@
 ---
 
 ## Part 2 · Coach Spoken Replies, Continuity & Chart Cards (Steps 12–17)
-*Target: Owner App Dashboard (`https://business.chalkboard.shreyaan.work`)*
+
+_Target: Owner App Dashboard (`https://business.chalkboard.shreyaan.work`)_
 
 ### Step 12 · Spoken coach response
+
 - [ ] ☐
 - **Action**: In the Coach tab, tap the mic button ("Press to talk") or type: "How can I prepare for morning rush?" and tap Send.
 - **Say / Upload**: "How can I prepare for morning rush?"
@@ -108,6 +124,7 @@
 - **Counts as Fail**: Text streams but audio remains silent (when unmuted), or audio uses poor default robotic phone synthesizer.
 
 ### Step 13 · Mute coach voice
+
 - [ ] ☐
 - **Action**: While the coach is speaking (or during voice interaction), tap the **Mute** (speaker icon) button in the composer bar.
 - **Say / Upload**: None.
@@ -115,6 +132,7 @@
 - **Counts as Fail**: Audio continues playing in background despite mute toggle.
 
 ### Step 14 · Unmute & voice continuity
+
 - [ ] ☐
 - **Action**: Tap the **Unmute** button. Ask: "Give me one quick tip."
 - **Say / Upload**: "Give me one quick tip."
@@ -122,6 +140,7 @@
 - **Counts as Fail**: Unmute fails to restore sound on subsequent answers.
 
 ### Step 15 · Pause & resume mic (Onboarding voice mode)
+
 - [ ] ☐
 - **Action**: In voice mode during onboarding, tap the central mic button (**"Pause the mic"**).
 - **Say / Upload**: "Can you hear this?"
@@ -129,6 +148,7 @@
 - **Counts as Fail**: Mic continues recording while paused or fails to resume.
 
 ### Step 16 · Coach forecast & insights chart cards
+
 - [ ] ☐
 - **Action**: In the Coach tab, type or speak: "Analyse my forecast for next week" (or "How is business this week?"). Tap Send.
 - **Say / Upload**: "Analyse my forecast for next week"
@@ -136,6 +156,7 @@
 - **Counts as Fail**: Raw text only without chart card, broken SVG canvas, or missing accessible data table.
 
 ### Step 17 · Voice continuity across reload & conversation rollover
+
 - [ ] ☐
 - **Action**: Reload the browser page while on the Coach screen. Wait 2 seconds for history restoration, then tap the mic button ("Press to talk").
 - **Say / Upload**: "What was the last thing we talked about?"
@@ -145,9 +166,11 @@
 ---
 
 ## Part 3 · Visual Intake: Photos, Documents & Day Close (Steps 18–25)
-*Target: Owner App -> My shop & Tools*
+
+_Target: Owner App -> My shop & Tools_
 
 ### Step 18 · Menu photo upload -> Menu extraction
+
 - [ ] ☐
 - **Action**: Go to **My shop** -> tap the **Menu** tile -> tap **"Import"** -> tap **"Take photo"** (or in Coach tap Paperclip -> "Photo library"). Snap or upload a photo of a printed menu or chalk blackboard.
 - **Say / Upload**: Photo of a menu with dish names and prices.
@@ -155,6 +178,7 @@
 - **Counts as Fail**: Uploading auto-saves without owner confirmation, wrong prices extracted without uncertainty flag, or non-image files accepted without error.
 
 ### Step 19 · Confirm extracted menu
+
 - [ ] ☐
 - **Action**: Review extracted items, check prices, and tap **"Confirm and save"** (or Approve).
 - **Say / Upload**: None.
@@ -162,6 +186,7 @@
 - **Counts as Fail**: Saved items fail to show up in menu list or prices get truncated.
 
 ### Step 20 · Shopfront photo upload
+
 - [ ] ☐
 - **Action**: In Coach chat, tap the Paperclip icon -> choose **"Photo library"** (or "Take photo"). Select an exterior storefront photo showing shop signboard.
 - **Say / Upload**: Storefront photo.
@@ -169,6 +194,7 @@
 - **Counts as Fail**: Upload fails silently, blurry uncapped image breaks layout, or inappropriate content passes moderation.
 
 ### Step 21 · Gallery photo upload
+
 - [ ] ☐
 - **Action**: After uploading a shop photo, inspect the banner: "Add to customer gallery?". Tap **"Add to gallery"**.
 - **Say / Upload**: None.
@@ -176,6 +202,7 @@
 - **Counts as Fail**: Photo fails to upload or distorts aspect ratio.
 
 ### Step 22 · Close the day: Till report photo
+
 - [ ] ☐
 - **Action**: In **My shop**, tap the **"Close the day"** tile (Moon icon). Select **"Till or POS report"** photo. Upload photo of a register receipt or Z report.
 - **Say / Upload**: Receipt photo showing total sales figures.
@@ -183,6 +210,7 @@
 - **Counts as Fail**: Crash on receipt scan, invented numbers not on paper, or instant saving without review.
 
 ### Step 23 · Close the day: Stock count photo & single-tap save
+
 - [ ] ☐
 - **Action**: In the same Close the day dialog, tap **"Add more"** -> select **"Stock count"** photo: upload handwritten stock notes or inventory sheet. Tap **"Review (X lines)"** -> tap **"Save day"**.
 - **Say / Upload**: Photo of stock count notes.
@@ -190,6 +218,7 @@
 - **Counts as Fail**: Double-counting sales or separate uncoordinated saves requiring repeated taps.
 
 ### Step 24 · Excel / CSV menu import
+
 - [ ] ☐
 - **Action**: In **My shop** -> **Menu** tile -> tap **"Import"** -> tap **"Upload file"**, select a `.xlsx` or `.csv` spreadsheet file with columns (Item, Price, Category).
 - **Say / Upload**: Sample Excel file (`menu.xlsx` or `.csv`).
@@ -197,6 +226,7 @@
 - **Counts as Fail**: Fails on Excel binary format, misaligns columns, or saves without owner confirmation.
 
 ### Step 25 · PDF menu import
+
 - [ ] ☐
 - **Action**: In **My shop** -> **Menu** tile -> tap **"Import"** -> tap **"Upload file"**, choose a PDF document menu (`.pdf`).
 - **Say / Upload**: Sample PDF menu.
@@ -206,9 +236,11 @@
 ---
 
 ## Part 4 · Customer Experience: Shop Chat, Order Messages & QR Stamps (Steps 26–34)
-*Target: Customer App (`https://chalkboard.shreyaan.work` or `/s/{shopId}`)*
+
+_Target: Customer App (`https://chalkboard.shreyaan.work` or `/s/{shopId}`)_
 
 ### Step 26 · Open public shop page
+
 - [ ] ☐
 - **Action**: In owner app, tap **My shop** -> **Customer page** tile -> tap **"Open customer page"** (or open `https://chalkboard.shreyaan.work/s/<your-shop-id>`).
 - **Say / Upload**: None.
@@ -216,6 +248,7 @@
 - **Counts as Fail**: Blank page, raw internal stock numbers displayed, or missing shop name.
 
 ### Step 27 · Customer instant AI ask
+
 - [ ] ☐
 - **Action**: Tap the **"Chat with the shop"** bottom bar. In the question box, tap a suggestion chip ("Hours", "Location", or "Price") or type: "What sourdough do you have?". Tap the Send arrow.
 - **Say / Upload**: "What sourdough do you have?"
@@ -223,6 +256,7 @@
 - **Counts as Fail**: Generic "I don't know", hallucinated items outside the menu, or error bubble.
 
 ### Step 28 · Ask the owner (Authenticated thread handoff)
+
 - [ ] ☐
 - **Action**: Below the assistant's instant answer, tap the **"Ask the owner"** button.
 - **Say / Upload**: None.
@@ -230,6 +264,7 @@
 - **Counts as Fail**: Anonymous customer can spam the owner directly without identity.
 
 ### Step 29 · Send message to owner
+
 - [ ] ☐
 - **Action**: Tap **"Continue with Google"** and sign in. In the message box, edit or enter: "Can I reserve two loaves for tomorrow 10am?" and tap **"Send message"**.
 - **Say / Upload**: "Can I reserve two loaves for tomorrow 10am?"
@@ -237,6 +272,7 @@
 - **Counts as Fail**: Message send fails, input clears without sending, or chat doesn't create thread.
 
 ### Step 30 · Owner receives and replies to customer message
+
 - [ ] ☐
 - **Action**: Switch back to Owner App (`business.chalkboard.shreyaan.work`). Tap **My shop** -> **Messages (1)** tile. Open the new conversation thread.
 - **Say / Upload**: "Yes, reserved for you! See you at 10am."
@@ -244,6 +280,7 @@
 - **Counts as Fail**: Message badge does not show count, thread is missing, or reply fails to submit.
 
 ### Step 31 · Customer receives owner reply live
+
 - [ ] ☐
 - **Action**: Switch to the customer phone screen on the chat thread.
 - **Say / Upload**: None.
@@ -251,6 +288,7 @@
 - **Counts as Fail**: Message never arrives or requires clearing cache to appear.
 
 ### Step 32 · Scan / Visit QR Stamp Card
+
 - [ ] ☐
 - **Action**: On customer phone, navigate to your shop URL with QR parameter: `https://chalkboard.shreyaan.work/s/<shopId>?source=qr`.
 - **Say / Upload**: None.
@@ -258,6 +296,7 @@
 - **Counts as Fail**: Stamp does not increment, no visual reward animation, or crash on `?source=qr`.
 
 ### Step 33 · QR Stamp daily uniqueness & persistence
+
 - [ ] ☐
 - **Action**: Refresh the page or reopen `https://chalkboard.shreyaan.work/s/<shopId>?source=qr` again on the same day.
 - **Say / Upload**: None.
@@ -265,6 +304,7 @@
 - **Counts as Fail**: Stamp resets to 0 or increments to 2 on repeat scan on the same day.
 
 ### Step 34 · Reward claim interaction
+
 - [ ] ☐
 - **Action**: When stamp card reaches the target threshold (e.g. 8 stamps), inspect the card for the **"Claim reward"** button. Tap it.
 - **Say / Upload**: None.
@@ -274,9 +314,11 @@
 ---
 
 ## Part 5 · Theme & Language Wrap-up (Steps 35–37)
-*Target: Customer & Owner App Settings*
+
+_Target: Customer & Owner App Settings_
 
 ### Step 35 · Dark mode toggle across views
+
 - [ ] ☐
 - **Action**: In the top bar, tap the **Settings** (gear icon) -> under Theme, select **Dark**. Walk through Coach, My shop, and Customer views.
 - **Say / Upload**: None.
@@ -284,6 +326,7 @@
 - **Counts as Fail**: Unreadable dark grey text on black, blinding white boxes in dark mode, or broken styling.
 
 ### Step 36 · Language switch (e.g. Hindi or Tamil)
+
 - [ ] ☐
 - **Action**: Open Settings -> Change Language to **हिंदी (Hindi)** or **தமிழ் (Tamil)**.
 - **Say / Upload**: None.
@@ -291,6 +334,7 @@
 - **Counts as Fail**: English strings remain everywhere, translated text overflows viewport, or broken fonts.
 
 ### Step 37 · PWA Installation check
+
 - [ ] ☐
 - **Action**: In browser menu or in-app settings, check "Install app" option.
 - **Say / Upload**: None.
@@ -300,6 +344,7 @@
 ---
 
 ## Test Execution Summary Sheet
+
 - **Total Steps**: 37 (Est. time: ~20 minutes)
 - **Verified against main at commit**: `6944987709dbf262002a209fb6e933cba186dea6`
 - **Device Tested**: `[ Android Chrome / iOS Safari ]`
