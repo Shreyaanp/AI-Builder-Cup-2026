@@ -70,7 +70,15 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
             <Typography
               component="h1"
               variant="displaySmall"
-              sx={{ fontSize: { md: '3.25rem' }, lineHeight: { md: 1.1 }, textWrap: 'balance' }}
+              sx={{
+                fontSize: { xs: 'clamp(1.5rem, 6.5vw, 2.25rem)', md: '3.25rem' },
+                lineHeight: { xs: 1.2, md: 1.1 },
+                textWrap: 'balance',
+                overflowWrap: 'break-word',
+                wordBreak: 'normal',
+                hyphens: 'auto',
+                maxWidth: '100%',
+              }}
             >
               {t.welcomeTitle}
             </Typography>

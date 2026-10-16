@@ -307,3 +307,45 @@ test('B35 desktop keeps its hero columns, bento and pinned story', async ({ page
   )
   await page.screenshot({ path: 'docs/bugs/B35-desktop.png' })
 })
+
+test('GAP 5 · landing headline does not overflow at 360px in all 15 locales', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 })
+  const locales = [
+    'ta',
+    'en',
+    'zh-Hans',
+    'ms',
+    'ja',
+    'ko',
+    'id',
+    'th',
+    'vi',
+    'fil',
+    'hi',
+    'bn',
+    'te',
+    'mr',
+    'kn',
+  ]
+  for (const locale of locales) {
+    await page.addInitScript((l) => {
+      localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: l }))
+    }, locale)
+    await page.goto('/')
+    const h1 = page.locator('h1')
+    await expect(h1).toBeVisible()
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
+    expect(
+      scrollWidth,
+      `scrollWidth for locale ${locale} should not exceed 360`,
+    ).toBeLessThanOrEqual(360)
+    const h1Scroll = await h1.evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }))
+    expect(
+      h1Scroll.scroll,
+      `h1 scrollWidth for locale ${locale} should fit clientWidth`,
+    ).toBeLessThanOrEqual(h1Scroll.client + 1)
+  }
+})
+
