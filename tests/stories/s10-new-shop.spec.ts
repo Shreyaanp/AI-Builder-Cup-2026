@@ -122,7 +122,7 @@ test('S10 · entries: tour end and an empty My shop open the same flow', async (
   await localOnly(page)
   await enter(page)
   await test.step('empty My shop: "Create your shop"', async () => {
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await page.getByRole('button', { name: 'Create your shop' }).click()
     await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
     await axe(page)

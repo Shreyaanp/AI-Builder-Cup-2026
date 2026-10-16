@@ -24,7 +24,7 @@ test('theme toggles and persists after reload without blocking web use', async (
 
 test('all 15 languages are selectable and install is optional', async ({ page }) => {
   await owner(page)
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: 'You', exact: true }).click()
   await page.getByRole('combobox', { name: 'Language' }).click()
   expect(await page.getByRole('option').count()).toBe(LOCALES.length + 1)
   await page.keyboard.press('Escape')

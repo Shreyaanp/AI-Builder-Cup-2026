@@ -206,7 +206,7 @@ test('shop details proposes a measured location without silently saving', async 
   await enter(page)
   await seedShop(page)
   const before = await (await page.request.get('/api/v1/businesses')).json()
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
   await page.getByRole('button', { name: 'Use my current location' }).click()
   const review = page.getByRole('dialog', { name: 'Check before saving' })

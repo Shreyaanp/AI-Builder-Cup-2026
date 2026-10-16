@@ -50,7 +50,7 @@ test('running low → demo suppliers → one-tap order → supplier reply → Or
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   const tile = page.getByRole('button', { name: /^Orders/ })
   await expect(tile).toContainText('1 open')
   await tile.click()

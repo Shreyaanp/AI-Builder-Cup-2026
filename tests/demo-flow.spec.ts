@@ -46,7 +46,7 @@ test('demo: photo, price correction, customer page and availability', async ({
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(review).not.toBeVisible()
 
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   // My shop is tiles; the menu, sold-out switches and customer page each open a sheet.
   const menu = page.getByRole('button', { name: /^Menu/ })
   const sheet = (name: string) => page.getByRole('dialog', { name })

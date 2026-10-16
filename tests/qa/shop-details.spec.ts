@@ -52,7 +52,7 @@ test('existing-shop photo GPS is a separate exact approval, never an automatic m
 
 test('Tamil shop details labels and spacing survive text scaling', async ({ page }) => {
   await owner(page)
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
   // Change locale after closing the current sheet, then reopen the translated detail sheet.
   await page.keyboard.press('Escape')

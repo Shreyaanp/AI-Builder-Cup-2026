@@ -141,7 +141,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
         .fill('Can I collect two chai today?')
       await customer.getByRole('button', { name: 'Send message', exact: true }).click()
       await expect(customer).toHaveURL(/\/explore\/chats\//)
-      await page.getByRole('button', { name: 'My shop', exact: true }).click()
+      await page.getByRole('button', { name: 'Shop', exact: true }).click()
       await page.getByRole('button', { name: /^Messages 1/ }).click()
       const messages = page.getByRole('region', { name: /Messages/ })
       await expect(messages).toContainText('Can I collect two chai today?')

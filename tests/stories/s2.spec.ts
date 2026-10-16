@@ -55,7 +55,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
   await test.step('4 · sold-out switch reaches customer page', async () => {
     const toast = customer.getByRole('listitem').filter({ hasText: 'Kaya toast' })
     await expect(toast).toContainText('Sold out')
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await page.getByRole('button', { name: /^Sold out today/ }).click()
     const available = page.getByRole('switch', { name: 'Available: Kaya toast' })
     await expect(available).not.toBeChecked()
@@ -76,7 +76,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
     await expect(customer.getByText('Updated today', { exact: true })).toBeVisible()
   })
   await test.step('6 · tap a price, review inline and save', async () => {
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await page.getByRole('button', { name: /^Menu/ }).click()
     await page.getByRole('button', { name: 'Edit price: Kopi, ₹20.00' }).click()
     const price = page.getByRole('textbox', { name: 'Edit price: Kopi' })

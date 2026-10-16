@@ -8,7 +8,8 @@ test('S5 · shop details to Google preview and truthful handoff', async ({ page 
   await localOnly(page)
   await enter(page)
   await seedShop(page)
-  await page.getByRole('button', { name: 'Google', exact: true }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  await page.getByRole('button', { name: /^Get on Google/ }).click()
   const flow = page.getByRole('region', { name: 'Google', exact: true })
   await test.step('1 · details reuse the owner shop', async () => {
     await page.getByRole('button', { name: 'Step 1 of 4: Details' }).click()
