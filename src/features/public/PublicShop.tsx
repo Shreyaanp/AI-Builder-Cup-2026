@@ -32,6 +32,7 @@ import { translations as ownerTranslations } from '../v1/locales'
 import { HAND_FONT, shape } from '../../design/theme'
 import { chalkWrite } from '../../design/chalkMotion'
 import { ShopChat } from './ShopChat'
+import { recsEvent } from '../recs/events'
 import { FollowButton } from '../customer/FollowButton'
 import { Tips } from '../customer/Tips'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
@@ -454,6 +455,7 @@ export default function PublicShop({ id }: { id: string }) {
         if (abort.signal.aborted) return
         apply(data)
         document.title = `${data.name} · ${t.menu}`
+        recsEvent({ kind: 'shop_open', shop_id: data.id })
       })
       .catch((error: unknown) => {
         if (!abort.signal.aborted)
