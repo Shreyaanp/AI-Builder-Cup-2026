@@ -401,7 +401,11 @@ function NeedRow({
     icon = <PackageMinus size={20} />
     text = tt.low(need.item, need.left)
     buttons = (
-      <Button variant={primary} sx={{ minHeight: 48 }} onClick={() => actions.ask(tt.orderDraft(need.item))}>
+      <Button
+        variant={primary}
+        sx={{ minHeight: 48 }}
+        onClick={() => actions.ask(tt.orderDraft(need.item))}
+      >
         {tt.order}
       </Button>
     )
@@ -436,7 +440,11 @@ function NeedRow({
     const fact = need.facts[0]!
     text = t.customersAsk(need.facts.map((f) => t.askNames[f]).join(' '))
     buttons = (
-      <Button variant={primary} sx={{ minHeight: 48 }} onClick={() => actions.draft(`${t.factNames[fact]}: `)}>
+      <Button
+        variant={primary}
+        sx={{ minHeight: 48 }}
+        onClick={() => actions.draft(`${t.factNames[fact]}: `)}
+      >
         {t.answerNow}
       </Button>
     )
