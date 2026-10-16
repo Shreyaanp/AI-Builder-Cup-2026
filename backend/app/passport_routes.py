@@ -429,9 +429,7 @@ async def perk_views(
         progress = state.shops[bid]
         needed = int(shop.get("stamps_needed") or 8)
         stamps_enabled = bool(
-            shop.get("stamps_enabled")
-            if "stamps_enabled" in shop
-            else shop.get("reward_text")
+            shop.get("stamps_enabled") if "stamps_enabled" in shop else shop.get("reward_text")
         )
         for perk in await shop_perks(request, bid, shop):
             trigger = perk["trigger"]
@@ -637,9 +635,7 @@ def next_reward(
     options: list[tuple[int, int, NextReward]] = []
     for bid, shop in shops.items():
         stamps_enabled = bool(
-            shop.get("stamps_enabled")
-            if "stamps_enabled" in shop
-            else shop.get("reward_text")
+            shop.get("stamps_enabled") if "stamps_enabled" in shop else shop.get("reward_text")
         )
         reward = str(shop.get("reward_text") or "")
         progress = state.shops[bid]
