@@ -63,6 +63,7 @@ from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
 from .recap import RecapWriter
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
+from .reply_language import reply_language
 from .sales_routes import router as sales_router
 from .settings import Settings
 from .shop_language import ShopTranslator
@@ -498,8 +499,15 @@ def create_app(
                     code="CONVERSATION_ROLLED_OVER" if requested and requested != sid else None,
                 ).payload()
             )
-            log.info("voice_ready", business=bool(bid), resumed=bool(requested))
-            await serve_voice(websocket, services.runtime, principal, sid)
+            log.info(
+                "voice_ready",
+                business=bool(bid),
+                resumed=bool(requested),
+                language=reply_language(websocket.query_params.get("lang")).locale,
+            )
+            await serve_voice(
+                websocket, services.runtime, principal, sid, websocket.query_params.get("lang")
+            )
             log.info("voice_closed")
         except (HTTPException, ValueError, TimeoutError) as error:
             code = (
