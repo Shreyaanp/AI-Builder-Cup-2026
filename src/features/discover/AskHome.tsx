@@ -29,6 +29,7 @@ import { locallyMadeLabel } from '../public/locallyMade'
 import type { Locale } from '../../i18n/locales'
 import type { FoundPlace } from './PlaceSearch'
 import { TodayDeck } from '../passport/TodayDeck'
+import { recsEvent } from '../recs/events'
 import { dealIn, chalkWrite } from '../../design/chalkMotion'
 
 type Item = { name: string; price: number; unit: string; available: boolean }
@@ -172,6 +173,7 @@ export default function AskHome({
     const started = performance.now()
     try {
       await ensureDemoWorld(searchPlace.lat, searchPlace.lng, searchPlace.label)
+      recsEvent({ kind: 'ask', query: q })
       // Signed-in customers get "For you" ranking and stated preferences remembered.
       const data = await account.api<Answer>('/api/v1/discover/ask', {
         method: 'POST',

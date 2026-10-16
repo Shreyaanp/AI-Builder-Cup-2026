@@ -1362,6 +1362,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/recs/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Event */
+        post: operations["record_event_api_v1_public_recs_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/qr-key": {
         parameters: {
             query?: never;
@@ -2512,6 +2529,41 @@ export interface components {
             google_unavailable: boolean;
             /** Places */
             places: components["schemas"]["DiscoveryPlace"][];
+        };
+        /** EventInput */
+        EventInput: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "shop_open" | "item_open" | "ask" | "remind" | "follow" | "ask_owner";
+            /** Visitor */
+            visitor: string;
+            /**
+             * Shop Id
+             * @default
+             */
+            shop_id: string;
+            item?: components["schemas"]["EventItem"] | null;
+            /**
+             * Query
+             * @default
+             */
+            query: string;
+        };
+        /** EventItem */
+        EventItem: {
+            /** Name */
+            name: string;
+            /** Unit */
+            unit: string;
+        };
+        /** EventReceipt */
+        EventReceipt: {
+            /** Accepted */
+            accepted: boolean;
+            /** Enabled */
+            enabled: boolean;
         };
         /** Feed */
         Feed: {
@@ -7026,6 +7078,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorldReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_event_api_v1_public_recs_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventReceipt"];
                 };
             };
             /** @description Validation Error */
