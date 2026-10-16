@@ -181,7 +181,6 @@ async function run(story, variant) {
       await page.goto('/explore/')
       await shot('00-location')
       await page.getByRole('button', { name: 'Use my location' }).click()
-      await page.getByRole('button', { name: 'Explore my neighbourhood' }).click()
       await shot('01-ask')
       const input = page.getByRole('textbox', { name: 'What are you looking for?' })
       await input.fill('Kopi')

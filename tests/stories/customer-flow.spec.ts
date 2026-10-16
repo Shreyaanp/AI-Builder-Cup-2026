@@ -250,9 +250,11 @@ for (const mode of ['light', 'dark'] as const) {
         .toBe(mode === 'dark' ? 'rgb(23, 39, 31)' : 'rgb(251, 247, 236)')
       await capture('landing')
       await customer.getByRole('link', { name: 'Find places near me', exact: true }).first().click()
-      await customer.getByRole('textbox', { name: 'City or area' }).fill('Bengaluru')
-      await customer.getByRole('textbox', { name: 'City or area' }).press('Enter')
-      await customer.getByRole('button', { name: 'Explore my neighbourhood' }).click()
+      // No setup wizard: the Ask page itself asks where, then gets out of the way.
+      const where = customer.getByRole('region', { name: 'Start with your neighbourhood' })
+      await where.getByRole('textbox', { name: 'City or area' }).fill('Bengaluru')
+      await where.getByRole('textbox', { name: 'City or area' }).press('Enter')
+      await expect(where).toHaveCount(0)
       await expect(
         customer.getByRole('heading', { name: 'What are you looking for nearby?' }),
       ).toBeVisible()

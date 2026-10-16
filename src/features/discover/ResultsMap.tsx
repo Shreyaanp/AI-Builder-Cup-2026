@@ -339,6 +339,8 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
             }}
             style={{ transform: `translate(${spot.x}px, ${spot.y}px)` }}
           >
+            {/* A 48px touch target around the smaller drawn pin. */}
+            <circle r={24} fill="transparent" />
             {pin.open !== null && (
               <circle
                 r={r + 3.5}
