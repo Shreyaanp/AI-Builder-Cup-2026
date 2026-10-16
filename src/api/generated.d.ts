@@ -51,6 +51,9 @@ export interface paths {
         /**
          * Erase
          * @description Erase everything this owner stored: records, memory, conversations, photos, face data.
+         *
+         *     Each step runs on its own; `status` is "erased", or "partial" with the `pending` steps that
+         *     will be retried (on Try again and on the next visit) instead of a bare 500.
          */
         delete: operations["erase_api_v1_me_data_delete"];
         options?: never;
@@ -1214,6 +1217,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/places/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reverse Pin
+         * @description The readable address under the owner's map pin while they place it (nothing is saved).
+         */
+        get: operations["reverse_pin_api_v1_places_reverse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/discover": {
         parameters: {
             query?: never;
@@ -2160,6 +2183,15 @@ export interface components {
              * @default false
              */
             pin_demo: boolean;
+            /** Pin Source */
+            pin_source?: ("device" | "pin") | null;
+            /** Pin Accuracy M */
+            pin_accuracy_m?: number | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
             /**
              * Demo
              * @default false
@@ -2271,6 +2303,12 @@ export interface components {
             session_id?: string | null;
             /** Business Id */
             business_id?: string | null;
+            /**
+             * New Shop
+             * @default false
+             */
+            new_shop: boolean;
+            new_shop_draft?: components["schemas"]["NewShopDraft"] | null;
         };
         /** ConsentRequest */
         ConsentRequest: {
@@ -2786,6 +2824,12 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** NewShopDraft */
+        NewShopDraft: {
+            business?: components["schemas"]["BusinessFields"] | null;
+            /** Products */
+            products?: components["schemas"]["ProductFields"][];
+        };
         /** NewThread */
         NewThread: {
             /** Text */
@@ -2900,6 +2944,21 @@ export interface components {
              * @default 0
              */
             card: number;
+        };
+        /** OwnerLocation */
+        OwnerLocation: {
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /** Accuracy M */
+            accuracy_m: number;
+            /**
+             * Source
+             * @default device
+             * @enum {string}
+             */
+            source: "device" | "pin";
         };
         /** PassportView */
         PassportView: {
@@ -3068,6 +3127,13 @@ export interface components {
              */
             reasons: string[];
         };
+        /** PinAddress */
+        PinAddress: {
+            /** Label */
+            label: string;
+            /** Approximate */
+            approximate: boolean;
+        };
         /** PlaceMatch */
         PlaceMatch: {
             /** Lat */
@@ -3210,6 +3276,7 @@ export interface components {
              * @default false
              */
             geocode_confirmed: boolean;
+            owner_location?: components["schemas"]["OwnerLocation"] | null;
             business?: components["schemas"]["BusinessFields"] | null;
             /** Products */
             products?: components["schemas"]["ProductFields"][];
@@ -4178,7 +4245,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal";
+            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "chart";
             /**
              * Session Id
              * @default null
@@ -6701,6 +6768,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlaceMatch"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reverse_pin_api_v1_places_reverse_get: {
+        parameters: {
+            query: {
+                lat: number;
+                lng: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PinAddress"];
                 };
             };
             /** @description Validation Error */

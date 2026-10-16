@@ -1,6 +1,19 @@
 import type { Copy } from '../strings'
 
 export const id: Copy = {
+  newShopMode: 'Toko baru',
+  newShopReady: 'Toko baru Anda sudah siap',
+  newShopReadyBody: 'Anda kini mengelola toko baru. Bagikan halaman pelanggan saat siap.',
+  newShopContinue: 'Lanjutkan dengan toko saya',
+  useCurrentLocation: 'Gunakan lokasi saya saat ini',
+  locationReason:
+    'Di toko? Izinkan akses lokasi untuk menempatkan pin. Anda akan meninjaunya sebelum menyimpan.',
+  locating: 'Mencari lokasi Anda…',
+  locationDenied: 'Akses lokasi ditolak. Ketik alamat atau gunakan foto dengan GPS.',
+  locationFailed: 'Lokasi tidak ditemukan. Coba lagi, ketik alamat, atau gunakan foto dengan GPS.',
+  yourLocation: 'Lokasi Anda',
+  description: 'Deskripsi',
+  locationAccuracy: (m: string) => `dalam ${m} m`,
   installApp: 'Instal aplikasi',
   installIos: 'Di Safari, ketuk Bagikan → Tambahkan ke Layar Utama, lalu ketuk Tambah.',
   installUnavailable:
@@ -39,6 +52,12 @@ export const id: Copy = {
   connectionReconnecting: 'Menghubungkan kembali…',
   voiceFailed: 'Koneksi suara berakhir. Coba lagi atau gunakan teks.',
   voiceRestarted: 'Suara terhubung kembali. Silakan ucapkan lagi.',
+  voiceMicDenied:
+    'Akses mikrofon diblokir. Izinkan mikrofon di pengaturan browser dan coba lagi, atau gunakan teks.',
+  voiceRateLimited: (seconds: number) =>
+    `Terlalu banyak permintaan suara. Tunggu ${seconds} detik, lalu coba lagi atau gunakan teks.`,
+  conversationRolledOver:
+    'Percakapan ini penuh. Saya memulai percakapan baru agar kita bisa melanjutkan.',
   loading: 'Menyiapkan toko Anda…',
   welcomeTitle: 'Toko Anda hadir online lewat satu percakapan',
   welcomeBody:
@@ -241,7 +260,6 @@ export const id: Copy = {
   notProvided: 'Belum diisi',
   stock: 'Stok',
   shopEmptyTitle: 'Tambahkan toko Anda',
-  shopEmptyBody: 'Mulai dari foto papan toko atau isi detail sendiri.',
   addShop: 'Tambah info toko',
   startPhoto: 'Mulai dari foto',
   editDetails: 'Edit detail',
@@ -407,4 +425,20 @@ export const id: Copy = {
   accountFailedBody: 'Anda sudah masuk, tetapi akun gagal dimuat. Data Anda aman.',
   loadFailed: 'Toko gagal dimuat. Data Anda aman — periksa koneksi lalu coba lagi.',
   retryLoad: 'Coba lagi',
+  erasing: 'Menghapus data Anda… Ini bisa memakan waktu satu menit.',
+  eraseDone: 'Semua data Anda dihapus. Memulai ulang…',
+  erasePartialTitle: 'Sebagian data Anda masih dihapus',
+  erasePartialBody: (items: string) =>
+    `Masih tertunda: ${items}. Semua yang lain sudah dihapus. Kami akan terus mencoba otomatis, atau Anda bisa coba lagi sekarang.`,
+  eraseFailed: 'Penghapusan belum selesai. Periksa koneksi dan coba lagi.',
+  eraseRetry: 'Coba lagi',
+  eraseSteps: {
+    face: 'data wajah',
+    photos: 'foto',
+    records: 'toko dan produk',
+    gallery: 'foto galeri toko',
+    community: 'salinan publik toko',
+    memory: 'memori asisten',
+    conversations: 'percakapan',
+  } as Record<string, string>,
 }

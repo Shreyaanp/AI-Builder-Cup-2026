@@ -1,6 +1,20 @@
 import type { Copy } from '../strings'
 
 export const ko: Copy = {
+  newShopMode: '새 가게',
+  newShopReady: '새 가게가 준비됐어요',
+  newShopReadyBody: '새 가게로 전환됐어요. 준비되면 고객 페이지를 공유하세요.',
+  newShopContinue: '가게 관리 계속하기',
+  useCurrentLocation: '현재 위치 사용',
+  locationReason:
+    '가게에 계신가요? 핀을 놓기 위해 위치 접근을 허용해 주세요. 저장 전에 검토할 수 있어요.',
+  locating: '현재 위치를 찾는 중…',
+  locationDenied: '위치 접근이 거부됐어요. 주소를 입력하거나 GPS 정보가 있는 사진을 사용하세요.',
+  locationFailed:
+    '위치를 찾을 수 없어요. 다시 시도하거나 주소 또는 GPS 정보가 있는 사진을 사용하세요.',
+  yourLocation: '내 위치',
+  description: '설명',
+  locationAccuracy: (m: string) => `오차 ${m} m 이내`,
   installApp: '앱 설치',
   installIos: 'Safari에서 공유 → 홈 화면에 추가를 누른 다음 추가를 누르세요.',
   installUnavailable:
@@ -36,6 +50,11 @@ export const ko: Copy = {
   connectionReconnecting: '다시 연결 중…',
   voiceFailed: '음성 연결이 종료되었습니다. 다시 시도하거나 텍스트를 사용하세요.',
   voiceRestarted: '음성이 다시 연결되었습니다. 다시 말씀해 주세요.',
+  voiceMicDenied:
+    '마이크 접근이 차단되었습니다. 브라우저 설정에서 마이크를 허용하고 다시 시도하거나 텍스트를 입력하세요.',
+  voiceRateLimited: (seconds: number) =>
+    `음성 요청이 너무 많습니다. ${seconds}초 후에 다시 시도하거나 텍스트를 입력하세요.`,
+  conversationRolledOver: '이 대화가 한도에 도달했습니다. 계속할 수 있도록 새 대화를 시작했어요.',
   appName: 'Chalkboard',
   independent: '독립 시제품 · Google 제품이 아니에요',
   loading: '가게를 준비하고 있어요…',
@@ -235,7 +254,6 @@ export const ko: Copy = {
   notProvided: '미입력',
   stock: '재고',
   shopEmptyTitle: '가게를 추가해 볼까요',
-  shopEmptyBody: '간판 사진으로 시작하거나 직접 내용을 입력해 주세요.',
   addShop: '가게 정보 추가',
   startPhoto: '사진으로 시작',
   editDetails: '정보 수정',
@@ -395,4 +413,20 @@ export const ko: Copy = {
   accountFailedBody: '로그인했지만 계정을 불러오지 못했어요. 데이터는 안전해요.',
   loadFailed: '가게를 불러오지 못했어요. 데이터는 안전하니 연결을 확인하고 다시 시도해 주세요.',
   retryLoad: '다시 시도',
+  erasing: '데이터를 삭제하는 중… 1분 정도 걸릴 수 있어요.',
+  eraseDone: '모든 데이터를 삭제했어요. 다시 시작하는 중…',
+  erasePartialTitle: '일부 데이터는 아직 삭제 중이에요',
+  erasePartialBody: (items: string) =>
+    `남은 항목: ${items}. 나머지는 모두 삭제했어요. 자동으로 계속 다시 시도하며, 지금 다시 시도할 수도 있어요.`,
+  eraseFailed: '삭제를 마치지 못했어요. 연결을 확인하고 다시 시도하세요.',
+  eraseRetry: '다시 시도',
+  eraseSteps: {
+    face: '얼굴 데이터',
+    photos: '사진',
+    records: '가게와 상품',
+    gallery: '가게 갤러리 사진',
+    community: '가게 공개 사본',
+    memory: '어시스턴트 메모리',
+    conversations: '대화',
+  } as Record<string, string>,
 }

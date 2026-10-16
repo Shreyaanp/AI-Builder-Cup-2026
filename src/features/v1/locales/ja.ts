@@ -1,6 +1,21 @@
 import type { Copy } from '../strings'
 
 export const ja: Copy = {
+  newShopMode: '新しいお店',
+  newShopReady: '新しいお店の準備ができました',
+  newShopReadyBody:
+    '新しいお店に切り替わりました。準備ができたらお客様向けページを共有しましょう。',
+  newShopContinue: 'お店の管理を続ける',
+  useCurrentLocation: '現在地を使用',
+  locationReason:
+    'お店にいますか？ピンを置くために位置情報を許可してください。保存前に確認できます。',
+  locating: '現在地を取得中…',
+  locationDenied: '位置情報が許可されませんでした。住所の入力や GPS 付き写真を利用できます。',
+  locationFailed:
+    '現在地を取得できませんでした。再試行するか、住所または GPS 付き写真を使ってください。',
+  yourLocation: 'あなたの現在地',
+  description: '説明',
+  locationAccuracy: (m: string) => `誤差 ${m} m 以内`,
   installApp: 'アプリをインストール',
   installIos: 'Safariで共有 → ホーム画面に追加をタップし、追加をタップしてください。',
   installUnavailable:
@@ -36,6 +51,11 @@ export const ja: Copy = {
   connectionReconnecting: '再接続中…',
   voiceFailed: '音声接続が終了しました。もう一度試すか、文字で入力してください。',
   voiceRestarted: '音声が再接続されました。もう一度お話しください。',
+  voiceMicDenied:
+    'マイクへのアクセスがブロックされています。ブラウザの設定でマイクを許可して再試行するか、文字で入力してください。',
+  voiceRateLimited: (seconds: number) =>
+    `音声のリクエストが多すぎます。${seconds} 秒待って再試行するか、文字で入力してください。`,
+  conversationRolledOver: 'この会話は上限に達しました。続けられるよう、新しい会話を始めました。',
   appName: 'Chalkboard',
   independent: '独立した試作アプリ・Google 製品ではありません',
   loading: 'お店を準備しています…',
@@ -236,7 +256,6 @@ export const ja: Copy = {
   notProvided: '未入力',
   stock: '在庫',
   shopEmptyTitle: 'お店を追加しましょう',
-  shopEmptyBody: '看板の写真から始めるか、情報を直接入力してください。',
   addShop: '店舗情報を追加',
   startPhoto: '写真から始める',
   editDetails: '情報を編集',
@@ -398,4 +417,20 @@ export const ja: Copy = {
   accountFailedBody: 'ログイン済みですが、アカウントを読み込めませんでした。データは安全です。',
   loadFailed: 'お店を読み込めませんでした。データは安全です。接続を確認して再試行してください。',
   retryLoad: '再試行',
+  erasing: 'データを削除しています… 1分ほどかかる場合があります。',
+  eraseDone: 'すべてのデータを削除しました。再起動しています…',
+  erasePartialTitle: '一部のデータはまだ削除中です',
+  erasePartialBody: (items: string) =>
+    `未完了: ${items}。それ以外はすべて削除しました。自動で再試行を続けます。今すぐ再試行することもできます。`,
+  eraseFailed: '削除が完了しませんでした。接続を確認して、もう一度お試しください。',
+  eraseRetry: 'もう一度試す',
+  eraseSteps: {
+    face: '顔データ',
+    photos: '写真',
+    records: 'お店と商品',
+    gallery: 'お店のギャラリー写真',
+    community: 'お店の公開コピー',
+    memory: 'アシスタントのメモリ',
+    conversations: '会話',
+  } as Record<string, string>,
 }

@@ -1,6 +1,22 @@
 import type { Copy } from '../strings'
 
 export const fil: Copy = {
+  newShopMode: 'Bagong tindahan',
+  newShopReady: 'Handa na ang bago mong tindahan',
+  newShopReadyBody:
+    'Nasa bago mong tindahan ka na. Ibahagi ang pahina para sa customer kapag handa ka na.',
+  newShopContinue: 'Magpatuloy sa tindahan ko',
+  useCurrentLocation: 'Gamitin ang lokasyon ko ngayon',
+  locationReason:
+    'Nasa tindahan? Payagan ang lokasyon para mailagay ang pin. Susuriin mo ito bago i-save.',
+  locating: 'Hinahanap ang lokasyon mo…',
+  locationDenied:
+    'Hindi pinayagan ang lokasyon. Mag-type ng address o gumamit ng larawang may GPS.',
+  locationFailed:
+    'Hindi makuha ang lokasyon. Subukan muli, mag-type ng address, o gumamit ng larawang may GPS.',
+  yourLocation: 'Lokasyon mo',
+  description: 'Paglalarawan',
+  locationAccuracy: (m: string) => `sa loob ng ${m} m`,
   installApp: 'I-install ang app',
   installIos:
     'Sa Safari, i-tap ang Ibahagi → Idagdag sa Home Screen, pagkatapos ay i-tap ang Idagdag.',
@@ -40,6 +56,12 @@ export const fil: Copy = {
   connectionReconnecting: 'Muling kumokonekta…',
   voiceFailed: 'Natapos ang koneksyon sa boses. Subukan muli o gumamit ng teksto.',
   voiceRestarted: 'Nakakonekta muli ang boses. Pakisabi iyon muli.',
+  voiceMicDenied:
+    'Naka-block ang mikropono. Payagan ito sa mga setting ng browser at subukang muli, o mag-type.',
+  voiceRateLimited: (seconds: number) =>
+    `Masyadong maraming kahilingan sa boses. Maghintay ng ${seconds} segundo, saka subukang muli o mag-type.`,
+  conversationRolledOver:
+    'Puno na ang usapang ito. Nagsimula ako ng bagong usapan para makapagpatuloy tayo.',
   loading: 'Inihahanda ang tindahan mo…',
   welcomeTitle: 'Ipakilala online ang tindahan mo sa isang usapan',
   welcomeBody:
@@ -245,7 +267,6 @@ export const fil: Copy = {
   notProvided: 'Hindi ibinigay',
   stock: 'Stock',
   shopEmptyTitle: 'Idagdag natin ang tindahan mo',
-  shopEmptyBody: 'Magsimula sa litrato ng karatula o ilagay ang detalye mismo.',
   addShop: 'Magdagdag ng detalye',
   startPhoto: 'Magsimula sa litrato',
   editDetails: 'I-edit ang detalye',
@@ -417,4 +438,20 @@ export const fil: Copy = {
   loadFailed:
     'Hindi na-load ang mga tindahan. Ligtas ang data — suriin ang koneksyon at subukan muli.',
   retryLoad: 'Subukan muli',
+  erasing: 'Binubura ang data mo… Maaaring tumagal ito nang isang minuto.',
+  eraseDone: 'Nabura na ang lahat ng data mo. Nagsisimula muli…',
+  erasePartialTitle: 'May ilang data mo pang binubura',
+  erasePartialBody: (items: string) =>
+    `Hinihintay pa: ${items}. Nabura na ang lahat ng iba. Awtomatiko kaming susubok muli, o puwede mong subukan muli ngayon.`,
+  eraseFailed: 'Hindi natapos ang pagbura. Tingnan ang koneksyon at subukan muli.',
+  eraseRetry: 'Subukan muli',
+  eraseSteps: {
+    face: 'face data',
+    photos: 'mga larawan',
+    records: 'mga tindahan at produkto',
+    gallery: 'mga larawan sa gallery ng tindahan',
+    community: 'mga pampublikong kopya ng tindahan',
+    memory: 'memory ng assistant',
+    conversations: 'mga usapan',
+  } as Record<string, string>,
 }

@@ -26,7 +26,7 @@ from .brief import BriefWriter, WeatherService
 from .business_profile import QuestionPlanner
 from .community import community_service
 from .community_routes import router as community_router
-from .contracts import CoachTurn, StreamEvent
+from .contracts import CoachTurn, NewShopVoiceContext, StreamEvent
 from .coordinator import MerchantContext, current
 from .customer import CustomerAnswers
 from .customer_routes import router as customer_router
@@ -68,7 +68,7 @@ from .sourcing_routes import router as sourcing_router
 from .streaming import CoachRuntime
 from .today import router as today_router
 from .tts import Speech
-from .voice import serve_voice
+from .voice import VOICE_SESSION_CAP_SECONDS, serve_voice
 
 log = structlog.get_logger()
 SSE_HEARTBEAT_SECONDS = 15
@@ -170,7 +170,7 @@ def create_app(
                 client,
                 settings.firestore_namespace,
                 settings.max_active_runs,
-                max(settings.max_voice_seconds, settings.max_turn_seconds) + 10,
+                max(VOICE_SESSION_CAP_SECONDS, settings.max_turn_seconds) + 10,
             )
             if client
             else RunRegistry(settings.max_active_runs),
@@ -308,7 +308,7 @@ def create_app(
             return stream_response(turn, after)
         await enforce_limits(request, [("coach", principal.uid)])
         sid = await services.runtime.session(
-            principal, str(body.session_id) if body.session_id else None, bid
+            principal, str(body.session_id) if body.session_id else None, bid, body.new_shop
         )
         lease = await services.registry.acquire_async(principal.uid, sid)
 
@@ -322,10 +322,25 @@ def create_app(
                         )
                         token = current.set(
                             MerchantContext(
-                                app.state.merchant, principal.uid, bid, recall, body.message
+                                app.state.merchant,
+                                principal.uid,
+                                bid,
+                                recall,
+                                body.message,
+                                new_shop=body.new_shop,
+                                new_shop_draft=body.new_shop_draft,
                             )
                         )
-                    turn.append(StreamEvent(kind="ready", session_id=sid, mode=settings.coach_mode))
+                    turn.append(
+                        StreamEvent(
+                            kind="ready",
+                            session_id=sid,
+                            mode=settings.coach_mode,
+                            code="CONVERSATION_ROLLED_OVER"
+                            if body.session_id and str(body.session_id) != sid
+                            else None,
+                        )
+                    )
                     async for event in services.runtime.text_events(
                         principal, sid, body.message, body.language, body.currency
                     ):
@@ -374,6 +389,7 @@ def create_app(
                 "session_id": item.id,
                 "updated": item.last_update_time,
                 "business_id": item.state.get("business_id"),
+                "new_shop": bool(item.state.get("new_shop")),
             }
             for item in reversed(listing.sessions)
         ]
@@ -427,6 +443,16 @@ def create_app(
             if requested:
                 requested = str(UUID(requested))
             bid = websocket.query_params.get("business_id")
+            new_shop = websocket.query_params.get("new_shop") == "true"
+            if new_shop and bid:
+                raise ValueError("New shop mode cannot edit a business")
+            draft = None
+            if new_shop:
+                async with asyncio.timeout(5):
+                    raw_context = await websocket.receive_text()
+                    if len(raw_context) > 32_000:
+                        raise ValueError("Draft too large")
+                    draft = NewShopVoiceContext.model_validate_json(raw_context).draft
             if bid:
                 bid = str(UUID(bid))
                 if not app.state.merchant:
@@ -434,29 +460,58 @@ def create_app(
                 await anyio.to_thread.run_sync(app.state.merchant.context, principal.uid, bid)
             if app.state.merchant:
                 context_token = current.set(
-                    MerchantContext(app.state.merchant, principal.uid, bid, [])
+                    MerchantContext(
+                        app.state.merchant,
+                        principal.uid,
+                        bid,
+                        [],
+                        new_shop=new_shop,
+                        new_shop_draft=draft,
+                    )
                 )
-            sid = await services.runtime.session(principal, requested, bid)
+            sid = await services.runtime.session(principal, requested, bid, new_shop)
             lease = await services.registry.acquire_async(principal.uid, sid)
             await websocket.send_json(
                 StreamEvent(
                     kind="ready",
                     session_id=sid,
                     mode=settings.coach_mode,
+                    code="CONVERSATION_ROLLED_OVER" if requested and requested != sid else None,
                 ).payload()
             )
+            log.info("voice_ready", business=bool(bid), resumed=bool(requested))
             await serve_voice(websocket, services.runtime, principal, sid)
+            log.info("voice_closed")
         except (HTTPException, ValueError, TimeoutError) as error:
             code = (
                 "RATE_LIMITED"
                 if isinstance(error, HTTPException) and error.status_code == 429
                 else "AUTH_OR_SESSION_ERROR"
             )
+            # Every rejected voice session says why in the logs (it was silent before).
+            log.warning(
+                "voice_rejected",
+                code=code,
+                error=type(error).__name__,
+                status=getattr(error, "status_code", None),
+                detail=str(getattr(error, "detail", error))[:200],
+            )
             with suppress(RuntimeError, WebSocketDisconnect):
-                await websocket.send_json(StreamEvent(kind="error", code=code).payload())
+                await websocket.send_json(
+                    StreamEvent(
+                        kind="error",
+                        code=code,
+                        data={"retry_after": int((error.headers or {}).get("Retry-After", "60"))}
+                        if code == "RATE_LIMITED" and isinstance(error, HTTPException)
+                        else None,
+                    ).payload()
+                )
                 await websocket.close(code=1008, reason=code)
         except WebSocketDisconnect:
-            pass
+            log.info("voice_disconnected")
+        except Exception:
+            log.exception("voice_failed")
+            raise
         finally:
             if context_token is not None:
                 current.reset(context_token)

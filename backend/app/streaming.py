@@ -12,6 +12,7 @@ from google.genai import types
 
 from .agent import make_agent, ui_language
 from .auth import Principal
+from .charts import CHART_TOOLS, chart_card
 from .contracts import StreamEvent
 from .coordinator import current, ui_currency
 from .settings import Settings
@@ -55,6 +56,10 @@ def public_events(event: Event) -> list[StreamEvent]:
                     StreamEvent(kind="sourcing", data={"stage": "searching", "item": item})
                 )
             response = part.function_response
+            if response and response.name in CHART_TOOLS:
+                chart = chart_card(response.name, response.response)
+                if chart:
+                    output.append(StreamEvent(kind="chart", data=chart))
             if response and response.name == "propose_rescue_deal":
                 merchant = current.get()
                 card = (
@@ -96,6 +101,11 @@ def public_events(event: Event) -> list[StreamEvent]:
     return output
 
 
+# Conversations kept per account (oldest cleared first) and events per conversation.
+MAX_CONVERSATIONS = 20
+MAX_EVENTS = 400
+
+
 class CoachRuntime:
     def __init__(self, settings: Settings, sessions: BaseSessionService) -> None:
         self.settings = settings
@@ -108,7 +118,11 @@ class CoachRuntime:
         )
 
     async def session(
-        self, principal: Principal, requested: str | None, business_id: str | None = None
+        self,
+        principal: Principal,
+        requested: str | None,
+        business_id: str | None = None,
+        new_shop: bool = False,
     ) -> str:
         if requested:
             existing = await self.sessions.get_session(
@@ -120,20 +134,28 @@ class CoachRuntime:
                 raise HTTPException(404, "Conversation not found in this workspace.")
             if existing.state.get("business_id") != business_id:
                 raise HTTPException(404, "Conversation belongs to a different business.")
-            if len(existing.events) > 60:
-                raise HTTPException(429, "Start a new conversation to continue.")
-            return requested
+            if bool(existing.state.get("new_shop")) != new_shop:
+                raise HTTPException(404, "Conversation belongs to a different coach mode.")
+            if len(existing.events) < MAX_EVENTS:
+                return requested
+            # Ownership and shop scope were checked above. Keep the full history and start
+            # a fresh thread; transports announce the changed id in their ready event.
         listing = await self.sessions.list_sessions(app_name=APP_NAME, user_id=principal.uid)
-        if len(listing.sessions) >= 20:
-            raise HTTPException(
-                429, "This preview supports 20 conversations per private workspace."
-            )
+        # Keep the newest conversations and quietly clear the oldest, instead of refusing every
+        # new chat and voice session once an account had 20 (owner report, 15 Oct: the mic said
+        # "Too many requests" forever). Shop records live elsewhere; only old chat history goes.
+        if len(listing.sessions) >= MAX_CONVERSATIONS:
+            oldest = sorted(listing.sessions, key=lambda item: item.last_update_time or 0)
+            for stale in oldest[: len(listing.sessions) - MAX_CONVERSATIONS + 1]:
+                await self.sessions.delete_session(
+                    app_name=APP_NAME, user_id=principal.uid, session_id=stale.id
+                )
         session_id = str(uuid4())
         await self.sessions.create_session(
             app_name=APP_NAME,
             user_id=principal.uid,
             session_id=session_id,
-            state={"business_id": business_id},
+            state={"business_id": business_id, "new_shop": new_shop},
         )
         return session_id
 
@@ -147,6 +169,10 @@ class CoachRuntime:
     ) -> AsyncIterator[StreamEvent]:
         # The app language reaches the instruction via a context variable, never the owner's
         # message (models echo bracketed prefixes back into replies).
+        merchant = current.get()
+        if merchant:
+            # Socket text controls exercise the same offline tools as HTTP turns.
+            merchant.message = text
         ui_language.set(language)
         run = self.text_runner.run_async(
             user_id=principal.uid,

@@ -1,6 +1,20 @@
 import type { Copy } from '../strings'
 
 export const hi: Copy = {
+  newShopMode: 'नई दुकान',
+  newShopReady: 'आपकी नई दुकान तैयार है',
+  newShopReadyBody:
+    'अब आप अपनी नई दुकान में काम कर रहे हैं। तैयार होने पर उसका ग्राहक पेज साझा करें।',
+  newShopContinue: 'मेरी दुकान के साथ जारी रखें',
+  useCurrentLocation: 'मेरी वर्तमान लोकेशन इस्तेमाल करें',
+  locationReason:
+    'दुकान पर हैं? पिन लगाने के लिए लोकेशन की अनुमति दें। सहेजने से पहले आप समीक्षा करेंगे।',
+  locating: 'आपकी लोकेशन खोज रहे हैं…',
+  locationDenied: 'लोकेशन की अनुमति नहीं मिली। पता लिखें या GPS वाली फ़ोटो इस्तेमाल करें।',
+  locationFailed: 'लोकेशन नहीं मिल सकी। फिर कोशिश करें, पता लिखें या GPS वाली फ़ोटो इस्तेमाल करें।',
+  yourLocation: 'आपकी लोकेशन',
+  description: 'विवरण',
+  locationAccuracy: (m: string) => `${m} मीटर के भीतर`,
   installApp: 'ऐप इंस्टॉल करें',
   installIos: 'Safari में शेयर → होम स्क्रीन पर जोड़ें चुनें, फिर जोड़ें दबाएँ।',
   installUnavailable:
@@ -38,6 +52,11 @@ export const hi: Copy = {
   connectionReconnecting: 'फिर जुड़ रहा है…',
   voiceFailed: 'आवाज़ का कनेक्शन बंद हो गया। फिर कोशिश करें या लिखें।',
   voiceRestarted: 'आवाज़ फिर जुड़ गई। दोबारा बोलें।',
+  voiceMicDenied:
+    'माइक्रोफ़ोन की अनुमति बंद है। ब्राउज़र सेटिंग में अनुमति देकर फिर कोशिश करें, या लिखें।',
+  voiceRateLimited: (seconds: number) =>
+    `आवाज़ के बहुत अनुरोध हैं। ${seconds} सेकंड बाद फिर कोशिश करें या लिखें।`,
+  conversationRolledOver: 'यह बातचीत भर गई है। जारी रखने के लिए मैंने नई बातचीत शुरू की है।',
   loading: 'आपकी दुकान तैयार हो रही है…',
   // Onboarding
   welcomeTitle: 'एक बातचीत में आपकी दुकान ऑनलाइन',
@@ -250,7 +269,6 @@ export const hi: Copy = {
   stock: 'स्टॉक',
   // Shop
   shopEmptyTitle: 'आपकी दुकान जोड़ें',
-  shopEmptyBody: 'बोर्ड की फ़ोटो से शुरू करें या खुद जानकारी भरें।',
   addShop: 'दुकान की जानकारी जोड़ें',
   startPhoto: 'फ़ोटो से शुरू करें',
   editDetails: 'जानकारी बदलें',
@@ -312,7 +330,7 @@ export const hi: Copy = {
   // Next action (one obvious step)
   nextLabel: 'अगला कदम',
   nextScan: 'मेन्यू या बोर्ड स्कैन करें',
-  nextScanBody: 'नाम, समय और दाम पढ़ दूँगा, आप जाँचें।',
+  nextScanBody: 'नाम, समय और दाम पढ़ दूँगी, आप जाँचें।',
   nextScanAction: 'एक फ़ोटो लें',
   nextPrices: 'अपने दाम जोड़ें',
   nextPricesBody: 'दामों की सूची की फ़ोटो भेजें या सामान एक-एक करके जोड़ें।',
@@ -415,4 +433,20 @@ export const hi: Copy = {
   accountFailedBody: 'साइन-इन हो गया, पर खाता लोड नहीं हुआ। डेटा सुरक्षित है।',
   loadFailed: 'दुकानें लोड नहीं हुईं। डेटा सुरक्षित है — कनेक्शन जाँचकर फिर कोशिश करें।',
   retryLoad: 'फिर कोशिश',
+  erasing: 'आपका डेटा मिटाया जा रहा है… इसमें एक मिनट लग सकता है।',
+  eraseDone: 'आपका सारा डेटा मिट गया। फिर से शुरू हो रहा है…',
+  erasePartialTitle: 'आपका कुछ डेटा अभी मिटाया जा रहा है',
+  erasePartialBody: (items: string) =>
+    `अभी बाकी: ${items}। बाकी सब मिट गया है। हम अपने-आप फिर कोशिश करते रहेंगे, या आप अभी फिर कोशिश कर सकते हैं।`,
+  eraseFailed: 'मिटाना पूरा नहीं हुआ। कनेक्शन जाँचें और फिर कोशिश करें।',
+  eraseRetry: 'फिर कोशिश करें',
+  eraseSteps: {
+    face: 'चेहरे का डेटा',
+    photos: 'फ़ोटो',
+    records: 'दुकानें और उत्पाद',
+    gallery: 'दुकान गैलरी की फ़ोटो',
+    community: 'दुकान की सार्वजनिक प्रतियाँ',
+    memory: 'सहायक की मेमोरी',
+    conversations: 'बातचीत',
+  } as Record<string, string>,
 }

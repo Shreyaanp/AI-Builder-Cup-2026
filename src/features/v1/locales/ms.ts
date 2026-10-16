@@ -1,6 +1,19 @@
 import type { Copy } from '../strings'
 
 export const ms: Copy = {
+  newShopMode: 'Kedai baharu',
+  newShopReady: 'Kedai baharu anda sudah sedia',
+  newShopReadyBody: 'Anda kini mengurus kedai baharu. Kongsi halaman pelanggan apabila bersedia.',
+  newShopContinue: 'Teruskan dengan kedai saya',
+  useCurrentLocation: 'Guna lokasi semasa saya',
+  locationReason:
+    'Di kedai? Benarkan akses lokasi untuk meletakkan pin. Anda akan menyemaknya sebelum menyimpan.',
+  locating: 'Mencari lokasi anda…',
+  locationDenied: 'Akses lokasi ditolak. Taip alamat atau guna foto dengan GPS.',
+  locationFailed: 'Lokasi tidak ditemui. Cuba lagi, taip alamat, atau guna foto dengan GPS.',
+  yourLocation: 'Lokasi anda',
+  description: 'Penerangan',
+  locationAccuracy: (m: string) => `dalam ${m} m`,
   installApp: 'Pasang aplikasi',
   installIos: 'Dalam Safari, ketik Kongsi → Tambah ke Skrin Utama, kemudian ketik Tambah.',
   installUnavailable:
@@ -37,6 +50,12 @@ export const ms: Copy = {
   connectionReconnecting: 'Menyambung semula…',
   voiceFailed: 'Sambungan suara tamat. Cuba lagi atau gunakan teks.',
   voiceRestarted: 'Suara disambung semula. Sila sebut sekali lagi.',
+  voiceMicDenied:
+    'Akses mikrofon disekat. Benarkan mikrofon dalam tetapan pelayar dan cuba lagi, atau gunakan teks.',
+  voiceRateLimited: (seconds: number) =>
+    `Terlalu banyak permintaan suara. Tunggu ${seconds} saat, kemudian cuba lagi atau gunakan teks.`,
+  conversationRolledOver:
+    'Perbualan ini penuh. Saya telah memulakan perbualan baharu supaya kita boleh teruskan.',
   appName: 'Chalkboard',
   independent: 'Prototaip bebas · bukan produk Google',
   loading: 'Menyediakan kedai anda…',
@@ -241,7 +260,6 @@ export const ms: Copy = {
   notProvided: 'Belum diisi',
   stock: 'Stok',
   shopEmptyTitle: 'Mari tambah kedai anda',
-  shopEmptyBody: 'Mulakan dengan foto papan kedai atau isi butiran sendiri.',
   addShop: 'Tambah butiran kedai',
   startPhoto: 'Mula dengan foto',
   editDetails: 'Edit butiran',
@@ -405,4 +423,20 @@ export const ms: Copy = {
   accountFailedBody: 'Anda telah log masuk, tetapi akaun gagal dimuatkan. Data selamat.',
   loadFailed: 'Kedai gagal dimuatkan. Data selamat — semak sambungan dan cuba lagi.',
   retryLoad: 'Cuba lagi',
+  erasing: 'Memadam data anda… Ini mungkin mengambil masa seminit.',
+  eraseDone: 'Semua data anda dipadam. Memulakan semula…',
+  erasePartialTitle: 'Sebahagian data anda masih sedang dipadam',
+  erasePartialBody: (items: string) =>
+    `Masih belum selesai: ${items}. Semua yang lain sudah dipadam. Kami akan terus mencuba secara automatik, atau anda boleh cuba lagi sekarang.`,
+  eraseFailed: 'Pemadaman tidak selesai. Semak sambungan dan cuba lagi.',
+  eraseRetry: 'Cuba lagi',
+  eraseSteps: {
+    face: 'data wajah',
+    photos: 'foto',
+    records: 'kedai dan produk',
+    gallery: 'foto galeri kedai',
+    community: 'salinan awam kedai',
+    memory: 'memori pembantu',
+    conversations: 'perbualan',
+  } as Record<string, string>,
 }

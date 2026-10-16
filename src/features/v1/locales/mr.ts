@@ -1,6 +1,19 @@
 import type { Copy } from '../strings'
 
 export const mr: Copy = {
+  newShopMode: 'नवीन दुकान',
+  newShopReady: 'तुमचे नवीन दुकान तयार आहे',
+  newShopReadyBody: 'आता तुम्ही नवीन दुकानात काम करत आहात. तयार झाल्यावर ग्राहक पान शेअर करा.',
+  newShopContinue: 'माझ्या दुकानासह पुढे जा',
+  useCurrentLocation: 'माझे सध्याचे स्थान वापरा',
+  locationReason:
+    'दुकानात आहात? पिन ठेवण्यासाठी स्थानाची परवानगी द्या. जतन करण्यापूर्वी पुनरावलोकन कराल.',
+  locating: 'तुमचे स्थान शोधत आहोत…',
+  locationDenied: 'स्थानाची परवानगी नाकारली. पत्ता लिहा किंवा GPS असलेला फोटो वापरा.',
+  locationFailed: 'स्थान मिळाले नाही. पुन्हा प्रयत्न करा, पत्ता लिहा किंवा GPS असलेला फोटो वापरा.',
+  yourLocation: 'तुमचे स्थान',
+  description: 'वर्णन',
+  locationAccuracy: (m: string) => `${m} मीटरच्या आत`,
   installApp: 'अ‍ॅप इन्स्टॉल करा',
   installIos: 'Safari मध्ये शेअर → होम स्क्रीनवर जोडा निवडा, मग जोडा दाबा.',
   installUnavailable:
@@ -38,6 +51,11 @@ export const mr: Copy = {
   connectionReconnecting: 'पुन्हा जोडत आहे…',
   voiceFailed: 'आवाजाची जोडणी बंद झाली. पुन्हा प्रयत्न करा किंवा लिहा.',
   voiceRestarted: 'आवाज पुन्हा जोडला. पुन्हा बोला.',
+  voiceMicDenied:
+    'मायक्रोफोनची परवानगी बंद आहे. ब्राउझर सेटिंगमध्ये परवानगी देऊन पुन्हा प्रयत्न करा किंवा लिहा.',
+  voiceRateLimited: (seconds: number) =>
+    `आवाजाच्या खूप विनंत्या झाल्या. ${seconds} सेकंद थांबून पुन्हा प्रयत्न करा किंवा लिहा.`,
+  conversationRolledOver: 'हे संभाषण भरले आहे. पुढे सुरू ठेवण्यासाठी मी नवीन संभाषण सुरू केले आहे.',
   loading: 'तुमचे दुकान तयार करत आहोत…',
   // Onboarding
   welcomeTitle: 'एका गप्पांत तुमचे दुकान ऑनलाइन',
@@ -249,7 +267,6 @@ export const mr: Copy = {
   stock: 'साठा',
   // Shop
   shopEmptyTitle: 'तुमचे दुकान जोडूया',
-  shopEmptyBody: 'फलकाच्या फोटोपासून सुरुवात करा किंवा स्वतः माहिती भरा.',
   addShop: 'दुकानाची माहिती जोडा',
   startPhoto: 'फोटोपासून सुरू करा',
   editDetails: 'माहिती बदला',
@@ -413,4 +430,20 @@ export const mr: Copy = {
   accountFailedBody: 'साइन-इन झाले, पण खाते लोड झाले नाही. डेटा सुरक्षित आहे.',
   loadFailed: 'दुकाने लोड झाली नाहीत. डेटा सुरक्षित आहे — जोडणी तपासून पुन्हा प्रयत्न करा.',
   retryLoad: 'पुन्हा प्रयत्न',
+  erasing: 'तुमचा डेटा मिटवला जात आहे… याला एक मिनिट लागू शकतो.',
+  eraseDone: 'तुमचा सर्व डेटा मिटवला. पुन्हा सुरू होत आहे…',
+  erasePartialTitle: 'तुमचा काही डेटा अजून मिटवला जात आहे',
+  erasePartialBody: (items: string) =>
+    `अजून बाकी: ${items}. बाकी सर्व मिटवले आहे. आम्ही आपोआप पुन्हा प्रयत्न करत राहू, किंवा तुम्ही आत्ता पुन्हा प्रयत्न करू शकता.`,
+  eraseFailed: 'मिटवणे पूर्ण झाले नाही. कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.',
+  eraseRetry: 'पुन्हा प्रयत्न करा',
+  eraseSteps: {
+    face: 'चेहऱ्याचा डेटा',
+    photos: 'फोटो',
+    records: 'दुकाने आणि उत्पादने',
+    gallery: 'दुकान गॅलरीतील फोटो',
+    community: 'दुकानाच्या सार्वजनिक प्रती',
+    memory: 'सहाय्यकाची मेमरी',
+    conversations: 'संभाषणे',
+  } as Record<string, string>,
 }

@@ -1,6 +1,18 @@
 import type { Copy } from '../strings'
 
 export const bn: Copy = {
+  newShopMode: 'নতুন দোকান',
+  newShopReady: 'আপনার নতুন দোকান তৈরি',
+  newShopReadyBody: 'এখন আপনি নতুন দোকানে কাজ করছেন। প্রস্তুত হলে গ্রাহক পেজ শেয়ার করুন।',
+  newShopContinue: 'আমার দোকানে এগিয়ে যান',
+  useCurrentLocation: 'আমার বর্তমান অবস্থান ব্যবহার করুন',
+  locationReason: 'দোকানে আছেন? পিন বসাতে অবস্থানের অনুমতি দিন। সংরক্ষণের আগে যাচাই করবেন।',
+  locating: 'আপনার অবস্থান খোঁজা হচ্ছে…',
+  locationDenied: 'অবস্থানের অনুমতি মেলেনি। ঠিকানা লিখুন বা GPS থাকা ছবি দিন।',
+  locationFailed: 'অবস্থান পাওয়া যায়নি। আবার চেষ্টা করুন, ঠিকানা লিখুন বা GPS থাকা ছবি দিন।',
+  yourLocation: 'আপনার অবস্থান',
+  description: 'বিবরণ',
+  locationAccuracy: (m: string) => `${m} মিটারের মধ্যে`,
   installApp: 'অ্যাপ ইনস্টল করুন',
   installIos: 'Safari-তে শেয়ার → হোম স্ক্রিনে যোগ করুন বেছে নিয়ে যোগ করুন চাপুন।',
   installUnavailable:
@@ -38,6 +50,11 @@ export const bn: Copy = {
   connectionReconnecting: 'আবার সংযোগ হচ্ছে…',
   voiceFailed: 'কথার সংযোগ বন্ধ হয়েছে। আবার চেষ্টা করুন বা লিখুন।',
   voiceRestarted: 'কথার সংযোগ ফিরেছে। আবার বলুন।',
+  voiceMicDenied:
+    'মাইক্রোফোনের অনুমতি বন্ধ। ব্রাউজারের সেটিংসে অনুমতি দিয়ে আবার চেষ্টা করুন, বা লিখুন।',
+  voiceRateLimited: (seconds: number) =>
+    `অনেক ভয়েস অনুরোধ হয়েছে। ${seconds} সেকেন্ড পরে আবার চেষ্টা করুন বা লিখুন।`,
+  conversationRolledOver: 'এই কথোপকথন পূর্ণ। চালিয়ে যেতে নতুন কথোপকথন শুরু করেছি।',
   loading: 'আপনার দোকান তৈরি হচ্ছে…',
   // Onboarding
   welcomeTitle: 'এক কথোপকথনেই আপনার দোকান অনলাইনে',
@@ -250,7 +267,6 @@ export const bn: Copy = {
   stock: 'মজুত',
   // Shop
   shopEmptyTitle: 'আপনার দোকান যোগ করি',
-  shopEmptyBody: 'বোর্ডের ছবি দিয়ে শুরু করুন বা নিজে তথ্য পূরণ করুন।',
   addShop: 'দোকানের তথ্য যোগ করুন',
   startPhoto: 'ছবি দিয়ে শুরু করুন',
   editDetails: 'তথ্য সম্পাদনা করুন',
@@ -412,4 +428,20 @@ export const bn: Copy = {
   accountFailedBody: 'সাইন-ইন হয়েছে, কিন্তু অ্যাকাউন্ট লোড হয়নি। তথ্য নিরাপদ।',
   loadFailed: 'দোকান লোড হয়নি। তথ্য নিরাপদ — সংযোগ দেখে আবার চেষ্টা করুন।',
   retryLoad: 'আবার চেষ্টা',
+  erasing: 'আপনার তথ্য মোছা হচ্ছে… এক মিনিট লাগতে পারে।',
+  eraseDone: 'আপনার সব তথ্য মুছে গেছে। আবার শুরু হচ্ছে…',
+  erasePartialTitle: 'আপনার কিছু তথ্য এখনও মোছা হচ্ছে',
+  erasePartialBody: (items: string) =>
+    `এখনও বাকি: ${items}। বাকি সব মুছে গেছে। আমরা নিজে থেকেই আবার চেষ্টা করব, অথবা আপনি এখনই আবার চেষ্টা করতে পারেন।`,
+  eraseFailed: 'মোছা শেষ হয়নি। সংযোগ দেখে আবার চেষ্টা করুন।',
+  eraseRetry: 'আবার চেষ্টা করুন',
+  eraseSteps: {
+    face: 'মুখের তথ্য',
+    photos: 'ছবি',
+    records: 'দোকান ও পণ্য',
+    gallery: 'দোকানের গ্যালারির ছবি',
+    community: 'দোকানের সর্বজনীন কপি',
+    memory: 'সহকারীর মেমরি',
+    conversations: 'কথোপকথন',
+  } as Record<string, string>,
 }

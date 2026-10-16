@@ -2,6 +2,22 @@ import { useLocale } from '../../state/hooks'
 import { translations } from './locales'
 
 export const en = {
+  newShopMode: 'New shop',
+  newShopReady: 'Your new shop is ready',
+  newShopReadyBody:
+    'You’re now working in your new shop. Share its customer page when you’re ready.',
+  newShopContinue: 'Continue with my shop',
+  useCurrentLocation: 'Use my current location',
+  locationReason:
+    'At your shop? Allow location access to place its pin. You’ll review it before saving.',
+  locating: 'Finding your location…',
+  locationDenied:
+    'Location access was denied. You can type an address or use a photo with GPS instead.',
+  locationFailed:
+    'We couldn’t get your location. Try again, type an address, or use a photo with GPS.',
+  yourLocation: 'Your location',
+  description: 'Description',
+  locationAccuracy: (m: string) => `within ${m} m`,
   installApp: 'Install app',
   installIos: 'In Safari, tap Share → Add to Home Screen, then tap Add.',
   installUnavailable:
@@ -40,6 +56,12 @@ export const en = {
   connectionReconnecting: 'Reconnecting…',
   voiceFailed: 'Voice connection ended. Try again or use text.',
   voiceRestarted: 'Voice reconnected. Please say that again.',
+  voiceMicDenied:
+    'Microphone access is blocked. Allow the microphone in browser settings and try again, or use text.',
+  voiceRateLimited: (seconds: number) =>
+    `Too many voice requests. Wait ${seconds} seconds, then try again or use text.`,
+  conversationRolledOver:
+    'This conversation is full. I started a new conversation so we can continue.',
   loading: 'Getting your shop ready…',
   // Onboarding
   welcomeTitle: 'Your shop, online in one conversation',
@@ -253,7 +275,6 @@ export const en = {
   stock: 'Stock',
   // Shop
   shopEmptyTitle: 'Let’s add your shop',
-  shopEmptyBody: 'Start from a photo of your board, or fill in the details yourself.',
   addShop: 'Add shop details',
   startPhoto: 'Start from a photo',
   editDetails: 'Edit details',
@@ -420,6 +441,23 @@ export const en = {
   accountFailedBody: 'You’re signed in, but loading your account failed. Your data is safe.',
   loadFailed: 'We couldn’t load your shops. Your data is safe — check your connection and retry.',
   retryLoad: 'Retry',
+  erasing: 'Deleting your data… This can take a minute.',
+  eraseDone: 'All your data was deleted. Restarting…',
+  erasePartialTitle: 'Some of your data is still being deleted',
+  erasePartialBody: (items: string) =>
+    `Still pending: ${items}. Everything else is deleted. We’ll keep retrying automatically, or you can try again now.`,
+  eraseFailed: 'Deletion didn’t finish. Check your connection and try again.',
+  eraseRetry: 'Try again',
+  // Erase steps the server reports as still pending (backend/app/erasure.py STEPS).
+  eraseSteps: {
+    face: 'face data',
+    photos: 'photos',
+    records: 'shops and products',
+    gallery: 'shop gallery photos',
+    community: 'public shop copies',
+    memory: 'assistant memory',
+    conversations: 'conversations',
+  } as Record<string, string>,
 }
 
 type Copy = typeof en

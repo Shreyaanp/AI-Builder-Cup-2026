@@ -64,14 +64,21 @@ def language_for(text: str, locale: str) -> str:
     return LOCALE_LANGUAGE.get(locale, LOCALE_LANGUAGE.get(locale.split("-")[0], "en-US"))
 
 
-def best_voice(voices: list[tuple[str, list[str]]], language: str) -> str | None:
-    """Pick the highest-quality voice for a language from (name, language_codes) pairs."""
-    candidates = [name for name, codes in voices if language in codes]
-    for tier in TIERS:
-        tiered = sorted(name for name in candidates if f"-{tier}-" in name)
-        if tiered:
-            return tiered[0]
-    return sorted(candidates)[0] if candidates else None
+def best_voice(
+    voices: list[tuple[str, list[str], str]], language: str, preferred: str = "Achernar"
+) -> str | None:
+    """Pick the highest-quality voice for a language from (name, language_codes, gender) entries:
+    the app's chosen voice, else a female voice, best tier first; any voice as a last resort."""
+    candidates = [(name, gender) for name, codes, gender in voices if language in codes]
+    fallback: str | None = None
+    for tier in [*TIERS, ""]:
+        tiered = sorted(c for c in candidates if f"-{tier}-" in c[0] or not tier)
+        chosen = [name for name, _ in tiered if name.endswith(f"-{preferred}")]
+        female = [name for name, gender in tiered if gender == "FEMALE"]
+        if chosen or female:
+            return (chosen or female)[0]
+        fallback = fallback or (tiered[0][0] if tiered else None)
+    return fallback
 
 
 def speakable(text: str) -> str:
@@ -85,7 +92,7 @@ class Speech:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self._client: Any = None
-        self._voices: list[tuple[str, list[str]]] | None = None
+        self._voices: list[tuple[str, list[str], str]] | None = None
         self._cache: OrderedDict[tuple[str, str], bytes] = OrderedDict()
 
     @property
@@ -99,16 +106,18 @@ class Speech:
             self._client = texttospeech.TextToSpeechClient()
         return self._client
 
-    def _voices_sync(self) -> list[tuple[str, list[str]]]:
+    def _voices_sync(self) -> list[tuple[str, list[str], str]]:
         if self._voices is None:
             response = self._client_sync().list_voices()
-            self._voices = [(v.name, list(v.language_codes)) for v in response.voices]
+            self._voices = [
+                (v.name, list(v.language_codes), v.ssml_gender.name) for v in response.voices
+            ]
         return self._voices
 
     def _synthesize_sync(self, text: str, language: str) -> bytes:
         from google.cloud import texttospeech
 
-        name = best_voice(self._voices_sync(), language)
+        name = best_voice(self._voices_sync(), language, self.settings.voice_name)
         voice = texttospeech.VoiceSelectionParams(language_code=language, name=name or "")
         response = self._client_sync().synthesize_speech(
             input=texttospeech.SynthesisInput(text=text),

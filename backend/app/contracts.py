@@ -1,7 +1,9 @@
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from .merchant import NewShopDraft
 
 
 class StrictModel(BaseModel):
@@ -16,6 +18,16 @@ class CoachTurn(StrictModel):
     currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
     session_id: UUID | None = None
     business_id: UUID | None = None
+    new_shop: bool = False
+    new_shop_draft: NewShopDraft | None = None
+
+    @model_validator(mode="after")
+    def separate_new_shop(self) -> "CoachTurn":
+        if self.new_shop and self.business_id is not None:
+            raise ValueError("New shop mode cannot edit an existing business.")
+        if self.new_shop_draft is not None and not self.new_shop:
+            raise ValueError("A new shop draft needs new shop mode.")
+        return self
 
     @field_validator("message")
     @classmethod
@@ -31,6 +43,11 @@ class VoiceControl(StrictModel):
     # failure is visible in server logs instead of a silent "Voice connection ended".
     kind: Literal["text", "audio_end", "close", "ping", "pong", "client_error"]
     text: str = Field(default="", max_length=2000)
+
+
+class NewShopVoiceContext(StrictModel):
+    kind: Literal["new_shop"]
+    draft: NewShopDraft | None = None
 
 
 class BusinessProposal(StrictModel):
@@ -59,6 +76,8 @@ class StreamEvent(StrictModel):
         "suppliers",
         "order",
         "rescue_proposal",
+        # A chart card (forecast, or how business is going) built from the tool result.
+        "chart",
     ]
     session_id: str | None = None
     text: str | None = None

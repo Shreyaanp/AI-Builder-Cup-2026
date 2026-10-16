@@ -1,6 +1,19 @@
 import type { Copy } from '../strings'
 
 export const vi: Copy = {
+  newShopMode: 'Cửa hàng mới',
+  newShopReady: 'Cửa hàng mới của bạn đã sẵn sàng',
+  newShopReadyBody: 'Bạn đang quản lý cửa hàng mới. Chia sẻ trang khách hàng khi sẵn sàng.',
+  newShopContinue: 'Tiếp tục với cửa hàng',
+  useCurrentLocation: 'Dùng vị trí hiện tại của tôi',
+  locationReason:
+    'Bạn đang ở cửa hàng? Cho phép truy cập vị trí để đặt ghim. Bạn sẽ xem lại trước khi lưu.',
+  locating: 'Đang tìm vị trí…',
+  locationDenied: 'Quyền vị trí bị từ chối. Bạn có thể nhập địa chỉ hoặc dùng ảnh có GPS.',
+  locationFailed: 'Không lấy được vị trí. Thử lại, nhập địa chỉ hoặc dùng ảnh có GPS.',
+  yourLocation: 'Vị trí của bạn',
+  description: 'Mô tả',
+  locationAccuracy: (m: string) => `trong khoảng ${m} m`,
   installApp: 'Cài ứng dụng',
   installIos: 'Trong Safari, chạm Chia sẻ → Thêm vào Màn hình chính, rồi chạm Thêm.',
   installUnavailable:
@@ -36,6 +49,12 @@ export const vi: Copy = {
   connectionReconnecting: 'Đang kết nối lại…',
   voiceFailed: 'Kết nối giọng nói đã kết thúc. Hãy thử lại hoặc dùng văn bản.',
   voiceRestarted: 'Đã kết nối lại giọng nói. Vui lòng nói lại.',
+  voiceMicDenied:
+    'Quyền truy cập micrô bị chặn. Hãy cho phép micrô trong cài đặt trình duyệt rồi thử lại, hoặc nhập văn bản.',
+  voiceRateLimited: (seconds: number) =>
+    `Có quá nhiều yêu cầu giọng nói. Đợi ${seconds} giây rồi thử lại hoặc nhập văn bản.`,
+  conversationRolledOver:
+    'Cuộc trò chuyện này đã đầy. Tôi đã bắt đầu cuộc trò chuyện mới để chúng ta tiếp tục.',
   appName: 'Chalkboard',
   independent: 'Bản thử nghiệm độc lập · không phải sản phẩm Google',
   loading: 'Đang chuẩn bị cửa hàng…',
@@ -239,7 +258,6 @@ export const vi: Copy = {
   notProvided: 'Chưa cung cấp',
   stock: 'Tồn kho',
   shopEmptyTitle: 'Hãy thêm cửa hàng của bạn',
-  shopEmptyBody: 'Bắt đầu từ ảnh bảng hiệu hoặc tự điền thông tin.',
   addShop: 'Thêm thông tin cửa hàng',
   startPhoto: 'Bắt đầu từ ảnh',
   editDetails: 'Sửa thông tin',
@@ -403,4 +421,20 @@ export const vi: Copy = {
   accountFailedBody: 'Bạn đã đăng nhập nhưng không tải được tài khoản. Dữ liệu vẫn an toàn.',
   loadFailed: 'Không tải được cửa hàng. Dữ liệu vẫn an toàn — kiểm tra kết nối và thử lại.',
   retryLoad: 'Thử lại',
+  erasing: 'Đang xóa dữ liệu của bạn… Có thể mất khoảng một phút.',
+  eraseDone: 'Đã xóa toàn bộ dữ liệu. Đang khởi động lại…',
+  erasePartialTitle: 'Một phần dữ liệu vẫn đang được xóa',
+  erasePartialBody: (items: string) =>
+    `Còn chờ: ${items}. Mọi thứ khác đã được xóa. Chúng tôi sẽ tự động thử lại, hoặc bạn có thể thử lại ngay.`,
+  eraseFailed: 'Chưa xóa xong. Kiểm tra kết nối và thử lại.',
+  eraseRetry: 'Thử lại',
+  eraseSteps: {
+    face: 'dữ liệu khuôn mặt',
+    photos: 'ảnh',
+    records: 'cửa hàng và sản phẩm',
+    gallery: 'ảnh thư viện cửa hàng',
+    community: 'bản sao công khai của cửa hàng',
+    memory: 'bộ nhớ trợ lý',
+    conversations: 'cuộc trò chuyện',
+  } as Record<string, string>,
 }

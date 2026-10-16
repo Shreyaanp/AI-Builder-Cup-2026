@@ -14,7 +14,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { MapPin, Search } from 'lucide-react'
+import { ArrowLeft, MapPin, Search } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { loadScriptFont } from '../../i18n/fonts'
 import { enterRise, motion, shape } from '../../design/theme'
@@ -110,9 +110,11 @@ function readUsuals(): Usual[] {
 export default function Discover({
   initialLocation,
   interests = [],
+  onLocationChange,
 }: {
   initialLocation?: CustomerLocation | null
   interests?: string[]
+  onLocationChange?: (location: CustomerLocation) => void
 }) {
   // Public customers follow their phone language independently of owner preferences.
   const locale = useLocale()
@@ -148,6 +150,9 @@ export default function Discover({
   const [interestsActive, setInterestsActive] = useState(interests.length > 0)
   const [scarcityNote, setScarcityNote] = useState(false)
   const [lat, lng] = filters.place ? [filters.place.lat, filters.place.lng] : areas[filters.area]
+  useEffect(() => {
+    if (filters.place) onLocationChange?.({ gps: null, place: filters.place })
+  }, [filters.place, onLocationChange])
   useEffect(() => {
     document.title = t.title + ' · Chalkboard'
     document.documentElement.lang = locale
@@ -321,6 +326,15 @@ export default function Discover({
       }}
     >
       <Stack spacing={5}>
+        <Button
+          component="a"
+          href="/explore/"
+          onClick={customerNavigate}
+          startIcon={<ArrowLeft size={18} />}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          {front.back}
+        </Button>
         <Typography variant="headlineLarge" component="h1">
           {t.title}
         </Typography>

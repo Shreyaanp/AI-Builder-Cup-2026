@@ -24,6 +24,7 @@ from .merchant import (
     BusinessFields,
     DayHours,
     MerchantRepository,
+    NewShopDraft,
     ProductFields,
     ProposalRequest,
 )
@@ -60,6 +61,8 @@ class MerchantContext:
     proposals: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Supplier results and order cards for the chat, keyed by the card_id the model sees.
     cards: dict[str, tuple[str, dict[str, Any]]] = field(default_factory=dict)
+    new_shop: bool = False
+    new_shop_draft: NewShopDraft | None = None
 
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)
@@ -116,13 +119,26 @@ async def get_question_plan() -> dict[str, Any]:
     if record_with is a fact name, pass that argument; if it is custom_facts, pass
     custom_facts=[{key, label, value}]. The owner may skip any."""
     ctx = current.get()
-    if not ctx or not ctx.business_id:
+    if not ctx or (
+        not ctx.business_id and not (ctx.new_shop_draft and ctx.new_shop_draft.business)
+    ):
         return {
             "status": "needs_business",
-            "instruction": "Ask for the shop name first and use propose_business.",
+            "instruction": (
+                "Nothing was recorded yet: ask the owner for their shop's real name (never invent"
+                " or assume one), call propose_business with it, then repeat this call."
+            ),
         }
     shop = ctx.store.context(ctx.uid, ctx.business_id)["business"]
-    fields = shop["fields"] if shop else {}
+    fields = (
+        shop["fields"]
+        if shop
+        else (
+            ctx.new_shop_draft.business.model_dump()
+            if ctx.new_shop_draft and ctx.new_shop_draft.business
+            else {}
+        )
+    )
     plan = await _planner().plan(
         fields.get("category", ""), fields.get("name", ""), fields.get("location", "")
     )
@@ -345,13 +361,30 @@ def get_insights() -> dict[str, Any]:
         for thread in waiting[-5:]
     ]
     shop = ctx.store.context(ctx.uid, ctx.business_id)["business"] or {}
+    # The last 14 sales days, for the trend chart shown beside the coach's answer.
+    by_day: dict[str, int] = {}
+    for row in sales:
+        by_day[row["date"]] = by_day.get(row["date"], 0) + int(row["revenue"])
+    daily = [
+        {"date": day, "revenue": to_major(total, currency)}
+        for day, total in sorted(by_day.items())[-14:]
+    ]
     return {
         **facts,
+        "daily_revenue": daily,
         "has_sales_data": bool(sales),
         "unanswered_customer_messages": len(waiting),
         "recent_customer_questions": recent,
         "menu_last_confirmed": shop.get("last_confirmed"),
     }
+
+
+def _start_new_shop_draft() -> None:
+    """A new shop's items and answers can be recorded before the owner has said its name: start
+    an unnamed draft (the name is required only when the owner opens the shop)."""
+    ctx = current.get()
+    if ctx and ctx.new_shop and not (ctx.new_shop_draft and ctx.new_shop_draft.business):
+        _propose_shop(name="")
 
 
 def _propose_shop(
@@ -372,6 +405,7 @@ def _propose_shop(
     busy_hours: str = "",
     custom_facts: list[FactInput] | None = None,
     weekly_hours: list[DayHours] | None = None,
+    description: str = "",
 ) -> dict[str, Any]:
     """Shared sealed-proposal logic for shop basics and customer facts."""
     ctx = current.get()
@@ -385,6 +419,7 @@ def _propose_shop(
         "hours": hours,
         "phone": phone,
         "currency": (currency or "").strip().upper(),
+        "description": description,
     }
     facts: dict[str, Any] = {
         "halal": (halal or "").strip().lower() or None,
@@ -411,8 +446,13 @@ def _propose_shop(
         }
         # Saved prices are minor units of the saved currency, so it never changes on edit.
         given["currency"] = shop_currency(existing)
-    elif not re.fullmatch(r"[A-Z]{3}", given["currency"]):
-        given["currency"] = ui_currency.get() or DEFAULT_CURRENCY
+    else:
+        draft = ctx.new_shop_draft.business if ctx.new_shop_draft else None
+        if ctx.new_shop and draft:
+            given = {**draft.model_dump(), **{k: v for k, v in given.items() if v}}
+        if not re.fullmatch(r"[A-Z]{3}", given["currency"]):
+            given["currency"] = ui_currency.get() or DEFAULT_CURRENCY
+        given["demo"] = False
     given.update({key: value for key, value in facts.items() if value is not None})
     if weekly_hours is not None:
         given["weekly_hours"] = weekly_hours
@@ -437,11 +477,16 @@ def _propose_shop(
                 business_id=ctx.business_id,
                 revision=existing["revision"] if existing else 0,
                 business=fields,
+                products=ctx.new_shop_draft.products if ctx.new_shop and ctx.new_shop_draft else [],
             ),
         )
     except (ValidationError, HTTPException) as error:
         return _invalid(error, ctx)
     ctx.proposals[proposal["id"]] = proposal
+    if ctx.new_shop:
+        ctx.new_shop_draft = NewShopDraft(
+            business=fields, products=proposal["snapshot"]["products"]
+        )
     changes = (
         [
             f"{key}: {existing['fields'].get(key) or '(empty)'} → {value or '(empty)'}"
@@ -471,6 +516,7 @@ def propose_business(
     phone: str = "",
     currency: str = "",
     weekly_hours: list[DayHours] | None = None,
+    description: str = "",
 ) -> dict[str, Any]:
     """Prepare the shop's basic details (new shop, or edits to the active shop) for the owner to
     review. Nothing is saved until the owner confirms. Leave a field empty if the owner did not
@@ -487,6 +533,7 @@ def propose_business(
         phone=phone,
         currency=currency,
         weekly_hours=weekly_hours,
+        description=description,
     )
 
 
@@ -517,10 +564,17 @@ def propose_customer_facts(
     (e.g. UPI, PayPay, GCash, card, cash). Known keys remain compatible. busy_hours e.g.
     "12:00-13:30". custom_facts: answers to get_question_plan questions (key, label, value)."""
     ctx = current.get()
-    if not ctx or not ctx.business_id:
+    _start_new_shop_draft()
+    if not ctx or (
+        not ctx.business_id
+        and not (ctx.new_shop and ctx.new_shop_draft and ctx.new_shop_draft.business)
+    ):
         return {
             "status": "needs_business",
-            "instruction": "Ask for the shop name first and use propose_business.",
+            "instruction": (
+                "Nothing was recorded yet: ask the owner for their shop's real name (never invent"
+                " or assume one), call propose_business with it, then repeat this call."
+            ),
         }
     return _propose_shop(
         name="",
@@ -543,21 +597,35 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
     items mentioned together. Prices are in the shop's currency (major units). category is
     the owner's menu section, or a suggested section for a new item. unit is one of the fixed
     selling units."""
+    _start_new_shop_draft()
     ctx = current.get()
-    if not ctx or not ctx.business_id:
+    if not ctx or (
+        not ctx.business_id
+        and not (ctx.new_shop and ctx.new_shop_draft and ctx.new_shop_draft.business)
+    ):
         return {
             "status": "needs_business",
-            "instruction": "Ask for the shop name first and use propose_business.",
+            "instruction": (
+                "Nothing was recorded yet: ask the owner for their shop's real name (never invent"
+                " or assume one), call propose_business with it, then repeat this call."
+            ),
         }
     try:
         # The model sometimes sends bare strings; validation turns that into a repairable error
         # instead of a crash that ends the owner's turn with no reply.
         items = TypeAdapter(list[ProductInput]).validate_python(items)
         context = ctx.store.context(ctx.uid, ctx.business_id)
-        currency = shop_currency(context["business"])
-        saved = {(p["name"].casefold(), p["unit"].casefold()): p for p in context["inventory"]}
+        draft = ctx.new_shop_draft if ctx.new_shop else None
+        draft_products = [p.model_dump() for p in draft.products] if draft else []
+        inventory = draft_products if draft else context["inventory"]
+        currency = (
+            draft.business.currency
+            if draft and draft.business
+            else shop_currency(context["business"])
+        )
+        saved = {(p["name"].casefold(), p["unit"].casefold()): p for p in inventory}
         by_name: dict[str, list[dict[str, Any]]] = {}
-        for p in context["inventory"]:
+        for p in inventory:
             by_name.setdefault(p["name"].casefold(), []).append(p)
         products = []
         for item in items:
@@ -586,18 +654,25 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
                     or (known.get("category", "") if known else suggest_category(item.name)),
                 )
             )
+        if draft:
+            merged = {(p.name.casefold(), p.unit.casefold()): p for p in draft.products}
+            merged.update({(p.name.casefold(), p.unit.casefold()): p for p in products})
+            products = list(merged.values())
         proposal = ctx.store.propose(
             ctx.uid,
             ProposalRequest(
-                kind="inventory",
+                kind="business" if draft else "inventory",
                 business_id=ctx.business_id,
-                revision=context["business"]["revision"],
+                revision=context["business"]["revision"] if context["business"] else 0,
+                business=draft.business if draft else None,
                 products=products,
             ),
         )
     except (ValidationError, HTTPException, ValueError) as error:
         return _invalid(error, ctx)
     ctx.proposals[proposal["id"]] = proposal
+    if draft:
+        ctx.new_shop_draft = NewShopDraft(business=draft.business, products=products)
     changes, warnings = [], []
 
     def money(minor: int) -> float:
