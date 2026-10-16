@@ -1,4 +1,10 @@
-import { test, expect, enter, confirm, audit, evidence, owner, tamil } from './support.js'
+import {
+  createShop,
+  openNewShopReview,
+  createShopFromReview,
+  editShopDetails,
+} from '../stories/support.js'
+import { test, expect, enter, audit, evidence, owner, tamil } from './support.js'
 
 test('consent validates both choices and keyboard activation', async ({ page }) => {
   await page.goto('/')
@@ -14,27 +20,23 @@ test('consent validates both choices and keyboard activation', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
 })
 
-test('empty shop validates name, cancel writes nothing, review saves once and reloads', async ({
-  page,
-}) => {
+test('new shop: cancel writes nothing, review saves once and reloads', async ({ page }) => {
   await enter(page)
+  // "Add my shop" opens the full-screen new-shop flow, never a form dialog.
   await page.getByRole('button', { name: 'Add my shop' }).click()
-  await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await expect(page.getByRole('alert')).toBeVisible()
-  await page.getByLabel('Shop name').fill('QA neighbourhood shop')
-  await page.keyboard.press('Escape')
-  // Existing unsaved-input protection must let the owner stay or discard.
-  const discard = page.getByRole('button', { name: /Discard/ })
-  if (await discard.isVisible()) await discard.click()
+  await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Let’s begin' }).click()
+  await expect(page.getByRole('log')).toContainText('What do you sell?')
+  await page.getByLabel('Message', { exact: true }).fill('name: QA neighbourhood shop')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByTestId('agent-action')).toContainText('QA neighbourhood shop')
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   expect(await (await page.request.get('/api/v1/businesses')).json()).toEqual([])
-  await page.getByRole('button', { name: 'Add my shop' }).click()
-  await page.getByLabel('Shop name').fill('QA neighbourhood shop')
-  await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await expect(page.getByRole('dialog', { name: 'Check before saving' })).toContainText(
-    'Nothing is published to Google',
-  )
+  await openNewShopReview(page, 'name: QA neighbourhood shop')
+  await expect(page.getByTestId('new-shop-review')).toContainText('Nothing is published to Google')
   await audit(page)
-  await confirm(page)
+  await createShopFromReview(page)
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await expect(
@@ -45,7 +47,9 @@ test('empty shop validates name, cancel writes nothing, review saves once and re
 
 test('missing shop name focuses the invalid field', async ({ page }) => {
   await enter(page)
-  await page.getByRole('button', { name: 'Add my shop' }).click()
+  await createShop(page, 'name: QA name check')
+  await editShopDetails(page)
+  await page.getByLabel('Shop name').fill('')
   await page.getByRole('button', { name: 'Review', exact: true }).click()
   await expect(page.getByRole('alert')).toBeVisible()
   await evidence(page, 'Q7-name-focus')

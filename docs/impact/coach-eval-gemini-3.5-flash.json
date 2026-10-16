@@ -11,9 +11,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "propose_products"
-    ],
+    "tools": ["propose_products"],
     "tool_args": [
       {
         "name": "propose_products",
@@ -48,9 +46,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "remember_note"
-    ],
+    "tools": ["remember_note"],
     "tool_args": [
       {
         "name": "remember_note",
@@ -72,9 +68,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "get_insights"
-    ],
+    "tools": ["get_insights"],
     "tool_args": [
       {
         "name": "get_insights",
@@ -94,9 +88,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "propose_business"
-    ],
+    "tools": ["propose_business"],
     "tool_args": [
       {
         "name": "propose_business",
@@ -168,9 +160,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "propose_products"
-    ],
+    "tools": ["propose_products"],
     "tool_args": [
       {
         "name": "propose_products",
@@ -206,9 +196,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "propose_products"
-    ],
+    "tools": ["propose_products"],
     "tool_args": [
       {
         "name": "propose_products",
@@ -237,9 +225,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "propose_products"
-    ],
+    "tools": ["propose_products"],
     "tool_args": [
       {
         "name": "propose_products",
@@ -267,9 +253,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "propose_business"
-    ],
+    "tools": ["propose_business"],
     "tool_args": [
       {
         "name": "propose_business",
@@ -293,9 +277,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "propose_products"
-    ],
+    "tools": ["propose_products"],
     "tool_args": [
       {
         "name": "propose_products",
@@ -324,9 +306,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "propose_business"
-    ],
+    "tools": ["propose_business"],
     "tool_args": [
       {
         "name": "propose_business",
@@ -396,9 +376,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "propose_products"
-    ],
+    "tools": ["propose_products"],
     "tool_args": [
       {
         "name": "propose_products",
@@ -428,9 +406,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "propose_products"
-    ],
+    "tools": ["propose_products"],
     "tool_args": [
       {
         "name": "propose_products",
@@ -488,9 +464,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "propose_products"
-    ],
+    "tools": ["propose_products"],
     "tool_args": [
       {
         "name": "propose_products",
@@ -520,9 +494,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "get_question_plan"
-    ],
+    "tools": ["get_question_plan"],
     "tool_args": [
       {
         "name": "get_question_plan",
@@ -544,18 +516,13 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "propose_customer_facts"
-    ],
+    "tools": ["propose_customer_facts"],
     "tool_args": [
       {
         "name": "propose_customer_facts",
         "args": {
           "halal": "yes",
-          "payment_methods": [
-            "cash",
-            "PayNow"
-          ]
+          "payment_methods": ["cash", "PayNow"]
         }
       }
     ],
@@ -589,9 +556,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "find_suppliers"
-    ],
+    "tools": ["find_suppliers"],
     "tool_args": [
       {
         "name": "find_suppliers",
@@ -614,9 +579,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "find_suppliers"
-    ],
+    "tools": ["find_suppliers"],
     "tool_args": [
       {
         "name": "find_suppliers",
@@ -640,9 +603,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "find_suppliers"
-    ],
+    "tools": ["find_suppliers"],
     "tool_args": [
       {
         "name": "find_suppliers",
@@ -680,10 +641,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "get_orders",
-      "prepare_order"
-    ],
+    "tools": ["get_orders", "prepare_order"],
     "tool_args": [
       {
         "name": "get_orders",
@@ -715,10 +673,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "get_orders",
-      "message_supplier"
-    ],
+    "tools": ["get_orders", "message_supplier"],
     "tool_args": [
       {
         "name": "get_orders",
@@ -745,10 +700,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "get_orders",
-      "prepare_order"
-    ],
+    "tools": ["get_orders", "prepare_order"],
     "tool_args": [
       {
         "name": "get_orders",
@@ -781,10 +733,7 @@
       "says prepared, not saved": true,
       "prices in major units": true
     },
-    "tools": [
-      "get_orders",
-      "cancel_order"
-    ],
+    "tools": ["get_orders", "cancel_order"],
     "tool_args": [
       {
         "name": "get_orders",
@@ -843,9 +792,7 @@
           "says prepared, not saved": true,
           "prices in major units": true
         },
-        "tools": [
-          "propose_business"
-        ],
+        "tools": ["propose_business"],
         "tool_args": [
           {
             "name": "propose_business",
@@ -902,10 +849,7 @@
           }
         ],
         "reply": "Hi! I have prepared your shop details for Sunrise Kopi in Tiong Bahru, open daily from 7:00 AM to 9:00 PM. \n\nPlease review and confirm the details on your screen! What kind of drinks or food do you sell?",
-        "finish": [
-          "FinishReason.STOP",
-          "FinishReason.STOP"
-        ],
+        "finish": ["FinishReason.STOP", "FinishReason.STOP"],
         "seconds": 5.74
       },
       {
@@ -918,9 +862,7 @@
           "says prepared, not saved": true,
           "prices in major units": true
         },
-        "tools": [
-          "propose_products"
-        ],
+        "tools": ["propose_products"],
         "tool_args": [
           {
             "name": "propose_products",
@@ -943,10 +885,7 @@
           }
         ],
         "reply": "I have prepared your menu items:\n* **Kopi**: SGD 2.00 per cup\n* **Kaya Toast**: SGD 2.50 per piece\n\nPlease check and confirm them on your screen! Do you have any other items to add?",
-        "finish": [
-          "FinishReason.STOP",
-          "FinishReason.STOP"
-        ],
+        "finish": ["FinishReason.STOP", "FinishReason.STOP"],
         "seconds": 3.38
       },
       {
@@ -958,9 +897,7 @@
           "says prepared, not saved": true,
           "prices in major units": true
         },
-        "tools": [
-          "propose_products"
-        ],
+        "tools": ["propose_products"],
         "tool_args": [
           {
             "name": "propose_products",
@@ -976,10 +913,7 @@
           }
         ],
         "reply": "I have prepared the price update for your **Kopi** to SGD 1.80 per cup. \n\nPlease review and confirm this change on your screen!",
-        "finish": [
-          "FinishReason.STOP",
-          "FinishReason.STOP"
-        ],
+        "finish": ["FinishReason.STOP", "FinishReason.STOP"],
         "seconds": 3.55
       },
       {
@@ -991,9 +925,7 @@
           "says prepared, not saved": true,
           "prices in major units": true
         },
-        "tools": [
-          "propose_products"
-        ],
+        "tools": ["propose_products"],
         "tool_args": [
           {
             "name": "propose_products",
@@ -1008,10 +940,7 @@
           }
         ],
         "reply": "I have prepared the update to mark **Kaya Toast** as sold out for today. \n\nPlease check and confirm this on your screen!",
-        "finish": [
-          "FinishReason.STOP",
-          "FinishReason.STOP"
-        ],
+        "finish": ["FinishReason.STOP", "FinishReason.STOP"],
         "seconds": 2.22
       },
       {
@@ -1026,9 +955,7 @@
         "tools": [],
         "tool_args": [],
         "reply": "That sounds like a fun question, but I'm here to help you manage your shop, menu, and suppliers! \n\nIs there anything else you'd like to update for Sunrise Kopi today?",
-        "finish": [
-          "FinishReason.STOP"
-        ],
+        "finish": ["FinishReason.STOP"],
         "seconds": 1.9
       },
       {
@@ -1041,9 +968,7 @@
           "says prepared, not saved": true,
           "prices in major units": true
         },
-        "tools": [
-          "propose_products"
-        ],
+        "tools": ["propose_products"],
         "tool_args": [
           {
             "name": "propose_products",
@@ -1060,10 +985,7 @@
           }
         ],
         "reply": "I have prepared the addition of **Curry Puff** at SGD 1.50 per piece to your menu. \n\nPlease review and confirm it on your screen!",
-        "finish": [
-          "FinishReason.STOP",
-          "FinishReason.STOP"
-        ],
+        "finish": ["FinishReason.STOP", "FinishReason.STOP"],
         "seconds": 3.97
       }
     ]

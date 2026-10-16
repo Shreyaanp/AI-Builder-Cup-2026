@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, IconButton, Snackbar, useTheme } from '@mui/material'
 import { X } from 'lucide-react'
@@ -6,11 +6,12 @@ import { canOfferInstall, offerInstall, rememberInstallDeclined } from '../../ap
 import { useCopy } from './strings'
 import type { Api, Business, Me, Product, Proposal } from './api'
 import { WorkspaceContext } from './workspaceContext'
-import type { Destination, Editor, Workspace } from './workspaceContext'
+import type { Destination, Editor, NewShopPhase, Workspace } from './workspaceContext'
 import { ReviewDialog } from './ReviewDialog'
 import { BusinessDialog, ProductDialog } from './EditDialogs'
 import { FaceDialog } from './FaceDialog'
 import { customerShopLink, safeCustomerOrigin } from '../../app/router'
+import { overlayHandled } from './backStack'
 
 function readSpeak() {
   try {
@@ -37,6 +38,13 @@ export function WorkspaceProvider({
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
+  // A reload inside the flow starts it again from the welcome (drafts are never stored).
+  const [creatingShop, setCreatingShop] = useState(
+    location.pathname === '/new-shop' &&
+      new URLSearchParams(location.search).get('step') !== 'ready',
+  )
+  const [newShopPhase, setNewShopPhase] = useState<NewShopPhase>('hero')
+  const [shopReady, setShopReady] = useState(false)
   // Inventory is tagged with its shop so a switch never shows another shop's products.
   const [inventory, setInventory] = useState<{ bid: string | null; items: Product[] }>({
     bid: null,
@@ -44,6 +52,33 @@ export function WorkspaceProvider({
   })
   const [destination, setDestination] = useState<Destination>('coach')
   const [proposal, setProposal] = useState<Proposal | null>(null)
+  // The route belongs to this workspace, so entering registration preserves the current
+  // shop's mounted coach and unsent draft. No merchant data is written to browser storage.
+  // Each phase is a history entry, so Back goes review → conversation → leaves the flow.
+  useLayoutEffect(() => {
+    const url = new URL(location.href)
+    url.pathname = creatingShop || shopReady ? '/new-shop' : '/'
+    if (creatingShop) url.searchParams.set('step', newShopPhase)
+    else if (shopReady) url.searchParams.set('step', 'ready')
+    else url.searchParams.delete('step')
+    if (url.href !== location.href) {
+      if (creatingShop) history.pushState(null, '', url)
+      else history.replaceState(null, '', url)
+    }
+  }, [creatingShop, shopReady, newShopPhase])
+  useEffect(() => {
+    const restore = (event: PopStateEvent) => {
+      if (overlayHandled(event)) return
+      const inFlow = location.pathname === '/new-shop'
+      const value = new URLSearchParams(location.search).get('step')
+      setCreatingShop(inFlow && value !== 'ready')
+      if (value !== 'ready') setShopReady(false)
+      // Forward into a review needs a fresh one: it opens the conversation instead.
+      setNewShopPhase(value === 'chat' || value === 'review' ? 'chat' : 'hero')
+    }
+    window.addEventListener('popstate', restore)
+    return () => window.removeEventListener('popstate', restore)
+  }, [])
   const [toast, setToast] = useState('')
   const [photoPending, setPhotoPending] = useState(false)
   const consumePhotoRequest = useCallback(() => setPhotoPending(false), [])
@@ -186,6 +221,30 @@ export function WorkspaceProvider({
       },
       activeId,
       active: businesses.find((item) => item.id === activeId) ?? null,
+      creatingShop,
+      newShopPhase,
+      setNewShopPhase,
+      newShopReady: shopReady,
+      dismissNewShopReady: () => setShopReady(false),
+      startNewShop: () => {
+        setCoachActions(false)
+        setShopReady(false)
+        setNewShopPhase('hero')
+        setCreatingShop(true)
+        setDestination('coach')
+      },
+      cancelNewShop: () => {
+        setCreatingShop(false)
+        setDestination('coach')
+      },
+      finishNewShop: async (businessId) => {
+        await reload()
+        setActiveId(businessId)
+        setCreatingShop(false)
+        setShopReady(true)
+        setDestination('coach')
+        await loadProducts(businessId).catch(() => undefined)
+      },
       // Products shown always belong to the active shop.
       products: inventory.bid === activeId ? inventory.items : [],
       destination,
@@ -199,8 +258,15 @@ export function WorkspaceProvider({
           /* Preference stays for this session. */
         }
       },
-      go: setDestination,
-      select: setActiveId,
+      go: (next) => {
+        setShopReady(false)
+        setDestination(next)
+      },
+      select: (id) => {
+        setCreatingShop(false)
+        setShopReady(false)
+        setActiveId(id)
+      },
       reload,
       setAvailability,
       setShared,
@@ -237,6 +303,10 @@ export function WorkspaceProvider({
       loading,
       loadError,
       activeId,
+      creatingShop,
+      newShopPhase,
+      shopReady,
+      loadProducts,
       inventory,
       destination,
       speakReplies,
@@ -262,12 +332,14 @@ export function WorkspaceProvider({
         proposal={proposal}
         onClose={() => setProposal(null)}
         onSaved={async (businessId) => {
+          const isNew = !businesses.some((shop) => shop.id === businessId)
           setProposal(null)
           await reload()
           setActiveId(businessId)
+          if (isNew) setDestination('coach')
           await loadProducts(businessId).catch(() => undefined)
           // Offer installation only after useful progress, never up front.
-          if (canOfferInstall()) setInstallOffer(true)
+          if (!isNew && canOfferInstall()) setInstallOffer(true)
           else setToast(t.saved)
         }}
       />

@@ -31,6 +31,7 @@ from .merchant import (
     challenge_prompts,
     check_demo_seed,
     public_projection,
+    require_name,
     seal_proposal,
     validate_proposal,
 )
@@ -222,6 +223,7 @@ class FirestoreMerchantStore:
             if proposal["expires"] < time.time():
                 raise HTTPException(409, "Review expired; prepare a new proposal.")
             data = json.loads(proposal["payload"])
+            require_name(data)
             bid = data["business_id"]
             business_ref = self.businesses.document(bid)
             business = business_ref.get(transaction=transaction)

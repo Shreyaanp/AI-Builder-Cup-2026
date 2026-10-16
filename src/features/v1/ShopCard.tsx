@@ -37,6 +37,7 @@ import { useWorkspace } from './workspaceContext'
 import { enterRise, fieldFade, shape } from '../../design/theme'
 import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
+import { ShopLocation } from './CurrentLocation'
 
 /** Before any shop exists: one start card, nothing else. */
 export function StartCard() {
@@ -70,7 +71,7 @@ export function StartCard() {
         </Button>
         <Button
           startIcon={<Store size={20} />}
-          onClick={() => ws.openEditor({ kind: 'business', fields: null })}
+          onClick={ws.startNewShop}
           sx={{ color: roles.onSecondaryContainer }}
         >
           {t.suggestAdd}
@@ -412,6 +413,7 @@ export function ShopSheet({
       }
     >
       <Stack spacing={6}>
+        <ShopLocation onReviewed={onClose} />
         <Box>
           <Typography variant="labelLarge" color="text.secondary">
             {t.readiness(done, total)}
