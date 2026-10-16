@@ -4,6 +4,7 @@ export type AskAnswer = components['schemas']['AskResponse']
 export type AskIntent = components['schemas']['Intent']
 export type AskPick = components['schemas']['Pick']
 export type Refine = NonNullable<components['schemas']['AskRequest']['refine']>
+export type AreaAnswer = components['schemas']['AreaAnswer']
 export type Suggestions = components['schemas']['AskSuggestions']
 
 /** One exchange: what the customer said and how the assistant answered it. */
