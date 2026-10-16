@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Typography } from '@mui/material'
 import { Layers } from 'lucide-react'
+import { formatLocale } from '../../i18n/locales'
+import { useLocale } from '../../state/hooks'
 import { Tile } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
 import { ConnectSheet } from './ConnectSheet'
@@ -9,6 +11,7 @@ import type { SavedMappingSummary } from './types'
 
 export function ConnectTile() {
   const t = useConnectCopy()
+  const locale = useLocale()
   const ws = useWorkspace()
   const shop = ws.active
   const [open, setOpen] = useState(false)
@@ -31,7 +34,7 @@ export function ConnectTile() {
   const tileValue = latest ? `${latest.source_label}` : 'POS / ERP'
   const supporting = latest
     ? latest.last_synced
-      ? t.lastSynced(new Date(latest.last_synced * 1000).toLocaleDateString())
+      ? t.lastSynced(new Date(latest.last_synced * 1000).toLocaleDateString(formatLocale(locale)))
       : t.notSyncedYet
     : t.connectSubtitle
 

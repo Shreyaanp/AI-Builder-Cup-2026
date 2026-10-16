@@ -87,6 +87,14 @@ const en = {
       'The name uses the brand “{detail}”. If you’re an official outlet, there’s nothing to do.',
     other: 'Something in the listing looks unusual.',
   } as Record<string, string>,
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: 'Same phone as {shop}',
+    shared_photos: 'Same photo as {shop}',
+    copied_menu: '{detail} items and prices identical to {shop}',
+    impossible_price: 'Unusual price: {detail}',
+    brand_impersonation: 'Name uses the brand “{detail}”',
+  } as Record<string, string>,
   queueTitle: 'Trust reviews',
   queueNote: 'For reviewers. A flag never changes a shop; you decide.',
   queueEmpty: 'Nothing to review.',
@@ -192,6 +200,14 @@ const zhHans: TrustCopy = {
     impossible_price: '有个价格看起来不寻常：{detail}。如果是输入错误，请在菜单中修改。',
     brand_impersonation: '店名使用了品牌“{detail}”。如果你是官方门店，无需处理。',
     other: '店铺信息中有些内容看起来不寻常。',
+  },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: '与{shop}电话相同',
+    shared_photos: '与{shop}照片相同',
+    copied_menu: '{detail}个商品和价格与{shop}相同',
+    impossible_price: '价格异常：{detail}',
+    brand_impersonation: '名称使用了品牌“{detail}”',
   },
   queueTitle: '信任审核',
   queueNote: '供审核人员使用。标记绝不会更改店铺，由你决定。',
@@ -301,6 +317,14 @@ const ms: TrustCopy = {
     brand_impersonation:
       'Nama ini menggunakan jenama “{detail}”. Jika anda cawangan rasmi, tiada apa yang perlu dibuat.',
     other: 'Ada sesuatu dalam maklumat kedai yang kelihatan luar biasa.',
+  },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: 'Telefon sama dengan {shop}',
+    shared_photos: 'Foto sama dengan {shop}',
+    copied_menu: '{detail} item dan harga sama dengan {shop}',
+    impossible_price: 'Harga luar biasa: {detail}',
+    brand_impersonation: 'Nama guna jenama “{detail}”',
   },
   queueTitle: 'Semakan kepercayaan',
   queueNote: 'Untuk penyemak. Tanda tidak pernah mengubah kedai; anda yang memutuskan.',
@@ -418,6 +442,14 @@ const ta: TrustCopy = {
       'பெயர் “{detail}” என்ற பிராண்டைப் பயன்படுத்துகிறது. நீங்கள் அதிகாரப்பூர்வ கிளை என்றால் எதுவும் செய்ய வேண்டாம்.',
     other: 'கடை விவரத்தில் ஏதோ ஒன்று வழக்கத்துக்கு மாறாகத் தெரிகிறது.',
   },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: '{shop} உடன் அதே தொலைபேசி',
+    shared_photos: '{shop} உடன் அதே புகைப்படம்',
+    copied_menu: '{detail} பொருட்களும் விலைகளும் {shop} போலவே',
+    impossible_price: 'வழக்கத்துக்கு மாறான விலை: {detail}',
+    brand_impersonation: 'பெயரில் “{detail}” பிராண்ட் உள்ளது',
+  },
   queueTitle: 'நம்பிக்கை மதிப்பாய்வுகள்',
   queueNote:
     'மதிப்பாய்வாளர்களுக்கு. ஒரு குறி எந்தக் கடையையும் மாற்றாது; நீங்களே முடிவு செய்யுங்கள்.',
@@ -530,6 +562,14 @@ const ja: TrustCopy = {
       '店名にブランド「{detail}」が使われています。公式店舗であれば対応は不要です。',
     other: '掲載内容に気になる点があります。',
   },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: '{shop}と同じ電話番号',
+    shared_photos: '{shop}と同じ写真',
+    copied_menu: '{detail}品の商品と価格が{shop}と同一',
+    impossible_price: '不自然な価格：{detail}',
+    brand_impersonation: '名前にブランド「{detail}」を使用',
+  },
   queueTitle: '信頼性の審査',
   queueNote: '審査担当者向け。フラグがお店を変えることはありません。判断するのはあなたです。',
   queueEmpty: '審査するものはありません。',
@@ -638,6 +678,14 @@ const ko: TrustCopy = {
     brand_impersonation:
       '이름에 브랜드 “{detail}”이(가) 쓰였습니다. 공식 매장이라면 할 일은 없습니다.',
     other: '가게 정보에 이상해 보이는 부분이 있습니다.',
+  },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: '{shop}과(와) 같은 전화번호',
+    shared_photos: '{shop}과(와) 같은 사진',
+    copied_menu: '{detail}개 상품과 가격이 {shop}과(와) 동일',
+    impossible_price: '이상한 가격: {detail}',
+    brand_impersonation: '이름에 “{detail}” 브랜드 사용',
   },
   queueTitle: '신뢰 검토',
   queueNote: '검토자용입니다. 표시가 가게를 바꾸지는 않으며, 결정은 직접 합니다.',
@@ -753,6 +801,14 @@ const id: TrustCopy = {
       'Nama memakai merek “{detail}”. Jika Anda gerai resmi, tidak ada yang perlu dilakukan.',
     other: 'Ada sesuatu di info toko yang tampak tidak biasa.',
   },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: 'Telepon sama dengan {shop}',
+    shared_photos: 'Foto sama dengan {shop}',
+    copied_menu: '{detail} item dan harga sama dengan {shop}',
+    impossible_price: 'Harga tidak wajar: {detail}',
+    brand_impersonation: 'Nama memakai merek “{detail}”',
+  },
   queueTitle: 'Tinjauan kepercayaan',
   queueNote: 'Untuk peninjau. Tanda tidak pernah mengubah toko; Anda yang memutuskan.',
   queueEmpty: 'Tidak ada yang perlu ditinjau.',
@@ -858,6 +914,14 @@ const th: TrustCopy = {
     impossible_price: 'มีราคาที่ดูผิดปกติ: {detail} หากพิมพ์ผิด โปรดแก้ในเมนูของคุณ',
     brand_impersonation: 'ชื่อร้านใช้แบรนด์ “{detail}” หากคุณเป็นสาขาทางการ ไม่ต้องทำอะไร',
     other: 'มีบางอย่างในข้อมูลร้านที่ดูผิดปกติ',
+  },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: 'เบอร์โทรเดียวกับ {shop}',
+    shared_photos: 'รูปเดียวกับ {shop}',
+    copied_menu: '{detail} รายการและราคาเหมือน {shop}',
+    impossible_price: 'ราคาผิดปกติ: {detail}',
+    brand_impersonation: 'ชื่อใช้แบรนด์ “{detail}”',
   },
   queueTitle: 'การตรวจความน่าเชื่อถือ',
   queueNote: 'สำหรับผู้ตรวจสอบ การติดธงไม่เปลี่ยนแปลงร้าน คุณเป็นผู้ตัดสิน',
@@ -971,6 +1035,14 @@ const vi: TrustCopy = {
       'Tên dùng thương hiệu “{detail}”. Nếu bạn là cửa hàng chính thức thì không cần làm gì.',
     other: 'Có điều gì đó trong thông tin cửa hàng trông bất thường.',
   },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: 'Cùng số điện thoại với {shop}',
+    shared_photos: 'Cùng ảnh với {shop}',
+    copied_menu: '{detail} món và giá giống {shop}',
+    impossible_price: 'Giá bất thường: {detail}',
+    brand_impersonation: 'Tên dùng thương hiệu “{detail}”',
+  },
   queueTitle: 'Xem xét độ tin cậy',
   queueNote: 'Dành cho người duyệt. Cờ không bao giờ thay đổi cửa hàng; bạn quyết định.',
   queueEmpty: 'Không có gì cần xem xét.',
@@ -1080,6 +1152,14 @@ const fil: TrustCopy = {
     brand_impersonation:
       'Gumagamit ang pangalan ng brand na “{detail}”. Kung opisyal kang branch, wala kang kailangang gawin.',
     other: 'May bahagi ng listing na mukhang kakaiba.',
+  },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: 'Kaparehong telepono ng {shop}',
+    shared_photos: 'Kaparehong larawan ng {shop}',
+    copied_menu: '{detail} item at presyo na kapareho ng {shop}',
+    impossible_price: 'Kakaibang presyo: {detail}',
+    brand_impersonation: 'Gumagamit ang pangalan ng brand na “{detail}”',
   },
   queueTitle: 'Mga trust review',
   queueNote:
@@ -1191,11 +1271,19 @@ const hi: TrustCopy = {
       'नाम में ब्रांड “{detail}” है। अगर आप आधिकारिक आउटलेट हैं, तो कुछ करने की ज़रूरत नहीं।',
     other: 'दुकान की जानकारी में कुछ असामान्य लगता है।',
   },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: '{shop} जैसा ही फ़ोन नंबर',
+    shared_photos: '{shop} जैसी ही फ़ोटो',
+    copied_menu: '{detail} सामान और दाम {shop} जैसे ही',
+    impossible_price: 'असामान्य दाम: {detail}',
+    brand_impersonation: 'नाम में ब्रांड “{detail}”',
+  },
   queueTitle: 'भरोसे की समीक्षा',
   queueNote: 'समीक्षकों के लिए। कोई निशान दुकान को नहीं बदलता; फ़ैसला आप करते हैं।',
   queueEmpty: 'समीक्षा के लिए कुछ नहीं।',
   scan: 'सभी दुकानें जाँचें',
-  scanned: 'समीक्षा के लिए {n} दुकानें',
+  scanned: 'समीक्षा के लिए दुकानें: {n}',
   duplicate: 'संभावित दोहरा मालिक',
   listing: 'दुकान की जानकारी की जाँच',
   similarity: 'चेहरे की समानता {n}',
@@ -1297,6 +1385,14 @@ const bn: TrustCopy = {
     brand_impersonation:
       'নামে “{detail}” ব্র্যান্ড ব্যবহার করা হয়েছে। আপনি অফিসিয়াল আউটলেট হলে কিছু করতে হবে না।',
     other: 'দোকানের তথ্যে কিছু একটা অস্বাভাবিক লাগছে।',
+  },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: '{shop}-এর মতো একই ফোন নম্বর',
+    shared_photos: '{shop}-এর মতো একই ছবি',
+    copied_menu: '{detail}টি জিনিস ও দাম {shop}-এর মতো',
+    impossible_price: 'অস্বাভাবিক দাম: {detail}',
+    brand_impersonation: 'নামে “{detail}” ব্র্যান্ড',
   },
   queueTitle: 'বিশ্বাস পর্যালোচনা',
   queueNote: 'পর্যালোচকদের জন্য। চিহ্ন কখনও দোকান বদলায় না; সিদ্ধান্ত আপনার।',
@@ -1402,6 +1498,14 @@ const te: TrustCopy = {
     brand_impersonation:
       'పేరులో “{detail}” బ్రాండ్ ఉంది. మీరు అధికారిక అవుట్‌లెట్ అయితే చేయాల్సిందేమీ లేదు.',
     other: 'దుకాణ వివరాల్లో ఏదో అసాధారణంగా కనిపిస్తోంది.',
+  },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: '{shop} లాగే అదే ఫోన్ నంబర్',
+    shared_photos: '{shop} లాగే అదే ఫోటో',
+    copied_menu: '{detail} వస్తువులు, ధరలు {shop} లాగే',
+    impossible_price: 'అసాధారణ ధర: {detail}',
+    brand_impersonation: 'పేరులో “{detail}” బ్రాండ్',
   },
   queueTitle: 'నమ్మక సమీక్షలు',
   queueNote: 'సమీక్షకుల కోసం. గుర్తు ఎప్పుడూ దుకాణాన్ని మార్చదు; నిర్ణయం మీదే.',
@@ -1514,6 +1618,14 @@ const mr: TrustCopy = {
       'नावात “{detail}” हा ब्रँड आहे. तुम्ही अधिकृत आउटलेट असाल तर काहीही करायची गरज नाही.',
     other: 'दुकानाच्या माहितीत काहीतरी असामान्य दिसते.',
   },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: '{shop} सारखाच फोन नंबर',
+    shared_photos: '{shop} सारखाच फोटो',
+    copied_menu: '{detail} वस्तू आणि दर {shop} सारखेच',
+    impossible_price: 'असामान्य दर: {detail}',
+    brand_impersonation: 'नावात “{detail}” ब्रँड',
+  },
   queueTitle: 'विश्वास पुनरावलोकन',
   queueNote: 'पुनरावलोकनकर्त्यांसाठी. खूण कधीच दुकान बदलत नाही; निर्णय तुमचा.',
   queueEmpty: 'पुनरावलोकनासाठी काहीही नाही.',
@@ -1625,6 +1737,14 @@ const kn: TrustCopy = {
     brand_impersonation:
       'ಹೆಸರಿನಲ್ಲಿ “{detail}” ಬ್ರ್ಯಾಂಡ್ ಇದೆ. ನೀವು ಅಧಿಕೃತ ಮಳಿಗೆಯಾಗಿದ್ದರೆ ಏನೂ ಮಾಡಬೇಕಿಲ್ಲ.',
     other: 'ಅಂಗಡಿ ವಿವರದಲ್ಲಿ ಏನೋ ಅಸಾಮಾನ್ಯವಾಗಿ ಕಾಣುತ್ತದೆ.',
+  },
+  /** Reviewer sentences, filled with the other shop and the item, brand or count. */
+  review: {
+    shared_phone: '{shop} ಅದೇ ಫೋನ್ ಸಂಖ್ಯೆ',
+    shared_photos: '{shop} ಅದೇ ಫೋಟೋ',
+    copied_menu: '{detail} ವಸ್ತುಗಳು ಮತ್ತು ಬೆಲೆಗಳು {shop} ನಂತೆಯೇ',
+    impossible_price: 'ಅಸಾಮಾನ್ಯ ಬೆಲೆ: {detail}',
+    brand_impersonation: 'ಹೆಸರಿನಲ್ಲಿ “{detail}” ಬ್ರ್ಯಾಂಡ್',
   },
   queueTitle: 'ವಿಶ್ವಾಸ ಪರಿಶೀಲನೆಗಳು',
   queueNote: 'ಪರಿಶೀಲಕರಿಗಾಗಿ. ಗುರುತು ಎಂದಿಗೂ ಅಂಗಡಿಯನ್ನು ಬದಲಿಸುವುದಿಲ್ಲ; ನಿರ್ಧಾರ ನಿಮ್ಮದು.',

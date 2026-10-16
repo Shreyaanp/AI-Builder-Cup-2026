@@ -85,7 +85,7 @@ test('I01-I12 demo planning is labelled, bounded, private, accessible and isolat
   expect(await (await page.request.get(inventoryPath)).json()).toEqual(before)
   expect(await (await page.request.get(publicPath)).json()).toEqual(publicBefore)
   await page.getByLabel('Product', { exact: true }).click()
-  await page.getByRole('option', { name: 'Packets (packet)' }).click()
+  await page.getByRole('option', { name: 'Packets (pack)' }).click()
   await card.getByRole('button', { name: 'Calculate suggestion' }).click()
   await expect(card).toContainText('Not enough history')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()

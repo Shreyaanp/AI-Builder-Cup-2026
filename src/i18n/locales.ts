@@ -69,3 +69,15 @@ export function resolveLocale(pref: LanguagePref): Locale {
 export function isLanguagePref(value: unknown): value is LanguagePref {
   return value === 'system' || (LOCALES as readonly unknown[]).includes(value)
 }
+
+/**
+ * The tag for dates and numbers. English keeps the device's own formats (B10: an English app on a
+ * Japanese phone shows Japanese dates). Another app language uses the phone's tag when the phone
+ * speaks it (hi-IN), otherwise the language itself: a Hindi app on an English phone shows Hindi
+ * months, never "5–11 Oct".
+ */
+export function formatLocale(locale: Locale): string | undefined {
+  if (locale === 'en') return undefined
+  const phone = navigator.language ?? ''
+  return matchOne(phone) === locale ? phone : locale
+}

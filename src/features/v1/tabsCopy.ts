@@ -40,6 +40,9 @@ type TabsCopy = {
   privacyRow: string
   privacyHint: string
   help: string
+  /** Keyboard skip link and the tab bar landmark. */
+  skipToContent: string
+  mainNav: string
 }
 
 const copy: Record<Locale, TabsCopy> = {
@@ -78,6 +81,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: 'Privacy & your data',
     privacyHint: 'Agreement, face data, delete everything',
     help: 'Help',
+    skipToContent: 'Skip to content',
+    mainNav: 'Main',
   },
   'zh-Hans': {
     navShop: '店铺',
@@ -114,6 +119,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: '隐私与你的数据',
     privacyHint: '协议、人脸数据、删除全部',
     help: '帮助',
+    skipToContent: '跳到主要内容',
+    mainNav: '主导航',
   },
   ms: {
     navShop: 'Kedai',
@@ -150,6 +157,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: 'Privasi & data anda',
     privacyHint: 'Perjanjian, data wajah, padam semua',
     help: 'Bantuan',
+    skipToContent: 'Langkau ke kandungan',
+    mainNav: 'Navigasi utama',
   },
   ta: {
     navShop: 'கடை',
@@ -176,7 +185,7 @@ const copy: Record<Locale, TabsCopy> = {
     perksOff: 'இன்னும் அமைக்கவில்லை',
     perksAfter: (n) => `${n} முத்திரைகளுக்குப் பின்`,
     youTitle: 'நீங்கள்',
-    shopCount: (n) => `${n} கடைகள்`,
+    shopCount: (n) => (n === 1 ? '1 கடை' : `${n} கடைகள்`),
     verifyTitle: 'இது நீங்கள்தான் என உறுதிசெய்',
     verifyBody: 'ஒருவர் பல கடைகளைக் கோர முடியாதபடி விருப்ப முக சரிபார்ப்பு.',
     verifyStart: 'சரிபார்',
@@ -186,6 +195,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: 'தனியுரிமை & உங்கள் தரவு',
     privacyHint: 'ஒப்பந்தம், முகத் தரவு, அனைத்தையும் நீக்கு',
     help: 'உதவி',
+    skipToContent: 'உள்ளடக்கத்துக்குச் செல்லவும்',
+    mainNav: 'முதன்மை வழிசெலுத்தல்',
   },
   ja: {
     navShop: 'お店',
@@ -222,6 +233,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: 'プライバシーとデータ',
     privacyHint: '同意内容、顔データ、すべて削除',
     help: 'ヘルプ',
+    skipToContent: '本文へスキップ',
+    mainNav: 'メインメニュー',
   },
   ko: {
     navShop: '가게',
@@ -258,6 +271,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: '개인정보와 내 데이터',
     privacyHint: '약관, 얼굴 데이터, 모두 삭제',
     help: '도움말',
+    skipToContent: '본문으로 건너뛰기',
+    mainNav: '주 메뉴',
   },
   id: {
     navShop: 'Toko',
@@ -294,6 +309,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: 'Privasi & data Anda',
     privacyHint: 'Perjanjian, data wajah, hapus semua',
     help: 'Bantuan',
+    skipToContent: 'Langsung ke konten',
+    mainNav: 'Navigasi utama',
   },
   th: {
     navShop: 'ร้าน',
@@ -330,6 +347,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: 'ความเป็นส่วนตัวและข้อมูลของคุณ',
     privacyHint: 'ข้อตกลง ข้อมูลใบหน้า ลบทั้งหมด',
     help: 'ความช่วยเหลือ',
+    skipToContent: 'ข้ามไปที่เนื้อหา',
+    mainNav: 'เมนูหลัก',
   },
   vi: {
     navShop: 'Cửa hàng',
@@ -366,6 +385,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: 'Quyền riêng tư & dữ liệu',
     privacyHint: 'Thỏa thuận, dữ liệu khuôn mặt, xóa tất cả',
     help: 'Trợ giúp',
+    skipToContent: 'Chuyển đến nội dung',
+    mainNav: 'Điều hướng chính',
   },
   fil: {
     navShop: 'Tindahan',
@@ -402,6 +423,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: 'Privacy at ang data mo',
     privacyHint: 'Kasunduan, face data, burahin lahat',
     help: 'Tulong',
+    skipToContent: 'Lumaktaw sa nilalaman',
+    mainNav: 'Pangunahing nabigasyon',
   },
   hi: {
     navShop: 'दुकान',
@@ -428,16 +451,18 @@ const copy: Record<Locale, TabsCopy> = {
     perksOff: 'अभी सेट नहीं है',
     perksAfter: (n) => `${n} स्टैम्प के बाद`,
     youTitle: 'आप',
-    shopCount: (n) => `${n} दुकानें`,
+    shopCount: (n) => (n === 1 ? '1 दुकान' : `${n} दुकानें`),
     verifyTitle: 'पुष्टि करें कि यह आप हैं',
     verifyBody: 'वैकल्पिक चेहरा जाँच, ताकि एक व्यक्ति कई दुकानों का दावा न कर सके।',
     verifyStart: 'पुष्टि करें',
     look: 'रूप',
     coachVoice: 'कोच की आवाज़',
     yourShops: 'आपकी दुकानें',
-    privacyRow: 'निजता और आपका डेटा',
+    privacyRow: 'गोपनीयता और आपका डेटा',
     privacyHint: 'समझौता, चेहरे का डेटा, सब मिटाएँ',
     help: 'मदद',
+    skipToContent: 'सामग्री पर जाएँ',
+    mainNav: 'मुख्य मेन्यू',
   },
   bn: {
     navShop: 'দোকান',
@@ -474,6 +499,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: 'গোপনীয়তা ও আপনার ডেটা',
     privacyHint: 'চুক্তি, মুখের ডেটা, সব মুছুন',
     help: 'সাহায্য',
+    skipToContent: 'বিষয়বস্তুতে যান',
+    mainNav: 'প্রধান মেনু',
   },
   te: {
     navShop: 'దుకాణం',
@@ -500,7 +527,7 @@ const copy: Record<Locale, TabsCopy> = {
     perksOff: 'ఇంకా సెట్ చేయలేదు',
     perksAfter: (n) => `${n} స్టాంపుల తర్వాత`,
     youTitle: 'మీరు',
-    shopCount: (n) => `${n} దుకాణాలు`,
+    shopCount: (n) => (n === 1 ? '1 దుకాణం' : `${n} దుకాణాలు`),
     verifyTitle: 'ఇది మీరేనని ధృవీకరించండి',
     verifyBody: 'ఒకరు అనేక దుకాణాలను క్లెయిమ్ చేయకుండా ఐచ్ఛిక ముఖ తనిఖీ.',
     verifyStart: 'ధృవీకరించు',
@@ -510,6 +537,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: 'గోప్యత & మీ డేటా',
     privacyHint: 'ఒప్పందం, ముఖ డేటా, అన్నీ తొలగించు',
     help: 'సహాయం',
+    skipToContent: 'కంటెంట్‌కు వెళ్లండి',
+    mainNav: 'ప్రధాన మెనూ',
   },
   mr: {
     navShop: 'दुकान',
@@ -536,7 +565,7 @@ const copy: Record<Locale, TabsCopy> = {
     perksOff: 'अजून सेट केले नाही',
     perksAfter: (n) => `${n} स्टॅम्पनंतर`,
     youTitle: 'तुम्ही',
-    shopCount: (n) => `${n} दुकाने`,
+    shopCount: (n) => (n === 1 ? '1 दुकान' : `${n} दुकाने`),
     verifyTitle: 'हे तुम्हीच आहात याची पडताळणी करा',
     verifyBody: 'एक व्यक्ती अनेक दुकानांवर दावा करू नये म्हणून ऐच्छिक चेहरा तपासणी.',
     verifyStart: 'पडताळा',
@@ -546,6 +575,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: 'गोपनीयता आणि तुमचा डेटा',
     privacyHint: 'करार, चेहऱ्याचा डेटा, सर्व हटवा',
     help: 'मदत',
+    skipToContent: 'मजकुराकडे जा',
+    mainNav: 'मुख्य मेन्यू',
   },
   kn: {
     navShop: 'ಅಂಗಡಿ',
@@ -572,7 +603,7 @@ const copy: Record<Locale, TabsCopy> = {
     perksOff: 'ಇನ್ನೂ ಹೊಂದಿಸಿಲ್ಲ',
     perksAfter: (n) => `${n} ಸ್ಟಾಂಪ್‌ಗಳ ನಂತರ`,
     youTitle: 'ನೀವು',
-    shopCount: (n) => `${n} ಅಂಗಡಿಗಳು`,
+    shopCount: (n) => (n === 1 ? '1 ಅಂಗಡಿ' : `${n} ಅಂಗಡಿಗಳು`),
     verifyTitle: 'ಇದು ನೀವೇ ಎಂದು ದೃಢೀಕರಿಸಿ',
     verifyBody: 'ಒಬ್ಬರು ಹಲವು ಅಂಗಡಿಗಳನ್ನು ಹಕ್ಕು ಸಾಧಿಸದಂತೆ ಐಚ್ಛಿಕ ಮುಖ ಪರಿಶೀಲನೆ.',
     verifyStart: 'ದೃಢೀಕರಿಸಿ',
@@ -582,6 +613,8 @@ const copy: Record<Locale, TabsCopy> = {
     privacyRow: 'ಗೌಪ್ಯತೆ ಮತ್ತು ನಿಮ್ಮ ಡೇಟಾ',
     privacyHint: 'ಒಪ್ಪಂದ, ಮುಖದ ಡೇಟಾ, ಎಲ್ಲವನ್ನೂ ಅಳಿಸಿ',
     help: 'ಸಹಾಯ',
+    skipToContent: 'ವಿಷಯಕ್ಕೆ ಹೋಗಿ',
+    mainNav: 'ಮುಖ್ಯ ಮೆನು',
   },
 }
 

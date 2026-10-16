@@ -627,7 +627,7 @@
     "/api/v1/photos": {
       "post": {
         "summary": "Photo",
-        "description": "``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own.",
+        "description": "``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own.\n``language`` is the owner's app language for the notes about what was unclear.",
         "operationId": "photo_api_v1_photos_post",
         "parameters": [
           {
@@ -660,6 +660,17 @@
                 }
               ],
               "title": "Currency"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 16,
+              "default": "en",
+              "title": "Language"
             }
           }
         ],

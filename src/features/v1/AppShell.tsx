@@ -117,12 +117,12 @@ export function AppShell() {
       {inFlow && <NewShopFlow setGalleryPhoto={setGalleryPhoto} />}
       <Box sx={{ display: inFlow ? 'none' : 'flex', minHeight: '100dvh', bgcolor: roles.surface }}>
         <a href="#main" className="skip-link">
-          Skip to content
+          {tabs.skipToContent}
         </a>
         {rail && (
           <Box
             component="nav"
-            aria-label="Main"
+            aria-label={tabs.mainNav}
             sx={{
               width: 96,
               flexShrink: 0,
@@ -198,7 +198,7 @@ export function AppShell() {
         {showNavBar && (
           <Box
             component="nav"
-            aria-label="Main"
+            aria-label={tabs.mainNav}
             sx={{
               position: 'fixed',
               insetInline: 0,
