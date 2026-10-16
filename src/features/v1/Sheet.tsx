@@ -155,11 +155,22 @@ export function Sheet({
               flexShrink: 0,
             }}
           >
-            {!dismissInActions && (
-              <Button onClick={onClose} sx={{ minHeight: 48, mr: 'auto' }}>
-                {t.close}
-              </Button>
-            )}
+            {/* Beside other actions Close is a 48px X, so they stay one row (e.g. the menu's
+                Import and Add product); alone it is spelled out. */}
+            {!dismissInActions &&
+              (actions ? (
+                <IconButton
+                  aria-label={t.close}
+                  onClick={onClose}
+                  sx={{ width: 48, height: 48, mr: 'auto' }}
+                >
+                  <X size={20} />
+                </IconButton>
+              ) : (
+                <Button onClick={onClose} sx={{ minHeight: 48, mr: 'auto' }}>
+                  {t.close}
+                </Button>
+              ))}
             {actions}
           </Stack>
         )}
