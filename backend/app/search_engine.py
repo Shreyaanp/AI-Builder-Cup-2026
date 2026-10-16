@@ -99,8 +99,14 @@ WEIGHTS: dict[str, Weights] = {
 SHOP_RECALL = 0.4
 ITEM_RECALL = 0.45
 SOURCING_ITEM_RECALL = 0.72
+# When nothing is that close (short queries with real embeddings score lower), items within
+# RECALL_MARGIN of the best item in the neighbourhood still count, never below ITEM_RECALL_MIN.
+RECALL_MARGIN = 0.06
+ITEM_RECALL_MIN = 0.3
 # "Similar nearby": how alike a shop or item must be to be shown.
 SIMILAR_MIN = 0.4
+# Raw cosine that counts as "unrelated" for Vertex embeddings (the fixture needs none).
+LIVE_FLOOR = 0.35
 # Personal picks: a taste match must be at least this strong to say "because ...".
 TASTE_MIN = 0.35
 
@@ -172,7 +178,8 @@ def normalize(vector: Sequence[float] | np.ndarray) -> np.ndarray:
 
 
 def vertex_embedder(project: str, location: str, model: str) -> Embedder:
-    """Vertex AI text embeddings, batched; one request per chunk of texts."""
+    """Vertex AI text embeddings, batched; one request per chunk of texts. (gemini-embedding-2
+    returned identical vectors for every task_type we tried, so none is set.)"""
     from google import genai
     from google.genai import types
 
@@ -549,6 +556,12 @@ class Relevance:
         return max([self.shop, *self.items.values()])
 
 
+def item_recall(meaning: dict[str, Relevance]) -> float:
+    """The item threshold for this search: fixed, or relative to the best item nearby."""
+    best = max((v for r in meaning.values() for v in r.items.values()), default=0.0)
+    return min(ITEM_RECALL, max(best - RECALL_MARGIN, ITEM_RECALL_MIN))
+
+
 class SimilarProvider(Protocol):
     """Recommendations AI "similar items", when that integration is switched on."""
 
@@ -566,7 +579,9 @@ class SearchEngine:
         explainer: Explainer | None = None,
     ) -> None:
         self.live = live
-        self.cache = VectorCache(embed, model, docs, calibration=0.55 if live else 0.0)
+        # Measured on gemini-embedding-2 (docs/impact/search-eval.md): unrelated shop items sit
+        # at raw cosine 0.45-0.63, matching ones at 0.60-0.78; 0.35 puts ITEM_RECALL near 0.64.
+        self.cache = VectorCache(embed, model, docs, LIVE_FLOOR if live else 0.0)
         self.explainer = explainer
         self.similar_provider: SimilarProvider | None = None
 
