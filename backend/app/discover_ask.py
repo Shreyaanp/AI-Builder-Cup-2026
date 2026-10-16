@@ -577,15 +577,41 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
     anchor = await nearest_station(maps, body.lat, body.lng) if intent.near == "transit" else None
     lat, lng = (anchor.lat, anchor.lng) if anchor else (body.lat, body.lng)
     radius = min(body.radius, 1000) if anchor else body.radius
+    in_sg = 1.15 <= lat <= 1.48 and 103.6 <= lng <= 104.1
+    in_india = 6.5 <= lat <= 37.5 and 68.0 <= lng <= 97.5
     shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
-    picks = [
-        pick
-        for shop in shops
-        if shop["lat"] is not None
-        and shop["lng"] is not None
-        and distance(lat, lng, shop["lat"], shop["lng"]) <= radius
-        and (pick := shop_pick(shop, intent, lat, lng)) is not None
-    ]
+
+    def norm_name(name: str) -> str:
+        return re.sub(r"\s*\((Tour|Demo)\)$", "", name, flags=re.I).strip().casefold()
+
+    picks: list[Pick] = []
+    seen_pick_names: set[str] = set()
+    for shop in shops:
+        if shop["lat"] is None or shop["lng"] is None:
+            continue
+        # Singapore demo shops only when browsing Singapore
+        is_sg_shop = shop.get("demo") and (
+            shop.get("city") == "singapore"
+            or (
+                shop.get("currency") == "SGD"
+                and 1.15 <= shop["lat"] <= 1.48
+                and 103.6 <= shop["lng"] <= 104.1
+            )
+        )
+        if is_sg_shop and not in_sg:
+            continue
+        # Results near an Indian location never show SGD
+        if in_india and shop.get("currency") == "SGD":
+            continue
+        if distance(lat, lng, shop["lat"], shop["lng"]) > radius:
+            continue
+        pick = shop_pick(shop, intent, lat, lng)
+        if pick is not None:
+            base_name = norm_name(pick.name)
+            if base_name in seen_pick_names:
+                continue
+            seen_pick_names.add(base_name)
+            picks.append(pick)
     try:
         rescues = await live_rescues(request, shops, lat, lng, time.time())
     except Exception:  # noqa: BLE001 - deals decorate results; they never block them
@@ -734,10 +760,20 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
                 )
         except Exception:  # noqa: BLE001 - demand capture must never break discovery
             log.warning("demand_capture_unavailable")
-    shown = {p.id for p in for_you[:6]}
+    shown_ids = {p.id for p in for_you[:6]}
+    shown_names = {norm_name(p.name) for p in for_you[:6]}
+    best_picks: list[Pick] = []
+    for p in picks:
+        name_key = norm_name(p.name)
+        if p.id in shown_ids or name_key in shown_names:
+            continue
+        best_picks.append(p)
+        shown_names.add(name_key)
+        if len(best_picks) >= 8:
+            break
     groups = [
         Group(id="for_you", places=for_you[:6]),
-        Group(id="best", places=[p for p in picks if p.id not in shown][:8]),
+        Group(id="best", places=best_picks),
         Group(id="open", places=[p for p in others if p.open_now][:10]),
         Group(id="more", places=[p for p in others if not p.open_now][:10]),
     ]
