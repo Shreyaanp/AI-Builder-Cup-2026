@@ -171,8 +171,8 @@ test('customer facts: the card starts the chat, the owner confirms, customers se
   await page.clock.setFixedTime(new Date('2026-10-14T09:00:00+08:00'))
   await open(page)
   await addShop(page, 'Halal Corner')
-  // Before the page is shared, what customers ask waits on My shop (Today shows setup first).
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  // Before the page is shared, what customers ask waits on Shop (Today shows setup first).
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   const card = page.getByRole('region', { name: 'Customers ask: halal? payment?' })
   await expect(card).toBeVisible()
   await card.getByRole('button', { name: 'Answer' }).click()
@@ -228,8 +228,8 @@ test('busy-hours sweep asks about top items; Sold out uses the owner switch', as
   ).json()
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  // The busy-hours sweep lives on My shop; Today asks about sold out items directly.
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  // The busy-hours sweep lives on Shop; Today asks about sold out items directly.
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   const kopi = page.getByRole('region', { name: 'Still have Kopi?' })
   await expect(kopi).toBeVisible()
   await kopi.getByRole('button', { name: 'Sold out' }).click()
@@ -248,7 +248,7 @@ test('busy-hours sweep asks about top items; Sold out uses the owner switch', as
   // Remembered for this shop today.
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await expect(page.getByRole('region', { name: /^Customers ask:/ })).toBeVisible()
   await expect(page.getByRole('region', { name: /^Still have/ })).toHaveCount(0)
 })
