@@ -48,6 +48,7 @@ import {
 import { discoverCopy } from './strings'
 import { fillIn, useConversationCopy, type ConversationCopy } from './conversationCopy'
 import { ensureDemoWorld, isIndianArea } from './demoWorld'
+import { localRankShops, prefetchAreaShops } from './shopCache'
 import { PlaceSearch, type FoundPlace } from './PlaceSearch'
 import '../customer/customer.css'
 
@@ -193,16 +194,33 @@ export default function AskHome({
     return () => clearInterval(timer)
   }, [busy, t.thinking.length])
 
-  // Suggestion chips come from this area's own shops (labelled demo shops included).
+  // Route chunk prefetch: prefetch PublicShop and RescueScreen chunks during idle
+  useEffect(() => {
+    const prefetch = () => {
+      void import('../public/PublicShop')
+      void import('../rescue/RescueScreen')
+    }
+    const win = window as unknown as {
+      requestIdleCallback?: (cb: () => void) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+    if (typeof win.requestIdleCallback === 'function') {
+      const id = win.requestIdleCallback(prefetch)
+      return () => win.cancelIdleCallback?.(id)
+    }
+    const timer = setTimeout(prefetch, 1200)
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Suggestion chips and shop data come from this area's own shops (labelled demo shops included).
   useEffect(() => {
     let live = true
     const key = `${place.lat},${place.lng}`
     void ensureDemoWorld(place.lat, place.lng, place.label)
-      .then(() =>
-        fetch(
-          `/api/v1/discover/suggest?${new URLSearchParams({ lat: String(place.lat), lng: String(place.lng) })}`,
-        ),
-      )
+    void prefetchAreaShops(place.lat, place.lng)
+    fetch(
+      `/api/v1/discover/suggest?${new URLSearchParams({ lat: String(place.lat), lng: String(place.lng) })}`,
+    )
       .then((response) => (response.ok ? (response.json() as Promise<Suggestions>) : null))
       .then((data) => {
         if (live && data) setSuggested({ key, data })
@@ -230,13 +248,78 @@ export default function AskHome({
       const controller = new AbortController()
       requests.current.set(turn.id, controller)
       update(turn.id, { status: 'thinking' })
-      const started = performance.now()
+
       try {
-        await ensureDemoWorld(turn.place.lat, turn.place.lng, turn.place.label)
-        // Signed-in customers get "For you" ranking and stated preferences remembered.
-        const answer = await account.api<AskAnswer>('/api/v1/discover/ask', {
+        // Allow the live status line and skeleton result cards to render
+        await new Promise((resolve) => setTimeout(resolve, 150))
+        if (controller.signal.aborted) {
+          update(turn.id, { status: 'stopped' })
+          return
+        }
+
+        // Instant path: answer immediately from our own shops (< 700 ms target)
+        const localPicks = localRankShops(turn.q, turn.place.lat, turn.place.lng)
+        if (localPicks.length > 0) {
+          if (controller.signal.aborted) {
+            update(turn.id, { status: 'stopped' })
+            return
+          }
+          const instantAnswer: AskAnswer = {
+            intent: {
+              summary: fillIn(c.found, { place: turn.place.label }),
+              keywords: [turn.q],
+              category: '',
+              max_price: null,
+              halal: false,
+              vegetarian: false,
+              locally_made: false,
+              open_now: false,
+              followups: [],
+              sort: 'best',
+              near: '',
+              deals: false,
+            },
+            mode: 'keywords',
+            groups: [{ id: 'best', places: localPicks.slice(0, 8) }],
+            anchor: null,
+          }
+          update(turn.id, { status: 'done', answer: instantAnswer, streaming: true })
+        }
+
+        // Parallel demo world fetch: never blocks query dispatch
+        void ensureDemoWorld(turn.place.lat, turn.place.lng, turn.place.label)
+
+        const handleAnswer = (answer: AskAnswer) => {
+          if (answer.command) {
+            const { kind, shop_id } = answer.command
+            const path =
+              kind === 'my_stamps'
+                ? '/explore/passport'
+                : (kind === 'follow' || kind === 'ask_owner') && shop_id
+                  ? `/explore/s/${encodeURIComponent(shop_id)}`
+                  : null
+            if (path) {
+              goTo(path)
+              return
+            }
+          }
+          if (answer.personal) {
+            void account
+              .api<{ profile?: unknown }>('/api/v1/customer/me')
+              .then((me) => {
+                if (me.profile)
+                  account.setProfile(me.profile as Parameters<typeof account.setProfile>[0])
+              })
+              .catch(() => undefined)
+          }
+        }
+
+        const response = await account.raw('/api/v1/discover/ask', {
           method: 'POST',
           signal: controller.signal,
+          headers: {
+            Accept: 'text/event-stream, application/json',
+          },
           body: JSON.stringify({
             q: turn.q,
             lat: turn.place.lat,
@@ -246,36 +329,82 @@ export default function AskHome({
             refine: turn.refine ?? null,
           }),
         })
-        if (controller.signal.aborted) return
-        if (answer.command) {
-          const { kind, shop_id } = answer.command
-          const path =
-            kind === 'my_stamps'
-              ? '/explore/passport'
-              : (kind === 'follow' || kind === 'ask_owner') && shop_id
-                ? `/explore/s/${encodeURIComponent(shop_id)}`
-                : null
-          if (path) {
-            update(turn.id, { status: 'done', answer })
-            goTo(path)
+
+        if (controller.signal.aborted) {
+          update(turn.id, { status: 'stopped' })
+          return
+        }
+        if (!response.ok) throw new Error(String(response.status))
+
+        const contentType = response.headers.get('content-type') || ''
+        if (contentType.includes('text/event-stream') && response.body) {
+          const reader = response.body.getReader()
+          const decoder = new TextDecoder()
+          let buffer = ''
+          let streamText = ''
+          let lastAnswer: AskAnswer | undefined
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) break
+              buffer += decoder.decode(value, { stream: true })
+              buffer = buffer.replace(/\r\n/g, '\n')
+              let boundary: number
+              while ((boundary = buffer.indexOf('\n\n')) >= 0) {
+                const frame = buffer.slice(0, boundary)
+                buffer = buffer.slice(boundary + 2)
+                const lines = frame.split('\n')
+                const eventLine = lines.find((l) => l.startsWith('event:'))
+                const eventType = eventLine ? eventLine.slice(6).trim() : 'message'
+                const dataLines = lines
+                  .filter((l) => l.startsWith('data:'))
+                  .map((l) => l.slice(5).trimStart())
+                  .join('\n')
+                if (!dataLines) continue
+
+                if (eventType === 'instant') {
+                  const instant = JSON.parse(dataLines) as AskAnswer
+                  lastAnswer = instant
+                  update(turn.id, { status: 'done', answer: instant, streaming: true })
+                } else if (eventType === 'delta') {
+                  const delta = JSON.parse(dataLines) as { text?: string }
+                  if (delta.text) {
+                    streamText += delta.text
+                    if (lastAnswer) {
+                      lastAnswer = {
+                        ...lastAnswer,
+                        mode: 'ai',
+                        intent: { ...lastAnswer.intent, summary: streamText },
+                      }
+                      update(turn.id, { status: 'done', answer: lastAnswer, streaming: true })
+                    }
+                  }
+                } else if (eventType === 'complete' || eventType === 'command') {
+                  const complete = JSON.parse(dataLines) as AskAnswer
+                  lastAnswer = complete
+                  update(turn.id, { status: 'done', answer: complete, streaming: false })
+                }
+              }
+            }
+          } finally {
+            reader.releaseLock()
+          }
+
+          if (lastAnswer) {
+            handleAnswer(lastAnswer)
             return
           }
         }
-        if (answer.personal) {
-          // Keep the profile sheet in step with what was just remembered.
-          void account
-            .api<{ profile?: unknown }>('/api/v1/customer/me')
-            .then((me) => {
-              if (me.profile)
-                account.setProfile(me.profile as Parameters<typeof account.setProfile>[0])
-            })
-            .catch(() => undefined)
+
+        // Standard JSON response fallback (e.g. tests or non-streaming servers)
+        const answer = (await response.json()) as AskAnswer
+        if (controller.signal.aborted) {
+          update(turn.id, { status: 'stopped' })
+          return
         }
-        // Let the thinking moment read as a moment, not a flicker.
-        const wait = reduced() ? 0 : Math.max(0, 900 - (performance.now() - started))
-        await new Promise((resolve) => setTimeout(resolve, wait))
-        if (controller.signal.aborted) return
-        update(turn.id, { status: 'done', answer })
+        update(turn.id, { status: 'done', answer, streaming: false })
+        handleAnswer(answer)
       } catch {
         if (controller.signal.aborted) update(turn.id, { status: 'stopped' })
         else update(turn.id, { status: navigator.onLine ? 'failed' : 'offline' })
@@ -283,7 +412,7 @@ export default function AskHome({
         requests.current.delete(turn.id)
       }
     },
-    [account, locale, update],
+    [account, c.found, locale, update],
   )
 
   // Offline turns try again by themselves when the connection is back.
@@ -323,7 +452,11 @@ export default function AskHome({
   }
 
   function stop() {
-    for (const controller of requests.current.values()) controller.abort()
+    for (const [id, controller] of requests.current.entries()) {
+      controller.abort()
+      update(id, { status: 'stopped' })
+    }
+    requests.current.clear()
   }
 
   function restart() {
@@ -829,8 +962,14 @@ function AssistantTurn({
             <span />
             <span />
           </Box>
-          <Typography key={line} className="c-rise" variant="bodyMedium">
-            {line}
+          <Typography
+            key={line}
+            className="c-rise"
+            variant="bodyMedium"
+            role="status"
+            aria-live="polite"
+          >
+            {line || t.thinking[0]}
           </Typography>
         </Stack>
         <Box
@@ -847,9 +986,40 @@ function AssistantTurn({
           {[0, 1].map((n) => (
             <Box
               key={n}
-              className="c-shimmer"
-              sx={{ height: 240, borderRadius: '20px', bgcolor: roles.surfaceContainer }}
-            />
+              sx={{
+                height: 240,
+                borderRadius: '20px',
+                bgcolor: roles.surfaceContainerLow,
+                border: `1px solid ${roles.outlineVariant}`,
+                p: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              }}
+            >
+              <Box
+                className="c-shimmer"
+                sx={{ height: 120, borderRadius: '14px', bgcolor: roles.surfaceContainer }}
+              />
+              <Box
+                className="c-shimmer"
+                sx={{
+                  height: 20,
+                  width: '70%',
+                  borderRadius: '6px',
+                  bgcolor: roles.surfaceContainer,
+                }}
+              />
+              <Box
+                className="c-shimmer"
+                sx={{
+                  height: 16,
+                  width: '45%',
+                  borderRadius: '6px',
+                  bgcolor: roles.surfaceContainer,
+                }}
+              />
+            </Box>
           ))}
         </Box>
       </Box>

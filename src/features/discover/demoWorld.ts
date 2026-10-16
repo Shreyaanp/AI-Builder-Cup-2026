@@ -9,6 +9,8 @@ const pending = new Map<string, Promise<void>>()
 const cell = (lat: number, lng: number) =>
   `${Math.round(lat * 50) / 50},${Math.round(lng * 50) / 50}`
 
+const completed = new Set<string>()
+
 export function isIndianArea(lat: number, lng: number, place = ''): boolean {
   const p = place.toLowerCase()
   return (
@@ -46,9 +48,13 @@ export function areaCurrency(lat: number, lng: number, place = ''): string {
 
 export function ensureDemoWorld(lat: number, lng: number, place = ''): Promise<void> {
   const key = cell(lat, lng)
+  if (completed.has(key)) return Promise.resolve()
   const remembered = `chalkboard.demoWorld.${key}`
   try {
-    if (sessionStorage.getItem(remembered)) return Promise.resolve()
+    if (sessionStorage.getItem(remembered)) {
+      completed.add(key)
+      return Promise.resolve()
+    }
   } catch {
     /* Storage is optional. */
   }
@@ -71,6 +77,7 @@ export function ensureDemoWorld(lat: number, lng: number, place = ''): Promise<v
     })
       .then((response) => {
         if (!response.ok) return
+        completed.add(key)
         try {
           sessionStorage.setItem(remembered, '1')
         } catch {
@@ -80,6 +87,6 @@ export function ensureDemoWorld(lat: number, lng: number, place = ''): Promise<v
       .catch(() => undefined)
     pending.set(key, request)
   }
-  // A first visit may wait for the model; cap the wait so search is never stuck.
-  return Promise.race([request, new Promise<void>((resolve) => setTimeout(resolve, 20_000))])
+  // Never block discovery for long
+  return Promise.race([request, new Promise<void>((resolve) => setTimeout(resolve, 3_000))])
 }
