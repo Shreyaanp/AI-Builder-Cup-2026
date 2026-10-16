@@ -50,7 +50,7 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
       'Gemini Live voice and its spoken greeting; offline the greeting is the scripted coach',
     )
     await page.getByRole('button', { name: 'Let’s begin' }).click()
-    await expect(page.getByRole('log')).toContainText('What do you sell?')
+    await expect(page.getByRole('log')).toContainText('What is your business called?')
     // Voice mode: one open conversation; the mic stays on (not paused) after the greeting and
     // the orb listens. Keyboard, mute and end voice are the other controls.
     await expect(page.getByTestId('voice-orb').first()).toHaveAttribute('data-phase', 'listening')
@@ -66,11 +66,11 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
   await test.step('3 · the owner answers; the agent acts in the chat; the shop builds live', async () => {
     liveOnly('Speech recognition of the owner’s answer; the answer is typed into the live session')
     await page.getByRole('button', { name: 'Type instead' }).click()
-    await page.getByLabel('Message', { exact: true }).fill('I sell masala chai and snacks')
+    await page.getByLabel('Message', { exact: true }).fill('name: Market Chai; category: Tea stall')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
     const action = page.getByTestId('agent-action').last()
-    await expect(action).toContainText('Shop name: Neighbourhood Masala Chai And Snacks')
-    await expect(page.getByTestId('shop-so-far')).toContainText('Neighbourhood Masala Chai')
+    await expect(action).toContainText('Market Chai')
+    await expect(page.getByTestId('shop-so-far')).toContainText('Market Chai')
     await expect(page.getByRole('log')).toContainText('Where is your shop?')
     await shot(page, 10, '3-action')
   })

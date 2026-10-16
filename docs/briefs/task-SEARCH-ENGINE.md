@@ -14,6 +14,7 @@ machine is shared by 8+ sessions: run ONLY your own spec files with `--workers=1
 co-author lines. Commit small and push often.
 
 ## Owner decisions
+
 - ONE engine for customers finding products/producers nearby AND vendor-to-vendor sourcing
   (backend/app/sourcing.py find_suppliers should call the same engine).
 - What works immediately:
@@ -32,6 +33,7 @@ co-author lines. Commit small and push often.
   (location + time + popular nearby).
 
 ## Done
+
 Backend engine module + tests (ranking, cold start, personalization, sourcing reuse, both stores),
 customer UI using it (front door answers, similar nearby, Today's 7), 15 locales, phone + desktop,
 light + dark, axe clean, a story test, screenshots docs/stories/search-*.png, an eval script with a

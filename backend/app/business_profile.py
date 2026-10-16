@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from .gemini_schema import gemini_schema, parse_reply
 from .settings import Settings
+from .vendor_profile import BusinessTypeProfile
 
 log = structlog.get_logger()
 
@@ -123,6 +124,83 @@ GENERIC = (
     ],
 )
 
+PROFILE_QUESTIONS = {
+    "tailor": [
+        ("services", "Services", "Which tailoring services do you offer?"),
+        ("turnaround", "Turnaround", "How long do alterations or new garments usually take?"),
+        ("measurements", "Measurements", "How do customers arrange measurements or fittings?"),
+    ],
+    "salon": [
+        ("services", "Services", "Which salon services do you offer?"),
+        *(q for q in CATALOGUE[0][2] if q[0] != "service_prices"),
+    ],
+    "retail": [
+        ("categories", "Categories", "Which product categories do you carry?"),
+        *CATALOGUE[-1][2],
+    ],
+    "grocer": [
+        ("categories", "Categories", "Which grocery categories do you carry?"),
+        ("selling_units", "Selling units", "Do you sell by piece, pack or weight?"),
+        ("special_orders", "Special orders", "Can customers order items you don't stock?"),
+    ],
+    "service": [
+        ("services", "Services", "Which services do you offer?"),
+        ("service_area", "Service area", "Which areas do you serve?"),
+        ("appointment", "Appointments", "Do customers need an appointment?"),
+    ],
+}
+
+
+def typed_plan(profile: BusinessTypeProfile) -> QuestionPlan:
+    kind = profile.kind
+    questions = PROFILE_QUESTIONS.get(kind, GENERIC[1])
+    label = profile.subtype or {
+        "food": "food & drink",
+        "salon": "beauty salon",
+        "retail": "retail shop",
+        "grocer": "grocer",
+        "tailor": "tailor",
+        "service": "service business",
+    }.get(kind, "local business")
+    if kind == "food":
+        questions = [
+            ("cuisine", "Cuisine", "What cuisine or style of food do you serve?"),
+            ("diet", "Food choices", "Is your menu vegetarian only, non-vegetarian, or both?"),
+            *FOOD[2],
+        ]
+        if not profile.food or profile.food.serves_meat is None:
+            questions.insert(2, ("serves_meat", "Meat", "Do you serve any meat?"))
+        subtype = profile.subtype.casefold()
+        if re.search(r"butcher|meat shop", subtype):
+            questions = [
+                ("cuts", "Meat and cuts", "Which meats and cuts do you sell?"),
+                ("selling_units", "Selling units", "Do you price cuts per piece or by weight?"),
+                ("sourcing", "Sourcing", "Where do you source your meat?"),
+            ]
+        elif re.search(r"home.?bak|bakery|baker", subtype):
+            questions = [
+                q for q in questions if q[0] not in {"seating", "price_range", "signature_dish"}
+            ] + [
+                ("bakes", "Bakes", "Which cakes or bakes do you make?"),
+                (
+                    "custom_orders",
+                    "Custom orders",
+                    "Can customers request custom designs or sizes?",
+                ),
+            ]
+        elif re.search(r"tea|chai|coffee|drink", subtype):
+            questions = [q for q in questions if q[0] != "price_range"]
+    block = getattr(profile, "retail" if kind == "grocer" else kind, None)
+    return QuestionPlan(
+        business_type=label[:60],
+        questions=[
+            PlannedQuestion(key=k, label=lb, question=q)
+            for k, lb, q in questions
+            if not (block and getattr(block, k, None) not in (None, "", [], "unknown"))
+        ],
+    )
+
+
 PROMPT = """You help a small local business in Asia Pacific get its listing right.
 Given its name, category and location, return the business_type (a short canonical type) and up
 to {size} questions its CUSTOMERS most often ask before visiting or buying, phrased as questions
@@ -151,11 +229,20 @@ class QuestionPlanner:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self._client: Any = None
-        # Keyed by normalised category: the same type of business gets the same plan.
+        # Bounded cache of generic plans; typed plans use the validated profile directly.
         self._cache: OrderedDict[str, QuestionPlan] = OrderedDict()
 
-    async def plan(self, category: str, name: str = "", location: str = "") -> QuestionPlan:
-        key = re.sub(r"\s+", " ", (category or name).casefold()).strip()[:80] or "unknown"
+    async def plan(
+        self,
+        category: str,
+        name: str = "",
+        location: str = "",
+        profile: BusinessTypeProfile | None = None,
+    ) -> QuestionPlan:
+        if profile and profile.kind != "generic":
+            return typed_plan(profile)
+        # Name/location can change relevance. Never share a cached answer across those inputs.
+        key = repr((category, name, location))
         if key in self._cache:
             self._cache.move_to_end(key)
             return self._cache[key]
