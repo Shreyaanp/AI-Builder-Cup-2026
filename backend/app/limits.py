@@ -48,6 +48,11 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "rescue:public": ((30, 60),),
     "rescue:hold": ((20, 60), (100, 86_400)),
     "recap": ((30, 60), (300, 86_400)),
+    # Shop playbook: automatic rebuilds (missing / material change / weekly) and the owner's
+    # "make a fresh one". Each rebuild is at most one model call; GCP credit is limited.
+    "playbook": ((10, 3_600), (30, 86_400)),
+    "playbook:regenerate": ((3, 3_600), (10, 86_400)),
+    "playbook:edit": ((60, 600),),
     "tts": ((30, 60), (600, 86_400)),
     "proposal": ((60, 60),),
     # The address under the owner's map pin, looked up once the map stops moving.

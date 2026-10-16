@@ -14,7 +14,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { FileText, RotateCcw, ShieldCheck, Trash2 } from 'lucide-react'
+import { FileText, Lightbulb, RotateCcw, ShieldCheck, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useLocale } from '../../../state/hooks'
 import type { EraseResult } from '../api'
@@ -24,6 +24,8 @@ import type { LegalDocument } from '../LegalDialog'
 import { useBackClose } from '../backStack'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
+import { PlaybookEntry } from '../playbook/ShopPlaybook'
+import { usePlaybookCopy } from '../playbook/playbookCopy'
 import { shape } from '../../../design/theme'
 import { TrustCard } from '../../trust/TrustCard'
 
@@ -60,6 +62,7 @@ type EraseState =
 
 export function PrivacyScreen() {
   const t = useCopy()
+  const playbook = usePlaybookCopy()
   const language = useLocale()
   const ws = useWorkspace()
   const [legal, setLegal] = useState<LegalDocument>(null)
@@ -102,6 +105,9 @@ export function PrivacyScreen() {
         {t.privacyTitle}
       </Typography>
       <Stack spacing={2}>
+        <Section icon={<Lightbulb size={22} />} title={playbook.title}>
+          <PlaybookEntry />
+        </Section>
         <Section icon={<FileText size={22} />} title={t.consentSection}>
           <Typography variant="bodyMedium" color="text.secondary">
             {ws.me.consent ? t.consentAccepted(formatDate(ws.me.consent.accepted, language)) : ''}

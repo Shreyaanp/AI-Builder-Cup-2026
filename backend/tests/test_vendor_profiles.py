@@ -33,7 +33,12 @@ from app.vendor_profile import BusinessTypeProfile, infer_profile, migrate_profi
 from tests.test_merchant_store import store as store
 
 CASES = [
-    ("Tea stall", {"kind": "food", "food": {"serves_meat": False}}, "menu", {"cuisine", "diet"}),
+    (
+        "Tea stall",
+        {"kind": "food", "food": {"serves_meat": False}},
+        "menu",
+        {"milk_options", "sugar_free", "takeaway_cups"},
+    ),
     ("Vegetarian restaurant", {"kind": "food", "food": {"diet": "veg_only"}}, "menu", {"cuisine"}),
     (
         "Halal butcher",
@@ -56,7 +61,12 @@ CASES = [
     ),
     ("Salon", {"kind": "salon", "salon": {}}, "services", {"services", "booking", "walk_ins"}),
     ("Hardware shop", {"kind": "retail", "retail": {}}, "items", {"categories", "delivery"}),
-    ("Home baker", {"kind": "food", "food": {}}, "menu", {"preorders", "cuisine", "diet"}),
+    (
+        "Home baker",
+        {"kind": "food", "food": {}},
+        "menu",
+        {"preorders", "bakes", "eggless", "custom_orders"},
+    ),
     (
         "Grocer",
         {"kind": "grocer", "retail": {}},
@@ -113,9 +123,8 @@ async def test_each_vendor_gets_only_relevant_questions_and_round_trips(
         if category == "Halal butcher":
             assert {"cuts", "selling_units", "sourcing"} <= keys
             assert not {"seating", "signature_dish", "price_range"} & keys
-        if category == "Home baker":
-            assert {"bakes", "custom_orders"} <= keys
-            assert "seating" not in keys
+        if category in {"Home baker", "Tea stall"}:
+            assert not {"seating", "diet", "serves_meat", "cuisine", "vegetarian_options"} & keys
         store.share("alice", bid, True)
         public = store.public_shop(bid)
         assert public and public["facts"]["profile"]["kind"] == profile["kind"]

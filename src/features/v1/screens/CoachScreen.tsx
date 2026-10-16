@@ -86,6 +86,7 @@ import { ActionChip, ReplyCard } from '../CoachActions'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
 import type { Destination } from '../workspaceContext'
 import { GuideChips } from '../../owner-tools/CoachGuide'
+import { openOwnerFeature } from '../../owner-tools/entry'
 import { PaymentCard } from '../../owner-tools/PaymentsScreen'
 import type { PaymentLink } from '../../owner-tools/links'
 
@@ -126,6 +127,11 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
   close_day: 'grow',
   google: 'google',
   privacy: 'privacy',
+  supply: 'grow',
+  // The playbook sheet lives under Your data.
+  playbook: 'privacy',
+  // Payments & rides opens over Grow, so Back returns there.
+  payments: 'grow',
 }
 const REPLY_POLL_MS = 1500
 const REPLY_WAIT_MS = 45_000
@@ -298,8 +304,10 @@ function CoachScreen({
             setShowToday(action.target === 'today')
             const sheet = SHEETS[action.target]
             if (action.target === 'games') go('grow')
+            if (action.target === 'connect') setConnectOpen(true)
             if (sheet) setShopSheet(sheet)
             else if (DESTINATIONS[action.target]) go(DESTINATIONS[action.target]!)
+            if (action.target === 'payments') openOwnerFeature('payments')
           }
         }
       }
@@ -571,11 +579,13 @@ function CoachScreen({
   function openAction(action: CoachAction) {
     setShowToday(action.target === 'today')
     if (action.target === 'games') go('grow')
+    if (action.target === 'connect') setConnectOpen(true)
     if (action.target === 'photo') pick('library')
     else if (action.target === 'import') pick('document')
     else if (action.target === 'reply') return
     else if (SHEETS[action.target]) setShopSheet(SHEETS[action.target]!)
     else if (DESTINATIONS[action.target]) go(DESTINATIONS[action.target]!)
+    if (action.target === 'payments') openOwnerFeature('payments')
   }
   async function sendReply(action: CoachAction): Promise<boolean> {
     if (!activeId || !action.thread_id || !action.text) return false

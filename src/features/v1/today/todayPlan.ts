@@ -7,6 +7,7 @@ import type { DayPart } from './todayCopy'
 export type TodayFacts = components['schemas']['Today']
 export type CoachLine = components['schemas']['CoachLine']
 type Pulse = components['schemas']['Pulse']
+type TodayHints = components['schemas']['TodayHints']
 
 export type StepId = 'items' | 'category' | 'location' | 'hours' | 'phone' | 'share'
 export type Need =
@@ -74,12 +75,38 @@ export function missingSteps(shop: TodayInput['shop'], products: Product[]): Ste
 
 /**
  * Which numbers matter for this kind of shop, most telling first. Rules from the business type
- * until the shop playbook (per-shop goals and key metrics) is available; then it decides here.
+ * until the shop playbook (per-shop goals and key metrics) is available; then it leads.
  */
-export function metricsFor(shop: TodayInput['shop']): Metric[] {
-  return isFood(shop.fields)
+export function metricsFor(shop: TodayInput['shop'], hints?: TodayHints | null): Metric[] {
+  const base: Metric[] = isFood(shop.fields)
     ? ['sales', 'items', 'views', 'questions', 'returning', 'stamps']
     : ['sales', 'questions', 'views', 'returning', 'stamps', 'items']
+  const first = (hints?.pulse ?? []).filter((key): key is Metric => base.includes(key as Metric))
+  return [...new Set([...first, ...base])]
+}
+
+// The playbook's "needs you now" kinds, mapped onto what Today can show.
+const NEED_HINT: Record<Need['kind'], TodayHints['needs_you'][number] | null> = {
+  reply: 'questions',
+  menu: 'menu_check',
+  low: 'low_stock',
+  soldOut: null,
+  step: 'missing_info',
+  facts: 'missing_info',
+}
+
+/** Kinds the shop's playbook puts first lead; everything else keeps its usual order. */
+export function byPlaybook(needs: Need[], hints?: TodayHints | null): Need[] {
+  if (!hints) return needs
+  const rank = (need: Need) => {
+    const hint = NEED_HINT[need.kind]
+    const index = hint ? hints.needs_you.indexOf(hint) : -1
+    return index < 0 ? hints.needs_you.length : index
+  }
+  return needs
+    .map((need, index) => ({ need, index }))
+    .sort((a, b) => rank(a.need) - rank(b.need) || a.index - b.index)
+    .map(({ need }) => need)
 }
 
 function pulseLine(pulse: Pulse, when: PulseLine['when'], order: Metric[]): PulseLine | null {
@@ -105,7 +132,7 @@ export function todayPlan(input: TodayInput): TodayPlan {
   // Same six checks as the readiness list (name, kind, address, hours, phone, items).
   const total = 6
   const done = total - steps.filter((step) => step !== 'share').length
-  const metrics = metricsFor(shop)
+  const metrics = metricsFor(shop, facts?.hints)
   const pulse = facts
     ? (pulseLine(facts.yesterday, 'yesterday', metrics) ?? pulseLine(facts.today, 'today', metrics))
     : null
@@ -134,7 +161,7 @@ export function todayPlan(input: TodayInput): TodayPlan {
     part: dayPart(input.now),
     food,
     progress: done < total ? { done, total } : null,
-    needs: all.slice(0, MAX_NEEDS),
+    needs: byPlaybook(all, facts?.hints).slice(0, MAX_NEEDS),
     line: facts?.line ?? null,
     pulse,
     forecast,
