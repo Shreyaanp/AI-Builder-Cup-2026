@@ -442,6 +442,7 @@ export const bn: Copy = {
     gallery: 'দোকানের গ্যালারির ছবি',
     community: 'দোকানের সর্বজনীন কপি',
     memory: 'সহকারীর মেমরি',
+    analytics: 'দোকানের বিশ্লেষণ',
     conversations: 'কথোপকথন',
   } as Record<string, string>,
 }

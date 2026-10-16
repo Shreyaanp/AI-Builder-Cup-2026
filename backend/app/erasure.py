@@ -26,7 +26,16 @@ log = structlog.get_logger()
 
 # Order matters: face and photos first (the most sensitive), then records (which yields the shop
 # IDs the shop-scoped steps need), then copies, memory and conversations.
-STEPS = ("face", "photos", "records", "gallery", "community", "memory", "conversations")
+STEPS = (
+    "face",
+    "photos",
+    "records",
+    "gallery",
+    "community",
+    "analytics",
+    "memory",
+    "conversations",
+)
 PENDING_KIND = "erase_pending"
 
 
@@ -97,7 +106,7 @@ async def erase(request: Request, uid: str, only: set[str] | None = None) -> dic
     earlier: dict[str, list[str]] = ((await pending(request, uid)) or {}).get("steps", {})
     # Shop IDs come from the earlier attempt and, while the records still exist, from the store,
     # so gallery and community copies are erased even when the records step fails.
-    shop_steps = ("gallery", "community", "memory")
+    shop_steps = ("gallery", "community", "analytics", "memory")
     bids: list[str] = list(dict.fromkeys(b for step in shop_steps for b in earlier.get(step, [])))
     store = state.merchant
     if only is None:
@@ -138,6 +147,11 @@ async def erase(request: Request, uid: str, only: set[str] | None = None) -> dic
         if getattr(state, "community", None) is not None:
             await per_shop(state.community.erase_shop)
 
+    async def analytics() -> None:
+        # Aggregated daily rows in BigQuery, keyed by the shops' pseudonyms.
+        if getattr(state, "analytics", None) is not None:
+            await state.analytics.forget(bids)
+
     async def memory() -> None:
         if state.recall:
             await anyio.to_thread.run_sync(state.recall.forget, uid, bids)
@@ -162,6 +176,7 @@ async def erase(request: Request, uid: str, only: set[str] | None = None) -> dic
         "records": records,
         "gallery": gallery,
         "community": community,
+        "analytics": analytics,
         "memory": memory,
         "conversations": conversations,
     }

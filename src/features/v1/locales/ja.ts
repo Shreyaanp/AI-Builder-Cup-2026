@@ -431,6 +431,7 @@ export const ja: Copy = {
     gallery: 'お店のギャラリー写真',
     community: 'お店の公開コピー',
     memory: 'アシスタントのメモリ',
+    analytics: '店舗の分析データ',
     conversations: '会話',
   } as Record<string, string>,
 }

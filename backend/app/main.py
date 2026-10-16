@@ -20,6 +20,8 @@ from sqlalchemy.pool import NullPool
 from sse_starlette import EventSourceResponse, ServerSentEvent
 
 from . import coordinator
+from .analytics import AnalyticsReader
+from .analytics import router as analytics_router
 from .auth import IdentityService
 from .boundary import RequestBoundary
 from .brief import BriefWriter, WeatherService
@@ -158,6 +160,7 @@ def create_app(
         app.state.column_mapper = ColumnMapper(settings)
         app.state.forecaster = ForecastService(settings)
         app.state.document_ai = DocumentAIReader(settings)
+        app.state.analytics = AnalyticsReader(settings)
         app.state.weather = WeatherService(settings)
         app.state.brief_writer = BriefWriter(settings)
         coordinator.forecaster = app.state.forecaster
@@ -223,6 +226,7 @@ def create_app(
     app.include_router(demo_world_router)
     app.include_router(passport_router)
     app.include_router(today_router)
+    app.include_router(analytics_router)
     app.include_router(sourcing_router)
     app.include_router(owner_router)
     app.add_middleware(

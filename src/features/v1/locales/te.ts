@@ -450,6 +450,7 @@ export const te: Copy = {
     gallery: 'దుకాణ గ్యాలరీ ఫోటోలు',
     community: 'దుకాణ పబ్లిక్ కాపీలు',
     memory: 'అసిస్టెంట్ మెమరీ',
+    analytics: 'దుకాణ విశ్లేషణ',
     conversations: 'సంభాషణలు',
   } as Record<string, string>,
 }

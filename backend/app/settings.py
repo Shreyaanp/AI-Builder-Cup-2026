@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     document_ai_location: str = Field(default="us", pattern=r"^[a-z0-9-]+$")
     document_ai_receipt_processor: str = Field(default="", pattern=r"^[a-f0-9]*$")
     document_ai_invoice_processor: str = Field(default="", pattern=r"^[a-f0-9]*$")
+    # Owner analytics: nightly per-shop daily aggregates in BigQuery; "live" reads the records.
+    analytics_backend: Literal["live", "bigquery"] = "live"
+    analytics_dataset: str = Field(default="chalkboard_analytics", pattern=r"^[A-Za-z0-9_]+$")
+    analytics_location: str = "asia-south1"
+    # The Cloud Scheduler service account allowed to run the export, and its OIDC audience.
+    analytics_export_caller: str = ""
+    analytics_export_audience: str = ""
     weather_backend: Literal["disabled", "offline", "open_meteo"] = "offline"
     auth_mode: Literal["local", "firebase"] = "local"
     session_database_url: str = "sqlite+aiosqlite:///./data/sessions.sqlite3"
