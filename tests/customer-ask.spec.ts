@@ -1,5 +1,5 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, type Request } from '@playwright/test'
 import { publish } from './qa/support.js'
 import { enter, seedShop } from './stories/support.js'
 
@@ -19,11 +19,12 @@ test.beforeEach(async ({ page }) => {
   )
 })
 
-/** Pin the owner's shop at a point of its own near Indiranagar (the owner's map pin). */
+/** Pin the owner's shop at a point of its own within ~500 m of Indiranagar (the owner's map
+ * pin), which keeps it more than 4 km from central Bengaluru, where other stories ask. */
 async function pinShop(page: Page, id: string) {
   const point = {
-    lat: Number((INDIRANAGAR.lat + (Math.random() - 0.5) * 0.04).toFixed(6)),
-    lng: Number((INDIRANAGAR.lng + (Math.random() - 0.5) * 0.04).toFixed(6)),
+    lat: Number((INDIRANAGAR.lat + (Math.random() - 0.5) * 0.01).toFixed(6)),
+    lng: Number((INDIRANAGAR.lng + (Math.random() - 0.5) * 0.01).toFixed(6)),
   }
   const shop = (await (await page.request.get('/api/v1/businesses')).json()).find(
     (business: { id: string }) => business.id === id,
@@ -141,6 +142,15 @@ test('ask: a real shop answers with its exact item and price; back returns to th
   }, here)
   await publish(page, id)
   await page.goto('/explore/')
+  // The answer streams: instant cards first, then the complete answer deals them in again.
+  // The app closes the stream once it has the complete answer, so either event ends it.
+  const streamed = new Promise<void>((resolve) => {
+    const ended = (request: Request) => {
+      if (request.url().endsWith('/api/v1/discover/ask')) resolve()
+    }
+    page.on('requestfinished', ended)
+    page.on('requestfailed', ended)
+  })
   await ask(page, 'kopi')
   await expect(page.getByText('Understanding what you need…')).toBeVisible()
   if (isMobile) await page.screenshot({ path: 'docs/stories/customer-ai-2-thinking.png' })
@@ -149,7 +159,16 @@ test('ask: a real shop answers with its exact item and price; back returns to th
   await expect(card).toContainText('₹18.00')
   await expect(card).toContainText(/\d+ (m|km)/)
   await expect(page.getByRole('group', { name: 'Map of these places' })).toBeVisible()
+  await streamed
   await page.waitForTimeout(900)
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => undefined)),
+    ),
+  )
   if (isMobile) await page.screenshot({ path: 'docs/stories/customer-ai-3-answer.png' })
   expect(
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
