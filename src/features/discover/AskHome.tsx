@@ -53,10 +53,26 @@ import { ensureDemoWorld } from './demoWorld'
 import { localRankShops, prefetchAreaShops } from './shopCache'
 import { recsEvent } from '../recs/events'
 import { PlaceSearch, type FoundPlace } from './PlaceSearch'
+import { areaCurrency, defaultCurrency } from '../v1/format'
 import '../customer/customer.css'
 
 const FILTERS = 'chalkboard.discover.filters'
-const FALLBACK: FoundPlace = { lat: 1.2847, lng: 103.832, label: 'Tiong Bahru' }
+
+function fallbackPlace(): FoundPlace {
+  const currency = defaultCurrency()
+  if (currency === 'INR') return { lat: 12.9716, lng: 77.5946, label: 'Indiranagar' }
+  if (currency === 'MYR') return { lat: 3.1319, lng: 101.6841, label: 'Bangsar' }
+  if (currency === 'JPY') return { lat: 35.6580, lng: 139.7016, label: 'Shibuya' }
+  if (currency === 'KRW') return { lat: 37.5665, lng: 126.9780, label: 'Hongdae' }
+  if (currency === 'IDR') return { lat: -6.2088, lng: 106.8456, label: 'Senopati' }
+  if (currency === 'THB') return { lat: 13.7563, lng: 100.5018, label: 'Thonglor' }
+  if (currency === 'VND') return { lat: 10.7769, lng: 106.7009, label: 'District 1' }
+  if (currency === 'PHP') return { lat: 14.5547, lng: 121.0244, label: 'BGC' }
+  if (currency === 'GBP') return { lat: 51.5074, lng: -0.1278, label: 'Soho' }
+  if (currency === 'EUR') return { lat: 48.8566, lng: 2.3522, label: 'Le Marais' }
+  if (currency === 'AUD') return { lat: -33.8688, lng: 151.2093, label: 'Surry Hills' }
+  return { lat: 1.2847, lng: 103.832, label: 'Tiong Bahru' }
+}
 /** Nav bar (80) + composer (56) + breathing room. */
 const COMPOSER_CLEARANCE = 'calc(176px + env(safe-area-inset-bottom))'
 
@@ -121,7 +137,6 @@ export default function AskHome({
 }) {
   const locale = useLocale()
   const t = askCopy(locale)
-  const c = useConversationCopy()
   const discover = discoverCopy(locale)
   const passport = usePassportCopy()
   const roles = useTheme().material
@@ -132,8 +147,10 @@ export default function AskHome({
         ? { lat: initialLocation.gps[0], lng: initialLocation.gps[1], label: t.here }
         : initialLocation?.place) ??
       savedPlace() ??
-      FALLBACK,
+      fallbackPlace(),
   )
+  const currency = areaCurrency(place)
+  const c = useConversationCopy(currency)
   const [turns, setTurns] = useState<Turn[]>(loadTurns)
   const [draft, setDraft] = useState('')
   const [changing, setChanging] = useState(false)
