@@ -163,9 +163,11 @@ test('customer navigation and Saved follow each of the 15 languages', async ({
       )
       await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0)
       const nav = page.getByRole('navigation').last()
-      await expect(nav.getByRole('link')).toHaveCount(4)
-      for (const english of ['Ask', 'Passport', 'Chats', 'Saved'])
-        await expect(nav.getByRole('link', { name: english, exact: true })).toHaveCount(0)
+      await expect(nav.getByRole('link')).toHaveCount(5)
+      // Filipino keeps the loanword "Rescue", as its passport stamp and quests do.
+      const english = ['Ask', 'Passport', 'Chats', 'Saved', ...(locale === 'fil' ? [] : ['Rescue'])]
+      for (const label of english)
+        await expect(nav.getByRole('link', { name: label, exact: true })).toHaveCount(0)
       await expect(page.getByRole('heading', { level: 1 })).not.toHaveText('Saved')
       await expect(page.getByText('Follow shops to see their news here')).toHaveCount(0)
       const fits = await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)
