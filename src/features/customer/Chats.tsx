@@ -25,6 +25,7 @@ import { fill } from '../passport/copy'
 import { useRescueCopy } from '../rescue/copy'
 import type { RescueStrings } from '../rescue/copy'
 import { rescueMarker } from '../rescue/marker'
+import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { chatPath, reduceMotion } from './paths'
 import './customer.css'
 
@@ -787,7 +788,7 @@ function Bubble({
           component="span"
           sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}
         >
-          {shown(message.text, r)}
+          {shown(ai || demo ? formatMoneyText(message.text, locale) : message.text, r)}
         </Typography>
       </Box>
       <Stack
