@@ -80,9 +80,7 @@ function recorder(mode: Mode) {
       // The live camera preview changes under the scan; its colours are not UI.
       .exclude('video')
       .analyze()
-    expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(' ')}`)).toEqual(
-      [],
-    )
+    expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(' ')}`)).toEqual([])
   }
 }
 
@@ -160,7 +158,9 @@ async function run(browser: Browser, page: Page, mode: Mode) {
   await shot(other, '6-google-step')
   await step.getByRole('button', { name: 'Verify it’s you' }).click()
   const again = await verify(other, shot, 'second')
-  await expect(again.getByRole('heading', { name: 'Thanks, a person will take a look' })).toBeVisible()
+  await expect(
+    again.getByRole('heading', { name: 'Thanks, a person will take a look' }),
+  ).toBeVisible()
   await expect(again).toContainText('nothing changes')
   await shot(other, '7-in-review')
   await again.getByRole('button', { name: 'Done' }).click()
