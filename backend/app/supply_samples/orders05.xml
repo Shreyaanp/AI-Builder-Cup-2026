@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ORDERS05>
+  <IDOC BEGIN="1">
+    <EDI_DC40 SEGMENT="1">
+      <TABNAM>EDI_DC40</TABNAM>
+      <MANDT>100</MANDT>
+      <DOCNUM>0000004500012345</DOCNUM>
+      <DIRECT>1</DIRECT>
+      <IDOCTYP>ORDERS05</IDOCTYP>
+      <MESTYP>ORDERS</MESTYP>
+      <SNDPOR>CHALKBRD</SNDPOR>
+      <SNDPRT>LS</SNDPRT>
+      <SNDPRN>SHOP1</SNDPRN>
+      <RCVPOR>SAPS4H</RCVPOR>
+      <RCVPRT>LS</RCVPRT>
+      <RCVPRN>SUP1</RCVPRN>
+      <CREDAT>20261016</CREDAT>
+      <CRETIM>090000</CRETIM>
+    </EDI_DC40>
+    <E1EDK01 SEGMENT="1">
+      <CURCY>INR</CURCY>
+      <BELNR>4500012345</BELNR>
+      <ZTERM>NT07</ZTERM>
+    </E1EDK01>
+    <E1EDK03 SEGMENT="1">
+      <IDDAT>012</IDDAT>
+      <DATUM>20261016</DATUM>
+    </E1EDK03>
+    <E1EDK03 SEGMENT="1">
+      <IDDAT>002</IDDAT>
+      <DATUM>20261018</DATUM>
+    </E1EDK03>
+    <E1EDKA1 SEGMENT="1">
+      <PARVW>AG</PARVW>
+      <PARTN>SHOP1</PARTN>
+      <NAME1>Lakshmi Kirana</NAME1>
+    </E1EDKA1>
+    <E1EDKA1 SEGMENT="1">
+      <PARVW>LF</PARVW>
+      <PARTN>SUP1</PARTN>
+      <NAME1>Shree Ganesh Wholesale</NAME1>
+    </E1EDKA1>
+    <E1EDP01 SEGMENT="1">
+      <POSEX>00010</POSEX>
+      <MENGE>20</MENGE>
+      <MENEE>KGM</MENEE>
+      <VPREI>62.00</VPREI>
+      <PEINH>1</PEINH>
+      <NETWR>1240.00</NETWR>
+      <E1EDP19 SEGMENT="1">
+        <QUALF>001</QUALF>
+        <IDTNR>CB-ATT-01</IDTNR>
+      </E1EDP19>
+      <E1EDP19 SEGMENT="1">
+        <QUALF>002</QUALF>
+        <IDTNR>MAT-100234</IDTNR>
+        <KTEXT>Wheat flour</KTEXT>
+      </E1EDP19>
+      <E1EDP20 SEGMENT="1">
+        <WMENG>20</WMENG>
+        <EDATU>20261018</EDATU>
+      </E1EDP20>
+    </E1EDP01>
+    <E1EDP01 SEGMENT="1">
+      <POSEX>00020</POSEX>
+      <MENGE>10</MENGE>
+      <MENEE>KGM</MENEE>
+      <VPREI>44.00</VPREI>
+      <PEINH>1</PEINH>
+      <NETWR>440.00</NETWR>
+      <E1EDP19 SEGMENT="1">
+        <QUALF>002</QUALF>
+        <IDTNR>MAT-100877</IDTNR>
+        <KTEXT>Sugar</KTEXT>
+      </E1EDP19>
+      <E1EDP20 SEGMENT="1">
+        <WMENG>10</WMENG>
+        <EDATU>20261018</EDATU>
+      </E1EDP20>
+    </E1EDP01>
+    <E1EDS01 SEGMENT="1">
+      <SUMID>002</SUMID>
+      <SUMME>1680.00</SUMME>
+      <SUNIT>INR</SUNIT>
+    </E1EDS01>
+  </IDOC>
+</ORDERS05>

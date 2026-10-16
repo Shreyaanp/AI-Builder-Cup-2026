@@ -21,6 +21,7 @@ from .coordinator import current, ui_currency
 from .instant import InstantResult, IntentIndex, route
 from .latency import FirstOutput
 from .settings import Settings
+from .supply_tools import SUPPLY_CARD_TOOLS
 
 log = structlog.get_logger()
 
@@ -109,6 +110,15 @@ def public_events(event: Event) -> list[StreamEvent]:
                 )
                 if card:
                     output.append(StreamEvent(kind="action", data=card[1]))
+            if response and response.name in SUPPLY_CARD_TOOLS:
+                merchant = current.get()
+                card = (
+                    merchant.cards.get(str((response.response or {}).get("card_id")))
+                    if merchant
+                    else None
+                )
+                if card:
+                    output.append(StreamEvent(kind=card[0], data=card[1]))  # type: ignore[arg-type]
             if response and response.name in PROPOSAL_TOOLS:
                 payload = response.response or {}
                 # The model sees only the id; the exact sealed proposal goes to the review UI.
