@@ -25,6 +25,15 @@ You coordinate workers; you write NO feature code. Read docs/TODO.md (what is le
   task-GOOGLE-SERVICES, task-DEVOPS. Copy them into the repo docs/briefs/ if the scratchpad is gone.
 - **Antigravity** (cheapest model only, testing/finding issues): skill `.tooling\skills\agy-delegate\agy-delegate.ps1 -TaskFile <brief> -Branch fix/<name> -Model gemini-3.8-flash-low -Effort low`.
 
+## Account 3 blast (owner, 16 Oct 08:00): weekly limit resets 15:30 IST, use it all
+
+From the ~11:30 five-hour reset until 15:30, run account 3 at 4-5 parallel sessions, one worktree each:
+docs/briefs/task-SEARCH-ENGINE.md (~/work/chalkboard-customer), task-MAPS-GROUNDING.md, task-RECS-AI.md,
+task-SHOP-PLAYBOOK.md, task-GOOGLE-SERVICES.md, task-VOICE-EVERYTHING.md (moved from the Codex queue;
+Codex keeps DEVOPS after INTEGRATE-PRS and GUIDE-PAYMENTS-LANDING). Account 4 (free since 09:20):
+MAPS-GROUNDING and RECS-AI. One launcher: <session scratchpad>\launch-workers.ps1 (skips running tasks). Every prompt: no background
+commands, own specs only with --workers=1. Antigravity (cheap Gemini) takes testing and small fixes.
+
 ## Merging and releasing
 
 - Each PR: CI green + impact comment, no AI co-author lines (a shared commit-msg hook strips them), then
