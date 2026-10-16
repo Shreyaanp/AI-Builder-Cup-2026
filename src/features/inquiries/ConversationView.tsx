@@ -6,6 +6,7 @@ import { chatBubbleStyle } from '../coach/bubbleStyle'
 import { fill, useOwnerCopy } from '../owner/copy'
 import { useRescueCopy } from '../rescue/copy'
 import { rescueMarker } from '../rescue/marker'
+import { formatMoneyText } from './formatMoneyText'
 
 import type { ConversationCopy, Thread, Translation } from './conversationCopy'
 
@@ -140,6 +141,8 @@ function MessageBubble({
   // A changed viewer language requires a fresh, explicit translation request.
   const [translatedLocale, setTranslatedLocale] = useState(locale)
   const visible = show && translatedLocale === locale && translation
+  const displayed = visible ? translation.text : text
+  const generated = message.kind === 'ai' || message.kind === 'demo'
   return (
     <Box component="li" sx={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}>
       <Box
@@ -149,7 +152,7 @@ function MessageBubble({
           {mine ? t.you : message.author === 'owner' ? t.shop : t.customer}
         </Typography>
         <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-          {visible ? translation.text : text}
+          {generated ? formatMoneyText(displayed, locale) : displayed}
         </Typography>
         <Typography variant="bodySmall" color="text.secondary">
           {new Intl.DateTimeFormat(dateLocale, { dateStyle: 'short', timeStyle: 'short' }).format(
