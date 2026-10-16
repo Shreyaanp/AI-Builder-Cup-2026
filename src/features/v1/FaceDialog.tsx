@@ -193,11 +193,15 @@ export function FaceDialog({
       recorder.onstop = () => {
         void submit(challenge, capture, mime)
       }
+      // Real time, not ticks: a busy phone delays timers, and the prompts must match the recording.
+      let started = Infinity
+      recorder.onstart = (event) => {
+        started = event.timeStamp
+      }
       recorder.start(250)
-      let elapsed = 0
       const span = (CAPTURE_MS - READY_MS) / challenge.prompts.length
       capture.interval = setInterval(() => {
-        elapsed += 250
+        const elapsed = Math.max(0, performance.now() - started)
         setProgress(Math.min(100, (elapsed / CAPTURE_MS) * 100))
         setPrompt(
           elapsed < READY_MS
