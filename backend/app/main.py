@@ -67,6 +67,8 @@ from .owner_routes import router as owner_router
 from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
+from .playbook import PlaybookWriter
+from .playbook_routes import router as playbook_router
 from .recap import RecapWriter
 from .recs_routes import router as recs_router
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
@@ -189,6 +191,7 @@ def create_app(
         app.state.brief_writer = BriefWriter(settings)
         coordinator.forecaster = app.state.forecaster
         app.state.recap_writer = RecapWriter(settings)
+        app.state.playbook_writer = PlaybookWriter(settings)
         app.state.speech = Speech(settings)
         app.state.maps = maps_service or MapsService(settings)
         app.state.grounding = AreaGrounding(settings)
@@ -229,6 +232,7 @@ def create_app(
             await app.state.services.replay.close()
             await app.state.customer_answers.close()
             await app.state.recap_writer.close()
+            await app.state.playbook_writer.close()
             await app.state.brief_writer.close()
         await app.state.column_mapper.close()
         await app.state.fraud_reviewer.close()
@@ -273,6 +277,7 @@ def create_app(
     app.include_router(today_router)
     app.include_router(shop_today_router)
     app.include_router(analytics_router)
+    app.include_router(playbook_router)
     app.include_router(sourcing_router)
     app.include_router(supply_router)
     app.include_router(owner_router)

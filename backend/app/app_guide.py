@@ -43,6 +43,45 @@ FEATURES: tuple[Feature, ...] = (
         ("games", "perks", "scratch", "sets", "streak", "co-op", "reward"),
     ),
     Feature(
+        "payments",
+        "owner",
+        "Payments & rides",
+        "Make a UPI payment link or QR to share, or open a ride app for a delivery; the app "
+        "never handles money or books a rider.",
+        '"Payment link for 250 rupees" or "Open payments".',
+        "Grow: Payments & rides.",
+        ("payment", "pay", "upi", "link", "qr", "rider", "ride", "delivery"),
+    ),
+    Feature(
+        "supply",
+        "owner",
+        "Purchase orders",
+        "Draft a reorder from the forecast and keep supplier rules; each order is sent only "
+        "after you confirm it.",
+        '"Reorder milk for tomorrow" or "Show purchase orders".',
+        "Grow: Purchase orders.",
+        ("purchase", "order", "reorder", "supplier", "restock"),
+    ),
+    Feature(
+        "playbook",
+        "owner",
+        "What Chalkboard knows",
+        "Your goals, the numbers that matter, what to watch and your regulars, which shape "
+        "Today and Grow. Edit or remove anything.",
+        '"What do you know about my shop?".',
+        "You: Your data and privacy.",
+        ("playbook", "know", "goals", "regulars", "learned", "remember"),
+    ),
+    Feature(
+        "connect",
+        "owner",
+        "Connect your system",
+        "Import your menu or sales from a POS or ERP file; you check the mapped columns first.",
+        '"Connect my POS".',
+        "Shop: Connect your system.",
+        ("connect", "pos", "erp", "petpooja", "tally", "shopify", "import"),
+    ),
+    Feature(
         "customer_games",
         "customer",
         "Passport games",
