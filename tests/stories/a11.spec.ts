@@ -60,7 +60,8 @@ test('A11 · Tamil composer and navigation have room for script metrics', async 
   await shot(page, 7, 'A11-tamil-placeholder')
   await field.fill('வணக்கம் கடையின் விலைப்பட்டியல்')
   const labels = page
-    .getByRole('navigation', { name: 'Main' })
+    // The tab bar's landmark name is in the app language too.
+    .getByRole('navigation', { name: 'முதன்மை வழிசெலுத்தல்' })
     .locator('button p, button span.MuiTypography-root')
   expect(await labels.count()).toBeGreaterThan(0)
   for (const label of await labels.all()) {
