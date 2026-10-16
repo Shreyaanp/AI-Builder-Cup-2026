@@ -32,7 +32,8 @@ for (const hasPhone of [false, true]) {
       await page.reload()
       await page.getByRole('button', { name: 'Continue local preview' }).click()
     }
-    await page.getByRole('button', { name: 'Google', exact: true }).click()
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    await page.getByRole('button', { name: /^Get on Google/ }).click()
     await page.getByRole('button', { name: 'Step 3 of 4: Preview' }).click()
     const preview = page.getByRole('list', { name: 'Preview', exact: true })
     await expect(preview).toContainText('Directions · Preview')
@@ -45,10 +46,11 @@ for (const hasPhone of [false, true]) {
 test('A11 · Tamil composer and navigation have room for script metrics', async ({ page }) => {
   await localOnly(page)
   await enter(page)
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: 'You', exact: true }).click()
   await page.getByRole('combobox', { name: 'Language' }).click()
   await page.getByRole('option', { name: /தமிழ்/ }).click()
   await closeSheet(page)
+  await page.locator('[data-tour="nav-coach"]').click()
   await page.evaluate(() => document.fonts.ready)
   const field = page.locator('textarea[name="message"]')
   expect(

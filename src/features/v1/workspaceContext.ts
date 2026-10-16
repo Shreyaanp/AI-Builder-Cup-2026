@@ -1,8 +1,14 @@
 import { createContext, use } from 'react'
+import type { DetailStep } from './inChatCopy'
 import type { Api, Business, Me, Product, Proposal } from './api'
 
-export type Destination = 'coach' | 'shop' | 'google' | 'privacy'
-export type NewShopPhase = 'hero' | 'chat' | 'review'
+/** Bottom tabs, plus sub-pages that open from a tab: Google from Grow, Privacy from You. */
+export type Destination = 'coach' | 'shop' | 'grow' | 'you' | 'google' | 'privacy'
+export const PARENT_TAB: Partial<Record<Destination, Destination>> = {
+  google: 'grow',
+  privacy: 'you',
+}
+export type NewShopPhase = 'hero' | 'chat' | 'manual' | 'review'
 
 export interface Workspace {
   api: Api
@@ -57,7 +63,7 @@ export interface Workspace {
   /** The coach's "+" sheet (new chat, add shop or product, earlier chats); the top bar opens it. */
   coachActions: boolean
   setCoachActions: (open: boolean) => void
-  /** Opens the optional duplicate-owner check (Privacy). */
+  /** Opens the optional duplicate-owner check (You → Verify it's you). */
   faceOpen: boolean
   setFaceOpen: (open: boolean) => void
   editor: Editor
@@ -66,7 +72,7 @@ export interface Workspace {
 
 export type Editor =
   | { kind: 'none' }
-  | { kind: 'business'; fields: Business['fields'] | null }
+  | { kind: 'business'; fields: Business['fields'] | null; step?: DetailStep }
   | { kind: 'product'; product: Product | null }
 
 export const WorkspaceContext = createContext<Workspace | null>(null)

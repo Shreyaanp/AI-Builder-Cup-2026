@@ -28,12 +28,13 @@ def main() -> None:
         with opener.open(request, timeout=90) as response:
             return json.load(response)
 
-    assert call("/health", "GET")["models_ready"] is True
+    health = call("/health", "GET")
+    assert health["models_ready"] is True and health["stores_templates"] is False
     if args.capture:
         capture = args.capture.read_bytes()
         headers["Content-Type"] = "video/webm" if args.capture.suffix == ".webm" else "video/mp4"
     else:
-        # A generated image exercises real decoding/inference rejection without biometric data.
+        # A generated still image exercises real decoding and rejection without biometric data.
         image = io.BytesIO()
         Image.new("RGB", (320, 240), "gray").save(image, format="JPEG")
         capture = image.getvalue()
@@ -41,11 +42,17 @@ def main() -> None:
     assert len(capture) <= 8 * 1024 * 1024
     try:
         result = call("/evaluate", "POST", capture)
-        assert result["status"] == "review_pending"
-        assert result["reason"] not in {"worker_unavailable", "models_unavailable"}
+        assert result["status"] in {"live", "retry"}, result
+        assert result["reason"] != "models_unavailable"
+        # Only a live capture carries a template, and only to the main app.
+        assert ("template" in result) == (result["status"] == "live")
         if not args.capture:
-            assert result["reason"] == "capture_not_usable"
-        print("Evaluate result:", result["reason"])
+            assert result == {
+                "status": "retry",
+                "reason": "too_short",  # a still photo is one frame
+                "liveness": "not_evaluated",
+            }, result
+        print("Evaluate result:", result["status"], result["reason"])
     finally:
         assert call("/template", "DELETE") == {"status": "deleted"}
     print("Model readiness, evaluate and template deletion passed on loopback.")

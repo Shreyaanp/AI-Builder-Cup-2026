@@ -1,4 +1,4 @@
-import { createShop, editShopDetails } from './stories/support.js'
+import { createShop, detailsStep, editShopDetails } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -184,6 +184,7 @@ test('owner reward edits require exact review before saving and clearing', async
   // The shop comes from the new-shop flow; its reward is set in the details form.
   await createShop(page, 'name: Neighbourhood Kopi')
   await editShopDetails(page)
+  await detailsStep(page, 'Reward')
   await page.getByLabel('Reward text (optional)').fill('10th kopi free')
   await expect(page.getByLabel('Stamps needed')).toHaveValue('8')
   await page.getByLabel('Stamps needed').fill('10')
@@ -197,10 +198,11 @@ test('owner reward edits require exact review before saving and clearing', async
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(page.getByRole('button', { name: 'Choose shop: Neighbourhood Kopi' })).toBeVisible()
   while ((await page.getByRole('dialog').count()) > 0) await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
   await expect(page.getByRole('dialog')).toContainText('10th kopi free')
   await page.getByRole('button', { name: 'Edit details' }).click()
+  await detailsStep(page, 'Reward')
   await page.getByLabel('Reward text (optional)').fill('')
   await expect(page.getByLabel('Stamps needed')).toHaveValue('10')
   await page.getByLabel('Stamps needed').fill('6')

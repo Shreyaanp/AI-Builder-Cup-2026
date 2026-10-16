@@ -36,6 +36,15 @@ from .coordinator import (
 from .settings import Settings
 from .sourcing_offline import sourcing_call, sourcing_reply
 from .vendor_profile import allowed_facts, profile_for, vocabulary
+from .voice_tools import (
+    explain_app,
+    get_customer_messages,
+    open_screen,
+    prepare_customer_reply,
+    propose_stamp_card,
+    set_open_today,
+    suggest_starter_items,
+)
 
 # The owner's app language (BCP 47) for this turn; set by the runtime, read by the instruction.
 ui_language: ContextVar[str] = ContextVar("ui_language", default="en")
@@ -149,6 +158,24 @@ Voice
 - In a voice conversation you have exactly the same tools and must call them the same way:
   shop details, menu, prices, forecasts, suppliers and orders. Never say you can't access the
   menu, the shop or suppliers; call the tool. Keep spoken replies to one or two sentences.
+
+Everything by voice (the owner should never need to hunt for a button)
+- Today lives on Coach; Shop, Grow and You are the other owner tabs. open_screen supports
+  today, shop, grow, you, trust (optional check) and games (owner stamp and perk settings).
+  Opening trust never starts a check. Customer scratch cards, sets, streaks and co-op live
+  in their passport; explain_app describes them and games opens the owner's reward settings.
+- "We're closed today" / "open again today": set_open_today. Lasting hours: propose_business.
+- "Any messages?": get_customer_messages; "tell her we deliver after 6": prepare_customer_reply
+  (the owner taps Send).
+- Stamp card or loyalty reward: propose_stamp_card.
+- To go somewhere in the app (share my page or QR, close the day, Get on Google, connect my POS
+  or import sales, add a photo, my data or delete my data, plan tomorrow, sold out list, menu,
+  shop details), call open_screen. Deleting data always needs the owner's confirmation on
+  that page; never say anything was deleted.
+- "How do I…?", "what can you do?" or any question about this app: explain_app, and answer
+  only from its result.
+- "What else could I sell?" or a shop with an empty menu: suggest_starter_items, offer two or
+  three as questions, then propose only what the owner confirms, with their prices.
 
 When something goes wrong (self-repair)
 - If a tool returns status "invalid", fix exactly the listed fields from what the owner said and
@@ -750,9 +777,9 @@ Messages from the app (these are not the owner speaking)
 """
 
 
-def instruction(_: ReadonlyContext) -> str:
-    """ADK instruction provider: the coach rules, this turn's app-language fallback and a short
-    snapshot of the saved shop."""
+def turn_instruction(_: ReadonlyContext | None = None) -> str:
+    """The per-turn part of the instruction: app-language fallback, a short snapshot of the
+    saved shop and, for a new shop, its guided mode and draft."""
     ctx = current.get()
     guided = ""
     if ctx and ctx.new_shop:
@@ -762,9 +789,12 @@ def instruction(_: ReadonlyContext) -> str:
             + "\nUnverified new shop draft: "
             + json.dumps(draft, ensure_ascii=False)
         )
-    return (
-        f"{INSTRUCTION}\nApp language (fallback only): {ui_language.get()}{shop_snapshot()}{guided}"
-    )
+    return f"App language (fallback only): {ui_language.get()}{shop_snapshot()}{guided}"
+
+
+def instruction(context: ReadonlyContext) -> str:
+    """ADK instruction provider: the coach rules plus this turn's part."""
+    return f"{INSTRUCTION}\n{turn_instruction(context)}"
 
 
 # Most recent conversation turns a voice session starts with.
@@ -814,7 +844,10 @@ class LiveGemini(Gemini):
         return super().connect(llm_request)
 
 
-def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
+def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) -> LlmAgent:
+    """The coach agent. cached=True sends the long coach rules as a static instruction (system
+    instruction, identical every turn, so Vertex context caching can reuse it with the tool
+    schemas) and only the per-turn part as the dynamic instruction."""
     model: str | BaseLlm = OfflineCoachModel()
     if settings.coach_mode == "gemini":
         # Vertex authenticates with the runtime service account; no key leaves Google Cloud.
@@ -852,6 +885,13 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
             get_orders,
             message_supplier,
             cancel_order,
+            set_open_today,
+            propose_stamp_card,
+            get_customer_messages,
+            prepare_customer_reply,
+            open_screen,
+            explain_app,
+            suggest_starter_items,
         ]
         if settings.v1_enabled
         else [get_onboarding_requirements, prepare_business_draft]
@@ -859,7 +899,8 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
     return LlmAgent(
         name="business_coach",
         model=model,
-        instruction=instruction,
+        instruction=turn_instruction if cached else instruction,
+        static_instruction=INSTRUCTION if cached else None,
         tools=list(tools),
         # Thinking shares the output budget: a small cap left some turns completely empty.
         # Low temperature keeps tool calls for reported changes consistent.

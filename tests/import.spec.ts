@@ -8,7 +8,7 @@ async function shopWithoutMenu(page: Page) {
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
   await createShop(page, 'name: Ah Seng Kopi')
-  await page.getByRole('button', { name: 'My shop' }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Menu/ }).click()
   // The sheet's compact "Import" action opens its choices in the sheet (B28).
   await page.getByRole('button', { name: 'Import sales or menu (Excel, photo, notes)' }).click()
@@ -58,6 +58,7 @@ test('a POS sales export waits for confirmation then appears in the weekly recap
   )
   await summary.getByRole('button', { name: 'Save these sales' }).click()
   await expect(summary).not.toBeVisible()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /^Weekly recap/ }).click()
   const recap = page.getByRole('dialog', { name: 'Weekly recap' })
   await expect(recap.getByText('Written by AI', { exact: true })).toHaveCount(0)
@@ -67,7 +68,7 @@ test('a POS sales export waits for confirmation then appears in the weekly recap
   await recap.getByRole('button', { name: 'Close' }).click()
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await page.getByRole('button', { name: 'My shop' }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /^Weekly recap/ }).click()
   await expect(page.getByRole('dialog', { name: 'Weekly recap' })).toContainText('$99.00')
 })
@@ -77,11 +78,12 @@ test('daily menu confirmation is an owner switch and changes the customer freshn
 }) => {
   await shopWithoutMenu(page)
   await page.getByRole('dialog', { name: 'Menu' }).getByRole('button', { name: 'Close' }).click()
+  // My shop keeps the daily check for a shop without a menu yet (Today asks once items exist).
   await page.getByRole('button', { name: 'Something changed' }).click()
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('Today: ')
-  const coach = page.getByRole('region', { name: 'Coach', exact: true })
-  await coach.getByRole('button', { name: 'Yes, all good' }).click()
-  await expect(coach.getByText('Still the same menu today?')).not.toBeVisible()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Yes, all good' }).click()
+  await expect(page.getByText('Still the same menu today?')).not.toBeVisible()
   const businesses = await page.request.get('/api/v1/businesses').then((r) => r.json())
   const bid = businesses[0].id as string
   await page.request.post(`/api/v1/businesses/${bid}/share`, { data: { public: true } })

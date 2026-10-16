@@ -39,6 +39,7 @@ import { useLocale } from '../../../state/hooks'
 import { categoryArt } from '../../frontdoors/photos'
 import { fill, useGoogleCopy } from '../../google/strings'
 import { GALLERY_LIMIT, useGallery } from '../../google/useGallery'
+import { TrustCard } from '../../trust/TrustCard'
 
 const PHOTO_TYPES = 'image/jpeg,image/png,image/webp'
 const EASE = 'cubic-bezier(0.2, 0, 0, 1)' // M3 emphasized decelerate
@@ -293,6 +294,8 @@ export function GoogleScreen() {
             <Typography variant="bodyMedium" color="text.secondary">
               {g.googleNote}
             </Typography>
+            {/* Optional, before submitting to Google: customers see a verified owner. */}
+            <TrustCard compact />
             <Box
               sx={{
                 p: 4,

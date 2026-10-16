@@ -46,7 +46,7 @@ export function nextStep(ws: Workspace, t: Copy): Step {
       body: t.nextFieldBody,
       action: t.nextFieldAction,
       icon: <PencilLine size={20} />,
-      run: () => ws.openEditor({ kind: 'business', fields: shop.fields }),
+      run: () => ws.openEditor({ kind: 'business', fields: shop.fields, step: missing }),
     }
   if (!shop.public)
     return {
@@ -144,9 +144,14 @@ const FOOD =
   /food|kopi|coffee|cafe|café|tea|bakery|bake|cake|hawker|stall|restaurant|eat|kitchen|noodle|rice|bar|drink|juice|dessert|食|餐|咖啡|面包|茶|อาหาร|กาแฟ|ขนมปัง|ชา|カフェ|パン|コーヒー|レストラン|음식|카페|커피|식당|빵|makan|kedai kopi|warung|restoran|roti|minuman|nhà hàng|quán|cà phê|trà|bánh mì|kainan|karinderya|pagkain|kape|panaderya|tsaa|உணவு|காபி|தேநீர்|பேக்கரி|dhaba|mess|tiffin|chai|भोजन|खाना|चाय|ढाबा|मिठाई|टिफिन|नाश्ता/i
 const FOOD_ONLY: AskFact[] = ['halal', 'vegetarian_options', 'delivery', 'preorders']
 
+/** Food and drink shops (unknown type counts as food until the category says otherwise). */
+export function isFood(fields: { category?: string; name?: string }): boolean {
+  return !fields.category?.trim() || FOOD.test(`${fields.category} ${fields.name ?? ''}`)
+}
+
 export function missingFacts(fields: ShopFacts & { category?: string; name?: string }): AskFact[] {
   // Unknown type yet: ask everything; food questions drop once the category says otherwise.
-  const food = !fields.category?.trim() || FOOD.test(`${fields.category} ${fields.name ?? ''}`)
+  const food = isFood(fields)
   return ASK_ORDER.filter((key) => {
     if (!food && FOOD_ONLY.includes(key)) return false
     const value = fields[key]
