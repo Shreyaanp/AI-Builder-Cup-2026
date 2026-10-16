@@ -140,9 +140,7 @@ class FieldMapping(BaseModel):
 class ConnectorMapping(BaseModel):
     """Complete mapping from an external system export to the Chalkboard schema."""
 
-    source_label: str = Field(
-        description="E.g. Petpooja, Tally, Square, Shopify, SAP, Other"
-    )
+    source_label: str = Field(description="E.g. Petpooja, Tally, Square, Shopify, SAP, Other")
     kind: Literal["menu", "sales"]
     fields: list[FieldMapping]
     confirmed: bool = False
@@ -192,8 +190,15 @@ def parse_json_export(data: bytes) -> tuple[list[str], list[list[str]]]:
         records = [r for r in parsed if isinstance(r, dict)]
     elif isinstance(parsed, dict):
         candidates = (
-            "items", "products", "menu", "vouchers", "orders",
-            "sales", "records", "rows", "data",
+            "items",
+            "products",
+            "menu",
+            "vouchers",
+            "orders",
+            "sales",
+            "records",
+            "rows",
+            "data",
         )
         for candidate_key in candidates:
             val = parsed.get(candidate_key)
@@ -256,9 +261,8 @@ def parse_xml_export(data: bytes) -> tuple[list[str], list[list[str]]]:
             for child in v:
                 if len(child) == 0 and child.text and child.text.strip():
                     v_data[child.tag] = child.text.strip()
-            inv_entries = (
-                v.findall(".//ALLINVENTORYENTRIES.LIST")
-                or v.findall(".//INVENTORYENTRIES.LIST")
+            inv_entries = v.findall(".//ALLINVENTORYENTRIES.LIST") or v.findall(
+                ".//INVENTORYENTRIES.LIST"
             )
             if inv_entries:
                 for entry in inv_entries:
@@ -373,9 +377,7 @@ def _heuristic_connector_mapping(
         if best_idx is not None:
             used_indices.add(best_idx)
             samples = [
-                row[best_idx]
-                for row in sample[:5]
-                if best_idx < len(row) and row[best_idx].strip()
+                row[best_idx] for row in sample[:5] if best_idx < len(row) and row[best_idx].strip()
             ]
             fields.append(
                 FieldMapping(
@@ -402,8 +404,8 @@ def _heuristic_connector_mapping(
 CONNECTOR_PROMPT = (
     "You map columns from an external system export to the Chalkboard inventory schema. "
     "The source system is '{source_label}'. Given the column names and sample rows, decide "
-    "whether the data is a menu/price list (kind \"menu\") or a sales/transactions export "
-    "(kind \"sales\"), and map each source column to the best target field. Target fields: "
+    'whether the data is a menu/price list (kind "menu") or a sales/transactions export '
+    '(kind "sales"), and map each source column to the best target field. Target fields: '
     + ", ".join(TARGET_FIELDS)
     + ". Set confidence 0–1 for each mapping. Omit columns that don't match any target field."
 )
@@ -521,14 +523,16 @@ def compute_diff(
 
     for key, new_item in new_by_name.items():
         if key not in current_by_name:
-            added.append({
-                "action": "added",
-                "name": new_item["name"],
-                "price": new_item.get("price"),
-                "unit": new_item.get("unit"),
-                "stock": new_item.get("stock"),
-                "category": new_item.get("category"),
-            })
+            added.append(
+                {
+                    "action": "added",
+                    "name": new_item["name"],
+                    "price": new_item.get("price"),
+                    "unit": new_item.get("unit"),
+                    "stock": new_item.get("stock"),
+                    "category": new_item.get("category"),
+                }
+            )
         else:
             old_item = current_by_name[key]
             diffs: dict[str, Any] = {}
@@ -548,17 +552,21 @@ def compute_diff(
                     diffs[field] = {"old": old_val, "new": new_val}
 
             if diffs:
-                updated.append({
-                    "action": "updated",
-                    "name": new_item["name"],
-                    "fields": diffs,
-                })
+                updated.append(
+                    {
+                        "action": "updated",
+                        "name": new_item["name"],
+                        "fields": diffs,
+                    }
+                )
 
     for key, old_item in current_by_name.items():
         if key not in new_by_name:
-            removed.append({
-                "action": "removed",
-                "name": old_item["name"],
-            })
+            removed.append(
+                {
+                    "action": "removed",
+                    "name": old_item["name"],
+                }
+            )
 
     return {"added": added, "updated": updated, "removed": removed}

@@ -296,14 +296,9 @@ def test_firestore_connector_store_unit() -> None:
     fs_store.businesses.document.return_value.collection.return_value.stream.return_value = [
         mock_doc
     ]
-    items = fs_store.list_connector_mappings(
-        "uid1", "00000000-0000-0000-0000-000000000001"
-    )
+    items = fs_store.list_connector_mappings("uid1", "00000000-0000-0000-0000-000000000001")
     assert len(items) == 1
 
     # Test sync record
-    fs_store.record_connector_sync(
-        "uid1", "00000000-0000-0000-0000-000000000001", "Petpooja"
-    )
+    fs_store.record_connector_sync("uid1", "00000000-0000-0000-0000-000000000001", "Petpooja")
     doc_ref.update.assert_called_once()
-

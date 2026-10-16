@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Box, LinearProgress, Stack, Typography, useTheme } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
-import { CalendarClock, Globe, HeartHandshake, Stamp } from 'lucide-react'
+import { CalendarClock, Globe, HeartHandshake, IndianRupee, Stamp } from 'lucide-react'
 import type { components } from '../../../api/generated'
 import { CloseDayTile } from '../../closeday/CloseDay'
+import { openOwnerFeature } from '../../owner-tools/entry'
+import { useToolCopy } from '../../owner-tools/copy'
 import { PrepPlanTile } from '../../forecast/PrepPlan'
 import { useCopy as usePlanCopy } from '../../planning/strings'
 import { RecapTile } from '../../sales/ShopInsights'
@@ -42,6 +44,7 @@ function GrowTiles() {
   const t = useCopy()
   const tabs = useTabsCopy()
   const plan = usePlanCopy()
+  const tools = useToolCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   const [planOpen, setPlanOpen] = useState(false)
@@ -67,6 +70,14 @@ function GrowTiles() {
           onClick={() => setPlanOpen(true)}
         />
         <RescueTile />
+        <Tile
+          icon={<IndianRupee size={20} />}
+          label={tools.payTitle}
+          value={tools.create}
+          onClick={() => openOwnerFeature('payments')}
+        >
+          <Supporting>{tools.riderTitle}</Supporting>
+        </Tile>
         <Tile
           span={2}
           tour="google"

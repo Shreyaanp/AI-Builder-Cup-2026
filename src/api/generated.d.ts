@@ -2833,6 +2833,13 @@ export interface components {
             /** Payment Methods */
             payment_methods?: string[];
             /**
+             * Upi Id
+             * @default
+             */
+            upi_id: string;
+            /** Rider Providers */
+            rider_providers?: ("rapido" | "uber" | "porter")[];
+            /**
              * Busy Hours
              * @default
              */
@@ -5585,7 +5592,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "purchase_order" | "supply_rules" | "chart" | "action";
+            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "purchase_order" | "supply_rules" | "chart" | "action" | "payment_link";
             /**
              * Session Id
              * @default null
