@@ -269,18 +269,32 @@ def test_ai_reader_schema_is_accepted_by_gemini_and_flags_are_merged(monkeypatch
 
     async def fake(text, po, today):
         doc = sample_doc("ORDRSP")
-        return doc, [supply_docs.flag("line:20:quantity", "quantity", "10", ["10", "8"], 20)]
+        return doc, [
+            supply_docs.flag("line:20:quantity", "quantity", "10", ["10", "8"], 20),
+            supply_docs.flag("line:10:unit", "unit", "KGM", ["kg"], 10),
+            supply_docs.flag("terms_days", "terms", "NT07", ["7"], None),
+        ]
 
     monkeypatch.setattr(translator, "_gemini", fake)
     po = {"lines": [{"line": 10, "item": "Wheat flour", "supplier_code": "MAT-100234"}]}
     doc, flags, reader, _ = asyncio.run(translator.read("anything at all", po, date.today()))
     assert reader == "gemini" and any(f.field == "line:20:quantity" for f in flags)
+    # KGM is certainly kg and NT07 seven days net: no tap needed.
+    assert not any(f.field in {"line:10:unit", "terms_days"} for f in flags)
 
     async def broken(text, po, today):
         raise RuntimeError("provider down")
 
     monkeypatch.setattr(translator, "_gemini", broken)
     xml = supply_docs.render(sample_doc("ORDRSP"), "idoc")
+    doc, flags, reader, fmt = asyncio.run(translator.read(xml, po, date.today()))
+    assert (reader, fmt) == ("parser", "idoc") and doc.kind == "ORDRSP"
+
+    async def slow(text, po, today):
+        await asyncio.sleep(5)
+
+    monkeypatch.setattr(translator, "_gemini", slow)
+    monkeypatch.setattr(supply_docs, "AI_READ_SECONDS", 0.05)
     doc, flags, reader, fmt = asyncio.run(translator.read(xml, po, date.today()))
     assert (reader, fmt) == ("parser", "idoc") and doc.kind == "ORDRSP"
 

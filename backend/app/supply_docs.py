@@ -19,6 +19,7 @@ and the fallback), and the same validators flag uncertain units, dates and item 
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import json
@@ -43,6 +44,8 @@ LineStatus = Literal["accepted", "changed", "backordered", "substituted", "rejec
 KINDS: tuple[Kind, ...] = ("ORDERS", "ORDRSP", "DESADV", "INVOIC")
 FORMATS: tuple[Format, ...] = ("idoc", "csv", "text", "json")
 MAX_TEXT = 60_000
+# A slow model read falls back to the parsers instead of holding the request.
+AI_READ_SECONDS = 40
 
 # Canonical units and their UN/ECE Recommendation 20 codes, which SAP IDocs carry (MENEE/VRKME).
 ISO_UNITS = {
@@ -955,7 +958,16 @@ def review(
     model_flags: list[Flag] | None = None,
 ) -> tuple[SupplyDoc, list[Flag]]:
     """Normalise units and map lines to the PO; flag anything a person should confirm."""
-    flags = list(model_flags or [])
+    # The model is unsure of standard codes (KGM, NT07) that the tables read for certain.
+    flags = [
+        item
+        for item in model_flags or []
+        if not (item.reason == "unit" and unit_from_code(item.value))
+        and not (
+            item.reason == "terms"
+            and (item.value in TERMS_DAYS or re.fullmatch(r"NT\d{2}", item.value))
+        )
+    ]
     po_lines = (po or {}).get("lines", [])
     names = [str(line["item"]) for line in po_lines]
     for line in doc.lines:
@@ -1099,6 +1111,7 @@ class Reading(BaseModel):
 READ_PROMPT = """You are the document translator of a small-shop supply-chain app. Map the
 supplier's document (SAP IDoc XML, CSV, a typed chat message, or anything else) to the canonical
 fields. Copy units and codes exactly as written; never convert quantities. Dates as YYYY-MM-DD.
+Numbers as the document writes them, at most four decimals (62.00, never 62.0000000001).
 Use the purchase order for context (which lines exist, codes, units, dates) but report what the
 DOCUMENT says. Status per line: accepted, changed (quantity/price/date differs), backordered
 (part now, the balance later), substituted (a different item replaces the ordered one) or
@@ -1127,11 +1140,13 @@ class DocumentTranslator:
         fmt = detect(text)
         if self.live:
             try:
-                doc, model_flags = await self._gemini(text, po, today)
+                doc, model_flags = await asyncio.wait_for(
+                    self._gemini(text, po, today), timeout=AI_READ_SECONDS
+                )
                 doc, flags = review(doc, po, model_flags=model_flags)
                 return doc, flags, "gemini", fmt
-            except Exception:
-                log.warning("supply_document_ai_read_failed", format=fmt)
+            except Exception as exc:
+                log.warning("supply_document_ai_read_failed", format=fmt, error=type(exc).__name__)
         doc, fmt, ambiguous = parse(text, today)
         if doc.currency == "XXX" and po:
             doc.currency = str(po.get("currency", "XXX"))
@@ -1176,7 +1191,10 @@ class DocumentTranslator:
                 response_mime_type="application/json",
                 response_json_schema=gemini_schema(Reading),
                 temperature=0.0,
-                max_output_tokens=4000,
+                # Thinking shares the output budget; unbounded, it cut the JSON short. Reading a
+                # document is a mapping task: low thinking keeps it to seconds.
+                max_output_tokens=6000,
+                thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
             ),
         )
         reading = parse_reply(Reading, response)
