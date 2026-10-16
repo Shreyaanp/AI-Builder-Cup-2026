@@ -176,7 +176,7 @@ export function TourHost() {
                 variant="contained"
                 onClick={() => {
                   close()
-                  ws.openEditor({ kind: 'business', fields: null })
+                  ws.startNewShop()
                 }}
               >
                 {t.startMine}
