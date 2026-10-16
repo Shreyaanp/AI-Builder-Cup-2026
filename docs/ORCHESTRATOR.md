@@ -54,3 +54,11 @@ You coordinate workers; you write NO feature code. Read docs/TODO.md (what is le
 - Last regression on main: 172/176 (2 load timeouts + Tamil keyboard focus + share switch, queued to Codex).
 - Design canvas for the owner tabs/Today: the owner's design canvas (private link)
 - Run your own loop every ~30 min (e.g. `/loop`), and a regression after each code merge before releasing.
+
+## Never start duplicates (lesson, 16 Oct 07:45)
+
+A headless log having text does NOT mean the session exited (it prints progress lines). Before relaunching
+ANY worker, check the process is gone:
+`Get-CimInstance Win32_Process -Filter "Name='devtool.exe'" | % { "$($_.ProcessId) $($_.CreationDate) $($_.CommandLine)" }`
+(the command line contains the brief name, e.g. task-TODAY-PAGE.md). Relaunch only if no process for that
+brief exists. One session per worktree, always. Same for codex.exe and agy.exe.
