@@ -17,6 +17,8 @@ import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
 import { formatPrice } from '../v1/format'
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 
 import type { CustomerCopy } from './customerCopy'
 
@@ -59,6 +61,7 @@ export function CustomerQuestions({
   copy: CustomerCopy
 }) {
   const locale = useLocale()
+  const shopCopy = useShopCopy()
   const roles = useTheme().material
   const [question, setQuestion] = useState('')
   const [result, setAnswer] = useState<{ answer: Answer; facts: string } | null>(null)
@@ -176,7 +179,7 @@ export function CustomerQuestions({
             </Typography>
             {answer.price != null && (
               <Typography variant="bodyLarge" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {formatPrice(answer.price, currency)} / {answer.unit}
+                {formatPrice(answer.price, currency)} / {unitLabel(answer.unit ?? '', shopCopy)}
               </Typography>
             )}
             <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
