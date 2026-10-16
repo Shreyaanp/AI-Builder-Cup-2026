@@ -3,8 +3,11 @@ from collections.abc import AsyncIterator
 from uuid import uuid4
 
 import anyio
+import structlog
 from fastapi import HTTPException
+from google.adk.agents.context_cache_config import ContextCacheConfig
 from google.adk.agents.run_config import RunConfig, StreamingMode
+from google.adk.apps.app import App
 from google.adk.events import Event
 from google.adk.runners import Runner
 from google.adk.sessions import BaseSessionService
@@ -15,11 +18,26 @@ from .auth import Principal
 from .charts import CHART_TOOLS, chart_card
 from .contracts import StreamEvent
 from .coordinator import current, ui_currency
+from .instant import InstantResult, IntentIndex, route
+from .latency import FirstOutput
 from .settings import Settings
+
+log = structlog.get_logger()
 
 APP_NAME = "ogoogle_ai"
 # Tools whose results reach the chat as supplier or order cards.
 SOURCING_TOOLS = {"find_suppliers", "prepare_order", "message_supplier", "cancel_order"}
+# Tools whose result is an app action card: open a screen, or a prepared customer reply.
+ACTION_TOOLS = {"open_screen", "prepare_customer_reply"}
+# Tools that prepare a sealed proposal for the review dialog.
+PROPOSAL_TOOLS = {
+    "propose_business",
+    "propose_customer_facts",
+    "propose_products",
+    "request_registration",
+    "set_open_today",
+    "propose_stamp_card",
+}
 
 
 def public_events(event: Event) -> list[StreamEvent]:
@@ -82,12 +100,16 @@ def public_events(event: Event) -> list[StreamEvent]:
                             kind="suppliers" if card[0] == "suppliers" else "order", data=card[1]
                         )
                     )
-            if response and response.name in {
-                "propose_business",
-                "propose_customer_facts",
-                "propose_products",
-                "request_registration",
-            }:
+            if response and response.name in ACTION_TOOLS:
+                merchant = current.get()
+                card = (
+                    merchant.cards.get(str((response.response or {}).get("card_id")))
+                    if merchant
+                    else None
+                )
+                if card:
+                    output.append(StreamEvent(kind="action", data=card[1]))
+            if response and response.name in PROPOSAL_TOOLS:
                 payload = response.response or {}
                 # The model sees only the id; the exact sealed proposal goes to the review UI.
                 merchant = current.get()
@@ -106,13 +128,61 @@ MAX_CONVERSATIONS = 20
 MAX_EVENTS = 400
 
 
+def uses_context_cache(settings: Settings) -> bool:
+    # Explicit caches are a Vertex feature; the API-key backend and the offline fixture skip it.
+    return (
+        settings.context_cache_enabled
+        and settings.coach_mode == "gemini"
+        and settings.gemini_backend == "vertex"
+    )
+
+
+def text_runner(settings: Settings, sessions: BaseSessionService) -> Runner:
+    """The text coach. With context caching on, the coach rules + tool schemas are cached on
+    Vertex (ADK creates, reuses and refreshes the cache; a failed cache call falls back to an
+    ordinary request)."""
+    if not uses_context_cache(settings):
+        return Runner(app_name=APP_NAME, agent=make_agent(settings), session_service=sessions)
+    try:
+        app = App(
+            name=APP_NAME,
+            root_agent=make_agent(settings, cached=True),
+            context_cache_config=ContextCacheConfig(
+                cache_intervals=20, ttl_seconds=settings.context_cache_ttl_seconds
+            ),
+        )
+        return Runner(app=app, session_service=sessions)
+    except Exception:  # noqa: BLE001 - caching is an optimisation; never block the coach
+        log.warning("context_cache_unavailable")
+        return Runner(app_name=APP_NAME, agent=make_agent(settings), session_service=sessions)
+
+
+def intent_index(settings: Settings) -> IntentIndex | None:
+    """Vertex embeddings of known intents for the instant path, when switched on."""
+    if not (
+        settings.instant_path_enabled
+        and settings.instant_embeddings
+        and settings.coach_mode == "gemini"
+        and settings.gemini_backend == "vertex"
+    ):
+        return None
+    from .memory_vectors import gemini_embedder
+
+    return IntentIndex(
+        gemini_embedder(
+            settings.google_cloud_project,
+            settings.google_embedding_location,
+            settings.embedding_model,
+        )
+    )
+
+
 class CoachRuntime:
     def __init__(self, settings: Settings, sessions: BaseSessionService) -> None:
         self.settings = settings
         self.sessions = sessions
-        self.text_runner = Runner(
-            app_name=APP_NAME, agent=make_agent(settings), session_service=sessions
-        )
+        self.text_runner = text_runner(settings, sessions)
+        self.instant_index = intent_index(settings)
         self.live_runner = Runner(
             app_name=APP_NAME, agent=make_agent(settings, live=True), session_service=sessions
         )
@@ -174,6 +244,16 @@ class CoachRuntime:
             # Socket text controls exercise the same offline tools as HTTP turns.
             merchant.message = text
         ui_language.set(language)
+        timer = FirstOutput("text_agent")
+        if self.settings.instant_path_enabled and merchant:
+            instant = await self.instant(principal, session_id, text, currency)
+            if instant:
+                for event in instant.events:
+                    yield event
+                yield StreamEvent(kind="reply", text=instant.reply)
+                timer.mark("text_instant")
+                yield StreamEvent(kind="turn_complete", session_id=session_id)
+                return
         run = self.text_runner.run_async(
             user_id=principal.uid,
             session_id=session_id,
@@ -211,6 +291,8 @@ class CoachRuntime:
                     break
                 if isinstance(item, Exception):
                     raise item
+                if item.kind in {"delta", "reply", "proposal", "chart", "action", "suppliers"}:
+                    timer.mark()
                 yield item
                 if item.kind == "error":
                     return
@@ -221,3 +303,37 @@ class CoachRuntime:
                 async with asyncio.timeout(5):
                     await asyncio.gather(task, return_exceptions=True)
         yield StreamEvent(kind="turn_complete", session_id=session_id)
+
+    async def instant(
+        self, principal: Principal, session_id: str, text: str, currency: str | None
+    ) -> InstantResult | None:
+        """Answer a common request without the model and keep it in the conversation history,
+        so the coach sees it on the next turn. Any failure falls back to the model."""
+        currency_token = ui_currency.set(currency)
+        try:
+            session = await self.sessions.get_session(
+                app_name=APP_NAME, user_id=principal.uid, session_id=session_id
+            )
+            result = await route(text, current.get(), self.instant_index) if session else None
+            if session is None or result is None:
+                return None
+            invocation = f"e-{uuid4()}"
+            for author, role, words in (
+                ("user", "user", text),
+                ("business_coach", "model", result.reply),
+            ):
+                await self.sessions.append_event(
+                    session,
+                    Event(
+                        invocation_id=invocation,
+                        author=author,
+                        content=types.Content(role=role, parts=[types.Part(text=words)]),
+                    ),
+                )
+            log.info("instant_route", intent=result.intent)
+            return result
+        except Exception:  # noqa: BLE001 - the coach model is the fallback
+            log.warning("instant_route_failed", exc_info=True)
+            return None
+        finally:
+            ui_currency.reset(currency_token)

@@ -22,7 +22,8 @@ async function shop(page: Page) {
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).tap()
   await createShop(page, 'name: Katong Kopi; category: Kopi shop; location: Katong, Singapore')
-  await page.getByRole('button', { name: 'Google', exact: true }).tap()
+  await page.getByRole('button', { name: 'Grow', exact: true }).tap()
+  await page.getByRole('button', { name: /^Get on Google/ }).tap()
 }
 
 test('B37: details, real photo upload, profile preview and the honest Google step', async ({

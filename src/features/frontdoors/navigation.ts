@@ -65,3 +65,11 @@ export function customerBack(event: MouseEvent<HTMLElement>) {
   }
   customerNavigate(event)
 }
+
+/** Navigate in the customer app without a click (a spoken command), keeping back/forward. */
+export function goTo(path: string) {
+  history.replaceState({ ...(history.state as object | null), scrollY: window.scrollY }, '')
+  history.pushState({ inApp: true, scrollY: 0 }, '', path)
+  dispatchEvent(new PopStateEvent('popstate'))
+  window.scrollTo({ top: 0, behavior: 'instant' })
+}

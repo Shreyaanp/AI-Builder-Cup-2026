@@ -7,8 +7,11 @@ Implementation is prepared locally. No cloud resources, IAM, secrets or deployme
 `backend/face_worker.py` accepts an owner-scoped bearer-authenticated `POST /evaluate`
 with up to 8 MiB of WebM/MP4, at most 8.2 seconds / 480 frames, dimensions 100–1280
 by 100–720. It samples about twice per second, requires one face, aligns landmarks,
-checks prompted head movement and computes a 256-dimensional candidate template.
-`DELETE /template` deletes that owner's local template. Raw captures stay in memory.
+checks prompted head movement and an anti-spoof score, and returns a 256-dimensional
+template only for a live capture (otherwise a typed retry reason). The worker stores
+nothing: the main app seals each template (AES-256-GCM, `FACE_TEMPLATE_KEY`) in the shared
+document store and compares there. `DELETE /template` is a no-op kept for older revisions.
+Raw captures stay in memory.
 
 The image fetches FP32 Open Model Zoo detection, landmarks, head-pose and
 reidentification models plus `anti-spoof-mn3.onnx` from publisher release `2023.3.0`.
@@ -126,10 +129,13 @@ must confirm current [Cloud Run pricing](https://cloud.google.com/run/pricing) a
 [Secret Manager pricing](https://cloud.google.com/secret-manager/pricing). Min 0 and
 max 2 do not enforce the existing ₹500 total cash ceiling.
 
-**Local Qdrant is ephemeral and per instance.** Templates disappear on replacement
-and matching/deletion across two instances is not reliable. A deletion on one instance
-cannot guarantee deletion on another. This packaging does not add durable biometric
-storage or claim reliable cross-instance template recovery; that requires an approved
-shared-store/retention design before real biometric enrollment. Neither an image build
-nor this worker makes liveness scores calibrated. Memory, cold-start latency, real
-video inference and the Cloud Run IAM/header path remain unvalidated.
+**The worker is stateless.** Templates live sealed in the main app's shared store, so every
+instance compares against one gallery and "Delete face data" removes the template, status and
+review items in one place. A match only opens a human review; it never blocks or changes a
+shop. Liveness scores are not calibrated on a real population.
+
+Checked 2026-10-16 against the live `ogoogle-face`: an anonymous call is refused by Cloud Run
+(403), and a call with a Google ID token passes Cloud Run IAM and reaches the worker, which
+then requires its shared bearer (401). Both layers are in force. A full live `/evaluate` with
+the shared bearer and a real capture was not run from a laptop (the bearer stays in Secret
+Manager).

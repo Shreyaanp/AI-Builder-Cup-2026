@@ -37,6 +37,15 @@ class Settings(BaseSettings):
     recall_path: str = "data/conversation-vectors"
     face_worker_url: str = "http://127.0.0.1:3401"
     face_worker_token: SecretStr = SecretStr("")
+    # "worker": the private face worker decides liveness and returns a template. "fixture"
+    # (local preview and tests only): every capture passes and the face is the owner's own,
+    # or the X-Face-Fixture name a browser test sends, so duplicate detection can be shown.
+    face_mode: Literal["worker", "fixture"] = "worker"
+    # Encrypts stored face templates (AES-256-GCM). Empty: derived from the worker token.
+    face_template_key: SecretStr = SecretStr("")
+    # Firebase UIDs who see the trust review queue (duplicate faces, listing flags).
+    # ["*"] (everyone) is for the local preview only.
+    trust_admins: list[str] = []
     firebase_web_api_key: str = ""
     firebase_web_app_id: str = ""
     firebase_auth_domain: str = ""
@@ -56,6 +65,14 @@ class Settings(BaseSettings):
     # Gemini Live (voice) models are regional on Vertex; `global` returns "model not found".
     google_live_location: str = "us-central1"
     google_embedding_location: str = "global"
+    # Instant path: common requests answered by rules before any model call; embeddings of known
+    # intents (Vertex) catch paraphrases of read-only and navigation requests when enabled.
+    instant_path_enabled: bool = True
+    instant_embeddings: bool = False
+    # Vertex context caching of the coach rules + tool schemas (text coach). Off by default
+    # until measured in production; without it the coach runs exactly as before.
+    context_cache_enabled: bool = False
+    context_cache_ttl_seconds: int = Field(default=1800, ge=60, le=86_400)
     max_turn_seconds: int = Field(default=30, ge=1, le=120)
     max_voice_seconds: int = Field(default=120, ge=1, le=600)
     max_active_runs: int = Field(default=8, ge=1, le=32)
@@ -107,6 +124,8 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires dedicated Firebase browser configuration.")
             if os.getenv("FIRESTORE_EMULATOR_HOST") or os.getenv("FIREBASE_AUTH_EMULATOR_HOST"):
                 raise ValueError("Production cannot use local identity or database emulators.")
+            if self.face_mode == "fixture" or "*" in self.trust_admins:
+                raise ValueError("Production cannot use the face fixture or open trust reviews.")
             if not self.allowed_origins or any(
                 not url.startswith("https://") for url in self.allowed_origins
             ):

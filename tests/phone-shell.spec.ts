@@ -1,4 +1,4 @@
-import { createShop } from './stories/support.js'
+import { createShop, detailsStep } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -32,6 +32,12 @@ async function axe(page: Page) {
   expect(result.violations.map((v) => [v.id, v.nodes.map((n) => [n.target, n.html])])).toEqual([])
 }
 
+/** My shop → Shop details (the Coach tab's first view is Today, without a shop card). */
+async function openDetails(page: Page) {
+  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
+  await page.getByRole('button', { name: /^Shop details/ }).tap()
+}
+
 async function saveShop(page: Page) {
   await createShop(page, 'name: Katong Kopi; location: Katong, Singapore')
   await expect(page.getByRole('button', { name: 'Choose shop: Katong Kopi' })).toBeVisible()
@@ -42,7 +48,7 @@ test('B1: a bottom sheet sits on the bottom edge, full width, with its actions o
 }) => {
   await enter(page)
   await saveShop(page)
-  await page.getByRole('button', { name: 'Shop details: Katong Kopi' }).first().tap()
+  await openDetails(page)
   const sheet = page.getByRole('dialog', { name: 'Katong Kopi' })
   await expect(sheet).toBeVisible()
   // Wait for the slide-in to finish, then measure.
@@ -69,9 +75,9 @@ test('B2: the navigation stays after "Something changed" and returns when the ke
   await saveShop(page)
   const nav = page.getByRole('navigation', { name: 'Main' })
   const composer = page.getByLabel('Message', { exact: true })
-  await page.getByRole('button', { name: 'Something changed' }).tap()
+  await composer.tap()
+  await composer.fill('Today: ')
   await expect(composer).toBeFocused()
-  await expect(composer).toHaveValue('Today: ')
   await expect(nav).toBeInViewport()
   // The composer sits on top of the navigation, not under it.
   const form = (await page.locator('#coach form').boundingBox())!
@@ -112,17 +118,17 @@ test('B3: the composer is one line (even with a long translated hint), grows for
   const height = async () => Math.round((await form.boundingBox())!.height)
   expect(await height()).toBe(56)
   // Tamil has the longest hint; it used to make the empty composer several lines tall.
-  await page.getByRole('button', { name: 'Settings' }).tap()
+  await page.getByRole('button', { name: 'You', exact: true }).tap()
   await page.getByRole('combobox', { name: 'Language' }).tap()
   await page.getByRole('option', { name: 'தமிழ்' }).tap()
-  await page.keyboard.press('Escape')
+  await page.locator('[data-tour="nav-coach"]').tap()
   await expect(field).toHaveAttribute('placeholder', /கடை/)
   // Tamil needs a 32px line box plus padding for ascenders and descenders.
   expect(await height()).toBe(64)
-  await page.getByRole('button', { name: 'அமைப்புகள்' }).tap()
+  await page.locator('[data-tour="nav-you"]').tap()
   await page.getByRole('combobox').tap()
   await page.getByRole('option', { name: 'English', exact: true }).tap()
-  await page.keyboard.press('Escape')
+  await page.locator('[data-tour="nav-coach"]').tap()
   await expect(field).toHaveAttribute('placeholder', 'Tell me about your shop…')
   // Multi-line text grows the field a line at a time; clearing it goes back to one line.
   await field.fill('Kopi\nTeh\nMilo')
@@ -165,19 +171,18 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
 }) => {
   await enter(page)
   await saveShop(page)
-  const composer = page.getByLabel('Message', { exact: true })
   const prompt = page.getByRole('dialog', { name: 'Discard changes?' })
 
   // A sheet: Back closes it and the owner stays in the app.
-  await page.getByRole('button', { name: 'Shop details: Katong Kopi' }).first().tap()
+  await openDetails(page)
   const sheet = page.getByRole('dialog', { name: 'Katong Kopi' })
   await expect(sheet).toBeVisible()
   await page.goBack()
   await expect(sheet).toBeHidden()
-  await expect(composer).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Shop details/ })).toBeVisible()
 
   // A sheet that hands over to a form: Back closes the form, then nothing is left open.
-  await page.getByRole('button', { name: 'Shop details: Katong Kopi' }).first().tap()
+  await openDetails(page)
   await sheet.getByRole('button', { name: 'Edit details' }).tap()
   const form = page.getByRole('dialog', { name: 'Edit details' })
   await expect(form).toBeVisible()
@@ -186,8 +191,9 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   // Typed changes: Back asks first. Keep editing keeps them; Discard closes the form.
-  await page.getByRole('button', { name: 'Shop details: Katong Kopi' }).first().tap()
+  await openDetails(page)
   await sheet.getByRole('button', { name: 'Edit details' }).tap()
+  await detailsStep(page, 'Hours')
   await form.getByLabel('Hours note (optional)').fill('7am–3pm')
   await page.goBack()
   await expect(prompt).toBeVisible()
@@ -201,8 +207,9 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   // An open review is unsaved: Back asks, Discard closes it without saving.
-  await page.getByRole('button', { name: 'Shop details: Katong Kopi' }).first().tap()
+  await openDetails(page)
   await sheet.getByRole('button', { name: 'Edit details' }).tap()
+  await detailsStep(page, 'Hours')
   await form.getByLabel('Hours note (optional)').fill('7am–3pm')
   await form.getByRole('button', { name: 'Review', exact: true }).tap()
   const review = page.getByRole('dialog', { name: 'Check before saving' })
@@ -214,6 +221,8 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   await expect(page.getByText('7am–3pm')).toHaveCount(0)
 
   // A typed draft: Back asks, and leaving the page asks the browser to confirm.
+  await page.getByRole('button', { name: 'Coach', exact: true }).tap()
+  const composer = page.getByLabel('Message', { exact: true })
   await composer.fill('Kopi is $1.80 today')
   await page.goBack()
   await prompt.getByRole('button', { name: 'Keep editing' }).tap()
@@ -228,7 +237,7 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   expect(await unload).toBe('beforeunload')
 })
 
-test('B5: no "What’s new at …" line; + (new shop) sits top-right next to settings', async ({
+test('B5: no "What’s new at …" line; + (new shop) sits top-right; settings live on You', async ({
   page,
 }) => {
   await enter(page)
@@ -238,14 +247,11 @@ test('B5: no "What’s new at …" line; + (new shop) sits top-right next to set
   // "+" opens the new-shop flow directly; new conversation sits just before it.
   await expect(header.getByRole('button', { name: 'New conversation', exact: true })).toBeVisible()
   const plus = header.getByRole('button', { name: 'Add shop details', exact: true })
-  const settings = header.getByRole('button', { name: 'Settings', exact: true })
   await expect(plus).toBeVisible()
   const a = (await plus.boundingBox())!
-  const b = (await settings.boundingBox())!
-  // Same row, directly left of settings, at the right edge of the bar.
-  expect(Math.abs(a.y - b.y)).toBeLessThanOrEqual(1)
-  expect(b.x - (a.x + a.width)).toBeLessThanOrEqual(8)
-  expect(b.x + b.width).toBeGreaterThan(390 - 24)
+  // At the right edge of the bar; the settings gear moved to the You tab.
+  expect(a.x + a.width).toBeGreaterThan(390 - 24)
+  await expect(header.getByRole('button', { name: 'Settings', exact: true })).toHaveCount(0)
   await expect(page.locator('main').getByRole('button', { name: 'New conversation' })).toHaveCount(
     0,
   )
@@ -259,53 +265,75 @@ test('B5: no "What’s new at …" line; + (new shop) sits top-right next to set
   await expect(page.getByRole('dialog', { name: 'New conversation' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
   // New conversation belongs to the coach; "+" (a new shop) is on every screen.
-  await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
   await expect(newChat).toHaveCount(0)
   await expect(plus).toBeVisible()
 })
 
-test('B6: the coach fits the phone without scrolling, suggestions sit under the shop card, and finished setup is one chip', async ({
+test('B6: Today fits the phone without scrolling, items leave when done, and finished setup leaves no bar', async ({
   page,
 }) => {
   await enter(page)
   await saveShop(page)
   const fits = () =>
     page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)
-  const suggestions = page.getByRole('button', { name: 'Share my customer page' })
-  const freshness = page.getByRole('heading', { name: 'Still the same menu today?' })
-  await expect(suggestions).toBeInViewport()
-  await expect(freshness).toBeVisible()
+  const today = page.getByTestId('today')
+  await expect(today.getByRole('heading', { level: 1 })).toBeVisible()
+  // Day one: one warm start with the next step, above the composer.
+  const start = page.getByTestId('today-day-one')
+  await expect(start.getByRole('button', { name: 'Scan' })).toBeInViewport()
   expect(await fits()).toBe(true)
-  // Suggestions come straight after the shop card, above the attention card.
-  const shopCard = (await page.getByRole('region', { name: 'Katong Kopi' }).boundingBox())!
-  const chip = (await suggestions.boundingBox())!
-  expect(chip.y).toBeGreaterThan(shopCard.y + shopCard.height - 1)
-  expect(chip.y).toBeLessThan((await freshness.boundingBox())!.y)
-  // Everything clears the composer.
   const composer = (await page.locator('#coach form').boundingBox())!
-  const attention = (await page.getByTestId('coach-attention').boundingBox())!
-  expect(attention.y + attention.height).toBeLessThanOrEqual(composer.y)
-  // One attention card at a time: once the menu is confirmed, the next one takes its place.
-  await expect(page.getByRole('region', { name: /^Customers ask/ })).toBeHidden()
-  await page.getByRole('button', { name: 'Yes, all good' }).tap()
-  await expect(freshness).toHaveCount(0)
-  await expect(page.getByRole('region', { name: /^Customers ask/ })).toBeVisible()
-  expect(await fits()).toBe(true)
+  const box = (await today.boundingBox())!
+  expect(box.y + box.height).toBeLessThanOrEqual(composer.y)
+  await expect(page.getByTestId('today-progress')).toBeVisible()
   await axe(page)
 
-  // Finish setup (share the customer page): the setup card collapses to one small chip.
-  await expect(page.getByText('Step 4 of 5')).toBeVisible()
-  await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  // Finish setup through the API (menu, kind, hours, phone, then share): the bar goes away.
+  const approve = async (data: object) => {
+    const prepared = await page.request.post('/api/v1/proposals', { data })
+    expect(prepared.ok(), await prepared.text()).toBe(true)
+    const proposal = await prepared.json()
+    const saved = await page.request.post(`/api/v1/proposals/${proposal.id}/approve`, {
+      data: { digest: proposal.digest },
+    })
+    expect(saved.ok(), await saved.text()).toBe(true)
+  }
+  const current = async () => (await (await page.request.get('/api/v1/businesses')).json())[0]
+  let shop = await current()
+  await approve({
+    kind: 'business',
+    business_id: shop.id,
+    revision: shop.revision,
+    business: {
+      ...shop.fields,
+      category: 'Kopitiam',
+      hours: '07:00–15:00',
+      phone: '+65 6123 4567',
+    },
+  })
+  shop = await current()
+  await approve({
+    kind: 'inventory',
+    business_id: shop.id,
+    revision: shop.revision,
+    products: [{ name: 'Kopi', price: 180, unit: 'cup' }],
+  })
+  await page.reload()
+  await page.getByRole('button', { name: 'Continue local preview' }).tap()
+  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
   await page.getByRole('button', { name: /^Customer page/ }).tap()
   await page.getByRole('switch', { name: 'Share customer page' }).tap()
   await expect(page.getByRole('switch', { name: 'Share customer page' })).toBeChecked()
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Coach', exact: true }).tap()
-  const done = page.getByRole('link', { name: 'Setup complete · Open customer page' })
-  await expect(done).toBeVisible()
-  expect((await done.boundingBox())!.height).toBeLessThanOrEqual(32)
-  await expect(page.getByText(/^Step \d of 5$/)).toHaveCount(0)
-  await expect(page.getByRole('progressbar', { name: /^Step/ })).toHaveCount(0)
+  await expect(page.getByTestId('today-progress')).toHaveCount(0)
+  await expect(page.getByRole('progressbar')).toHaveCount(0)
+  // The daily menu question is the top item; answering it makes it leave.
+  const card = page.getByTestId('today-needs')
+  await expect(card.getByRole('listitem').first()).toContainText('Still the same menu today?')
+  await card.getByRole('button', { name: 'Yes' }).tap()
+  await expect(card).not.toContainText('Still the same menu today?')
   expect(await fits()).toBe(true)
   await axe(page)
 })
@@ -333,9 +361,9 @@ test('B7: every photo entry offers Take photo (rear camera) and Upload', async (
   await chooser
   await expect(input).not.toHaveAttribute('capture')
 
-  // A suggestion chip, then an actual upload reaches the review.
+  // Today's first step, then an actual upload reaches the review.
   await saveShop(page)
-  await page.getByRole('button', { name: 'Add my menu' }).tap()
+  await page.getByTestId('today-day-one').getByRole('button', { name: 'Scan' }).tap()
   chooser = page.waitForEvent('filechooser')
   await take.tap()
   const png = await page.evaluate(() => {

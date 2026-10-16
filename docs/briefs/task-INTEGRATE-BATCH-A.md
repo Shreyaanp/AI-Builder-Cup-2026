@@ -7,18 +7,19 @@ Setup: you are in a fresh worktree. `git fetch origin && git checkout --detach o
 
 Apply these PRs IN THIS ORDER, each as a 3-way patch on top of the previous result (no commits needed):
 
-  git diff origin/main...origin/<branch> --binary | git apply --3way --index
+git diff origin/main...origin/<branch> --binary | git apply --3way --index
 
-  1. feat/today-page (#25)      2. feat/owner-tabs (#24)       3. feat/onboarding-inchat (#21)
-  4. feat/trust-fraud (#20)     5. feat/voice-everything (#26) 6. feat/customer-games (#23)
-  7. fix/agy-qa-1 (#16)         8. docs/story-director (#14)
+1. feat/today-page (#25) 2. feat/owner-tabs (#24) 3. feat/onboarding-inchat (#21)
+2. feat/trust-fraud (#20) 5. feat/voice-everything (#26) 6. feat/customer-games (#23)
+3. fix/agy-qa-1 (#16) 8. docs/story-director (#14)
 
 After each apply, resolve every conflict before applying the next one:
+
 - Code: keep BOTH features. Today lives on the Coach tab; owner tabs are Shop / Grow / You; ShopTiles
   must contain both the tabs refinement and the in-chat changes; voice-everything coach tools must also
   cover Today, tabs, trust and games. agent.py / coordinator.py / discover_ask.py / AskHome.tsx: merge
   both sides' tools and behaviour, never drop one.
-- docs/stories/*.png, docs/bugs/*.png screenshots: take the incoming (newer) version.
+- docs/stories/_.png, docs/bugs/_.png screenshots: take the incoming (newer) version.
 - docs/openapi.json and src/api/generated.d.ts: do not hand-merge; regenerate them from the combined
   backend at the end (the repo's contract script).
 - Handoff/status markdown: keep both sections.

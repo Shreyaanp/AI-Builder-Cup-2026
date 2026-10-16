@@ -20,7 +20,7 @@ test('sourcing labels demo suppliers, reviews exact quantities, receives reply a
   await expect(page.getByText('Automatic demo reply').first()).toBeVisible()
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /^Orders/ }).click()
   await expect(page.getByRole('dialog', { name: 'Orders' })).toContainText('Confirmed')
 })
@@ -56,17 +56,17 @@ test('empty Orders is keyboard dismissible and leaves owner navigation usable', 
   page,
 }) => {
   await owner(page)
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /^Orders/ }).click()
   await audit(page)
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'My shop', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Grow', exact: true })).toBeVisible()
 })
 
 test('Tamil sourcing surface uses the shared locale without layout overflow', async ({ page }) => {
   await owner(page)
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await tamil(page)
   await page.locator('[data-tour="orders"]').click()
   await expect(page.getByRole('dialog')).toBeVisible()
@@ -101,7 +101,7 @@ test('populated Orders has valid list semantics and keyboard-operable rows', asy
   ).toBe(true)
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /^Orders/ }).click()
   await expect(page.getByRole('dialog', { name: 'Orders' })).toContainText('20 kg')
   await evidence(page, 'Q13-orders-list')

@@ -19,6 +19,10 @@ const child = spawn(uv, ['run', '--locked', 'python', 'run.py'], {
     V1_ENABLED: 'true',
     MERCHANT_BACKEND: 'sqlite',
     MODERATION_MODE: 'fixture',
+    // Face check: the real private worker when its token is set (see deployment/FACE_WORKER.md),
+    // otherwise a labelled fixture. Every local owner is a trust reviewer.
+    FACE_MODE: process.env.FACE_WORKER_TOKEN ? 'worker' : 'fixture',
+    TRUST_ADMINS: process.env.TRUST_ADMINS ?? '["*"]',
     RATE_LIMITS_ENABLED: 'false',
     MEDIA_BUCKET: '',
     MAPS_SERVER_KEY: '',

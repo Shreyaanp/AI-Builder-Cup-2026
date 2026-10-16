@@ -314,7 +314,6 @@ export const fil: Copy = {
   stockOptional: 'Stock (opsyonal)',
   enterPrice: 'Maglagay ng wastong presyo.',
   enterName: 'Maglagay ng pangalan.',
-  verificationPending: 'Naghihintay ng pagsusuri',
   customerPage: 'Pahina para sa suki',
   customerPageOff: 'I-on para makakuha ng link ng menu, presyo at oras para sa mga suki.',
   customerPageOn: 'Makikita ng may link ang tindahan at kasalukuyang presyo.',
@@ -390,39 +389,6 @@ export const fil: Copy = {
     `Tinanggap mo ang Mga Tuntunin at Paunawa sa Privacy noong ${date}.`,
   viewTerms: 'Mga Tuntunin',
   viewPrivacy: 'Paunawa sa Privacy',
-  faceSection: 'Pagsuri sa dobleng may-ari',
-  faceBody:
-    'Opsyonal at sinusubukan pa. Tumutulong pigilan ang isang tao na magrehistro ng maraming tindahan.',
-  faceStart: 'Simulan ang pagsusuri',
-  faceNeedsShop: 'I-save muna ang tindahan bago magsuri.',
-  faceStatus: {
-    not_enrolled: 'Hindi pa nagsimula',
-    review_pending: 'Naghihintay ng pagsusuri',
-  },
-  faceTitle: 'Pagrehistro ng mukha',
-  faceConsent: 'Pumapayag ako sa face template at paghahambing ng paulit-ulit na pagrehistro',
-  faceEvaluation:
-    'Sinusuri pa ang beripikasyon. Naka-disable ang awtomatikong pag-apruba ng identidad.',
-  faceLeft: 'Dahan-dahang lumingon sa kaliwa',
-  faceRight: 'Dahan-dahang lumingon sa kanan',
-  faceUp: 'Dahan-dahang tumingala',
-  faceOneVisible: 'Isang mukha ang nakikita',
-  faceOnlyOne: 'Isang mukha lang ang dapat makita',
-  faceGuidanceUnavailable: 'Walang gabay sa camera; tuloy pa rin ang pagsusuri sa server',
-  faceCameraUnavailable:
-    'Hindi magamit ang camera. Ligtas ang draft; puwede mong subukan muli mamaya.',
-  facePending: 'Naghihintay ng beripikasyon. Puwede mong ituloy ang draft at imbentaryo.',
-  faceResult: (reason: string, liveness: string, oneToOne: string, oneToMany: string) =>
-    `${reason} · Pagtiyak na buhay: ${liveness} · 1:1: ${oneToOne} · 1:N: ${oneToMany}`,
-  faceFailed: 'Hindi natapos ang pagsusuri. Nananatili ang draft.',
-  faceProcessing: 'Sinusuri nang pribado…',
-  faceReturn: 'Bumalik sa draft',
-  faceCamera: 'Buksan ang camera',
-  faceDelete: 'Burahin ang data ng mukha',
-  faceDeleted: 'Nabura ang data ng mukha',
-  faceDeleteTitle: 'Burahin ang data ng mukha mo?',
-  faceDeleteBody:
-    'Buburahin ang naka-encrypt na face template. Mananatili ang mga tindahan. Puwedeng magsuri muli.',
   dataSection: 'Data mo',
   dataBody:
     'Burahin ang tindahan, produkto, usapan, memorya, litrato at data ng mukha sa Chalkboard.',

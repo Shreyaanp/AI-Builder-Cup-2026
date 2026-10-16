@@ -1,0 +1,49 @@
+{
+  "generated": "2026-10-15T22:15:57.582Z",
+  "recordingBaseline": "fa60840b0a231008e068275a62171790a36cd2e9",
+  "checkout": "56bb44c415a0d542838e1d949ba9a5c9d4232991",
+  "runtimeEquivalent": true,
+  "checks": [
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "\n> ogoogle-ai-starter@0.0.0 lint\n> eslint . --max-warnings 0\n\n"
+    },
+    {
+      "name": "hooks",
+      "command": "npm run test:hooks",
+      "exitCode": 0,
+      "output": "\n> ogoogle-ai-starter@0.0.0 test:hooks\n> node scripts/check-hook-rules.mjs\n\nHook enforcement passed: conditional hook and stale effect rejected; valid effect accepted.\n"
+    },
+    {
+      "name": "typescript",
+      "command": "node node_modules/typescript/bin/tsc -b",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "name": "format",
+      "command": "node node_modules/prettier/bin/prettier.cjs --check tests/stories/director/*.mjs STORIES.md docs/research/ux-2026.md docs/qa/story-scorecard.md docs/qa/director-house-checklist.md docs/briefs/fix-*.md docs/stories/director/README.md docs/stories/director/attempts.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!\n"
+    },
+    {
+      "name": "artifacts",
+      "command": "node tests/stories/director/verify.mjs",
+      "exitCode": 0,
+      "output": "21 contracts/briefs; 84 variant videos; 264 screenshot/metric/heatmap triplets; 40 blocked paths; 0 execution failures; one baseline SHA.\n194 local document links resolve.\n10 layout-viewport drift observations retained as UX findings; raster/video configuration remains unchanged.\n"
+    },
+    {
+      "name": "graph",
+      "command": "graphify update .",
+      "exitCode": 0,
+      "output": "Re-extracting code files in . (no LLM needed)...\r\n[graphify watch] 29 file(s) not classified (no supported extension or shebang), skipped: .dockerignore, .editorconfig, .env.example, .git, .gitattributes, .gitignore (+23 more)\r\n  AST extraction: 100/285 uncached files (35%) [16 workers]\r\n  AST extraction: 200/285 uncached files (70%) [16 workers]\r\n  AST extraction: 285/285 uncached files (100%) [16 workers]\r\n  warning: 47 code file(s) yielded no symbols (0.15 MB) — a data file, or source this extractor models no symbols for: backend/pyproject.toml, backend/run.py, backend/scripts/export_contract.py, backend/scripts/inspect_adk.py, backend/start.ps1 (+42 more)\r\n[graphify watch] community set changed since labeling (241 saved labels, 238 communities now; renamed 111 community(ies) by their hub). Run `graphify label` to refresh names with the LLM.\r\n[graphify] backed up curated graph (4 files) -> 2026-10-16/\r\nGraph has 5042 nodes (above 5000 limit). Building aggregated community view...\r\ngraph.html written (aggregated: 238 community nodes, 1027 cross-community edges)\r\nTip: run with --obsidian for full node-level detail.\r\n[graphify watch] Rebuilt: 5042 nodes, 14864 edges, 238 communities\r\n[graphify watch] graph.json, graph.html and GRAPH_REPORT.md updated in graphify-out\r\nCode graph updated. For doc/paper/image changes run /graphify --update in your AI assistant.\r\nTip: set GEMINI_API_KEY or GOOGLE_API_KEY to use Gemini for semantic extraction.\r\n"
+    }
+  ],
+  "notRun": [
+    "Full npm run check (no product functional changes; director uses its own isolated fixture harness)",
+    "Backend Ruff/mypy/pytest (no backend changes)",
+    "Physical phone, live providers, real OAuth, current open PR branches"
+  ]
+}

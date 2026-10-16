@@ -265,74 +265,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/face/challenges": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Challenge */
-        post: operations["challenge_api_v1_face_challenges_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/face/challenges/{challenge_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Result */
-        get: operations["result_api_v1_face_challenges__challenge_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/face/challenges/{challenge_id}/capture": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Capture */
-        post: operations["capture_api_v1_face_challenges__challenge_id__capture_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/face/template": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete Template */
-        delete: operations["delete_template_api_v1_face_template_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/businesses/{business_id}/import": {
         parameters: {
             query?: never;
@@ -1639,6 +1571,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer/games/scratch/{ticket_id}/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Scratch */
+        post: operations["scratch_api_v1_customer_games_scratch__ticket_id__reveal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/games/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Freeze */
+        post: operations["freeze_api_v1_customer_games_freeze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/games/coop/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Claim Coop Reward
+         * @description Everyone who helped this week's goal collects the shared reward, once.
+         */
+        post: operations["claim_coop_reward_api_v1_customer_games_coop_claim_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/games/perks/{perk_id}/use": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Use Won Perk
+         * @description Counter staff saw the won perk on the phone: it is marked used.
+         */
+        post: operations["use_won_perk_api_v1_customer_games_perks__perk_id__use_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/shops/{business_id}/games": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shop Games */
+        get: operations["shop_games_api_v1_public_shops__business_id__games_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/today": {
         parameters: {
             query?: never;
@@ -1652,6 +1675,23 @@ export interface paths {
          *     and the server remembers what they saw.
          */
         get: operations["today_api_v1_public_today_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Today Page */
+        get: operations["today_page_api_v1_businesses__business_id__today_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1919,6 +1959,158 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/face/challenges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Challenge */
+        post: operations["challenge_api_v1_face_challenges_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/face/challenges/{challenge_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Result */
+        get: operations["result_api_v1_face_challenges__challenge_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/face/challenges/{challenge_id}/capture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Capture
+         * @description One short capture: verified, in_review, or retry/unavailable with a reason the app turns
+         *     into a tip. The video stays in memory and is dropped when this request ends.
+         */
+        post: operations["capture_api_v1_face_challenges__challenge_id__capture_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/face/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Template
+         * @description Delete the encrypted template, the check result and any review about this owner.
+         */
+        delete: operations["delete_template_api_v1_face_template_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trust Status
+         * @description The owner's check status and open notices; for reviewers, the whole queue.
+         */
+        get: operations["trust_status_api_v1_trust_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trust/reviews/{review_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide */
+        post: operations["decide_api_v1_trust_reviews__review_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trust/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Scan Now
+         * @description Reviewers: check every shared shop now (also runs after each approved change).
+         */
+        post: operations["scan_now_api_v1_trust_scan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/latency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Latency
+         * @description Time to first output per coach flow on this instance (p50/p95 of recent turns).
+         */
+        get: operations["latency_api_v1_latency_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -2087,11 +2279,12 @@ export interface components {
              * Mode
              * @enum {string}
              */
-            mode: "ai" | "keywords";
+            mode: "ai" | "keywords" | "command";
             /** Groups */
             groups: components["schemas"]["Group"][];
             personal?: components["schemas"]["Personal"] | null;
             anchor?: components["schemas"]["Anchor"] | null;
+            command?: components["schemas"]["Command"] | null;
         };
         /**
          * AskSuggestions
@@ -2276,6 +2469,11 @@ export interface components {
             /** Weekly Hours */
             weekly_hours?: components["schemas"]["DayHours"][];
             /**
+             * Closed On
+             * @default
+             */
+            closed_on: string;
+            /**
              * Phone
              * @default
              */
@@ -2374,6 +2572,26 @@ export interface components {
              */
             unread: number;
         };
+        /** CoachLine */
+        CoachLine: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "festival" | "rain" | "busiest_day";
+            /** Festival */
+            festival?: string | null;
+            /** Days */
+            days?: number | null;
+            /** Rain */
+            rain?: number | null;
+            /** Weekday */
+            weekday?: number | null;
+            /** Item */
+            item?: string | null;
+            /** Count */
+            count?: number | null;
+        };
         /** CoachTurn */
         CoachTurn: {
             /** Message */
@@ -2396,6 +2614,26 @@ export interface components {
             new_shop: boolean;
             new_shop_draft?: components["schemas"]["NewShopDraft"] | null;
         };
+        /**
+         * Command
+         * @description A customer command answered at once, by voice or text: my stamps, directions to a shop,
+         *     follow a shop, ask a shop's owner. Following and asking still happen on the shop's page.
+         */
+        Command: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "my_stamps" | "directions" | "follow" | "ask_owner";
+            /** Shop Id */
+            shop_id?: string | null;
+            /** Shop Name */
+            shop_name?: string | null;
+            /** Maps Url */
+            maps_url?: string | null;
+            /** Question */
+            question?: string | null;
+        };
         /** ConsentRequest */
         ConsentRequest: {
             /** Version */
@@ -2404,6 +2642,42 @@ export interface components {
             terms: boolean;
             /** Privacy */
             privacy: boolean;
+        };
+        /** CoopClaimInput */
+        CoopClaimInput: {
+            /** Area */
+            area: string;
+            /** Week */
+            week: string;
+        };
+        /** CoopView */
+        CoopView: {
+            /** Area */
+            area: string;
+            /** Area Name */
+            area_name: string;
+            /** Week */
+            week: string;
+            /** Ends */
+            ends: string;
+            /** Goal */
+            goal: number;
+            /** Total */
+            total: number;
+            /** Demo Visits */
+            demo_visits: number;
+            /** You */
+            you: number;
+            /** Helpers */
+            helpers: number;
+            /** Reached */
+            reached: boolean;
+            /** Claimed */
+            claimed: boolean;
+            /** Bonus */
+            bonus: number;
+            /** Demo */
+            demo: boolean;
         };
         /**
          * CustomFact
@@ -2503,32 +2777,6 @@ export interface components {
             demo: boolean;
             /** Countdown Seconds */
             countdown_seconds: number;
-        };
-        /** Decision */
-        Decision: {
-            /**
-             * Source
-             * @default owner
-             * @enum {string}
-             */
-            source: "demo" | "owner";
-            /**
-             * Ready Stock
-             * @default 0
-             */
-            ready_stock: number;
-            /**
-             * Capacity
-             * @default 0
-             */
-            capacity: number;
-            /**
-             * Decision
-             * @enum {string}
-             */
-            decision: "accepted" | "edited" | "declined";
-            /** Quantity */
-            quantity: number;
         };
         /** DiscoveryPlace */
         DiscoveryPlace: {
@@ -2717,6 +2965,41 @@ export interface components {
             /** Confidence Level */
             confidence_level?: number | null;
         };
+        /** FreezeInput */
+        FreezeInput: {
+            /**
+             * Week
+             * @enum {string}
+             */
+            week: "this" | "next";
+        };
+        /** FreezeResult */
+        FreezeResult: {
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "frozen" | "no_freezes" | "already" | "not_needed";
+            passport: components["schemas"]["PassportView"];
+        };
+        /** GamesView */
+        GamesView: {
+            /** Scratch */
+            scratch: components["schemas"]["ScratchView"][];
+            /** Sets */
+            sets: components["schemas"]["SetView"][];
+            coop: components["schemas"]["CoopView"] | null;
+            /** Won Perks */
+            won_perks: components["schemas"]["WonPerk"][];
+            next_reward: components["schemas"]["NextReward"] | null;
+            /** Nudge */
+            nudge: boolean;
+            /**
+             * Welcome Stamps
+             * @default 2
+             */
+            welcome_stamps: number;
+        };
         /** Group */
         Group: {
             /**
@@ -2892,6 +3175,15 @@ export interface components {
              */
             name: string;
         };
+        /** LowItem */
+        LowItem: {
+            /** Name */
+            name: string;
+            /** Stock */
+            stock: number;
+            /** Runs Out */
+            runs_out: string | null;
+        };
         /** LowStock */
         LowStock: {
             /** Name */
@@ -2966,6 +3258,31 @@ export interface components {
              */
             instant_answer: boolean;
         };
+        /**
+         * NextReward
+         * @description The single next named reward ("2 more stamps → free bun maska").
+         */
+        NextReward: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "card" | "set" | "level";
+            /** Left */
+            left: number;
+            /** Reward */
+            reward: string;
+            /**
+             * Shop Id
+             * @default
+             */
+            shop_id: string;
+            /**
+             * Shop Name
+             * @default
+             */
+            shop_name: string;
+        };
         /** Observation */
         Observation: {
             /**
@@ -2988,6 +3305,16 @@ export interface components {
              * @enum {string}
              */
             source: "owner" | "demo";
+        };
+        /** Odd */
+        Odd: {
+            /**
+             * Prize
+             * @enum {string}
+             */
+            prize: "points_10" | "points_25" | "perk" | "freeze" | "again";
+            /** Percent */
+            percent: number;
         };
         /** Opportunity */
         Opportunity: {
@@ -3116,6 +3443,7 @@ export interface components {
              * @default false
              */
             flagged: boolean;
+            games?: components["schemas"]["GamesView"] | null;
         };
         /** Perk */
         Perk: {
@@ -3125,7 +3453,7 @@ export interface components {
              * Trigger
              * @enum {string}
              */
-            trigger: "regular" | "full_card" | "quest_finale" | "rescue_hero";
+            trigger: "regular" | "full_card" | "quest_finale" | "rescue_hero" | "third_visit" | "tip" | "follow" | "scratch" | "set_complete";
             /** Text */
             text: string;
             /**
@@ -3151,7 +3479,7 @@ export interface components {
              * Trigger
              * @enum {string}
              */
-            trigger: "regular" | "full_card" | "quest_finale" | "rescue_hero";
+            trigger: "regular" | "full_card" | "quest_finale" | "rescue_hero" | "third_visit" | "tip" | "follow" | "scratch" | "set_complete";
             /** Text */
             text: string;
             /** Demo */
@@ -3454,6 +3782,24 @@ export interface components {
             /** Receipts */
             receipts?: string[];
         };
+        /**
+         * Pulse
+         * @description One day's activity; None means "no record", never zero.
+         */
+        Pulse: {
+            /** Sales */
+            sales?: number | null;
+            /** Items */
+            items?: number | null;
+            /** Views */
+            views?: number | null;
+            /** Questions */
+            questions?: number | null;
+            /** Stamps */
+            stamps?: number | null;
+            /** Returning */
+            returning?: number | null;
+        };
         /** QrKey */
         QrKey: {
             /** Key */
@@ -3723,6 +4069,11 @@ export interface components {
              */
             delivery: string;
         };
+        /** RevealResult */
+        RevealResult: {
+            card: components["schemas"]["ScratchView"];
+            passport: components["schemas"]["PassportView"];
+        };
         /** SaleLine */
         SaleLine: {
             /** Item */
@@ -3743,6 +4094,39 @@ export interface components {
             booking: string;
             /** Walk Ins */
             walk_ins?: boolean | null;
+        };
+        /**
+         * ScratchView
+         * @description A scratch card. Before it is scratched, the prize stays on the server; the odds that
+         *     apply to this card are always shown.
+         */
+        ScratchView: {
+            /** Id */
+            id: string;
+            /** Shop Id */
+            shop_id: string;
+            /** Shop Name */
+            shop_name: string;
+            /** Demo */
+            demo: boolean;
+            /** First */
+            first: boolean;
+            /** Odds */
+            odds: components["schemas"]["Odd"][];
+            /** Revealed */
+            revealed: boolean;
+            /** Prize */
+            prize?: ("points_10" | "points_25" | "perk" | "freeze" | "again") | null;
+            /**
+             * Points
+             * @default 0
+             */
+            points: number;
+            /**
+             * Perk Text
+             * @default
+             */
+            perk_text: string;
         };
         /** Search */
         Search: {
@@ -3767,6 +4151,52 @@ export interface components {
             service_area: string;
             /** Appointment */
             appointment?: boolean | null;
+        };
+        /** SetStop */
+        SetStop: {
+            /** Shop Id */
+            shop_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Done
+             * @default false
+             */
+            done: boolean;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+        };
+        /** SetView */
+        SetView: {
+            /** Id */
+            id: string;
+            /** Art */
+            art: string;
+            /** Have */
+            have: number;
+            /** Need */
+            need: number;
+            /** Done */
+            done: boolean;
+            /** Stops */
+            stops?: components["schemas"]["SetStop"][];
+            /** Festival */
+            festival?: string | null;
+            /** Ends */
+            ends?: string | null;
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate: boolean;
+            /**
+             * Points
+             * @default 0
+             */
+            points: number;
         };
         /** ShareRequest */
         ShareRequest: {
@@ -3802,6 +4232,31 @@ export interface components {
              */
             demo: boolean;
         };
+        /**
+         * ShopGames
+         * @description What a shop page shows about its games, signed in or not.
+         */
+        ShopGames: {
+            /** Welcome */
+            welcome: number;
+            /** Needed */
+            needed: number;
+            /** Reward */
+            reward: string;
+            /** Tried */
+            tried: number | null;
+            /** Demo */
+            demo: boolean;
+            /** Perks */
+            perks: components["schemas"]["Perk"][];
+            /** Odds */
+            odds: components["schemas"]["Odd"][];
+            /**
+             * First Prize
+             * @enum {string}
+             */
+            first_prize: "points_10" | "points_25" | "perk" | "freeze" | "again";
+        };
         /** ShopStamp */
         ShopStamp: {
             /** Id */
@@ -3828,6 +4283,21 @@ export interface components {
             rescues: number;
             /** Last Day */
             last_day: string;
+            /**
+             * Needed
+             * @default 8
+             */
+            needed: number;
+            /**
+             * Welcome
+             * @default 2
+             */
+            welcome: number;
+            /**
+             * Reward
+             * @default
+             */
+            reward: string;
         };
         /** SimAction */
         SimAction: {
@@ -4115,6 +4585,11 @@ export interface components {
              * @default
              */
             country: string;
+            /**
+             * Made
+             * @default false
+             */
+            made: boolean;
         };
         /** StampResult */
         StampResult: {
@@ -4122,6 +4597,9 @@ export interface components {
             passport?: components["schemas"]["PassportView"] | null;
             /** Receipt */
             receipt?: string | null;
+            scratch?: components["schemas"]["ScratchView"] | null;
+            /** Sets Completed */
+            sets_completed?: string[];
         };
         /** StockAlertInput */
         StockAlertInput: {
@@ -4163,10 +4641,17 @@ export interface components {
             weeks: number;
             /** Rain Checks */
             rain_checks: number;
+            /**
+             * Freezes
+             * @default 0
+             */
+            freezes: number;
             /** This Week */
             this_week: boolean;
             /** Row */
-            row: ("done" | "rain" | "missed" | "current")[];
+            row: ("done" | "rain" | "frozen" | "missed" | "current")[];
+            /** Planned */
+            planned?: string[];
         };
         /** Suggestions */
         Suggestions: {
@@ -4261,6 +4746,24 @@ export interface components {
             /** Average */
             average?: number | null;
         };
+        /** Today */
+        Today: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Currency */
+            currency: string;
+            yesterday: components["schemas"]["Pulse"];
+            today: components["schemas"]["Pulse"];
+            forecast: components["schemas"]["TodayForecast"] | null;
+            /** Low Stock */
+            low_stock: components["schemas"]["LowItem"][];
+            line: components["schemas"]["CoachLine"] | null;
+            /** Demo */
+            demo: boolean;
+        };
         /** TodayArea */
         TodayArea: {
             /** Id */
@@ -4285,6 +4788,15 @@ export interface components {
             demo: boolean;
             /** Signed In */
             signed_in: boolean;
+        };
+        /** TodayForecast */
+        TodayForecast: {
+            /** Item */
+            item: string;
+            /** Quantity */
+            quantity: number;
+            /** Unit */
+            unit: string;
         };
         /** TopItem */
         TopItem: {
@@ -4397,6 +4909,37 @@ export interface components {
             /** Sales Effect */
             sales_effect?: string | null;
         };
+        /** WonPerk */
+        WonPerk: {
+            /** Id */
+            id: string;
+            /** Shop Id */
+            shop_id: string;
+            /**
+             * Shop Name
+             * @default
+             */
+            shop_name: string;
+            /** Text */
+            text: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "scratch" | "set";
+            /** Day */
+            day: string;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+            /**
+             * Used
+             * @default false
+             */
+            used: boolean;
+        };
         /** WorldReceipt */
         WorldReceipt: {
             /** Shop Ids */
@@ -4429,13 +4972,47 @@ export interface components {
              */
             place: string;
         };
+        /** Decision */
+        app__planning_routes__Decision: {
+            /**
+             * Source
+             * @default owner
+             * @enum {string}
+             */
+            source: "demo" | "owner";
+            /**
+             * Ready Stock
+             * @default 0
+             */
+            ready_stock: number;
+            /**
+             * Capacity
+             * @default 0
+             */
+            capacity: number;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accepted" | "edited" | "declined";
+            /** Quantity */
+            quantity: number;
+        };
+        /** Decision */
+        app__trust_routes__Decision: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "cleared" | "upheld";
+        };
         /** StreamEvent */
         StreamEvent: {
             /**
              * Kind
              * @enum {string}
              */
-            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "chart";
+            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "chart" | "action";
             /**
              * Session Id
              * @default null
@@ -4982,129 +5559,6 @@ export interface operations {
             };
         };
     };
-    challenge_api_v1_face_challenges_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChallengeRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    result_api_v1_face_challenges__challenge_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                challenge_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    capture_api_v1_face_challenges__challenge_id__capture_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                challenge_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_template_api_v1_face_template_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
-                };
-            };
-        };
-    };
     import_table_api_v1_businesses__business_id__import_post: {
         parameters: {
             query?: never;
@@ -5631,7 +6085,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Decision"];
+                "application/json": components["schemas"]["app__planning_routes__Decision"];
             };
         };
         responses: {
@@ -7788,6 +8242,177 @@ export interface operations {
             };
         };
     };
+    scratch_api_v1_customer_games_scratch__ticket_id__reveal_post: {
+        parameters: {
+            query?: {
+                lat?: number | null;
+                lng?: number | null;
+                tz?: string;
+            };
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevealResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    freeze_api_v1_customer_games_freeze_post: {
+        parameters: {
+            query?: {
+                lat?: number | null;
+                lng?: number | null;
+                tz?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FreezeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FreezeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    claim_coop_reward_api_v1_customer_games_coop_claim_post: {
+        parameters: {
+            query?: {
+                lat?: number | null;
+                lng?: number | null;
+                tz?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoopClaimInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    use_won_perk_api_v1_customer_games_perks__perk_id__use_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                perk_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shop_games_api_v1_public_shops__business_id__games_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopGames"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     today_api_v1_public_today_get: {
         parameters: {
             query: {
@@ -7814,6 +8439,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodayFeed"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    today_page_api_v1_businesses__business_id__today_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Today"];
                 };
             };
             /** @description Validation Error */
@@ -8372,6 +9028,232 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    challenge_api_v1_face_challenges_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    result_api_v1_face_challenges__challenge_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                challenge_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    capture_api_v1_face_challenges__challenge_id__capture_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                challenge_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_template_api_v1_face_template_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    trust_status_api_v1_trust_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    decide_api_v1_trust_reviews__review_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                review_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["app__trust_routes__Decision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scan_now_api_v1_trust_scan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    latency_api_v1_latency_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

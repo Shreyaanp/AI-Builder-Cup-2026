@@ -25,12 +25,14 @@ export interface Business {
     place_id?: string | null
     pin_label?: string | null
     pin_demo?: boolean
-    pin_source?: 'device' | null
+    pin_source?: 'device' | 'pin' | null
     pin_accuracy_m?: number | null
     description?: string
     timezone?: string
     hours: string
     weekly_hours?: import('../shop/hoursModel').DayHours[]
+    /** Shop-local date the owner closed the shop for ("closed today"). */
+    closed_on?: string
     phone: string
     reward_text?: string
     stamps_needed?: number

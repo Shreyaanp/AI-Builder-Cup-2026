@@ -1,0 +1,53 @@
+{
+  "id": "s8",
+  "title": "Passport, stamps, quests and scratch rewards",
+  "variant": "desktop-light",
+  "sha": "fa60840b0a231008e068275a62171790a36cd2e9",
+  "baseURL": "http://127.0.0.2:3537",
+  "serverRun": "1792101157322",
+  "started": "2026-10-15T22:03:22.654Z",
+  "status": "partial",
+  "evidence": [
+    {
+      "name": "01-phone-stamp",
+      "visibleElements": 34,
+      "competingAccents": 2,
+      "spacingOn4pxRhythm": 0.611,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 0,
+      "accessibilityViolations": 0,
+      "smallTargets": 2
+    },
+    {
+      "name": "02-passport",
+      "visibleElements": 3,
+      "competingAccents": 0,
+      "spacingOn4pxRhythm": 1,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 0,
+      "accessibilityViolations": 0,
+      "smallTargets": 0
+    },
+    {
+      "name": "90-reduced-motion",
+      "visibleElements": 13,
+      "competingAccents": 0,
+      "spacingOn4pxRhythm": 0.429,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 0,
+      "accessibilityViolations": 0,
+      "smallTargets": 0
+    }
+  ],
+  "gaps": [
+    "Unsigned stamp is on-phone only; verified signed visit, reward threshold, quests and scratch keyboard alternative need further evidence. No QR signing key was read or copied."
+  ],
+  "checks": [
+    "Reduced-motion final state: 0 running infinite animations (manual interpretation required)"
+  ],
+  "error": null,
+  "finished": "2026-10-15T22:03:33.362Z"
+}

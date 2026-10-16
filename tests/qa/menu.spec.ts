@@ -4,7 +4,7 @@ test('menu inline edit rejects invalid price, Escape cancels, approved edit pers
   page,
 }) => {
   await owner(page)
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Menu/ }).click()
   await page.getByRole('button', { name: /Edit price: Kopi/ }).click()
   const price = page.getByRole('textbox', { name: 'Edit price: Kopi', exact: true })
@@ -17,7 +17,7 @@ test('menu inline edit rejects invalid price, Escape cancels, approved edit pers
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Menu/ }).click()
   await expect(page.getByRole('button', { name: /Edit price: Kopi/ })).toContainText('18.00')
   await page.getByRole('button', { name: /Edit price: Kopi/ }).click()
@@ -55,7 +55,7 @@ test('two stale revisions cannot overwrite each other; approval replay is idempo
 
 test('Tamil menu has localized semantics and no overflow', async ({ page }) => {
   await owner(page)
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await tamil(page)
   await page.locator('[data-tour="menu"]').click()
   await expect(page.getByRole('dialog')).toBeVisible()

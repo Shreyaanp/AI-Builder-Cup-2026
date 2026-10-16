@@ -55,7 +55,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
   await test.step('4 · sold-out switch reaches customer page', async () => {
     const toast = customer.getByRole('listitem').filter({ hasText: 'Kaya toast' })
     await expect(toast).toContainText('Sold out')
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await page.getByRole('button', { name: /^Sold out today/ }).click()
     const available = page.getByRole('switch', { name: 'Available: Kaya toast' })
     await expect(available).not.toBeChecked()
@@ -68,15 +68,17 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
   })
   await test.step('5 · daily still-the-same check', async () => {
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
+    const pill = page.getByTestId('today-pill')
+    if (await pill.isVisible()) await pill.getByRole('button').click()
     await expect(page.getByText('Still the same menu today?', { exact: true })).toBeVisible()
     await shot(page, 2, 5)
-    await page.getByRole('button', { name: 'Yes, all good' }).click()
+    await page.getByTestId('today-needs').getByRole('button', { name: 'Yes', exact: true }).click()
     await expect(page.getByText('Still the same menu today?', { exact: true })).toHaveCount(0)
     await customer.getByRole('button', { name: 'Refresh', exact: true }).click()
     await expect(customer.getByText('Updated today', { exact: true })).toBeVisible()
   })
   await test.step('6 · tap a price, review inline and save', async () => {
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await page.getByRole('button', { name: /^Menu/ }).click()
     await page.getByRole('button', { name: 'Edit price: Kopi, ₹20.00' }).click()
     const price = page.getByRole('textbox', { name: 'Edit price: Kopi' })

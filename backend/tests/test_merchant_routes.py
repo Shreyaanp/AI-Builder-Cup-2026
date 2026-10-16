@@ -176,9 +176,7 @@ def test_face_capture_is_single_use_without_worker(app) -> None:
             capture_url, content=b"offline video fixture", headers={"content-type": "video/webm"}
         )
         assert response.status_code == 200
-        assert response.json()["status"] == "review_pending"
-        assert response.json()["reason"] == "worker_unavailable"
-        assert response.json()["liveness"] == "unavailable"
+        assert response.json() == {"result": "unavailable", "reason": "worker_unavailable"}
         assert (
             client.post(
                 capture_url,
@@ -190,7 +188,7 @@ def test_face_capture_is_single_use_without_worker(app) -> None:
 
 
 def test_face_template_deletion_without_worker_confirms(app) -> None:
-    # No worker configured means no template was ever stored, so deletion succeeds.
+    # Templates live in the app's own store; deletion needs no worker.
     with TestClient(app) as client:
         join(client)
         response = client.delete("/api/v1/face/template")

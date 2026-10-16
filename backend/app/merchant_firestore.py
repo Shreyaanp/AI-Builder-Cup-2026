@@ -314,7 +314,6 @@ class FirestoreMerchantStore:
                     "result": None,
                 },
             )
-            transaction.update(business_ref, {"status": "verification_pending"})
 
         run(self.client.transaction())
         return {
@@ -355,7 +354,7 @@ class FirestoreMerchantStore:
     def face_result(self, uid: str, cid: str, result: dict[str, Any]) -> None:
         ref, _ = self.challenge_row(uid, cid)
         ref.update({"result": result})
-        self.person_ref(uid).set({"verification": "review_pending"}, merge=True)
+        self.person_ref(uid).set({"verification": result.get("result", "not_started")}, merge=True)
 
     def result(self, uid: str, cid: str) -> dict[str, Any]:
         _, row = self.challenge_row(uid, cid)
@@ -364,9 +363,6 @@ class FirestoreMerchantStore:
     def invalidate_face(self, uid: str) -> None:
         self.person_ref(uid).set({"verification": "not_enrolled"}, merge=True)
         batch = self.client.batch()
-        owned = self.businesses.where(filter=FieldFilter("owners", "array_contains", uid))
-        for snapshot in owned.limit(50).stream():
-            batch.update(snapshot.reference, {"status": "verification_pending"})
         for snapshot in self.challenges.where(filter=FieldFilter("uid", "==", uid)).stream():
             batch.delete(snapshot.reference)
         batch.commit()
@@ -388,7 +384,7 @@ class FirestoreMerchantStore:
             # Seal the parent before enumerating children: racing transactions either commit
             # before this update (and are enumerated) or retry against the deletion marker.
             snapshot.reference.update({"deleting": True, "public": False})
-            for kind in ("rescue", "brief", "brief_wording"):
+            for kind in ("rescue", "brief", "brief_wording", "shop_daily"):
                 self.feature_docs.delete_scope(kind, snapshot.id)
             owned.append(snapshot.id)
             refs += [item.reference for item in snapshot.reference.collection("inventory").stream()]
@@ -559,6 +555,14 @@ class FirestoreMerchantStore:
             return bool(missing)
 
         return bool(run(self.client.transaction()))
+
+    def owners(self, bid: str) -> list[str]:
+        try:
+            ref = self.businesses.document(document_id(bid, "Not found."))
+        except HTTPException:
+            return []
+        snapshot = ref.get()
+        return list((snapshot.to_dict() or {}).get("owners") or []) if snapshot.exists else []
 
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         try:

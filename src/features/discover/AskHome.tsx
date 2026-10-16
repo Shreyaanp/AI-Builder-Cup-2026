@@ -24,7 +24,7 @@ import { useLocale } from '../../state/hooks'
 import type { Locale } from '../../i18n/locales'
 import { chalkWrite, dealIn } from '../../design/chalkMotion'
 import { HAND_FONT } from '../../design/theme'
-import { customerNavigate } from '../frontdoors/navigation'
+import { customerNavigate, goTo } from '../frontdoors/navigation'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { useCustomer } from '../customer/account'
 import { accountCopyFor } from '../customer/copy'
@@ -216,6 +216,21 @@ export default function AskHome({
             refine: turn.refine ?? null,
           }),
         })
+        if (controller.signal.aborted) return
+        if (answer.command) {
+          const { kind, shop_id } = answer.command
+          const path =
+            kind === 'my_stamps'
+              ? '/explore/passport'
+              : (kind === 'follow' || kind === 'ask_owner') && shop_id
+                ? `/explore/s/${encodeURIComponent(shop_id)}`
+                : null
+          if (path) {
+            update(turn.id, { status: 'done', answer })
+            goTo(path)
+            return
+          }
+        }
         if (answer.personal) {
           // Keep the profile sheet in step with what was just remembered.
           void account
@@ -843,6 +858,23 @@ function AssistantTurn({
       </Box>
     )
   const answer = turn.answer
+  if (answer.command?.kind === 'directions' && answer.command.maps_url) {
+    return (
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="titleLarge">{answer.command.shop_name}</Typography>
+        <Button
+          variant="contained"
+          href={answer.command.maps_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          startIcon={<MapPin size={18} />}
+          sx={{ mt: 2 }}
+        >
+          {discoverCopy(locale).maps}
+        </Button>
+      </Box>
+    )
+  }
   const intent = answer.intent
   const ours = answer.groups
     .filter((g) => g.id === 'for_you' || g.id === 'best')
