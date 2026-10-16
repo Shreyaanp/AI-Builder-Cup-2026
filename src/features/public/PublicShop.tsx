@@ -37,11 +37,14 @@ import { Tips } from '../customer/Tips'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
 import { customerTranslations } from './customerLocales'
 import { BackInStock, BadgeRow, StampCard, StockReminder } from '../rewards/Rewards'
+import { StampPeek } from '../rewards/StampCard'
+import { ShopGames } from '../passport/games/ShopGames'
 import { ShopStamp } from '../passport/ShopStamp'
 import { HoursList } from '../shop/Hours'
 import type { DayHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
 import { useShopCopy } from '../shop/strings'
+import { VerifiedBadge } from '../trust/VerifiedBadge'
 import { unitLabel } from '../shop/units'
 
 interface PublicShopData {
@@ -65,6 +68,8 @@ interface PublicShopData {
   open_now?: boolean | null
   /** A seeded sample shop; always labelled "Demo shop". */
   demo?: boolean
+  /** The owner passed the optional live face check (when; never who). */
+  verified_owner?: { checked?: number | null }
 }
 
 const PAYMENT_BRANDS = { paynow: 'PayNow', grabpay: 'GrabPay', nets: 'NETS' } as const
@@ -629,6 +634,9 @@ export default function PublicShop({ id }: { id: string }) {
           <Typography component="h1" variant="titleLarge" sx={{ overflowWrap: 'anywhere' }}>
             {shop.name}
           </Typography>
+          {shop.verified_owner && !shop.demo && (
+            <VerifiedBadge checked={shop.verified_owner.checked} />
+          )}
           {shop.demo && (
             // Honest but quiet: one outlined label, not a second accent colour.
             <Chip label={t.demoShop} size="small" variant="outlined" sx={{ my: 1 }} />
@@ -691,6 +699,7 @@ export default function PublicShop({ id }: { id: string }) {
       {/* Follow and how to get there, side by side; wraps on narrow phones. */}
       <Stack direction="row" sx={{ mt: 4, gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <FollowButton id={id} name={shop.name} />
+        <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />
         {actions.map((action) => (
           <Button
             key={action.label}
@@ -932,6 +941,7 @@ export default function PublicShop({ id }: { id: string }) {
         needed={shop.stamps_needed ?? 8}
       />
       <ShopStamp shop={{ id, name: shop.name, category: shop.category, demo: shop.demo }} />
+      <ShopGames shop={id} />
       {!stale && <BackInStock shop={id} products={shop.products} />}
       <BadgeRow shop={id} />
       <Tips shop={id} />

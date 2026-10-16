@@ -26,7 +26,7 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
   await closeSheet(page)
   await page.getByRole('button', { name: 'Coach', exact: true }).click()
   await test.step('1 · Tamil language and read-aloud path', async () => {
-    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await page.getByRole('button', { name: 'You', exact: true }).click()
     // Stub only on-device speech output, so no audio hardware or cloud TTS is required.
     await page.evaluate(() => {
       const spoken: { lang: string; text: string }[] = []
@@ -44,6 +44,7 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
     await page.getByRole('option', { name: /தமிழ்/ }).click()
     await shot(page, 7, '1-language')
     await closeSheet(page)
+    await page.locator('[data-tour="nav-coach"]').click()
     await page.getByRole('textbox').fill('வணக்கம்')
     await page.getByRole('button', { name: 'அனுப்புங்கள்', exact: true }).click()
     await expect(page.getByRole('log')).toContainText('This is a scripted reply')

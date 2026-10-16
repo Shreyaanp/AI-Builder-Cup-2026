@@ -22,7 +22,7 @@ test('Close the day: till photo, one review, saved', async ({ page }) => {
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).tap()
   await createShop(page, 'name: Asha Bakery')
-  await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  await page.getByRole('button', { name: 'Grow', exact: true }).tap()
   await page.getByRole('button', { name: /^Close the day/ }).tap()
   const dialog = page.getByRole('dialog', { name: 'Close the day' })
   await expect(dialog.getByText('Till or POS report')).toBeVisible()

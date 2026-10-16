@@ -1,0 +1,118 @@
+{
+  "_about": "Fictional shared shops for the listing fraud rules. Each `expect` lists the rules that must flag that shop; shops without `expect` must stay unflagged.",
+  "shops": [
+    {
+      "id": "chai-1",
+      "name": "Courtyard Chai",
+      "category": "Cafe",
+      "phone": "+91 98450 12345",
+      "currency": "INR",
+      "owners": ["owner-a"],
+      "products": [
+        { "name": "Masala chai", "price": 2000 },
+        { "name": "Filter coffee", "price": 2500 },
+        { "name": "Bun maska", "price": 3000 },
+        { "name": "Samosa", "price": 1500 },
+        { "name": "Ginger chai", "price": 2200 }
+      ],
+      "photo_prints": ["f0e1d2c3b4a59687"],
+      "expect": ["shared_phone", "shared_photos", "copied_menu"]
+    },
+    {
+      "id": "chai-copy",
+      "name": "Courtyard Chai House",
+      "category": "Cafe",
+      "phone": "098450-12345",
+      "currency": "INR",
+      "owners": ["owner-b"],
+      "products": [
+        { "name": "Masala Chai", "price": 2000 },
+        { "name": "Filter coffee", "price": 2500 },
+        { "name": "Bun maska", "price": 3000 },
+        { "name": "Samosa", "price": 1500 },
+        { "name": "Ginger chai", "price": 2200 },
+        { "name": "Vada pav", "price": 2500 }
+      ],
+      "photo_prints": ["f0e1d2c3b4a59686"],
+      "expect": ["shared_phone", "shared_photos", "copied_menu"]
+    },
+    {
+      "id": "chai-second-branch",
+      "name": "Courtyard Chai Koramangala",
+      "category": "Cafe",
+      "phone": "+91 98450 12345",
+      "currency": "INR",
+      "owners": ["owner-a"],
+      "products": [
+        { "name": "Masala chai", "price": 2000 },
+        { "name": "Filter coffee", "price": 2500 },
+        { "name": "Bun maska", "price": 3000 },
+        { "name": "Samosa", "price": 1500 },
+        { "name": "Ginger chai", "price": 2200 }
+      ],
+      "photo_prints": ["f0e1d2c3b4a59687"],
+      "expect": ["shared_phone", "shared_photos", "copied_menu"]
+    },
+    {
+      "id": "pricey",
+      "name": "Lakeside Tea Stall",
+      "category": "Tea stall",
+      "phone": "+91 99000 11111",
+      "currency": "INR",
+      "owners": ["owner-c"],
+      "products": [
+        { "name": "Masala chai", "price": 2000000 },
+        { "name": "Biscuit", "price": 500 },
+        { "name": "Rusk", "price": 800 },
+        { "name": "Toast", "price": 1200 },
+        { "name": "Free water", "price": 0 }
+      ],
+      "expect": ["impossible_price"]
+    },
+    {
+      "id": "brand",
+      "name": "Star Bucks Coffee & Cakes",
+      "category": "Cafe",
+      "phone": "",
+      "currency": "INR",
+      "owners": ["owner-d"],
+      "products": [{ "name": "Latte", "price": 18000 }],
+      "expect": ["brand_impersonation"]
+    },
+    {
+      "id": "brand-plain",
+      "name": "KFC Express Jayanagar",
+      "category": "Fast food",
+      "phone": "",
+      "currency": "INR",
+      "owners": ["owner-e"],
+      "products": [{ "name": "Bucket", "price": 59900 }],
+      "expect": ["brand_impersonation"]
+    },
+    {
+      "id": "honest",
+      "name": "Apple & Pear Fruit Corner",
+      "category": "Fruit",
+      "phone": "+65 9123 4567",
+      "currency": "SGD",
+      "owners": ["owner-f"],
+      "products": [
+        { "name": "Apples (1 kg)", "price": 450 },
+        { "name": "Pears (1 kg)", "price": 520 },
+        { "name": "Mango", "price": 300 },
+        { "name": "Banana bunch", "price": 250 }
+      ],
+      "photo_prints": ["0123456789abcdef"]
+    },
+    {
+      "id": "demo-twin",
+      "name": "Demo Courtyard Chai",
+      "category": "Cafe",
+      "phone": "+91 98450 12345",
+      "currency": "INR",
+      "owners": ["demo-owner"],
+      "demo": true,
+      "products": [{ "name": "Masala chai", "price": 2000 }]
+    }
+  ]
+}

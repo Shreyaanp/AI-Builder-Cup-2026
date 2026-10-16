@@ -16,6 +16,7 @@ import { HoursList } from '../shop/Hours'
 import { categoryLabel, useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { CurrentLocationAction, LocationPin } from './CurrentLocation'
+import { ClosedTodayNote } from './CoachActions'
 
 /**
  * The only place a change is saved: the owner confirms the exact digest the server sealed.
@@ -136,6 +137,12 @@ export function ReviewDialog({
             }}
           />
           <LocationPin fields={snapshot.business} />
+          {(snapshot.business.closed_on ?? '') !== (target?.fields.closed_on ?? '') && (
+            <ClosedTodayNote
+              closedOn={snapshot.business.closed_on ?? ''}
+              before={target?.fields.closed_on}
+            />
+          )}
           {snapshot.business.description && (
             <Typography variant="bodyLarge">{snapshot.business.description}</Typography>
           )}

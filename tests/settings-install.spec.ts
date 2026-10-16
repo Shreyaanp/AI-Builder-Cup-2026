@@ -8,7 +8,7 @@ async function openOwner(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'You', exact: true })).toBeVisible()
 }
 
 async function installPrompt(page: Page, outcome: 'accepted' | 'dismissed' = 'dismissed') {
@@ -35,12 +35,10 @@ test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
 })
 
-test('B36 Settings reuses the deferred prompt even after dismissing the banner', async ({
-  page,
-}) => {
+test('B36 You reuses the deferred prompt even after dismissing the banner', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('chalkboard.business.installDismissed', '1'))
   await openOwner(page)
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: 'You', exact: true }).click()
   await installPrompt(page)
   const item = page.getByRole('button', { name: 'Install app', exact: true })
   await expect(item).toBeVisible()
@@ -53,19 +51,15 @@ test('B36 Settings reuses the deferred prompt even after dismissing the banner',
   await item.click()
   await expect(page.locator('html')).toHaveAttribute('data-prompted', 'yes')
   await expect(page.locator('html')).toHaveAttribute('data-prevented', 'true')
-  await expect(page.getByRole('dialog', { name: 'Settings', exact: true })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await item.click()
   await expect(page.getByRole('dialog', { name: 'Install app' })).toContainText(
     'Installation is not available yet',
   )
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeFocused()
+  await expect(item).toBeFocused()
   await installPrompt(page, 'accepted')
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await item.click()
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await expect(item).toHaveCount(0)
 })
 
@@ -84,7 +78,7 @@ for (const installed of ['standalone', 'ios-standalone', 'appinstalled'] as cons
       }
     }, installed)
     await openOwner(page)
-    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await page.getByRole('button', { name: 'You', exact: true }).click()
     await installPrompt(page)
     if (installed === 'appinstalled')
       await page.evaluate(() => dispatchEvent(new Event('appinstalled')))
@@ -102,9 +96,9 @@ test('B36 iOS Safari shows instructions and supports Back, Escape and focus retu
     }),
   )
   await openOwner(page)
-  const settings = page.getByRole('button', { name: 'Settings', exact: true })
-  await settings.click()
-  await page.getByRole('button', { name: 'Install app', exact: true }).click()
+  await page.getByRole('button', { name: 'You', exact: true }).click()
+  const install = page.getByRole('button', { name: 'Install app', exact: true })
+  await install.click()
   const sheet = page.getByRole('dialog', { name: 'Install app' })
   await expect(sheet).toContainText('Share → Add to Home Screen')
   await expect(sheet.getByRole('button', { name: 'Close', exact: true })).toBeFocused()
@@ -115,9 +109,8 @@ test('B36 iOS Safari shows instructions and supports Back, Escape and focus retu
   await page.screenshot({ path: 'docs/bugs/B36-ios.png' })
   await page.goBack()
   await expect(sheet).toHaveCount(0)
-  await expect(settings).toBeFocused()
-  await settings.click()
-  await page.getByRole('button', { name: 'Install app', exact: true }).click()
+  await expect(install).toBeFocused()
+  await install.click()
   await page.keyboard.press('Escape')
   await expect(sheet).toHaveCount(0)
 })

@@ -6,3 +6,13 @@
 export function spanFor(value: string, supporting = ''): 1 | 2 {
   return value.length > 26 || supporting.length > 44 ? 2 : 1
 }
+
+/** The tile grid shared by Shop and Grow. */
+export const tileGrid = {
+  containerType: 'inline-size',
+  containerName: 'tiles',
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 168px), 1fr))',
+  gridAutoFlow: 'row dense',
+  gap: 3,
+} as const

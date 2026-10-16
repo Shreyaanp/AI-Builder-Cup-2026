@@ -117,12 +117,95 @@ class Personal(BaseModel):
     saved: list[str] = []
 
 
+class Command(BaseModel):
+    """A customer command answered at once, by voice or text: my stamps, directions to a shop,
+    follow a shop, ask a shop's owner. Following and asking still happen on the shop's page."""
+
+    kind: Literal["my_stamps", "directions", "follow", "ask_owner"]
+    shop_id: str | None = None
+    shop_name: str | None = None
+    maps_url: str | None = None
+    question: str | None = None
+
+
 class AskResponse(BaseModel):
     intent: Intent
-    mode: Literal["ai", "keywords"]
+    mode: Literal["ai", "keywords", "command"]
     groups: list[Group]
     personal: Personal | None = None
     anchor: Anchor | None = None
+    command: Command | None = None
+
+
+COMMANDS = (
+    (
+        re.compile(
+            r"^(?:show|open|see|check)?\s*(?:me\s+)?my\s+(?:stamps?|passport|rewards?)\b", re.I
+        ),
+        "my_stamps",
+    ),
+    (
+        re.compile(
+            r"^(?:get\s+|give\s+me\s+|show\s+)?(?:directions|the\s+way|route)\s+to\s+(?P<shop>.+)$"
+            r"|^(?:take|navigate)\s+(?:me\s+)?to\s+(?P<shop2>.+)$",
+            re.I,
+        ),
+        "directions",
+    ),
+    (re.compile(r"^follow\s+(?P<shop>.+)$", re.I), "follow"),
+    (
+        re.compile(
+            r"^ask\s+(?:the\s+owner\s+of\s+)?(?P<shop>.+?)\s+"
+            r"(?P<question>(?:if|whether|about|for|do|does|are|is|when)\b.+)$",
+            re.I,
+        ),
+        "ask_owner",
+    ),
+)
+
+
+def customer_command(
+    q: str, shops: list[dict[str, Any]], lat: float, lng: float, radius: int
+) -> Command | None:
+    """A recognised command with its shop resolved by name (nearest first), else None."""
+    text = " ".join(q.split()).rstrip(" ?.!")
+    for pattern, kind in COMMANDS:
+        found = pattern.search(text)
+        if not found:
+            continue
+        if kind == "my_stamps":
+            return Command(kind="my_stamps")
+        groups = found.groupdict()
+        name = (groups.get("shop") or groups.get("shop2") or "").strip().casefold()
+        name = re.sub(r"^(?:the\s+)", "", name)
+        nearby = sorted(
+            (
+                shop
+                for shop in shops
+                if shop.get("lat") is not None
+                and shop.get("lng") is not None
+                and distance(lat, lng, shop["lat"], shop["lng"]) <= max(radius, 10_000)
+                and name
+                and (name in shop["name"].casefold() or shop["name"].casefold() in name)
+            ),
+            key=lambda shop: distance(lat, lng, shop["lat"], shop["lng"]),
+        )
+        if not nearby:
+            return None
+        shop = nearby[0]
+        return Command(
+            kind=kind,  # type: ignore[arg-type]
+            shop_id=shop["id"],
+            shop_name=shop["name"],
+            maps_url=(
+                "https://www.google.com/maps/dir/?api=1&travelmode=walking&destination="
+                f"{shop['lat']},{shop['lng']}"
+            )
+            if kind == "directions"
+            else None,
+            question=(groups.get("question") or "")[:300] or None,
+        )
+    return None
 
 
 def personal_reasons(shop: dict[str, Any], pick: Pick, profile: Profile) -> list[str]:
@@ -394,7 +477,12 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
         return None
     if intent.locally_made and not facts.get("locally_made"):
         return None
-    is_open = open_now(shop["hours"], shop["timezone"], weekly_hours=shop.get("weekly_hours"))
+    is_open = open_now(
+        shop["hours"],
+        shop["timezone"],
+        weekly_hours=shop.get("weekly_hours"),
+        closed_on=shop.get("closed_on"),
+    )
     if intent.open_now and is_open is False:
         return None
     limit = (
@@ -452,6 +540,15 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
 @router.post("/discover/ask", response_model=AskResponse)
 async def ask(body: AskRequest, request: Request) -> AskResponse:
     await enforce_limits(request, [("discover:ask", client_ip(request))], anonymous=True)
+    repository: MerchantRepository | None = request.app.state.merchant
+    if repository is not None:
+        # Commands need no model: answered at once, before the intent model is called.
+        shared = await anyio.to_thread.run_sync(repository.shared_shops)
+        command = customer_command(body.q, shared, body.lat, body.lng, body.radius)
+        if command is not None:
+            return AskResponse(
+                intent=Intent(summary=body.q[:160]), mode="command", groups=[], command=command
+            )
     intent = await ai_intent(request, body)
     mode: Literal["ai", "keywords"] = "ai" if intent else "keywords"
     intent = intent or keyword_intent(body.q)
@@ -480,7 +577,6 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
     anchor = await nearest_station(maps, body.lat, body.lng) if intent.near == "transit" else None
     lat, lng = (anchor.lat, anchor.lng) if anchor else (body.lat, body.lng)
     radius = min(body.radius, 1000) if anchor else body.radius
-    repository: MerchantRepository | None = request.app.state.merchant
     shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
     picks = [
         pick

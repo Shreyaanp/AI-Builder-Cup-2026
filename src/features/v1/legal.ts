@@ -76,21 +76,13 @@ export const PRIVACY: LegalSection[] = [
   },
 ]
 
-export const BIOMETRIC_NOTICE = [
-  'This check is optional and never blocks your registration.',
-  'We turn a short camera capture into a face template, encrypt it (CKKS homomorphic encryption) and compare it only in encrypted form to spot one person registering many shops.',
-  'The video is processed in memory and discarded. A match is never proof that you own a business; it only sends the case for human review.',
-  'You can delete your face data at any time from the Privacy tab.',
-]
-
 export interface LegalCopy {
   TERMS: LegalSection[]
   PRIVACY: LegalSection[]
-  BIOMETRIC_NOTICE: string[]
 }
 
 /** Translations are for convenience; English remains the applicable version. */
 export const LEGAL: Partial<Record<Locale, LegalCopy>> = {
-  en: { TERMS, PRIVACY, BIOMETRIC_NOTICE },
+  en: { TERMS, PRIVACY },
   ...legalTranslations,
 }

@@ -1,22 +1,15 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box,
   Button,
   ButtonBase,
   Divider,
-  FormControlLabel,
   IconButton,
   ListItemIcon,
   ListItemText,
-  ListSubheader,
   Menu,
   MenuItem,
-  Popover,
-  Switch,
-  TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Tooltip,
   Typography,
   useMediaQuery,
@@ -25,37 +18,33 @@ import {
 import {
   Check,
   ChevronDown,
-  Download,
-  Globe,
+  CircleUserRound,
   Leaf,
-  LogOut,
   MessageCircle,
   Plus,
-  Settings,
-  ShieldCheck,
+  Sprout,
   Store,
 } from 'lucide-react'
-import { useIdentity } from '../../auth/useIdentity'
-import { usePreferences, usePreferencesDispatch } from '../../state/hooks'
 import { shape, windowClass } from '../../design/theme'
-import type { ColorMode } from '../../design/theme'
 import { useCopy } from './strings'
-import { isLanguagePref, LOCALE_NAMES, LOCALES, systemLocale } from '../../i18n/locales'
-import { useWorkspace } from './workspaceContext'
+import { useTabsCopy } from './tabsCopy'
+import { PARENT_TAB, useWorkspace } from './workspaceContext'
 import type { Destination } from './workspaceContext'
 import { CoachWorkspace, type GalleryPhoto } from './screens/CoachScreen'
 import { NewShopFlow } from './NewShopFlow'
-import { TourHost, TourMenuButton } from '../tour/Tour'
+import { TourHost } from '../tour/Tour'
 import { ShopScreen } from './screens/ShopScreen'
 import { ShopOverview } from './ShopTiles'
 import { GoogleScreen } from './screens/GoogleScreen'
+import { GrowScreen } from './screens/GrowScreen'
 import { PrivacyScreen } from './screens/PrivacyScreen'
+import { SubPage } from './screens/SubPage'
+import { YouScreen } from './screens/YouScreen'
 import { DiscardPrompt } from './DiscardPrompt'
-import { Sheet } from './Sheet'
-import { installState, offerInstall, subscribeInstall } from '../../app/pwa'
 
 export function AppShell() {
   const t = useCopy()
+  const tabs = useTabsCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   const rail = useMediaQuery(`(min-width:${windowClass.medium}px)`)
@@ -72,16 +61,30 @@ export function AppShell() {
   }, [showNavBar])
   const destinations: { id: Destination; label: string; icon: ReactNode }[] = [
     { id: 'coach', label: t.navCoach, icon: <MessageCircle size={22} /> },
-    { id: 'shop', label: t.navShop, icon: <Store size={22} /> },
-    { id: 'google', label: t.navGoogle, icon: <Globe size={22} /> },
-    { id: 'privacy', label: t.navPrivacy, icon: <ShieldCheck size={22} /> },
+    { id: 'shop', label: tabs.navShop, icon: <Store size={22} /> },
+    { id: 'grow', label: tabs.navGrow, icon: <Sprout size={22} /> },
+    { id: 'you', label: tabs.navYou, icon: <CircleUserRound size={22} /> },
   ]
+  // A sub-page (Google, Privacy) keeps its tab selected.
+  const tab = PARENT_TAB[ws.destination] ?? ws.destination
   const screen =
     ws.destination === 'coach'
       ? null
-      : { shop: <ShopScreen />, google: <GoogleScreen />, privacy: <PrivacyScreen /> }[
-          ws.destination
-        ]
+      : {
+          shop: <ShopScreen />,
+          grow: <GrowScreen />,
+          you: <YouScreen />,
+          google: (
+            <SubPage parent="grow" label={tabs.navGrow}>
+              <GoogleScreen />
+            </SubPage>
+          ),
+          privacy: (
+            <SubPage parent="you" label={tabs.navYou}>
+              <PrivacyScreen />
+            </SubPage>
+          ),
+        }[ws.destination]
 
   return (
     <>
@@ -112,13 +115,7 @@ export function AppShell() {
               <Leaf size={28} />
             </Box>
             {destinations.map((item) => (
-              <NavItem
-                key={item.id}
-                item={item}
-                selected={ws.destination === item.id}
-                onSelect={ws.go}
-                rail
-              />
+              <NavItem key={item.id} item={item} selected={tab === item.id} onSelect={ws.go} rail />
             ))}
           </Box>
         )}
@@ -148,7 +145,7 @@ export function AppShell() {
             {supporting && ws.destination === 'coach' && ws.active && !inFlow && (
               <Box
                 component="aside"
-                aria-label={t.navShop}
+                aria-label={tabs.navShop}
                 sx={{
                   width: 400,
                   flexShrink: 0,
@@ -184,12 +181,7 @@ export function AppShell() {
             }}
           >
             {destinations.map((item) => (
-              <NavItem
-                key={item.id}
-                item={item}
-                selected={ws.destination === item.id}
-                onSelect={ws.go}
-              />
+              <NavItem key={item.id} item={item} selected={tab === item.id} onSelect={ws.go} />
             ))}
           </Box>
         )}
@@ -299,24 +291,9 @@ function NavItem({
 function TopBar() {
   const t = useCopy()
   const ws = useWorkspace()
-  const identity = useIdentity()
-  const preferences = usePreferences()
-  const dispatch = usePreferencesDispatch()
   const roles = useTheme().material
   const [shopMenu, setShopMenu] = useState<HTMLElement | null>(null)
-  const [settings, setSettings] = useState<HTMLElement | null>(null)
-  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
-  // B36: share the banner's deferred prompt; dismissal only suppresses the banner.
-  const installation = useSyncExternalStore(subscribeInstall, installState)
-  const [installHelp, setInstallHelp] = useState(false)
-  const settingsButton = useRef<HTMLButtonElement>(null)
-  const returnInstallFocus = useRef(false)
-  useEffect(() => {
-    if (!installHelp && returnInstallFocus.current) {
-      settingsButton.current?.focus()
-      returnInstallFocus.current = false
-    }
-  }, [installHelp])
+  // Settings live on the You tab now; the top bar keeps the shop switcher, new chat and "+".
   return (
     <Box
       component="header"
@@ -362,19 +339,6 @@ function TopBar() {
           <Plus size={22} />
         </IconButton>
       </Tooltip>
-      <Tooltip title={t.settings}>
-        <IconButton
-          ref={settingsButton}
-          aria-label={t.settings}
-          aria-haspopup="dialog"
-          aria-expanded={Boolean(settings)}
-          aria-controls={settings ? 'settings-panel' : undefined}
-          onClick={(event) => setSettings(event.currentTarget)}
-        >
-          <Settings size={22} />
-        </IconButton>
-      </Tooltip>
-
       <Menu anchorEl={shopMenu} open={Boolean(shopMenu)} onClose={() => setShopMenu(null)}>
         {ws.businesses.length === 0 && (
           <MenuItem disabled>
@@ -407,161 +371,6 @@ function TopBar() {
           <ListItemText primary={t.newShop} />
         </MenuItem>
       </Menu>
-
-      <Popover
-        anchorEl={settings}
-        transitionDuration={reducedMotion ? 0 : undefined}
-        open={Boolean(settings)}
-        onClose={() => setSettings(null)}
-        disableRestoreFocus={installHelp}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{
-          paper: {
-            id: 'settings-panel',
-            role: 'dialog',
-            'aria-modal': true,
-            'aria-label': t.settings,
-            sx: { py: 1, maxWidth: 'calc(100vw - 32px)' },
-          },
-        }}
-      >
-        <ListSubheader component="div" sx={{ bgcolor: 'transparent', lineHeight: '36px' }}>
-          {t.language}
-        </ListSubheader>
-        <Box sx={{ px: 2, pb: 1, minWidth: 240 }}>
-          {/* Default follows the phone's language setting; owners can pin a language here. */}
-          <TextField
-            select
-            fullWidth
-            size="small"
-            label={t.language}
-            value={preferences.language}
-            onChange={(event) =>
-              isLanguagePref(event.target.value) &&
-              dispatch({ type: 'language', language: event.target.value })
-            }
-          >
-            <MenuItem value="system">
-              {t.languageSystem} ({LOCALE_NAMES[systemLocale()]})
-            </MenuItem>
-            {LOCALES.map((code) => (
-              <MenuItem key={code} value={code} lang={code}>
-                {LOCALE_NAMES[code]}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Box>
-        <ListSubheader component="div" sx={{ bgcolor: 'transparent', lineHeight: '36px' }}>
-          {t.theme}
-        </ListSubheader>
-        <Box sx={{ px: 2, pb: 1 }}>
-          <ToggleButtonGroup
-            exclusive
-            size="small"
-            value={preferences.appearance}
-            onChange={(_, value: ColorMode | null) =>
-              value && dispatch({ type: 'appearance', appearance: value })
-            }
-            aria-label={t.theme}
-            sx={{ '& .MuiToggleButton-root': { color: roles.onSurface, minHeight: 48 } }}
-          >
-            <ToggleButton value="system">{t.themeSystem}</ToggleButton>
-            <ToggleButton value="light">{t.themeLight}</ToggleButton>
-            <ToggleButton value="dark">{t.themeDark}</ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-        <Box sx={{ px: 2 }}>
-          <FormControlLabel
-            label={t.readAloud}
-            labelPlacement="start"
-            sx={{ m: 0, minHeight: 48, width: '100%', justifyContent: 'space-between' }}
-            control={
-              <Switch
-                checked={ws.speakReplies}
-                onChange={(_, checked) => ws.setSpeakReplies(checked)}
-              />
-            }
-          />
-        </Box>
-        <TourMenuButton onStart={() => setSettings(null)} />
-        {installation !== 'installed' && (
-          <ButtonBase
-            sx={{
-              minHeight: 48,
-              width: '100%',
-              px: 2,
-              textAlign: 'left',
-              justifyContent: 'flex-start',
-              '&:hover': { bgcolor: roles.surfaceContainerHigh },
-              '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: -3 },
-            }}
-            onClick={() => {
-              setSettings(null)
-              if (installation === 'prompt') {
-                void offerInstall().catch(() => {
-                  returnInstallFocus.current = true
-                  setInstallHelp(true)
-                })
-              } else {
-                returnInstallFocus.current = true
-                setInstallHelp(true)
-              }
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 36 }}>
-              <Download size={18} />
-            </ListItemIcon>
-            <ListItemText primary={t.installApp} />
-          </ButtonBase>
-        )}
-        {identity.mode === 'firebase' && [
-          <Divider key="divider" />,
-          <ButtonBase
-            key="signout"
-            sx={{
-              width: '100%',
-              minHeight: 48,
-              px: 2,
-              textAlign: 'left',
-              justifyContent: 'flex-start',
-              '&:hover': { bgcolor: roles.surfaceContainerHigh },
-              '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: -3 },
-            }}
-            onClick={() => {
-              setSettings(null)
-              void identity.signOut()
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 36 }}>
-              <LogOut size={18} />
-            </ListItemIcon>
-            <ListItemText primary={t.signOut} />
-          </ButtonBase>,
-        ]}
-        <Typography
-          variant="bodySmall"
-          color="text.secondary"
-          sx={{ display: 'block', px: 2, pt: 1, pb: 0.5, maxWidth: 280 }}
-        >
-          {t.independent}
-        </Typography>
-      </Popover>
-      <Sheet
-        open={installHelp}
-        onClose={() => setInstallHelp(false)}
-        titleId="settings-install-title"
-        title={t.installApp}
-        onEntered={() => {
-          document
-            .querySelector<HTMLButtonElement>('[aria-labelledby="settings-install-title"] button')
-            ?.focus()
-        }}
-      >
-        <Typography variant="bodyLarge">
-          {installation === 'ios' ? t.installIos : t.installUnavailable}
-        </Typography>
-      </Sheet>
     </Box>
   )
 }
