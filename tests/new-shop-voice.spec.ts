@@ -13,7 +13,8 @@ test.beforeEach(async ({ page }, info) => {
   if (info.project.name === 'phone') await page.setViewportSize({ width: 390, height: 844 })
 })
 
-async function audit(page: Page) {
+/** `sheet`: the one sheet the flow has, "Review my shop" (owner decision, 17 Oct). */
+async function audit(page: Page, sheet = false) {
   expect(
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
       .violations,
@@ -21,8 +22,8 @@ async function audit(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
     true,
   )
-  // Nothing in the flow is a modal, dialog or sheet (alerts sit in the page).
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  // Nothing else in the flow is a modal, dialog or sheet (alerts sit in the page).
+  await expect(page.getByRole('dialog')).toHaveCount(sheet ? 1 : 0)
 }
 
 /** The browser refuses the microphone, the same on every machine (CI has no audio device, which
@@ -116,8 +117,8 @@ for (const scheme of ['light', 'dark'] as const) {
     const live = await proxyLive(page)
     await enter(page)
     const desktop = info.project.name === 'desktop' ? '-desktop' : ''
-    const capture = async (step: string) => {
-      await audit(page)
+    const capture = async (step: string, sheet = false) => {
+      await audit(page, sheet)
       await page.evaluate(async () => {
         await document.fonts.ready
       })
@@ -185,15 +186,19 @@ for (const scheme of ['light', 'dark'] as const) {
     const card = page.getByTestId('shop-so-far')
     await expect(card).toContainText('Chai Corner')
     await expect(card.locator('[data-filled="true"]', { hasText: 'Indiranagar' })).toHaveCount(1)
-    await expect(page.getByTestId('agent-action').last()).toContainText('Chai Corner')
+    // Name, kind and place: the shop is live by itself.
+    await expect(page.getByTestId('shop-live')).toBeVisible()
     await capture('7-typing')
     await page.getByRole('button', { name: 'Talk instead' }).click()
     await expect(page.getByRole('button', { name: 'Pause the mic' })).toBeVisible()
 
+    // "Review my shop" is a sheet over the conversation; closing it returns to the same step.
     await page.getByRole('button', { name: 'Review my shop' }).click()
-    await expect(page.getByRole('heading', { name: 'Check your shop' })).toBeFocused()
-    await capture('8-review')
-    await page.getByRole('button', { name: 'Open my shop' }).click()
+    await expect(page.getByTestId('draft-summary')).toContainText('Chai Corner')
+    await capture('8-review', true)
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('draft-summary')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeFocused()
     await capture('9-ready')
   })
@@ -233,7 +238,6 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(message).toBeFocused()
     await message.fill('name: Corner Bakery; category: Bakery')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
-    await expect(page.getByTestId('agent-action').last()).toContainText('Corner Bakery')
     await expect(page.getByTestId('shop-so-far')).toContainText('Corner Bakery')
   })
 }
@@ -296,7 +300,7 @@ test('session end: the app reconnects to the same conversation and it carries on
   await page.getByRole('button', { name: 'Type instead' }).click()
   await page.getByLabel('Message', { exact: true }).fill('name: Night Owl Kopi; category: Cafe')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(page.getByTestId('agent-action').last()).toContainText('Night Owl Kopi')
+  await expect(page.getByTestId('shop-so-far')).toContainText('Night Owl Kopi')
   await expect(page.getByRole('log')).toContainText('What is your business called?')
   const history = await (await page.request.get(`/api/v1/conversations/${first}`)).json()
   const said = history.messages.map((item: { text: string }) => item.text).join('\n')
@@ -373,7 +377,7 @@ test('voice rate limit: the alert says how long to wait; voice unavailable: carr
   await audit(page)
   await page.getByLabel('Message', { exact: true }).fill('name: Still Typing Cafe')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(page.getByTestId('agent-action').last()).toContainText('Still Typing Cafe')
+  await expect(page.getByTestId('shop-so-far')).toContainText('Still Typing Cafe')
 })
 
 const LOCALES = [

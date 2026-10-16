@@ -581,6 +581,10 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     if (summaryShown.current || !draftRef.current.live_id) return
     summaryShown.current = true
     clearSilence()
+    // A camera card still open (the owner said "baad mein" instead of tapping Skip) closes.
+    setLines((items) =>
+      items.map((line) => (line.role === 'camera' ? { ...line, closed: true } : line)),
+    )
     add({ role: 'summary' })
   }
   /** Done: the live shop opens (and the face check, when the owner chose it). */
@@ -866,10 +870,20 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         signal: AbortSignal.timeout(60_000),
       })
       const before = draftRef.current
-      // A signboard can name the shop; its items wait for the menu step on Today.
+      // A signboard can name the shop, but only what the owner has not said yet: a photo never
+      // replaces their answer. Its items wait for the menu step on Today.
+      const seen = result.proposal?.snapshot.business
       const after = {
-        ...(result.proposal
-          ? mergeDraft(before, { ...result.proposal.snapshot, products: [] })
+        ...(seen
+          ? mergeDraft(before, {
+              ...result.proposal!.snapshot,
+              business: Object.fromEntries(
+                Object.entries(seen).filter(
+                  ([key]) => !filled((before.business as Record<string, unknown> | null)?.[key]),
+                ),
+              ) as unknown as Business['fields'],
+              products: [],
+            })
           : before),
         photo: true,
       }
@@ -1837,7 +1851,7 @@ function SummaryCard({
           {o.faceStart}
         </Button>
         <Button disabled={busy} onClick={onSkip} sx={{ minHeight: 48 }}>
-          {o.faceSkip}
+          {o.skipForNow}
         </Button>
       </Stack>
     </Box>

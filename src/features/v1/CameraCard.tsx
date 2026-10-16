@@ -14,6 +14,7 @@ import {
 import { Camera, Check, RotateCcw, SkipForward, Upload, X } from 'lucide-react'
 import { enterRise, motion, shape } from '../../design/theme'
 import { useInChatCopy } from './inChatCopy'
+import { useOnboardingCopy } from './onboardingCopy'
 import { useVoiceModeCopy } from './voiceModeCopy'
 
 export type Shot = 'board' | 'front'
@@ -50,6 +51,7 @@ export function CameraCard({
 }) {
   const c = useInChatCopy()
   const v = useVoiceModeCopy()
+  const o = useOnboardingCopy()
   const roles = useTheme().material
   const chalk = useTheme().chalk
   const [phase, setPhase] = useState<Phase>('ask')
@@ -234,6 +236,17 @@ export function CameraCard({
             </Button>
             {uploadButton}
           </Stack>
+          {/* The photo is optional: a big Skip ("baad mein"); Today reminds the owner later. */}
+          <Button
+            fullWidth
+            variant="text"
+            size="large"
+            startIcon={<SkipForward size={18} />}
+            onClick={close}
+            sx={{ minHeight: 52 }}
+          >
+            {o.skipForNow}
+          </Button>
         </Stack>
       )}
 
@@ -385,15 +398,14 @@ export function CameraCard({
               sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
             >
               <Box sx={{ flex: 1 }}>
-                {shots.length > 1 && (
-                  <Button
-                    startIcon={<SkipForward size={18} />}
-                    onClick={advance}
-                    sx={{ minHeight: 48 }}
-                  >
-                    {c.skipShot}
-                  </Button>
-                )}
+                {/* One shot (the shopfront): Skip closes the card, the photo is optional. */}
+                <Button
+                  startIcon={<SkipForward size={18} />}
+                  onClick={shots.length > 1 ? advance : close}
+                  sx={{ minHeight: 48 }}
+                >
+                  {shots.length > 1 ? c.skipShot : o.skipForNow}
+                </Button>
               </Box>
               <IconButton
                 ref={shutter}

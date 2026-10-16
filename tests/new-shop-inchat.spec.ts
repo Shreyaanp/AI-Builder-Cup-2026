@@ -43,10 +43,10 @@ for (const scheme of ['light', 'dark'] as const) {
     await context.setGeolocation({ latitude: 12.9718234, longitude: 77.6412345, accuracy: 20 })
     await open(page, scheme)
 
-    await page.getByRole('button', { name: 'Menu photo' }).click()
+    await page.getByRole('button', { name: 'Shop photo' }).click()
     const camera = page.getByTestId('camera-card')
     await expect(camera).toHaveAttribute('data-phase', 'ask')
-    await expect(camera).toContainText('nothing is saved until you open your shop')
+    await expect(camera).toContainText('Customers see this photo on your shop page')
     await audit(page)
     await page.screenshot({ path: name('camera-1-ask', scheme, isMobile) })
     await camera.getByRole('button', { name: 'Open camera' }).click()
@@ -91,7 +91,7 @@ test('camera blocked: the alert explains, Try again and Upload instead work', as
   await localOnly(page)
   await inChatFixtures(page, 'denied')
   await open(page, 'light')
-  await page.getByRole('button', { name: 'Menu photo' }).click()
+  await page.getByRole('button', { name: 'Shop photo' }).click()
   const camera = page.getByTestId('camera-card')
   await camera.getByRole('button', { name: 'Open camera' }).click()
   const alert = page.getByTestId('camera-alert')
@@ -140,9 +140,8 @@ test('a pin moved by hand is saved as the owner’s pin, not as GPS accuracy', a
       sent = request.postDataJSON().owner_location
   })
   await map.getByRole('button', { name: 'This is my shop' }).click()
-  await expect(
-    page.getByTestId('agent-action').filter({ hasText: 'Saved your location' }),
-  ).toBeVisible()
+  // Saved silently: the card shows the pin (no action card in the chat).
+  await expect(map).toHaveAttribute('data-state', 'done')
   expect(sent?.source).toBe('pin')
 })
 
@@ -161,7 +160,6 @@ test('map pictures offline: the chalk grid stays and the pin still works', async
   await expect(map).toContainText('The map pictures are not available right now')
   await expect(map).toContainText('Near Indiranagar')
   await map.getByRole('button', { name: 'This is my shop' }).click()
-  await expect(
-    page.getByTestId('agent-action').filter({ hasText: 'Saved your location: Near Indiranagar' }),
-  ).toBeVisible()
+  await expect(map).toHaveAttribute('data-state', 'done')
+  await expect(map).toContainText('Near Indiranagar')
 })

@@ -80,6 +80,23 @@ test('one sentence puts the shop live; no menu question; summary, skip face, Tod
   await expect(page.getByRole('dialog')).toBeVisible()
 })
 
+test('the shop photo card has a big Skip; skipping ends with the summary', async ({ page }) => {
+  await enter(page)
+  await begin(page)
+  await say(page, 'name: Gupta Sweets; category: Sweets; location: Lajpat Nagar')
+  await expect(page.getByRole('log')).toContainText(ASKED.hours)
+  await say(page, 'hours: 7 am to 9 pm')
+  await expect(page.getByRole('log')).toContainText(ASKED.photo)
+  const camera = page.getByTestId('camera-card')
+  await expect(camera).toBeVisible()
+  await expect(camera).not.toContainText(/menu|price/i)
+  await camera.getByRole('button', { name: 'Skip for now' }).click()
+  const summary = page.getByTestId('shop-summary')
+  await expect(summary).toBeVisible()
+  await expect(summary.locator('[data-field="photo"]')).toContainText('Add later from Today')
+  await expect(page.getByTestId('camera-card')).toHaveCount(0)
+})
+
 test('a correction replaces the name silently and the live shop follows', async ({ page }) => {
   await enter(page)
   await begin(page)
@@ -177,9 +194,11 @@ test('a reload mid-onboarding resumes silently: the card, the next step, no new 
   await expect(page.getByRole('log')).toContainText(ASKED.place)
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
+  // The flow may come back open by itself (its hero) or from the header "+".
   const start = page.getByRole('button', { name: 'Let’s begin' })
-  if (!(await start.isVisible()))
-    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  const add = page.getByRole('banner').getByRole('button', { name: 'Add shop details' })
+  await expect(start.or(add)).toBeVisible()
+  if (!(await start.isVisible())) await add.click()
   await start.click()
   // The saved draft comes back, the map (the next step) is offered, and nothing is re-asked.
   await expect(page.getByTestId('shop-so-far')).toContainText('Lakshmi Tea Stall')

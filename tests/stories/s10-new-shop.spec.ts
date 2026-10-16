@@ -2,10 +2,11 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, inChatFixtures, liveOnly, localOnly, phone, shot } from './support.js'
 
-// S10 · Opening a new shop (owner answers, 15–16 Oct): big hero, then a full-screen conversation
-// in which the coach speaks first, drives one question at a time, acts in the chat (also when
-// the owner says nothing), opens the camera and the map as cards inside the chat, builds the
-// shop live, and ends in one review page, a ready moment and the Google Maps hand-off.
+// S10 · Opening a new shop (owner answers, 15–17 Oct): big hero, then a full-screen conversation
+// in which the coach speaks first and asks only name, kind, place, hours and a shop photo (no
+// menu), fills the shop card silently, opens the map and the camera as cards inside the chat,
+// puts the shop live once name + kind + place are known, and ends in one summary card (the face
+// check optional), a ready moment and the Google Maps hand-off.
 test.use(phone)
 // Light and dark captures of every screen (phone and desktop) are in tests/new-shop.spec.ts,
 // tests/new-shop-voice.spec.ts and tests/new-shop-inchat.spec.ts.
@@ -72,33 +73,23 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
     await shot(page, 10, '2-greeting')
   })
 
-  await test.step('3 · the owner answers; the agent acts in the chat; the map card opens', async () => {
+  await test.step('3 · the owner answers; the shop card fills silently; the map card opens', async () => {
     liveOnly('Speech recognition of the owner’s answer; the answer is typed into the live session')
     await page.getByRole('button', { name: 'Type instead' }).click()
     await page.getByLabel('Message', { exact: true }).fill('name: Market Chai; category: Tea stall')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
-    const action = page.getByTestId('agent-action').last()
-    await expect(action).toContainText('Market Chai')
+    // Onboarding v2: answers land in the shop card, no "added" card in the chat.
     await expect(page.getByTestId('shop-so-far')).toContainText('Market Chai')
-    await expect(page.getByRole('log')).toContainText('Where is your shop?')
+    await expect(page.getByTestId('agent-action')).toHaveCount(0)
+    await expect(page.getByRole('log')).toContainText('Are you at the shop right now?')
     // The coach asked where: the map opens as a card in the chat, waiting for the owner.
     await expect(page.getByTestId('map-card')).toHaveAttribute('data-state', 'open')
     await expect(page.getByRole('button', { name: 'Use my current location' })).toBeVisible()
     await shot(page, 10, '3-action')
   })
 
-  await test.step('4 · silence: the coach still answers in the chat and moves on', async () => {
-    // No answer for ~9 s: the coach leaves the location out for now and asks the next question.
-    await expect(page.getByRole('log')).toContainText('leave the location out', {
-      timeout: 20_000,
-    })
-    await expect(page.getByRole('log')).toContainText('What are your opening hours?')
-    await shot(page, 10, '4-silence')
-    await axe(page)
-  })
-
-  await test.step('5 · the map in the chat: small view, big view, confirm the pin', async () => {
-    await page.getByRole('button', { name: 'My location' }).click()
+  await test.step('4 · the map in the chat: small view, big view, confirm the pin; live', async () => {
+    await page.getByRole('button', { name: 'Use my current location' }).click()
     const card = page.getByTestId('map-card').last()
     await expect(card).toContainText('Near Indiranagar')
     await expect(card).toContainText('within 20 m')
@@ -114,20 +105,25 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
     await axe(page, 1)
     await big.getByRole('button', { name: 'This is my shop' }).click()
     await expect(big).toBeHidden()
-    await expect(
-      page.getByTestId('agent-action').filter({ hasText: 'Saved your location: Near Indiranagar' }),
-    ).toBeVisible()
     await expect(page.getByTestId('map-card').last()).toHaveAttribute('data-state', 'done')
+    // Name, kind and the pin: the shop is live by itself, and the coach asks the hours next.
+    await expect(page.getByTestId('shop-live')).toBeVisible()
+    await expect(page.getByRole('log')).toContainText('What are your opening hours?')
+    await shot(page, 10, '4-live')
+    await axe(page)
   })
 
-  await test.step('6 · the camera in the chat: board, then shopfront', async () => {
-    await page.getByRole('button', { name: 'Menu photo' }).click()
+  await test.step('5 · hours, then the shopfront photo in the chat', async () => {
+    await page.getByLabel('Message', { exact: true }).fill('hours: 7 am to 9 pm')
+    await page.getByRole('button', { name: 'Send', exact: true }).click()
+    await expect(page.getByRole('log')).toContainText('Can you take a photo of your shop?')
     const camera = page.getByTestId('camera-card')
-    // The camera was already allowed: the viewfinder opens in the card (not full screen) with
-    // the coach's instruction, and the voice session keeps listening meanwhile.
+    // The camera was already allowed: the viewfinder opens in the card (not full screen) at
+    // once, with a big Skip, and the voice session keeps listening meanwhile.
+    await expect(camera).toContainText('Now your shopfront')
+    await expect(camera.getByRole('button', { name: 'Skip for now' })).toBeVisible()
     await expect(camera).toHaveAttribute('data-phase', 'live')
-    await expect(camera).toContainText('Fit the whole price board in the frame')
-    await expect(camera).toContainText('Photo 1 of 2')
+    await expect(camera).toContainText('Step back so the sign and the door are in the frame')
     await expect(page.getByTestId('voice-orb').first()).not.toHaveAttribute('data-phase', 'off')
     const box = (await camera.boundingBox())!
     expect(box.height).toBeLessThan(844 * 0.7)
@@ -141,31 +137,30 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
     await expect(camera).toHaveAttribute('data-phase', 'live')
     await camera.getByRole('button', { name: 'Take photo' }).click()
     await camera.getByRole('button', { name: 'Use photo' }).click()
-    await expect(page.getByTestId('agent-action').last()).toContainText(/I read your menu|Added/)
-    // Next shot: the shopfront.
-    await expect(camera).toHaveAttribute('data-shot', 'front')
-    await expect(camera).toContainText('Step back so the sign and the door are in the frame')
-    await camera.scrollIntoViewIfNeeded()
-    await page.waitForTimeout(300)
-    await evidence(page, 'camera-4-shopfront')
-    await axe(page)
-    await camera.getByRole('button', { name: 'Skip this one' }).click()
     await expect(page.getByTestId('camera-card')).toHaveCount(0)
+    await expect(page.getByTestId('shop-so-far')).toContainText('Photo added')
     await shot(page, 10, '5-photo')
   })
 
-  await test.step('7 · one full-screen review page with one button', async () => {
-    await page.getByRole('button', { name: 'Review my shop' }).click()
-    const review = page.getByTestId('new-shop-review')
-    await expect(review).toContainText('within 20 m')
-    await expect(review.getByRole('button', { name: 'Open my shop' })).toBeVisible()
-    expect(await (await page.request.get('/api/v1/businesses')).json()).toEqual([])
-    await shot(page, 10, '6-review')
+  await test.step('6 · one summary card, the optional face check, and the review sheet', async () => {
+    const summary = page.getByTestId('shop-summary')
+    await expect(summary).toContainText('Market Chai')
+    await expect(summary).toContainText('Photo added')
+    await expect(summary.getByRole('button', { name: 'Verify now' })).toBeVisible()
+    await summary.scrollIntoViewIfNeeded()
+    await shot(page, 10, '6-summary')
     await axe(page)
+    // "Review my shop" is always one tap away (a sheet over the conversation).
+    await page.getByRole('button', { name: 'Review my shop' }).click()
+    const sheet = page.getByRole('dialog', { name: 'Your shop so far' })
+    await expect(sheet.getByTestId('draft-summary')).toContainText('Near Indiranagar')
+    await axe(page, 1)
+    await page.keyboard.press('Escape')
+    await expect(sheet).toBeHidden()
   })
 
-  await test.step('8 · "Your shop is ready", and the Google Maps hand-off', async () => {
-    await page.getByRole('button', { name: 'Open my shop' }).click()
+  await test.step('7 · "Your shop is ready", and the Google Maps hand-off', async () => {
+    await page.getByTestId('shop-summary').getByRole('button', { name: 'Skip for now' }).click()
     await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeVisible()
     await shot(page, 10, '7-ready')
     await axe(page)
