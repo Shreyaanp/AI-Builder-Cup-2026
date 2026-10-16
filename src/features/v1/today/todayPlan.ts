@@ -8,7 +8,10 @@ export type TodayFacts = components['schemas']['Today']
 export type CoachLine = components['schemas']['CoachLine']
 type Pulse = components['schemas']['Pulse']
 
-export type StepId = 'items' | 'category' | 'location' | 'hours' | 'phone' | 'share'
+export type StepId =
+  'items' | 'category' | 'location' | 'hours' | 'photo' | 'phone' | 'share' | 'face'
+/** Reminders for what onboarding let the owner skip; not part of the setup progress. */
+const REMINDERS: StepId[] = ['photo', 'face']
 export type Need =
   | { id: string; kind: 'reply'; count: number }
   | { id: string; kind: 'menu' }
@@ -48,6 +51,8 @@ export interface TodayInput {
   /** The daily menu question was answered (or confirmed) today. */
   menuAnswered: boolean
   now: Date
+  /** The owner's face check (null while unknown): skipped at onboarding → a reminder. */
+  face?: 'not_started' | 'verified' | 'in_review' | 'not_verified' | null
 }
 
 const MAX_NEEDS = 3
@@ -58,16 +63,27 @@ export function dayPart(now: Date): DayPart {
   return hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'
 }
 
-/** Setup steps still missing, in the order the owner should do them. */
-export function missingSteps(shop: TodayInput['shop'], products: Product[]): StepId[] {
+/**
+ * Setup steps still missing, in the order the owner should do them. Onboarding never asks the
+ * menu (owner decision, 17 Oct), so "Add your menu" comes first; hours, the shop photo and the
+ * face check come back here when onboarding skipped them.
+ */
+export function missingSteps(
+  shop: TodayInput['shop'],
+  products: Product[],
+  face: TodayInput['face'] = null,
+): StepId[] {
   const f = shop.fields
   const steps: [StepId, boolean][] = [
     ['items', products.length === 0],
     ['category', !f.category.trim()],
-    ['location', !f.location.trim()],
+    // A GPS pin is a place too (onboarding pins the shop; the address may stay empty).
+    ['location', !f.location.trim() && f.lat == null],
     ['hours', !hasHours(f)],
+    ['photo', !shop.gallery?.length],
     ['phone', !f.phone.trim()],
     ['share', !shop.public],
+    ['face', face === 'not_started' || face === 'not_verified'],
   ]
   return steps.filter(([, missing]) => missing).map(([id]) => id)
 }
@@ -101,10 +117,10 @@ function pulseLine(pulse: Pulse, when: PulseLine['when'], order: Metric[]): Puls
 export function todayPlan(input: TodayInput): TodayPlan {
   const { shop, products, unread, facts } = input
   const food = isFood(shop.fields)
-  const steps = missingSteps(shop, products)
+  const steps = missingSteps(shop, products, input.face)
   // Same six checks as the readiness list (name, kind, address, hours, phone, items).
   const total = 6
-  const done = total - steps.filter((step) => step !== 'share').length
+  const done = total - steps.filter((step) => step !== 'share' && !REMINDERS.includes(step)).length
   const metrics = metricsFor(shop)
   const pulse = facts
     ? (pulseLine(facts.yesterday, 'yesterday', metrics) ?? pulseLine(facts.today, 'today', metrics))

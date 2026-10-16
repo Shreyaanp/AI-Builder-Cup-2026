@@ -24,6 +24,7 @@ import {
   PencilLine,
   Sparkles,
   ZapOff,
+  ShieldCheck,
 } from 'lucide-react'
 import { useIdentity } from '../../../auth/useIdentity'
 import { HAND_FONT, enterRise, motion, shape } from '../../../design/theme'
@@ -31,6 +32,7 @@ import { useLocale } from '../../../state/hooks'
 import { toMajor } from '../format'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
+import { useOnboardingCopy } from '../onboardingCopy'
 import { useTodayCopy, type Festival } from './todayCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
@@ -129,21 +131,47 @@ function LineText({ line }: { line: CoachLine }) {
   )
 }
 
-function stepText(step: StepId, food: boolean, tt: ReturnType<typeof useTodayCopy>) {
+function stepText(
+  step: StepId,
+  food: boolean,
+  tt: ReturnType<typeof useTodayCopy>,
+  o: ReturnType<typeof useOnboardingCopy>,
+) {
   return {
     items: tt.stepItems(food),
     category: tt.stepCategory,
     location: tt.stepLocation,
     hours: tt.stepHours,
+    photo: o.stepPhoto,
     phone: tt.stepPhone,
     share: tt.stepShare,
+    face: o.stepFace,
   }[step]
 }
 
-function useStepAction(step: StepId): { label: string; icon: ReactNode; run: () => void } {
+interface StepAction {
+  label: string
+  icon: ReactNode
+  run: () => void
+  /** "Add your menu": by photo, or typed in (owner decision, 17 Oct). */
+  second?: { label: string; run: () => void }
+}
+
+function useStepAction(step: StepId): StepAction {
   const ws = useWorkspace()
   const tt = useTodayCopy()
-  if (step === 'items') return { label: tt.scan, icon: <Camera size={18} />, run: ws.requestPhoto }
+  const o = useOnboardingCopy()
+  if (step === 'items')
+    return {
+      label: tt.scan,
+      icon: <Camera size={18} />,
+      run: ws.requestPhoto,
+      second: { label: o.typeMenu, run: () => ws.openEditor({ kind: 'product', product: null }) },
+    }
+  if (step === 'photo')
+    return { label: o.takePhoto, icon: <Camera size={18} />, run: ws.requestPhoto }
+  if (step === 'face')
+    return { label: o.verify, icon: <ShieldCheck size={18} />, run: () => ws.setFaceOpen(true) }
   if (step === 'share')
     return { label: tt.share, icon: <Globe size={18} />, run: () => ws.go('shop') }
   return {
@@ -157,6 +185,7 @@ function useStepAction(step: StepId): { label: string; icon: ReactNode; run: () 
 function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions: TodayActions }) {
   const ws = useWorkspace()
   const tt = useTodayCopy()
+  const o = useOnboardingCopy()
   const roles = useTheme().material
   const action = useStepAction(step)
   return (
@@ -179,7 +208,7 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
         {tt.dayOne(ws.active?.fields.name ?? '')}
       </Typography>
       <Typography variant="bodyLarge" color="text.secondary" sx={{ mt: 1 }}>
-        {stepText(step, food, tt)}
+        {stepText(step, food, tt, o)}
       </Typography>
       <Stack direction="row" sx={{ mt: 4, gap: 2, flexWrap: 'wrap' }}>
         <Button
@@ -190,6 +219,16 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
         >
           {action.label}
         </Button>
+        {action.second && (
+          <Button
+            variant="outlined"
+            startIcon={<PencilLine size={18} />}
+            onClick={action.second.run}
+            sx={{ minHeight: 48 }}
+          >
+            {action.second.label}
+          </Button>
+        )}
         <Button
           variant="outlined"
           startIcon={<Mic size={18} />}
@@ -325,6 +364,7 @@ function NeedRow({
 }) {
   const t = useCopy()
   const tt = useTodayCopy()
+  const o = useOnboardingCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
@@ -409,11 +449,14 @@ function NeedRow({
     )
   } else if (need.kind === 'step') {
     icon = step.icon
-    text = stepText(need.step, food, tt)
+    text = stepText(need.step, food, tt, o)
     buttons = (
-      <Button variant={primary} onClick={step.run}>
-        {step.label}
-      </Button>
+      <>
+        <Button variant={primary} onClick={step.run}>
+          {step.label}
+        </Button>
+        {step.second && <Button onClick={step.second.run}>{step.second.label}</Button>}
+      </>
     )
   } else {
     icon = <CircleHelp size={20} />

@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useIdentity } from '../../../auth/useIdentity'
 import { dismissFreshness, readDismissal, subscribeDismissal } from '../../sales/freshnessDismissal'
+import { useTrust } from '../../trust/useTrust'
 import { useWorkspace } from '../workspaceContext'
 import { todayPlan, type TodayPlan } from './todayPlan'
 import { useToday } from './useToday'
@@ -12,6 +13,7 @@ export function useTodayPlan(unread: number | null): {
 } {
   const ws = useWorkspace()
   const facts = useToday()
+  const { trust } = useTrust(ws.api)
   const { scope } = useIdentity()
   const key = `chalkboard.freshness.${scope}.${ws.active?.id ?? ''}`
   const answered = useSyncExternalStore(
@@ -33,6 +35,7 @@ export function useTodayPlan(unread: number | null): {
     facts,
     menuAnswered: Boolean(facts && answered === facts.date),
     now,
+    face: trust?.face ?? null,
   })
   return {
     plan,

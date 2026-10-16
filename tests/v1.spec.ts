@@ -29,7 +29,7 @@ async function open(page: Page) {
 
 async function addShop(page: Page, name: string) {
   await openNewShopReview(page, `name: ${name}`)
-  await expect(page.getByTestId('new-shop-review')).toContainText('Nothing is published to Google')
+  await expect(page.getByTestId('draft-summary')).toContainText(name)
   await createShopFromReview(page)
   await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
 }

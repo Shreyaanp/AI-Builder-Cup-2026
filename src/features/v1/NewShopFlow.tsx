@@ -29,6 +29,7 @@ import {
   Mic,
   MicOff,
   PhoneOff,
+  ShieldCheck,
   SkipForward,
   Sparkles,
   Store,
@@ -39,7 +40,7 @@ import {
 import { gsap } from 'gsap'
 import { visuallyHidden } from '@mui/utils'
 import { chatBubbleStyle } from '../coach/bubbleStyle'
-import { RateLimitError, streamCoach } from '../../api/stream'
+import { RateLimitError, streamCoach, TooSlowError, TURN_IDLE_MS } from '../../api/stream'
 import type { CoachEvent } from '../../api/stream'
 import { useIdentity } from '../../auth/useIdentity'
 import { useLocale } from '../../state/hooks'
@@ -58,9 +59,11 @@ import { useInChatCopy } from './inChatCopy'
 import { readablePlace, type OwnerLocation } from './location'
 import { MapCard, type PinChoice } from './MapCard'
 import { FactList } from './FactList'
-import { defaultCurrency, formatPrice, toMinor } from './format'
+import { defaultCurrency, formatPrice } from './format'
 import { NewShopReady } from './NewShopStage'
 import { useNewShopCopy } from './newShopCopy'
+import { useOnboardingCopy } from './onboardingCopy'
+import { Sheet } from './Sheet'
 import { dietaryMissing, factEntries } from './shopProgress'
 import { useNextStepsCopy } from './nextStepsCopy'
 import { useCopy } from './strings'
@@ -99,7 +102,16 @@ const EMPTY_BUSINESS: Business['fields'] = {
   phone: '',
 }
 
-type Draft = { business: Business['fields'] | null; products: Product[] }
+type Draft = {
+  business: Business['fields'] | null
+  products: Product[]
+  /** Steps the owner put off ("pata nahi", "baad mein", Skip): hours, photo. */
+  skipped?: string[]
+  /** The shop photo was taken. */
+  photo?: boolean
+  /** The shop went live by itself (name + kind + place known): its id. */
+  live_id?: string | null
+}
 type Line =
   | { id: string; role: 'coach'; text: string }
   | { id: string; role: 'owner'; text: string; photo?: string }
@@ -107,6 +119,8 @@ type Line =
   // The camera and the map open as cards inside the conversation.
   | { id: string; role: 'camera'; shots: Shot[]; closed: boolean }
   | { id: string; role: 'map'; locate: boolean; done: string | null }
+  // The one summary card at the end, with the optional face check.
+  | { id: string; role: 'summary' }
 type NewLine = Line extends infer L ? (L extends Line ? Omit<L, 'id'> : never) : never
 
 const filled = (value: unknown) =>
@@ -125,47 +139,39 @@ function mergeDraft(previous: Draft, snapshot: Proposal['snapshot']): Draft {
       if (filled(value)) merged[key] = value
     business = merged as unknown as Business['fields']
   }
-  return { business, products: [...products.values()] }
+  return { ...previous, business, products: [...products.values()] }
 }
 
-/** What changed between two drafts, as the lines of the action card shown in the chat. */
-function useDescribe() {
-  const t = useCopy()
-  const f = useNewShopCopy()
-  return (before: Draft, after: Draft, fromPhoto = false) => {
-    const items: string[] = []
-    const a = before.business ?? EMPTY_BUSINESS
-    const b = after.business
-    if (b) {
-      for (const key of ['name', 'category', 'location', 'hours', 'phone'] as const)
-        if (
-          b[key] &&
-          b[key] !== a[key] &&
-          !(key === 'location' && b.lat != null && b.lat !== a.lat)
-        )
-          items.push(`${t.fields[key]}: ${b[key]}`)
-      if (b.description && b.description !== a.description) items.push(f.described)
-      if (
-        b.weekly_hours?.length &&
-        JSON.stringify(b.weekly_hours) !== JSON.stringify(a.weekly_hours) &&
-        !b.hours
-      )
-        items.push(t.fields.hours)
-      if (b.lat != null && (b.lat !== a.lat || b.lng !== a.lng))
-        items.push(f.locationSaved(readablePlace(b, f)))
-      const old = new Map(factEntries(a, t).map((entry) => [entry.key, entry.value]))
-      for (const entry of factEntries(b, t))
-        if (old.get(entry.key) !== entry.value) items.push(`${entry.label}: ${entry.value}`)
-    }
-    const known = new Set(before.products.map((p) => `${p.name.toLocaleLowerCase()}|${p.unit}`))
-    const added = after.products.filter(
-      (p) => !known.has(`${p.name.toLocaleLowerCase()}|${p.unit}`),
-    )
-    if (fromPhoto && after.products.length > before.products.length)
-      items.unshift(f.menuRead(added.length))
-    else if (added.length) items.push(`${t.products}: ${added.map((p) => p.name).join(', ')}`)
-    return items
+/** The server's saved draft (a resumed conversation, a tool's save) joins what the screen has. */
+function withServerDraft(previous: Draft, server: Draft): Draft {
+  const merged = mergeDraft(previous, {
+    kind: 'business',
+    business_id: '',
+    revision: 0,
+    business: server.business,
+    products: server.products ?? [],
+  })
+  return {
+    ...merged,
+    skipped: [...new Set([...(previous.skipped ?? []), ...(server.skipped ?? [])])],
+    photo: Boolean(previous.photo || server.photo),
+    live_id: server.live_id || previous.live_id || null,
   }
+}
+
+const hasPlace = (draft: Draft) =>
+  Boolean(draft.business && (draft.business.lat != null || draft.business.location))
+/** Everything onboarding asks is answered or skipped (owner decision, 17 Oct). */
+function complete(draft: Draft) {
+  const b = draft.business
+  const skipped = new Set(draft.skipped ?? [])
+  return Boolean(
+    b?.name &&
+    b.category &&
+    hasPlace(draft) &&
+    (b.hours || b.weekly_hours?.length || skipped.has('hours')) &&
+    (draft.photo || skipped.has('photo')),
+  )
 }
 
 export function NewShopFlow({
@@ -205,7 +211,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const roles = useTheme().material
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const wide = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'))
-  const describe = useDescribe()
+  const o = useOnboardingCopy()
   const c = useInChatCopy()
   const phase = ws.newShopPhase
 
@@ -232,6 +238,16 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const [note, setNoteState] = useState('')
   const noteRef = useRef('')
   const [error, setError] = useState('')
+  // "Review my shop": always one tap away, whatever the coach is doing.
+  const [reviewOpen, setReviewOpen] = useState(false)
+  // A turn that took too long (no event for TURN_IDLE_MS): what to send again on Retry.
+  const [stalled, setStalled] = useState<string | null>(null)
+  const turnTimer = useRef<number | undefined>(undefined)
+  const lastTurn = useRef<string | null>(null)
+  const summaryShown = useRef(false)
+  // The current turn resumes a conversation already under way: its answer stays silent.
+  const quiet = useRef(false)
+  const [finishing, setFinishing] = useState(false)
   const [muted, setMuted] = useState(!ws.speakReplies)
   const mutedRef = useRef(muted)
   const [ttsText, setTtsText] = useState('')
@@ -284,9 +300,13 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     draftRef.current = next
     setDraftState(next)
   }
+  // Thinking can never stay on: every "reply" state ends on the reply, an error, or after
+  // TURN_IDLE_MS without any event (then Retry is offered).
   const setBusy = (next: typeof busy) => {
     busyRef.current = next
     setBusyState(next)
+    if (next === 'reply') armTurn()
+    else window.clearTimeout(turnTimer.current)
   }
   const setNote = (next: string) => {
     noteRef.current = next
@@ -295,6 +315,31 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const add = (line: NewLine) =>
     setLines((items) => [...items, { ...line, id: crypto.randomUUID() } as Line].slice(-80))
 
+  function armTurn() {
+    window.clearTimeout(turnTimer.current)
+    turnTimer.current = window.setTimeout(onTurnStall, TURN_IDLE_MS)
+  }
+  /** No word from the coach for too long: stop thinking, keep what arrived, offer Retry. */
+  function onTurnStall() {
+    if (busyRef.current !== 'reply') return
+    if (reveal.active()) addCoachLine(reveal.flush())
+    if (liveRef.current.trim()) {
+      // The words came but their end never did (the stream ended without a final event).
+      commitCoach(true)
+      return
+    }
+    const unanswered = pending.current ?? lastTurn.current
+    pending.current = null
+    controller.current?.abort()
+    controller.current = null
+    setBusy('idle')
+    setStalled(unanswered ?? '')
+  }
+  function retryTurn() {
+    const message = stalled
+    setStalled(null)
+    if (message) void say(message)
+  }
   function clearSilence() {
     window.clearTimeout(silence.current)
   }
@@ -306,6 +351,8 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   // No answer: the coach responds in the chat anyway (a suggestion or a default) and moves on.
   function onSilence() {
     // A paused mic is the owner taking a moment on purpose: no nudge then.
+    // Onboarding is done (the summary is up): no more questions.
+    if (summaryShown.current) return
     if (
       busyRef.current !== 'idle' ||
       noteRef.current.trim() ||
@@ -396,6 +443,15 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
    * voice turn's words join the chat from the reveal once spoken; only the turn ends here.
    */
   function commitCoach(finished: boolean) {
+    if (quiet.current && finished) {
+      quiet.current = false
+      greeted.current = true
+      pending.current = null
+      setLive('')
+      setBusy('idle')
+      showNextStep()
+      return
+    }
     const text = liveRef.current.trim()
     setLive('')
     setHeard('')
@@ -427,7 +483,13 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
             0,
           )
         : open()
-    if (c.photoWords.test(text) && !offered.current.camera && !draftRef.current.products.length) {
+    const draft = draftRef.current
+    if (
+      c.photoWords.test(text) &&
+      !offered.current.camera &&
+      !draft.photo &&
+      !draft.skipped?.includes('photo')
+    ) {
       offered.current.camera = true
       show(() => openCamera(false), c.photoWords)
     } else if (
@@ -447,12 +509,18 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     setLines((items) =>
       [
         ...items.map((line) => (line.role === 'camera' ? { ...line, closed: true } : line)),
-        { id, role: 'camera' as const, shots: ['board', 'front'] as Shot[], closed: false },
+        { id, role: 'camera' as const, shots: ['front'] as Shot[], closed: false },
       ].slice(-80),
     )
   }
   function closeCamera(id: string) {
     openCards.current.delete(id)
+    // Closed without a photo: the owner skipped it ("baad mein"); Today reminds them later.
+    const draft = draftRef.current
+    if (busyRef.current !== 'photo' && !draft.photo && !draft.skipped?.includes('photo')) {
+      setDraft({ ...draft, skipped: [...(draft.skipped ?? []), 'photo'] })
+      void say(o.photoSkipped)
+    }
     setLines((items) =>
       items.map((line) =>
         line.id === id && line.role === 'camera' ? { ...line, closed: true } : line,
@@ -487,15 +555,63 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   }
   function applyProposal(proposal: Proposal) {
     setSealed(proposal)
-    const before = draftRef.current
-    const after = mergeDraft(before, proposal.snapshot)
-    setDraft(after)
-    const items = describe(before, after)
-    if (items.length) add({ role: 'action', title: f.added, items })
+    setDraft(mergeDraft(draftRef.current, proposal.snapshot))
+  }
+  /** The coach opened a card of the flow (show_step): it appears at once. */
+  function showStep(step: string) {
+    if (step === 'location') openMap(true)
+    else if (step === 'camera') openCamera()
+    else if (step === 'review') setReviewOpen(true)
+    else if (step === 'summary' || step === 'face_check') offerSummary()
+  }
+  /** After a resume: no greeting, just the card of the next step (the map, the camera). */
+  function showNextStep() {
+    const draft = draftRef.current
+    const b = draft.business
+    if (!b?.name || !b.category) return
+    if (!hasPlace(draft)) openMap(false, false)
+    else if (
+      (b.hours || b.weekly_hours?.length || draft.skipped?.includes('hours')) &&
+      !draft.photo &&
+      !draft.skipped?.includes('photo')
+    )
+      openCamera(false)
+  }
+  function offerSummary() {
+    if (summaryShown.current || !draftRef.current.live_id) return
+    summaryShown.current = true
+    clearSilence()
+    add({ role: 'summary' })
+  }
+  /** Done: the live shop opens (and the face check, when the owner chose it). */
+  async function finish(face: boolean) {
+    const bid = draftRef.current.live_id
+    if (!bid || finishing) return
+    setFinishing(true)
+    wantVoice.current = false
+    clearSilence()
+    silenceAudio()
+    stopVoice()
+    if (photoFile.current) setGalleryPhoto({ file: photoFile.current, businessId: bid })
+    try {
+      await ws.finishNewShop(bid)
+      if (face) ws.setFaceOpen(true)
+    } catch {
+      setError(t.actionFailed)
+      setFinishing(false)
+    }
   }
   function receive(event: CoachEvent) {
     switchLanguage(event)
+    // Any word from the coach restarts the "took too long" clock.
+    if (busyRef.current === 'reply') armTurn()
+    if (event.kind === 'action' && event.data?.target === 'new_shop_step')
+      showStep(String(event.data.step ?? ''))
     if (event.kind === 'ready' && event.session_id) session.current = event.session_id
+    // Typed resume (the page reloaded mid-onboarding): the opening turn's answer is not shown or
+    // spoken; the shop card and the next step's card carry on silently.
+    if (event.kind === 'ready' && event.data?.continues && !greeted.current) quiet.current = true
+    if (quiet.current && (event.kind === 'delta' || event.kind === 'reply')) return
     if (event.kind === 'delta') setLive((current) => current + (event.text ?? ''))
     if (event.kind === 'reply') setLive(event.text ?? '')
     if (event.kind === 'output_transcript')
@@ -505,7 +621,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     // The conversation came back with answers this screen never received (the connection
     // dropped right after they were saved, or the page reloaded): the shop card catches up.
     if (event.kind === 'draft' && event.data)
-      setDraft(mergeDraft(draftRef.current, event.data as unknown as Proposal['snapshot']))
+      setDraft(withServerDraft(draftRef.current, event.data as unknown as Draft))
     if (event.kind === 'interrupted') commitCoach(false)
     if (event.kind === 'turn_complete') commitCoach(true)
   }
@@ -538,7 +654,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   }
 
   const voice = useVoice(null, receiveVoice, draft, {
-    onReady: (resumed) => {
+    onReady: (resumed, continues) => {
       // A socket ended (time cap, network) and the same session is back: what the coach had
       // started saying stays in the chat (that turn was answered).
       if (resumed && reveal.active()) addCoachLine(reveal.flush())
@@ -546,6 +662,12 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       // The coach speaks first: the opening goes out as soon as the live session is ready.
       if (!startSent.current) {
         startSent.current = true
+        if (continues) {
+          // The conversation was already under way (the page reloaded): resume silently.
+          greeted.current = true
+          showNextStep()
+          return
+        }
         setBusy('reply')
         if (voiceRef.current?.sendText(f.start, draftRef.current)) pending.current = f.start
         return
@@ -566,6 +688,8 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   async function say(message: string) {
     clearSilence()
     setError('')
+    setStalled(null)
+    lastTurn.current = message
     if (voiceRef.current?.sendText(message, draftRef.current)) {
       pending.current = message
       setBusy('reply')
@@ -580,6 +704,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     await sendText(message)
   }
   async function sendText(message: string) {
+    lastTurn.current = message
     stopSpeaking()
     controller.current?.abort()
     const abort = new AbortController()
@@ -600,12 +725,17 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         abort.signal,
         receive,
         identity.getToken,
+        undefined,
+        TURN_IDLE_MS,
       )
-      if (controller.current === abort && liveRef.current.trim()) commitCoach(true)
+      if (controller.current === abort && (liveRef.current.trim() || quiet.current))
+        commitCoach(true)
     } catch (cause) {
       if (!abort.signal.aborted) {
+        if (liveRef.current.trim()) commitCoach(true)
         setLive('')
-        setError(cause instanceof RateLimitError ? t.rateLimited : t.replyFailed)
+        if (cause instanceof TooSlowError) setStalled(message)
+        else setError(cause instanceof RateLimitError ? t.rateLimited : t.replyFailed)
       }
     } finally {
       if (controller.current === abort) {
@@ -688,6 +818,12 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
   }, [lines, live, reducedMotion])
+  const summaryDue = complete(draft) && Boolean(draft.live_id)
+  const showSummary = useEffectEvent(() => offerSummary())
+  useEffect(() => {
+    if (summaryDue) showSummary()
+  }, [summaryDue])
+  useEffect(() => () => window.clearTimeout(turnTimer.current), [])
   useLayoutEffect(() => {
     const field = messageInput.current
     if (!field) return
@@ -730,42 +866,20 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         signal: AbortSignal.timeout(60_000),
       })
       const before = draftRef.current
-      let after = before
-      if (result.proposal) {
-        setSealed(result.proposal)
-        after = mergeDraft(before, result.proposal.snapshot)
-      } else {
-        const currency = before.business?.currency ?? defaultCurrency()
-        const products = (result.extraction.products ?? [])
-          .filter((p) => p.price != null)
-          .map((p) => ({ ...p, price: toMinor(p.price!, currency), stock: null }))
-        after = mergeDraft(before, {
-          kind: 'inventory',
-          business_id: '',
-          revision: 0,
-          business: null,
-          products,
-        })
+      // A signboard can name the shop; its items wait for the menu step on Today.
+      const after = {
+        ...(result.proposal
+          ? mergeDraft(before, { ...result.proposal.snapshot, products: [] })
+          : before),
+        photo: true,
       }
       setDraft(after)
-      if (['storefront', 'signboard', 'menu', 'price_list'].includes(result.photo_kind))
-        photoFile.current = file
+      photoFile.current = file
       setPhotoNotes(result.extraction.uncertain.slice(0, 5))
-      const items = describe(before, after, true)
       setBusy('idle')
-      if (!items.length) {
-        add({ role: 'coach', text: t.photoNothing })
-        armSilence()
-        return
-      }
-      add({ role: 'action', title: f.added, items })
       // In plain words for the coach (no "label: value" pairs it could mistake for answers).
-      const read = [
-        after.business?.name,
-        after.business?.category,
-        ...after.products.slice(0, 12).map((p) => p.name),
-      ].filter(Boolean)
-      void say(f.photoNote(read.join(', ')))
+      const read = [after.business?.name, after.business?.category].filter(Boolean)
+      void say(f.photoNote(read.join(', ') || o.photoAdded))
     } catch (cause) {
       setBusy('idle')
       const code = cause instanceof ApiError ? cause.code : ''
@@ -1003,7 +1117,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     >
       <Chip
         icon={<Camera size={18} />}
-        label={f.photo}
+        label={o.shopPhoto}
         variant="outlined"
         disabled={!idle}
         onClick={() => openCamera()}
@@ -1069,7 +1183,12 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         sx={{ gridArea: 'header', display: 'flex', alignItems: 'center', gap: 1, minHeight: 56 }}
       >
         <Tooltip title={t.cancel}>
-          <IconButton aria-label={t.cancel} onClick={ws.cancelNewShop} sx={{ ml: -1 }}>
+          <IconButton
+            aria-label={t.cancel}
+            // Once live, leaving opens the shop (it exists); before, nothing was saved.
+            onClick={draft.live_id ? () => void finish(false) : ws.cancelNewShop}
+            sx={{ ml: -1 }}
+          >
             <X size={22} />
           </IconButton>
         </Tooltip>
@@ -1086,7 +1205,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       </Box>
 
       <Box sx={{ gridArea: 'card', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <ShopFill draft={draft} busy={!idle} onReview={() => void openReview()} />
+        <ShopFill draft={draft} onReview={() => setReviewOpen(true)} />
       </Box>
 
       {/* The whole conversation stays on screen and scrolls; the newest line is at the bottom. */}
@@ -1155,6 +1274,15 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                       autoLocate={line.locate}
                       onConfirm={(point) => savePin(line.id, point)}
                       onActive={() => openCards.current.add(line.id)}
+                    />
+                  </Box>
+                ) : line.role === 'summary' ? (
+                  <Box component="li" key={line.id} sx={{ ml: { xs: 0, sm: 6 } }}>
+                    <SummaryCard
+                      draft={draft}
+                      busy={finishing}
+                      onFace={() => void finish(true)}
+                      onSkip={() => void finish(false)}
                     />
                   </Box>
                 ) : (
@@ -1247,6 +1375,14 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       <Typography role="status" sx={visuallyHidden}>
         {status}
       </Typography>
+      <Sheet
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        titleId="shop-review-title"
+        title={o.reviewTitle}
+      >
+        <DraftSummary draft={draft} />
+      </Sheet>
 
       <Box
         sx={{
@@ -1270,6 +1406,23 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         {error && (
           <Alert severity="error" onClose={() => setError('')} closeText={v.close}>
             {error}
+          </Alert>
+        )}
+        {stalled !== null && (
+          <Alert
+            severity="info"
+            data-testid="turn-stalled"
+            onClose={() => setStalled(null)}
+            closeText={v.close}
+            action={
+              stalled ? (
+                <Button color="inherit" size="small" onClick={retryTurn}>
+                  {o.retry}
+                </Button>
+              ) : undefined
+            }
+          >
+            {o.tooSlow}
           </Alert>
         )}
         {quickActions}
@@ -1570,7 +1723,128 @@ function Hero({ onBegin, onCancel }: { onBegin: () => void; onCancel: () => void
   )
 }
 
-function ChatLine({ line }: { line: Exclude<Line, { role: 'camera' | 'map' }> }) {
+/** The shop as it stands: name, kind, place, hours, photo (and Live once it is). */
+function DraftSummary({ draft }: { draft: Draft }) {
+  const t = useCopy()
+  const o = useOnboardingCopy()
+  const roles = useTheme().material
+  const b = draft.business
+  const skipped = new Set(draft.skipped ?? [])
+  const row = (key: string, label: string, value: ReactNode, filled: boolean) => (
+    <Box
+      component="li"
+      data-field={key}
+      data-filled={filled}
+      sx={{ display: 'grid', gridTemplateColumns: 'minmax(88px, auto) 1fr', gap: 2, py: 1 }}
+    >
+      <Typography variant="labelLarge" color="text.secondary">
+        {label}
+      </Typography>
+      <Box sx={{ color: filled ? 'text.primary' : 'text.secondary', overflowWrap: 'anywhere' }}>
+        {value}
+      </Box>
+    </Box>
+  )
+  const hours = b?.hours || b?.weekly_hours?.length
+  return (
+    <Stack spacing={1} data-testid="draft-summary">
+      {draft.live_id && (
+        <Chip
+          icon={<Store size={16} />}
+          label={o.liveNow}
+          sx={{ alignSelf: 'flex-start', bgcolor: roles.primaryContainer }}
+        />
+      )}
+      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+        {row('name', t.fields.name, b?.name || o.notYet, Boolean(b?.name))}
+        {row('category', t.fields.category, b?.category || o.notYet, Boolean(b?.category))}
+        {row(
+          'location',
+          t.fields.location,
+          b && b.lat != null ? <LocationPin fields={b} /> : b?.location || o.notYet,
+          hasPlace(draft),
+        )}
+        {row(
+          'hours',
+          t.fields.hours,
+          hours ? (
+            <>
+              {b?.hours && <Typography>{b.hours}</Typography>}
+              <HoursList hours={b?.weekly_hours} />
+            </>
+          ) : skipped.has('hours') ? (
+            o.addLater
+          ) : (
+            o.notYet
+          ),
+          Boolean(hours),
+        )}
+        {row(
+          'photo',
+          o.shopPhoto,
+          draft.photo ? o.photoAdded : skipped.has('photo') ? o.addLater : o.notYet,
+          Boolean(draft.photo),
+        )}
+      </Box>
+    </Stack>
+  )
+}
+
+/** The one summary at the end, then the optional face check (skippable; Today reminds). */
+function SummaryCard({
+  draft,
+  busy,
+  onFace,
+  onSkip,
+}: {
+  draft: Draft
+  busy: boolean
+  onFace: () => void
+  onSkip: () => void
+}) {
+  const o = useOnboardingCopy()
+  const roles = useTheme().material
+  return (
+    <Box
+      data-testid="shop-summary"
+      sx={{
+        p: 3,
+        borderRadius: `${shape.lg}px`,
+        bgcolor: roles.surfaceContainerLow,
+        border: `1px solid ${roles.outlineVariant}`,
+        ...enterRise,
+      }}
+    >
+      <Typography component="h2" variant="titleLarge" sx={{ mb: 1 }}>
+        {o.summaryTitle}
+      </Typography>
+      <DraftSummary draft={draft} />
+      <Divider sx={{ my: 2 }} />
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', mb: 2 }}>
+        <ShieldCheck size={20} color={roles.primary} aria-hidden="true" />
+        <Typography variant="bodyMedium">{o.faceOffer}</Typography>
+      </Stack>
+      <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+        <Button
+          variant="contained"
+          disabled={busy}
+          startIcon={
+            busy ? <CircularProgress size={18} color="inherit" /> : <ShieldCheck size={18} />
+          }
+          onClick={onFace}
+          sx={{ minHeight: 48 }}
+        >
+          {o.faceStart}
+        </Button>
+        <Button disabled={busy} onClick={onSkip} sx={{ minHeight: 48 }}>
+          {o.faceSkip}
+        </Button>
+      </Stack>
+    </Box>
+  )
+}
+
+function ChatLine({ line }: { line: Exclude<Line, { role: 'camera' | 'map' | 'summary' }> }) {
   const t = useCopy()
   const f = useNewShopCopy()
   const roles = useTheme().material

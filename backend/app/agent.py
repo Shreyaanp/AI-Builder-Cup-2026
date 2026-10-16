@@ -302,7 +302,7 @@ def upkeep_call(question: str, ctx: Any) -> types.Part | None:
 # "no answer" note: the optional steps (hours, the photo) are skipped, never invented.
 SKIP_WORDS = re.compile(
     r"\b(skip|later|not sure|don'?t know|no answer|pata nahi|baad mein|nahi pata)\b"
-    r"|पता नहीं|बाद में|छोड़",
+    r"|पता नहीं|नहीं पता|बाद में|छोड़",
     re.I,
 )
 REVIEW_WORDS = re.compile(
