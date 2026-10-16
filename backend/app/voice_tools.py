@@ -11,12 +11,14 @@ from fastapi import HTTPException
 
 from .app_guide import explain_app
 from .coordinator import _card, _invalid, _propose_shop, current
+from .playbook import coach_summary, migrate_stored
 from .sales import today_for
 from .starter_templates import starter_items
 
 __all__ = [
     "explain_app",
     "get_customer_messages",
+    "get_shop_playbook",
     "open_screen",
     "prepare_customer_reply",
     "propose_stamp_card",
@@ -43,6 +45,10 @@ Screen = Literal[
     "you",
     "trust",
     "games",
+    "payments",
+    "supply",
+    "playbook",
+    "connect",
 ]
 SCREENS: dict[str, str] = {
     "messages": "Customer messages",
@@ -63,6 +69,10 @@ SCREENS: dict[str, str] = {
     "you": "You",
     "trust": "Verify it's you",
     "games": "Stamps and perks",
+    "payments": "Payments & rides",
+    "supply": "Purchase orders",
+    "playbook": "What Chalkboard knows about your shop",
+    "connect": "Connect your system",
 }
 # Screens where the owner still has to act (the app opens them; nothing changes by itself).
 CONFIRM_THERE = {
@@ -77,6 +87,11 @@ CONFIRM_THERE = {
     "starts or deletes a check there; opening the page does neither.",
     "games": "Customer games live in the passport. Owners choose their rewards on Grow; "
     "never claim a prize or stamp was issued by opening the page.",
+    "payments": "The owner creates and shares the UPI link there; the app never handles money "
+    "or confirms a payment, and no rider is booked.",
+    "supply": "Purchase orders are only sent after the owner confirms each one.",
+    "playbook": "The owner can edit or remove anything there; opening it changes nothing.",
+    "connect": "The owner picks the file or paste and confirms the mapped import.",
 }
 
 
@@ -88,7 +103,9 @@ def open_screen(screen: Screen) -> dict[str, Any]:
     (connect a POS or sales file), photo (add a menu or shop photo). Opening never changes
     anything; say what they can do there in one sentence. Also today (daily priorities on
     Coach), shop, grow (owner tools and perks), you (settings), trust (optional check), games
-    (owner stamp and perk settings; customer games live in the passport)."""
+    (owner stamp and perk settings; customer games live in the passport), payments (UPI payment
+    links and rides), supply (purchase orders to suppliers), playbook (what the app knows about
+    the shop: goals, numbers, regulars; edit or remove), connect (POS or ERP import)."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}
@@ -138,6 +155,26 @@ def propose_stamp_card(reward_text: str, stamps_needed: int = 8) -> dict[str, An
     if not text:
         return _invalid(ValueError("reward_text: ask the owner what the reward is"), ctx)
     return _propose_shop(name="", reward_text=text[:80], stamps_needed=int(stamps_needed))
+
+
+def get_shop_playbook() -> dict[str, Any]:
+    """What the app has learned about this shop (its playbook): goals, priorities, what to
+    watch, regular customers, the numbers that matter and the owner's own words. Use for "what
+    do you know about my shop?" or before personal advice. Read only; to change or remove
+    anything, open_screen("playbook")."""
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {"status": "needs_business"}
+    try:
+        stored = migrate_stored(ctx.store.playbook(ctx.uid, ctx.business_id))
+    except HTTPException as error:
+        return _invalid(error, ctx)
+    if stored is None:
+        return {
+            "status": "not_ready",
+            "instruction": "Nothing is learned yet; open_screen('playbook') builds it on screen.",
+        }
+    return {"status": "ready", "playbook": coach_summary(stored)}
 
 
 def get_customer_messages() -> dict[str, Any]:

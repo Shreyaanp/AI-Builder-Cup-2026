@@ -20,6 +20,7 @@ from . import brief
 from .limits import enforce_limits
 from .merchant import MerchantRepository
 from .merchant_routes import owner, store
+from .playbook import LineTopic, TodayHints, migrate_stored, today_hints
 from .rescue import buffer_for, local_now
 from .shop_time import shop_timezone
 
@@ -94,6 +95,8 @@ class Today(BaseModel):
     low_stock: list[LowItem]
     line: CoachLine | None
     demo: bool
+    # The shop playbook's order for Today (pulse numbers, "needs you now"); None without one.
+    hints: TodayHints | None = None
 
 
 def _day(fields: dict[str, Any], at: float | None = None) -> str:
@@ -164,8 +167,24 @@ def coach_line(
     today: date,
     sales: list[dict[str, Any]],
     weather: brief.Weather | None,
+    topics: list[LineTopic] | None = None,
 ) -> CoachLine | None:
-    """The single most useful true thing to say today, or nothing."""
+    """The single most useful true thing to say today, or nothing. The shop playbook's topic
+    order decides which true line leads; without one, festival, then rain, then busiest day."""
+    lines = {
+        line.kind: line
+        for line in (
+            festival_line(fields, today),
+            rain_line(fields, weather),
+            busiest_line(today, sales),
+        )
+        if line
+    }
+    order = [*(t for t in topics or [] if t in lines), "festival", "rain", "busiest_day"]
+    return next((lines[kind] for kind in order if kind in lines), None)
+
+
+def festival_line(fields: dict[str, Any], today: date) -> CoachLine | None:
     country = COUNTRY_BY_CURRENCY.get(str(fields.get("currency") or ""))
     upcoming = [
         (day - today).days
@@ -178,6 +197,10 @@ def coach_line(
             n for n, where, d in FESTIVAL_DAYS if where == country and (d - today).days == days
         )
         return CoachLine(kind="festival", festival=name, days=days)
+    return None
+
+
+def rain_line(fields: dict[str, Any], weather: brief.Weather | None) -> CoachLine | None:
     # Live weather only; the offline fixture is labelled demo data and only fits demo shops.
     if (
         weather
@@ -185,6 +208,10 @@ def coach_line(
         and (not weather.demo or fields.get("demo"))
     ):
         return CoachLine(kind="rain", rain=weather.rain_probability)
+    return None
+
+
+def busiest_line(today: date, sales: list[dict[str, Any]]) -> CoachLine | None:
     # Busiest weekday over the last four weeks, said on that weekday with last week's number.
     start = (today - timedelta(days=28)).isoformat()
     by_weekday: dict[int, float] = defaultdict(float)
@@ -219,6 +246,9 @@ async def today_page(business_id: str, request: Request) -> Today:
     signals = await anyio.to_thread.run_sync(service.recap_signals, uid, business_id)
     weather = await request.app.state.weather.get(fields, today)
     prep = sorted((p for p in forecast.predictions if p.date == today), key=lambda p: -p.quantity)
+    # Reading the saved playbook is cheap (no model call); a shop without one keeps the defaults.
+    stored = migrate_stored(await anyio.to_thread.run_sync(service.playbook, uid, business_id))
+    hints = today_hints(stored, fields) if stored else None
     top = prep[0] if prep else None
     return Today(
         date=today,
@@ -245,6 +275,7 @@ async def today_page(business_id: str, request: Request) -> Today:
         if top and top.quantity >= 1
         else None,
         low_stock=low_stock(context["inventory"], forecast),
-        line=coach_line(fields, today, sales, weather),
+        line=coach_line(fields, today, sales, weather, hints.line_topics if hints else None),
         demo=bool(fields.get("demo")),
+        hints=hints,
     )

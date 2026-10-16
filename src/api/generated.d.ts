@@ -1861,6 +1861,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/playbook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Playbook */
+        get: operations["get_playbook_api_v1_businesses__business_id__playbook_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit Playbook
+         * @description The summary, the owner's words and the tone; all optional, all the owner's to change.
+         */
+        patch: operations["edit_playbook_api_v1_businesses__business_id__playbook_patch"];
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/playbook/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Playbook Today
+         * @description For the Today page: which numbers, line topics and "needs you now" kinds lead.
+         */
+        get: operations["playbook_today_api_v1_businesses__business_id__playbook_today_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/playbook/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerate */
+        post: operations["regenerate_api_v1_businesses__business_id__playbook_regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/playbook/items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove */
+        delete: operations["remove_api_v1_businesses__business_id__playbook_items__item_id__delete"];
+        options?: never;
+        head?: never;
+        /** Edit */
+        patch: operations["edit_api_v1_businesses__business_id__playbook_items__item_id__patch"];
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/orders": {
         parameters: {
             query?: never;
@@ -3037,6 +3113,7 @@ export interface components {
             /** Custom Facts */
             custom_facts?: components["schemas"]["CustomFact"][];
             profile?: components["schemas"]["BusinessTypeProfile"];
+            understanding?: components["schemas"]["Understanding"] | null;
         };
         /**
          * BusinessTypeProfile
@@ -3493,6 +3570,24 @@ export interface components {
             /** Enabled */
             enabled: boolean;
         };
+        /** Feature */
+        Feature: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /**
+             * Source
+             * @default ai
+             * @enum {string}
+             */
+            source: "ai" | "owner";
+            /**
+             * Feature
+             * @enum {string}
+             */
+            feature: "prep" | "close_day" | "orders" | "plan" | "rescue" | "google" | "perks" | "recap" | "import_sales" | "menu_photo" | "share_page";
+        };
         /** Feed */
         Feed: {
             /** Shops */
@@ -3624,6 +3719,12 @@ export interface components {
              * @default false
              */
             halal_relevant: boolean;
+            /**
+             * Segment
+             * @default unknown
+             * @enum {string}
+             */
+            segment: "unknown" | "beverage" | "bakery" | "snack" | "restaurant" | "butcher";
         };
         /** Forecast */
         Forecast: {
@@ -3857,6 +3958,24 @@ export interface components {
              */
             area: boolean;
         };
+        /** Item */
+        Item: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /**
+             * Source
+             * @default ai
+             * @enum {string}
+             */
+            source: "ai" | "owner";
+        };
+        /** ItemEdit */
+        ItemEdit: {
+            /** Text */
+            text: string;
+        };
         /** ItemRule */
         ItemRule: {
             /** Item */
@@ -3984,6 +4103,24 @@ export interface components {
         MessageInput: {
             /** Text */
             text: string;
+        };
+        /** Metric */
+        Metric: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /**
+             * Source
+             * @default ai
+             * @enum {string}
+             */
+            source: "ai" | "owner";
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "items_sold" | "sales" | "busy_hours" | "orders_due" | "fittings" | "bookings" | "questions" | "views" | "stamps" | "returning" | "low_stock" | "leftovers";
         };
         /** NewShopDraft */
         NewShopDraft: {
@@ -4381,6 +4518,60 @@ export interface components {
              * @default 0
              */
             capacity: number;
+        };
+        /**
+         * Playbook
+         * @description Bounded on purpose: a playbook is a short page the owner can read in a minute.
+         */
+        Playbook: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+            /** Goals */
+            goals?: components["schemas"]["Item"][];
+            /** Priorities */
+            priorities?: components["schemas"]["Item"][];
+            /** Key Metrics */
+            key_metrics?: components["schemas"]["Metric"][];
+            /** Watch List */
+            watch_list?: components["schemas"]["Watch"][];
+            /** Segments */
+            segments?: components["schemas"]["Item"][];
+            vocabulary?: components["schemas"]["Vocabulary"];
+            tone?: components["schemas"]["Tone"];
+            /** Next Features */
+            next_features?: components["schemas"]["Feature"][];
+        };
+        /** PlaybookEdit */
+        PlaybookEdit: {
+            /** Summary */
+            summary?: string | null;
+            /** Terms */
+            terms?: string[] | null;
+            tone?: components["schemas"]["Tone"] | null;
+        };
+        /** PlaybookView */
+        PlaybookView: {
+            playbook: components["schemas"]["Playbook"];
+            /** Generated At */
+            generated_at: string;
+            /** Edited At */
+            edited_at: string | null;
+            /** Mode */
+            mode: string;
+            /** Refreshed */
+            refreshed: string | null;
+            today: components["schemas"]["TodayHints"];
+            /** Grow */
+            grow: string[];
         };
         /** Prediction */
         Prediction: {
@@ -5638,6 +5829,7 @@ export interface components {
             line: components["schemas"]["CoachLine"] | null;
             /** Demo */
             demo: boolean;
+            hints?: components["schemas"]["TodayHints"] | null;
         };
         /** TodayArea */
         TodayArea: {
@@ -5672,6 +5864,46 @@ export interface components {
             quantity: number;
             /** Unit */
             unit: string;
+        };
+        /**
+         * TodayHints
+         * @description What the Today page personalises. It only shows what exists; these only set the order.
+         */
+        TodayHints: {
+            /** Focus */
+            focus: string | null;
+            /**
+             * Pulse
+             * @description Pulse numbers to show first (Today.Pulse keys)
+             */
+            pulse: string[];
+            /** Line Topics */
+            line_topics: ("festival" | "rain" | "busiest_day" | "regulars" | "stock")[];
+            /** Needs You */
+            needs_you: ("low_stock" | "questions" | "menu_check" | "orders" | "leftovers" | "missing_info")[];
+            /** Metrics */
+            metrics: ("items_sold" | "sales" | "busy_hours" | "orders_due" | "fittings" | "bookings" | "questions" | "views" | "stamps" | "returning" | "low_stock" | "leftovers")[];
+            /** Units */
+            units: string[];
+        };
+        /** Tone */
+        Tone: {
+            /**
+             * Language
+             * @default en
+             */
+            language: string;
+            /**
+             * Style
+             * @default warm
+             * @enum {string}
+             */
+            style: "warm" | "brief" | "formal";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** TopItem */
         TopItem: {
@@ -5711,6 +5943,28 @@ export interface components {
         TranslationInput: {
             /** Language */
             language: string;
+        };
+        /**
+         * Understanding
+         * @description The owner's own answers to "what matters most now" and "who are your regulars". Private:
+         *     it shapes the shop playbook and never appears in any customer projection. Busiest times are
+         *     the existing busy_hours fact (customers benefit from it too).
+         */
+        Understanding: {
+            /** Focus */
+            focus?: ("more_customers" | "less_waste" | "save_time" | "other") | null;
+            /**
+             * Focus Note
+             * @default
+             */
+            focus_note: string;
+            /**
+             * Regulars
+             * @default
+             */
+            regulars: string;
+            /** Skipped */
+            skipped?: ("focus" | "busy_hours" | "regulars")[];
         };
         /** Update */
         Update: {
@@ -5771,6 +6025,42 @@ export interface components {
         Version: {
             /** Version */
             version: number;
+        };
+        /** Vocabulary */
+        Vocabulary: {
+            /**
+             * Catalogue
+             * @default menu
+             */
+            catalogue: string;
+            /**
+             * Entry
+             * @default item
+             */
+            entry: string;
+            /** Units */
+            units?: string[];
+            /** Terms */
+            terms?: string[];
+        };
+        /** Watch */
+        Watch: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /**
+             * Source
+             * @default ai
+             * @enum {string}
+             */
+            source: "ai" | "owner";
+            /**
+             * Kind
+             * @default other
+             * @enum {string}
+             */
+            kind: "stock" | "rush_hour" | "festival" | "weather" | "other";
         };
         /** Weather */
         Weather: {
@@ -9643,6 +9933,208 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_playbook_api_v1_businesses__business_id__playbook_get: {
+        parameters: {
+            query?: {
+                language?: string;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_playbook_api_v1_businesses__business_id__playbook_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaybookEdit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    playbook_today_api_v1_businesses__business_id__playbook_today_get: {
+        parameters: {
+            query?: {
+                language?: string;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayHints"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_api_v1_businesses__business_id__playbook_regenerate_post: {
+        parameters: {
+            query?: {
+                language?: string;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_api_v1_businesses__business_id__playbook_items__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_api_v1_businesses__business_id__playbook_items__item_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemEdit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookView"];
                 };
             };
             /** @description Validation Error */

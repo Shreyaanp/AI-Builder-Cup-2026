@@ -5482,6 +5482,327 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/playbook": {
+      "get": {
+        "tags": [
+          "playbook"
+        ],
+        "summary": "Get Playbook",
+        "operationId": "get_playbook_api_v1_businesses__business_id__playbook_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil|hi|bn|te|mr|kn)$",
+              "default": "en",
+              "title": "Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybookView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "playbook"
+        ],
+        "summary": "Edit Playbook",
+        "description": "The summary, the owner's words and the tone; all optional, all the owner's to change.",
+        "operationId": "edit_playbook_api_v1_businesses__business_id__playbook_patch",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaybookEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybookView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/playbook/today": {
+      "get": {
+        "tags": [
+          "playbook"
+        ],
+        "summary": "Playbook Today",
+        "description": "For the Today page: which numbers, line topics and \"needs you now\" kinds lead.",
+        "operationId": "playbook_today_api_v1_businesses__business_id__playbook_today_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil|hi|bn|te|mr|kn)$",
+              "default": "en",
+              "title": "Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayHints"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/playbook/regenerate": {
+      "post": {
+        "tags": [
+          "playbook"
+        ],
+        "summary": "Regenerate",
+        "operationId": "regenerate_api_v1_businesses__business_id__playbook_regenerate_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(en|zh-Hans|ms|ta|ja|ko|id|th|vi|fil|hi|bn|te|mr|kn)$",
+              "default": "en",
+              "title": "Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybookView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/playbook/items/{item_id}": {
+      "patch": {
+        "tags": [
+          "playbook"
+        ],
+        "summary": "Edit",
+        "operationId": "edit_api_v1_businesses__business_id__playbook_items__item_id__patch",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybookView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "playbook"
+        ],
+        "summary": "Remove",
+        "operationId": "remove_api_v1_businesses__business_id__playbook_items__item_id__delete",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybookView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/orders": {
       "get": {
         "summary": "List Orders",
@@ -8644,6 +8965,16 @@
           },
           "profile": {
             "$ref": "#/components/schemas/BusinessTypeProfile"
+          },
+          "understanding": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Understanding"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -9875,6 +10206,55 @@
         ],
         "title": "EventReceipt"
       },
+      "Feature": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{8}$",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "owner"
+            ],
+            "title": "Source",
+            "default": "ai"
+          },
+          "feature": {
+            "type": "string",
+            "enum": [
+              "prep",
+              "close_day",
+              "orders",
+              "plan",
+              "rescue",
+              "google",
+              "perks",
+              "recap",
+              "import_sales",
+              "menu_photo",
+              "share_page"
+            ],
+            "title": "Feature"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "feature"
+        ],
+        "title": "Feature"
+      },
       "Feed": {
         "properties": {
           "shops": {
@@ -10221,6 +10601,19 @@
             "type": "boolean",
             "title": "Halal Relevant",
             "default": false
+          },
+          "segment": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "beverage",
+              "bakery",
+              "snack",
+              "restaurant",
+              "butcher"
+            ],
+            "title": "Segment",
+            "default": "unknown"
           }
         },
         "additionalProperties": false,
@@ -10740,6 +11133,53 @@
         "title": "Intent",
         "description": "What the customer asked for. Prices are in the local currency's major units."
       },
+      "Item": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{8}$",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "owner"
+            ],
+            "title": "Source",
+            "default": "ai"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "Item"
+      },
+      "ItemEdit": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "ItemEdit"
+      },
       "ItemRule": {
         "properties": {
           "item": {
@@ -11049,6 +11489,56 @@
           "text"
         ],
         "title": "MessageInput"
+      },
+      "Metric": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{8}$",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "owner"
+            ],
+            "title": "Source",
+            "default": "ai"
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "items_sold",
+              "sales",
+              "busy_hours",
+              "orders_due",
+              "fittings",
+              "bookings",
+              "questions",
+              "views",
+              "stamps",
+              "returning",
+              "low_stock",
+              "leftovers"
+            ],
+            "title": "Metric"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "metric"
+        ],
+        "title": "Metric"
       },
       "NewShopDraft": {
         "properties": {
@@ -12022,6 +12512,184 @@
         "additionalProperties": false,
         "type": "object",
         "title": "PlanningInput"
+      },
+      "Playbook": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 240,
+            "title": "Summary",
+            "default": ""
+          },
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Goals"
+          },
+          "priorities": {
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Priorities"
+          },
+          "key_metrics": {
+            "items": {
+              "$ref": "#/components/schemas/Metric"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Key Metrics"
+          },
+          "watch_list": {
+            "items": {
+              "$ref": "#/components/schemas/Watch"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Watch List"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Segments"
+          },
+          "vocabulary": {
+            "$ref": "#/components/schemas/Vocabulary"
+          },
+          "tone": {
+            "$ref": "#/components/schemas/Tone"
+          },
+          "next_features": {
+            "items": {
+              "$ref": "#/components/schemas/Feature"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Next Features"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Playbook",
+        "description": "Bounded on purpose: a playbook is a short page the owner can read in a minute."
+      },
+      "PlaybookEdit": {
+        "properties": {
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "terms": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "minLength": 1
+                },
+                "type": "array",
+                "maxItems": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terms"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Tone"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PlaybookEdit"
+      },
+      "PlaybookView": {
+        "properties": {
+          "playbook": {
+            "$ref": "#/components/schemas/Playbook"
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "edited_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edited At"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "refreshed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshed"
+          },
+          "today": {
+            "$ref": "#/components/schemas/TodayHints"
+          },
+          "grow": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Grow"
+          }
+        },
+        "type": "object",
+        "required": [
+          "playbook",
+          "generated_at",
+          "edited_at",
+          "mode",
+          "refreshed",
+          "today",
+          "grow"
+        ],
+        "title": "PlaybookView"
       },
       "Prediction": {
         "properties": {
@@ -15034,6 +15702,16 @@
           "demo": {
             "type": "boolean",
             "title": "Demo"
+          },
+          "hints": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayHints"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -15139,6 +15817,126 @@
           "unit"
         ],
         "title": "TodayForecast"
+      },
+      "TodayHints": {
+        "properties": {
+          "focus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus"
+          },
+          "pulse": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pulse",
+            "description": "Pulse numbers to show first (Today.Pulse keys)"
+          },
+          "line_topics": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "festival",
+                "rain",
+                "busiest_day",
+                "regulars",
+                "stock"
+              ]
+            },
+            "type": "array",
+            "title": "Line Topics"
+          },
+          "needs_you": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "low_stock",
+                "questions",
+                "menu_check",
+                "orders",
+                "leftovers",
+                "missing_info"
+              ]
+            },
+            "type": "array",
+            "title": "Needs You"
+          },
+          "metrics": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "items_sold",
+                "sales",
+                "busy_hours",
+                "orders_due",
+                "fittings",
+                "bookings",
+                "questions",
+                "views",
+                "stamps",
+                "returning",
+                "low_stock",
+                "leftovers"
+              ]
+            },
+            "type": "array",
+            "title": "Metrics"
+          },
+          "units": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Units"
+          }
+        },
+        "type": "object",
+        "required": [
+          "focus",
+          "pulse",
+          "line_topics",
+          "needs_you",
+          "metrics",
+          "units"
+        ],
+        "title": "TodayHints",
+        "description": "What the Today page personalises. It only shows what exists; these only set the order."
+      },
+      "Tone": {
+        "properties": {
+          "language": {
+            "type": "string",
+            "maxLength": 12,
+            "title": "Language",
+            "default": "en"
+          },
+          "style": {
+            "type": "string",
+            "enum": [
+              "warm",
+              "brief",
+              "formal"
+            ],
+            "title": "Style",
+            "default": "warm"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Tone"
       },
       "TopItem": {
         "properties": {
@@ -15267,6 +16065,56 @@
           "language"
         ],
         "title": "TranslationInput"
+      },
+      "Understanding": {
+        "properties": {
+          "focus": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "more_customers",
+                  "less_waste",
+                  "save_time",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus"
+          },
+          "focus_note": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Focus Note",
+            "default": ""
+          },
+          "regulars": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Regulars",
+            "default": ""
+          },
+          "skipped": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "focus",
+                "busy_hours",
+                "regulars"
+              ]
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Skipped"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Understanding",
+        "description": "The owner's own answers to \"what matters most now\" and \"who are your regulars\". Private:\nit shapes the shop playbook and never appears in any customer projection. Busiest times are\nthe existing busy_hours fact (customers benefit from it too)."
       },
       "Update": {
         "properties": {
@@ -15421,6 +16269,88 @@
           "version"
         ],
         "title": "Version"
+      },
+      "Vocabulary": {
+        "properties": {
+          "catalogue": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Catalogue",
+            "default": "menu"
+          },
+          "entry": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Entry",
+            "default": "item"
+          },
+          "units": {
+            "items": {
+              "type": "string",
+              "maxLength": 20,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Units"
+          },
+          "terms": {
+            "items": {
+              "type": "string",
+              "maxLength": 40,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Terms"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Vocabulary"
+      },
+      "Watch": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{8}$",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "owner"
+            ],
+            "title": "Source",
+            "default": "ai"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "stock",
+              "rush_hour",
+              "festival",
+              "weather",
+              "other"
+            ],
+            "title": "Kind",
+            "default": "other"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "Watch"
       },
       "Weather": {
         "properties": {
