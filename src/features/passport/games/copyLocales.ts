@@ -1,8 +1,12 @@
 import type { Locale } from '../../../i18n/locales'
-import { gamesStrings } from './copy'
 import type { GamesStrings } from './copy'
+import { asian } from './locales/asian'
+import { indic } from './locales/indic'
+import { latin } from './locales/latin'
 
-export const gamesTranslations: Record<Exclude<Locale, 'en'>, GamesStrings> = new Proxy(
-  {} as Record<Exclude<Locale, 'en'>, GamesStrings>,
-  { get: () => gamesStrings },
-)
+/** Every game string, per supported locale. */
+export const gamesTranslations: Record<Exclude<Locale, 'en'>, GamesStrings> = {
+  ...indic,
+  ...asian,
+  ...latin,
+}
