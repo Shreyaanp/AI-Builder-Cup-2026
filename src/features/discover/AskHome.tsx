@@ -217,36 +217,47 @@ export default function AskHome({
       }
       const controller = new AbortController()
       requests.current.set(turn.id, controller)
+      update(turn.id, { status: 'thinking' })
 
-      // Instant path: answer immediately from our own shops (< 700 ms target)
-      const localPicks = localRankShops(turn.q, turn.place.lat, turn.place.lng)
-      if (localPicks.length > 0) {
-        const instantAnswer: AskAnswer = {
-          intent: {
-            summary: fillIn(c.found, { place: turn.place.label }),
-            keywords: [turn.q],
-            category: '',
-            max_price: null,
-            halal: false,
-            vegetarian: false,
-            locally_made: false,
-            open_now: false,
-            followups: [],
-            sort: 'best',
-            near: '',
-            deals: false,
-          },
-          mode: 'keywords',
-          groups: [{ id: 'best', places: localPicks.slice(0, 8) }],
-          anchor: null,
+      try {
+        // Allow the live status line and skeleton result cards to render
+        await new Promise((resolve) => setTimeout(resolve, 150))
+        if (controller.signal.aborted) {
+          update(turn.id, { status: 'stopped' })
+          return
         }
-        update(turn.id, { status: 'done', answer: instantAnswer, streaming: true })
-      } else {
-        update(turn.id, { status: 'thinking' })
-      }
 
-      // Parallel demo world fetch: never blocks query dispatch
-      void ensureDemoWorld(turn.place.lat, turn.place.lng, turn.place.label)
+        // Instant path: answer immediately from our own shops (< 700 ms target)
+        const localPicks = localRankShops(turn.q, turn.place.lat, turn.place.lng)
+        if (localPicks.length > 0) {
+          if (controller.signal.aborted) {
+            update(turn.id, { status: 'stopped' })
+            return
+          }
+          const instantAnswer: AskAnswer = {
+            intent: {
+              summary: fillIn(c.found, { place: turn.place.label }),
+              keywords: [turn.q],
+              category: '',
+              max_price: null,
+              halal: false,
+              vegetarian: false,
+              locally_made: false,
+              open_now: false,
+              followups: [],
+              sort: 'best',
+              near: '',
+              deals: false,
+            },
+            mode: 'keywords',
+            groups: [{ id: 'best', places: localPicks.slice(0, 8) }],
+            anchor: null,
+          }
+          update(turn.id, { status: 'done', answer: instantAnswer, streaming: true })
+        }
+
+        // Parallel demo world fetch: never blocks query dispatch
+        void ensureDemoWorld(turn.place.lat, turn.place.lng, turn.place.label)
 
       const handleAnswer = (answer: AskAnswer) => {
         if (answer.command) {
@@ -273,7 +284,6 @@ export default function AskHome({
         }
       }
 
-      try {
         const response = await account.raw('/api/v1/discover/ask', {
           method: 'POST',
           signal: controller.signal,
@@ -290,7 +300,10 @@ export default function AskHome({
           }),
         })
 
-        if (controller.signal.aborted) return
+        if (controller.signal.aborted) {
+          update(turn.id, { status: 'stopped' })
+          return
+        }
         if (!response.ok) throw new Error(String(response.status))
 
         const contentType = response.headers.get('content-type') || ''
@@ -356,7 +369,10 @@ export default function AskHome({
 
         // Standard JSON response fallback (e.g. tests or non-streaming servers)
         const answer = (await response.json()) as AskAnswer
-        if (controller.signal.aborted) return
+        if (controller.signal.aborted) {
+          update(turn.id, { status: 'stopped' })
+          return
+        }
         update(turn.id, { status: 'done', answer, streaming: false })
         handleAnswer(answer)
       } catch {
@@ -406,7 +422,11 @@ export default function AskHome({
   }
 
   function stop() {
-    for (const controller of requests.current.values()) controller.abort()
+    for (const [id, controller] of requests.current.entries()) {
+      controller.abort()
+      update(id, { status: 'stopped' })
+    }
+    requests.current.clear()
   }
 
   function restart() {
