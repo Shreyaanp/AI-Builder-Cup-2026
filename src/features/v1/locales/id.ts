@@ -407,6 +407,7 @@ export const id: Copy = {
     gallery: 'foto galeri toko',
     community: 'salinan publik toko',
     memory: 'memori asisten',
+    analytics: 'analitik toko',
     conversations: 'percakapan',
   } as Record<string, string>,
 }
