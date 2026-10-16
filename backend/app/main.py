@@ -59,6 +59,8 @@ from .owner_routes import router as owner_router
 from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
+from .playbook import PlaybookWriter
+from .playbook_routes import router as playbook_router
 from .recap import RecapWriter
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
 from .sales_routes import router as sales_router
@@ -160,6 +162,7 @@ def create_app(
         app.state.brief_writer = BriefWriter(settings)
         coordinator.forecaster = app.state.forecaster
         app.state.recap_writer = RecapWriter(settings)
+        app.state.playbook_writer = PlaybookWriter(settings)
         app.state.speech = Speech(settings)
         app.state.maps = maps_service or MapsService(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
@@ -185,6 +188,7 @@ def create_app(
             await app.state.services.replay.close()
             await app.state.customer_answers.close()
             await app.state.recap_writer.close()
+            await app.state.playbook_writer.close()
             await app.state.brief_writer.close()
         await app.state.column_mapper.close()
         if coordinator.supplier_generator is not None:
@@ -221,6 +225,7 @@ def create_app(
     app.include_router(demo_world_router)
     app.include_router(passport_router)
     app.include_router(today_router)
+    app.include_router(playbook_router)
     app.include_router(sourcing_router)
     app.include_router(owner_router)
     app.add_middleware(
