@@ -11,7 +11,6 @@ import { gamesTranslations } from './copyLocales'
 export const gamesStrings = {
   howItWorks: 'How it works',
   howItWorksFor: 'How it works: {title}',
-  close: 'Close',
   gotIt: 'Got it',
   step: 'Step {n}',
   // The next named reward
