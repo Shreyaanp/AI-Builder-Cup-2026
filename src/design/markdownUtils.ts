@@ -23,12 +23,14 @@ export function stripMarkdown(text: string): string {
   let clean = text
   // Remove fenced code blocks
   clean = clean.replace(/```[\s\S]*?```/g, ' ')
+  // Remove HTML tags
+  clean = clean.replace(/<[^>]*>/g, '')
   // Remove inline code
   clean = clean.replace(/`([^`]+)`/g, '$1')
   // Remove images ![alt](url) -> alt
-  clean = clean.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+  clean = clean.replace(/!\[([^\]]*)\]\((?:[^()]+|\([^()]*\))*\)/g, '$1')
   // Remove links [text](url) -> text
-  clean = clean.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+  clean = clean.replace(/\[([^\]]+)\]\((?:[^()]+|\([^()]*\))*\)/g, '$1')
   // Remove headers
   clean = clean.replace(/^#{1,6}\s+/gm, '')
   // Remove blockquotes

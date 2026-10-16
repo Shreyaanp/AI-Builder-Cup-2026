@@ -5,7 +5,6 @@ import { Box, Link, Typography, useTheme } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material'
 import { safeUrl, stabilizeMarkdown } from './markdownUtils'
 
-
 export interface RichTextProps {
   content?: string
   /** If streaming, auto-closes incomplete Markdown delimiters to prevent layout shifts */
@@ -54,6 +53,7 @@ export function RichText({
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        urlTransform={safeUrl}
         components={{
           // Paragraphs
           p: ({ children }) => (

@@ -26,7 +26,11 @@ export function phoneVoice(language: string): SpeechSynthesisVoice | null {
 export function utter(text: string, language: string): SpeechSynthesisUtterance {
   const utterance = new SpeechSynthesisUtterance(stripMarkdown(text))
   utterance.lang = language
-  const voice = phoneVoice(language)
-  if (voice) utterance.voice = voice
+  try {
+    const voice = phoneVoice(language)
+    if (voice) utterance.voice = voice
+  } catch {
+    // Ignore environments where synthetic voice instances are restricted
+  }
   return utterance
 }
