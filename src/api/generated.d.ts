@@ -402,6 +402,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/connect/mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Mappings
+         * @description List all saved connector mappings for this business.
+         */
+        get: operations["list_mappings_api_v1_businesses__business_id__connect_mappings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/connect/mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Mapping
+         * @description Save or update a confirmed column mapping for this business and source system.
+         */
+        post: operations["save_mapping_api_v1_businesses__business_id__connect_mapping_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/connect/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Export
+         * @description Analyze an uploaded export or pasted sample.
+         *
+         *     If a confirmed mapping already exists for this source system, it is reused.
+         *     Otherwise, Gemini (or heuristic fallback) generates a proposed mapping.
+         *     Shows preview rows and diff against existing inventory.
+         */
+        post: operations["analyze_export_api_v1_businesses__business_id__connect_analyze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/connect/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Export
+         * @description Sync data using a saved or provided mapping.
+         *
+         *     Produces a standard review proposal (menu or sales). NEVER writes silently.
+         *     Updates the last_synced timestamp for this source.
+         */
+        post: operations["sync_export_api_v1_businesses__business_id__connect_sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/google-sim": {
         parameters: {
             query?: never;
@@ -2874,6 +2961,60 @@ export interface components {
              */
             apply: boolean;
         };
+        /**
+         * ConnectorMapping
+         * @description Complete mapping from an external system export to the Chalkboard schema.
+         */
+        ConnectorMapping: {
+            /**
+             * Source Label
+             * @description E.g. Petpooja, Tally, Square, Shopify, SAP, Other
+             */
+            source_label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "menu" | "sales";
+            /** Fields */
+            fields: components["schemas"]["FieldMapping"][];
+            /**
+             * Confirmed
+             * @default false
+             */
+            confirmed: boolean;
+        };
+        /**
+         * ConnectorResult
+         * @description What we return to the frontend after parsing + AI mapping.
+         */
+        ConnectorResult: {
+            mapping: components["schemas"]["ConnectorMapping"];
+            /**
+             * Preview Rows
+             * @description First 5 rows mapped to our schema
+             */
+            preview_rows: {
+                [key: string]: unknown;
+            }[];
+            /** Total Rows */
+            total_rows: number;
+            /**
+             * Reused
+             * @default false
+             */
+            reused: boolean;
+            /** Last Synced */
+            last_synced?: number | null;
+            /** Diff */
+            diff?: {
+                [key: string]: {
+                    [key: string]: unknown;
+                }[];
+            } | null;
+            /** Warnings */
+            warnings?: string[];
+        };
         /** ConsentRequest */
         ConsentRequest: {
             /** Version */
@@ -3099,6 +3240,32 @@ export interface components {
             shops: components["schemas"]["ShopCard"][];
             /** Updates */
             updates: components["schemas"]["Update"][];
+        };
+        /**
+         * FieldMapping
+         * @description One source → target column mapping produced by Gemini or confirmed by the owner.
+         */
+        FieldMapping: {
+            /**
+             * Source Field
+             * @description Original column/field name from the export
+             */
+            source_field: string;
+            /**
+             * Target Field
+             * @description Our schema field: name, price, unit, stock, quantity, date, total, category
+             */
+            target_field: string;
+            /**
+             * Confidence
+             * @description Mapping confidence 0–1
+             */
+            confidence: number;
+            /**
+             * Sample Values
+             * @description Sample values from that column
+             */
+            sample_values?: string[];
         };
         /** Find */
         Find: {
@@ -6183,6 +6350,144 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_mappings_api_v1_businesses__business_id__connect_mappings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_mapping_api_v1_businesses__business_id__connect_mapping_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorMapping"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_export_api_v1_businesses__business_id__connect_analyze_post: {
+        parameters: {
+            query?: {
+                source_label?: string;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_export_api_v1_businesses__business_id__connect_sync_post: {
+        parameters: {
+            query?: {
+                source_label?: string;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
