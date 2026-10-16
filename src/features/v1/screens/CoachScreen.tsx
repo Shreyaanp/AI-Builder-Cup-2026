@@ -1,5 +1,7 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
 import { photoCopy } from '../../coach/photoCopy'
+import { PlainText, RichText } from '../../../design/RichText'
+import { stripMarkdown } from '../../../design/markdownUtils'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent, ReactElement } from 'react'
 import {
@@ -514,10 +516,11 @@ function CoachScreen({
   async function speakReply(text: string) {
     speechSynthesis.cancel()
     speaking.current?.pause()
+    const cleanText = stripMarkdown(text)
     try {
       const response = await api<Response>('/tts', {
         method: 'POST',
-        body: JSON.stringify({ text, language }),
+        body: JSON.stringify({ text: cleanText, language }),
         raw: true,
       })
       if (response.status === 200) {
@@ -531,7 +534,7 @@ function CoachScreen({
     } catch {
       // Fall through to on-device speech.
     }
-    const utterance = utter(text, language)
+    const utterance = utter(cleanText, language)
     speechSynthesis.speak(utterance)
   }
 
@@ -1146,6 +1149,7 @@ function CoachScreen({
                     message={{ role: 'assistant', text: liveReply }}
                     you={t.you}
                     coach={t.coach}
+                    streaming
                   />
                 )}
                 {busy === 'reply' && !reply && searching === null && (
@@ -1486,10 +1490,12 @@ function Bubble({
   message,
   you,
   coach,
+  streaming = false,
 }: {
   message: { role: 'user' | 'assistant'; text: string }
   you: string
   coach: string
+  streaming?: boolean
 }) {
   const roles = useTheme().material
   if (message.role === 'user')
@@ -1499,9 +1505,7 @@ function Bubble({
           <Typography component="span" sx={visuallyHidden}>
             {you}:{' '}
           </Typography>
-          <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-            {message.text}
-          </Typography>
+          <PlainText text={message.text} />
         </Box>
       </Box>
     )
@@ -1518,13 +1522,11 @@ function Bubble({
       >
         <Leaf size={18} />
       </Avatar>
-      <Box sx={{ minWidth: 0, pt: 0.5 }}>
+      <Box sx={{ minWidth: 0, pt: 0.5, flex: 1 }}>
         <Typography component="span" sx={visuallyHidden}>
           {coach}:{' '}
         </Typography>
-        <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-          {message.text}
-        </Typography>
+        <RichText content={message.text} streaming={streaming} />
       </Box>
     </Stack>
   )
