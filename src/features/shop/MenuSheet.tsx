@@ -31,7 +31,16 @@ import { unitLabel } from './units'
  * a phone, three or more when wider). Tap a name to edit the item, tap a price to change it in
  * place. Import and Add product share one compact row of actions.
  */
-export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function MenuSheet({
+  open,
+  onClose,
+  focus = null,
+}: {
+  open: boolean
+  onClose: () => void
+  /** Move focus to this item when the sheet opens. */
+  focus?: string | null
+}) {
   const t = useCopy()
   const copy = useShopCopy()
   const ws = useWorkspace()
@@ -68,6 +77,14 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
         onClose={onClose}
         titleId="menu-sheet-title"
         title={t.menu}
+        onEntered={() => {
+          if (!focus) return
+          const item = Array.from(document.querySelectorAll<HTMLElement>('[data-menu-item]')).find(
+            (element) => element.dataset.menuItem === focus,
+          )
+          item?.scrollIntoView({ block: 'center' })
+          item?.focus()
+        }}
         actions={
           <Stack direction="row" sx={{ gap: 2, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             <ImportButton
@@ -89,7 +106,15 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
           </Stack>
         }
       >
-        {importing && <ImportPanel importer={importer} />}
+        {importing && (
+          <ImportPanel
+            importer={importer}
+            onTypeItems={() => {
+              onClose()
+              ws.openEditor({ kind: 'product', product: null })
+            }}
+          />
+        )}
         {unsorted > 0 && (
           <Alert
             severity="info"
@@ -183,6 +208,7 @@ function ItemCard({ product, onEdit }: { product: Product; onEdit: () => void })
     >
       <ButtonBase
         onClick={onEdit}
+        data-menu-item={product.name}
         aria-label={`${t.editProduct} ${product.name}`}
         sx={{
           display: 'block',
