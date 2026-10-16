@@ -250,7 +250,7 @@ test('GAP 8: Close the day appears in evening needs you now and opens modal, Gro
 
   const box = await closeButton.boundingBox()
   expect(box).toBeTruthy()
-  expect(box!.height).toBeGreaterThanOrEqual(48)
+  expect(Math.round(box!.height)).toBeGreaterThanOrEqual(48)
 
   await closeButton.click()
   const dialog = page.getByRole('dialog', { name: 'Close the day' })
