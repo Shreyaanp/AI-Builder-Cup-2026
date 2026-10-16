@@ -36,3 +36,21 @@ You coordinate workers; you write NO feature code. Read docs/TODO.md (what is le
 - Saturday: `gcloud run services update ogoogle-ai --region asia-south1 --min-instances=1` until judging ends.
 - Before submitting: tag `submission-2026-10-18`, then rewrite main history to drop the old
   "Co-Authored-By: the assistant" lines (owner approved) with workers paused, force-push, verify GitHub.
+
+## State at handoff (Fri 16 Oct 07:30 IST)
+
+- Running (headless, logs in %TEMP%): account 3 Today (account3-today-r2.log, ~/work/chalkboard-today) and
+  tabs (account3-tabs-r.log, ~/work/chalkboard-tabs); account 4 trust (account4-trust-r.log) and games
+  (account4-games-r.log); account 2 in-chat (account2-inchat-r2.log) and supply chain (account2-supply-r.log).
+  Next for account 3: search engine (~/work/chalkboard-customer, docs/briefs/task-SEARCH-ENGINE.md; its first
+  step starts Recommendations AI training).
+- **Codex resumes at 08:04 IST** (its limit reset): launch TWO runs: docs/briefs/task-INTEGRATE-PRS.md (new
+  worktree) and docs/briefs/task-GUIDE-PAYMENTS-LANDING.md (resume its worktree if one exists on branch
+  feat/guide-payments-landing under %USERPROFILE%\.codex\worktrees, else new). Then the rest of the queue.
+- Open PRs: #4 rescue, #11 customer AI-first, #12 unit fix, #13 business profiles (Codex integrates these),
+  #14 story director docs, #15 connect your system, #16/#18 QA findings, #17 manual test script.
+- **Manual test cases for the owner:** PR #17, file docs/qa/manual-test-script.md (branch fix/manual-tests);
+  merge it so it is on main. Verify its steps against the current app first.
+- Last regression on main: 172/176 (2 load timeouts + Tamil keyboard focus + share switch, queued to Codex).
+- Design canvas for the owner tabs/Today: the owner's design canvas (private link)
+- Run your own loop every ~30 min (e.g. `/loop`), and a regression after each code merge before releasing.
