@@ -49,6 +49,7 @@ import {
 import { discoverCopy } from './strings'
 import { fillIn, useConversationCopy, type ConversationCopy } from './conversationCopy'
 import { ensureDemoWorld } from './demoWorld'
+import { recsEvent } from '../recs/events'
 import { PlaceSearch, type FoundPlace } from './PlaceSearch'
 import '../customer/customer.css'
 
@@ -204,6 +205,7 @@ export default function AskHome({
       const started = performance.now()
       try {
         await ensureDemoWorld(turn.place.lat, turn.place.lng, turn.place.label)
+        recsEvent({ kind: 'ask', query: turn.q })
         // Signed-in customers get "For you" ranking and stated preferences remembered.
         const answer = await account.api<AskAnswer>('/api/v1/discover/ask', {
           method: 'POST',
