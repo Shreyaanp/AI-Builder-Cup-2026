@@ -154,6 +154,22 @@ def test_menu_only_draft_never_invents_a_name_and_preserves_an_explicit_name(tmp
     assert explicit.function_call.args["name"] == "Actual Shop"
 
 
+def test_new_shop_fixture_reads_a_vegetarian_answer(tmp_path: Path):
+    context = MerchantContext(
+        MerchantStore(str(tmp_path / "shops.sqlite")),
+        "alice",
+        None,
+        [],
+        new_shop=True,
+        new_shop_draft=NewShopDraft(business=BusinessFields(name="Dakshin Sagar")),
+    )
+    for answer, expected in (("Vegetarian options: yes", True), ("vegetarian: No", False)):
+        call = new_shop_call(answer, context)
+        assert call and call.function_call
+        assert call.function_call.name == "propose_customer_facts"
+        assert call.function_call.args == {"vegetarian_options": expected}
+
+
 def test_new_shop_session_mode_is_owned_and_cannot_target_existing_shop(tmp_path: Path):
     app = create_app(settings(tmp_path), InMemorySessionService())
     with TestClient(app) as client:
