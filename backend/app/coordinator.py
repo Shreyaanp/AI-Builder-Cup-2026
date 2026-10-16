@@ -17,7 +17,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError, field_validator
 
-from .business_profile import FOOD, QuestionPlanner
+from .business_profile import QuestionPlanner
 from .forecast import ForecastService
 from .merchant import (
     FACT_KEYS,
@@ -33,6 +33,15 @@ from .product_categories import suggest_category
 from .product_units import UNITS, normalize_unit
 from .recap import recap_facts
 from .sourcing import OrderItem, SupplierGenerator
+from .vendor_profile import (
+    BusinessTypeProfile,
+    allowed_facts,
+    apply_answers,
+    halal_allowed,
+    infer_profile,
+    profile_for,
+    vocabulary,
+)
 
 MAX_REPAIRS = 2
 # Customer facts the coach asks about after the basics are saved, most asked first.
@@ -139,30 +148,43 @@ async def get_question_plan() -> dict[str, Any]:
             else {}
         )
     )
+    # Drafts can contain unsolicited items before the name; never treat those as a name.
+    for key, question in (
+        ("name", "What is your business called?"),
+        ("category", "What kind of business do you run?"),
+    ):
+        if not fields.get(key):
+            return {
+                "status": f"needs_{key}",
+                "pending": [{"key": key, "question": question, "record_with": "propose_business"}],
+                "instruction": "Ask this one question before type-specific questions.",
+            }
+    profile = profile_for(fields)
     plan = await _planner().plan(
-        fields.get("category", ""), fields.get("name", ""), fields.get("location", "")
+        fields.get("category", ""), fields.get("name", ""), fields.get("location", ""), profile
     )
     answered = {fact["key"] for fact in fields.get("custom_facts", [])}
     # One list in asking order: common facts still missing (recorded with their own argument of
     # propose_customer_facts), then what customers of this business type ask (custom_facts).
     common = [
         {"key": key, "question": COMMON_QUESTIONS[key], "record_with": key}
-        for key in ASK_ORDER
-        if fields.get(key) in (None, "", [])
-        and (key not in FOOD_ONLY_FACTS or serves_food(fields))
-        and key in COMMON_QUESTIONS
+        for key in pending_customer_facts(fields)
     ]
     typed = [
         {**question.model_dump(), "record_with": "custom_facts"}
         for question in plan.questions
-        if question.key not in answered
+        if question.key not in answered and question.key not in COMMON_QUESTIONS
     ]
     pending = common + typed
     return {
         "business_type": plan.business_type,
+        "profile": profile.model_dump(exclude_none=True),
+        "vocabulary": vocabulary(profile),
         "pending": pending,
         "answered": len(answered),
-        "instruction": "Ask one pending question at a time; stop when the owner wants to."
+        "instruction": "Ask one pending question at a time; stop when the owner wants to. "
+        "For diet record veg_only, vegan, non_veg, both or unknown; for boolean questions "
+        "record yes/no only if clear, otherwise keep the owner's words."
         if pending
         else "All common customer questions are answered.",
     }
@@ -253,6 +275,7 @@ def get_business_context() -> dict[str, Any]:
                 "phone",
                 "currency",
                 "custom_facts",
+                "profile",
             }
             | set(FACT_KEYS)
         }
@@ -275,13 +298,7 @@ def get_business_context() -> dict[str, Any]:
         "remembered_notes": [note["text"] for note in (shop or {}).get("coach_notes") or []],
         # Customer facts not stated yet, in the order the coach should ask about them. Food facts
         # (halal, vegetarian, delivery, pre-orders) only make sense for food and drink shops.
-        "customer_facts_to_ask": [
-            key
-            for key in ASK_ORDER
-            if shop
-            and shop["fields"].get(key) in (None, "", [])
-            and (key not in FOOD_ONLY_FACTS or serves_food(shop["fields"]))
-        ],
+        "customer_facts_to_ask": pending_customer_facts(shop["fields"]) if shop else [],
     }
 
 
@@ -295,15 +312,30 @@ COMMON_QUESTIONS = {
     "busy_hours": "When are you busiest?",
 }
 NOTE_LIMIT = 30
-FOOD_ONLY_FACTS = {"halal", "vegetarian_options", "delivery", "preorders"}
+
+
+def pending_customer_facts(fields: dict[str, Any]) -> list[str]:
+    profile = profile_for(fields)
+    allowed = allowed_facts(fields)
+    return [
+        key
+        for key in ASK_ORDER
+        if fields.get(key) in (None, "", [])
+        and key in allowed
+        and (key != "halal" or halal_allowed(fields))
+        and not (key == "vegetarian_options" and profile.kind == "food")
+        and not (key == "delivery" and profile.retail and profile.retail.delivery)
+    ]
 
 
 def serves_food(fields: dict[str, Any]) -> bool:
     # Unknown type yet: ask everything; food questions drop once the category says otherwise.
     if not (fields.get("category") or "").strip():
         return True
-    text = f"{fields.get('category', '')} {fields.get('name', '')}".casefold()
-    return bool(re.search(FOOD[0], text))
+    profile = profile_for(fields)
+    return profile.kind == "food" or (
+        profile.kind == "generic" and infer_profile(fields.get("category", "")).kind == "food"
+    )
 
 
 def remember_note(note: str) -> dict[str, Any]:
@@ -406,12 +438,21 @@ def _propose_shop(
     custom_facts: list[FactInput] | None = None,
     weekly_hours: list[DayHours] | None = None,
     description: str = "",
+    profile: BusinessTypeProfile | None = None,
 ) -> dict[str, Any]:
     """Shared sealed-proposal logic for shop basics and customer facts."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}
     existing = ctx.store.context(ctx.uid, ctx.business_id)["business"]
+    draft_fields = ctx.new_shop_draft.business if ctx.new_shop_draft else None
+    previous_category = (
+        existing["fields"].get("category", "")
+        if existing
+        else draft_fields.category
+        if draft_fields
+        else ""
+    )
     given: dict[str, Any] = {
         "name": name,
         "category": category,
@@ -454,6 +495,13 @@ def _propose_shop(
             given["currency"] = ui_currency.get() or DEFAULT_CURRENCY
         given["demo"] = False
     given.update({key: value for key, value in facts.items() if value is not None})
+    if profile is not None:
+        given["profile"] = profile
+    elif category.strip() and (
+        profile_for(given).kind == "generic" or category.strip() != previous_category
+    ):
+        # Offline fallback and older callers; live Gemini should pass its evidence-based profile.
+        given["profile"] = infer_profile(category, description).model_dump(exclude_none=True)
     if weekly_hours is not None:
         given["weekly_hours"] = weekly_hours
     if custom_facts:
@@ -467,9 +515,32 @@ def _propose_shop(
             }
         given["custom_facts"] = list(merged.values())
     try:
+        active_profile = profile_for(given)
+        if active_profile.kind == "food" and not active_profile.subtype:
+            active_profile = active_profile.model_copy(
+                update={"subtype": given.get("category", "")[:80]}
+            )
+            given["profile"] = active_profile
+        if active_profile.kind != "generic":
+            active_profile = apply_answers(
+                active_profile,
+                [
+                    fact.model_dump()
+                    for fact in TypeAdapter(list[FactInput]).validate_python(custom_facts or [])
+                ],
+            )
+            given["profile"] = active_profile
+            if active_profile.retail and facts["delivery"] is not None:
+                active_profile.retail.delivery = facts["delivery"]
+            allowed = allowed_facts(given)
+            for key, value in facts.items():
+                if value is not None and key not in allowed:
+                    raise ValueError(f"{key} is not relevant to this business profile.")
+            # A reviewed type change can remove stale fields; it never silently publishes them.
+            for key in FACT_KEYS:
+                if key not in allowed:
+                    given.pop(key, None)
         fields = BusinessFields.model_validate(given)
-        if existing and existing["fields"].get("location") == fields.location:
-            fields = BusinessFields.model_validate({**existing["fields"], **given})
         proposal = ctx.store.propose(
             ctx.uid,
             ProposalRequest(
@@ -480,7 +551,7 @@ def _propose_shop(
                 products=ctx.new_shop_draft.products if ctx.new_shop and ctx.new_shop_draft else [],
             ),
         )
-    except (ValidationError, HTTPException) as error:
+    except (ValueError, HTTPException) as error:
         return _invalid(error, ctx)
     ctx.proposals[proposal["id"]] = proposal
     if ctx.new_shop:
@@ -491,8 +562,21 @@ def _propose_shop(
         [
             f"{key}: {existing['fields'].get(key) or '(empty)'} → {value or '(empty)'}"
             for key, value in fields.model_dump().items()
-            if key != "custom_facts"
+            if key not in {"custom_facts", "profile"}
             and value != existing["fields"].get(key, "" if key not in FACT_KEYS else None)
+        ]
+        + (
+            [
+                f"Business profile: {fields.profile.kind} "
+                f"({fields.profile.subtype or fields.category})"
+            ]
+            if not custom_facts and fields.profile != profile_for(existing["fields"])
+            else []
+        )
+        + [
+            f"{key}: {existing['fields'][key]} → (not applicable)"
+            for key in FACT_KEYS
+            if existing["fields"].get(key) not in (None, "", []) and key not in fields.model_dump()
         ]
         + [
             f"{fact['label']}: {before.get(fact['key']) or '(empty)'} → {fact['value']}"
@@ -517,6 +601,7 @@ def propose_business(
     currency: str = "",
     weekly_hours: list[DayHours] | None = None,
     description: str = "",
+    profile: BusinessTypeProfile | None = None,
 ) -> dict[str, Any]:
     """Prepare the shop's basic details (new shop, or edits to the active shop) for the owner to
     review. Nothing is saved until the owner confirms. Leave a field empty if the owner did not
@@ -524,7 +609,10 @@ def propose_business(
     code (SGD, JPY, MYR…) for a new shop, only when the owner states or clearly implies it.
     weekly_hours: one record per stated weekday (day: mon/tue/wed/thu/fri/sat/sun,
     closed: boolean, open/close: HH:MM). Overnight closing belongs to the opening day.
-    Leave it unset to preserve saved hours; an empty list returns to free-text hours."""
+    Leave it unset to preserve saved hours; an empty list returns to free-text hours.
+    profile: classify from the owner's words, menu or photos, using kind and its typed block.
+    Never infer halal certification. Set food.halal_relevant only for a known relevant region
+    and food.serves_meat only with evidence. Unknown attributes stay unset. Owner reviews it."""
     return _propose_shop(
         name=name,
         category=category,
@@ -534,6 +622,7 @@ def propose_business(
         currency=currency,
         weekly_hours=weekly_hours,
         description=description,
+        profile=profile,
     )
 
 
