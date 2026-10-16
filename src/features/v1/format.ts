@@ -157,6 +157,22 @@ export function toMajor(minor: number, currency: string): number {
   return minor / 10 ** exponent(currency)
 }
 
+const INDIC_LOCALES = new Set([
+  'en-IN',
+  'hi',
+  'ta',
+  'te',
+  'kn',
+  'bn',
+  'mr',
+  'hi-IN',
+  'ta-IN',
+  'te-IN',
+  'kn-IN',
+  'bn-IN',
+  'mr-IN',
+])
+
 /** Prices are stored in minor units (cents/sen; whole units for zero-decimal currencies). */
 export function formatPrice(
   minor: number,
@@ -164,7 +180,11 @@ export function formatPrice(
   locale?: string,
 ): string {
   const digits = exponent(currency)
-  return new Intl.NumberFormat(locale, {
+  const isIndic =
+    currency === 'INR' ||
+    (locale != null && (INDIC_LOCALES.has(locale) || INDIC_LOCALES.has(locale.split('-')[0] ?? '')))
+  const formatLocale = isIndic ? 'en-IN' : locale
+  return new Intl.NumberFormat(formatLocale, {
     style: 'currency',
     currency,
     minimumFractionDigits: digits,

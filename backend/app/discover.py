@@ -572,16 +572,40 @@ async def discover(
     open_now_filter = open_now_filter or bool(re.search(r"\bopen now\b", q, re.I))
     maps: MapsService = request.app.state.maps
     repository: MerchantRepository | None = request.app.state.merchant
+    in_sg = 1.15 <= lat <= 1.48 and 103.6 <= lng <= 104.1
+    in_india = 6.5 <= lat <= 37.5 and 68.0 <= lng <= 97.5
+
+    def norm_name(name: str) -> str:
+        return re.sub(r"\s*\((Tour|Demo)\)$", "", name, flags=re.I).strip().casefold()
+
     shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
     places: list[DiscoveryPlace] = []
+    seen_places_names: set[str] = set()
     for shop in shops:
         if shop["lat"] is None or shop["lng"] is None:
             continue
         # Generated demo wholesalers serve shops (sourcing), not customers exploring nearby.
         if shop.get("supplier") and shop.get("demo"):
             continue
+        # Singapore demo shops only when browsing Singapore
+        is_sg_shop = shop.get("demo") and (
+            shop.get("city") == "singapore"
+            or (
+                shop.get("currency") == "SGD"
+                and 1.15 <= shop["lat"] <= 1.48
+                and 103.6 <= shop["lng"] <= 104.1
+            )
+        )
+        if is_sg_shop and not in_sg:
+            continue
+        # Results near an Indian location never show SGD
+        if in_india and shop.get("currency") == "SGD":
+            continue
         d = distance(lat, lng, shop["lat"], shop["lng"])
         if d > radius:
+            continue
+        name_key = norm_name(shop["name"])
+        if name_key in seen_places_names:
             continue
         place = DiscoveryPlace(
             id=shop["id"],
@@ -612,6 +636,7 @@ async def discover(
             sold_out=[p["name"] for p in shop["products"] if not p["available"]],
         )
         if matches(place, q, category, open_now_filter):
+            seen_places_names.add(name_key)
             places.append(place)
     unavailable = False
     try:
@@ -623,6 +648,9 @@ async def discover(
     owned_place_ids = {s.get("place_id") for s in shops if s["id"] in relevant_shop_ids}
     for row in google:
         if row["id"] in owned_place_ids:
+            continue
+        name_key = norm_name(row["displayName"]["text"])
+        if name_key in seen_places_names:
             continue
         point = row["location"]
         d = distance(lat, lng, point["latitude"], point["longitude"])
@@ -650,6 +678,7 @@ async def discover(
         )
         # Live Text Search already matches semantic queries; don't discard matches by name alone.
         if matches(place, q if maps.demo else "", category if maps.demo else "", open_now_filter):
+            seen_places_names.add(name_key)
             places.append(place)
     places.sort(key=lambda p: (p.source != "chalkboard", p.distance_m, p.id))
     return DiscoveryResponse(
