@@ -828,7 +828,7 @@ class MerchantStore:
             for table in ("proposals", "challenges", "consents", "people", "google_sim"):
                 db.execute(f"DELETE FROM {table} WHERE uid=?", (uid,))  # noqa: S608 - fixed names
         for bid in owned:
-            for kind in ("rescue", "brief", "brief_wording"):
+            for kind in ("rescue", "brief", "brief_wording", "shop_daily"):
                 self.feature_docs.delete_scope(kind, bid)
         return owned
 

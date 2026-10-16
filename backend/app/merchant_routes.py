@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import re
 from typing import Any, cast
 from uuid import UUID, uuid4
@@ -228,7 +229,13 @@ async def public_shop(business_id: str, request: Request) -> dict[str, Any]:
         raise HTTPException(404, "This shop page is not available.")
     # Display-only status uses the same conservative parser/timezone as discovery.
     from .discover import open_now
+    from .shop_today import count
 
+    # A daily total for the owner's Today page; counting never blocks the customer page.
+    with contextlib.suppress(Exception):
+        await anyio.to_thread.run_sync(
+            count, store(request), business_id, "views", shop.get("timezone") or "Asia/Singapore"
+        )
     shop["open_now"] = open_now(
         shop["hours"], shop.get("timezone", "Asia/Singapore"), weekly_hours=shop.get("weekly_hours")
     )
