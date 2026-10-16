@@ -159,8 +159,12 @@ function StoryScreen({ step }: { step: number }) {
         <div className="lp-bubble coach">{s.bubbleCoach}</div>
         <div className="lp-review">
           <small>{s.checkBeforeSaving}</small>
-          <strong>{s.item1} · {s.priceNew} / cup</strong>
-          <em>{s.item3} · {s.soldOut}</em>
+          <strong>
+            {s.item1} · {s.priceNew} / cup
+          </strong>
+          <em>
+            {s.item3} · {s.soldOut}
+          </em>
           <span className="lp-confirm">
             <Check size={16} /> {s.confirmAndSave}
           </span>

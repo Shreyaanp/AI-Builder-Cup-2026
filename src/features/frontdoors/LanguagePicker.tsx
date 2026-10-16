@@ -25,7 +25,7 @@ export function LanguagePicker({
   const currentLabel =
     preferences.language === 'system'
       ? `${t.languageSystem} (${LOCALE_NAMES[systemLocale()]})`
-      : LOCALE_NAMES[locale] ?? LOCALE_NAMES.en
+      : (LOCALE_NAMES[locale] ?? LOCALE_NAMES.en)
 
   const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)
