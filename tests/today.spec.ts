@@ -227,3 +227,31 @@ for (const [language, heading, resume] of [
     await axe(page)
     await shot(page, `${language}-dark`)
   })
+
+test('shows skeleton while products load; never shows done "Add your menu" step for shop with menu', async ({
+  page,
+}) => {
+  await shop(page, { name: 'Courtyard Chai', ...FULL }, PRODUCTS, { share: true })
+  let releaseInventory: () => void = () => {}
+  const inventoryHeld = new Promise<void>((resolve) => {
+    releaseInventory = resolve
+  })
+  await page.route('**/api/v1/businesses/*/inventory', async (route) => {
+    await inventoryHeld
+    await route.continue()
+  })
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+
+  // While inventory is loading: skeleton is visible, and "Add your menu" is NEVER shown.
+  await expect(page.getByTestId('today-skeleton')).toBeVisible()
+  await expect(page.getByTestId('today-day-one')).toHaveCount(0)
+  await expect(page.getByText('Add your menu')).toHaveCount(0)
+
+  // Now release inventory.
+  releaseInventory()
+  await expect(page.getByTestId('today-skeleton')).toHaveCount(0)
+  await expect(page.getByTestId('today')).toBeVisible()
+  await expect(page.getByTestId('today-day-one')).toHaveCount(0)
+  await expect(page.getByText('Add your menu')).toHaveCount(0)
+})
