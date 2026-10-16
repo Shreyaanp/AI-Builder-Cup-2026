@@ -457,10 +457,12 @@ def test_question_plan_fits_the_business_type(ctx):
     assert plan["business_type"] == "beauty salon"
     keys = [question["key"] for question in plan["pending"]]
     assert "walk_ins" in keys and "booking" in keys
-    # One list: common facts first (no food facts for a salon), then salon questions.
-    assert keys[0] == "payment_methods"
+    # One list: the owner's skippable goals first, then common facts (no food facts for a
+    # salon), then salon questions.
+    assert keys[:4] == ["focus", "busy_hours", "regulars", "payment_methods"]
+    assert all(q["skippable"] for q in plan["pending"][:3])
     assert not {"halal", "delivery", "vegetarian_options"} & set(keys)
-    assert plan["pending"][0]["record_with"] == "payment_methods"
+    assert plan["pending"][3]["record_with"] == "payment_methods"
     assert plan["pending"][-1]["record_with"] == "custom_facts"
 
 
