@@ -168,7 +168,7 @@ export function MapCard({
       data-testid="map-card"
       data-state="open"
       sx={{
-        p: 2,
+        p: { xs: 1.5, sm: 2 },
         borderRadius: `${shape.lg}px`,
         bgcolor: roles.surfaceContainerLow,
         border: `1px solid ${roles.outlineVariant}`,
@@ -200,7 +200,7 @@ export function MapCard({
             setPin(point)
           }}
           accuracy={fix}
-          sx={{ height: { xs: 176, md: 220 } }}
+          sx={{ height: { xs: 112, sm: 160, md: 220 } }}
         />
       ) : (
         <Typography variant="bodyMedium" color="text.secondary">
@@ -255,7 +255,7 @@ function PinDetails({
           ? f.near(address.slice(5))
           : address
   return (
-    <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+    <Stack spacing={1} sx={{ mt: 1 }}>
       {pin && (
         <Box aria-live="polite">
           <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
@@ -280,7 +280,7 @@ function PinDetails({
           startIcon={busy ? <CircularProgress size={18} /> : <LocateFixed size={18} />}
           disabled={busy || saving}
           onClick={onLocate}
-          sx={{ minHeight: 48 }}
+          sx={{ minHeight: { xs: 40, sm: 48 } }}
         >
           {busy ? t.locating : t.useCurrentLocation}
         </Button>
@@ -292,7 +292,7 @@ function PinDetails({
             }
             disabled={busy || saving}
             onClick={onConfirm}
-            sx={{ minHeight: 48 }}
+            sx={{ minHeight: { xs: 40, sm: 48 } }}
           >
             {c.confirmPin}
           </Button>
