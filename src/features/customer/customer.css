@@ -133,7 +133,46 @@
   animation-timing-function: var(--c-ease);
 }
 
+/* Ask: cards forming while the assistant thinks (only while a request is in flight). */
+.c-shimmer {
+  animation: c-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes c-shimmer {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* Mini map: "you are here" pings three times, then rests. */
+.c-ping {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: c-ping 1.6s var(--c-ease) 3;
+}
+@keyframes c-ping {
+  from {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* Shared journey: a result card's photo morphs into the shop's hero (view-transition-name). */
+::view-transition-group(*) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--c-ease);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .c-shimmer,
+  .c-ping,
   .c-rise,
   .c-send,
   .c-receive,

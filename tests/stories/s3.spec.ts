@@ -42,11 +42,11 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       await customer.getByRole('button', { name: 'Explore my neighbourhood' }).click()
       // The front door is an AI ask; browsing everything nearby is one tap away.
       await expect(
-        customer.getByRole('heading', { name: 'What are you looking for?' }),
+        customer.getByRole('heading', { name: 'What are you looking for nearby?' }),
       ).toBeVisible()
       await shot(customer, 3, '1-ask')
       // "Homemade" only finds shops whose owner said they make their own goods.
-      const ask = customer.getByRole('textbox', { name: 'What are you looking for?' })
+      const ask = customer.getByRole('textbox', { name: 'Ask about anything nearby' })
       await ask.fill('homemade chai')
       await ask.press('Enter')
       const pick = customer.getByRole('link').filter({ hasText: shopName }).first()

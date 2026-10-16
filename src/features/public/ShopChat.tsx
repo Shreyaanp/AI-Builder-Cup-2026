@@ -198,11 +198,11 @@ export function ShopChat({
     [t.hoursSuggestion, t.hoursQuestion],
     [t.locationSuggestion, t.locationQuestion],
   ]
-  const bubble = { px: 2, py: 1.5, borderRadius: `${shape.lg}px`, maxWidth: '85%' }
+  const bubble = { px: 2, py: 2, borderRadius: `${shape.lg}px`, maxWidth: '85%' }
 
   return (
     <Box sx={{ mt: 2 }}>
-      <Stack component="ol" spacing={1.5} sx={{ listStyle: 'none', m: 0, p: 0 }}>
+      <Stack component="ol" spacing={2} sx={{ listStyle: 'none', m: 0, p: 0 }}>
         {list.map((entry, index) =>
           entry.role === 'you' ? (
             <Box
@@ -336,7 +336,7 @@ export function ShopChat({
                   label={label}
                   variant="outlined"
                   disabled={busy}
-                  sx={{ minHeight: 40 }}
+                  sx={{ minHeight: 48, borderRadius: 999 }}
                   onClick={() => void ask(value)}
                 />
               ))}
@@ -345,7 +345,7 @@ export function ShopChat({
                 icon={<UserRound size={16} />}
                 variant="outlined"
                 disabled={busy}
-                sx={{ minHeight: 40 }}
+                sx={{ minHeight: 48, borderRadius: 999 }}
                 onClick={() => {
                   setHandover(question.trim())
                   setTimeout(() => contactInput.current?.focus(), 0)
@@ -378,7 +378,7 @@ export function ShopChat({
               onChange={(event) => setQuestion(event.target.value)}
               placeholder={t.questionHint}
               inputProps={{ 'aria-label': t.question, maxLength: 500, name: 'question' }}
-              sx={{ flex: 1, py: 1.5, fontSize: '1rem' }}
+              sx={{ flex: 1, minHeight: 48, fontSize: '1rem' }}
             />
             <IconButton
               type="submit"
