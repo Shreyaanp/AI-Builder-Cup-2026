@@ -2,10 +2,11 @@
 // Runs sequentially (--workers=1), records video to docs/ux/journeys/<persona>-<flow>.webm
 // and scores time, taps, dead waits, jargon, reachability, etc.
 
-import { chromium, expect } from '@playwright/test'
+/* global window, document, AudioContext -- these run inside the page via addInitScript and evaluate */
+import { chromium } from '@playwright/test'
 import { spawn } from 'node:child_process'
 import { mkdir, rename, writeFile, rm, readdir } from 'node:fs/promises'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 
 const WEB_PORT = process.env.WEB_PORT || '3817'
@@ -23,7 +24,9 @@ await mkdir(rawVideoDir, { recursive: true })
 await mkdir(journeysDir, { recursive: true })
 await mkdir(screenshotsDir, { recursive: true })
 
-console.log(`Starting Journey Audit on WEB_PORT=${WEB_PORT}, API_PORT=${API_PORT}, RECALL_PATH=${RECALL_PATH}`)
+console.log(
+  `Starting Journey Audit on WEB_PORT=${WEB_PORT}, API_PORT=${API_PORT}, RECALL_PATH=${RECALL_PATH}`,
+)
 
 // Start servers
 const backendEnv = {
@@ -185,7 +188,7 @@ class JourneyRunner {
     })
 
     await this.context.addInitScript(
-      ({ appearance, locale }) => {
+      ({ appearance }) => {
         localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance }))
         localStorage.setItem('chalkboard.customer.journey', 'done')
       },
@@ -248,21 +251,23 @@ class JourneyRunner {
 
   async inspectDOM(stepName) {
     await this.page.waitForTimeout(300)
-    const metrics = await this.page.evaluate((jargon) => {
-      const width = window.innerWidth
-      const overflow = document.documentElement.scrollWidth > width + 1
-      const text = document.body.innerText.toLowerCase()
-      const foundJargon = jargon.filter((word) => text.includes(word))
+    const metrics = await this.page
+      .evaluate((jargon) => {
+        const width = window.innerWidth
+        const overflow = document.documentElement.scrollWidth > width + 1
+        const text = document.body.innerText.toLowerCase()
+        const foundJargon = jargon.filter((word) => text.includes(word))
 
-      const smallButtons = Array.from(
-        document.querySelectorAll('button, a, input, [role="button"]'),
-      ).filter((el) => {
-        const r = el.getBoundingClientRect()
-        return r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44)
-      }).length
+        const smallButtons = Array.from(
+          document.querySelectorAll('button, a, input, [role="button"]'),
+        ).filter((el) => {
+          const r = el.getBoundingClientRect()
+          return r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44)
+        }).length
 
-      return { overflow, foundJargon, smallButtons }
-    }, JARGON_TERMS).catch(() => ({ overflow: false, foundJargon: [], smallButtons: 0 }))
+        return { overflow, foundJargon, smallButtons }
+      }, JARGON_TERMS)
+      .catch(() => ({ overflow: false, foundJargon: [], smallButtons: 0 }))
 
     if (metrics.overflow) this.horizontalOverflows++
     for (const j of metrics.foundJargon) this.jargonFound.add(j)
@@ -331,9 +336,15 @@ async function enterWorkspace(r) {
     await r.page.waitForTimeout(600)
   }
   const boxes = r.page.locator('input[type="checkbox"]')
-  if (await boxes.count() >= 2) {
-    await boxes.nth(0).check().catch(() => {})
-    await boxes.nth(1).check().catch(() => {})
+  if ((await boxes.count()) >= 2) {
+    await boxes
+      .nth(0)
+      .check()
+      .catch(() => {})
+    await boxes
+      .nth(1)
+      .check()
+      .catch(() => {})
     const agree = r.page.locator('main button.MuiButton-contained').last()
     if (await agree.count()) await agree.click({ timeout: 5000 }).catch(() => {})
   }
@@ -398,35 +409,35 @@ const auditResults = []
 console.log('\n--- Running Persona: Lakshmi (Tamil, tea stall, voice) ---')
 
 // 1. first open
-await runFlowSafely(
-  new JourneyRunner('lakshmi', 'first-open', 'light', 'ta-IN'),
-  async (r) => {
-    await r.goto('/?app=business')
-    await r.page.waitForTimeout(600)
-    await r.inspectDOM('1-landing')
-    const cont = r.page.locator('main button.MuiButton-contained').first()
-    await cont.waitFor({ timeout: 10000 }).catch(() => {})
-    if (await cont.count()) await r.tap(cont, 'Continue local preview')
-    await r.page.waitForTimeout(600)
-    await r.inspectDOM('2-consent')
-    const boxes = r.page.locator('input[type="checkbox"]')
-    if (await boxes.count() >= 2) {
-      await r.tap(boxes.nth(0), 'Check terms')
-      await r.tap(boxes.nth(1), 'Check privacy')
-      const agree = r.page.locator('main button.MuiButton-contained').last()
-      if (await agree.count()) await r.tap(agree, 'Agree and continue')
-    }
-    await r.page.waitForTimeout(1000)
-    await r.inspectDOM('3-workspace')
-  },
-)
+await runFlowSafely(new JourneyRunner('lakshmi', 'first-open', 'light', 'ta-IN'), async (r) => {
+  await r.goto('/?app=business')
+  await r.page.waitForTimeout(600)
+  await r.inspectDOM('1-landing')
+  const cont = r.page.locator('main button.MuiButton-contained').first()
+  await cont.waitFor({ timeout: 10000 }).catch(() => {})
+  if (await cont.count()) await r.tap(cont, 'Continue local preview')
+  await r.page.waitForTimeout(600)
+  await r.inspectDOM('2-consent')
+  const boxes = r.page.locator('input[type="checkbox"]')
+  if ((await boxes.count()) >= 2) {
+    await r.tap(boxes.nth(0), 'Check terms')
+    await r.tap(boxes.nth(1), 'Check privacy')
+    const agree = r.page.locator('main button.MuiButton-contained').last()
+    if (await agree.count()) await r.tap(agree, 'Agree and continue')
+  }
+  await r.page.waitForTimeout(1000)
+  await r.inspectDOM('3-workspace')
+})
 
 // 2. onboarding voice
 await runFlowSafely(
   new JourneyRunner('lakshmi', 'onboarding-voice', 'light', 'ta-IN'),
   async (r) => {
     await enterWorkspace(r)
-    const addShop = r.page.locator('button.MuiButton-contained, button').filter({ hasText: /Add my shop|தொடங்கு|சேர்/i }).first()
+    const addShop = r.page
+      .locator('button.MuiButton-contained, button')
+      .filter({ hasText: /Add my shop|தொடங்கு|சேர்/i })
+      .first()
     if (await addShop.count()) await r.tap(addShop, 'Add my shop')
     await r.inspectDOM('1-welcome')
     const begin = r.page.locator('button.MuiButton-contained').first()
@@ -453,208 +464,181 @@ await runFlowSafely(
 )
 
 // 3. menu photo
-await runFlowSafely(
-  new JourneyRunner('lakshmi', 'menu-photo', 'light', 'ta-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
-    await enterWorkspace(r)
-    await r.inspectDOM('1-coach-view')
-    const attachBtn = r.page.getByRole('button', { name: /Attach|Take photo|Photo/i })
-    if (await attachBtn.count()) {
-      await r.tap(attachBtn, 'Attach photo')
-      await r.inspectDOM('2-photo-menu')
-    }
-    const fileInput = r.page.locator('input[type="file"]')
-    if (await fileInput.count()) {
-      await fileInput.first().setInputFiles(fixtureImage)
-      await r.page.waitForTimeout(1500)
-      await r.inspectDOM('3-photo-reading')
-    }
-  },
-)
+await runFlowSafely(new JourneyRunner('lakshmi', 'menu-photo', 'light', 'ta-IN'), async (r) => {
+  await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
+  await enterWorkspace(r)
+  await r.inspectDOM('1-coach-view')
+  const attachBtn = r.page.getByRole('button', { name: /Attach|Take photo|Photo/i })
+  if (await attachBtn.count()) {
+    await r.tap(attachBtn, 'Attach photo')
+    await r.inspectDOM('2-photo-menu')
+  }
+  const fileInput = r.page.locator('input[type="file"]')
+  if (await fileInput.count()) {
+    await fileInput.first().setInputFiles(fixtureImage)
+    await r.page.waitForTimeout(1500)
+    await r.inspectDOM('3-photo-reading')
+  }
+})
 
 // 4. Today
-await runFlowSafely(
-  new JourneyRunner('lakshmi', 'today', 'light', 'ta-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
-    await enterWorkspace(r)
-    await r.inspectDOM('1-today-overview')
-    const coachBtn = r.page.getByRole('button', { name: /Coach/i })
-    if (await coachBtn.count()) await r.tap(coachBtn, 'Coach tab')
-    await r.inspectDOM('2-today-pulse')
-  },
-)
+await runFlowSafely(new JourneyRunner('lakshmi', 'today', 'light', 'ta-IN'), async (r) => {
+  await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
+  await enterWorkspace(r)
+  await r.inspectDOM('1-today-overview')
+  const coachBtn = r.page.getByRole('button', { name: /Coach/i })
+  if (await coachBtn.count()) await r.tap(coachBtn, 'Coach tab')
+  await r.inspectDOM('2-today-pulse')
+})
 
 // 5. Close the day
-await runFlowSafely(
-  new JourneyRunner('lakshmi', 'close-day', 'light', 'ta-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
-    await enterWorkspace(r)
-    const growBtn = r.page.getByRole('button', { name: /Grow/i })
-    if (await growBtn.count()) await r.tap(growBtn, 'Grow tab')
-    await r.inspectDOM('1-grow-tiles')
-    const closeDayTile = r.page.getByRole('button', { name: /^Close the day/i })
-    if (await closeDayTile.count()) {
-      await r.tap(closeDayTile, 'Open Close the day')
-      await r.inspectDOM('2-closeday-dialog')
-      const tillBtn = r.page.getByRole('button', { name: /Till or POS report/i })
-      if (await tillBtn.count()) {
-        await r.tap(tillBtn, 'Tap Till report')
-        await r.page.locator('input[type=file]').setInputFiles(fixtureImage)
-        await r.page.waitForTimeout(1500)
-        await r.inspectDOM('3-closeday-scanned')
-        const revBtn = r.page.getByRole('button', { name: /^Review/i })
-        if (await revBtn.isEnabled()) {
-          await r.tap(revBtn, 'Review day')
-          await r.inspectDOM('4-closeday-review')
-          const saveBtn = r.page.getByRole('button', { name: /Save day/i })
-          if (await saveBtn.count()) await r.tap(saveBtn, 'Save day')
-          await r.inspectDOM('5-closeday-saved')
-          const doneBtn = r.page.getByRole('button', { name: /Done/i })
-          if (await doneBtn.count()) await r.tap(doneBtn, 'Done')
-        }
+await runFlowSafely(new JourneyRunner('lakshmi', 'close-day', 'light', 'ta-IN'), async (r) => {
+  await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
+  await enterWorkspace(r)
+  const growBtn = r.page.getByRole('button', { name: /Grow/i })
+  if (await growBtn.count()) await r.tap(growBtn, 'Grow tab')
+  await r.inspectDOM('1-grow-tiles')
+  const closeDayTile = r.page.getByRole('button', { name: /^Close the day/i })
+  if (await closeDayTile.count()) {
+    await r.tap(closeDayTile, 'Open Close the day')
+    await r.inspectDOM('2-closeday-dialog')
+    const tillBtn = r.page.getByRole('button', { name: /Till or POS report/i })
+    if (await tillBtn.count()) {
+      await r.tap(tillBtn, 'Tap Till report')
+      await r.page.locator('input[type=file]').setInputFiles(fixtureImage)
+      await r.page.waitForTimeout(1500)
+      await r.inspectDOM('3-closeday-scanned')
+      const revBtn = r.page.getByRole('button', { name: /^Review/i })
+      if (await revBtn.isEnabled()) {
+        await r.tap(revBtn, 'Review day')
+        await r.inspectDOM('4-closeday-review')
+        const saveBtn = r.page.getByRole('button', { name: /Save day/i })
+        if (await saveBtn.count()) await r.tap(saveBtn, 'Save day')
+        await r.inspectDOM('5-closeday-saved')
+        const doneBtn = r.page.getByRole('button', { name: /Done/i })
+        if (await doneBtn.count()) await r.tap(doneBtn, 'Done')
       }
     }
-  },
-)
+  }
+})
 
 // 6. rescue deal
-await runFlowSafely(
-  new JourneyRunner('lakshmi', 'rescue-deal', 'light', 'ta-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
-    await enterWorkspace(r)
-    const growBtn = r.page.getByRole('button', { name: /Grow/i })
-    if (await growBtn.count()) await r.tap(growBtn, 'Grow tab')
-    const rescueTile = r.page.getByRole('button', { name: /^Rescue/i })
-    if (await rescueTile.count()) {
-      await r.tap(rescueTile, 'Open Rescue Deals')
-      await r.inspectDOM('1-rescue-dialog')
-      const closeBtn = r.page.getByRole('button', { name: /Close|Done|Back/i })
-      if (await closeBtn.count()) await r.tap(closeBtn.first(), 'Close rescue')
-    }
-  },
-)
+await runFlowSafely(new JourneyRunner('lakshmi', 'rescue-deal', 'light', 'ta-IN'), async (r) => {
+  await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
+  await enterWorkspace(r)
+  const growBtn = r.page.getByRole('button', { name: /Grow/i })
+  if (await growBtn.count()) await r.tap(growBtn, 'Grow tab')
+  const rescueTile = r.page.getByRole('button', { name: /^Rescue/i })
+  if (await rescueTile.count()) {
+    await r.tap(rescueTile, 'Open Rescue Deals')
+    await r.inspectDOM('1-rescue-dialog')
+    const closeBtn = r.page.getByRole('button', { name: /Close|Done|Back/i })
+    if (await closeBtn.count()) await r.tap(closeBtn.first(), 'Close rescue')
+  }
+})
 
 // 7. payments link
-await runFlowSafely(
-  new JourneyRunner('lakshmi', 'payments-link', 'light', 'ta-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
-    await enterWorkspace(r)
-    const growBtn = r.page.getByRole('button', { name: /Grow/i })
-    if (await growBtn.count()) await r.tap(growBtn, 'Grow tab')
-    const payTile = r.page.getByRole('button', { name: /Payments & rides|Payments/i })
-    if (await payTile.count()) {
-      await r.tap(payTile, 'Open Payments & rides')
-      await r.inspectDOM('1-payments-screen')
-      const amt = r.page.getByRole('textbox', { name: /Amount|₹/i })
-      if (await amt.count()) {
-        await amt.fill('20')
-        await r.inspectDOM('2-amount-entered')
-      }
-      const backBtn = r.page.getByRole('button', { name: /Back/i })
-      if (await backBtn.count()) await r.tap(backBtn.first(), 'Back to Grow')
+await runFlowSafely(new JourneyRunner('lakshmi', 'payments-link', 'light', 'ta-IN'), async (r) => {
+  await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
+  await enterWorkspace(r)
+  const growBtn = r.page.getByRole('button', { name: /Grow/i })
+  if (await growBtn.count()) await r.tap(growBtn, 'Grow tab')
+  const payTile = r.page.getByRole('button', { name: /Payments & rides|Payments/i })
+  if (await payTile.count()) {
+    await r.tap(payTile, 'Open Payments & rides')
+    await r.inspectDOM('1-payments-screen')
+    const amt = r.page.getByRole('textbox', { name: /Amount|₹/i })
+    if (await amt.count()) {
+      await amt.fill('20')
+      await r.inspectDOM('2-amount-entered')
     }
-  },
-)
+    const backBtn = r.page.getByRole('button', { name: /Back/i })
+    if (await backBtn.count()) await r.tap(backBtn.first(), 'Back to Grow')
+  }
+})
 
 // 8. purchase order
-await runFlowSafely(
-  new JourneyRunner('lakshmi', 'purchase-order', 'light', 'ta-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
-    await enterWorkspace(r)
-    const coachBtn = r.page.getByRole('button', { name: /Coach/i })
-    if (await coachBtn.count()) await r.tap(coachBtn, 'Coach tab')
-    const msg = r.page.getByRole('textbox', { name: 'Message', exact: true })
-    if (await msg.count()) {
-      await msg.fill('Need 5 litres milk and 2 kg sugar')
-      await r.tap(r.page.getByRole('button', { name: 'Send', exact: true }), 'Send PO request')
-      await r.page.waitForTimeout(2000)
-      await r.inspectDOM('1-po-card')
-    }
-  },
-)
+await runFlowSafely(new JourneyRunner('lakshmi', 'purchase-order', 'light', 'ta-IN'), async (r) => {
+  await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
+  await enterWorkspace(r)
+  const coachBtn = r.page.getByRole('button', { name: /Coach/i })
+  if (await coachBtn.count()) await r.tap(coachBtn, 'Coach tab')
+  const msg = r.page.getByRole('textbox', { name: 'Message', exact: true })
+  if (await msg.count()) {
+    await msg.fill('Need 5 litres milk and 2 kg sugar')
+    await r.tap(r.page.getByRole('button', { name: 'Send', exact: true }), 'Send PO request')
+    await r.page.waitForTimeout(2000)
+    await r.inspectDOM('1-po-card')
+  }
+})
 
 // 9. playbook
-await runFlowSafely(
-  new JourneyRunner('lakshmi', 'playbook', 'light', 'ta-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
-    await enterWorkspace(r)
-    const youBtn = r.page.getByRole('button', { name: /You/i })
-    if (await youBtn.count()) await r.tap(youBtn, 'You tab')
-    await r.inspectDOM('1-you-tab')
-    const privBtn = r.page.getByRole('button', { name: /^Privacy & your data/i })
-    if (await privBtn.count()) {
-      await r.tap(privBtn, 'Open Privacy')
-      await r.inspectDOM('2-privacy-subpage')
-      const playbookBtn = r.page.getByTestId('playbook-open')
-      if (await playbookBtn.count()) {
-        await r.tap(playbookBtn, 'Open Playbook')
-        await r.page.waitForTimeout(1500)
-        await r.inspectDOM('3-playbook-sheet')
-        const closeBtn = r.page.getByRole('button', { name: /Close/i })
-        if (await closeBtn.count()) await r.tap(closeBtn, 'Close playbook')
-      }
+await runFlowSafely(new JourneyRunner('lakshmi', 'playbook', 'light', 'ta-IN'), async (r) => {
+  await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
+  await enterWorkspace(r)
+  const youBtn = r.page.getByRole('button', { name: /You/i })
+  if (await youBtn.count()) await r.tap(youBtn, 'You tab')
+  await r.inspectDOM('1-you-tab')
+  const privBtn = r.page.getByRole('button', { name: /^Privacy & your data/i })
+  if (await privBtn.count()) {
+    await r.tap(privBtn, 'Open Privacy')
+    await r.inspectDOM('2-privacy-subpage')
+    const playbookBtn = r.page.getByTestId('playbook-open')
+    if (await playbookBtn.count()) {
+      await r.tap(playbookBtn, 'Open Playbook')
+      await r.page.waitForTimeout(1500)
+      await r.inspectDOM('3-playbook-sheet')
+      const closeBtn = r.page.getByRole('button', { name: /Close/i })
+      if (await closeBtn.count()) await r.tap(closeBtn, 'Close playbook')
     }
-  },
-)
+  }
+})
 
 // 10. face check
-await runFlowSafely(
-  new JourneyRunner('lakshmi', 'face-check', 'light', 'ta-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
-    await enterWorkspace(r)
-    const youBtn = r.page.getByRole('button', { name: /You/i })
-    if (await youBtn.count()) await r.tap(youBtn, 'You tab')
-    const privBtn = r.page.getByRole('button', { name: /^Privacy & your data/i })
-    if (await privBtn.count()) {
-      await r.tap(privBtn, 'Open Privacy')
-      const faceCard = r.page.getByRole('region', { name: /Verify it’s you/i })
-      if (await faceCard.count()) {
-        await r.tap(faceCard.getByRole('button', { name: /Verify it’s you/i }), 'Open face check')
-        await r.inspectDOM('1-face-consent')
-        const consentBox = r.page.getByLabel(/I agree to this face check/i)
-        if (await consentBox.count()) {
-          await r.tap(consentBox, 'Check face consent')
-          const openCam = r.page.getByRole('button', { name: /Open camera/i })
-          if (await openCam.count()) {
-            await r.tap(openCam, 'Open camera')
-            await r.page.waitForTimeout(2500)
-            await r.inspectDOM('2-face-scanning')
-            const doneBtn = r.page.getByRole('button', { name: /Done|Try again/i })
-            await doneBtn.waitFor({ timeout: 15000 }).catch(() => {})
-            await r.inspectDOM('3-face-result')
-            if (await doneBtn.count()) await r.tap(doneBtn, 'Done face check')
-          }
+await runFlowSafely(new JourneyRunner('lakshmi', 'face-check', 'light', 'ta-IN'), async (r) => {
+  await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
+  await enterWorkspace(r)
+  const youBtn = r.page.getByRole('button', { name: /You/i })
+  if (await youBtn.count()) await r.tap(youBtn, 'You tab')
+  const privBtn = r.page.getByRole('button', { name: /^Privacy & your data/i })
+  if (await privBtn.count()) {
+    await r.tap(privBtn, 'Open Privacy')
+    const faceCard = r.page.getByRole('region', { name: /Verify it’s you/i })
+    if (await faceCard.count()) {
+      await r.tap(faceCard.getByRole('button', { name: /Verify it’s you/i }), 'Open face check')
+      await r.inspectDOM('1-face-consent')
+      const consentBox = r.page.getByLabel(/I agree to this face check/i)
+      if (await consentBox.count()) {
+        await r.tap(consentBox, 'Check face consent')
+        const openCam = r.page.getByRole('button', { name: /Open camera/i })
+        if (await openCam.count()) {
+          await r.tap(openCam, 'Open camera')
+          await r.page.waitForTimeout(2500)
+          await r.inspectDOM('2-face-scanning')
+          const doneBtn = r.page.getByRole('button', { name: /Done|Try again/i })
+          await doneBtn.waitFor({ timeout: 15000 }).catch(() => {})
+          await r.inspectDOM('3-face-result')
+          if (await doneBtn.count()) await r.tap(doneBtn, 'Done face check')
         }
       }
     }
-  },
-)
+  }
+})
 
 // 11. You/privacy
-await runFlowSafely(
-  new JourneyRunner('lakshmi', 'you-privacy', 'light', 'ta-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
-    await enterWorkspace(r)
-    const youBtn = r.page.getByRole('button', { name: /You/i })
-    if (await youBtn.count()) await r.tap(youBtn, 'You tab')
-    await r.inspectDOM('1-you-screen')
-    const langBox = r.page.getByRole('combobox', { name: /Language/i })
-    if (await langBox.count()) {
-      await r.tap(langBox, 'Click Language')
-      await r.inspectDOM('2-languages-list')
-      await r.page.keyboard.press('Escape')
-    }
-  },
-)
+await runFlowSafely(new JourneyRunner('lakshmi', 'you-privacy', 'light', 'ta-IN'), async (r) => {
+  await seedShopDirect(r.page, 'Lakshmi Chai Stall', 'Tea stall')
+  await enterWorkspace(r)
+  const youBtn = r.page.getByRole('button', { name: /You/i })
+  if (await youBtn.count()) await r.tap(youBtn, 'You tab')
+  await r.inspectDOM('1-you-screen')
+  const langBox = r.page.getByRole('combobox', { name: /Language/i })
+  if (await langBox.count()) {
+    await r.tap(langBox, 'Click Language')
+    await r.inspectDOM('2-languages-list')
+    await r.page.keyboard.press('Escape')
+  }
+})
 
 // =========================================================================
 // PERSONA 2: ARJUN (30, bakery, Hindi/English, impatient, types)
@@ -663,244 +647,211 @@ await runFlowSafely(
 console.log('\n--- Running Persona: Arjun (Bakery, fast typer, dark mode) ---')
 
 // 12. first open
-await runFlowSafely(
-  new JourneyRunner('arjun', 'first-open', 'dark', 'en-IN'),
-  async (r) => {
-    await r.goto('/?app=business')
-    await r.inspectDOM('1-landing')
-    await r.tap(r.page.getByRole('button', { name: 'Continue local preview' }), 'Continue preview')
-    await r.inspectDOM('2-consent')
-    await r.tap(r.page.getByLabel('I agree to the Terms'), 'Check terms')
-    await r.tap(r.page.getByLabel('I have read the Privacy Notice'), 'Check privacy')
-    await r.tap(r.page.getByRole('button', { name: 'Agree and continue' }), 'Agree and continue')
-    await r.page.waitForTimeout(1000)
-    await r.inspectDOM('3-workspace')
-  },
-)
+await runFlowSafely(new JourneyRunner('arjun', 'first-open', 'dark', 'en-IN'), async (r) => {
+  await r.goto('/?app=business')
+  await r.inspectDOM('1-landing')
+  await r.tap(r.page.getByRole('button', { name: 'Continue local preview' }), 'Continue preview')
+  await r.inspectDOM('2-consent')
+  await r.tap(r.page.getByLabel('I agree to the Terms'), 'Check terms')
+  await r.tap(r.page.getByLabel('I have read the Privacy Notice'), 'Check privacy')
+  await r.tap(r.page.getByRole('button', { name: 'Agree and continue' }), 'Agree and continue')
+  await r.page.waitForTimeout(1000)
+  await r.inspectDOM('3-workspace')
+})
 
 // 13. onboarding typing
-await runFlowSafely(
-  new JourneyRunner('arjun', 'onboarding-typing', 'dark', 'en-IN'),
-  async (r) => {
-    await enterWorkspace(r)
-    const addShop = r.page.getByRole('button', { name: 'Add my shop' })
-    if (await addShop.count()) await r.tap(addShop, 'Add my shop')
-    await r.inspectDOM('1-welcome')
-    const begin = r.page.getByRole('button', { name: 'Let’s begin' })
-    if (await begin.count()) await r.tap(begin, 'Lets begin')
-    const msg = r.page.getByLabel('Message', { exact: true })
-    if (await msg.count()) {
-      await msg.fill(
-        "name: Arjun's Royal Bakes; category: Bakery; location: Koramangala 5th Block, Bengaluru",
-      )
-      await r.tap(r.page.getByRole('button', { name: 'Send', exact: true }), 'Send shop info')
-      await r.page.waitForTimeout(1500)
-      await r.inspectDOM('2-agent-parsed')
-    }
-    const cancel = r.page.getByRole('button', { name: 'Cancel', exact: true })
-    if (await cancel.count()) await r.tap(cancel, 'Cancel flow')
-  },
-)
+await runFlowSafely(new JourneyRunner('arjun', 'onboarding-typing', 'dark', 'en-IN'), async (r) => {
+  await enterWorkspace(r)
+  const addShop = r.page.getByRole('button', { name: 'Add my shop' })
+  if (await addShop.count()) await r.tap(addShop, 'Add my shop')
+  await r.inspectDOM('1-welcome')
+  const begin = r.page.getByRole('button', { name: 'Let’s begin' })
+  if (await begin.count()) await r.tap(begin, 'Lets begin')
+  const msg = r.page.getByLabel('Message', { exact: true })
+  if (await msg.count()) {
+    await msg.fill(
+      "name: Arjun's Royal Bakes; category: Bakery; location: Koramangala 5th Block, Bengaluru",
+    )
+    await r.tap(r.page.getByRole('button', { name: 'Send', exact: true }), 'Send shop info')
+    await r.page.waitForTimeout(1500)
+    await r.inspectDOM('2-agent-parsed')
+  }
+  const cancel = r.page.getByRole('button', { name: 'Cancel', exact: true })
+  if (await cancel.count()) await r.tap(cancel, 'Cancel flow')
+})
 
 // 14. menu photo
-await runFlowSafely(
-  new JourneyRunner('arjun', 'menu-photo', 'dark', 'en-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
-    await enterWorkspace(r)
-    await r.inspectDOM('1-coach-view')
-    const attachBtn = r.page.getByRole('button', { name: /Attach|Take photo|Photo/i })
-    if (await attachBtn.count()) {
-      await r.tap(attachBtn, 'Attach photo')
-      await r.inspectDOM('2-photo-menu')
-    }
-    const fileInput = r.page.locator('input[type="file"]')
-    if (await fileInput.count()) {
-      await fileInput.first().setInputFiles(fixtureImage)
-      await r.page.waitForTimeout(1500)
-      await r.inspectDOM('3-photo-reading')
-    }
-  },
-)
+await runFlowSafely(new JourneyRunner('arjun', 'menu-photo', 'dark', 'en-IN'), async (r) => {
+  await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
+  await enterWorkspace(r)
+  await r.inspectDOM('1-coach-view')
+  const attachBtn = r.page.getByRole('button', { name: /Attach|Take photo|Photo/i })
+  if (await attachBtn.count()) {
+    await r.tap(attachBtn, 'Attach photo')
+    await r.inspectDOM('2-photo-menu')
+  }
+  const fileInput = r.page.locator('input[type="file"]')
+  if (await fileInput.count()) {
+    await fileInput.first().setInputFiles(fixtureImage)
+    await r.page.waitForTimeout(1500)
+    await r.inspectDOM('3-photo-reading')
+  }
+})
 
 // 15. Today
-await runFlowSafely(
-  new JourneyRunner('arjun', 'today', 'dark', 'en-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
-    await enterWorkspace(r)
-    await r.inspectDOM('1-today-overview')
-    const coachBtn = r.page.getByRole('button', { name: 'Coach', exact: true })
-    if (await coachBtn.count()) await r.tap(coachBtn, 'Coach tab')
-    await r.inspectDOM('2-today-pulse')
-  },
-)
+await runFlowSafely(new JourneyRunner('arjun', 'today', 'dark', 'en-IN'), async (r) => {
+  await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
+  await enterWorkspace(r)
+  await r.inspectDOM('1-today-overview')
+  const coachBtn = r.page.getByRole('button', { name: 'Coach', exact: true })
+  if (await coachBtn.count()) await r.tap(coachBtn, 'Coach tab')
+  await r.inspectDOM('2-today-pulse')
+})
 
 // 16. Close the day
-await runFlowSafely(
-  new JourneyRunner('arjun', 'close-day', 'dark', 'en-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
-    await enterWorkspace(r)
-    const growBtn = r.page.getByRole('button', { name: 'Grow', exact: true })
-    if (await growBtn.count()) await r.tap(growBtn, 'Grow tab')
-    const closeDay = r.page.getByRole('button', { name: /^Close the day/i })
-    if (await closeDay.count()) {
-      await r.tap(closeDay, 'Open Close the day')
-      await r.inspectDOM('1-closeday-sheet')
-      const tillBtn = r.page.getByRole('button', { name: /Till or POS report/i })
-      if (await tillBtn.count()) {
-        await r.tap(tillBtn, 'Upload till report')
-        await r.page.locator('input[type=file]').setInputFiles(fixtureImage)
-        await r.page.waitForTimeout(1500)
-        await r.inspectDOM('2-closeday-analyzed')
-        const revBtn = r.page.getByRole('button', { name: /^Review/i })
-        if (await revBtn.isEnabled()) {
-          await r.tap(revBtn, 'Review day')
-          await r.inspectDOM('3-closeday-review')
-          const saveBtn = r.page.getByRole('button', { name: /Save day/i })
-          if (await saveBtn.count()) await r.tap(saveBtn, 'Save day')
-          await r.inspectDOM('4-closeday-saved')
-          const doneBtn = r.page.getByRole('button', { name: /Done/i })
+await runFlowSafely(new JourneyRunner('arjun', 'close-day', 'dark', 'en-IN'), async (r) => {
+  await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
+  await enterWorkspace(r)
+  const growBtn = r.page.getByRole('button', { name: 'Grow', exact: true })
+  if (await growBtn.count()) await r.tap(growBtn, 'Grow tab')
+  const closeDay = r.page.getByRole('button', { name: /^Close the day/i })
+  if (await closeDay.count()) {
+    await r.tap(closeDay, 'Open Close the day')
+    await r.inspectDOM('1-closeday-sheet')
+    const tillBtn = r.page.getByRole('button', { name: /Till or POS report/i })
+    if (await tillBtn.count()) {
+      await r.tap(tillBtn, 'Upload till report')
+      await r.page.locator('input[type=file]').setInputFiles(fixtureImage)
+      await r.page.waitForTimeout(1500)
+      await r.inspectDOM('2-closeday-analyzed')
+      const revBtn = r.page.getByRole('button', { name: /^Review/i })
+      if (await revBtn.isEnabled()) {
+        await r.tap(revBtn, 'Review day')
+        await r.inspectDOM('3-closeday-review')
+        const saveBtn = r.page.getByRole('button', { name: /Save day/i })
+        if (await saveBtn.count()) await r.tap(saveBtn, 'Save day')
+        await r.inspectDOM('4-closeday-saved')
+        const doneBtn = r.page.getByRole('button', { name: /Done/i })
+        if (await doneBtn.count()) await r.tap(doneBtn, 'Done')
+      }
+    }
+  }
+})
+
+// 17. rescue deal
+await runFlowSafely(new JourneyRunner('arjun', 'rescue-deal', 'dark', 'en-IN'), async (r) => {
+  await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
+  await enterWorkspace(r)
+  const growBtn = r.page.getByRole('button', { name: 'Grow', exact: true })
+  if (await growBtn.count()) await r.tap(growBtn, 'Grow tab')
+  const rescueTile = r.page.getByRole('button', { name: /^Rescue/i })
+  if (await rescueTile.count()) {
+    await r.tap(rescueTile, 'Open Rescue Deals')
+    await r.inspectDOM('1-rescue-deals-dialog')
+    const closeBtn = r.page.getByRole('button', { name: /Close|Done|Back/i })
+    if (await closeBtn.count()) await r.tap(closeBtn.first(), 'Close rescue')
+  }
+})
+
+// 18. payments link
+await runFlowSafely(new JourneyRunner('arjun', 'payments-link', 'dark', 'en-IN'), async (r) => {
+  await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
+  await enterWorkspace(r)
+  const growBtn = r.page.getByRole('button', { name: 'Grow', exact: true })
+  if (await growBtn.count()) await r.tap(growBtn, 'Grow tab')
+  const payTile = r.page.getByRole('button', { name: /Payments & rides|Payments/i })
+  if (await payTile.count()) {
+    await r.tap(payTile, 'Open Payments & rides')
+    await r.inspectDOM('1-payments-options')
+    const amt = r.page.getByRole('textbox', { name: /Amount|₹/i })
+    if (await amt.count()) {
+      await amt.fill('850')
+      await r.inspectDOM('2-amount-filled')
+    }
+    const backBtn = r.page.getByRole('button', { name: 'Back', exact: true })
+    if (await backBtn.count()) await r.tap(backBtn.first(), 'Back to Grow')
+  }
+})
+
+// 19. purchase order
+await runFlowSafely(new JourneyRunner('arjun', 'purchase-order', 'dark', 'en-IN'), async (r) => {
+  await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
+  await enterWorkspace(r)
+  const coachBtn = r.page.getByRole('button', { name: 'Coach', exact: true })
+  if (await coachBtn.count()) await r.tap(coachBtn, 'Coach tab')
+  const msg = r.page.getByRole('textbox', { name: 'Message', exact: true })
+  if (await msg.count()) {
+    await msg.fill('Reorder 50 kg Maida and 20 kg Butter')
+    await r.tap(r.page.getByRole('button', { name: 'Send', exact: true }), 'Send PO request')
+    await r.page.waitForTimeout(2000)
+    await r.inspectDOM('1-po-generated')
+  }
+})
+
+// 20. playbook
+await runFlowSafely(new JourneyRunner('arjun', 'playbook', 'dark', 'en-IN'), async (r) => {
+  await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
+  await enterWorkspace(r)
+  const youBtn = r.page.getByRole('button', { name: 'You', exact: true })
+  if (await youBtn.count()) await r.tap(youBtn, 'You tab')
+  const privBtn = r.page.getByRole('button', { name: /^Privacy & your data/i })
+  if (await privBtn.count()) {
+    await r.tap(privBtn, 'Open Privacy')
+    const playbookBtn = r.page.getByTestId('playbook-open')
+    if (await playbookBtn.count()) {
+      await r.tap(playbookBtn, 'Open Playbook')
+      await r.page.waitForTimeout(1500)
+      await r.inspectDOM('1-playbook-dialog')
+      const closeBtn = r.page.getByRole('button', { name: /Close/i })
+      if (await closeBtn.count()) await r.tap(closeBtn, 'Close playbook')
+    }
+  }
+})
+
+// 21. face check
+await runFlowSafely(new JourneyRunner('arjun', 'face-check', 'dark', 'en-IN'), async (r) => {
+  await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
+  await enterWorkspace(r)
+  const youBtn = r.page.getByRole('button', { name: 'You', exact: true })
+  if (await youBtn.count()) await r.tap(youBtn, 'You tab')
+  const privBtn = r.page.getByRole('button', { name: /^Privacy & your data/i })
+  if (await privBtn.count()) {
+    await r.tap(privBtn, 'Open Privacy')
+    const faceCard = r.page.getByRole('region', { name: /Verify it’s you/i })
+    if (await faceCard.count()) {
+      await r.tap(faceCard.getByRole('button', { name: /Verify it’s you/i }), 'Verify face')
+      await r.inspectDOM('1-face-consent')
+      const consentBox = r.page.getByLabel(/I agree to this face check/i)
+      if (await consentBox.count()) {
+        await r.tap(consentBox, 'Check consent')
+        const openCam = r.page.getByRole('button', { name: /Open camera/i })
+        if (await openCam.count()) {
+          await r.tap(openCam, 'Open camera')
+          await r.page.waitForTimeout(2500)
+          await r.inspectDOM('2-face-scanning')
+          const doneBtn = r.page.getByRole('button', { name: /Done|Try again/i })
+          await doneBtn.waitFor({ timeout: 15000 }).catch(() => {})
+          await r.inspectDOM('3-face-verified')
           if (await doneBtn.count()) await r.tap(doneBtn, 'Done')
         }
       }
     }
-  },
-)
-
-// 17. rescue deal
-await runFlowSafely(
-  new JourneyRunner('arjun', 'rescue-deal', 'dark', 'en-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
-    await enterWorkspace(r)
-    const growBtn = r.page.getByRole('button', { name: 'Grow', exact: true })
-    if (await growBtn.count()) await r.tap(growBtn, 'Grow tab')
-    const rescueTile = r.page.getByRole('button', { name: /^Rescue/i })
-    if (await rescueTile.count()) {
-      await r.tap(rescueTile, 'Open Rescue Deals')
-      await r.inspectDOM('1-rescue-deals-dialog')
-      const closeBtn = r.page.getByRole('button', { name: /Close|Done|Back/i })
-      if (await closeBtn.count()) await r.tap(closeBtn.first(), 'Close rescue')
-    }
-  },
-)
-
-// 18. payments link
-await runFlowSafely(
-  new JourneyRunner('arjun', 'payments-link', 'dark', 'en-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
-    await enterWorkspace(r)
-    const growBtn = r.page.getByRole('button', { name: 'Grow', exact: true })
-    if (await growBtn.count()) await r.tap(growBtn, 'Grow tab')
-    const payTile = r.page.getByRole('button', { name: /Payments & rides|Payments/i })
-    if (await payTile.count()) {
-      await r.tap(payTile, 'Open Payments & rides')
-      await r.inspectDOM('1-payments-options')
-      const amt = r.page.getByRole('textbox', { name: /Amount|₹/i })
-      if (await amt.count()) {
-        await amt.fill('850')
-        await r.inspectDOM('2-amount-filled')
-      }
-      const backBtn = r.page.getByRole('button', { name: 'Back', exact: true })
-      if (await backBtn.count()) await r.tap(backBtn.first(), 'Back to Grow')
-    }
-  },
-)
-
-// 19. purchase order
-await runFlowSafely(
-  new JourneyRunner('arjun', 'purchase-order', 'dark', 'en-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
-    await enterWorkspace(r)
-    const coachBtn = r.page.getByRole('button', { name: 'Coach', exact: true })
-    if (await coachBtn.count()) await r.tap(coachBtn, 'Coach tab')
-    const msg = r.page.getByRole('textbox', { name: 'Message', exact: true })
-    if (await msg.count()) {
-      await msg.fill('Reorder 50 kg Maida and 20 kg Butter')
-      await r.tap(r.page.getByRole('button', { name: 'Send', exact: true }), 'Send PO request')
-      await r.page.waitForTimeout(2000)
-      await r.inspectDOM('1-po-generated')
-    }
-  },
-)
-
-// 20. playbook
-await runFlowSafely(
-  new JourneyRunner('arjun', 'playbook', 'dark', 'en-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
-    await enterWorkspace(r)
-    const youBtn = r.page.getByRole('button', { name: 'You', exact: true })
-    if (await youBtn.count()) await r.tap(youBtn, 'You tab')
-    const privBtn = r.page.getByRole('button', { name: /^Privacy & your data/i })
-    if (await privBtn.count()) {
-      await r.tap(privBtn, 'Open Privacy')
-      const playbookBtn = r.page.getByTestId('playbook-open')
-      if (await playbookBtn.count()) {
-        await r.tap(playbookBtn, 'Open Playbook')
-        await r.page.waitForTimeout(1500)
-        await r.inspectDOM('1-playbook-dialog')
-        const closeBtn = r.page.getByRole('button', { name: /Close/i })
-        if (await closeBtn.count()) await r.tap(closeBtn, 'Close playbook')
-      }
-    }
-  },
-)
-
-// 21. face check
-await runFlowSafely(
-  new JourneyRunner('arjun', 'face-check', 'dark', 'en-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
-    await enterWorkspace(r)
-    const youBtn = r.page.getByRole('button', { name: 'You', exact: true })
-    if (await youBtn.count()) await r.tap(youBtn, 'You tab')
-    const privBtn = r.page.getByRole('button', { name: /^Privacy & your data/i })
-    if (await privBtn.count()) {
-      await r.tap(privBtn, 'Open Privacy')
-      const faceCard = r.page.getByRole('region', { name: /Verify it’s you/i })
-      if (await faceCard.count()) {
-        await r.tap(faceCard.getByRole('button', { name: /Verify it’s you/i }), 'Verify face')
-        await r.inspectDOM('1-face-consent')
-        const consentBox = r.page.getByLabel(/I agree to this face check/i)
-        if (await consentBox.count()) {
-          await r.tap(consentBox, 'Check consent')
-          const openCam = r.page.getByRole('button', { name: /Open camera/i })
-          if (await openCam.count()) {
-            await r.tap(openCam, 'Open camera')
-            await r.page.waitForTimeout(2500)
-            await r.inspectDOM('2-face-scanning')
-            const doneBtn = r.page.getByRole('button', { name: /Done|Try again/i })
-            await doneBtn.waitFor({ timeout: 15000 }).catch(() => {})
-            await r.inspectDOM('3-face-verified')
-            if (await doneBtn.count()) await r.tap(doneBtn, 'Done')
-          }
-        }
-      }
-    }
-  },
-)
+  }
+})
 
 // 22. You/privacy
-await runFlowSafely(
-  new JourneyRunner('arjun', 'you-privacy', 'dark', 'en-IN'),
-  async (r) => {
-    await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
-    await enterWorkspace(r)
-    const youBtn = r.page.getByRole('button', { name: 'You', exact: true })
-    if (await youBtn.count()) await r.tap(youBtn, 'You tab')
-    await r.inspectDOM('1-you-tab-dark')
-    const lightBtn = r.page.getByRole('button', { name: /Light mode|Switch to light/i })
-    if (await lightBtn.count()) {
-      await r.tap(lightBtn, 'Toggle light mode')
-      await r.inspectDOM('2-you-tab-light')
-    }
-  },
-)
+await runFlowSafely(new JourneyRunner('arjun', 'you-privacy', 'dark', 'en-IN'), async (r) => {
+  await seedShopDirect(r.page, "Arjun's Royal Bakes", 'Bakery')
+  await enterWorkspace(r)
+  const youBtn = r.page.getByRole('button', { name: 'You', exact: true })
+  if (await youBtn.count()) await r.tap(youBtn, 'You tab')
+  await r.inspectDOM('1-you-tab-dark')
+  const lightBtn = r.page.getByRole('button', { name: /Light mode|Switch to light/i })
+  if (await lightBtn.count()) {
+    await r.tap(lightBtn, 'Toggle light mode')
+    await r.inspectDOM('2-you-tab-light')
+  }
+})
 
 // =========================================================================
 // PERSONA 3: MEI (24, visitor in Bengaluru, English, customer)
@@ -909,93 +860,78 @@ await runFlowSafely(
 console.log('\n--- Running Persona: Mei (Visitor in Bengaluru, Customer) ---')
 
 // 23. front door Ask
-await runFlowSafely(
-  new JourneyRunner('mei', 'frontdoor-ask', 'light', 'en-IN'),
-  async (r) => {
-    await r.goto('/explore/')
-    await r.inspectDOM('1-ask-page')
-    const askBox = r.page.getByRole('textbox', { name: /Ask about anything nearby/i })
-    if (await askBox.count()) {
-      await askBox.fill("cheap dinner near me that's open now")
-      await r.inspectDOM('2-query-typed')
-      await r.tap(r.page.getByRole('button', { name: 'Send', exact: true }), 'Send query')
-      await r.page.waitForTimeout(2500)
-      await r.inspectDOM('3-results-received')
-    }
-  },
-)
+await runFlowSafely(new JourneyRunner('mei', 'frontdoor-ask', 'light', 'en-IN'), async (r) => {
+  await r.goto('/explore/')
+  await r.inspectDOM('1-ask-page')
+  const askBox = r.page.getByRole('textbox', { name: /Ask about anything nearby/i })
+  if (await askBox.count()) {
+    await askBox.fill("cheap dinner near me that's open now")
+    await r.inspectDOM('2-query-typed')
+    await r.tap(r.page.getByRole('button', { name: 'Send', exact: true }), 'Send query')
+    await r.page.waitForTimeout(2500)
+    await r.inspectDOM('3-results-received')
+  }
+})
 
 // 24. results + map
-await runFlowSafely(
-  new JourneyRunner('mei', 'results-map', 'light', 'en-IN'),
-  async (r) => {
-    await r.goto('/explore/browse')
-    await r.inspectDOM('1-browse-list')
-    const mapBtn = r.page.getByRole('button', { name: /Map view/i })
-    if (await mapBtn.count()) {
-      await r.tap(mapBtn, 'Toggle map view')
-      await r.inspectDOM('2-map-view')
-      const listBtn = r.page.getByRole('button', { name: /List view/i })
-      if (await listBtn.count()) await r.tap(listBtn, 'Toggle list view')
-      await r.inspectDOM('3-back-to-list')
-    }
-  },
-)
+await runFlowSafely(new JourneyRunner('mei', 'results-map', 'light', 'en-IN'), async (r) => {
+  await r.goto('/explore/browse')
+  await r.inspectDOM('1-browse-list')
+  const mapBtn = r.page.getByRole('button', { name: /Map view/i })
+  if (await mapBtn.count()) {
+    await r.tap(mapBtn, 'Toggle map view')
+    await r.inspectDOM('2-map-view')
+    const listBtn = r.page.getByRole('button', { name: /List view/i })
+    if (await listBtn.count()) await r.tap(listBtn, 'Toggle list view')
+    await r.inspectDOM('3-back-to-list')
+  }
+})
 
 // 25. shop page
-await runFlowSafely(
-  new JourneyRunner('mei', 'shop-page', 'light', 'en-IN'),
-  async (r) => {
-    const id = await seedShopDirect(r.page, 'Bengaluru Dosa & Chai', 'Restaurant')
-    await r.goto(`/explore/s/${id}`)
-    await r.inspectDOM('1-public-shop-header')
-    await r.page.evaluate(() => window.scrollBy(0, 300))
-    await r.inspectDOM('2-menu-and-prices')
-  },
-)
+await runFlowSafely(new JourneyRunner('mei', 'shop-page', 'light', 'en-IN'), async (r) => {
+  const id = await seedShopDirect(r.page, 'Bengaluru Dosa & Chai', 'Restaurant')
+  await r.goto(`/explore/s/${id}`)
+  await r.inspectDOM('1-public-shop-header')
+  await r.page.evaluate(() => window.scrollBy(0, 300))
+  await r.inspectDOM('2-menu-and-prices')
+})
 
 // 26. chat with owner
-await runFlowSafely(
-  new JourneyRunner('mei', 'chat-owner', 'light', 'en-IN'),
-  async (r) => {
-    const id = await seedShopDirect(r.page, 'Bengaluru Dosa & Chai', 'Restaurant')
-    await r.goto(`/explore/s/${id}`)
-    const chatBtn = r.page.getByRole('button', { name: /Chat with the shop/i })
-    if (await chatBtn.count()) {
-      await r.tap(chatBtn, 'Open shop chat')
-      await r.inspectDOM('1-chat-opened')
-      const qBox = r.page.getByLabel(/Your question/i)
-      if (await qBox.count()) {
-        await qBox.fill('Are vegan options available tonight?')
-        const askAssistant = r.page.getByRole('button', { name: /Ask the shop assistant/i })
-        if (await askAssistant.count()) {
-          await r.tap(askAssistant, 'Ask assistant')
-          await r.page.waitForTimeout(1500)
-          await r.inspectDOM('2-instant-reply')
-        }
+await runFlowSafely(new JourneyRunner('mei', 'chat-owner', 'light', 'en-IN'), async (r) => {
+  const id = await seedShopDirect(r.page, 'Bengaluru Dosa & Chai', 'Restaurant')
+  await r.goto(`/explore/s/${id}`)
+  const chatBtn = r.page.getByRole('button', { name: /Chat with the shop/i })
+  if (await chatBtn.count()) {
+    await r.tap(chatBtn, 'Open shop chat')
+    await r.inspectDOM('1-chat-opened')
+    const qBox = r.page.getByLabel(/Your question/i)
+    if (await qBox.count()) {
+      await qBox.fill('Are vegan options available tonight?')
+      const askAssistant = r.page.getByRole('button', { name: /Ask the shop assistant/i })
+      if (await askAssistant.count()) {
+        await r.tap(askAssistant, 'Ask assistant')
+        await r.page.waitForTimeout(1500)
+        await r.inspectDOM('2-instant-reply')
       }
     }
-  },
-)
+  }
+})
 
 // 27. language change
-await runFlowSafely(
-  new JourneyRunner('mei', 'language-change', 'light', 'en-IN'),
-  async (r) => {
-    await r.goto('/explore/')
-    const prefBtn = r.page.getByRole('button', { name: /Profile and preferences|Preferences/i })
-    if (await prefBtn.count()) {
-      await r.tap(prefBtn, 'Open preferences')
-      await r.inspectDOM('1-preferences-sheet')
-      const langSel = r.page.getByRole('combobox', { name: /Language/i })
-      if (await langSel.count()) {
-        await r.tap(langSel, 'Open language selector')
-        await r.inspectDOM('2-language-options')
-        await r.page.keyboard.press('Escape')
-      }
+await runFlowSafely(new JourneyRunner('mei', 'language-change', 'light', 'en-IN'), async (r) => {
+  await r.goto('/explore/')
+  const prefBtn = r.page.getByRole('button', { name: /Profile and preferences|Preferences/i })
+  if (await prefBtn.count()) {
+    await r.tap(prefBtn, 'Open preferences')
+    await r.inspectDOM('1-preferences-sheet')
+    const langSel = r.page.getByRole('combobox', { name: /Language/i })
+    if (await langSel.count()) {
+      await r.tap(langSel, 'Open language selector')
+      await r.inspectDOM('2-language-options')
+      await r.page.keyboard.press('Escape')
     }
-  },
-)
+  }
+})
 
 // =========================================================================
 // PERSONA 4: RAVI (40, regular customer: stamps, rescue deals, streaks)
@@ -1004,82 +940,70 @@ await runFlowSafely(
 console.log('\n--- Running Persona: Ravi (Regular customer, stamps, streaks) ---')
 
 // 28. rescue deal
-await runFlowSafely(
-  new JourneyRunner('ravi', 'rescue-deal', 'dark', 'en-IN'),
-  async (r) => {
-    const id = await seedShopDirect(r.page, 'Central Bakery & Chai', 'Bakery')
-    await r.goto(`/explore/s/${id}`)
-    await r.inspectDOM('1-shop-rescue-view')
-    const rescueCard = r.page.getByRole('region', { name: /Rescue deal|Leftovers/i })
-    if (await rescueCard.count()) {
-      await r.inspectDOM('2-rescue-card-details')
-    }
-  },
-)
+await runFlowSafely(new JourneyRunner('ravi', 'rescue-deal', 'dark', 'en-IN'), async (r) => {
+  const id = await seedShopDirect(r.page, 'Central Bakery & Chai', 'Bakery')
+  await r.goto(`/explore/s/${id}`)
+  await r.inspectDOM('1-shop-rescue-view')
+  const rescueCard = r.page.getByRole('region', { name: /Rescue deal|Leftovers/i })
+  if (await rescueCard.count()) {
+    await r.inspectDOM('2-rescue-card-details')
+  }
+})
 
 // 29. stamp/scratch card
-await runFlowSafely(
-  new JourneyRunner('ravi', 'stamp-scratch', 'dark', 'en-IN'),
-  async (r) => {
-    const id = await seedShopDirect(r.page, 'Central Bakery & Chai', 'Bakery')
-    await r.goto(`/s/${id}?source=qr`)
-    await r.inspectDOM('1-qr-scanned-stamp')
+await runFlowSafely(new JourneyRunner('ravi', 'stamp-scratch', 'dark', 'en-IN'), async (r) => {
+  const id = await seedShopDirect(r.page, 'Central Bakery & Chai', 'Bakery')
+  await r.goto(`/s/${id}?source=qr`)
+  await r.inspectDOM('1-qr-scanned-stamp')
 
-    const foil = r.page.getByTestId('scratch-foil')
-    if (await foil.count()) {
-      await foil.scrollIntoViewIfNeeded()
-      const box = await foil.boundingBox()
-      if (box) {
-        await r.page.mouse.move(box.x + 10, box.y + 10)
-        await r.page.mouse.down()
-        for (let row = 0; row < 6; row++) {
-          const y = box.y + 15 + (row * (box.height - 30)) / 5
-          await r.page.mouse.move(box.x + (row % 2 ? 10 : box.width - 10), y, { steps: 8 })
-        }
-        await r.page.mouse.up()
-        await r.page.waitForTimeout(1000)
+  const foil = r.page.getByTestId('scratch-foil')
+  if (await foil.count()) {
+    await foil.scrollIntoViewIfNeeded()
+    const box = await foil.boundingBox()
+    if (box) {
+      await r.page.mouse.move(box.x + 10, box.y + 10)
+      await r.page.mouse.down()
+      for (let row = 0; row < 6; row++) {
+        const y = box.y + 15 + (row * (box.height - 30)) / 5
+        await r.page.mouse.move(box.x + (row % 2 ? 10 : box.width - 10), y, { steps: 8 })
       }
+      await r.page.mouse.up()
+      await r.page.waitForTimeout(1000)
     }
-    const reveal = r.page.getByRole('button', { name: /^Scratch card from/i })
-    if ((await reveal.count()) && (await reveal.isVisible())) {
-      await r.tap(reveal, 'Reveal card')
-    }
-    await r.inspectDOM('2-card-scratched-prize')
-    const doneBtn = r.page.getByRole('button', { name: 'Done', exact: true })
-    if (await doneBtn.count()) await r.tap(doneBtn, 'Done')
-  },
-)
+  }
+  const reveal = r.page.getByRole('button', { name: /^Scratch card from/i })
+  if ((await reveal.count()) && (await reveal.isVisible())) {
+    await r.tap(reveal, 'Reveal card')
+  }
+  await r.inspectDOM('2-card-scratched-prize')
+  const doneBtn = r.page.getByRole('button', { name: 'Done', exact: true })
+  if (await doneBtn.count()) await r.tap(doneBtn, 'Done')
+})
 
 // 30. passport
-await runFlowSafely(
-  new JourneyRunner('ravi', 'passport', 'dark', 'en-IN'),
-  async (r) => {
-    await r.goto('/explore/passport')
-    await r.inspectDOM('1-passport-summary')
-    await r.page.evaluate(() => window.scrollBy(0, 300))
-    await r.inspectDOM('2-collection-sets')
-    await r.page.evaluate(() => window.scrollBy(0, 400))
-    await r.inspectDOM('3-neighbourhood-goal')
-  },
-)
+await runFlowSafely(new JourneyRunner('ravi', 'passport', 'dark', 'en-IN'), async (r) => {
+  await r.goto('/explore/passport')
+  await r.inspectDOM('1-passport-summary')
+  await r.page.evaluate(() => window.scrollBy(0, 300))
+  await r.inspectDOM('2-collection-sets')
+  await r.page.evaluate(() => window.scrollBy(0, 400))
+  await r.inspectDOM('3-neighbourhood-goal')
+})
 
 // 31. streaks
-await runFlowSafely(
-  new JourneyRunner('ravi', 'streaks', 'dark', 'en-IN'),
-  async (r) => {
-    await r.goto('/explore/passport')
-    const streakRegion = r.page.getByRole('region', { name: /Weekly streak/i })
-    if (await streakRegion.count()) {
-      await streakRegion.scrollIntoViewIfNeeded()
-      await r.inspectDOM('1-streak-card')
-      const freezeBtn = streakRegion.getByRole('button', { name: /Freeze next week/i })
-      if (await freezeBtn.count()) {
-        await r.tap(freezeBtn, 'Freeze next week')
-        await r.inspectDOM('2-streak-frozen')
-      }
+await runFlowSafely(new JourneyRunner('ravi', 'streaks', 'dark', 'en-IN'), async (r) => {
+  await r.goto('/explore/passport')
+  const streakRegion = r.page.getByRole('region', { name: /Weekly streak/i })
+  if (await streakRegion.count()) {
+    await streakRegion.scrollIntoViewIfNeeded()
+    await r.inspectDOM('1-streak-card')
+    const freezeBtn = streakRegion.getByRole('button', { name: /Freeze next week/i })
+    if (await freezeBtn.count()) {
+      await r.tap(freezeBtn, 'Freeze next week')
+      await r.inspectDOM('2-streak-frozen')
     }
-  },
-)
+  }
+})
 
 // Write out audit data JSON
 const auditPath = resolve('docs/ux/journey-audit-data.json')

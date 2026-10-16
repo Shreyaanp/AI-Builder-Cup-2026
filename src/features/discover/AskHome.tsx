@@ -1402,7 +1402,10 @@ function Summary({
         <RichText
           content={text}
           streaming={streaming}
-          sx={{ ...chalkWrite, ...(long && !open ? { maxHeight: '6.5em', overflow: 'hidden' } : {}) }}
+          sx={{
+            ...chalkWrite,
+            ...(long && !open ? { maxHeight: '6.5em', overflow: 'hidden' } : {}),
+          }}
         />
       ) : (
         <Typography variant="bodyLarge" sx={{ ...chalkWrite, ...clamp }}>
