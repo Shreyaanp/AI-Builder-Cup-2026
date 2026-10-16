@@ -33,6 +33,7 @@ from .discover import (
 )
 from .gemini_schema import gemini_schema, parse_reply
 from .limits import client_ip, enforce_limits
+from .maps_grounding import AreaAnswer, AreaGrounding, is_area_question
 from .merchant import MerchantRepository
 from .money import exponent
 from .rescue_feed import live_rescues
@@ -66,6 +67,9 @@ class Intent(BaseModel):
     sort: Literal["best", "price", "distance"] = "best"
     near: Literal["", "transit"] = ""
     deals: bool = False
+    # A question about the area itself ("parking near the market?", "what's open near the
+    # metro?", "best filter coffee near me"): answered with Google Maps grounding when on.
+    area: bool = False
 
 
 class AskRequest(BaseModel):
@@ -137,6 +141,8 @@ class AskResponse(BaseModel):
     personal: Personal | None = None
     anchor: Anchor | None = None
     command: Command | None = None
+    # Google's live local answer for an area question (None when the question is not one).
+    area: AreaAnswer | None = None
 
 
 COMMANDS = (
@@ -257,6 +263,8 @@ Reply in JSON matching the schema. Rules:
 - followups: up to 3 short refinements in language "{language}" (e.g. "Open now", "Under ₹100").
 - sort: "price" if they want it cheaper, "distance" if closer; near: "transit" if they want it
   near a train/metro/MRT station; deals: true if they ask for deals or discounts.
+- area: true if they ask about the area itself (parking, toilets, what is open around, how to
+  get somewhere, the best places nearby), not only for a product.
 {context}Request: {q}"""
 
 CONTEXT = """This message continues a conversation. The earlier search was (JSON): {intent}
@@ -755,6 +763,23 @@ def assemble_groups(for_you: list[Pick], picks: list[Pick], others: list[Pick]) 
     return [g for g in groups if g.places]
 
 
+async def area_answer(
+    request: Request, body: AskRequest, intent: Intent, maps: MapsService
+) -> AreaAnswer | None:
+    """Area questions get Google's live local knowledge, once per question (refinements reuse
+    the earlier answer on screen). Our shops stay first for products they sell."""
+    refinement = body.refine is not None or (
+        body.context is not None and intent.keywords == body.context.keywords
+    )
+    if refinement or not (intent.area or is_area_question(body.q)):
+        return None
+    intent.area = True
+    grounding: AreaGrounding = getattr(request.app.state, "grounding", None) or AreaGrounding(
+        request.app.state.v1_settings
+    )
+    return await grounding.answer(body.q, body.lat, body.lng, body.language, maps)
+
+
 async def record_demand(
     request: Request,
     repository: MerchantRepository | None,
@@ -902,6 +927,7 @@ async def ask(body: AskRequest, request: Request) -> Any:
 
             others = await query_google_places(maps, final_intent, lat, lng, radius, body.q)
             await record_demand(request, repository, maps, final_intent, body, shops, others)
+            area = await area_answer(request, body, final_intent, maps)
 
             final_groups = assemble_groups(for_you, picks, others)
             final_resp = AskResponse(
@@ -910,6 +936,7 @@ async def ask(body: AskRequest, request: Request) -> Any:
                 groups=final_groups,
                 personal=personal,
                 anchor=anchor,
+                area=area,
             )
             yield ServerSentEvent(data=final_resp.model_dump_json(), event="complete")
 
@@ -941,6 +968,7 @@ async def ask(body: AskRequest, request: Request) -> Any:
     )
     others = await query_google_places(maps, intent, lat, lng, radius, body.q)
     await record_demand(request, repository, maps, intent, body, shops, others)
+    area = await area_answer(request, body, intent, maps)
 
     groups = assemble_groups(for_you, picks, others)
     return AskResponse(
@@ -949,6 +977,7 @@ async def ask(body: AskRequest, request: Request) -> Any:
         groups=groups,
         personal=personal,
         anchor=anchor,
+        area=area,
     )
 
 

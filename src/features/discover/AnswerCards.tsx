@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Box, Stack, Typography, useTheme } from '@mui/material'
-import { ExternalLink, Leaf, TrainFront } from 'lucide-react'
+import { ExternalLink, Leaf, MapPinned } from 'lucide-react'
 import type { Locale } from '../../i18n/locales'
 import { dealIn } from '../../design/chalkMotion'
 import { HAND_FONT } from '../../design/theme'
@@ -11,7 +11,9 @@ import { FollowButton } from '../customer/FollowButton'
 import { locallyMadeLabel } from '../public/locallyMade'
 import { formatPrice } from '../v1/format'
 import { askCopy } from './askStrings'
-import type { AskAnswer, AskPick } from './askThread'
+import type { AreaAnswer, AskAnswer, AskPick } from './askThread'
+import { mapCopy } from './mapCopy'
+import { mapsLink } from './types'
 import { fillIn, type ConversationCopy } from './conversationCopy'
 
 const prefetchPublicShop = () => {
@@ -39,12 +41,18 @@ export function PickCard({
   anchor,
   copy,
   locale,
+  selected = false,
+  onFocusPin,
 }: {
   pick: AskPick
   index: number
   anchor: AskAnswer['anchor']
   copy: ConversationCopy
   locale: Locale
+  /** Its pin was tapped on the map. */
+  selected?: boolean
+  /** Hover or focus the card: the map glides to its pin. */
+  onFocusPin?: () => void
 }) {
   const theme = useTheme()
   const roles = theme.material
@@ -74,9 +82,16 @@ export function PickCard({
         component="a"
         href={`/explore/s/${pick.id}`}
         onClick={customerNavigate}
-        onPointerEnter={prefetchPublicShop}
-        onFocus={prefetchPublicShop}
+        onPointerEnter={() => {
+          prefetchPublicShop()
+          onFocusPin?.()
+        }}
+        onFocus={() => {
+          prefetchPublicShop()
+          onFocusPin?.()
+        }}
         onTouchStart={prefetchPublicShop}
+        data-selected={selected}
         sx={{
           display: 'flex',
           flexDirection: 'column',
@@ -87,7 +102,9 @@ export function PickCard({
           overflow: 'hidden',
           bgcolor: roles.surfaceContainerLow,
           border: `1px solid ${roles.outlineVariant}`,
-          transition: 'transform 200ms cubic-bezier(0.2, 0, 0, 1)',
+          boxShadow: selected ? `0 0 0 3px ${roles.primary}` : 'none',
+          transition:
+            'transform 200ms cubic-bezier(0.2, 0, 0, 1), box-shadow 200ms cubic-bezier(0.2, 0, 0, 1)',
           '&:active': { transform: 'scale(0.98)' },
           '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: 2 },
         }}
@@ -279,164 +296,111 @@ export function GoogleRows({
 }
 
 /**
- * Where the answers are, relative to you (or the station): drawn locally from the coordinates
- * the answer already has. No map SDK or third-party request; tapping a pin shows its card.
+ * Google's live answer to a question about the area (Gemini grounding with Google Maps), with
+ * the Google Maps places it used: Google's required attribution, shown right under the text.
+ * When the switch is off or Google can't answer, one honest line says so instead.
  */
-export function MiniMap({
-  picks,
-  center,
-  anchor,
-  copy,
-}: {
-  picks: AskPick[]
-  center: { lat: number; lng: number }
-  anchor: AskAnswer['anchor']
-  copy: ConversationCopy
-}) {
+export function AreaAnswerCard({ area, locale }: { area: AreaAnswer; locale: Locale }) {
   const theme = useTheme()
   const roles = theme.material
-  const W = 360
-  const H = 132
-  const pad = 20
-  const points = [
-    center,
-    ...(anchor ? [anchor] : []),
-    ...picks.map((p) => ({ lat: p.lat, lng: p.lng })),
-  ]
-  const cos = Math.cos((center.lat * Math.PI) / 180)
-  const xs = points.map((p) => p.lng * cos)
-  const ys = points.map((p) => -p.lat)
-  const minX = Math.min(...xs)
-  const minY = Math.min(...ys)
-  const scale = Math.min(
-    (W - pad * 2) / Math.max(Math.max(...xs) - minX, 0.002),
-    (H - pad * 2) / Math.max(Math.max(...ys) - minY, 0.001),
-  )
-  const offsetX = (W - (Math.max(...xs) - minX) * scale) / 2
-  const offsetY = (H - (Math.max(...ys) - minY) * scale) / 2
-  const at = (p: { lat: number; lng: number }) => ({
-    x: offsetX + (p.lng * cos - minX) * scale,
-    y: offsetY + (-p.lat - minY) * scale,
-  })
-  const you = at(center)
-  const station = anchor ? at(anchor) : null
+  const map = mapCopy(locale)
+  if (area.status !== 'ok')
+    return (
+      <Typography
+        variant="bodyMedium"
+        color="text.secondary"
+        sx={{ mt: 4, display: 'flex', gap: 2, alignItems: 'flex-start' }}
+      >
+        <MapPinned size={18} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+        {area.status === 'off' ? map.areaOff : map.areaUnavailable}
+      </Typography>
+    )
   return (
     <Box
+      component="section"
+      aria-label="Google Maps"
+      className="c-receive"
       sx={{
         mt: 4,
-        borderRadius: '16px',
-        overflow: 'hidden',
+        p: 4,
+        borderRadius: '20px',
         bgcolor: roles.surfaceContainerLow,
         border: `1px solid ${roles.outlineVariant}`,
       }}
     >
-      <Box
-        component="svg"
-        viewBox={`0 0 ${W} ${H}`}
-        role="img"
-        aria-label={copy.map}
-        sx={{ display: 'block', width: '100%', height: 'auto', maxHeight: 180 }}
+      <Typography variant="bodyLarge">{area.text}</Typography>
+      {area.sources.length > 0 && (
+        <>
+          <Typography
+            component="h3"
+            variant="labelMedium"
+            color="text.secondary"
+            sx={{ mt: 3, mb: 1 }}
+          >
+            {map.sources}
+          </Typography>
+          <Box
+            component="ul"
+            sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexWrap: 'wrap', gap: 2 }}
+          >
+            {area.sources.map((source) => (
+              <li key={source.uri}>
+                <Box
+                  component={mapsLink(source.uri) ? 'a' : 'span'}
+                  href={mapsLink(source.uri)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    minHeight: 48,
+                    px: 3,
+                    borderRadius: '12px',
+                    border: `1px solid ${roles.outlineVariant}`,
+                    color: roles.onSurface,
+                    textDecoration: 'none',
+                    typography: 'labelLarge',
+                    '&:hover': { bgcolor: roles.surfaceContainerHigh },
+                    '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: 2 },
+                  }}
+                >
+                  <Box
+                    component="span"
+                    aria-hidden="true"
+                    sx={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      bgcolor: theme.chalk.lilac.main,
+                    }}
+                  />
+                  {source.title}
+                  <ExternalLink size={14} aria-hidden="true" />
+                </Box>
+              </li>
+            ))}
+          </Box>
+        </>
+      )}
+      <Stack
+        direction="row"
+        sx={{ mt: 3, gap: 2, alignItems: 'center', flexWrap: 'wrap', color: 'text.secondary' }}
       >
-        {/* Chalk grid: a sense of streets, not a street map. */}
-        {Array.from({ length: 9 }, (_, i) => (
-          <line
-            key={`v${i}`}
-            x1={(i + 1) * 36}
-            x2={(i + 1) * 36}
-            y1={0}
-            y2={H}
-            stroke={roles.outlineVariant}
-            strokeWidth={1}
-            strokeDasharray="2 6"
-          />
-        ))}
-        {Array.from({ length: 3 }, (_, i) => (
-          <line
-            key={`h${i}`}
-            x1={0}
-            x2={W}
-            y1={(i + 1) * 33}
-            y2={(i + 1) * 33}
-            stroke={roles.outlineVariant}
-            strokeWidth={1}
-            strokeDasharray="2 6"
-          />
-        ))}
-        {station && (
-          <g>
-            <rect
-              x={station.x - 11}
-              y={station.y - 11}
-              width={22}
-              height={22}
-              rx={6}
-              fill={theme.chalk.sky.main}
-            />
-            <TrainFront
-              x={station.x - 7}
-              y={station.y - 7}
-              width={14}
-              height={14}
-              color={theme.chalk.sky.onMain}
-            />
-          </g>
-        )}
-        <circle
-          cx={you.x}
-          cy={you.y}
-          r={12}
-          fill={roles.primary}
-          opacity={0.18}
-          className="c-ping"
-        />
-        <circle
-          cx={you.x}
-          cy={you.y}
-          r={6}
-          fill={roles.primary}
-          stroke={roles.surface}
-          strokeWidth={2}
-        />
-        {spread(picks.map(at)).map((p, index) => {
-          const pick = picks[index]!
-          return (
-            <g
-              key={pick.id}
-              style={{ cursor: 'pointer' }}
-              onClick={() =>
-                document
-                  .getElementById(`pick-${pick.id}`)
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' })
-              }
-            >
-              <circle cx={p.x} cy={p.y} r={11} fill={roles.inverseSurface} />
-              <text
-                x={p.x}
-                y={p.y + 4}
-                textAnchor="middle"
-                fontSize={12}
-                fontWeight={700}
-                fill={roles.inverseOnSurface}
-              >
-                {index + 1}
-              </text>
-            </g>
-          )
-        })}
-      </Box>
+        {/* Google's attribution: the words "Google Maps", never translated. */}
+        <Typography
+          variant="labelMedium"
+          translate="no"
+          sx={{
+            fontFamily: 'Roboto, system-ui, sans-serif',
+            letterSpacing: 0,
+            color: roles.onSurfaceVariant,
+          }}
+        >
+          Google Maps
+        </Typography>
+        {area.demo && <Typography variant="labelMedium">· {map.demo}</Typography>}
+      </Stack>
     </Box>
   )
-}
-
-/** Shops in one building would hide each other: fan them out around the shared point. */
-function spread(points: { x: number; y: number }[]) {
-  const placed: { x: number; y: number }[] = []
-  for (const point of points) {
-    const near = placed.filter((p) => Math.hypot(p.x - point.x, p.y - point.y) < 20).length
-    const angle = near * 2.1
-    placed.push(
-      near ? { x: point.x + Math.cos(angle) * 22, y: point.y + Math.sin(angle) * 22 } : point,
-    )
-  }
-  return placed
 }
