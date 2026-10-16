@@ -39,6 +39,8 @@ import {
 import { gsap } from 'gsap'
 import { visuallyHidden } from '@mui/utils'
 import { chatBubbleStyle } from '../coach/bubbleStyle'
+import { PlainText, RichText } from '../../design/RichText'
+import { stripMarkdown } from '../../design/markdownUtils'
 import { RateLimitError, streamCoach } from '../../api/stream'
 import type { CoachEvent } from '../../api/stream'
 import { useIdentity } from '../../auth/useIdentity'
@@ -333,15 +335,16 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   // The coach's text replies read aloud (natural Google voice; the phone's voice otherwise).
   async function speak(text: string) {
     stopSpeaking()
-    setTtsText(text)
+    const cleanText = stripMarkdown(text)
+    setTtsText(cleanText)
     const done = (resolve: () => void) => () => {
-      setTtsText((current) => (current === text ? '' : current))
+      setTtsText((current) => (current === cleanText ? '' : current))
       resolve()
     }
     try {
       const response = await api<Response>('/tts', {
         method: 'POST',
-        body: JSON.stringify({ text, language }),
+        body: JSON.stringify({ text: cleanText, language }),
         raw: true,
       })
       if (response.status === 200) {
@@ -372,7 +375,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     }
     await new Promise<void>((resolve) => {
       const finish = done(resolve)
-      const utterance = utter(text, language)
+      const utterance = utter(cleanText, language)
       utterance.onend = utterance.onerror = finish
       // The phone's voice has no clock to follow: the caption comes at a speaking rate.
       utterance.onstart = () => {
@@ -381,7 +384,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       }
       speechSynthesis.speak(utterance)
       // Some devices never report the end of speech.
-      window.setTimeout(finish, 1500 + text.length * 70)
+      window.setTimeout(finish, 1500 + cleanText.length * 70)
     })
   }
 
@@ -1186,6 +1189,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
           {/* Typing on a phone: the words are already in the chat; the stage says what happens. */}
           {(caption || heard) && !(typingView && !wide) ? (
             <Typography
+              component="div"
               key={caption ? 'coach' : 'owner'}
               sx={{
                 typography: { xs: 'bodyLarge', md: 'titleLarge' },
@@ -1202,7 +1206,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
               <Box component="span" sx={visuallyHidden}>
                 {f.captions}:{' '}
               </Box>
-              {caption || heard.trim()}
+              {caption ? <RichText content={caption} streaming /> : heard.trim()}
             </Typography>
           ) : (
             <Typography
@@ -1566,12 +1570,7 @@ function ChatLine({ line }: { line: Exclude<Line, { role: 'camera' | 'map' }> })
               }}
             />
           ) : (
-            <Typography
-              variant="bodyLarge"
-              sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
-            >
-              {line.text}
-            </Typography>
+            <PlainText text={line.text} />
           )}
         </Box>
       </Box>
@@ -1626,13 +1625,11 @@ function ChatLine({ line }: { line: Exclude<Line, { role: 'camera' | 'map' }> })
       >
         <Leaf size={18} />
       </Avatar>
-      <Box sx={{ minWidth: 0, pt: 0.5 }}>
+      <Box sx={{ minWidth: 0, pt: 0.5, flex: 1 }}>
         <Typography component="span" sx={visuallyHidden}>
           {t.coach}:{' '}
         </Typography>
-        <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-          {line.text}
-        </Typography>
+        <RichText content={line.text} />
       </Box>
     </Stack>
   )

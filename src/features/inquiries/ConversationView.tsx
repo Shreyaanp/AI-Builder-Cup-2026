@@ -1,7 +1,8 @@
-﻿import { useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Alert, Box, Button, Stack, TextField, Typography, useTheme } from '@mui/material'
 import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
+import { PlainText, RichText } from '../../design/RichText'
 import { chatBubbleStyle } from '../coach/bubbleStyle'
 import { fill, useOwnerCopy } from '../owner/copy'
 import { useRescueCopy } from '../rescue/copy'
@@ -151,9 +152,11 @@ function MessageBubble({
         <Typography variant="labelMedium">
           {mine ? t.you : message.author === 'owner' ? t.shop : t.customer}
         </Typography>
-        <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-          {generated ? formatMoneyText(displayed, locale) : displayed}
-        </Typography>
+        {visible || generated ? (
+          <RichText content={generated ? formatMoneyText(displayed, locale) : displayed} />
+        ) : (
+          <PlainText text={text} />
+        )}
         <Typography variant="bodySmall" color="text.secondary">
           {new Intl.DateTimeFormat(dateLocale, { dateStyle: 'short', timeStyle: 'short' }).format(
             new Date(message.created * 1000),
