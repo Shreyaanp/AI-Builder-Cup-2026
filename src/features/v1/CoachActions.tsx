@@ -39,7 +39,7 @@ export function ActionChip({ action, onOpen }: { action: CoachAction; onOpen: ()
         label={NEEDS_TAP.has(action.target) ? action.label : c.open(action.label)}
         variant="outlined"
         onClick={onOpen}
-        sx={{ minHeight: 40 }}
+        sx={{ minHeight: 48 }}
       />
     </Box>
   )
