@@ -245,3 +245,45 @@ for (const mode of ['light', 'dark'] as const)
       true,
     )
   })
+
+test('speed: first answer text appears quickly with the offline fixture', async ({ page }) => {
+  test.setTimeout(60_000)
+  await page.route('**/api/v1/discover/ask', (route) => route.fulfill({ json: answer('Fast Kopi') }))
+  await page.goto('/explore/')
+
+  const firstWordRuns: number[] = []
+  const completeRuns: number[] = []
+  const tapRuns: number[] = []
+
+  for (let i = 0; i < 5; i++) {
+    await composer(page).fill('kopi')
+
+    const t0 = Date.now()
+    await page.getByRole('button', { name: 'Send', exact: true }).click()
+    const card = page.locator('a[href="/explore/s/demo-fixture-kopi"]').last()
+    await expect(card).toBeVisible({ timeout: 15_000 })
+    const tFirstWord = Date.now() - t0
+    firstWordRuns.push(tFirstWord)
+
+    await expect(card).toContainText('Fast Kopi')
+    const tComplete = Date.now() - t0
+    completeRuns.push(tComplete)
+
+    const tTap = Date.now()
+    await card.hover()
+    await card.click()
+    await expect(page).toHaveURL(/\/explore\/s\/demo-fixture-kopi/)
+    const tTapDuration = Date.now() - tTap
+    tapRuns.push(tTapDuration)
+
+    await page.goBack()
+    await expect(composer(page)).toBeVisible()
+  }
+
+  console.log('BENCHMARK_RESULTS:', JSON.stringify({ firstWordRuns, completeRuns, tapRuns }))
+
+  // Targets: first words < 700 ms, complete < 2500 ms
+  for (const ms of firstWordRuns) expect(ms).toBeLessThan(700)
+  for (const ms of completeRuns) expect(ms).toBeLessThan(2500)
+})
+
