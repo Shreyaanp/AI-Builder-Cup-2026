@@ -6,6 +6,7 @@ import {
   ButtonBase,
   CircularProgress,
   LinearProgress,
+  Skeleton,
   Stack,
   Typography,
   useTheme,
@@ -60,7 +61,24 @@ export function TodayView({ actions }: { actions: TodayActions }) {
   const { name } = useIdentity()
   const { plan, answerMenu } = useTodayPlan(actions.unread)
   const shop = ws.active
-  if (!shop || !plan) return null
+  if (!shop) return null
+  if (!plan) {
+    return (
+      <Stack
+        spacing={{ xs: 4, sm: 5 }}
+        sx={{ pt: { xs: 1, sm: 6 }, pb: 4 }}
+        data-testid="today-skeleton"
+        aria-busy="true"
+      >
+        <Box>
+          <Skeleton variant="text" width="60%" height={36} />
+          <Skeleton variant="text" width="40%" height={24} sx={{ mt: 1 }} />
+        </Box>
+        <Skeleton variant="rounded" height={160} sx={{ borderRadius: `${shape.xl}px` }} />
+        <Skeleton variant="rounded" height={120} sx={{ borderRadius: `${shape.lg}px` }} />
+      </Stack>
+    )
+  }
   return (
     <Stack spacing={{ xs: 4, sm: 5 }} sx={{ pt: { xs: 1, sm: 6 }, pb: 4 }} data-testid="today">
       <Box>

@@ -31,6 +31,8 @@ export interface Workspace {
   newShopReady: boolean
   dismissNewShopReady: () => void
   products: Product[]
+  /** True once products for the active shop have finished loading. */
+  productsLoaded: boolean
   destination: Destination
   speakReplies: boolean
   setSpeakReplies: (value: boolean) => void

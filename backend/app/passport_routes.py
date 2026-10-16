@@ -1184,9 +1184,13 @@ async def board(
         area = geohash(lat, lng)
     if not area:
         area = max(state.week_points, key=lambda a: sum(state.week_points[a].values()), default="")
-    if not area or len(area) > 12:
-        raise HTTPException(422, "Choose an area.")
+    if not area:
+        shop_areas = [p.area for p in state.shops.values() if p.area]
+        if shop_areas:
+            area = shop_areas[0]
     week = week_of(local_now("UTC", time.time()).date())
+    if not area or len(area) > 12:
+        return Board(area="", week=week, joined=state.leaderboard, rows=[], you=None)
     rows = await anyio.to_thread.run_sync(service.board, area, week)
     me = member_id(principal.uid)
     entries = [{**row, "you": key == me} for key, row in rows.items()]
