@@ -50,7 +50,7 @@ items, 25 labelled queries. Precision@5 keyword search 0.728 → engine **0.902 
 
 ## Results (final session)
 
-- Ruff check/format, mypy clean; **pytest 670 passed, 178 skipped**.
+- Ruff check/format, mypy clean; **pytest 713 passed, 200 skipped** (after merging main). PR #33.
 - `npm run lint`, build, hook rules passed.
 - Own specs on a fresh SQLite DB, `--workers=1`: `search-engine.spec.ts` +
   `customer-ask.spec.ts` **18/18**. On the long-lived dev DB the "real shop answers" test failed
