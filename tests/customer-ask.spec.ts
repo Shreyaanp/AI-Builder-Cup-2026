@@ -19,6 +19,33 @@ test.beforeEach(async ({ page }) => {
   )
 })
 
+/** Pin the owner's shop at a point of its own near Indiranagar (the owner's map pin). */
+async function pinShop(page: Page, id: string) {
+  const point = {
+    lat: Number((INDIRANAGAR.lat + (Math.random() - 0.5) * 0.04).toFixed(6)),
+    lng: Number((INDIRANAGAR.lng + (Math.random() - 0.5) * 0.04).toFixed(6)),
+  }
+  const shop = (await (await page.request.get('/api/v1/businesses')).json()).find(
+    (business: { id: string }) => business.id === id,
+  )
+  const prepared = await page.request.post('/api/v1/proposals', {
+    data: {
+      kind: 'business',
+      business_id: id,
+      revision: shop.revision,
+      owner_location: { ...point, accuracy_m: 0, source: 'pin' },
+      business: shop.fields,
+    },
+  })
+  expect(prepared.ok(), await prepared.text()).toBe(true)
+  const proposal = await prepared.json()
+  const approved = await page.request.post(`/api/v1/proposals/${proposal.id}/approve`, {
+    data: { digest: proposal.digest },
+  })
+  expect(approved.ok()).toBe(true)
+  return { ...point, label: INDIRANAGAR.label }
+}
+
 const composer = (page: Page) => page.getByRole('textbox', { name: 'Ask about anything nearby' })
 
 async function ask(page: Page, text: string) {
@@ -101,11 +128,17 @@ test('ask: a real shop answers with its exact item and price; back returns to th
   isMobile,
 }) => {
   test.setTimeout(90_000)
-  // A pinned shop (photo GPS in Indiranagar) is what discovery can place on the map.
+  // A pinned shop is what discovery can place on the map. Each run pins its own shop at its own
+  // point in Indiranagar and asks from there, so shops left by earlier runs (same menu, same
+  // photo GPS) never tie with it or push it out of the capped answer.
   await enter(page)
   const name = `Courtyard Chai ${Date.now().toString().slice(-6)}`
-  await seedShop(page, true, name)
+  await seedShop(page, false, name)
   const id = (await (await page.request.get('/api/v1/businesses')).json())[0].id as string
+  const here = await pinShop(page, id)
+  await page.addInitScript((area) => {
+    localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place: area }))
+  }, here)
   await publish(page, id)
   await page.goto('/explore/')
   await ask(page, 'kopi')

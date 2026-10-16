@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -250,3 +251,44 @@ def test_live_switch_requires_a_model_and_project(tmp_path: Path) -> None:
             maps_grounding_model="m",
             _env_file=None,
         )
+
+
+def sse_events(text: str) -> dict[str, dict[str, Any]]:
+    """The last data of each event kind in a server-sent event stream."""
+    events: dict[str, dict[str, Any]] = {}
+    for block in text.replace("\r\n", "\n").split("\n\n"):
+        lines = block.split("\n")
+        kind = next((line[7:].strip() for line in lines if line.startswith("event: ")), "")
+        data = "".join(line[6:] for line in lines if line.startswith("data: "))
+        if kind and data:
+            events[kind] = json.loads(data)
+    return events
+
+
+def test_streamed_ask_ranks_our_shops_instantly_then_adds_the_grounded_answer(
+    store: MerchantRepository, tmp_path: Path
+) -> None:
+    bid = shared_shop(store)
+    app = create_app(live_settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        app.state.merchant = store
+        fake = FakeGenai(response=grounded_response("Kopi spots nearby: Seng Poh is open."))
+        app.state.grounding.client = fake
+        response = client.post(
+            "/api/v1/discover/ask",
+            json={"q": "best kopi near me", **TIONG_BAHRU},
+            headers={"Accept": "text/event-stream"},
+        )
+        events = sse_events(response.text)
+        # The instant answer is our shop, ranked by the search engine, before any Google call.
+        instant = events["instant"]
+        assert instant["groups"][0]["places"][0]["id"] == bid
+        assert instant["engine"] == "fixture"
+        assert instant["area"] is None
+        # The complete answer keeps our shop first and adds Google's grounded area answer.
+        complete = events["complete"]
+        assert complete["groups"][0]["places"][0]["id"] == bid
+        assert complete["engine"] == "fixture"
+        assert complete["area"]["status"] == "ok"
+        assert complete["intent"]["area"] is True
+        assert len(fake.calls) == 1
