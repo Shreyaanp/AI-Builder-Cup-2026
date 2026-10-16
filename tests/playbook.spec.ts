@@ -40,7 +40,9 @@ async function seedTeaStall(page: Page) {
 }
 
 async function openPlaybook(page: Page) {
-  await page.getByRole('button', { name: 'Privacy', exact: true }).click()
+  // Under You → Privacy & your data.
+  await page.getByRole('button', { name: 'You', exact: true }).click()
+  await page.getByRole('button', { name: /^Privacy & your data/ }).click()
   await page.getByTestId('playbook-open').click()
   const sheet = page.getByRole('dialog', { name: 'What Chalkboard knows about your shop' })
   await expect(sheet.getByTestId('playbook-key_metrics')).toBeVisible({ timeout: 20_000 })
@@ -78,12 +80,11 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(page.getByRole('button', { name: 'Choose shop: Shree Chai Corner' })).toBeVisible()
     if (scheme === 'light') {
       // Grow order: the tea stall's playbook suggests the prep plan before closing the day.
-      if (info.project.name === 'phone')
-        await page
-          .getByRole('navigation', { name: 'Main' })
-          .getByRole('button', { name: 'My shop' })
-          .click()
-      const tiles = page.getByTestId('shop-tiles')
+      await page
+        .getByRole('navigation', { name: 'Main' })
+        .getByRole('button', { name: 'Grow', exact: true })
+        .click()
+      const tiles = page.getByTestId('grow-tiles')
       await expect
         .poll(() =>
           tiles.evaluate((grid) => {

@@ -183,25 +183,28 @@ test('settings errors recover, no-pin rides explain next step, all guide chips s
   }
 })
 
-test('help preserves a typed coach draft and browser Back returns to the coach', async ({
-  page,
-}) => {
+test('help preserves a typed coach draft and browser Back closes the guide', async ({ page }) => {
   await ownerTools(page)
   const composer = page.getByRole('textbox', { name: 'Message', exact: true })
+  const coach = page.getByRole('button', { name: 'Coach', exact: true })
   await composer.fill('My unfinished question')
   await openTool(page, 'Talk to your coach')
   await expect(page.getByRole('dialog', { name: 'Discard changes?' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Back', exact: true }).click()
+  await coach.click()
   await expect(composer).toHaveValue('My unfinished question')
   await openTool(page, 'Talk to your coach')
   await page.goBack()
   await expect(page.getByRole('dialog', { name: 'Discard changes?' })).toHaveCount(0)
+  await expect(page).not.toHaveURL(/feature=guide/)
+  await coach.click()
   await expect(composer).toHaveValue('My unfinished question')
   await composer.fill('')
   await openTool(page, 'Talk to your coach')
   await page.goBack()
-  await expect(composer).toBeVisible()
   await expect(page).not.toHaveURL(/feature=guide/)
+  await coach.click()
+  await expect(composer).toBeVisible()
 })
 
 test('native sharing and clipboard failure preserve a selectable link', async ({ page }) => {

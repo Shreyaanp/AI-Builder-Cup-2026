@@ -5,9 +5,13 @@ export async function ownerTools(page: Page, pinned = false) {
   await enter(page)
   await seedShop(page, pinned)
 }
+/** Payments & rides is a Grow card; the coach guide is under You → Help. */
 export async function openTool(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await page.getByRole('button', { name, exact: true }).click()
+  const payments = name === 'Payments & rides'
+  await page.getByRole('button', { name: payments ? 'Grow' : 'You', exact: true }).click()
+  await page
+    .getByRole('button', { name: payments ? /^Payments & rides/ : name, exact: !payments })
+    .click()
   await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()
 }
 export async function preparePayment(page: Page) {
