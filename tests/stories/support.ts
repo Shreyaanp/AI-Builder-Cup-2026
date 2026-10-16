@@ -117,7 +117,7 @@ export async function createShop(page: Page, details?: string) {
 
 /** The saved shop's details form (My shop → Shop details → Edit details). */
 export async function editShopDetails(page: Page) {
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
   await page.getByRole('button', { name: 'Edit details' }).click()
   await expect(page.getByLabel('Shop name')).toBeVisible()
@@ -236,7 +236,7 @@ export async function seedShop(page: Page, withPhotoPin = false, name = shopName
 }
 
 export async function share(page: Page) {
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Customer page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   if (!(await sharing.isChecked())) await sharing.click()

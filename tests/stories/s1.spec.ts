@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test'
 import {
-  closeSheet,
   confirm,
   gpsBoardPath,
   image,
@@ -64,14 +63,14 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     await shot(page, 1, 4)
     await confirm(page)
   })
-  await test.step('5 · My shop readiness and next action', async () => {
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
-    await expect(page.getByRole('button', { name: /^Readiness/ })).toBeVisible()
+  await test.step('5 · Shop page, then Grow: what is missing for Google', async () => {
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'This is your page' })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Customer page/ })).toBeVisible()
     await shot(page, 1, 5)
-    await page.getByRole('button', { name: /^Readiness/ }).click()
-    await expect(page.getByRole('button', { name: 'Edit details' })).toBeVisible()
-    await closeSheet(page)
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    await expect(page.getByRole('button', { name: /^Get on Google.*missing/ })).toBeVisible()
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
   })
   await test.step('6 · local location, opening/closing hours, UPI and delivery', async () => {
     await page.getByRole('button', { name: /^Shop details/ }).click()

@@ -90,10 +90,15 @@ export async function prepare(api: APIRequestContext, data: object) {
 export async function approve(api: APIRequestContext, proposal: { id: string; digest: string }) {
   return api.post(`/api/v1/proposals/${proposal.id}/approve`, { data: { digest: proposal.digest } })
 }
+/** Switch to Tamil on the You tab, then return to the tab the test was on. */
 export async function tamil(page: Page) {
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  const nav = page.getByRole('navigation', { name: 'Main' }).getByRole('button')
+  const current = await nav.evaluateAll((items) =>
+    items.findIndex((item) => item.getAttribute('aria-current') === 'page'),
+  )
+  await page.getByRole('button', { name: 'You', exact: true }).click()
   await page.getByRole('combobox', { name: 'Language' }).click()
   await page.getByRole('option', { name: /தமிழ்/ }).click()
-  await page.keyboard.press('Escape')
   await expect(page.locator('html')).toHaveAttribute('lang', /^ta/)
+  if (current >= 0) await nav.nth(current).click()
 }

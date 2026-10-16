@@ -136,7 +136,7 @@ test('Signed-in customer and owner have a live two-way conversation', async ({
     ).toBe(401)
     await page.reload()
     await page.getByRole('button', { name: 'Continue local preview' }).click()
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
     // The pending card says who is waiting; its Reply opens the same inbox sheet.
     const waiting = page.getByRole('region', { name: '1 customer is waiting' })
     await expect(waiting).toBeVisible()
@@ -284,7 +284,7 @@ test('Polling recovers when the live stream fails, and a blocked customer cannot
     await expect(thread).toContainText('Hello from fallback')
     await page.reload()
     await page.getByRole('button', { name: 'Continue local preview' }).click()
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await page.getByRole('button', { name: /^Messages 1/ }).click()
     const messages = page.getByRole('region', { name: /Messages/ })
     await messages.getByRole('button', { name: 'Open conversation', exact: true }).click()

@@ -41,7 +41,7 @@ async function addShop(page: Page, name: string) {
 async function sharedShop(page: Page) {
   await open(page)
   await addShop(page, 'Accessibility Tea Stall')
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   // My shop is tiles; each opens a bottom sheet.
   await page.getByRole('button', { name: /^Menu/ }).click()
   await page.getByRole('button', { name: 'Add product', exact: true }).click()
@@ -85,7 +85,9 @@ const screens = [
   'Consent',
   'Coach',
   'Review',
-  'My shop',
+  'Shop',
+  'Grow',
+  'You',
   'Google',
   'Privacy',
   'Delete confirmation',
@@ -124,11 +126,20 @@ for (const colorScheme of ['light', 'dark'] as const) {
           break
         default: {
           const shared = await sharedShop(page)
-          if (screen === 'Google') {
-            await page.getByRole('button', { name: 'Google', exact: true }).click()
+          if (screen === 'Grow' || screen === 'You') {
+            await page.getByRole('button', { name: screen, exact: true }).click()
+            await expect(
+              screen === 'Grow'
+                ? page.getByRole('button', { name: /^Rescue deals/ })
+                : page.getByRole('region', { name: 'Verify it’s you' }),
+            ).toBeVisible()
+          } else if (screen === 'Google') {
+            await page.getByRole('button', { name: 'Grow', exact: true }).click()
+            await page.getByRole('button', { name: /^Get on Google/ }).click()
             await expect(page.getByRole('heading', { name: 'Get on Google' })).toBeVisible()
           } else if (screen === 'Privacy' || screen === 'Delete confirmation') {
-            await page.getByRole('button', { name: 'Privacy', exact: true }).click()
+            await page.getByRole('button', { name: 'You', exact: true }).click()
+            await page.getByRole('button', { name: /^Privacy & your data/ }).click()
             await expect(page.getByRole('heading', { name: 'Privacy & data' })).toBeVisible()
             if (screen === 'Delete confirmation') {
               await page.getByRole('button', { name: 'Delete all my data' }).click()

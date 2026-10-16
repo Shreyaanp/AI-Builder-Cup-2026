@@ -112,17 +112,17 @@ test('B3: the composer is one line (even with a long translated hint), grows for
   const height = async () => Math.round((await form.boundingBox())!.height)
   expect(await height()).toBe(56)
   // Tamil has the longest hint; it used to make the empty composer several lines tall.
-  await page.getByRole('button', { name: 'Settings' }).tap()
+  await page.getByRole('button', { name: 'You', exact: true }).tap()
   await page.getByRole('combobox', { name: 'Language' }).tap()
   await page.getByRole('option', { name: 'தமிழ்' }).tap()
-  await page.keyboard.press('Escape')
+  await page.locator('[data-tour="nav-coach"]').tap()
   await expect(field).toHaveAttribute('placeholder', /கடை/)
   // Tamil needs a 32px line box plus padding for ascenders and descenders.
   expect(await height()).toBe(64)
-  await page.getByRole('button', { name: 'அமைப்புகள்' }).tap()
+  await page.locator('[data-tour="nav-you"]').tap()
   await page.getByRole('combobox').tap()
   await page.getByRole('option', { name: 'English', exact: true }).tap()
-  await page.keyboard.press('Escape')
+  await page.locator('[data-tour="nav-coach"]').tap()
   await expect(field).toHaveAttribute('placeholder', 'Tell me about your shop…')
   // Multi-line text grows the field a line at a time; clearing it goes back to one line.
   await field.fill('Kopi\nTeh\nMilo')
@@ -228,7 +228,7 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   expect(await unload).toBe('beforeunload')
 })
 
-test('B5: no "What’s new at …" line; + (new shop) sits top-right next to settings', async ({
+test('B5: no "What’s new at …" line; + (new shop) sits top-right; settings live on You', async ({
   page,
 }) => {
   await enter(page)
@@ -238,14 +238,11 @@ test('B5: no "What’s new at …" line; + (new shop) sits top-right next to set
   // "+" opens the new-shop flow directly; new conversation sits just before it.
   await expect(header.getByRole('button', { name: 'New conversation', exact: true })).toBeVisible()
   const plus = header.getByRole('button', { name: 'Add shop details', exact: true })
-  const settings = header.getByRole('button', { name: 'Settings', exact: true })
   await expect(plus).toBeVisible()
   const a = (await plus.boundingBox())!
-  const b = (await settings.boundingBox())!
-  // Same row, directly left of settings, at the right edge of the bar.
-  expect(Math.abs(a.y - b.y)).toBeLessThanOrEqual(1)
-  expect(b.x - (a.x + a.width)).toBeLessThanOrEqual(8)
-  expect(b.x + b.width).toBeGreaterThan(390 - 24)
+  // At the right edge of the bar; the settings gear moved to the You tab.
+  expect(a.x + a.width).toBeGreaterThan(390 - 24)
+  await expect(header.getByRole('button', { name: 'Settings', exact: true })).toHaveCount(0)
   await expect(page.locator('main').getByRole('button', { name: 'New conversation' })).toHaveCount(
     0,
   )
@@ -259,7 +256,7 @@ test('B5: no "What’s new at …" line; + (new shop) sits top-right next to set
   await expect(page.getByRole('dialog', { name: 'New conversation' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
   // New conversation belongs to the coach; "+" (a new shop) is on every screen.
-  await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
   await expect(newChat).toHaveCount(0)
   await expect(plus).toBeVisible()
 })
@@ -295,7 +292,7 @@ test('B6: the coach fits the phone without scrolling, suggestions sit under the 
 
   // Finish setup (share the customer page): the setup card collapses to one small chip.
   await expect(page.getByText('Step 4 of 5')).toBeVisible()
-  await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
   await page.getByRole('button', { name: /^Customer page/ }).tap()
   await page.getByRole('switch', { name: 'Share customer page' }).tap()
   await expect(page.getByRole('switch', { name: 'Share customer page' })).toBeChecked()

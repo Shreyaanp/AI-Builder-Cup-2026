@@ -197,7 +197,7 @@ test('owner reward edits require exact review before saving and clearing', async
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(page.getByRole('button', { name: 'Choose shop: Neighbourhood Kopi' })).toBeVisible()
   while ((await page.getByRole('dialog').count()) > 0) await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
   await expect(page.getByRole('dialog')).toContainText('10th kopi free')
   await page.getByRole('button', { name: 'Edit details' }).click()
