@@ -50,6 +50,7 @@ import { discoverCopy } from './strings'
 import { fillIn, useConversationCopy, type ConversationCopy } from './conversationCopy'
 import { ensureDemoWorld } from './demoWorld'
 import { localRankShops, prefetchAreaShops } from './shopCache'
+import { recsEvent } from '../recs/events'
 import { PlaceSearch, type FoundPlace } from './PlaceSearch'
 import '../customer/customer.css'
 
@@ -259,6 +260,7 @@ export default function AskHome({
 
         // Parallel demo world fetch: never blocks query dispatch
         void ensureDemoWorld(turn.place.lat, turn.place.lng, turn.place.label)
+        recsEvent({ kind: 'ask', query: turn.q })
 
         const handleAnswer = (answer: AskAnswer) => {
           if (answer.command) {
