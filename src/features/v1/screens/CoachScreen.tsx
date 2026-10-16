@@ -241,7 +241,7 @@ function CoachScreen({
       }
       if (event.kind === 'turn_complete') setSearching(null)
       if (event.kind === 'workflow' && event.data?.status === 'verification_required') {
-        go('privacy')
+        go('you')
         setFaceOpen(true)
       }
     },
