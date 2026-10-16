@@ -572,4 +572,3 @@ def test_board_without_location_returns_calm_empty_board(client: TestClient) -> 
     joined_data = joined_res.json()
     assert joined_data["joined"] is True
     assert joined_data["rows"] == []
-
