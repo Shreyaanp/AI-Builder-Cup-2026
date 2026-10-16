@@ -81,10 +81,11 @@ test('A8 · header and discovery use the first gallery photo with removal/error 
   await shot(customer, 3, 'A8-discovery')
   await customer.route(`**${photo}`, (route) => route.fulfill({ status: 404 }))
   await customer.goto(url)
-  await expect(customer.locator('main img[src^="/art/category-"]')).toBeVisible()
+  // The header's fallback art (Similar nearby cards below may use the same art).
+  await expect(customer.locator('main img[src^="/art/category-"]').first()).toBeVisible()
   await page.request.delete(`/api/v1/businesses/${shop.id}/gallery/${added.photo_id}`)
   await customer.reload()
-  await expect(customer.locator('main img[src^="/art/category-"]')).toBeVisible()
+  await expect(customer.locator('main img[src^="/art/category-"]').first()).toBeVisible()
   await shot(customer, 3, 'A8-fallback')
   expect((await page.request.get(photo)).status()).toBe(404)
 })
