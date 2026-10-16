@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Box, Button, Chip, Stack, Typography, useTheme } from '@mui/material'
 import { ArrowUpRight, Send } from 'lucide-react'
+import { RichText } from '../../design/RichText'
 import { enterRise, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { NEEDS_TAP, type CoachAction } from './coachAction'
@@ -86,9 +87,7 @@ export function ReplyCard({
             <Typography variant="labelMedium" color="text.secondary">
               {c.yourReply}
             </Typography>
-            <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
-              {action.text}
-            </Typography>
+            <RichText content={action.text} />
           </Box>
           {done ? (
             <Typography variant="labelLarge" color="primary" role="status">
