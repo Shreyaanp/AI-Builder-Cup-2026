@@ -135,6 +135,18 @@ test('customer fixes: passport board errors offer retry and failed opt-in stays 
   await expect(join).not.toBeChecked()
 })
 
+test('customer fixes: signed-in customer with location off sees calm empty leaderboard without error', async ({
+  page,
+}) => {
+  await page.request.post('/api/v1/customer/session', { data: { name: 'Kavita' } })
+  // Location off: no filters in localStorage, no gps
+  await page.goto('/explore/passport', { waitUntil: 'domcontentloaded' })
+  const board = page.getByRole('region', { name: 'Regulars this week' })
+  await expect(board).toBeVisible()
+  await expect(board.getByRole('alert')).toHaveCount(0)
+  await expect(board.getByText('Nobody on the board yet this week.')).toBeVisible()
+})
+
 test('customer fixes: Today refresh failure is visible with cached finds', async ({ page }) => {
   await page.goto('/explore/')
   const loaded = page.waitForResponse((r) => r.url().includes('/public/today?') && r.ok())
