@@ -283,9 +283,13 @@ async def stock_alerts(business_id: str, device_id: UUID, request: Request) -> l
 
 @router.post("/photos")
 async def photo(
-    request: Request, business_id: str | None = None, currency: str | None = None
+    request: Request,
+    business_id: str | None = None,
+    currency: str | None = None,
+    language: str = Query("en", max_length=16),
 ) -> dict[str, Any]:
-    """``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own."""
+    """``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own.
+    ``language`` is the owner's app language for the notes about what was unclear."""
     uid = await consented_owner(request)
     await enforce_limits(request, [("photo", uid)])
     service = store(request)
@@ -302,7 +306,7 @@ async def photo(
                     raise HTTPException(413, "Photo is too large.")
                 buffer.extend(chunk)
         try:
-            outcome = await pipeline.process(uid, business_id, bytes(buffer))
+            outcome = await pipeline.process(uid, business_id, bytes(buffer), language)
         except PhotoRejected as rejected:
             raise HTTPException(rejected.status, rejected.code) from None
     finally:

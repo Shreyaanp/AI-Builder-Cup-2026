@@ -44,6 +44,7 @@ from .search_engine import (
 )
 from .settings import Settings
 from .shop_time import shop_timezone
+from .words import words as words_of
 
 log = structlog.get_logger()
 
@@ -115,7 +116,7 @@ SYNONYMS: dict[str, tuple[str, ...]] = {
 
 
 def words(text: str) -> set[str]:
-    return set(re.findall(r"[^\W\d_]+", text.casefold()))
+    return set(words_of(text.casefold()))
 
 
 def canonical(item: str) -> str | None:

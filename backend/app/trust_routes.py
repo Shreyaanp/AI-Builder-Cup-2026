@@ -131,7 +131,15 @@ def review_queue(docs: Any) -> list[dict[str, Any]]:
             row["shop"] = item.get("shop")
             row["business_id"] = item.get("business_id")
             row["reasons"] = [
-                {"rule": reason["rule"], "detail": reason["detail"], "source": reason["source"]}
+                {
+                    "rule": reason["rule"],
+                    "detail": reason["detail"],
+                    "source": reason["source"],
+                    # For a sentence in the reviewer's language: the item, brand or count, and
+                    # the other shop. Older flags have neither; the English detail stays.
+                    "owner_detail": reason.get("owner_detail", ""),
+                    "other": reason.get("other_name", ""),
+                }
                 for reason in item.get("reasons", [])
             ]
         rows.append(row)
