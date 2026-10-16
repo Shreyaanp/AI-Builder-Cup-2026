@@ -19,11 +19,11 @@ Reproduce with `uv run python scripts/document_ai_eval.py --project ichiropracti
 
 ## Results
 
-| Reader | Lines found | Quantity right | Sale amount right | Extra lines | Date right | Median time |
-| --- | --- | --- | --- | --- | --- | --- |
-| Document AI alone | 23 / 26 | 22 / 26 | 13 / 15 | 1 | 6 / 6 | 5.3 s |
-| Gemini alone | 26 / 26 | 26 / 26 | 15 / 15 | 0 | 6 / 6 | 5.7 s |
-| **App pipeline** (Document AI if complete, else Gemini) | **26 / 26** | **26 / 26** | **15 / 15** | **0** | **6 / 6** | 9.2 s |
+| Reader                                                  | Lines found | Quantity right | Sale amount right | Extra lines | Date right | Median time |
+| ------------------------------------------------------- | ----------- | -------------- | ----------------- | ----------- | ---------- | ----------- |
+| Document AI alone                                       | 23 / 26     | 22 / 26        | 13 / 15           | 1           | 6 / 6      | 5.3 s       |
+| Gemini alone                                            | 26 / 26     | 26 / 26        | 15 / 15           | 0           | 6 / 6      | 5.7 s       |
+| **App pipeline** (Document AI if complete, else Gemini) | **26 / 26** | **26 / 26**    | **15 / 15**       | **0**       | **6 / 6**  | 9.2 s       |
 
 The app pipeline used Document AI's reading for 3 of 6 photos (the Z report and both columned
 invoices) and Gemini for the other 3.
