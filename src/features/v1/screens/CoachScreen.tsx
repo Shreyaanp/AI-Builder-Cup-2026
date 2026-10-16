@@ -1225,7 +1225,11 @@ function CoachScreen({
           }}
         >
           {voice.state !== 'idle' ? (
-            <IconButton aria-label={voice.muted ? t.unmute : t.mute} onClick={voice.toggleMute}>
+            <IconButton
+              aria-label={voice.muted ? t.unmute : t.mute}
+              onClick={voice.toggleMute}
+              sx={{ minWidth: 48, minHeight: 48 }}
+            >
               {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </IconButton>
           ) : (
@@ -1237,6 +1241,7 @@ function CoachScreen({
                   ref={photoButton}
                   aria-haspopup={choices ? 'menu' : undefined}
                   onClick={(event) => choosePhoto(event.currentTarget)}
+                  sx={{ minWidth: 48, minHeight: 48 }}
                 >
                   {busy === 'photo' || importer.busy ? (
                     <CircularProgress size={20} aria-label={t.checkingPhoto} />

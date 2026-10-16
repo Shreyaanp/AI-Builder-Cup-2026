@@ -380,6 +380,9 @@ test('B16: one attach button offers Take photo, Photo library and Document; docu
 }) => {
   await enter(page)
   const attach = page.getByRole('button', { name: 'Attach a photo or document', exact: true })
+  const attachBox = await attach.boundingBox()
+  expect(attachBox!.width).toBeGreaterThanOrEqual(48)
+  expect(attachBox!.height).toBeGreaterThanOrEqual(48)
   const input = page.locator('#coach input[type="file"]')
   // Before a shop exists there is nothing to import into: photos only.
   await attach.tap()
