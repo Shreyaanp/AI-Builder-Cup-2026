@@ -88,6 +88,10 @@ class DayHours(BaseModel):
         return self
 
 
+def default_rider_providers() -> list[Literal["rapido", "uber", "porter"]]:
+    return ["rapido", "uber", "porter"]
+
+
 class BusinessFields(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     # Empty only while a new shop is being described; every commit requires a name.
@@ -133,6 +137,13 @@ class BusinessFields(BaseModel):
     preorders: bool | None = None
     preorder_lead_time: str = Field(default="", max_length=80)
     payment_methods: list[Payment] = Field(default_factory=list, max_length=8)
+    # Owner-only handoff preferences; never exposed by customer_facts.
+    upi_id: str = Field(
+        default="", pattern=r"^(?:[A-Za-z0-9][A-Za-z0-9._-]{1,254}@[A-Za-z][A-Za-z0-9.-]{1,63})?$"
+    )
+    rider_providers: list[Literal["rapido", "uber", "porter"]] = Field(
+        default_factory=default_rider_providers, max_length=3
+    )
     busy_hours: str = Field(default="", max_length=80)
     # Type-specific facts from the question plan; owner-confirmed like every other field.
     custom_facts: list[CustomFact] = Field(default_factory=list, max_length=30)
@@ -182,6 +193,8 @@ class BusinessFields(BaseModel):
             and not (key == "min_order" and value == "")
             and not (key == "timezone" and value == "Asia/Singapore")
             and not (key == "custom_facts" and value == [])
+            and not (key == "upi_id" and value == "")
+            and not (key == "rider_providers" and value == ["rapido", "uber", "porter"])
             and not (key == "reward_text" and value == "")
             and not (key == "stamps_needed" and value == 8)
             and not (key == "weekly_hours" and value == [])
@@ -1360,9 +1373,7 @@ class MerchantStore:
                 )
             return state
 
-    def get_connector_mapping(
-        self, uid: str, bid: str, source_label: str
-    ) -> dict[str, Any] | None:
+    def get_connector_mapping(self, uid: str, bid: str, source_label: str) -> dict[str, Any] | None:
         with self.connect() as db:
             self.owned(db, uid, bid)
             row = db.execute(
@@ -1396,9 +1407,7 @@ class MerchantStore:
                 for r in rows
             ]
 
-    def save_connector_mapping(
-        self, uid: str, bid: str, mapping: dict[str, Any]
-    ) -> dict[str, Any]:
+    def save_connector_mapping(self, uid: str, bid: str, mapping: dict[str, Any]) -> dict[str, Any]:
         source_label = mapping["source_label"]
         now = time.time()
         fields_json = json.dumps(mapping)
@@ -1427,5 +1436,3 @@ class MerchantStore:
                 "WHERE business_id=? AND LOWER(source_label)=LOWER(?)",
                 (now, bid, source_label),
             )
-
-

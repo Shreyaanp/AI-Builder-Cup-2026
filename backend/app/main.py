@@ -429,6 +429,12 @@ def create_app(
             raise HTTPException(404, "Conversation not found.")
         messages = []
         for event in session.events:
+            for part in (event.content.parts or []) if event.content else []:
+                response = part.function_response
+                if response and response.name == "prepare_payment_link":
+                    payment = (response.response or {}).get("payment")
+                    if isinstance(payment, dict):
+                        messages.append({"role": "payment", "payment": payment, "key": event.id})
             # Voice turns are stored as transcripts, not text parts: show the finished ones too.
             for name, role in (
                 ("input_transcription", "user"),
