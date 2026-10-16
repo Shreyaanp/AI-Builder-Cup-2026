@@ -42,6 +42,7 @@ import { HoursList } from '../shop/Hours'
 import type { DayHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
 import { useShopCopy } from '../shop/strings'
+import { VerifiedBadge } from '../trust/VerifiedBadge'
 import { unitLabel } from '../shop/units'
 
 interface PublicShopData {
@@ -65,6 +66,8 @@ interface PublicShopData {
   open_now?: boolean | null
   /** A seeded sample shop; always labelled "Demo shop". */
   demo?: boolean
+  /** The owner passed the optional live face check (when; never who). */
+  verified_owner?: { checked?: number | null }
 }
 
 const PAYMENT_BRANDS = { paynow: 'PayNow', grabpay: 'GrabPay', nets: 'NETS' } as const
@@ -623,6 +626,9 @@ export default function PublicShop({ id }: { id: string }) {
           <Typography component="h1" variant="titleLarge" sx={{ overflowWrap: 'anywhere' }}>
             {shop.name}
           </Typography>
+          {shop.verified_owner && !shop.demo && (
+            <VerifiedBadge checked={shop.verified_owner.checked} />
+          )}
           {shop.demo && (
             <Chip
               label={t.demoShop}

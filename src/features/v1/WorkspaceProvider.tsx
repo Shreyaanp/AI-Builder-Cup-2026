@@ -315,9 +315,6 @@ export function WorkspaceProvider({
           businessId={value.active.id}
           api={api}
           onClose={() => setFaceOpen(false)}
-          onResult={() => {
-            void reload()
-          }}
         />
       )}
       <Snackbar
