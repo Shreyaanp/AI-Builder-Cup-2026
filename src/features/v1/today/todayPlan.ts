@@ -157,9 +157,7 @@ export function todayPlan(input: TodayInput): TodayPlan {
   const fresh = facts ? !pulse && !forecast : products.length === 0
   const dayOne = fresh && steps.length ? { step: steps[0]! } : null
 
-  const serverClosed = Boolean(
-    facts && (facts.today.sales != null || facts.today.items != null),
-  )
+  const serverClosed = Boolean(facts && (facts.today.sales != null || facts.today.items != null))
   const isClosed = Boolean(input.dayClosed || serverClosed)
   const closeWindow = isCloseDayWindow(shop.fields, input.now)
 

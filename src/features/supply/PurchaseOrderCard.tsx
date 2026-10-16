@@ -520,7 +520,11 @@ function DocumentDetail({
           {open ? s.hide : s.forSupplierSystem}
         </Button>
         <Collapse in={open} unmountOnExit>
-          <Typography variant="labelMedium" color="text.secondary" sx={{ display: 'block', mt: 1, mb: 1 }}>
+          <Typography
+            variant="labelMedium"
+            color="text.secondary"
+            sx={{ display: 'block', mt: 1, mb: 1 }}
+          >
             {s.viewAs(theirs, ours)}
           </Typography>
           <Box

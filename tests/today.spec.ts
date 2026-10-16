@@ -268,4 +268,3 @@ test('GAP 8: Close the day appears in evening needs you now and opens modal, Gro
   await growTile.click()
   await expect(page.getByRole('dialog', { name: 'Close the day' })).toBeVisible()
 })
-
