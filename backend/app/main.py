@@ -62,6 +62,7 @@ from .planning_routes import router as planning_router
 from .recap import RecapWriter
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
 from .sales_routes import router as sales_router
+from .search_engine import build_engine
 from .settings import Settings
 from .sourcing import SupplierGenerator
 from .sourcing_routes import router as sourcing_router
@@ -153,6 +154,10 @@ def create_app(
         )
         coordinator.question_planner = QuestionPlanner(settings)
         coordinator.supplier_generator = SupplierGenerator(settings)
+        app.state.search = build_engine(
+            settings, app.state.community.docs if app.state.community else None
+        )
+        coordinator.search_engine = app.state.search
         app.state.world_generator = WorldGenerator(settings)
         app.state.column_mapper = ColumnMapper(settings)
         app.state.forecaster = ForecastService(settings)
