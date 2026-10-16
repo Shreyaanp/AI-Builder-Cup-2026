@@ -333,7 +333,11 @@ function BigMap({
       >
         <Stack direction="row" sx={{ alignItems: 'center', gap: 1, px: 2, minHeight: 56 }}>
           <Tooltip title={c.closeMap}>
-            <IconButton aria-label={c.closeMap} onClick={onClose} sx={{ minWidth: 48, minHeight: 48 }}>
+            <IconButton
+              aria-label={c.closeMap}
+              onClick={onClose}
+              sx={{ minWidth: 48, minHeight: 48 }}
+            >
               <X size={22} />
             </IconButton>
           </Tooltip>
