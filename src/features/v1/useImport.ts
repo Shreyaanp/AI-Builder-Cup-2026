@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Proposal } from './api'
 import { ApiError } from './api'
 import { useCopy } from './strings'
@@ -56,10 +56,13 @@ export function useImport({
   const ws = useWorkspace()
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState('')
+  // The last document, so a failed read can be retried without picking it again.
+  const last = useRef<File | null>(null)
 
   async function upload(file: File) {
     const shop = ws.active
     if (busy || !shop) return
+    last.current = file
     setBusy(true)
     setFailed('')
     try {
@@ -85,6 +88,9 @@ export function useImport({
       setBusy(false)
     }
   }
-  return { busy, failed, upload }
+  const retry = () => {
+    if (last.current) void upload(last.current)
+  }
+  return { busy, failed, upload, retry }
 }
 export type Importer = ReturnType<typeof useImport>

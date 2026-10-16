@@ -23,6 +23,7 @@ import { Supporting, Tile } from '../v1/ShopTiles'
 import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useTabsCopy } from '../v1/tabsCopy'
+import { useNextStepsCopy } from '../v1/nextStepsCopy'
 import { fill, useOwnerCopy } from './copy'
 import { defaultUntil, shopNow } from './time'
 
@@ -138,7 +139,12 @@ function RescueSheet({
             </Stack>
           </Box>
         )}
-        {open && <NewRescue used={used} onSent={onChanged} />}
+        {open &&
+          (ws.products.length === 0 ? (
+            <NoItems onClose={onClose} />
+          ) : (
+            <NewRescue used={used} onSent={onChanged} />
+          ))}
         {earlier.length > 0 && (
           <Box component="section" aria-labelledby="rescue-earlier-title">
             <Typography
@@ -228,6 +234,28 @@ function LiveDeal({ deal, now, onEnded }: { deal: Deal; now: number; onEnded: ()
         </Button>
       </Stack>
     </Box>
+  )
+}
+
+/** A rescue is made from menu items: with none yet, say so and offer the way to add them. */
+function NoItems({ onClose }: { onClose: () => void }) {
+  const next = useNextStepsCopy()
+  const ws = useWorkspace()
+  return (
+    <Stack spacing={3} sx={{ alignItems: 'flex-start' }} data-testid="rescue-no-items">
+      <Typography variant="bodyLarge">{next.rescueNoItems}</Typography>
+      <Button
+        variant="contained"
+        startIcon={<Plus size={18} />}
+        onClick={() => {
+          // Editors are their own dialogs; close the sheet first so modals never stack.
+          onClose()
+          ws.openEditor({ kind: 'product', product: null })
+        }}
+      >
+        {next.rescueAddItems}
+      </Button>
+    </Stack>
   )
 }
 
