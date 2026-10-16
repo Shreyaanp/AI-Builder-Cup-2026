@@ -58,6 +58,7 @@ import { enterRise, shape } from '../../design/theme'
 import { useRewardCopy } from '../rewards/strings'
 import { HoursList } from '../shop/Hours'
 import { hasHours } from '../shop/hoursModel'
+import { usePlaybook } from './playbook/usePlaybook'
 import { CategoryGroups } from '../shop/CategoryGroups'
 
 export type ShopSheetKind =
@@ -184,6 +185,15 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
   )
 }
 
+/** Tools the playbook suggests first, the rest in their usual order (stable). */
+function byGrowOrder(grow: string[], tools: [string, ReactNode][]): ReactNode[] {
+  const rank = (id: string) => (grow.includes(id) ? grow.indexOf(id) : grow.length)
+  return tools
+    .map(([id, node], index) => ({ id, node, index }))
+    .sort((a, b) => rank(a.id) - rank(b.id) || a.index - b.index)
+    .map((tool) => tool.node)
+}
+
 /** My shop: a grid of tiles; each opens a bottom sheet with the full list and actions. */
 export function ShopTiles({
   unread,
@@ -196,8 +206,10 @@ export function ShopTiles({
   const plan = usePlanCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
+  const { state: playbook } = usePlaybook()
   const shop = ws.active
   if (!shop) return null
+  const grow = playbook.kind === 'ready' ? playbook.view.grow : []
   const currency = shopCurrency(shop)
   const open = openNow(
     shop.fields.hours,
@@ -216,6 +228,22 @@ export function ShopTiles({
     [open === null ? '' : shop.fields.hours, shop.fields.category, shop.fields.location]
       .filter(Boolean)
       .join(' · ') || t.notProvided
+  // The tool tiles keep their slots; the shop's playbook only decides which tool comes first.
+  const tools = byGrowOrder(grow, [
+    ['close_day', <CloseDayTile key="close_day" />],
+    ['prep', <PrepPlanTile key={`prep-${shop.id}`} />],
+    ['orders', <OrdersTile key={`orders-${shop.id}`} />],
+    [
+      'plan',
+      <Tile
+        key="plan"
+        icon={<CalendarClock size={20} />}
+        label={plan.title}
+        value={t.planHint}
+        onClick={() => onSheet('plan')}
+      />,
+    ],
+  ])
   return (
     // Content-sized grid: as many 168px+ columns as fit (2 on a phone, 3 at 600px, 4 on a
     // desktop), each tile one or two columns wide by how much it shows, packed densely so no
@@ -291,8 +319,8 @@ export function ShopTiles({
       >
         {soldOut > 0 && <Supporting>{soldOutNames.join(' · ')}</Supporting>}
       </Tile>
-      <CloseDayTile />
-      <PrepPlanTile key={shop.id} />
+      {tools[0]}
+      {tools[1]}
       <Tile
         icon={<Globe size={20} />}
         tour="customer"
@@ -310,13 +338,8 @@ export function ShopTiles({
         value={unread === null ? '–' : t.unread(unread)}
         onClick={() => onSheet('messages')}
       />
-      <OrdersTile key={`orders-${shop.id}`} />
-      <Tile
-        icon={<CalendarClock size={20} />}
-        label={plan.title}
-        value={t.planHint}
-        onClick={() => onSheet('plan')}
-      />
+      {tools[2]}
+      {tools[3]}
       <Tile
         // Its progress bar wants width; done, it is one thin row across the grid.
         span={done < total ? 2 : 'full'}
