@@ -18,7 +18,7 @@ from typing import Any, Literal
 import anyio
 import structlog
 from fastapi import APIRouter, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from .community import Community, Profile, stated_preferences
 from .discover import (
@@ -35,6 +35,21 @@ from .maps_grounding import AreaAnswer, AreaGrounding, is_area_question
 from .merchant import MerchantRepository
 from .money import exponent
 from .rescue_feed import live_rescues
+from .search_engine import (
+    ITEM_RECALL,
+    SHOP_RECALL,
+    TASTE_MIN,
+    Because,
+    Components,
+    Relevance,
+    SearchEngine,
+    Taste,
+    blend,
+    build_engine,
+    fresh_days,
+    item_recall,
+    popularity,
+)
 from .shop_time import shop_timezone, valid_timezone
 
 log = structlog.get_logger()
@@ -80,6 +95,9 @@ class AskRequest(BaseModel):
     context: Intent | None = None
     # A tapped follow-up chip says exactly what it refines, whatever the language of its label.
     refine: Literal["price", "distance", "transit", "open", "deals", "local"] | None = None
+    # Shops opened on this device (newest first): a personal signal that never leaves the
+    # customer's own request.
+    opened: list[str] = Field(default_factory=list, max_length=30)
 
 
 class PickDeal(BaseModel):
@@ -98,6 +116,11 @@ class Pick(DiscoveryPlace):
     # Why a signed-in customer sees this "For you": followed, vegetarian, halal, budget.
     reasons: list[str] = []
     deal: PickDeal | None = None
+    # The strongest of the customer's own signals behind a personal pick, and (top few, when
+    # Gemini runs) the same reason as one written line.
+    because: Because | None = None
+    why: str | None = None
+    _components: Components = PrivateAttr(default_factory=Components)
 
 
 class Anchor(BaseModel):
@@ -141,6 +164,8 @@ class AskResponse(BaseModel):
     command: Command | None = None
     # Google's live local answer for an area question (None when the question is not one).
     area: AreaAnswer | None = None
+    # Which embeddings ranked by meaning: Vertex AI, or the offline fixture.
+    engine: Literal["vertex", "fixture"] = "fixture"
 
 
 COMMANDS = (
@@ -476,8 +501,24 @@ def item_matches(item: dict[str, Any], words: list[str]) -> bool:
     return any(word.casefold() in text or text in word.casefold() for word in words if word)
 
 
-def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> Pick | None:
-    """Score a shared Chalkboard shop against the intent using only its own data."""
+def search_engine(request: Request) -> SearchEngine:
+    engine: SearchEngine | None = getattr(request.app.state, "search", None)
+    if engine is None:
+        engine = build_engine(request.app.state.v1_settings, None)
+        request.app.state.search = engine
+    return engine
+
+
+def shop_pick(
+    shop: dict[str, Any],
+    intent: Intent,
+    lat: float,
+    lng: float,
+    meaning: Relevance | None = None,
+    recall: float = ITEM_RECALL,
+) -> Pick | None:
+    """Match a shared Chalkboard shop against the intent using only its own data: its words
+    first, then (search engine) its meaning. Filters are never relaxed by meaning."""
     facts = shop.get("facts") or {}
     if intent.halal and facts.get("halal") not in {"yes", "muslim_owned"}:
         return None
@@ -499,8 +540,16 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
         else None
     )
     words = intent.keywords
+    meaning = meaning or Relevance()
     products = [p for p in shop["products"] if p["available"]]
     matched = [p for p in products if item_matches(p, words)] if words else []
+    by_words = bool(matched)
+    if words and not matched:
+        # "Something sweet" finds the pandan cake: items close in meaning, best first.
+        matched = sorted(
+            (p for p in products if meaning.items.get(p["name"], 0.0) >= recall),
+            key=lambda p: -meaning.items.get(p["name"], 0.0),
+        )
     if limit is not None:
         matched = (
             [p for p in matched if p["price"] <= limit]
@@ -512,14 +561,22 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
         term in shop_text for term in CATEGORIES.get(intent.category, ((), ()))[1]
     )
     name_hit = any(word.casefold() in shop_text for word in words)
-    if words and not (matched or name_hit or category_hit):
+    # A shop close in meaning counts only without a budget (a budget needs a priced item).
+    meaning_hit = limit is None and meaning.shop >= SHOP_RECALL
+    if words and not (matched or name_hit or category_hit or meaning_hit):
         return None
     if not words and intent.category and not category_hit:
         return None
     d = distance(lat, lng, shop["lat"], shop["lng"])
-    score = float(len(matched) * 3 + (2 if name_hit or category_hit else 0) + (1 if is_open else 0))
-    score -= d / 1500
-    return Pick(
+    components = Components(
+        semantic=meaning.best,
+        keyword=(1.0 if by_words else 0.6 if name_hit or category_hit else 0.0) if words else 0.5,
+        distance_m=d,
+        open_now=is_open,
+        price_fit=1.0 if limit is not None and matched else None,
+        fresh_days=fresh_days(shop.get("last_confirmed")),
+    )
+    pick = Pick(
         id=shop["id"],
         name=shop["name"],
         source="chalkboard",
@@ -541,8 +598,30 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
         halal=facts.get("halal") in {"yes", "muslim_owned"} if facts.get("halal") else None,
         locally_made=bool(facts.get("locally_made")),
         matched=[TopItem(**p) for p in (matched or [])[:3]],
-        score=score,
+        score=blend(components),
     )
+    pick._components = components
+    return pick
+
+
+async def customer_taste(request: Request, body: AskRequest, profile: Profile | None) -> Taste:
+    """This customer's own signals: follows (saved), searches, stamps, shops opened here."""
+    taste = Taste(opened=[i[:120] for i in body.opened][:30])
+    if profile is None:
+        return taste
+    taste.follows = profile.follows[:200]
+    # The current search is not a past one.
+    taste.asked = [s.q for s in profile.searches if s.q != body.q][:20]
+    try:
+        principal = await request.app.state.services.identity.customer(request)
+        if principal is not None:
+            from .passport_routes import passports
+
+            state = await anyio.to_thread.run_sync(passports(request).get, principal.uid)
+            taste.stamped = {bid: max(1, p.visits) for bid, p in state.shops.items()}
+    except Exception:  # noqa: BLE001 - stamps only refine ranking
+        log.warning("ask_stamps_unavailable")
+    return taste
 
 
 @router.post("/discover/ask", response_model=AskResponse)
@@ -586,13 +665,21 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
     lat, lng = (anchor.lat, anchor.lng) if anchor else (body.lat, body.lng)
     radius = min(body.radius, 1000) if anchor else body.radius
     shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
-    picks = [
-        pick
+    reachable = [
+        shop
         for shop in shops
         if shop["lat"] is not None
         and shop["lng"] is not None
         and distance(lat, lng, shop["lat"], shop["lng"]) <= radius
-        and (pick := shop_pick(shop, intent, lat, lng)) is not None
+    ]
+    engine = search_engine(request)
+    wanted = " ".join(intent.keywords) or (body.q if not body.refine else "")
+    meaning = await anyio.to_thread.run_sync(engine.relevance, wanted, reachable) if wanted else {}
+    recall = item_recall(meaning)
+    picks = [
+        pick
+        for shop in reachable
+        if (pick := shop_pick(shop, intent, lat, lng, meaning.get(shop["id"]), recall)) is not None
     ]
     try:
         rescues = await live_rescues(request, shops, lat, lng, time.time())
@@ -609,18 +696,39 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
                 pickup_end=deal.pickup_end,
                 demo=deal.demo,
             )
-            pick.score += 1
+            pick._components.deal = True
     if intent.deals:
         picks = [p for p in picks if p.deal]
     profile, saved = await customer_profile(request, body.q)
     personal: Personal | None = None
     for_you: list[Pick] = []
-    if profile is not None:
-        by_id = {shop["id"]: shop for shop in shops}
-        for pick in picks:
+    by_id = {shop["id"]: shop for shop in shops}
+    taste = await customer_taste(request, body, profile)
+    affinity = (
+        await anyio.to_thread.run_sync(engine.personal, [by_id[p.id] for p in picks], taste, shops)
+        if picks and not taste.empty
+        else {}
+    )
+    for pick in picks:
+        if profile is not None:
             pick.reasons = personal_reasons(by_id[pick.id], pick, profile)
-            pick.score += 2 * len(pick.reasons)
-        for_you = sorted((p for p in picks if p.reasons), key=lambda p: (-p.score, p.distance_m))
+        value, because = affinity.get(pick.id, (0.0, None))
+        if because is not None and value >= TASTE_MIN:
+            pick.because = because
+            if because.shop_id and not because.shop:
+                because.shop = pick.name
+        pick._components.personal = max(value, min(1.0, 0.3 * len(pick.reasons)))
+        pick.score = blend(pick._components)
+    for_you = sorted(
+        (p for p in picks if p.reasons or p.because), key=lambda p: (-p.score, p.distance_m)
+    )
+    if engine.explainer is not None and for_you:
+        lines = await engine.explainer.explain(
+            [(p.id, p.name, p.because) for p in for_you if p.because], body.language
+        )
+        for pick in for_you:
+            pick.why = lines.get(pick.id)
+    if profile is not None:
         prefs = profile.preferences
         personal = Personal(
             applied=[
@@ -652,6 +760,15 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
         if intent.open_now and is_open is False:
             continue
         photo_url, authors = maps.photos.describe(row)
+        # Google's rating and review count rank live results only; they are never stored.
+        google_score = blend(
+            Components(
+                keyword=0.5,
+                distance_m=d,
+                open_now=is_open,
+                popularity=popularity(row.get("rating"), row.get("userRatingCount")),
+            )
+        )
         others.append(
             Pick(
                 id=row["id"],
@@ -671,13 +788,16 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
                 google_maps_uri=row.get("googleMapsUri"),
                 photo_url=photo_url,
                 photo_authors=authors,
+                score=google_score,
             )
         )
     others.sort(
         key=lambda p: (
             (PRICE_LEVELS.get(p.price_level or "", 9), p.distance_m)
             if intent.sort == "price"
-            else (0, p.distance_m)
+            else (p.distance_m, 0)
+            if intent.sort == "distance" or anchor is not None
+            else (-p.score, p.distance_m)
         )
     )
     is_owner = False
@@ -768,6 +888,7 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
         personal=personal,
         anchor=anchor,
         area=area,
+        engine=engine.mode,
     )
 
 
@@ -827,3 +948,89 @@ async def suggest(
         locally_made=sum(1 for shop in near if (shop.get("facts") or {}).get("locally_made")),
         deals=len(rescues),
     )
+
+
+class SimilarPlace(BaseModel):
+    id: str
+    name: str
+    category: str
+    distance_m: int
+    open_now: bool | None
+    currency: str
+    demo_shop: bool = False
+    photo_url: str | None = None
+    # Their item closest to the one being viewed (when an item page asked).
+    item: TopItem | None = None
+    similarity: float
+
+
+class SimilarResponse(BaseModel):
+    places: list[SimilarPlace]
+    source: Literal["recommendations", "embeddings"]
+    engine: Literal["vertex", "fixture"]
+
+
+@router.get("/discover/similar", response_model=SimilarResponse)
+async def similar(
+    request: Request,
+    shop: str = Query(min_length=1, max_length=120),
+    item: str = Query(default="", max_length=80),
+    lat: float | None = Query(default=None, ge=-90, le=90, allow_inf_nan=False),
+    lng: float | None = Query(default=None, ge=-180, le=180, allow_inf_nan=False),
+    radius: int = Query(default=3000, ge=200, le=20000),
+) -> SimilarResponse:
+    """ "Similar nearby" on a shop or item page: other shared shops alike in meaning, close by."""
+    await enforce_limits(request, [("discover:similar", client_ip(request))], anonymous=True)
+    repository: MerchantRepository | None = request.app.state.merchant
+    shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
+    anchor = next((s for s in shops if s["id"] == shop), None)
+    if anchor is None:
+        raise HTTPException(404, "SHOP_NOT_FOUND")
+    if lat is None or lng is None:
+        if anchor.get("lat") is None or anchor.get("lng") is None:
+            return SimilarResponse(
+                places=[], source="embeddings", engine=search_engine(request).mode
+            )
+        lat, lng = float(anchor["lat"]), float(anchor["lng"])
+    near = [
+        s
+        for s in shops
+        if s.get("lat") is not None
+        and s.get("lng") is not None
+        and not s.get("supplier")
+        and distance(lat, lng, s["lat"], s["lng"]) <= radius
+    ]
+    engine = search_engine(request)
+    found, source = await anyio.to_thread.run_sync(
+        engine.similar, anchor, item.strip() or None, near
+    )
+    places = []
+    for other, likeness, name in found:
+        d = distance(lat, lng, other["lat"], other["lng"])
+        is_open = open_now(
+            other["hours"], other["timezone"], weekly_hours=other.get("weekly_hours")
+        )
+        product = next((p for p in other["products"] if p["name"] == name), None)
+        places.append(
+            (
+                blend(Components(semantic=likeness, distance_m=d), "similar"),
+                SimilarPlace(
+                    id=other["id"],
+                    name=other["name"],
+                    category=other["category"],
+                    distance_m=d,
+                    open_now=is_open,
+                    currency=other["currency"],
+                    demo_shop=bool(other.get("demo")),
+                    photo_url=(
+                        f"/api/v1/public/shops/{other['id']}/photos/{other['gallery'][0]}.jpg"
+                        if other.get("gallery")
+                        else None
+                    ),
+                    item=TopItem(**product) if product else None,
+                    similarity=round(likeness, 3),
+                ),
+            )
+        )
+    places.sort(key=lambda pair: -pair[0])
+    return SimilarResponse(places=[p for _, p in places], source=source, engine=engine.mode)
