@@ -60,7 +60,9 @@ from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
 from .recap import RecapWriter
+from .recs_routes import router as recs_router
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
+from .retail_recs import EventPipeline, Recommender, RetailClient, configure_recommender
 from .sales_routes import router as sales_router
 from .settings import Settings
 from .sourcing import SupplierGenerator
@@ -163,6 +165,14 @@ def create_app(
         app.state.speech = Speech(settings)
         app.state.maps = maps_service or MapsService(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
+        retail = (
+            RetailClient(settings.google_cloud_project)
+            if (settings.recs_enabled or settings.recs_events_enabled)
+            and settings.google_cloud_project
+            else None
+        )
+        app.state.recs_events = EventPipeline(retail, settings.recs_events_enabled)
+        configure_recommender(Recommender(retail, settings.recs_enabled))
         app.state.services = Services(
             identity,
             CoachRuntime(settings, session_service),
@@ -181,6 +191,8 @@ def create_app(
             yield
         finally:
             maintenance.cancel()
+            await anyio.to_thread.run_sync(app.state.recs_events.flush)
+            configure_recommender(None)
             await asyncio.gather(maintenance, return_exceptions=True)
             await app.state.services.replay.close()
             await app.state.customer_answers.close()
@@ -219,6 +231,7 @@ def create_app(
     app.include_router(day_close_router)
     app.include_router(demo_workspace_router)
     app.include_router(demo_world_router)
+    app.include_router(recs_router)
     app.include_router(passport_router)
     app.include_router(today_router)
     app.include_router(sourcing_router)
