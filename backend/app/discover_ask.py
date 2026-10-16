@@ -744,6 +744,33 @@ async def query_google_places(
     return others
 
 
+async def localize_picks(
+    request: Request, language: str, groups: list[Group], wait: bool
+) -> list[Group]:
+    """Chalkboard shops' categories in the customer's language: one batch for all of them.
+
+    The instant answer never waits (glossary and cache only); the complete one waits briefly.
+    Copies, so the shared picks keep their source words for the next step.
+    """
+    translator = getattr(request.app.state, "shop_translator", None)
+    picks = [p for g in groups for p in g.places if p.source == "chalkboard" and p.category]
+    if translator is None or not picks:
+        return groups
+    found = await translator.translate(
+        language, {p.id: [p.category] for p in picks}, **({} if wait else {"wait": 0})
+    )
+
+    def local(pick: Pick) -> Pick:
+        word = (
+            found.get(pick.id, {}).get(pick.category.strip())
+            if pick.source == "chalkboard"
+            else None
+        )
+        return pick.model_copy(update={"category": word}) if word else pick
+
+    return [g.model_copy(update={"places": [local(p) for p in g.places]}) for g in groups]
+
+
 def assemble_groups(for_you: list[Pick], picks: list[Pick], others: list[Pick]) -> list[Group]:
     shown = {p.id for p in for_you[:6]}
     groups = [
@@ -868,7 +895,9 @@ async def ask(body: AskRequest, request: Request) -> Any:
             picks, for_you, personal, shops = await match_local_shops(
                 request, body, kw_intent, anchor, lat, lng, radius, repository
             )
-            instant_groups = assemble_groups(for_you, picks, [])
+            instant_groups = await localize_picks(
+                request, body.language, assemble_groups(for_you, picks, []), wait=False
+            )
             instant_resp = AskResponse(
                 intent=kw_intent,
                 mode="keywords",
@@ -903,7 +932,9 @@ async def ask(body: AskRequest, request: Request) -> Any:
             others = await query_google_places(maps, final_intent, lat, lng, radius, body.q)
             await record_demand(request, repository, maps, final_intent, body, shops, others)
 
-            final_groups = assemble_groups(for_you, picks, others)
+            final_groups = await localize_picks(
+                request, body.language, assemble_groups(for_you, picks, others), wait=True
+            )
             final_resp = AskResponse(
                 intent=final_intent,
                 mode=mode,
@@ -942,7 +973,9 @@ async def ask(body: AskRequest, request: Request) -> Any:
     others = await query_google_places(maps, intent, lat, lng, radius, body.q)
     await record_demand(request, repository, maps, intent, body, shops, others)
 
-    groups = assemble_groups(for_you, picks, others)
+    groups = await localize_picks(
+        request, body.language, assemble_groups(for_you, picks, others), wait=True
+    )
     return AskResponse(
         intent=intent,
         mode=mode,

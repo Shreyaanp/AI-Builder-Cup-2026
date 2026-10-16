@@ -132,7 +132,19 @@ export function PickCard({
           </Typography>
           {item && pick.currency && (
             <Stack direction="row" sx={{ alignItems: 'baseline', gap: 2, minWidth: 0 }}>
-              <Typography variant="bodyMedium" noWrap sx={{ flex: 1, minWidth: 0 }}>
+              {/* Two lines before cutting: long Tamil/Kannada names stay readable at 360px. */}
+              <Typography
+                variant="bodyMedium"
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  overflowWrap: 'anywhere',
+                }}
+              >
                 {item.name}
               </Typography>
               <Typography
