@@ -8,6 +8,21 @@ export function currentPath() {
   return location.pathname
 }
 
+/**
+ * Run a DOM update inside a view transition when the browser has them and motion is on. A
+ * transition that is skipped (a second tap starts another, or the update is slow) rejects its
+ * promises; that is expected, so it must not surface as an unhandled rejection.
+ */
+export function viewTransition(update: () => void | Promise<void>) {
+  if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    void update()
+    return
+  }
+  const transition = document.startViewTransition(update)
+  transition.ready.catch(() => undefined)
+  transition.finished.catch(() => undefined)
+}
+
 /** Keep native modified clicks; ordinary links support back/forward and shared hero snapshots. */
 export function customerNavigate(event: MouseEvent<HTMLElement>) {
   if (
@@ -35,9 +50,7 @@ export function customerNavigate(event: MouseEvent<HTMLElement>) {
         document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView(),
       )
   }
-  if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches)
-    document.startViewTransition(update)
-  else update()
+  viewTransition(update)
 }
 
 /**
@@ -49,18 +62,15 @@ export function customerBack(event: MouseEvent<HTMLElement>) {
   if ((history.state as { inApp?: boolean } | null)?.inApp && event.button === 0) {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     event.preventDefault()
-    const back = () => history.back()
-    if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches)
-      document.startViewTransition(
-        () =>
-          new Promise<void>((resolve) => {
-            addEventListener('popstate', () => requestAnimationFrame(() => resolve()), {
-              once: true,
-            })
-            back()
-          }),
-      )
-    else back()
+    viewTransition(
+      () =>
+        new Promise<void>((resolve) => {
+          addEventListener('popstate', () => requestAnimationFrame(() => resolve()), {
+            once: true,
+          })
+          history.back()
+        }),
+    )
     return
   }
   customerNavigate(event)
