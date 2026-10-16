@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 from sse_starlette import EventSourceResponse, ServerSentEvent
 
-from . import coordinator
+from . import coordinator, supply_chain
 from .auth import IdentityService
 from .boundary import RequestBoundary
 from .brief import BriefWriter, WeatherService
@@ -69,6 +69,8 @@ from .shop_today import router as shop_today_router
 from .sourcing import SupplierGenerator
 from .sourcing_routes import router as sourcing_router
 from .streaming import CoachRuntime
+from .supply_docs import DocumentTranslator
+from .supply_routes import router as supply_router
 from .today import router as today_router
 from .trust_routes import router as trust_router
 from .tts import Speech
@@ -157,6 +159,7 @@ def create_app(
         )
         coordinator.question_planner = QuestionPlanner(settings)
         coordinator.supplier_generator = SupplierGenerator(settings)
+        supply_chain.translator = DocumentTranslator(settings)
         app.state.world_generator = WorldGenerator(settings)
         app.state.column_mapper = ColumnMapper(settings)
         app.state.fraud_reviewer = FraudReviewer(settings)
@@ -195,6 +198,8 @@ def create_app(
         await app.state.fraud_reviewer.close()
         if coordinator.supplier_generator is not None:
             await coordinator.supplier_generator.close()
+        if supply_chain.translator is not None:
+            await supply_chain.translator.close()
         await app.state.world_generator.close()
         if coordinator.question_planner is not None:
             await coordinator.question_planner.close()
@@ -230,6 +235,7 @@ def create_app(
     app.include_router(today_router)
     app.include_router(shop_today_router)
     app.include_router(sourcing_router)
+    app.include_router(supply_router)
     app.include_router(owner_router)
     app.include_router(trust_router)
     app.add_middleware(
