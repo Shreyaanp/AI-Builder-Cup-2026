@@ -62,7 +62,15 @@ interface PublicShopData {
   stamps_needed?: number
   /** ISO 4217 code the shop's prices are stored in. */
   currency?: string
-  products: { name: string; price: number; unit: string; available: boolean; category?: string }[]
+  products: {
+    name: string
+    /** The item name in the customer's language; the owner's own name stays the title. */
+    name_local?: string
+    price: number
+    unit: string
+    available: boolean
+    category?: string
+  }[]
   /** Owner-confirmed customer facts; absent keys are simply not listed. */
   facts?: ShopFacts
   open_now?: boolean | null
@@ -420,13 +428,16 @@ export default function PublicShop({ id }: { id: string }) {
 
   const fetchShop = useCallback(
     (signal?: AbortSignal) =>
-      fetch(`/api/v1/public/shops/${encodeURIComponent(id)}`, { signal }).then(async (response) => {
+      // Categories, sections and the demo story come back in the customer's language.
+      fetch(`/api/v1/public/shops/${encodeURIComponent(id)}?lang=${encodeURIComponent(locale)}`, {
+        signal,
+      }).then(async (response) => {
         // 404 = owner stopped sharing; anything else is a transient failure.
         if (response.status === 404) throw new Error('missing')
         if (!response.ok) throw new Error('error')
         return (await response.json()) as PublicShopData
       }),
-    [id],
+    [id, locale],
   )
   const apply = useCallback((data: PublicShopData) => {
     const old = previous.current
@@ -667,7 +678,13 @@ export default function PublicShop({ id }: { id: string }) {
               </Typography>
             )}
             {[shop.category, shop.hours].filter(Boolean).map((text, index) => (
-              <Typography key={text} variant="bodyMedium" color="text.secondary" noWrap>
+              // Wraps instead of cutting a long category ("Chai & Filter Coffe…") at 360px.
+              <Typography
+                key={text}
+                variant="bodyMedium"
+                color="text.secondary"
+                sx={{ overflowWrap: 'anywhere', minWidth: 0 }}
+              >
                 {openLabel || index > 0 ? `· ${text}` : text}
               </Typography>
             ))}
@@ -719,17 +736,15 @@ export default function PublicShop({ id }: { id: string }) {
         <Box
           component="ul"
           aria-label={t.factsLabel}
-          // A scrolling row must be reachable by keyboard (axe scrollable-region-focusable).
-          tabIndex={0}
+          // Chips wrap onto more lines: long Tamil/Kannada words never hide past the edge.
           sx={{
             listStyle: 'none',
             m: 0,
             p: 0,
             mt: 2,
             display: 'flex',
+            flexWrap: 'wrap',
             gap: 1,
-            overflowX: 'auto',
-            scrollbarWidth: 'none',
           }}
         >
           {chips.map((chip) => (
@@ -737,14 +752,15 @@ export default function PublicShop({ id }: { id: string }) {
               component="li"
               key={chip}
               sx={{
-                flexShrink: 0,
+                minWidth: 0,
+                maxWidth: '100%',
                 px: 2,
                 py: 1,
                 borderRadius: `${shape.sm}px`,
                 bgcolor: roles.secondaryContainer,
                 color: roles.onSecondaryContainer,
                 typography: 'labelLarge',
-                whiteSpace: 'nowrap',
+                overflowWrap: 'anywhere',
               }}
             >
               {chip}
@@ -819,9 +835,14 @@ export default function PublicShop({ id }: { id: string }) {
       >
         <Typography component="h2" variant="titleMedium" sx={{ flex: 1 }}>
           {t.menu}
-          <Typography component="span" variant="bodyMedium" color="text.secondary">
+          <Typography
+            component="span"
+            variant="bodyMedium"
+            color="text.secondary"
+            sx={{ whiteSpace: 'nowrap' }}
+          >
             {' '}
-            · {shop.products.length}
+            ·&nbsp;{shop.products.length}
           </Typography>
         </Typography>
         <IconButton
@@ -862,7 +883,24 @@ export default function PublicShop({ id }: { id: string }) {
                   sx={{ py: 2, px: 2, gap: 2 }}
                 >
                   <ListItemText
-                    primary={product.name}
+                    primary={
+                      product.name_local ? (
+                        <>
+                          {product.name}
+                          {/* The owner's name stays; the customer's language is a subtitle. */}
+                          <Typography
+                            component="span"
+                            variant="bodyMedium"
+                            color="text.secondary"
+                            sx={{ display: 'block' }}
+                          >
+                            {product.name_local}
+                          </Typography>
+                        </>
+                      ) : (
+                        product.name
+                      )
+                    }
                     secondary={
                       product.available ? (
                         `/ ${unitLabel(product.unit, shopCopy)}`
