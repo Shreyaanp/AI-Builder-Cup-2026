@@ -30,6 +30,7 @@ from .merchant import (
     ProposalRequest,
     challenge_prompts,
     check_demo_seed,
+    preserve_profile,
     public_projection,
     require_name,
     seal_proposal,
@@ -45,6 +46,7 @@ from .stock_alerts import (
     check_item,
 )
 from .threads import change_thread, contact_hash, new_thread
+from .vendor_profile import migrate_profile
 
 
 def document_id(value: str | None, missing: str) -> str:
@@ -116,7 +118,7 @@ class FirestoreMerchantStore:
     def present(bid: str, data: dict[str, Any]) -> dict[str, Any]:
         return {
             "id": bid,
-            "fields": data["fields"],
+            "fields": migrate_profile(data["fields"]),
             "revision": data["revision"],
             "last_confirmed": data.get("last_confirmed"),
             "coach_notes": data.get("coach_notes") or [],
@@ -169,6 +171,7 @@ class FirestoreMerchantStore:
                     document_id(request.business_id, "Business not found.")
                 )
                 current = self.owned(business.get(transaction=transaction), uid)
+                preserve_profile(request, current["fields"])
                 prior = ref.get(transaction=transaction).to_dict() if idempotency_key else None
                 if (
                     prior
@@ -251,6 +254,8 @@ class FirestoreMerchantStore:
             ]
             existing = {ref.id: ref.get(transaction=transaction) for ref in items}
             old = {ref.id: ref.get(transaction=transaction) for ref in replaced if ref}
+            if data["kind"] == "business":
+                data["business"] = migrate_profile(data["business"])
             if data["kind"] == "business" and business.exists:
                 transaction.update(
                     business_ref, {"fields": data["business"], "revision": data["revision"] + 1}

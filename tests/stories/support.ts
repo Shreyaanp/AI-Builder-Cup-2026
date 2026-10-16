@@ -101,7 +101,7 @@ export async function openNewShopReview(
   if (!(await begin.isVisible()))
     await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
   await begin.click()
-  await expect(page.getByRole('log')).toContainText('What do you sell?')
+  await expect(page.getByRole('log')).toContainText('What is your business called?')
   await page.getByLabel('Message', { exact: true }).fill(details)
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByTestId('agent-action').last()).toBeVisible()
