@@ -13,7 +13,7 @@ Legend: ☐ to do · ◐ in progress · ☑ done · 👤 owner action
 - ☑ #6 voice continuity, #7 customer polish, #8 CI flakes, #9 chart cards + TimesFM, #3 voice-mode onboarding
 - ◐ Codex integration: #13 business profiles → #12 unit fix → #4 rescue deals → #11 customer AI-first (CI fixes)
 - ☐ Review/merge: #14 story director docs, #15 connect your system, #16/#18 QA findings, #17 manual test script
-- ☐ Fix regression items: Tamil keyboard focus (onboarding), "Share customer page" switch
+- ☑ Fix regression items: verified 3/3 passes alone; 04:00 failures were machine load
 - ☐ Green regression → release; verify runtime settings after each release (ship script gap)
 
 ## B. Features (cutoff Fri midnight; each behind a switch)
