@@ -3460,6 +3460,59 @@
         }
       }
     },
+    "/api/v1/places/reverse": {
+      "get": {
+        "summary": "Reverse Pin",
+        "description": "The readable address under the owner's map pin while they place it (nothing is saved).",
+        "operationId": "reverse_pin_api_v1_places_reverse_get",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lng"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PinAddress"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/discover": {
       "get": {
         "summary": "Discover",
@@ -6897,7 +6950,6 @@
           "name": {
             "type": "string",
             "maxLength": 180,
-            "minLength": 1,
             "title": "Name"
           },
           "category": {
@@ -6966,6 +7018,39 @@
             "type": "boolean",
             "title": "Pin Demo",
             "default": false
+          },
+          "pin_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "device",
+                  "pin"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pin Source"
+          },
+          "pin_accuracy_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pin Accuracy M"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Description",
+            "default": ""
           },
           "demo": {
             "type": "boolean",
@@ -7234,6 +7319,21 @@
               }
             ],
             "title": "Business Id"
+          },
+          "new_shop": {
+            "type": "boolean",
+            "title": "New Shop",
+            "default": false
+          },
+          "new_shop_draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewShopDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -8696,6 +8796,31 @@
         ],
         "title": "MessageInput"
       },
+      "NewShopDraft": {
+        "properties": {
+          "business": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BusinessFields"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/ProductFields"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Products"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "NewShopDraft"
+      },
       "NewThread": {
         "properties": {
           "text": {
@@ -8967,6 +9092,44 @@
           "verdict"
         ],
         "title": "Outcome"
+      },
+      "OwnerLocation": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lng"
+          },
+          "accuracy_m": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Accuracy M"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "device",
+              "pin"
+            ],
+            "title": "Source",
+            "default": "device"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lat",
+          "lng",
+          "accuracy_m"
+        ],
+        "title": "OwnerLocation"
       },
       "PassportView": {
         "properties": {
@@ -9381,6 +9544,24 @@
         ],
         "title": "Pick"
       },
+      "PinAddress": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "approximate": {
+            "type": "boolean",
+            "title": "Approximate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "approximate"
+        ],
+        "title": "PinAddress"
+      },
       "PlaceMatch": {
         "properties": {
           "lat": {
@@ -9722,6 +9903,16 @@
             "type": "boolean",
             "title": "Geocode Confirmed",
             "default": false
+          },
+          "owner_location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OwnerLocation"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "business": {
             "anyOf": [

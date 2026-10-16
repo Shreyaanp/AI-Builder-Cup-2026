@@ -2,7 +2,16 @@ import type { components } from './generated.js'
 import { clientTimezoneHeader } from './timezone.js'
 
 export type CoachEvent = components['schemas']['StreamEvent']
-type CoachTurn = components['schemas']['CoachTurn']
+// OpenAPI output types materialize defaults. Request drafts may omit those server defaults.
+type Fields = components['schemas']['BusinessFields']
+type ProductFields = components['schemas']['ProductFields']
+type CoachTurn = Omit<components['schemas']['CoachTurn'], 'new_shop' | 'new_shop_draft'> & {
+  new_shop?: boolean
+  new_shop_draft?: {
+    business: (Pick<Fields, 'name'> & Partial<Fields>) | null
+    products: (Pick<ProductFields, 'name' | 'price'> & Partial<ProductFields>)[]
+  } | null
+}
 // Every event kind the server may send. A Record (not a list) so TypeScript fails the build when the
 // contract gains a kind this client does not know (a missing kind dropped the whole reply).
 const KNOWN: Record<CoachEvent['kind'], true> = {

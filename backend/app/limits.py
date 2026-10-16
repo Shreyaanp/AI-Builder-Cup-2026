@@ -46,6 +46,8 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "recap": ((30, 60), (300, 86_400)),
     "tts": ((30, 60), (600, 86_400)),
     "proposal": ((60, 60),),
+    # The address under the owner's map pin, looked up once the map stops moving.
+    "reverse": ((60, 60), (600, 86_400)),
     "ask:ip": ((10, 60),),
     "ask:shop": ((200, 86_400),),
     "inquire:ip": ((30, 86_400),),

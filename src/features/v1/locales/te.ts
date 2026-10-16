@@ -1,6 +1,21 @@
 import type { Copy } from '../strings'
 
 export const te: Copy = {
+  newShopMode: 'కొత్త దుకాణం',
+  newShopReady: 'మీ కొత్త దుకాణం సిద్ధంగా ఉంది',
+  newShopReadyBody:
+    'ఇప్పుడు మీరు కొత్త దుకాణంలో పని చేస్తున్నారు. సిద్ధమైనప్పుడు కస్టమర్ పేజీని పంచుకోండి.',
+  newShopContinue: 'నా దుకాణంతో కొనసాగు',
+  useCurrentLocation: 'నా ప్రస్తుత స్థానాన్ని వాడు',
+  locationReason:
+    'దుకాణం వద్ద ఉన్నారా? పిన్ పెట్టడానికి స్థాన అనుమతి ఇవ్వండి. సేవ్ చేసే ముందు సమీక్షిస్తారు.',
+  locating: 'మీ స్థానం వెతుకుతున్నాం…',
+  locationDenied: 'స్థాన అనుమతి నిరాకరించబడింది. చిరునామా రాయండి లేదా GPS ఉన్న ఫోటో వాడండి.',
+  locationFailed:
+    'స్థానం దొరకలేదు. మళ్లీ ప్రయత్నించండి, చిరునామా రాయండి లేదా GPS ఉన్న ఫోటో వాడండి.',
+  yourLocation: 'మీ స్థానం',
+  description: 'వివరణ',
+  locationAccuracy: (m: string) => `${m} మీటర్ల లోపు`,
   installApp: 'యాప్ ఇన్‌స్టాల్ చేయండి',
   installIos: 'Safariలో షేర్ → హోమ్ స్క్రీన్‌కు జోడించు ఎంచుకుని, జోడించు నొక్కండి.',
   installUnavailable:
@@ -255,7 +270,6 @@ export const te: Copy = {
   stock: 'స్టాక్',
   // Shop
   shopEmptyTitle: 'మీ దుకాణం జోడిద్దాం',
-  shopEmptyBody: 'బోర్డు ఫోటోతో మొదలుపెట్టండి లేదా వివరాలు మీరే నింపండి.',
   addShop: 'దుకాణం వివరాలు జోడించండి',
   startPhoto: 'ఫోటోతో మొదలుపెట్టండి',
   editDetails: 'వివరాలు మార్చండి',
