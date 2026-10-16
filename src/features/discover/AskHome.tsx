@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Button,
@@ -49,7 +49,7 @@ import {
 } from './askThread'
 import { discoverCopy } from './strings'
 import { fillIn, useConversationCopy, type ConversationCopy } from './conversationCopy'
-import { ensureDemoWorld } from './demoWorld'
+import { ensureDemoWorld, isIndianArea } from './demoWorld'
 import { localRankShops, prefetchAreaShops } from './shopCache'
 import { recsEvent } from '../recs/events'
 import { PlaceSearch, type FoundPlace } from './PlaceSearch'
@@ -64,7 +64,11 @@ function savedPlace(): FoundPlace | null {
   try {
     const place = (JSON.parse(localStorage.getItem(FILTERS) || '{}') as { place?: FoundPlace })
       .place
-    return place && Number.isFinite(place.lat) && Number.isFinite(place.lng) ? place : null
+    if (!place || !Number.isFinite(place.lat) || !Number.isFinite(place.lng)) return null
+    if (place.label?.toLowerCase() === 'you') {
+      return { ...place, label: 'Nearby' }
+    }
+    return place
   } catch {
     return null
   }
@@ -126,18 +130,44 @@ export default function AskHome({
   const passport = usePassportCopy()
   const roles = useTheme().material
   const account = useCustomer()
-  const [place, setPlace] = useState<FoundPlace>(
-    () =>
+  const [place, setPlace] = useState<FoundPlace>(() => {
+    const initial =
       (initialLocation?.gps
         ? { lat: initialLocation.gps[0], lng: initialLocation.gps[1], label: t.here }
         : initialLocation?.place) ??
       savedPlace() ??
-      FALLBACK,
-  )
+      FALLBACK
+    if (initial.label?.toLowerCase() === 'you') {
+      return { ...initial, label: t.here }
+    }
+    return initial
+  })
+
+  useEffect(() => {
+    if (initialLocation?.gps) {
+      const [lat, lng] = initialLocation.gps
+      fetch(`/api/v1/discover/place?lat=${lat}&lng=${lng}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { label?: string; lat: number; lng: number } | null) => {
+          if (data?.label && data.label.toLowerCase() !== 'you') {
+            setPlace((current) => ({ ...current, lat, lng, label: data.label! }))
+          }
+        })
+        .catch(() => undefined)
+    }
+  }, [initialLocation?.gps])
+
   const [turns, setTurns] = useState<Turn[]>(loadTurns)
   const [draft, setDraft] = useState('')
   const [changing, setChanging] = useState(false)
   const [listening, setListening] = useState(false)
+  const placeholderText = useMemo(() => {
+    if (listening) return t.listening
+    if (isIndianArea(place.lat, place.lng, place.label)) {
+      return c.placeholder.replace('$3', '₹50')
+    }
+    return c.placeholder
+  }, [listening, t.listening, c.placeholder, place.lat, place.lng, place.label])
   const [suggested, setSuggested] = useState<{ key: string; data: Suggestions } | null>(null)
   const placeKey = `${place.lat},${place.lng}`
   const suggestions = suggested?.key === placeKey ? suggested.data : null
@@ -504,7 +534,7 @@ export default function AskHome({
             gap: 2,
             pt: 'max(8px, env(safe-area-inset-top))',
             pb: 2,
-            pr: { xs: '128px', md: 0 },
+            pr: { xs: '180px', md: 0 },
             minHeight: 64,
             bgcolor: roles.surface,
           }}
@@ -713,7 +743,7 @@ export default function AskHome({
             inputRef={input}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder={listening ? t.listening : c.placeholder}
+            placeholder={placeholderText}
             inputProps={{ 'aria-label': c.composer, enterKeyHint: 'send', maxLength: 300 }}
             sx={{ flex: 1, minWidth: 0, minHeight: 48, fontSize: 16 }}
           />

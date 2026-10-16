@@ -1225,7 +1225,7 @@ export interface paths {
         };
         /**
          * Find Place
-         * @description A typed city or area anywhere in the world, as the centre for discovery.
+         * @description A typed city or area anywhere in the world, or coordinates reverse-geocoded to an area.
          */
         get: operations["find_place_api_v1_discover_place_get"];
         put?: never;
@@ -8727,8 +8727,10 @@ export interface operations {
     };
     find_place_api_v1_discover_place_get: {
         parameters: {
-            query: {
-                q: string;
+            query?: {
+                q?: string | null;
+                lat?: number | null;
+                lng?: number | null;
             };
             header?: never;
             path?: never;
