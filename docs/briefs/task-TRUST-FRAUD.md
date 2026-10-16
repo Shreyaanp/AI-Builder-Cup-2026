@@ -11,11 +11,13 @@ Others own: owner onboarding UI (NewShopFlow/useVoice), customer UI, supply chai
 Plan the whole story first (plan mode), then build it end to end.
 
 ## Owner's words
+
 "Duplicate owner face check: obviously it's optional, but we need it in some flow and it needs
 to WORK. It's not working, there are a thousand different issues. Make it correctly." The track
 also names fraud as a judging area.
 
 ## Build
+
 1. **Audit first**: run the face flow on phone and desktop (camera permission, capture, liveness
    prompts, upload, worker call, match result, retry, delete/erase) and list every issue in
    docs/qa/face-audit.md with screenshots; then fix all of them.
@@ -32,6 +34,7 @@ also names fraud as a judging area.
    (worker_headers); verify the real path works with the live worker where possible.
 
 ## Definition of done
+
 Phone + desktop, light + dark, 15 locales, axe clean, calm owner motion. Backend tests, unit
 tests for fraud rules, browser story test tests/stories/s12-trust.spec.ts (consent → capture
 with a fake camera → verified badge; duplicate detected; erase), screenshots

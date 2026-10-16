@@ -100,7 +100,8 @@ test('B26: My shop starts with the tiles, no repeated shop name or Draft chip', 
   await axe(page)
 })
 
-test('B26: a pending check shows as a small status inside the Readiness tile', async ({ page }) => {
+// The face check is optional and never changes a shop: an old pending status shows nothing.
+test('B26: a legacy pending face check never marks the shop', async ({ page }) => {
   await enter(page)
   await seedShop(page)
   await page.route('**/api/v1/businesses', async (route) => {
@@ -113,8 +114,8 @@ test('B26: a pending check shows as a small status inside the Readiness tile', a
   })
   await myShop(page)
   const readiness = page.getByRole('button', { name: /^Readiness/ })
-  await expect(readiness.getByText('Check pending', { exact: true })).toBeVisible()
-  await expect(page.getByRole('main').getByText('Check pending', { exact: true })).toHaveCount(1)
+  await expect(readiness).toBeVisible()
+  await expect(page.getByRole('main').getByText('Check pending', { exact: true })).toHaveCount(0)
 })
 
 test('B27: the tile grid sizes to its content at 390, 600 and desktop widths', async ({ page }) => {
