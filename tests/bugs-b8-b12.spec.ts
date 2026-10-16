@@ -1,4 +1,4 @@
-import { createShop, editShopDetails } from './stories/support.js'
+import { createShop, detailsStep, editShopDetails } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import type { components } from '../src/api/generated.js'
@@ -217,6 +217,7 @@ test('B11: weekday hours are reviewed, saved and shown publicly', async ({ page 
   await enter(page, false)
   await createShop(page, 'name: Katong Night Kopi')
   await editShopDetails(page)
+  await detailsStep(page, 'Hours')
   await page.getByLabel('Hours note (optional)', { exact: true }).fill('Ask about holiday hours')
   await page.getByLabel('Set hours by weekday').check()
   await expect(page.locator('input[type="time"]')).toHaveCount(2)
@@ -313,6 +314,7 @@ test('B11: existing different hours survive editing, and shared times survive cl
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
   await page.getByRole('button', { name: 'Edit details', exact: true }).click()
+  await detailsStep(page, 'Hours')
   await expect(page.locator('input[type="time"]')).toHaveCount(14)
   await expect(page.getByLabel('Saturday: Opens', { exact: true })).toHaveValue('10:00')
   await page.route('**/api/v1/proposals', (route) => {

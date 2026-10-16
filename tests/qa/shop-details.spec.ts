@@ -1,5 +1,12 @@
 import { test, expect, owner, enter, confirm, audit, tamil } from './support.js'
-import { createShop, editShopDetails, gpsBoardPath, share, closeSheet } from '../stories/support.js'
+import {
+  createShop,
+  detailsStep,
+  editShopDetails,
+  gpsBoardPath,
+  share,
+  closeSheet,
+} from '../stories/support.js'
 
 test('hours, custom payment and delivery are reviewed then appear on the shared QR page', async ({
   page,
@@ -7,13 +14,17 @@ test('hours, custom payment and delivery are reviewed then appear on the shared 
   await enter(page)
   await createShop(page, 'name: QA hours and facts')
   await editShopDetails(page)
+  await detailsStep(page, 'Location')
   await page.getByLabel('Address or area').fill('Indiranagar, Bengaluru')
+  await detailsStep(page, 'Hours')
   await page.getByLabel('Set hours by weekday').check()
   await page.getByLabel('Opens', { exact: true }).fill('07:00')
   await page.getByLabel('Closes', { exact: true }).fill('20:00')
+  await detailsStep(page, 'Payment')
   const payment = page.getByRole('combobox', { name: 'Payment', exact: true })
   await payment.fill('QA Pay')
   await payment.press('Enter')
+  await detailsStep(page, 'Delivery')
   const delivery = page.getByRole('combobox', { name: 'Delivery', exact: true })
   await delivery.fill('Neighbour delivery')
   await delivery.press('Enter')

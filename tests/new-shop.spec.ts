@@ -92,8 +92,10 @@ test('a menu photo in the chat: the coach says what it read and suggests a name'
     }),
   )
   await begin(page)
-  const chooser = page.waitForEvent('filechooser')
+  // The camera card opens in the chat; a photo the owner already has goes in by upload.
   await page.getByRole('button', { name: 'Menu photo' }).click()
+  const chooser = page.waitForEvent('filechooser')
+  await page.getByTestId('camera-card').getByRole('button', { name: 'Upload instead' }).click()
   await (await chooser).setFiles(await image(page))
   const actions = page.getByTestId('agent-action')
   await expect(actions.first()).toContainText('I read your menu: 1 item')
@@ -121,11 +123,14 @@ test('a measured location is an action in the chat and is sealed for review', as
   await say(page, 'name: Courtyard Chai; category: Tea stall')
   await expect(page.getByTestId('agent-action').last()).toContainText('Courtyard Chai')
   await page.getByRole('button', { name: 'My location' }).click()
-  // The reason comes first, in the chat; then what was saved.
-  await expect(page.getByRole('log')).toContainText('Allow location access to place its pin')
-  await expect(page.getByTestId('agent-action').last()).toContainText(
-    'Saved your location: Near Indiranagar',
-  )
+  // The map opens in the chat at the measured point; nothing is saved until the owner confirms.
+  const map = page.getByTestId('map-card')
+  await expect(map).toContainText('Near Indiranagar')
+  await expect(map).toContainText('within 20 m')
+  await map.getByRole('button', { name: 'This is my shop' }).click()
+  await expect(
+    page.getByTestId('agent-action').filter({ hasText: 'Saved your location: Near Indiranagar' }),
+  ).toBeVisible()
   await page.getByRole('button', { name: 'Review my shop' }).click()
   const review = page.getByTestId('new-shop-review')
   await expect(review).toContainText('within 20 m')
