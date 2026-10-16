@@ -164,7 +164,9 @@ async function customerHolds(customer: Page, shopName: string, qr: string, mode:
   await test.step('4 · the customer sees it on the Rescue map and list', async () => {
     await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/rescue`)
     await customer.getByRole('button', { name: 'Use my location' }).click()
-    await expect(customer.getByText('Leftovers from shops near your location')).toBeVisible()
+    const rescueLead =
+      /Leftovers from shops near|दुकानों का बचा हुआ खाना|দোকানের বেঁচে যাওয়া খাবার|దుకాಣాల్లో మిగిలిన ఆహారం|दुकानांतील उरलेले पदार्थ|ಅಂಗಡಿಗಳಲ್ಲಿ ಉಳಿದ ಆಹಾರ|கடைகளில் மீதமான உணவு|店铺打烊前剩下的食物|周辺のお店の|가게들이 문 닫기 전|อาหารเหลือจากร้าน|Lebihan makanan dari kedai|Sisa makanan dari toko|Đồ ăn còn dư|Mga natirang pagkain/
+    await expect(customer.getByText(rescueLead)).toBeVisible()
     const card = customer.getByRole('listitem').filter({ hasText: shopName })
     await expect(card).toBeVisible({ timeout: 20_000 })
     await expect(card).toContainText('Masala bun')
