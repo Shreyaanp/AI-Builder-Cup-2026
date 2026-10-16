@@ -5860,6 +5860,163 @@
         ],
         "title": "Approval"
       },
+      "AreaAnswer": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "off",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "default": ""
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/AreaSource"
+            },
+            "type": "array",
+            "title": "Sources",
+            "default": []
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/AreaPlace"
+            },
+            "type": "array",
+            "title": "Places",
+            "default": []
+          },
+          "widget_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Widget Token"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          },
+          "cached": {
+            "type": "boolean",
+            "title": "Cached",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "AreaAnswer"
+      },
+      "AreaPlace": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "distance_m": {
+            "type": "integer",
+            "title": "Distance M"
+          },
+          "open_now": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Now"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "google_maps_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Google Maps Uri"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "lat",
+          "lng",
+          "distance_m"
+        ],
+        "title": "AreaPlace",
+        "description": "A grounded Google place with coordinates, so the results map can pin it."
+      },
+      "AreaSource": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "uri": {
+            "type": "string",
+            "title": "Uri"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "uri"
+        ],
+        "title": "AreaSource",
+        "description": "A Google Maps place the answer used: shown with a link, as Google requires."
+      },
       "AreaView": {
         "properties": {
           "id": {
@@ -5998,6 +6155,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/Anchor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "area": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AreaAnswer"
               },
               {
                 "type": "null"
@@ -7711,6 +7878,11 @@
           "deals": {
             "type": "boolean",
             "title": "Deals",
+            "default": false
+          },
+          "area": {
+            "type": "boolean",
+            "title": "Area",
             "default": false
           }
         },

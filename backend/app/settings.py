@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     # Gemini Live (voice) models are regional on Vertex; `global` returns "model not found".
     google_live_location: str = "us-central1"
     google_embedding_location: str = "global"
+    # Customer AI answers about the area with Gemini's Google Maps grounding tool (Vertex).
+    # "off" keeps the honest fallback (our list + straight-line distances); "demo" returns
+    # labelled sample answers for offline previews and browser tests; "live" calls Gemini.
+    maps_grounding: Literal["off", "demo", "live"] = "off"
+    maps_grounding_model: str = ""
+    # GCP credit is limited: one grounded call per question per ~1 km area for this long.
+    maps_grounding_cache_seconds: int = Field(default=3600, ge=60, le=86_400)
     max_turn_seconds: int = Field(default=30, ge=1, le=120)
     max_voice_seconds: int = Field(default=120, ge=1, le=600)
     max_active_runs: int = Field(default=8, ge=1, le=32)
@@ -87,6 +94,13 @@ class Settings(BaseSettings):
                 raise ValueError("Vertex Gemini requires an explicit project.")
             if self.gemini_backend == "api_key" and not self.google_api_key.get_secret_value():
                 raise ValueError("API-key Gemini requires a server key.")
+        if self.maps_grounding == "live":
+            if not (self.maps_grounding_model or self.google_text_model):
+                raise ValueError("Maps grounding requires an explicit model ID.")
+            if self.gemini_backend == "vertex" and not self.google_cloud_project:
+                raise ValueError("Maps grounding on Vertex requires an explicit project.")
+            if self.gemini_backend == "api_key" and not self.google_api_key.get_secret_value():
+                raise ValueError("API-key Maps grounding requires a server key.")
         if self.app_env == "production":
             if self.v1_enabled and self.merchant_backend != "firestore":
                 raise ValueError("Production merchant records require the Firestore adapter.")

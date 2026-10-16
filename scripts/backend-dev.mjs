@@ -23,6 +23,8 @@ const child = spawn(uv, ['run', '--locked', 'python', 'run.py'], {
     MEDIA_BUCKET: '',
     MAPS_SERVER_KEY: '',
     MAPS_BROWSER_KEY: '',
+    // Labelled sample area answers offline; MAPS_GROUNDING=off shows the honest fallback.
+    MAPS_GROUNDING: process.env.MAPS_GROUNDING ?? 'demo',
     // The dev web server's own origin (per-worktree WEB_PORT, default 3200).
     // Share links and QR codes point at this checkout's own web port.
     CUSTOMER_ORIGIN: `http://127.0.0.1:${process.env.WEB_PORT ?? 3200}`,
