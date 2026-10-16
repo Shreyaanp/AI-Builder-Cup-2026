@@ -23,6 +23,7 @@ import structlog
 from pydantic import BaseModel
 
 from .discover import MapsService, distance
+from .reply_language import written_language
 from .settings import Settings
 
 log = structlog.get_logger()
@@ -36,7 +37,7 @@ AREA = re.compile(
 )
 
 PROMPT = """You help a customer with a question about the area around them.
-Answer in language "{language}" in at most 3 short sentences, like a helpful local friend.
+Answer in {language} in at most 3 short sentences, like a helpful local friend.
 Use Google Maps for real places, opening hours and parking; name only places Google Maps knows.
 Never invent prices, menus or places. If Google Maps has nothing useful, say so in one sentence.
 Question: {q}"""
@@ -86,7 +87,7 @@ def grounding_request(
 
     return {
         "model": settings.maps_grounding_model or settings.google_text_model,
-        "contents": PROMPT.format(language=language, q=q),
+        "contents": PROMPT.format(language=written_language(language), q=q),
         "config": types.GenerateContentConfig(
             tools=[types.Tool(google_maps=types.GoogleMaps())],
             tool_config=types.ToolConfig(
@@ -165,9 +166,32 @@ DEMO_DEFAULT = (
 )
 
 
-def demo_answer(q: str, lat: float, lng: float) -> AreaAnswer:
+# The same samples for a Hindi customer (the labelled demo still reads in their language).
+DEMO_HINDI = {
+    "Sample answer: there is a public car park about two minutes' walk away, and street "
+    "parking on the next road fills up after 6 pm.": "नमूना जवाब: लगभग दो मिनट की पैदल दूरी पर "
+    "एक सार्वजनिक पार्किंग है, और अगली सड़क की पार्किंग शाम 6 बजे के बाद भर जाती है।",
+    "Sample answer: two cafés nearby are known for filter coffee; the closer one is open "
+    "now and busy in the morning.": "नमूना जवाब: पास के दो कैफ़े फ़िल्टर कॉफ़ी के लिए जाने जाते हैं; "
+    "नज़दीक वाला अभी खुला है और सुबह भीड़ रहती है।",
+    "Sample answer: a few places nearby match; the nearest is a short walk away and open "
+    "now.": "नमूना जवाब: पास की कुछ जगहें मेल खाती हैं; सबसे नज़दीक वाली थोड़ी पैदल दूरी पर है और अभी खुली है।",
+    "Sample public car park": "नमूना सार्वजनिक पार्किंग",
+    "Sample street parking": "नमूना सड़क पार्किंग",
+    "Sample filter coffee house": "नमूना फ़िल्टर कॉफ़ी हाउस",
+    "Sample roastery café": "नमूना रोस्टरी कैफ़े",
+    "Sample local place": "नमूना स्थानीय जगह",
+    "Sample corner store": "नमूना नुक्कड़ की दुकान",
+}
+
+
+def demo_answer(q: str, lat: float, lng: float, language: str = "en") -> AreaAnswer:
     text = q.casefold()
     found = next(((t, p) for pattern, t, p in DEMO_TOPICS if pattern.search(text)), DEMO_DEFAULT)
+
+    def say(words: str) -> str:
+        return DEMO_HINDI.get(words, words) if language.split("-")[0] == "hi" else words
+
     places: list[AreaPlace] = []
     sources: list[AreaSource] = []
     for index, (name, north, east, is_open) in enumerate(found[1]):
@@ -175,6 +199,7 @@ def demo_answer(q: str, lat: float, lng: float) -> AreaAnswer:
         p_lng = lng + east / (111_320 * max(math.cos(math.radians(lat)), 0.01))
         uri = f"https://www.google.com/maps/search/?api=1&query={p_lat:.5f},{p_lng:.5f}"
         pid = f"demo-area-{index}"
+        name = say(name)
         sources.append(AreaSource(title=name, uri=uri, place_id=pid))
         places.append(
             AreaPlace(
@@ -187,7 +212,7 @@ def demo_answer(q: str, lat: float, lng: float) -> AreaAnswer:
                 google_maps_uri=uri,
             )
         )
-    return AreaAnswer(status="ok", text=found[0], sources=sources, places=places, demo=True)
+    return AreaAnswer(status="ok", text=say(found[0]), sources=sources, places=places, demo=True)
 
 
 class AreaGrounding:
@@ -228,7 +253,7 @@ class AreaGrounding:
         if self.mode == "off":
             return AreaAnswer(status="off")
         if self.mode == "demo":
-            return demo_answer(q, lat, lng)
+            return demo_answer(q, lat, lng, language)
         key = self.key(q, lat, lng, language)
         lock = self.locks.setdefault(key, asyncio.Lock())
         async with lock:

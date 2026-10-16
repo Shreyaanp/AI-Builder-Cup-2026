@@ -155,7 +155,9 @@ export function MorningBrief({
                 {/* Open-Meteo is CC BY 4.0: the attribution always shows with the data. */}
                 <Typography variant="bodySmall" color="text.secondary">
                   <Link href={brief.weather.url} target="_blank" rel="noopener" color="inherit">
-                    {brief.weather.attribution}
+                    {fill(brief.weather.demo ? t.weatherDemoCredit : t.weatherCredit, {
+                      source: 'Open-Meteo (CC BY 4.0)',
+                    })}
                   </Link>
                 </Typography>
               </Stack>
