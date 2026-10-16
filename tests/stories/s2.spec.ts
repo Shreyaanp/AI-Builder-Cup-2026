@@ -70,7 +70,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
     await expect(page.getByText('Still the same menu today?', { exact: true })).toBeVisible()
     await shot(page, 2, 5)
-    await page.getByRole('button', { name: 'Yes, all good' }).click()
+    await page.getByTestId('today-needs').getByRole('button', { name: 'Yes', exact: true }).click()
     await expect(page.getByText('Still the same menu today?', { exact: true })).toHaveCount(0)
     await customer.getByRole('button', { name: 'Refresh', exact: true }).click()
     await expect(customer.getByText('Updated today', { exact: true })).toBeVisible()
