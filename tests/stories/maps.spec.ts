@@ -42,15 +42,20 @@ async function axe(page: Page) {
   ).toEqual([])
 }
 
-/** A shared shop selling kopi, pinned in Koramangala (approximate demo pin, labelled). */
+/** A shared shop selling kopi, pinned by its owner at a point of its own in Koramangala. The
+ * customer asks from that point, so shops left by earlier runs (same menu) never tie with it. */
 async function seeded(page: Page) {
   await enter(page)
   const name = `Courtyard Kopi ${Date.now().toString().slice(-6)}`
+  const point = {
+    lat: Number((AREA.lat + (Math.random() - 0.5) * 0.01).toFixed(6)),
+    lng: Number((AREA.lng + (Math.random() - 0.5) * 0.01).toFixed(6)),
+  }
   const prepared = await page.request.post('/api/v1/proposals', {
     data: {
       kind: 'business',
       revision: 0,
-      geocode_confirmed: true,
+      owner_location: { ...point, accuracy_m: 0, source: 'pin' },
       business: {
         name,
         category: 'Cafe',
@@ -77,6 +82,12 @@ async function seeded(page: Page) {
   expect(approved.ok(), await approved.text()).toBe(true)
   const id = (await approved.json()).business_id as string
   await publish(page, id)
+  await page.addInitScript(
+    (area) => {
+      localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place: area }))
+    },
+    { ...point, label: AREA.label },
+  )
   return { id, name }
 }
 
@@ -88,7 +99,7 @@ for (const mode of ['light', 'dark'] as const)
     test.setTimeout(120_000)
     const device = isMobile ? 'phone' : 'desktop'
     await appearance(page, mode)
-    await seeded(page)
+    const ours = await seeded(page)
     await page.goto('/explore/')
     await ask(page, 'Best kopi near me')
 
@@ -98,6 +109,7 @@ for (const mode of ['light', 'dark'] as const)
     await expect(card).toContainText('₹18.00', { timeout: 20_000 })
     const id = (await first.getAttribute('id'))!.slice('pick-'.length)
     const name = (await first.getByRole('heading').textContent())!
+    expect(id).toBe(ours.id)
 
     // Google's area answer, its Google Maps sources and the untranslated attribution.
     const google = page.getByRole('region', { name: 'Google Maps' })
@@ -198,7 +210,10 @@ test('switch off or Google down: one honest line, our list and straight-line dis
   await seeded(page)
   let status: 'off' | 'unavailable' = 'off'
   await page.route('**/api/v1/discover/ask', async (route) => {
-    const response = await route.fetch()
+    // The app asks for a stream; this rewrite takes the one-shot JSON answer instead.
+    const response = await route.fetch({
+      headers: { ...route.request().headers(), accept: 'application/json' },
+    })
     const body = await response.json()
     body.area = { status, text: '', sources: [], places: [], widget_token: null, demo: false }
     await route.fulfill({ response, json: body })
@@ -229,14 +244,13 @@ for (const mode of ['light', 'dark'] as const)
   }) => {
     test.setTimeout(90_000)
     await appearance(page, mode)
-    await seeded(page)
-    await page.goto('/explore/browse?view=map')
+    const ours = await seeded(page)
+    // Browse for this run's shop by name: shops left nearby by earlier runs would overlap its pin.
+    await page.goto(`/explore/browse?view=map&q=${encodeURIComponent(ours.name)}`)
     const map = page.getByRole('group', { name: 'Map of results' })
     await expect(map).toBeVisible({ timeout: 20_000 })
-    const any = map.getByRole('button', { name: /Courtyard Kopi/ }).first()
-    await expect(any).toBeVisible({ timeout: 20_000 })
-    // The selected pin is painted last (on top), so hold on to it by name.
-    const pin = map.getByRole('button', { name: (await any.getAttribute('aria-label'))! })
+    const pin = map.getByRole('button', { name: ours.name })
+    await expect(pin).toBeVisible({ timeout: 20_000 })
     await pin.click()
     await expect(pin).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByRole('status').getByRole('link', { name: 'Open shop' })).toBeVisible()

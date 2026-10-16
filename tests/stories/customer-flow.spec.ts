@@ -137,9 +137,13 @@ test('customer fixes: passport board errors offer retry and failed opt-in stays 
 
 test('customer fixes: Today refresh failure is visible with cached finds', async ({ page }) => {
   await page.goto('/explore/')
+  const loaded = page.waitForResponse((r) => r.url().includes('/public/today?') && r.ok())
   await page.getByRole('button', { name: /Today’s 7 near you/ }).click()
   const today = page.getByRole('region', { name: /^Today/ })
-  await expect(today.getByText('Quiet here so far. Try a nearby area.')).toBeVisible()
+  // Quiet or not depends on what earlier runs left in the shared local DB; it only has to load.
+  await loaded
+  await expect(today).toBeVisible()
+  await expect(today.getByRole('alert')).toHaveCount(0)
   await page.route('**/public/today?*', (route) => route.fulfill({ status: 503, json: {} }))
   await page.getByRole('button', { name: 'Profile and preferences' }).click()
   await page.getByRole('button', { name: /Continue with Google/ }).click()
@@ -226,6 +230,12 @@ for (const mode of ['light', 'dark'] as const) {
       )
       const customer = await context.newPage()
       await localOnly(customer)
+      // Ranking is a UI fixture here (see the Ask step), including the on-device instant ranking
+      // from the area prefetch; Browse (which always sends `q`) still uses the real offline API.
+      await customer.route(
+        (url) => url.pathname === '/api/v1/discover' && !url.searchParams.has('q'),
+        (route) => route.fulfill({ json: { places: [] } }),
+      )
       const capture = async (step: string) => {
         await audit(customer)
         await customer.screenshot({
