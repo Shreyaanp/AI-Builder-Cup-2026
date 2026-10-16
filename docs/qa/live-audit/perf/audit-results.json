@@ -1,0 +1,711 @@
+{
+  "timestamp": "2026-10-16T10:06:42.502Z",
+  "targets": {
+    "customer": "https://chalkboard.shreyaan.work",
+    "publicApi": "https://business.chalkboard.shreyaan.work/api/v1/health"
+  },
+  "lighthouseSkipped": "Lighthouse CLI not available without installation (npx --no-install lighthouse skipped per brief)",
+  "customerExplore": {
+    "unthrottled": {
+      "cold": [
+        {
+          "ttfb": 57,
+          "fcp": 540,
+          "lcp": 1296,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 489
+        },
+        {
+          "ttfb": 71,
+          "fcp": 588,
+          "lcp": 1140,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 546
+        },
+        {
+          "ttfb": 152,
+          "fcp": 844,
+          "lcp": 1488,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 794
+        },
+        {
+          "ttfb": 74,
+          "fcp": 616,
+          "lcp": 1572,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 566
+        },
+        {
+          "ttfb": 73,
+          "fcp": 688,
+          "lcp": 1364,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 624
+        }
+      ],
+      "warm": [
+        {
+          "ttfb": 79,
+          "fcp": 156,
+          "lcp": 512,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 142
+        },
+        {
+          "ttfb": 79,
+          "fcp": 196,
+          "lcp": 548,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 183
+        },
+        {
+          "ttfb": 84,
+          "fcp": 180,
+          "lcp": 532,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 164
+        },
+        {
+          "ttfb": 92,
+          "fcp": 172,
+          "lcp": 512,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 155
+        },
+        {
+          "ttfb": 64,
+          "fcp": 148,
+          "lcp": 496,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 134
+        }
+      ]
+    },
+    "throttled": {
+      "cold": [
+        {
+          "ttfb": 65,
+          "fcp": 2904,
+          "lcp": 3328,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 2686
+        },
+        {
+          "ttfb": 66,
+          "fcp": 2924,
+          "lcp": 3356,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 2706
+        },
+        {
+          "ttfb": 72,
+          "fcp": 2932,
+          "lcp": 3232,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 2667
+        },
+        {
+          "ttfb": 71,
+          "fcp": 3000,
+          "lcp": 3368,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 2711
+        },
+        {
+          "ttfb": 63,
+          "fcp": 2916,
+          "lcp": 3208,
+          "cls": 0,
+          "tbt": 0,
+          "loadTime": 2676
+        }
+      ],
+      "warm": [
+        {
+          "ttfb": 67,
+          "fcp": 240,
+          "lcp": 1556,
+          "cls": 0,
+          "tbt": 243,
+          "loadTime": 169
+        },
+        {
+          "ttfb": 73,
+          "fcp": 272,
+          "lcp": 1552,
+          "cls": 0,
+          "tbt": 305,
+          "loadTime": 197
+        },
+        {
+          "ttfb": 72,
+          "fcp": 264,
+          "lcp": 1432,
+          "cls": 0,
+          "tbt": 290,
+          "loadTime": 193
+        },
+        {
+          "ttfb": 77,
+          "fcp": 280,
+          "lcp": 1488,
+          "cls": 0,
+          "tbt": 254,
+          "loadTime": 192
+        },
+        {
+          "ttfb": 89,
+          "fcp": 336,
+          "lcp": 1588,
+          "cls": 0,
+          "tbt": 309,
+          "loadTime": 247
+        }
+      ]
+    }
+  },
+  "landingPage": {
+    "unthrottled": {
+      "cold": [
+        {
+          "ttfb": 73,
+          "fcp": 1300,
+          "lcp": 1300,
+          "cls": 0.0158,
+          "tbt": 0,
+          "loadTime": 743
+        }
+      ]
+    },
+    "throttled": {
+      "cold": [
+        {
+          "ttfb": 70,
+          "fcp": 0,
+          "lcp": 0,
+          "cls": 0,
+          "tbt": 99,
+          "loadTime": 2702
+        }
+      ]
+    }
+  },
+  "customerAsk": {
+    "unthrottled": [
+      {
+        "firstWordMs": 11552,
+        "completeMs": 11552,
+        "cls": 0,
+        "spinnerWithoutWords": false
+      },
+      {
+        "firstWordMs": 12346,
+        "completeMs": 12346,
+        "cls": 0,
+        "spinnerWithoutWords": false
+      },
+      {
+        "firstWordMs": 11485,
+        "completeMs": 11485,
+        "cls": 0,
+        "spinnerWithoutWords": false
+      },
+      {
+        "firstWordMs": 7388,
+        "completeMs": 7388,
+        "cls": 0,
+        "spinnerWithoutWords": false
+      },
+      {
+        "firstWordMs": 6284,
+        "completeMs": 6284,
+        "cls": 0,
+        "spinnerWithoutWords": false
+      }
+    ],
+    "throttled": [
+      {
+        "firstWordMs": 6736,
+        "completeMs": 6736,
+        "cls": 0,
+        "spinnerWithoutWords": false
+      },
+      {
+        "firstWordMs": 12180,
+        "completeMs": 12180,
+        "cls": 0,
+        "spinnerWithoutWords": false
+      },
+      {
+        "firstWordMs": 12021,
+        "completeMs": 12021,
+        "cls": 0,
+        "spinnerWithoutWords": false
+      },
+      {
+        "firstWordMs": 7933,
+        "completeMs": 7933,
+        "cls": 0,
+        "spinnerWithoutWords": false
+      },
+      {
+        "firstWordMs": 11927,
+        "completeMs": 11927,
+        "cls": 0,
+        "spinnerWithoutWords": false
+      }
+    ]
+  },
+  "tapResponsiveness": {
+    "unthrottled": [
+      {
+        "rescueTabMs": 44,
+        "askTabMs": 45,
+        "shopCardMs": 226
+      },
+      {
+        "rescueTabMs": 55,
+        "askTabMs": 45,
+        "shopCardMs": 873
+      },
+      {
+        "rescueTabMs": 41,
+        "askTabMs": 44,
+        "shopCardMs": 361
+      },
+      {
+        "rescueTabMs": 42,
+        "askTabMs": 39,
+        "shopCardMs": 341
+      },
+      {
+        "rescueTabMs": 42,
+        "askTabMs": 48,
+        "shopCardMs": 346
+      }
+    ],
+    "throttled": [
+      {
+        "rescueTabMs": 384,
+        "askTabMs": 277,
+        "shopCardMs": 639
+      },
+      {
+        "rescueTabMs": 413,
+        "askTabMs": 348,
+        "shopCardMs": 544
+      },
+      {
+        "rescueTabMs": 418,
+        "askTabMs": 345,
+        "shopCardMs": 1047
+      },
+      {
+        "rescueTabMs": 393,
+        "askTabMs": 452,
+        "shopCardMs": 529
+      },
+      {
+        "rescueTabMs": 355,
+        "askTabMs": 280,
+        "shopCardMs": 465
+      }
+    ]
+  },
+  "apiHealth": {
+    "unthrottled": {
+      "runs": [
+        380,
+        72,
+        60,
+        60,
+        60
+      ],
+      "min": 60,
+      "max": 380,
+      "mean": 126.4,
+      "p50": 60,
+      "p95": 318.4
+    },
+    "throttled": {
+      "runs": [
+        192,
+        69,
+        125,
+        500,
+        72
+      ],
+      "min": 69,
+      "max": 500,
+      "mean": 191.6,
+      "p50": 125,
+      "p95": 438.4
+    }
+  },
+  "bundleAudit": {
+    "totalResources": 55,
+    "totalBytes": 2305922,
+    "breakdown": {
+      "jsBytes": 2171844,
+      "cssBytes": 29115,
+      "fontBytes": 101852,
+      "imageBytes": 647,
+      "htmlBytes": 1582,
+      "apiBytes": 882,
+      "otherBytes": 0
+    },
+    "topFiles": [
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/strings-DiV7p8WP.js",
+        "pathname": "/assets/strings-DiV7p8WP.js",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "js",
+        "size": 628564,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      },
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/index-Cmxr2SAU.js",
+        "pathname": "/assets/index-Cmxr2SAU.js",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "js",
+        "size": 311194,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      },
+      {
+        "url": "https://ichiropractic.firebaseapp.com/__/auth/iframe.js",
+        "pathname": "/__/auth/iframe.js",
+        "hostname": "ichiropractic.firebaseapp.com",
+        "type": "js",
+        "size": 289777,
+        "contentEncoding": "gzip",
+        "cacheControl": "max-age=1800",
+        "isChalkboard": false
+      },
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/index.esm-jzWuAxtI.js",
+        "pathname": "/assets/index.esm-jzWuAxtI.js",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "js",
+        "size": 127227,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      },
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/copy-Cnl7DEYK.js",
+        "pathname": "/assets/copy-Cnl7DEYK.js",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "js",
+        "size": 127222,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      },
+      {
+        "url": "https://apis.google.com/_/scs/abc-static/_/js/k=gapi.lb.en.gh7qIZtzO5w.O/m=gapi_iframes/rt=j/sv=1/d=1/ed=1/rs=AHpOoo84YKT1RVy0T6hcXi5rH3LooB1WCw/cb=gapi.loaded_0?le=scs",
+        "pathname": "/_/scs/abc-static/_/js/k=gapi.lb.en.gh7qIZtzO5w.O/m=gapi_iframes/rt=j/sv=1/d=1/ed=1/rs=AHpOoo84YKT1RVy0T6hcXi5rH3LooB1WCw/cb=gapi.loaded_0",
+        "hostname": "apis.google.com",
+        "type": "js",
+        "size": 106527,
+        "contentEncoding": "gzip",
+        "cacheControl": "public, max-age=31536000",
+        "isChalkboard": false
+      },
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/Typography-pS0iRLTE.js",
+        "pathname": "/assets/Typography-pS0iRLTE.js",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "js",
+        "size": 91551,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      },
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/AskHome-D_VjRn3m.js",
+        "pathname": "/assets/AskHome-D_VjRn3m.js",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "js",
+        "size": 81749,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      },
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/chalkMotion-DBQKUVs9.js",
+        "pathname": "/assets/chalkMotion-DBQKUVs9.js",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "js",
+        "size": 70669,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      },
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/customerLocales-tdYScCry.js",
+        "pathname": "/assets/customerLocales-tdYScCry.js",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "js",
+        "size": 70428,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      },
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/x-C1fWMhET.js",
+        "pathname": "/assets/x-C1fWMhET.js",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "js",
+        "size": 59565,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      },
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/TextField-Bp9FLMK7.js",
+        "pathname": "/assets/TextField-Bp9FLMK7.js",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "js",
+        "size": 54247,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      },
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/caveat-latin-700-normal-D8_1Nw6V.woff2",
+        "pathname": "/assets/caveat-latin-700-normal-D8_1Nw6V.woff2",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "font",
+        "size": 51020,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      },
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/google-sans-flex-latin-wght-normal-CRMKv9uI.woff2",
+        "pathname": "/assets/google-sans-flex-latin-wght-normal-CRMKv9uI.woff2",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "font",
+        "size": 50832,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      },
+      {
+        "url": "https://chalkboard.shreyaan.work/assets/sparkles-CmIBggxc.js",
+        "pathname": "/assets/sparkles-CmIBggxc.js",
+        "hostname": "chalkboard.shreyaan.work",
+        "type": "js",
+        "size": 31102,
+        "contentEncoding": "none",
+        "cacheControl": "public,max-age=3600,immutable",
+        "isChalkboard": true
+      }
+    ],
+    "compressionAudit": {
+      "compressedCount": 5,
+      "uncompressedCount": 50,
+      "chalkboardAssetsUncompressed": [
+        {
+          "path": "/assets/strings-DiV7p8WP.js",
+          "size": 628564
+        },
+        {
+          "path": "/assets/index-Cmxr2SAU.js",
+          "size": 311194
+        },
+        {
+          "path": "/assets/index.esm-jzWuAxtI.js",
+          "size": 127227
+        },
+        {
+          "path": "/assets/copy-Cnl7DEYK.js",
+          "size": 127222
+        },
+        {
+          "path": "/assets/Typography-pS0iRLTE.js",
+          "size": 91551
+        },
+        {
+          "path": "/assets/AskHome-D_VjRn3m.js",
+          "size": 81749
+        },
+        {
+          "path": "/assets/chalkMotion-DBQKUVs9.js",
+          "size": 70669
+        },
+        {
+          "path": "/assets/customerLocales-tdYScCry.js",
+          "size": 70428
+        },
+        {
+          "path": "/assets/x-C1fWMhET.js",
+          "size": 59565
+        },
+        {
+          "path": "/assets/TextField-Bp9FLMK7.js",
+          "size": 54247
+        },
+        {
+          "path": "/assets/sparkles-CmIBggxc.js",
+          "size": 31102
+        },
+        {
+          "path": "/assets/index.esm-xBW8AR7L.js",
+          "size": 30666
+        },
+        {
+          "path": "/assets/index-CXPqzHR-.css",
+          "size": 23242
+        },
+        {
+          "path": "/assets/CustomerApp-BAawVHPo.js",
+          "size": 20857
+        },
+        {
+          "path": "/assets/cardCopy-CZKw6ov3.js",
+          "size": 17049
+        },
+        {
+          "path": "/assets/Snackbar-BcdMyllz.js",
+          "size": 6877
+        },
+        {
+          "path": "/assets/CustomerApp-CHhjqGZe.css",
+          "size": 5873
+        },
+        {
+          "path": "/assets/store-Cfl35w3t.js",
+          "size": 4696
+        },
+        {
+          "path": "/assets/account-CrFpanBG.js",
+          "size": 3970
+        },
+        {
+          "path": "/assets/format-pScXESKM.js",
+          "size": 3933
+        },
+        {
+          "path": "/assets/rotate-ccw-CUwVqL4k.js",
+          "size": 3557
+        },
+        {
+          "path": "/assets/artData-CtxEBZ-3.js",
+          "size": 3312
+        },
+        {
+          "path": "/assets/FollowButton-Bb7AeXmA.js",
+          "size": 1949
+        },
+        {
+          "path": "/assets/hooks-Dd_9NEOm.js",
+          "size": 1711
+        },
+        {
+          "path": "/assets/PlaceImage-CfnkP6H0.js",
+          "size": 1142
+        },
+        {
+          "path": "/assets/zero-styled-PiMTquSy.js",
+          "size": 813
+        },
+        {
+          "path": "/assets/rolldown-runtime-hePW80VL.js",
+          "size": 716
+        },
+        {
+          "path": "/assets/tag-3EqAb4zV.js",
+          "size": 710
+        },
+        {
+          "path": "/assets/utensils-z0ge6tph.js",
+          "size": 698
+        },
+        {
+          "path": "/assets/index.esm-Gyn9k6St.js",
+          "size": 690
+        },
+        {
+          "path": "/assets/demoWorld-rRxCF33S.js",
+          "size": 649
+        },
+        {
+          "path": "/assets/store-Braweazk.js",
+          "size": 530
+        },
+        {
+          "path": "/assets/sun-B6wXRru5.js",
+          "size": 504
+        },
+        {
+          "path": "/assets/mic-Cc6KLryn.js",
+          "size": 404
+        },
+        {
+          "path": "/assets/plus-BUn642_I.js",
+          "size": 326
+        },
+        {
+          "path": "/assets/map-pin-BCdYzX10.js",
+          "size": 291
+        },
+        {
+          "path": "/assets/message-circle-QHkygPkM.js",
+          "size": 273
+        },
+        {
+          "path": "/assets/photos--RKwK1TR.js",
+          "size": 239
+        },
+        {
+          "path": "/assets/user-round-BbeZ8Vn6.js",
+          "size": 233
+        },
+        {
+          "path": "/assets/arrow-up-DJaxKH4E.js",
+          "size": 194
+        },
+        {
+          "path": "/assets/chevron-down-BQw7biV0.js",
+          "size": 160
+        },
+        {
+          "path": "/assets/check-9U40UkHX.js",
+          "size": 156
+        },
+        {
+          "path": "/assets/locallyMade-Dn6CuN0R.js",
+          "size": 136
+        }
+      ]
+    },
+    "cachingAudit": {
+      "immutableCount": 45,
+      "noStoreCount": 6,
+      "htmlCacheControl": "no-store",
+      "jsCssCacheControlSummary": [
+        "public,max-age=3600,immutable"
+      ]
+    }
+  }
+}
