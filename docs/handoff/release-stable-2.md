@@ -7,6 +7,52 @@ conflicts resolved before the next apply. Screenshots: incoming version (one exc
 every PR (`backend/scripts/export_contract.py`, then `openapi-typescript`), never hand-merged.
 Handoff markdown from every PR is kept.
 
+## Landed on main (`release/stable-2-main`)
+
+The 15 release commits were replayed onto `origin/main` (`git rebase --onto origin/main 2b8e65a`),
+which already had stable-1 (#37) with its CI fixes and #41 (instant customer answers). main then
+gained #46 (voice and visuals in sync, customer content in the customer's language), merged in.
+
+- **Grow**: main's real RescueTile and MorningBrief stay, with the playbook ordering and the
+  payments and guide cards. Rescue, the morning brief and Asked nearby all live on Grow; S9 passes
+  (phone and desktop, light and dark).
+- **Customer ask**: #41's instant local results and the streamed answer stay; the search-engine
+  ranking, Maps grounding and recommendations are layered on top. The instant answer carries the
+  area and the engine, so engine-ranked shops appear in the first cards.
+- **#46 merge**: one conflict in `CoachScreen.tsx`: release 2's payment-link card plus #46's
+  spoken cards. A coach payment link is a spoken card too, so it appears when the voice reaches it.
+- **Contracts**: `docs/openapi.json` and `src/api/generated.d.ts` regenerated after the rebase and
+  again after the merge (no diff beyond line endings).
+- **Test data**: customer-ask, maps and S12 seed their own shops (unique names, and pins of their
+  own for customer-ask and maps), so reruns on the shared local DB pass. maps selects its pin by
+  keyboard because neighbouring pins from earlier runs can sit on top of it. customer-flow's Today
+  step only requires Today to load (quiet or not depends on the shared DB).
+- **Specs updated for main**: `i18n-content` (#46) checks owner item names inside the menu
+  sections, since Similar nearby repeats them as choices; QA `guide-payments` reaches the chat
+  from the Coach tab after Payments (Back returns to Grow).
+
+### Checks on the merged branch
+
+All browser runs used `--workers=1`, `WEB_PORT=3751`, `API_PORT=3851` (QA: 3752/3852), in the
+foreground.
+
+| Check                                                                   | Result                           |
+| ----------------------------------------------------------------------- | -------------------------------- |
+| Ruff lint / format, mypy                                                | Passed (198 files, 98 sources)   |
+| Backend pytest (full)                                                   | **986 passed, 244 skipped**      |
+| lint, build, hooks, `npx prettier --check .`                            | Passed                           |
+| tests/stories/ (all, phone + desktop)                                   | All passed; skips are by design  |
+| customer-ask, search-engine, recs-events, playbook, analytics, features | 40 passed                        |
+| owner-tools, frontdoors, owner-tabs, customer-chat                      | 50 passed                        |
+| today, voice-everything, voice-sync, i18n-content                       | 47 passed, 2 skipped (after fix) |
+| new-shop, new-shop-inchat, new-shop-voice                               | 57 passed, 15 skipped            |
+| import, bugs-b30-b31                                                    | 48 passed                        |
+| QA guide-payments                                                       | 10 passed (after fix)            |
+
+Notes: the stories were run in chunks. Two first-run failures were fixed and rerun green (maps
+phone dark: pin overlap; i18n-content: duplicate text). One desktop customer-flow test timed out
+on a cold Vite start and passed on rerun (11/11).
+
 ## Per PR: conflicts and resolution
 
 ### 1. #19 `feat/supply-chain`
@@ -195,15 +241,12 @@ same way. S2 is fixed here (spec); S9 is not (see risks).
 
 ## Open risks
 
-- **S9 rescue story fails on stable-1 and here.** stable-1's tab redesign no longer mounts #4's
-  owner Rescue sheet ("Closing-time rescue"), morning brief or "Asked nearby" radar. Grow's Rescue
-  card starts a coach draft instead. Bringing them back is a product decision outside this
-  release.
-- **Test data accumulation.** The dev backend's SQLite DB (`backend/data`) is shared across spec
-  files. After many runs, identical seeded "Courtyard Chai" shops tie at 10 m and the newest can
-  fall outside the capped answer list (`customer-ask`). Light S12 also showed an axe contrast hit
-  on a duplicate-review row. Both pass on a clean DB, and S12 passes on stable-1. Specs should get
-  unique pins or a per-run DB.
+- **Resolved on main: S9 rescue.** main wires the real RescueTile and MorningBrief on Grow, with
+  Asked nearby; S9 passes.
+- **Mostly resolved: test data accumulation.** customer-ask, maps and S12 now seed shops of their
+  own and pass on reruns. The dev backend's SQLite DB (`backend/data`) is still shared across spec
+  files, so other specs that seed identical shops can still meet leftovers; a per-run DB would end
+  this for good.
 - **Grow order with a playbook.** `view.grow` lists every default tool, so with a playbook the
   playbook's order replaces Grow's evening rule (close the day before prep).
 - **Recommendations AI is off by default.** The similar-items model is not created, and the
