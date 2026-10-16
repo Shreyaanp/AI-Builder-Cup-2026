@@ -28,6 +28,7 @@ import structlog
 from pydantic import BaseModel, Field
 
 from .gemini_schema import gemini_schema, parse_reply
+from .money import exponent, to_major
 from .settings import Settings
 
 log = structlog.get_logger()
@@ -133,6 +134,27 @@ def money(minor: int, currency: str) -> str:
     return f"{minor / 100:.2f} {currency}"
 
 
+# Currency symbols for the item and price an owner reads ("Kopi · ₹18.00").
+SYMBOLS = {
+    "INR": "₹",
+    "SGD": "S$",
+    "USD": "$",
+    "JPY": "¥",
+    "KRW": "₩",
+    "THB": "฿",
+    "VND": "₫",
+    "PHP": "₱",
+    "MYR": "RM",
+    "IDR": "Rp",
+}
+
+
+def price_text(minor: int, currency: str) -> str:
+    amount = to_major(minor, currency)
+    symbol = SYMBOLS.get(currency)
+    return f"{symbol}{amount:,.{exponent(currency)}f}" if symbol else f"{amount:.2f} {currency}"
+
+
 def strangers(a: dict[str, Any], b: dict[str, Any]) -> bool:
     """Shops of different owners (one owner with two shops may reuse their own photos)."""
     return not set(a.get("owners") or []) & set(b.get("owners") or [])
@@ -161,6 +183,7 @@ def scan(shops: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
                             f"Same phone as {two['name']}",
                             one.get("phone", ""),
                             other_id=two["id"],
+                            other_name=two["name"],
                         )
                     )
             if any(
@@ -170,7 +193,12 @@ def scan(shops: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
             ):
                 for one, two in pair:
                     found[one["id"]].append(
-                        reason("shared_photos", f"Same photo as {two['name']}", other_id=two["id"])
+                        reason(
+                            "shared_photos",
+                            f"Same photo as {two['name']}",
+                            other_id=two["id"],
+                            other_name=two["name"],
+                        )
                     )
             mine = {item_key(p["name"]): p["price"] for p in shop.get("products", [])}
             theirs = {item_key(p["name"]): p["price"] for p in other.get("products", [])}
@@ -184,6 +212,7 @@ def scan(shops: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
                                 f"{len(same)} items and prices identical to {two['name']}",
                                 str(len(same)),
                                 other_id=two["id"],
+                                other_name=two["name"],
                             )
                         )
     for shop in real:
@@ -211,8 +240,10 @@ def price_reasons(shop: dict[str, Any], shops: Iterable[dict[str, Any]]) -> list
     for product in products:
         price = product["price"]
         label = f"{product['name']} at {money(price, currency)}"
+        # The owner and reviewer read the item and price in their own language: no English words.
+        shown = f"{product['name']} · {price_text(price, currency)}"
         if price <= 0:
-            reasons.append(reason("impossible_price", f"{label}: zero or below", label))
+            reasons.append(reason("impossible_price", f"{label}: zero or below", shown))
             continue
         others = elsewhere.get(item_key(product["name"]), [])
         if len(others) >= 3:
@@ -222,7 +253,7 @@ def price_reasons(shop: dict[str, Any], shops: Iterable[dict[str, Any]]) -> list
                     reason(
                         "impossible_price",
                         f"{label}; usually about {money(int(median), currency)}",
-                        label,
+                        shown,
                     )
                 )
                 continue
@@ -231,7 +262,7 @@ def price_reasons(shop: dict[str, Any], shops: Iterable[dict[str, Any]]) -> list
                 reason(
                     "impossible_price",
                     f"{label}; the shop's other items are about {money(int(own_median), currency)}",
-                    label,
+                    shown,
                 )
             )
     return reasons

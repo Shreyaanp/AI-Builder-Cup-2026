@@ -244,6 +244,10 @@ def add_flag(
         return None
     signature = sorted(reason["rule"] + ":" + reason.get("detail", "") for reason in reasons)
     if earlier and earlier.get("signature") == signature:
+        if earlier.get("reasons") != reasons:
+            # Same flag, same decision; the stored words catch up (e.g. the other shop's name
+            # a reviewer's own language needs).
+            store.put(REVIEW_KIND, key, QUEUE, earlier["created"], {**earlier, "reasons": reasons})
         return key if earlier.get("status") == "open" else None
     store.put(
         REVIEW_KIND,
