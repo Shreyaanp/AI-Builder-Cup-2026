@@ -990,7 +990,9 @@ export default function PublicShop({ id }: { id: string }) {
           needed={shop.stamps_needed ?? 8}
         />
       )}
-      <ShopStamp shop={{ id, name: shop.name, category: shop.category, demo: shop.demo }} />
+      {stampsEnabled && (
+        <ShopStamp shop={{ id, name: shop.name, category: shop.category, demo: shop.demo }} />
+      )}
       {stampsEnabled && <ShopGames shop={id} />}
       {!stale && <BackInStock shop={id} products={shop.products} />}
       {stampsEnabled && <BadgeRow shop={id} />}
