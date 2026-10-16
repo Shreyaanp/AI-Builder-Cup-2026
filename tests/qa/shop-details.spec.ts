@@ -1,12 +1,12 @@
 import { test, expect, owner, enter, confirm, audit, tamil } from './support.js'
-import { gpsBoardPath, share, closeSheet } from '../stories/support.js'
+import { createShop, editShopDetails, gpsBoardPath, share, closeSheet } from '../stories/support.js'
 
 test('hours, custom payment and delivery are reviewed then appear on the shared QR page', async ({
   page,
 }) => {
   await enter(page)
-  await page.getByRole('button', { name: 'Add my shop' }).click()
-  await page.getByLabel('Shop name').fill('QA hours and facts')
+  await createShop(page, 'name: QA hours and facts')
+  await editShopDetails(page)
   await page.getByLabel('Address or area').fill('Indiranagar, Bengaluru')
   await page.getByLabel('Set hours by weekday').check()
   await page.getByLabel('Opens', { exact: true }).fill('07:00')

@@ -1,6 +1,18 @@
 import type { Copy } from '../strings'
 
 export const th: Copy = {
+  newShopMode: 'ร้านใหม่',
+  newShopReady: 'ร้านใหม่ของคุณพร้อมแล้ว',
+  newShopReadyBody: 'ตอนนี้คุณกำลังจัดการร้านใหม่ แชร์หน้าสำหรับลูกค้าเมื่อพร้อม',
+  newShopContinue: 'จัดการร้านต่อ',
+  useCurrentLocation: 'ใช้ตำแหน่งปัจจุบันของฉัน',
+  locationReason: 'อยู่ที่ร้านไหม? อนุญาตตำแหน่งเพื่อปักหมุด คุณจะได้ตรวจสอบก่อนบันทึก',
+  locating: 'กำลังค้นหาตำแหน่ง…',
+  locationDenied: 'ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง พิมพ์ที่อยู่หรือใช้รูปที่มี GPS แทนได้',
+  locationFailed: 'ค้นหาตำแหน่งไม่ได้ ลองอีกครั้ง พิมพ์ที่อยู่ หรือใช้รูปที่มี GPS',
+  yourLocation: 'ตำแหน่งของคุณ',
+  description: 'คำอธิบาย',
+  locationAccuracy: (m: string) => `ภายใน ${m} ม.`,
   installApp: 'ติดตั้งแอป',
   installIos: 'ใน Safari แตะแชร์ → เพิ่มไปยังหน้าจอโฮม แล้วแตะเพิ่ม',
   installUnavailable: 'ยังติดตั้งไม่ได้ ลองใช้เมนูติดตั้งของเบราว์เซอร์ หรือใช้เว็บแอปต่อไป',
@@ -238,7 +250,6 @@ export const th: Copy = {
   notProvided: 'ยังไม่ระบุ',
   stock: 'สต็อก',
   shopEmptyTitle: 'มาเพิ่มร้านของคุณกันค่ะ',
-  shopEmptyBody: 'เริ่มจากรูปป้ายร้านหรือกรอกข้อมูลเอง',
   addShop: 'เพิ่มข้อมูลร้าน',
   startPhoto: 'เริ่มจากรูป',
   editDetails: 'แก้ไขข้อมูล',

@@ -5,10 +5,15 @@ from app.tts import best_voice, language_for, speakable
 from tests.test_photos import app, join  # noqa: F401  (fixture + consent helper)
 
 VOICES = [
-    ("en-US-Standard-A", ["en-US"]),
-    ("en-US-Chirp3-HD-Achernar", ["en-US"]),
-    ("ms-MY-Wavenet-A", ["ms-MY"]),
-    ("ms-MY-Standard-A", ["ms-MY"]),
+    ("en-US-Standard-A", ["en-US"], "MALE"),
+    ("en-US-Chirp3-HD-Puck", ["en-US"], "MALE"),
+    ("en-US-Chirp3-HD-Aoede", ["en-US"], "FEMALE"),
+    ("en-US-Chirp3-HD-Achernar", ["en-US"], "FEMALE"),
+    ("ms-MY-Wavenet-A", ["ms-MY"], "FEMALE"),
+    ("ms-MY-Wavenet-B", ["ms-MY"], "MALE"),
+    ("ms-MY-Standard-A", ["ms-MY"], "FEMALE"),
+    ("ta-IN-Wavenet-B", ["ta-IN"], "MALE"),
+    ("ta-IN-Standard-A", ["ta-IN"], "FEMALE"),
 ]
 
 
@@ -38,9 +43,12 @@ def test_language_follows_the_reply_script_then_the_app() -> None:
     assert language_for("Kopi sold out", "xx") == "en-US"
 
 
-def test_best_voice_prefers_chirp_then_wavenet() -> None:
+def test_best_voice_is_the_chosen_female_voice_at_the_best_tier() -> None:
     assert best_voice(VOICES, "en-US") == "en-US-Chirp3-HD-Achernar"
+    assert best_voice(VOICES, "en-US", "Aoede") == "en-US-Chirp3-HD-Aoede"
     assert best_voice(VOICES, "ms-MY") == "ms-MY-Wavenet-A"
+    # A tier with only male voices gives way to a female voice of a lower tier.
+    assert best_voice(VOICES, "ta-IN") == "ta-IN-Standard-A"
     assert best_voice(VOICES, "fr-FR") is None
 
 

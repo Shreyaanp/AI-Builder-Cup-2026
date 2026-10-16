@@ -1,6 +1,19 @@
 import type { Copy } from '../strings'
 
 export const id: Copy = {
+  newShopMode: 'Toko baru',
+  newShopReady: 'Toko baru Anda sudah siap',
+  newShopReadyBody: 'Anda kini mengelola toko baru. Bagikan halaman pelanggan saat siap.',
+  newShopContinue: 'Lanjutkan dengan toko saya',
+  useCurrentLocation: 'Gunakan lokasi saya saat ini',
+  locationReason:
+    'Di toko? Izinkan akses lokasi untuk menempatkan pin. Anda akan meninjaunya sebelum menyimpan.',
+  locating: 'Mencari lokasi Anda…',
+  locationDenied: 'Akses lokasi ditolak. Ketik alamat atau gunakan foto dengan GPS.',
+  locationFailed: 'Lokasi tidak ditemukan. Coba lagi, ketik alamat, atau gunakan foto dengan GPS.',
+  yourLocation: 'Lokasi Anda',
+  description: 'Deskripsi',
+  locationAccuracy: (m: string) => `dalam ${m} m`,
   installApp: 'Instal aplikasi',
   installIos: 'Di Safari, ketuk Bagikan → Tambahkan ke Layar Utama, lalu ketuk Tambah.',
   installUnavailable:
@@ -247,7 +260,6 @@ export const id: Copy = {
   notProvided: 'Belum diisi',
   stock: 'Stok',
   shopEmptyTitle: 'Tambahkan toko Anda',
-  shopEmptyBody: 'Mulai dari foto papan toko atau isi detail sendiri.',
   addShop: 'Tambah info toko',
   startPhoto: 'Mulai dari foto',
   editDetails: 'Edit detail',

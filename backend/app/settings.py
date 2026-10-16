@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     maps_browser_key: SecretStr | None = None
     google_text_model: str = ""
     google_live_model: str = ""
+    # One voice for the whole app (owner choice, 16 Oct): Gemini Live and Cloud TTS (Chirp 3 HD)
+    # share these names; other TTS tiers fall back to a female voice.
+    voice_name: str = "Achernar"
     google_cloud_project: str = ""
     gemini_backend: Literal["vertex", "api_key"] = "vertex"
     google_cloud_location: str = "global"

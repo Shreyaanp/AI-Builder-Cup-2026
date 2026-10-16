@@ -6,6 +6,8 @@ For every design or UI change, read `.agents/skills/material-design-3-ui/SKILL.m
 
 Also apply `.agents/skills/web-interface-guidelines/SKILL.md` (Vercel rules: forms, focus, motion, content states, theming) to every UI change, and use `.agents/skills/performance`, `core-web-vitals`, `best-practices` and `web-quality-audit` for performance, PWA and security work. When rules conflict, Material 3 decides visual/component choices; the web guidelines decide web mechanics (keyboard, forms, motion properties, safe areas, performance). All are pinned copies (see each SKILL.md for source and commit).
 
+For every user-facing change also apply the Chalkboard house skills: `.agents/skills/content-design` (plain words, text caps, no TMI), `progressive-disclosure` (one primary action, details on demand, guided journeys), `personalization` (adapt to the user and business type, remember, explain picks), `motion-and-delight` (shared motion tokens, one moment at a time) and `ux-review-checklist` (run before every PR and record the result in the PR description).
+
 - This is a business-information and coaching assistant, not a marketplace or health app.
 - Latest backend choice is Python 3.13 + FastAPI + Google ADK, with React/TypeScript frontend. Read `docs/PYTHON_RULES.md` for backend changes. Keep dependency lockfiles and regenerate API types after schema changes.
 - Keep the independent oGoogle AI identity; the Pixel health/coach reference informs pacing and hierarchy, not affiliation.
