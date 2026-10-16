@@ -343,8 +343,8 @@ class MapsService:
             nearest = min(AREAS, key=lambda area: distance(lat, lng, *AREAS[area]))
             label = (
                 f"Near {nearest}"
-                if distance(lat, lng, *AREAS[nearest]) <= 50000
-                else "Nearby"
+                if distance(lat, lng, *AREAS[nearest]) <= 5000
+                else "Your current location"
             )
             pin: dict[str, Any] = {
                 "lat": lat,
