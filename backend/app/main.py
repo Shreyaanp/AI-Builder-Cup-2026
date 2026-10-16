@@ -45,6 +45,7 @@ from .google_profile import BusinessProfileAdapter, SimulatedBusinessProfile
 from .google_sim_routes import router as google_sim_router
 from .imports import ColumnMapper
 from .limits import Lease, RunRegistry, client_ip, enforce_limits, rate_limiter
+from .maps_grounding import AreaGrounding
 from .memory_vectors import (
     ConversationRecall,
     FirestoreRecall,
@@ -162,6 +163,7 @@ def create_app(
         app.state.recap_writer = RecapWriter(settings)
         app.state.speech = Speech(settings)
         app.state.maps = maps_service or MapsService(settings)
+        app.state.grounding = AreaGrounding(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
         app.state.services = Services(
             identity,
