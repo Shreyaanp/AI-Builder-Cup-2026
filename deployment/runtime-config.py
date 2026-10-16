@@ -27,6 +27,17 @@ config = {
     "MODERATION_MODE": "vision",
     # Demand forecast with TimesFM in BigQuery (AI.FORECAST); owner approved, budget alert set.
     "FORECAST_BACKEND": "bigquery",
+    # Till receipts (Expense parser) and supplier invoices (Invoice parser), Gemini as fallback.
+    # Processors live in `us`: the Expense parser is not offered in asia-south1.
+    "DOCUMENT_AI_ENABLED": "true",
+    "DOCUMENT_AI_LOCATION": "us",
+    "DOCUMENT_AI_RECEIPT_PROCESSOR": "c55114827549fb20",
+    "DOCUMENT_AI_INVOICE_PROCESSOR": "cb3082fc49117ceb",
+    # Owner analytics from BigQuery (chalkboard_analytics.shop_daily), exported nightly by
+    # Cloud Scheduler job chalkboard-analytics-export with this service account's OIDC token.
+    "ANALYTICS_BACKEND": "bigquery",
+    "ANALYTICS_EXPORT_CALLER": f"ogoogle-analytics-scheduler@{target['projectId']}.iam.gserviceaccount.com",
+    "ANALYTICS_EXPORT_AUDIENCE": origin,
     "MEDIA_BUCKET": "ichiropractic-shop-photos",
     "GOOGLE_CLOUD_PROJECT": target["projectId"],
     "FIRESTORE_DATABASE": target["firestoreDatabase"],

@@ -754,6 +754,13 @@ class FirestoreMerchantStore:
 
         return cast(list[str], run(self.client.transaction()))
 
+    def analytics_shops(self, limit: int) -> list[tuple[str, str]]:
+        return [
+            (str(data["owners"][0]), snapshot.id)
+            for snapshot in self.businesses.select(["owners", "deleting"]).limit(limit).stream()
+            if (data := snapshot.to_dict() or {}).get("owners") and not data.get("deleting")
+        ]
+
     def recap_signals(self, uid: str, bid: str) -> dict[str, Any]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
 
