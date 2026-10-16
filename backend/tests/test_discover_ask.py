@@ -166,3 +166,24 @@ def test_a_first_chip_is_a_filter_not_a_keyword(store: MerchantRepository, tmp_p
         made = client.post("/api/v1/discover/ask", json=local).json()
         assert made["intent"]["locally_made"]
         assert all(p["id"] != bid for g in made["groups"] for p in g["places"])  # not said
+
+
+def test_ask_stream_emits_instant_and_complete_events(
+    store: MerchantRepository, tmp_path: Path
+) -> None:
+    bid = shared_shop(store)
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        app.state.merchant = store
+        response = client.post(
+            "/api/v1/discover/ask",
+            json={"q": "kopi", **TIONG_BAHRU},
+            headers={"Accept": "text/event-stream"},
+        )
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers["content-type"]
+        text = response.text
+        assert "event: instant" in text
+        assert "event: complete" in text
+        assert bid in text
+
