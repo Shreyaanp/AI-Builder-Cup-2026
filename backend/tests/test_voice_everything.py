@@ -395,3 +395,33 @@ def test_closed_on_reaches_customers(tmp_path: Path):
     )
     store.commit("bob", update["id"], update["digest"])
     assert store.public_shop(bid)["closed_on"] == today
+
+
+# --- Customer commands ---------------------------------------------------------------------
+
+
+def test_customer_commands_answer_without_a_model(tmp_path: Path):
+    from app.discover_ask import customer_command
+    from tests.test_discover import settings as discover_settings
+    from tests.test_discover import shared_shop
+
+    store = MerchantStore(str(tmp_path / "shops.sqlite3"))
+    bid = shared_shop(store)
+    shops = store.shared_shops()
+    here = (1.2847, 103.832, 4000)
+    assert customer_command("Show my stamps", shops, *here).kind == "my_stamps"
+    directions = customer_command("Directions to Fixture Kopi Shop", shops, *here)
+    assert directions.shop_id == bid and "destination=1.2847,103.832" in directions.maps_url
+    assert customer_command("follow the fixture kopi shop", shops, *here).kind == "follow"
+    ask = customer_command("Ask Fixture Kopi if they have kaya toast?", shops, *here)
+    assert ask.kind == "ask_owner" and ask.question == "if they have kaya toast"
+    # Unknown shops and ordinary searches stay searches.
+    assert customer_command("Directions to Nowhere Cafe", shops, *here) is None
+    assert customer_command("cheap kopi near me", shops, *here) is None
+    app = create_app(discover_settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        app.state.merchant = store
+        found = client.post(
+            "/api/v1/discover/ask", json={"q": "my stamps", "lat": 1.2847, "lng": 103.832}
+        ).json()
+        assert found["mode"] == "command" and found["command"]["kind"] == "my_stamps"

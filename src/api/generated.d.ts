@@ -2069,10 +2069,11 @@ export interface components {
              * Mode
              * @enum {string}
              */
-            mode: "ai" | "keywords";
+            mode: "ai" | "keywords" | "command";
             /** Groups */
             groups: components["schemas"]["Group"][];
             personal?: components["schemas"]["Personal"] | null;
+            command?: components["schemas"]["Command"] | null;
         };
         /** AvailabilityRequest */
         AvailabilityRequest: {
@@ -2333,6 +2334,26 @@ export interface components {
              */
             new_shop: boolean;
             new_shop_draft?: components["schemas"]["NewShopDraft"] | null;
+        };
+        /**
+         * Command
+         * @description A customer command answered at once, by voice or text: my stamps, directions to a shop,
+         *     follow a shop, ask a shop's owner. Following and asking still happen on the shop's page.
+         */
+        Command: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "my_stamps" | "directions" | "follow" | "ask_owner";
+            /** Shop Id */
+            shop_id?: string | null;
+            /** Shop Name */
+            shop_name?: string | null;
+            /** Maps Url */
+            maps_url?: string | null;
+            /** Question */
+            question?: string | null;
         };
         /** ConsentRequest */
         ConsentRequest: {
