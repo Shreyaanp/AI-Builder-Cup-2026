@@ -339,6 +339,7 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
             }}
             style={{ transform: `translate(${spot.x}px, ${spot.y}px)` }}
           >
+            <circle r={24} fill="transparent" pointerEvents="all" />
             {pin.open !== null && (
               <circle
                 r={r + 3.5}
