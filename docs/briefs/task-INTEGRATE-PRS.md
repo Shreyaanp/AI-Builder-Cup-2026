@@ -22,7 +22,8 @@ time, each in its own checkout of the branch (git worktree or switch), never for
    trailers. Ports WEB_PORT=3677 API_PORT=3777, RECALL_PATH=data/test-vectors; if browser tests time
    out from machine load, rerun those files alone. Report per PR: conflicts resolved, checks run, push.
 
-5. Regression on main 16 Oct 04:00 (after PR #3): 172/176. Investigate and fix (app if real, test if
+5. SKIP THIS ITEM: Antigravity owns it (branch fix/regression-items, 16 Oct 07:55).
+   Regression on main 16 Oct 04:00 (after PR #3): 172/176. Investigate and fix (app if real, test if
    timing): tests/qa onboarding "Tamil owner sheet ... return keyboard focus" (phone), and tests/qa
    shop-details "Share customer page" switch not checked (phone). The two "Continue local preview"
    timeouts were machine load; rerun alone to confirm.
