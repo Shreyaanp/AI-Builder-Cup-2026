@@ -4,8 +4,8 @@ import { formatPrice } from '../src/features/v1/format.ts'
 test.describe('Customer audit quick fixes', () => {
   test('Fix 1: Language picker is accessible in landing and explore headers', async ({ page }) => {
     // Landing page
-    await page.goto('/')
-    const landingPicker = page.getByRole('button', { name: 'Language' }).first()
+    await page.goto('/?app=landing')
+    const landingPicker = page.getByRole('button', { name: /Language/i }).first()
     await expect(landingPicker).toBeVisible()
     await landingPicker.click()
     await expect(page.getByRole('menuitem', { name: 'हिन्दी' })).toBeVisible()
@@ -14,7 +14,7 @@ test.describe('Customer audit quick fixes', () => {
 
     // Explore front door
     await page.goto('/explore/?app=customer')
-    const explorePicker = page.getByRole('button', { name: 'Language' }).first()
+    const explorePicker = page.getByRole('button', { name: /Language/i }).first()
     await expect(explorePicker).toBeVisible()
     await explorePicker.click()
     await expect(page.getByRole('menuitem', { name: 'हिन्दी' })).toBeVisible()
@@ -59,12 +59,13 @@ test.describe('Customer audit quick fixes', () => {
 
   test('Fix 7: Landing story reflects active locale and currency', async ({ page }) => {
     await page.addInitScript(() => {
-      localStorage.setItem('chalkboard.locale', 'hi')
+      localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'hi' }))
     })
     await page.goto('/?app=landing')
-    // Hindi story has ₹ and localized bubble copy
-    await expect(page.getByText('चाय अब ₹18 की है, समोसा खत्म हो गया').first()).toBeVisible()
-    await expect(page.getByText(/Sharma Chai/).first()).toBeVisible()
+    // Hindi story has ₹ and localized copy
+    await expect(page.getByText('सहेजने से पहले जाँचें').first()).toBeVisible()
+    await expect(page.getByText('पुष्टि करें और सहेजें').first()).toBeVisible()
+    await expect(page.getByText(/₹ 18/).first()).toBeVisible()
   })
 
   test('Fix 8: 200% text zoom does not overflow passport stamp book or occlude shop menu', async ({
