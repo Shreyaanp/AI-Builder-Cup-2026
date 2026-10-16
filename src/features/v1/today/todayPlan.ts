@@ -132,7 +132,9 @@ export function todayPlan(input: TodayInput): TodayPlan {
     : null
   // Without facts yet (loading or unavailable), a shop with no menu is still clearly day one.
   const fresh = facts ? !pulse && !forecast : products.length === 0
-  const dayOne = fresh && steps.length ? { step: steps[0]! } : null
+  // Reminders (photo, face check) never make a set-up shop look like day one again.
+  const setup = steps.filter((step) => !REMINDERS.includes(step))
+  const dayOne = fresh && setup.length ? { step: setup[0]! } : null
 
   const all: Need[] = []
   if (unread) all.push({ id: 'reply', kind: 'reply', count: unread })

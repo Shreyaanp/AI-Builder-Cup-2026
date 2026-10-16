@@ -86,16 +86,16 @@ test('the customer page follows the customer’s phone language', async ({ page,
   await createShop(page, 'name: Ah Ming Kopi')
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Customer page/ }).click()
-  const sharing = page.getByRole('switch', { name: 'Share customer page' })
-  await sharing.click()
-  await expect(sharing).toBeChecked()
+  // Onboarding put the shop live by itself: the page is already shared.
+  await expect(page.getByRole('switch', { name: 'Share customer page' })).toBeChecked()
   const url = await page.getByRole('link', { name: 'Open page' }).getAttribute('href')
 
   const customer = await browser.newContext({ locale: 'ja-JP' })
   const customerPage = await customer.newPage()
   await customerPage.goto(new URL(url!, page.url()).toString())
   await expect(customerPage.getByRole('heading', { name: 'Ah Ming Kopi' })).toBeVisible()
-  await expect(customerPage.getByText('価格はまだ追加されていません。')).toBeVisible()
+  // No menu yet (onboarding never asks it): customers can chat with the shop meanwhile.
+  await expect(customerPage.getByTestId('menu-coming-soon')).toContainText('メニューは準備中です')
   expect(await customerPage.evaluate(() => document.documentElement.lang)).toBe('ja')
   await customer.close()
 })
