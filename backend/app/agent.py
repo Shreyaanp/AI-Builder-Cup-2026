@@ -359,6 +359,15 @@ def new_shop_call(question: str, ctx: Any) -> types.Part | None:
         args.setdefault("name", "")
         return types.Part(function_call=types.FunctionCall(name="propose_business", args=args))
     if fields:
+        # "Vegetarian options: yes" (the review's "Add dietary info" starts this answer).
+        veg = re.search(r"\bvegetarian(?: options)?\b\W*(yes|no)\b", question, re.I)
+        if veg:
+            return types.Part(
+                function_call=types.FunctionCall(
+                    name="propose_customer_facts",
+                    args={"vegetarian_options": veg[1].casefold() == "yes"},
+                )
+            )
         for key, pattern in (
             ("halal", r"\bhalal\b\W*(yes|no|not_stated)\b"),
             ("delivery", r"\bdelivery\b\W*([^;\n]+)"),
