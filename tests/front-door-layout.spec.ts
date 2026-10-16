@@ -126,6 +126,10 @@ for (const scheme of ['light', 'dark'] as const)
     const chips = page.getByRole('list', { name: 'Ask about anything nearby' }).getByRole('button')
     expect(await chips.count()).toBeGreaterThanOrEqual(3)
     expect(await chips.count()).toBeLessThanOrEqual(4)
+    // Measure where the chips land, not mid deal-in.
+    await page
+      .getByRole('list', { name: 'Ask about anything nearby' })
+      .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)))
     const viewport = page.viewportSize()!
     const field = (await page.getByRole('search').boundingBox())!
     expect(field.y).toBeGreaterThan(viewport.height / 2)
