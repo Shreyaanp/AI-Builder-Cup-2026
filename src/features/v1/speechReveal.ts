@@ -62,6 +62,8 @@ interface Cue {
   /** Words that name the card (a chart title, a shop name): the voice saying one shows it. */
   words: (string | RegExp)[]
   /** Where the voice names it, once found in the transcript. */
+  named?: number
+  /** The end of the sentence that names it: the card shows as that sentence is said. */
   mention?: number
 }
 
@@ -190,20 +192,30 @@ export class SpeechTimeline {
     const end = this.done(now)
     let ran = 0
     this.cues = this.cues.filter((cue) => {
-      if (cue.mention === undefined)
+      if (cue.named === undefined)
         for (const word of cue.words) {
           if (typeof word === 'string') {
             const at = lower.indexOf(word, cue.anchor)
-            if (at >= 0) cue.mention = at + word.length
+            if (at >= 0) cue.named = at + word.length
           } else {
             const found = word.exec(this.text.slice(cue.anchor))
-            if (found) cue.mention = cue.anchor + found.index + found[0].length
+            if (found) cue.named = cue.anchor + found.index + found[0].length
           }
-          if (cue.mention !== undefined) break
+          if (cue.named !== undefined) break
         }
+      if (cue.named !== undefined && cue.mention === undefined) {
+        // Whole sentences stay together: "snap a photo of your board." then the camera.
+        const rest = this.text.slice(cue.named).search(SENTENCE_END)
+        if (rest >= 0) cue.mention = cue.named + rest + 1
+        else if (this.finished) cue.mention = this.text.length
+      }
       // Named: when the name is said. Otherwise: once the voice has moved past where the card
       // arrived (it is talking about it), or at the end of the turn.
-      const reached = end || (cue.mention !== undefined ? shown >= cue.mention : shown > cue.anchor)
+      const reached =
+        end ||
+        (cue.named !== undefined
+          ? cue.mention !== undefined && shown >= cue.mention
+          : shown > cue.anchor)
       if (reached) {
         this.releasing = cue.mention ?? cue.anchor
         cue.run()

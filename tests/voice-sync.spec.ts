@@ -59,10 +59,10 @@ test.describe('speech timeline (unit)', () => {
     // The voice moved past where the chart arrived: it is talking about it.
     line.release(1500)
     expect(shown).toEqual(['chart'])
-    // The shop card waits for its name.
-    line.release(2000)
-    expect(shown).toEqual(['chart'])
+    // The shop card waits for the sentence that names it.
     line.release(2700)
+    expect(shown).toEqual(['chart'])
+    line.release(3100)
     expect(shown).toEqual(['chart', 'shop'])
   })
 
@@ -311,4 +311,69 @@ test.describe('reduced motion', () => {
     expect(two - one).toBeGreaterThan(600)
     await page.screenshot({ path: `docs/stories/sync-reduced-${info.project.name}.png` })
   })
+})
+
+test('onboarding: the camera opens when the coach says "photo", not when the text arrives', async ({
+  page,
+}, info) => {
+  test.setTimeout(90_000)
+  await page.route('**/*', (route) =>
+    ['127.0.0.1', 'localhost'].includes(new URL(route.request().url()).hostname)
+      ? route.fallback()
+      : route.abort(),
+  )
+  await page.context().grantPermissions(['microphone'])
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      const audio = new AudioContext()
+      const destination = audio.createMediaStreamDestination()
+      const quiet = audio.createGain()
+      quiet.gain.value = 0
+      const tone = audio.createOscillator()
+      tone.connect(quiet).connect(destination)
+      tone.start()
+      return destination.stream
+    }
+  })
+  // The offline server runs the conversation; the test plays the coach's voice into it.
+  let socket: WebSocketRoute | null = null
+  await page.routeWebSocket('**/api/v1/voice*', (route) => {
+    socket = route
+    const server = route.connectToServer()
+    server.onMessage((message) => route.send(message))
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await page.getByLabel('I agree to the Terms').check()
+  await page.getByLabel('I have read the Privacy Notice').check()
+  await page.getByRole('button', { name: 'Agree and continue' }).click()
+  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await page.getByRole('button', { name: 'Let’s begin' }).click()
+  await expect(page.getByRole('log')).toContainText('What is your business called?')
+
+  const camera = page.getByTestId('camera-card')
+  const said =
+    'Lovely, masala chai! When you are ready, snap a photo of your menu board. I will read the prices.'
+  const start = Date.now()
+  socket!.send(coachAudio(5))
+  socket!.send(JSON.stringify({ kind: 'output_transcript', text: said }))
+  // The words are on their way; the camera waits for "…snap a photo of your menu board."
+  // (about 3.8 s in).
+  await page.waitForTimeout(1500)
+  await expect(camera).toHaveCount(0)
+  await expect(page.getByTestId('captions')).toContainText('Lovely')
+  await expect(camera).toBeVisible({ timeout: 8_000 })
+  const opened = Date.now() - start
+  expect(opened).toBeGreaterThan(2500)
+  expect(opened).toBeLessThan(5500)
+  socket!.send(JSON.stringify({ kind: 'turn_complete' }))
+  // The sentence that asked for it sits above the camera; the rest of the reply below.
+  const log = page.getByRole('log')
+  await expect(log).toContainText('I will read the prices.', { timeout: 8_000 })
+  const text = (await log.textContent())!
+  const ask = text.indexOf('snap a photo of your menu board.')
+  expect(ask).toBeGreaterThan(0)
+  expect(text.indexOf('Open camera')).toBeGreaterThan(ask)
+  expect(text.indexOf('I will read the prices.')).toBeGreaterThan(text.indexOf('Open camera'))
+  await page.screenshot({ path: `docs/stories/sync-onboarding-camera-${info.project.name}.png` })
 })
