@@ -11,7 +11,7 @@ import {
   useTheme,
 } from '@mui/material'
 import { gsap } from 'gsap'
-import { Check, CloudRain, Gift, Leaf, Trophy } from 'lucide-react'
+import { Check, Gift, Leaf, Trophy } from 'lucide-react'
 import { useChalkTimeline, dealIn } from '../../design/chalkMotion'
 import { HAND_FONT } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
@@ -27,6 +27,15 @@ import { fill, requirementText, usePassportCopy } from './copy'
 import type { PassportStrings } from './copy'
 import { setPassport, usePassport, where } from './store'
 import type { Board, PassportView, Quest } from './store'
+import { CollectionSets } from './games/CollectionSets'
+import { CoopGoal } from './games/CoopGoal'
+import { NextRewardLine } from './games/GamesCard'
+import { useGamesCopy } from './games/copy'
+import { HowItWorks } from './games/HowItWorks'
+import { ScratchCard } from './games/ScratchCard'
+import type { ScratchView } from './games/api'
+import { StreakFlame } from './games/StreakFlame'
+import { WonPerks } from './games/WonPerks'
 
 const SLOTS = 12
 
@@ -43,7 +52,10 @@ function lastPlace(): { lat: number; lng: number } | null {
   }
 }
 
-/** The neighbourhood passport: level, weekly streak, stamp book, quests, rescues, perks, board. */
+/**
+ * The neighbourhood passport: level, the next named reward, scratch cards, the weekly streak,
+ * the neighbourhood goal, stamp book, collection sets, quests, rescues, perks and the board.
+ */
 export function Passport({ initialLocation }: { initialLocation?: CustomerLocation | null }) {
   const t = usePassportCopy()
   const roles = useTheme().material
@@ -95,9 +107,16 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
       {view && (
         <Stack spacing={5} sx={{ mt: 3 }}>
           <LevelCard view={view} />
-          <StreakRow view={view} />
+          <NextRewardLine view={view} />
+          <PendingScratch view={view} place={place} onSignIn={() => setSignIn(true)} />
+          <StreakFlame view={view} place={place} />
+          {view.games?.coop && (
+            <CoopGoal coop={view.games.coop} signedIn={signedIn} place={place} />
+          )}
           <StampBook view={view} />
-          <Quests quests={view.quests} />
+          {view.games && <CollectionSets sets={view.games.sets} />}
+          {/* Festival trails live with the collection sets. */}
+          <Quests quests={view.quests.filter((quest) => quest.kind !== 'festival')} />
           <Impact view={view} />
           <Perks view={view} />
           <Leaderboard view={view} place={place} onSignIn={() => setSignIn(true)} />
@@ -190,76 +209,65 @@ function LevelCard({ view }: { view: PassportView }) {
   )
 }
 
-function StreakRow({ view }: { view: PassportView }) {
-  const t = usePassportCopy()
+/**
+ * Scratch cards waiting to be scratched, one at a time. The card being scratched stays on screen
+ * after the passport refreshes (which drops it from the waiting list) until the customer moves on.
+ */
+function PendingScratch({
+  view,
+  place,
+  onSignIn,
+}: {
+  view: PassportView
+  place: { lat: number; lng: number } | null
+  onSignIn: () => void
+}) {
+  const t = useGamesCopy()
+  const p = usePassportCopy()
+  const locale = useLocale()
   const theme = useTheme()
-  const roles = theme.material
-  const mint = theme.chalk.mint
-  const labels = {
-    done: t.weekDone,
-    rain: t.weekRain,
-    missed: t.weekMissed,
-    current: t.weekCurrent,
-  }
+  const gold = theme.chalk.sunflower
+  const [shown, setShown] = useState<ScratchView | null>(null)
+  const waiting = view.games?.scratch ?? []
+  const card = shown ?? waiting[0] ?? null
+  if (!view.signed_in)
+    return (
+      <Stack
+        direction="row"
+        sx={{
+          p: 3,
+          gap: 2,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          borderRadius: '20px',
+          border: `2px dashed ${gold.main}`,
+        }}
+      >
+        <Typography variant="bodyMedium" sx={{ flex: '1 1 200px' }}>
+          {t.signInScratch}
+        </Typography>
+        <HowItWorks game="scratch" />
+        <Button variant="outlined" onClick={onSignIn}>
+          {p.signIn}
+        </Button>
+      </Stack>
+    )
+  if (!card) return null
+  const left = waiting.filter((c) => c.id !== card.id).length
   return (
     <Box
       component="section"
-      aria-label={fill(t.streak, { n: view.streak.weeks })}
-      sx={{ p: 4, borderRadius: '20px', bgcolor: roles.surfaceContainerLow }}
+      aria-label={t.scratchTitle}
+      sx={{ p: 4, borderRadius: '24px', bgcolor: theme.material.surfaceContainerLow }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Typography component="h2" variant="titleMedium" sx={{ fontWeight: 700 }}>
-          {fill(t.streak, { n: view.streak.weeks })}
-        </Typography>
-        {view.streak.rain_checks > 0 && (
-          <Chip
-            size="small"
-            icon={<CloudRain size={16} />}
-            label={t.rainCheck}
-            title={t.rainHelp}
-          />
-        )}
-      </Stack>
-      <Box
-        component="ol"
-        aria-label={t.weekRow}
-        sx={{ listStyle: 'none', p: 0, m: 0, mt: 3, display: 'flex', gap: 1.5 }}
-      >
-        {view.streak.row.map((mark, index) => (
-          <Box
-            component="li"
-            key={index}
-            aria-label={labels[mark]}
-            sx={{
-              flex: 1,
-              aspectRatio: '1',
-              maxWidth: 40,
-              borderRadius: '50%',
-              display: 'grid',
-              placeItems: 'center',
-              bgcolor: mark === 'done' ? mint.main : 'transparent',
-              color: mark === 'done' ? mint.onMain : roles.onSurfaceVariant,
-              border:
-                mark === 'done'
-                  ? 'none'
-                  : `2px ${mark === 'current' ? 'dashed' : 'solid'} ${
-                      mark === 'current' ? mint.main : roles.outlineVariant
-                    }`,
-              ...(mark === 'done' && { ...dealIn, '--deal-index': index, '--deal-tilt': '0deg' }),
-            }}
-          >
-            {mark === 'done' ? (
-              <Check size={18} aria-hidden="true" />
-            ) : mark === 'rain' ? (
-              <CloudRain size={16} aria-hidden="true" />
-            ) : null}
-          </Box>
-        ))}
-      </Box>
-      {view.streak.weeks === 0 && view.stamps.length > 0 && (
-        <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
-          {t.newStreak}
-        </Typography>
+      <Typography component="h2" variant="titleLarge" sx={{ mb: 2 }}>
+        {fill(t.scratchWaiting, { n: new Intl.NumberFormat(locale).format(waiting.length || 1) })}
+      </Typography>
+      <ScratchCard key={card.id} card={card} place={place} onOpened={setShown} />
+      {shown && (
+        <Button variant="contained" sx={{ mt: 2 }} onClick={() => setShown(null)}>
+          {left ? t.scratchNext : p.done}
+        </Button>
       )}
     </Box>
   )
@@ -591,6 +599,11 @@ function Perks({ view }: { view: PassportView }) {
   const roles = theme.material
   return (
     <Section title={t.perks}>
+      {(view.games?.won_perks?.length ?? 0) > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <WonPerks perks={view.games?.won_perks ?? []} signedIn={view.signed_in} />
+        </Box>
+      )}
       {view.perks.length ? (
         <Stack spacing={2}>
           {view.perks.map((perk) => (

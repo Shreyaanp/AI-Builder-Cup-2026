@@ -74,7 +74,7 @@ async function myShop(page: Page) {
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await expect(page.getByRole('button', { name: 'Choose shop: Katong Kopi' })).toBeVisible()
-  await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
 }
 
 test('B26: My shop starts with the tiles, no repeated shop name or Draft chip', async ({
@@ -88,7 +88,7 @@ test('B26: My shop starts with the tiles, no repeated shop name or Draft chip', 
   await expect(main.getByText('Draft', { exact: true })).toHaveCount(0)
   await expect(main.getByText('Check pending', { exact: true })).toHaveCount(0)
   // The first visible thing under the top bar is a card (the pending card or the first tile).
-  const top = await page.getByRole('region', { name: 'My shop' }).evaluate((section) => {
+  const top = await page.getByRole('region', { name: 'Shop', exact: true }).evaluate((section) => {
     const visible = Array.from(section.querySelectorAll('*')).find((node) => {
       const box = node.getBoundingClientRect()
       return box.height > 0 && getComputedStyle(node).position !== 'absolute'
@@ -100,7 +100,8 @@ test('B26: My shop starts with the tiles, no repeated shop name or Draft chip', 
   await axe(page)
 })
 
-test('B26: a pending check shows as a small status inside the Readiness tile', async ({ page }) => {
+// The face check is optional and never changes a shop: an old pending status shows nothing.
+test('B26: a legacy pending face check never marks the shop', async ({ page }) => {
   await enter(page)
   await seedShop(page)
   await page.route('**/api/v1/businesses', async (route) => {
@@ -112,9 +113,7 @@ test('B26: a pending check shows as a small status inside the Readiness tile', a
     })
   })
   await myShop(page)
-  const readiness = page.getByRole('button', { name: /^Readiness/ })
-  await expect(readiness.getByText('Check pending', { exact: true })).toBeVisible()
-  await expect(page.getByRole('main').getByText('Check pending', { exact: true })).toHaveCount(1)
+  await expect(page.getByRole('main').getByText('Check pending', { exact: true })).toHaveCount(0)
 })
 
 test('B27: the tile grid sizes to its content at 390, 600 and desktop widths', async ({ page }) => {

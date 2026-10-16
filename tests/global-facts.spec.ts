@@ -1,4 +1,4 @@
-import { createShop, editShopDetails } from './stories/support.js'
+import { createShop, detailsStep, editShopDetails } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
@@ -53,10 +53,10 @@ test('owner reviews custom payments and delivery; customer chips and answers kee
   const name = `Global shop ${Date.now()}`
   await createShop(page, `name: ${name}`)
   await editShopDetails(page)
+  await detailsStep(page, 'Payment')
+  // The region's usual payments are one tap; any other name goes in the field below.
+  await page.getByRole('button', { name: 'UPI', exact: true }).click()
   const payment = page.getByRole('combobox', { name: 'Payment', exact: true })
-  await payment.click()
-  await expect(page.getByRole('option', { name: 'UPI', exact: true })).toBeVisible()
-  await page.getByRole('option', { name: 'UPI', exact: true }).click()
   await payment.fill('paynow')
   await payment.press('Enter')
   await payment.fill('x'.repeat(41))
@@ -65,10 +65,10 @@ test('owner reviews custom payments and delivery; customer chips and answers kee
   await expect(payment).toBeFocused()
   await expect(page.getByRole('dialog', { name: 'Check before saving' })).toHaveCount(0)
   await payment.press('Backspace')
+  await detailsStep(page, 'Delivery')
   const delivery = page.getByRole('combobox', { name: 'Delivery', exact: true })
   await delivery.fill('Swiggy')
   await delivery.press('Enter')
-  await page.getByLabel('Shop name').focus()
   expect(
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
       .violations,

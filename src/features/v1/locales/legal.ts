@@ -67,12 +67,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         ],
       },
     ],
-    BIOMETRIC_NOTICE: [
-      'जाँच वैकल्पिक है और पंजीकरण कभी नहीं रोकती।',
-      'छोटे कैमरा कैप्चर से चेहरे का नमूना बनाकर CKKS होमोमॉर्फिक एन्क्रिप्शन करते हैं। एन्क्रिप्टेड रूप में ही मिलान करके एक व्यक्ति की कई दुकानें पहचानते हैं।',
-      'वीडियो मेमोरी में जाँचकर मिटा देते हैं। मिलान व्यवसाय के मालिक होने का सबूत नहीं; सिर्फ़ मानवीय समीक्षा के लिए भेजता है।',
-      'गोपनीयता टैब से चेहरे का डेटा कभी भी मिटाएँ।',
-    ],
   },
   bn: {
     TERMS: [
@@ -138,12 +132,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
           'গোপনীয়তার যোগাযোগ: প্রকাশ্যে চালুর আগে জানানো হবে',
         ],
       },
-    ],
-    BIOMETRIC_NOTICE: [
-      'যাচাই ঐচ্ছিক, নিবন্ধন কখনও আটকায় না।',
-      'ছোট ক্যামেরা ধারণ থেকে মুখের নমুনা বানিয়ে CKKS হোমোমরফিক এনক্রিপশন করি। শুধু এনক্রিপ্ট করা অবস্থায় মিলিয়ে একজনের বহু দোকান খুঁজি।',
-      'ভিডিও মেমরিতে প্রক্রিয়ার পর মুছে যায়। মিল ব্যবসার মালিকানার প্রমাণ নয়; শুধু মানুষের পর্যালোচনায় পাঠায়।',
-      'গোপনীয়তা ট্যাব থেকে মুখের তথ্য যেকোনো সময় মুছুন।',
     ],
   },
   te: {
@@ -211,12 +199,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         ],
       },
     ],
-    BIOMETRIC_NOTICE: [
-      'ఈ తనిఖీ ఐచ్ఛికం, నమోదు ఎప్పుడూ ఆపదు.',
-      'చిన్న కెమెరా క్యాప్చర్‌ను ముఖ నమూనాగా మార్చి CKKS హోమోమార్ఫిక్ ఎన్‌క్రిప్షన్ చేస్తాం. ఎన్‌క్రిప్ట్ రూపంలోనే పోల్చి ఒకరు అనేక దుకాణాలు నమోదు చేస్తున్నారా చూస్తాం.',
-      'వీడియో మెమరీలో ప్రాసెస్ చేసి తీసేస్తాం. సరిపోలిక వ్యాపార యాజమాన్య రుజువు కాదు; మానవ సమీక్షకు మాత్రమే పంపుతుంది.',
-      'గోప్యత ట్యాబ్‌లో ముఖ డేటా ఎప్పుడైనా తొలగించవచ్చు.',
-    ],
   },
   mr: {
     TERMS: [
@@ -283,12 +265,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         ],
       },
     ],
-    BIOMETRIC_NOTICE: [
-      'तपासणी ऐच्छिक असून नोंदणी कधीही अडवत नाही.',
-      'थोड्या कॅमेरा चित्रणाचा चेहरा नमुना करून CKKS होमोमॉर्फिक कूटबद्धीकरण करतो. फक्त कूटबद्ध रूपात तुलना करून एक व्यक्ती अनेक दुकाने नोंदवते का पाहतो.',
-      'व्हिडिओ मेमरीत तपासून मिटवला जातो. जुळणे व्यवसायाच्या मालकीचा पुरावा नाही; फक्त मानवी तपासणीकडे पाठवते.',
-      'गोपनीयता टॅबमधून चेहऱ्याचा डेटा कधीही मिटवा.',
-    ],
   },
   kn: {
     TERMS: [
@@ -354,12 +330,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
           'ಗೌಪ್ಯತೆ ಸಂಪರ್ಕ: ಸಾರ್ವಜನಿಕ ಬಿಡುಗಡೆಗೆ ಮೊದಲು ತಿಳಿಸಲಾಗುತ್ತದೆ',
         ],
       },
-    ],
-    BIOMETRIC_NOTICE: [
-      'ಈ ಪರಿಶೀಲನೆ ಐಚ್ಛಿಕ; ನೋಂದಣಿಯನ್ನು ಎಂದಿಗೂ ತಡೆಯುವುದಿಲ್ಲ.',
-      'ಚಿಕ್ಕ ಕ್ಯಾಮೆರಾ ಸೆರೆಹಿಡಿತದಿಂದ ಮುಖದ ಮಾದರಿ ಮಾಡಿ CKKS ಹೋಮೋಮಾರ್ಫಿಕ್ ಎನ್‌ಕ್ರಿಪ್ಷನ್ ಮಾಡುತ್ತೇವೆ. ಎನ್‌ಕ್ರಿಪ್ಟ್ ರೂಪದಲ್ಲೇ ಹೋಲಿಸಿ ಒಬ್ಬರು ಹಲವು ಅಂಗಡಿ ನೋಂದಾಯಿಸುವುದನ್ನು ಗುರುತಿಸುತ್ತೇವೆ.',
-      'ವೀಡಿಯೊ ಮೆಮೊರಿಯಲ್ಲಿ ಪ್ರಕ್ರಿಯೆಗೊಂಡು ಅಳಿಯುತ್ತದೆ. ಹೊಂದಾಣಿಕೆ ವ್ಯಾಪಾರದ ಮಾಲೀಕತ್ವದ ಪುರಾವೆಯಲ್ಲ; ಮಾನವ ಪರಿಶೀಲನೆಗೆ ಮಾತ್ರ ಕಳುಹಿಸುತ್ತದೆ.',
-      'ಗೌಪ್ಯತೆ ಟ್ಯಾಬ್‌ನಿಂದ ಮುಖದ ಡೇಟಾ ಯಾವಾಗ ಬೇಕಾದರೂ ಅಳಿಸಬಹುದು.',
     ],
   },
 
@@ -428,12 +398,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         ],
       },
     ],
-    BIOMETRIC_NOTICE: [
-      '此检查可选，绝不影响注册。',
-      '短暂镜头拍摄会转换为人脸模板，以 CKKS 同态加密加密，仅以加密形式比对，查找一人注册多家店铺的情况。',
-      '视频在内存中处理后丢弃。匹配绝不证明商家所有权，只会将个案提交人工审核。',
-      '随时可在隐私页删除人脸数据。',
-    ],
   },
   ms: {
     TERMS: [
@@ -499,12 +463,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
           'Hubungan privasi: akan diterbitkan sebelum pelancaran awam',
         ],
       },
-    ],
-    BIOMETRIC_NOTICE: [
-      'Semakan ini pilihan dan tidak pernah menghalang pendaftaran.',
-      'Rakaman kamera ringkas ditukar kepada templat wajah, disulitkan (penyulitan homomorfik CKKS) dan dibanding hanya dalam bentuk disulitkan untuk mengesan seorang mendaftar banyak kedai.',
-      'Video diproses dalam memori dan dibuang. Padanan bukan bukti pemilikan perniagaan; hanya dihantar untuk semakan manusia.',
-      'Padam data wajah bila-bila masa di tab Privasi.',
     ],
   },
   ta: {
@@ -572,12 +530,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         ],
       },
     ],
-    BIOMETRIC_NOTICE: [
-      'இந்தச் சோதனை விருப்பமானது; பதிவைத் தடுக்காது.',
-      'குறுகிய கேமரா பதிவை முக மாதிரியாக்கி CKKS homomorphic encryption மூலம் மறையாக்கி, மறையாக்கிய வடிவில் மட்டும் ஒப்பிட்டு ஒருவர் பல கடைகள் பதிவுசெய்வதைக் கண்டறிவோம்.',
-      'காணொளி நினைவகத்தில் செயலாக்கப்பட்டு நீக்கப்படும். பொருத்தம் தொழில் உரிமைக்கான சான்றல்ல; மனித ஆய்விற்கு மட்டும் அனுப்பப்படும்.',
-      'தனியுரிமைப் பகுதியில் முகத் தகவலை எப்போது வேண்டுமானாலும் நீக்கலாம்.',
-    ],
   },
   ja: {
     TERMS: [
@@ -643,12 +595,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
           'プライバシー窓口：一般公開前に掲載予定です',
         ],
       },
-    ],
-    BIOMETRIC_NOTICE: [
-      'この確認は任意で、登録を妨げることはありません。',
-      '短いカメラ撮影から顔テンプレートを作り、CKKS 準同型暗号で暗号化します。暗号化した状態でのみ照合し、同じ人による多数の店舗登録を検出します。',
-      '動画はメモリ内で処理後に破棄します。一致してもビジネスの所有権の証明にはならず、人による審査に送るだけです。',
-      'プライバシータブからいつでも顔データを削除できます。',
     ],
   },
   ko: {
@@ -716,12 +662,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         ],
       },
     ],
-    BIOMETRIC_NOTICE: [
-      '선택 사항인 확인이며 등록을 막지 않아요.',
-      '짧은 카메라 촬영을 얼굴 템플릿으로 만들고 CKKS 동형 암호로 암호화해요. 암호화 상태에서만 비교해 한 사람이 여러 가게를 등록하는지 확인해요.',
-      '영상은 메모리에서 처리 후 폐기해요. 일치는 업체 소유권의 증거가 아니며 사람의 검토로 보내는 역할만 해요.',
-      '개인정보 탭에서 언제든 얼굴 데이터를 삭제할 수 있어요.',
-    ],
   },
   id: {
     TERMS: [
@@ -787,12 +727,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
           'Kontak privasi: akan diumumkan sebelum peluncuran publik',
         ],
       },
-    ],
-    BIOMETRIC_NOTICE: [
-      'Pemeriksaan ini opsional dan tidak menghalangi pendaftaran.',
-      'Rekaman kamera singkat diubah menjadi templat wajah, dienkripsi dengan enkripsi homomorfik CKKS, dan dibandingkan hanya dalam bentuk terenkripsi untuk mendeteksi satu orang mendaftarkan banyak toko.',
-      'Video diproses dalam memori lalu dibuang. Kecocokan bukan bukti kepemilikan bisnis; hanya meneruskan kasus untuk tinjauan manusia.',
-      'Hapus data wajah kapan saja di tab Privasi.',
     ],
   },
   th: {
@@ -860,12 +794,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         ],
       },
     ],
-    BIOMETRIC_NOTICE: [
-      'การตรวจนี้เป็นทางเลือกและไม่ขัดขวางการลงทะเบียน',
-      'แปลงภาพกล้องสั้น ๆ เป็นแม่แบบใบหน้า เข้ารหัสแบบ CKKS homomorphic encryption และเทียบเฉพาะรูปเข้ารหัสเพื่อตรวจคนเดียวลงทะเบียนหลายร้าน',
-      'วิดีโอประมวลผลในหน่วยความจำแล้วทิ้ง การตรงกันไม่ใช่หลักฐานการเป็นเจ้าของธุรกิจ เพียงส่งให้คนตรวจ',
-      'ลบข้อมูลใบหน้าได้ทุกเมื่อในแท็บความเป็นส่วนตัว',
-    ],
   },
   vi: {
     TERMS: [
@@ -932,12 +860,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         ],
       },
     ],
-    BIOMETRIC_NOTICE: [
-      'Kiểm tra này tùy chọn và không chặn đăng ký.',
-      'Chuyển đoạn quay ngắn thành mẫu khuôn mặt, mã hóa đồng cấu CKKS và chỉ so sánh dạng mã hóa để phát hiện một người đăng ký nhiều cửa hàng.',
-      'Video xử lý trong bộ nhớ rồi hủy. Kết quả khớp không chứng minh sở hữu; chỉ chuyển vụ việc cho người xét duyệt.',
-      'Xóa dữ liệu khuôn mặt bất cứ lúc nào trong mục Quyền riêng tư.',
-    ],
   },
   fil: {
     TERMS: [
@@ -1003,12 +925,6 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
           'Contact sa privacy: ilalathala bago ang pampublikong paglulunsad',
         ],
       },
-    ],
-    BIOMETRIC_NOTICE: [
-      'Opsyonal ito at hindi haharang sa pagrehistro.',
-      'Gagawing face template ang maikling kuha, ie-encrypt gamit ang CKKS homomorphic encryption, at ihahambing lang habang naka-encrypt para makita ang isang taong nagrehistro ng maraming tindahan.',
-      'Sa memorya pinoproseso at itinatapon ang video. Hindi patunay ng pagmamay-ari ang match; ipapasa lang ito para suriin ng tao.',
-      'Puwede mong burahin ang data ng mukha anumang oras sa Privacy.',
     ],
   },
 }

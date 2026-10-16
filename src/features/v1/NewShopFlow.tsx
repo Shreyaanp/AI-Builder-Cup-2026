@@ -24,6 +24,7 @@ import {
   Check,
   Keyboard,
   Leaf,
+  ListChecks,
   LocateFixed,
   Mic,
   MicOff,
@@ -50,8 +51,12 @@ import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { ApiError } from './api'
 import type { Business, PhotoResult, Product, Proposal } from './api'
+import { CameraCard, type Shot } from './CameraCard'
 import { LocationPin } from './CurrentLocation'
-import { readablePlace, useMeasureLocation, type OwnerLocation } from './location'
+import { GuidedDetails } from './GuidedDetails'
+import { useInChatCopy } from './inChatCopy'
+import { readablePlace, type OwnerLocation } from './location'
+import { MapCard, type PinChoice } from './MapCard'
 import { FactList } from './FactList'
 import { defaultCurrency, formatPrice, toMinor } from './format'
 import { NewShopReady } from './NewShopStage'
@@ -95,6 +100,9 @@ type Line =
   | { id: string; role: 'coach'; text: string }
   | { id: string; role: 'owner'; text: string; photo?: string }
   | { id: string; role: 'action'; title: string; items: string[] }
+  // The camera and the map open as cards inside the conversation.
+  | { id: string; role: 'camera'; shots: Shot[]; closed: boolean }
+  | { id: string; role: 'map'; locate: boolean; done: string | null }
 type NewLine = Line extends infer L ? (L extends Line ? Omit<L, 'id'> : never) : never
 
 /** Live transcripts arrive in pieces, sometimes repeated in full. */
@@ -201,6 +209,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const wide = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'))
   const describe = useDescribe()
+  const c = useInChatCopy()
   const phase = ws.newShopPhase
 
   const [lines, setLines] = useState<Line[]>([])
@@ -217,7 +226,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const draftRef = useRef(draft)
   // The last sealed server proposal; reused for review when nothing changed since.
   const [sealed, setSealed] = useState<Proposal | null>(null)
-  const [ownerLocation, setOwnerLocation] = useState<OwnerLocation | null>(null)
+  const [ownerLocation, setOwnerLocation] = useState<PinChoice | OwnerLocation | null>(null)
   const [photoNotes, setPhotoNotes] = useState<string[]>([])
   const photoFile = useRef<File | null>(null)
   const [review, setReview] = useState<Proposal | null>(null)
@@ -241,9 +250,11 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const silence = useRef<number | undefined>(undefined)
   const nudges = useRef(0)
   const speaking = useRef<HTMLAudioElement | null>(null)
-  const photoInput = useRef<HTMLInputElement>(null)
   const messageInput = useRef<HTMLTextAreaElement>(null)
   const end = useRef<HTMLDivElement>(null)
+  // Cards the coach offered by itself (each kind once), and cards still open on screen.
+  const offered = useRef({ camera: false, map: false })
+  const openCards = useRef(new Set<string>())
   // The live voice session, for handlers declared before it (set after each render).
   const voiceRef = useRef<ReturnType<typeof useVoice> | null>(null)
 
@@ -281,7 +292,8 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       busyRef.current !== 'idle' ||
       noteRef.current.trim() ||
       document.hidden ||
-      voiceRef.current?.micPaused
+      voiceRef.current?.micPaused ||
+      openCards.current.size > 0
     ) {
       armSilence()
       return
@@ -350,7 +362,10 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     setLive('')
     setHeard('')
     ownerTurnOpen.current = false
-    if (text) add({ role: 'coach', text })
+    if (text) {
+      add({ role: 'coach', text })
+      offerCards(text)
+    }
     if (!finished) return
     pending.current = null
     if (startSent.current) greeted.current = true
@@ -359,6 +374,54 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     if (live && live.state !== 'idle') armSilence(live.playbackRemaining() * 1000)
     else if (text && !mutedRef.current) void speak(text).then(() => armSilence())
     else armSilence()
+  }
+  /** The coach asked for a photo or for the place: the camera or the map opens in the chat. */
+  function offerCards(text: string) {
+    const business = draftRef.current.business
+    if (c.photoWords.test(text) && !offered.current.camera && !draftRef.current.products.length) {
+      offered.current.camera = true
+      openCamera(false)
+    } else if (
+      c.placeWords.test(text) &&
+      !offered.current.map &&
+      !(business?.lat != null || business?.location)
+    ) {
+      offered.current.map = true
+      openMap(false, false)
+    }
+  }
+  function openCamera(hold = true) {
+    const id = crypto.randomUUID()
+    // One camera at a time: an older open one closes.
+    if (hold) openCards.current = new Set([id])
+    clearSilence()
+    setLines((items) =>
+      [
+        ...items.map((line) => (line.role === 'camera' ? { ...line, closed: true } : line)),
+        { id, role: 'camera' as const, shots: ['board', 'front'] as Shot[], closed: false },
+      ].slice(-80),
+    )
+  }
+  function closeCamera(id: string) {
+    openCards.current.delete(id)
+    setLines((items) =>
+      items.map((line) =>
+        line.id === id && line.role === 'camera' ? { ...line, closed: true } : line,
+      ),
+    )
+    armSilence()
+  }
+  function openMap(locate: boolean, hold = true) {
+    const id = crypto.randomUUID()
+    if (hold) openCards.current = new Set([id])
+    clearSilence()
+    nudges.current = 0
+    setLines((items) =>
+      [
+        ...items.filter((line) => line.role !== 'map' || line.done),
+        { id, role: 'map' as const, locate, done: null },
+      ].slice(-80),
+    )
   }
   function hearOwner(text: string) {
     clearSilence()
@@ -617,7 +680,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         after.business?.category,
         ...after.products.slice(0, 12).map((p) => p.name),
       ].filter(Boolean)
-      await say(f.photoNote(read.join(', ')))
+      void say(f.photoNote(read.join(', ')))
     } catch (cause) {
       setBusy('idle')
       const code = cause instanceof ApiError ? cause.code : ''
@@ -630,17 +693,14 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
               ? t.photoRefused
               : t.photoFailed,
       })
-    } finally {
-      if (photoInput.current) photoInput.current.value = ''
     }
   }
 
-  const location = useMeasureLocation(async (point, signal) => {
+  /** The owner confirmed the pin on the map card: sealed through the normal proposal path. */
+  async function savePin(id: string, point: PinChoice) {
     const before = draftRef.current
-    // The measured point is sealed through the normal proposal path, which adds a readable label.
     const pinned = await api<Proposal>('/proposals', {
       method: 'POST',
-      signal,
       body: JSON.stringify({
         kind: 'business',
         business_id: null,
@@ -650,25 +710,20 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         owner_location: point,
       }),
     })
-    signal.throwIfAborted()
     setOwnerLocation(point)
     applyProposal(pinned)
+    openCards.current.delete(id)
     const business = draftRef.current.business
-    if (business) await say(f.locationNote(readablePlace(business, f)))
-  })
-  async function shareLocation() {
-    clearSilence()
-    nudges.current = 0
-    // Why, before the phone asks for permission.
-    add({ role: 'coach', text: t.locationReason })
-    const failed = await location.locate()
-    if (failed) {
-      add({ role: 'coach', text: failed })
-      armSilence()
-    }
+    const place = business ? readablePlace(business, f) : f.current
+    setLines((items) =>
+      items.map((line) =>
+        line.id === id && line.role === 'map' ? { ...line, done: place } : line,
+      ),
+    )
+    void say(f.locationNote(place))
   }
 
-  async function openReview() {
+  async function openReview(location?: PinChoice | null) {
     const current = draftRef.current
     if (!current.business?.name || busy !== 'idle') return
     setBusy('review')
@@ -678,8 +733,9 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         sealed &&
         JSON.stringify(sealed.snapshot.business) === JSON.stringify(current.business) &&
         JSON.stringify(sealed.snapshot.products) === JSON.stringify(current.products)
+      const pin = location === undefined ? ownerLocation : location
       const proposal =
-        !ownerLocation && unchanged
+        !pin && unchanged
           ? sealed
           : await api<Proposal>('/proposals', {
               method: 'POST',
@@ -688,7 +744,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                 business_id: null,
                 revision: 0,
                 ...current,
-                owner_location: ownerLocation,
+                owner_location: pin,
               }),
             })
       setReview({ ...proposal, photo_notes: photoNotes, new_shop: true })
@@ -754,6 +810,23 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const coral = useTheme().chalk.coral
 
   if (phase === 'hero') return <Hero onBegin={begin} onCancel={ws.cancelNewShop} />
+  if (phase === 'manual')
+    return (
+      <GuidedDetails
+        mode="new"
+        initial={draft.business ?? { ...EMPTY_BUSINESS, currency: defaultCurrency() }}
+        initialProducts={draft.products}
+        busy={busy === 'review'}
+        error={error}
+        titleId="new-shop-manual-title"
+        onCancel={() => window.history.back()}
+        onSubmit={({ fields, products, location }) => {
+          setDraft({ business: fields, products })
+          if (location) setOwnerLocation(location)
+          void openReview(location ?? undefined)
+        }}
+      />
+    )
   if (phase === 'review' && review)
     return (
       <Review
@@ -772,7 +845,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const problem = preflight ?? voice.problem
   const lastCoach = [...lines].reverse().find((line) => line.role === 'coach')
   const caption = (live || ttsText).trim()
-  const idle = busy === 'idle' && !location.busy
+  const idle = busy === 'idle'
   const canSend = Boolean(note.trim()) && idle
   const orbBase: OrbPhase =
     voice.state === 'reconnecting'
@@ -789,9 +862,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const status =
     orbPhase === 'thinking' && busy === 'photo'
       ? t.checkingPhoto
-      : orbPhase === 'thinking' && location.busy
-        ? t.locating
-        : v[orbPhase === 'off' ? 'typing' : orbPhase]
+      : v[orbPhase === 'off' ? 'typing' : orbPhase]
   const toggleMuted = () => {
     mutedRef.current = !muted
     if (!muted) stopSpeaking()
@@ -816,15 +887,15 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         label={f.photo}
         variant="outlined"
         disabled={!idle}
-        onClick={() => photoInput.current?.click()}
+        onClick={() => openCamera()}
         sx={{ height: 40, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
       />
       <Chip
-        icon={location.busy ? <CircularProgress size={16} /> : <LocateFixed size={18} />}
-        label={location.busy ? t.locating : f.location}
+        icon={<LocateFixed size={18} />}
+        label={f.location}
         variant="outlined"
         disabled={!idle}
-        onClick={() => void shareLocation()}
+        onClick={() => openMap(true)}
         sx={{ height: 40, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
       />
       <Chip
@@ -883,9 +954,16 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
             <X size={22} />
           </IconButton>
         </Tooltip>
-        <Typography component="h1" variant="titleMedium" sx={{ flex: 1 }}>
+        <Typography component="h1" variant="titleMedium" sx={{ flex: 1, minWidth: 0 }}>
           {t.newShopMode}
         </Typography>
+        <Button
+          startIcon={<ListChecks size={18} />}
+          onClick={() => ws.setNewShopPhase('manual')}
+          sx={{ mr: -1, flexShrink: 0 }}
+        >
+          {c.typeItIn}
+        </Button>
       </Box>
 
       <Box sx={{ gridArea: 'card', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -934,9 +1012,36 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         >
           <Box role="log" aria-live="polite" aria-label={t.navCoach}>
             <Stack component="ol" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0 }}>
-              {lines.map((line) => (
-                <ChatLine key={line.id} line={line} />
-              ))}
+              {lines.map((line) =>
+                line.role === 'camera' ? (
+                  !line.closed && (
+                    <Box component="li" key={line.id} sx={{ ml: { xs: 0, sm: 6 } }}>
+                      <CameraCard
+                        shots={line.shots}
+                        onPhoto={uploadPhoto}
+                        onClose={() => closeCamera(line.id)}
+                        onActive={() => openCards.current.add(line.id)}
+                      />
+                    </Box>
+                  )
+                ) : line.role === 'map' ? (
+                  <Box component="li" key={line.id} sx={{ ml: { xs: 0, sm: 6 } }}>
+                    <MapCard
+                      initial={
+                        draft.business?.lat != null && draft.business.lng != null
+                          ? { lat: draft.business.lat, lng: draft.business.lng }
+                          : null
+                      }
+                      done={line.done}
+                      autoLocate={line.locate}
+                      onConfirm={(point) => savePin(line.id, point)}
+                      onActive={() => openCards.current.add(line.id)}
+                    />
+                  </Box>
+                ) : (
+                  <ChatLine key={line.id} line={line} />
+                ),
+              )}
               {busy === 'reply' && !live && !voiceOn && (
                 <Box component="li" sx={{ pl: 6 }}>
                   <CircularProgress size={20} aria-label={t.speaking} />
@@ -1049,18 +1154,6 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
           </Alert>
         )}
         {quickActions}
-        <input
-          ref={photoInput}
-          type="file"
-          accept={PHOTO_TYPES.join(',')}
-          hidden
-          aria-hidden="true"
-          tabIndex={-1}
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0]
-            if (file) void uploadPhoto(file)
-          }}
-        />
         {typingView ? (
           <Box
             component="form"
@@ -1358,7 +1451,7 @@ function Hero({ onBegin, onCancel }: { onBegin: () => void; onCancel: () => void
   )
 }
 
-function ChatLine({ line }: { line: Line }) {
+function ChatLine({ line }: { line: Exclude<Line, { role: 'camera' | 'map' }> }) {
   const t = useCopy()
   const f = useNewShopCopy()
   const roles = useTheme().material

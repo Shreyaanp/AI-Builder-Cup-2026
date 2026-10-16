@@ -1,0 +1,573 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "horizontalOverflow": false,
+  "visibleElements": 24,
+  "elementsPer100kPixels": 1.67,
+  "accentHueBins": {
+    "30": 2
+  },
+  "competingAccents": 1,
+  "spacingOn4pxRhythm": 0.824,
+  "smallTargets": [
+    {
+      "tag": "button",
+      "role": null,
+      "x": 396,
+      "y": 998,
+      "w": 132.015625,
+      "h": 2,
+      "background": "rgb(246, 201, 69)",
+      "color": "rgb(58, 44, 0)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [6, 24, 6, 24],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 532.015625,
+      "y": 998,
+      "w": 184.0625,
+      "h": 2,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(246, 201, 69)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [6, 24, 6, 24],
+      "target": true
+    }
+  ],
+  "grid": [
+    [2, 1, 0, 0, 2, 1],
+    [2, 2, 3, 3, 4, 0],
+    [2, 1, 2, 2, 1, 0],
+    [2, 2, 3, 3, 2, 0],
+    [0, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 0],
+    [0, 2, 2, 3, 2, 0],
+    [0, 1, 1, 2, 1, 0],
+    [0, 1, 2, 2, 1, 0],
+    [0, 2, 3, 3, 1, 0],
+    [0, 1, 1, 1, 0, 0],
+    [0, 3, 4, 2, 2, 0]
+  ],
+  "elements": [
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 73,
+      "w": 80,
+      "h": 59.59375,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(191, 203, 191)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [0, 0, 0, 0, 2, 2],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 138.59375,
+      "w": 80,
+      "h": 59.59375,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [0, 0, 0, 0, 2, 2],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 204.1875,
+      "w": 80,
+      "h": 59.59375,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(191, 203, 191)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [0, 0, 0, 0, 2, 2],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 269.78125,
+      "w": 80,
+      "h": 59.59375,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(191, 203, 191)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [0, 0, 0, 0, 2, 2],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 104,
+      "y": 8,
+      "w": 352.09375,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [6, 6, 6, 6],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 1384,
+      "y": 8,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [8, 8, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "h2",
+      "role": null,
+      "x": 424,
+      "y": 95,
+      "w": 553.3125,
+      "h": 20,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [0, 0, 0, 0],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 985.3125,
+      "y": 80,
+      "w": 98.6875,
+      "h": 48,
+      "background": "rgb(246, 201, 69)",
+      "color": "rgb(58, 44, 0)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [6, 24, 6, 24],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 1092,
+      "y": 80,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [8, 8, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 388,
+      "y": 152,
+      "w": 181,
+      "h": 164,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 388,
+      "y": 328,
+      "w": 760,
+      "h": 178,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 581,
+      "y": 152,
+      "w": 181,
+      "h": 164,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 774,
+      "y": 152,
+      "w": 374,
+      "h": 164,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 388,
+      "y": 518,
+      "w": 374,
+      "h": 144,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 774,
+      "y": 518,
+      "w": 181,
+      "h": 144,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 967,
+      "y": 518,
+      "w": 181,
+      "h": 144,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 388,
+      "y": 674,
+      "w": 181,
+      "h": 120,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 581,
+      "y": 674,
+      "w": 181,
+      "h": 120,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 774,
+      "y": 674,
+      "w": 374,
+      "h": 120,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 388,
+      "y": 806,
+      "w": 374,
+      "h": 120,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "h2",
+      "role": null,
+      "x": 396,
+      "y": 964,
+      "w": 692,
+      "h": 20,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [0, 0, 0, 0],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 1092,
+      "y": 950,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [8, 8, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 396,
+      "y": 998,
+      "w": 132.015625,
+      "h": 2,
+      "background": "rgb(246, 201, 69)",
+      "color": "rgb(58, 44, 0)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [6, 24, 6, 24],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 532.015625,
+      "y": 998,
+      "w": 184.0625,
+      "h": 2,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(246, 201, 69)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [6, 24, 6, 24],
+      "target": true
+    }
+  ],
+  "loadedFonts": ["Google Sans Flex Variable"],
+  "method": "DOM viewport density proxy; overlapping parent/child elements count separately. Not eye tracking or a medical eye-strain measurement.",
+  "contrast": {
+    "violations": [],
+    "manualReview": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "bold",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-labelMedium css-10m0t4w-MuiTypography-root\">My shop</span>",
+            "target": [".css-10m0t4w-MuiTypography-root"],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-labelLarge css-1ukqds2-MuiTypography-root\">Close the day</span>",
+            "target": [
+              "button[data-tour=\"closeday\"] > .css-1rlitzi-MuiStack-root.MuiStack-root > .css-1ukqds2-MuiTypography-root.MuiTypography-labelLarge.MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "16.5pt (22px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-titleLarge css-1pdd326-MuiTypography-root\">Snap today’s numbers</span>",
+            "target": [
+              "button[data-tour=\"closeday\"] > .css-1pdd326-MuiTypography-root.MuiTypography-titleLarge.MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-bodyMedium css-1isgelf-MuiTypography-root\">Till report, deliveries and stock in a few photos. You check once.</span>",
+            "target": [
+              "button[data-tour=\"closeday\"] > .css-1isgelf-MuiTypography-root.MuiTypography-bodyMedium.MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "shortTextContent",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element content is too short to determine if it is actual text content"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span aria-hidden=\"true\" class=\"MuiBadge-badge MuiBa...\" style=\"--Badge-translate: 5...\">",
+            "target": [
+              ".css-s13u7i-MuiButtonBase-root[type=\"button\"]:nth-child(7) > .css-1rlitzi-MuiStack-root.MuiStack-root > .css-1bks13r.MuiBox-root[aria-hidden=\"true\"] > .MuiBadge-root.css-63ezxx-MuiBadge-root[aria-hidden=\"true\"] > .MuiBadge-badge.MuiBadge-standard.MuiBadge-invisible"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "shortTextContent",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element content is too short to determine if it is actual text content"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span aria-hidden=\"true\" class=\"MuiBadge-badge MuiBa...\" style=\"--Badge-translate: 5...\">",
+            "target": [
+              "button[data-tour=\"orders\"] > .css-1rlitzi-MuiStack-root.MuiStack-root > .css-1bks13r.MuiBox-root[aria-hidden=\"true\"] > .MuiBadge-root.css-63ezxx-MuiBadge-root[aria-hidden=\"true\"] > .MuiBadge-badge.MuiBadge-standard.MuiBadge-invisible"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
+          }
+        ]
+      }
+    ]
+  },
+  "accessibility": []
+}

@@ -1,4 +1,4 @@
-import { createShop, editShopDetails } from './stories/support.js'
+import { createShop, detailsStep, editShopDetails } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import type { components } from '../src/api/generated.js'
@@ -106,13 +106,15 @@ async function proof(page: Page, id: string) {
 
 test('B8: compact pending, freshness and completed readiness', async ({ page }) => {
   await enter(page)
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   const pending = page.getByRole('region', { name: '1 customer is waiting' })
   await expect(pending).toBeVisible()
   expect((await pending.boundingBox())!.height).toBeLessThanOrEqual(80)
-  const readiness = page.getByRole('button', { name: /Readiness 6 of 6 ready/ })
-  expect((await readiness.boundingBox())!.height).toBeLessThanOrEqual(64)
   await proof(page, 'B8')
+  // Readiness lives on Grow now, as the Get on Google card.
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  await expect(page.getByRole('button', { name: /^Get on Google Ready to list/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Customer page/ }).click()
   const sharing = page.getByText('Customers with this link see your shop and live prices.', {
     exact: true,
@@ -153,7 +155,7 @@ test('B10: empty recap is compact, has no empty headings and uses a date range',
       },
     }),
   )
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   const tile = page.getByRole('button', { name: /^Weekly recap/ })
   await expect(tile).not.toContainText('2026-W42')
   await expect(tile).toContainText('12–18 Oct')
@@ -195,7 +197,7 @@ for (const mode of ['offline', 'gemini']) {
         },
       }),
     )
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
     await page.getByRole('button', { name: /^Weekly recap/ }).click()
     const sheet = page.getByRole('dialog', { name: 'Weekly recap' })
     await expect(
@@ -217,6 +219,7 @@ test('B11: weekday hours are reviewed, saved and shown publicly', async ({ page 
   await enter(page, false)
   await createShop(page, 'name: Katong Night Kopi')
   await editShopDetails(page)
+  await detailsStep(page, 'Hours')
   await page.getByLabel('Hours note (optional)', { exact: true }).fill('Ask about holiday hours')
   await page.getByLabel('Set hours by weekday').check()
   await expect(page.locator('input[type="time"]')).toHaveCount(2)
@@ -310,9 +313,10 @@ test('B11: existing different hours survive editing, and shared times survive cl
     close: '18:00',
   }))
   await enter(page, true, hours)
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
   await page.getByRole('button', { name: 'Edit details', exact: true }).click()
+  await detailsStep(page, 'Hours')
   await expect(page.locator('input[type="time"]')).toHaveCount(14)
   await expect(page.getByLabel('Saturday: Opens', { exact: true })).toHaveValue('10:00')
   await page.route('**/api/v1/proposals', (route) => {
@@ -369,7 +373,7 @@ for (const locale of [
             json: { today: '2026-10-14', last_confirmed: null, monday: false, recap_week: week },
           }),
         )
-        await page.getByRole('button', { name: 'My shop', exact: true }).click()
+        await page.getByRole('button', { name: 'Grow', exact: true }).click()
         const expected = await page.evaluate(
           ({ first, last }) =>
             new Intl.DateTimeFormat(undefined, {
@@ -389,7 +393,7 @@ for (const locale of [
 
 test('B12: compact categories, uncategorised last and sold-out last', async ({ page }) => {
   await enter(page)
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Menu/ }).click()
   const dialog = page.getByRole('dialog', { name: 'Menu' })
   // B28: each category is a grid of item cards; sold-out items are marked and sort last.

@@ -69,7 +69,8 @@ test('delete all owner data requires confirmation; cancel keeps shop; erase remo
 }) => {
   const id = await owner(page)
   await publish(page, id)
-  await page.getByRole('button', { name: 'Privacy', exact: true }).click()
+  await page.getByRole('button', { name: 'You', exact: true }).click()
+  await page.getByRole('button', { name: /^Privacy & your data/ }).click()
   await page.getByRole('button', { name: 'Delete all my data' }).click()
   await expect(page.getByRole('dialog', { name: 'Delete everything?' })).toBeVisible()
   await audit(page)
@@ -88,7 +89,8 @@ for (const appearance of ['light', 'dark'] as const) {
       localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance: value }))
     }, appearance)
     await owner(page)
-    await page.getByRole('button', { name: 'Privacy', exact: true }).click()
+    await page.getByRole('button', { name: 'You', exact: true }).click()
+    await page.getByRole('button', { name: /^Privacy & your data/ }).click()
     // Hold the real request so the progress state can be checked.
     let release = () => {}
     const held = new Promise<void>((resolve) => (release = resolve))
@@ -117,7 +119,8 @@ for (const appearance of ['light', 'dark'] as const) {
       localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance: value }))
     }, appearance)
     const id = await owner(page)
-    await page.getByRole('button', { name: 'Privacy', exact: true }).click()
+    await page.getByRole('button', { name: 'You', exact: true }).click()
+    await page.getByRole('button', { name: /^Privacy & your data/ }).click()
     // First attempt: the face worker and photo storage fail on the server.
     await page.route(
       '**/api/v1/me/data',
@@ -152,7 +155,8 @@ for (const appearance of ['light', 'dark'] as const) {
 
 test('failed erase request offers Try again', async ({ page }) => {
   await owner(page)
-  await page.getByRole('button', { name: 'Privacy', exact: true }).click()
+  await page.getByRole('button', { name: 'You', exact: true }).click()
+  await page.getByRole('button', { name: /^Privacy & your data/ }).click()
   await page.route('**/api/v1/me/data', (route) => route.abort(), { times: 1 })
   await page.getByRole('button', { name: 'Delete all my data' }).click()
   await page.getByRole('button', { name: 'Delete permanently' }).click()
@@ -166,8 +170,9 @@ test('failed erase request offers Try again', async ({ page }) => {
 
 test('Tamil privacy surface remains accessible', async ({ page }) => {
   await owner(page)
-  await page.getByRole('button', { name: 'Privacy', exact: true }).click()
+  await page.getByRole('button', { name: 'You', exact: true }).click()
   await tamil(page)
+  await page.getByRole('button', { name: /^தனியுரிமை & உங்கள் தரவு/ }).click()
   await audit(page)
 })
 
@@ -192,7 +197,7 @@ test('legacy public inquiry route cannot bypass required customer sign-in', asyn
     expect(response.status()).toBe(401)
     await page.reload()
     await page.getByRole('button', { name: 'Continue local preview' }).click()
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await expect(page.getByRole('button', { name: /^Messages 1/ })).toHaveCount(0)
   } finally {
     await anonymous.close()

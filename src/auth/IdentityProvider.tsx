@@ -8,7 +8,9 @@ import type { Identity } from './context'
 type Operations = { auth: Auth; signIn: () => Promise<void>; signOut: () => Promise<void> }
 
 export function IdentityProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<Pick<Identity, 'mode' | 'status' | 'scope' | 'error'>>({
+  const [state, setState] = useState<
+    Pick<Identity, 'mode' | 'status' | 'scope' | 'error' | 'name'>
+  >({
     mode: 'local',
     status: 'loading',
     scope: 'loading',
@@ -75,6 +77,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
                 mode: 'firebase',
                 status: user ? 'ready' : 'signed-out',
                 scope: user ? `firebase:${user.uid}` : 'signed-out',
+                name: user?.displayName?.trim().split(/\s+/)[0] ?? '',
                 error: '',
               })
           },

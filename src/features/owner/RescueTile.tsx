@@ -22,6 +22,7 @@ import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useTabsCopy } from '../v1/tabsCopy'
 import { fill, useOwnerCopy } from './copy'
 import { defaultUntil, shopNow } from './time'
 
@@ -51,8 +52,9 @@ function useDeals(bid: string) {
  * it shows the countdown and portions left. The sheet holds live deals (end early), the
  * forecast's leftover suggestions and a one-tap send (20/30/50 % off, pickup until).
  */
-export function RescueTile() {
+export function RescueTile({ label }: { label?: string } = {}) {
   const t = useOwnerCopy()
+  const tabs = useTabsCopy()
   const locale = useLocale()
   const theme = useTheme()
   const ws = useWorkspace()
@@ -64,11 +66,12 @@ export function RescueTile() {
   const first = live[0]
   const qty = first?.items.reduce((sum, item) => sum + item.qty, 0) ?? 0
   const left = first?.items.reduce((sum, item) => sum + item.qty_left, 0) ?? 0
+  const tileLabel = label ?? tabs.rescue ?? t.rescue
   return (
     <>
       <Tile
         icon={<Leaf size={20} color={theme.chalk.coral.main} />}
-        label={t.rescue}
+        label={tileLabel}
         value={
           first
             ? fill(t.rescueLive, { time: countdown(first.ends * 1000 - now, locale) })

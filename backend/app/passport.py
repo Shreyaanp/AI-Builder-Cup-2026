@@ -40,7 +40,12 @@ MAX_SPEED_KMH = 150
 # More rejected stamps than this in a day flags the account (kept off the leaderboard).
 FLAG_REJECTS = 3
 STREAK_MILESTONES = {4: 50, 8: 100, 12: 150, 26: 300}
+# Streak freezes (docs/research/gamification.md §3): every passport starts with one, one more is
+# earned every 4 active weeks or won on a scratch card, and at most 2 are banked. A freeze covers a
+# missed week on its own, or the customer freezes a week ahead ("away next week").
 RAIN_CHECK_EVERY = 4
+WELCOME_FREEZES = 1
+MAX_FREEZES = 2
 QUEST_POINTS = {"trail": 100, "festival": 250}
 MAX_STAMPS_KEPT = 300
 MAX_RECEIPT_AGE = 30 * 86_400
@@ -87,6 +92,11 @@ FOOD_WORDS = (
     "dosa",
     "deli",
 )
+
+
+def makes_own(shop: dict[str, Any]) -> bool:
+    """The owner said they make what they sell (a top-level field, or a public shop fact)."""
+    return bool(shop.get("locally_made") or (shop.get("facts") or {}).get("locally_made"))
 
 
 def is_food(category: str) -> bool:
@@ -328,6 +338,7 @@ class StampRecord(BaseModel):
     area_name: str = ""
     category: str = ""
     country: str = ""
+    made: bool = False  # the shop makes what it sells (collection set "Locally made")
 
 
 class ShopProgress(BaseModel):
@@ -345,6 +356,41 @@ class ShopProgress(BaseModel):
     claimed: int = 0
     rescues: int = 0
     tipped: bool = False
+
+
+# --- Game layer state (rules in games.py) ---
+
+PrizeKind = Literal["points_10", "points_25", "perk", "freeze", "again"]
+
+
+class ScratchTicket(BaseModel):
+    """One scratch card, earned by a verified stamp. The server decides the prize when it issues
+    the card and keeps it to itself until the customer scratches."""
+
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    shop_id: str
+    shop_name: str = ""
+    day: str
+    at: float
+    demo: bool = False
+    first: bool = False
+    has_perk: bool = False
+    prize: PrizeKind
+    perk_text: str = ""
+    revealed: bool = False
+
+
+class WonPerk(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    shop_id: str
+    shop_name: str = ""
+    text: str
+    source: Literal["scratch", "set"]
+    day: str
+    demo: bool = False
+    used: bool = False
 
 
 class Fix(BaseModel):
@@ -373,6 +419,15 @@ class PassportState(BaseModel):
     rejects: dict[str, int] = Field(default_factory=dict)  # day -> rejected stamp attempts
     last_fix: Fix | None = None
     finale_shops: list[str] = Field(default_factory=list)  # where a quest was completed
+    # Game layer (games.py).
+    scratch: list[ScratchTicket] = Field(default_factory=list)  # newest first
+    scratches: int = 0  # cards ever issued (the first one always wins)
+    freeze_wins: list[str] = Field(default_factory=list)  # ISO weeks a freeze was won
+    frozen_weeks: list[str] = Field(default_factory=list)  # weeks frozen ahead by the customer
+    won_perks: list[WonPerk] = Field(default_factory=list)
+    sets_done: dict[str, float] = Field(default_factory=dict)
+    coop_helped: dict[str, int] = Field(default_factory=dict)  # "area|week" -> visits given
+    coop_claimed: list[str] = Field(default_factory=list)  # "area|week" bonuses collected
 
 
 class Visit(BaseModel):
@@ -466,44 +521,65 @@ def next_level(level: LevelKey) -> LevelKey | None:
 # --- Weekly streak with an automatic rain check ---
 
 
-Mark = Literal["done", "rain", "missed", "current"]
+Mark = Literal["done", "rain", "frozen", "missed", "current"]
 
 
 class Streak(BaseModel):
     weeks: int
+    # Freezes ready to use (also kept as rain_checks for older clients).
     rain_checks: int
+    freezes: int = 0
     this_week: bool
-    # The last 8 weeks, oldest first: done, rain (covered by a rain check), missed, or current.
+    # The last 8 weeks, oldest first: done, rain (a freeze covered a missed week by itself),
+    # frozen (the customer froze it ahead), missed, or current.
     row: list[Mark]
+    # This week or next, when the customer froze it ahead.
+    planned: list[str] = Field(default_factory=list)
 
 
 def streak(state: PassportState, current_week: str) -> Streak:
+    """Pure: replays every week since the first activity. Freezes are banked (one welcome, one
+    every 4 active weeks, scratch wins; at most 2) and spent on a missed week only while a streak
+    is running, so a freeze is never wasted."""
     active = set(state.weeks)
-    first = min(min(active, default=current_week), current_week)
+    planned = set(state.frozen_weeks)
+    wins: dict[str, int] = {}
+    for won in state.freeze_wins:
+        wins[won] = wins.get(won, 0) + 1
+    first = min(min(active | set(wins), default=current_week), current_week)
     timeline = weeks_between(first, current_week)
-    length, held, earned_since = 0, 0, 0
+    length, held, earned_since = 0, WELCOME_FREEZES, 0
     marks: list[Mark] = []
     for week in timeline:
+        held = min(MAX_FREEZES, held + wins.get(week, 0))
         if week in active:
             length += 1
             earned_since += 1
             if earned_since % RAIN_CHECK_EVERY == 0:
-                held = min(1, held + 1)
+                held = min(MAX_FREEZES, held + 1)
             marks.append("done")
         elif week == current_week:
-            marks.append("current")  # Still in progress: never breaks the streak.
+            # Still in progress: never breaks the streak.
+            marks.append("frozen" if week in planned else "current")
         elif length and held:
             held -= 1
-            marks.append("rain")
+            marks.append("frozen" if week in planned else "rain")
         else:
-            length, earned_since, held = 0, 0, 0
+            length, earned_since = 0, 0
             marks.append("missed")
+    # A week frozen ahead holds its freeze until the week passes (a visit gives it back).
+    ahead = sorted(
+        w for w in planned if w > current_week or (w == current_week and w not in active)
+    )
+    ready = max(0, held - len(ahead))
     padding: list[Mark] = ["missed"] * 8
     return Streak(
         weeks=length,
-        rain_checks=held,
+        rain_checks=ready,
+        freezes=ready,
         this_week=current_week in active,
         row=[*padding, *marks][-8:],
+        planned=ahead,
     )
 
 
@@ -689,6 +765,7 @@ def _record(
         area_name=area_name(shop),
         category=str(shop.get("category") or "")[:60],
         country=shop_country(shop),
+        made=makes_own(shop),
     )
 
 

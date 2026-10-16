@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import zlib from 'node:zlib'
 
 export const gpsBoard = new URL('./fixtures/bengaluru-board.jpg', import.meta.url)
 export const gpsBoardPath = fileURLToPath(gpsBoard)
@@ -117,7 +118,7 @@ export async function createShop(page: Page, details?: string) {
 
 /** The saved shop's details form (My shop → Shop details → Edit details). */
 export async function editShopDetails(page: Page) {
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
   await page.getByRole('button', { name: 'Edit details' }).click()
   await expect(page.getByLabel('Shop name')).toBeVisible()
@@ -236,7 +237,7 @@ export async function seedShop(page: Page, withPhotoPin = false, name = shopName
 }
 
 export async function share(page: Page) {
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Customer page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   if (!(await sharing.isChecked())) await sharing.click()
@@ -262,4 +263,97 @@ export const phone = {
   viewport: { width: 390, height: 844 },
   locale: 'en-IN',
   timezoneId: 'Asia/Kolkata',
+}
+
+/** A 256 px map tile for the in-chat map (streets, blocks, a park), made without network. */
+function fakeTile(): Buffer {
+  const size = 256
+  const raw = Buffer.alloc((size * 4 + 1) * size)
+  const paint = (x: number, y: number) => {
+    const road = (at: number, width: number, v: number) => Math.abs(v - at) <= width
+    if (road(70, 6, x) || road(180, 6, y)) return [255, 255, 255]
+    if (road(70, 8, x) || road(180, 8, y)) return [214, 207, 192]
+    if (road(200, 3, x) || road(60, 3, y) || road(x * 0.6 + 10, 3, y)) return [250, 248, 244]
+    if (x > 92 && x < 176 && y > 84 && y < 160) return [205, 230, 196]
+    return (Math.floor(x / 32) + Math.floor(y / 32)) % 2 ? [238, 233, 223] : [232, 226, 214]
+  }
+  for (let y = 0; y < size; y++) {
+    raw[y * (size * 4 + 1)] = 0
+    for (let x = 0; x < size; x++) {
+      const [r, g, b] = paint(x, y)
+      raw.set([r!, g!, b!, 255], y * (size * 4 + 1) + 1 + x * 4)
+    }
+  }
+  const chunk = (type: string, data: Buffer) => {
+    const length = Buffer.alloc(4)
+    length.writeUInt32BE(data.length)
+    const body = Buffer.concat([Buffer.from(type), data])
+    const crc = Buffer.alloc(4)
+    crc.writeUInt32BE(zlib.crc32(body) >>> 0)
+    return Buffer.concat([length, body, crc])
+  }
+  const header = Buffer.alloc(13)
+  header.writeUInt32BE(size, 0)
+  header.writeUInt32BE(size, 4)
+  header.set([8, 6, 0, 0, 0], 8)
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', header),
+    chunk('IDAT', zlib.deflateSync(raw)),
+    chunk('IEND', Buffer.alloc(0)),
+  ])
+}
+
+/**
+ * The phone's camera and microphone for the in-chat camera, and stand-in map tiles. The camera
+ * films a chalk price board (drawn on a canvas); `camera: 'denied'` refuses it like a blocked
+ * browser permission. Register after `localOnly` (later routes win).
+ */
+export async function inChatFixtures(page: Page, camera: 'board' | 'denied' = 'board') {
+  await page.addInitScript((mode) => {
+    navigator.mediaDevices.getUserMedia = async (constraints) => {
+      if (constraints?.video) {
+        if (mode === 'denied') throw new DOMException('Permission denied', 'NotAllowedError')
+        const canvas = document.createElement('canvas')
+        canvas.width = 1280
+        canvas.height = 960
+        const g = canvas.getContext('2d')!
+        const draw = () => {
+          g.fillStyle = '#6b4a2b'
+          g.fillRect(0, 0, 1280, 960)
+          g.fillStyle = '#23362c'
+          g.fillRect(150, 170, 980, 680)
+          g.fillStyle = '#f4f1e8'
+          g.font = 'bold 72px sans-serif'
+          g.fillText('CHAI CORNER', 380, 280)
+          g.font = '52px sans-serif'
+          const rows = ['Masala chai', 'Cutting chai', 'Bun maska', 'Samosa', 'Ginger tea']
+          rows.forEach((row, i) => {
+            g.fillText(row, 230, 390 + i * 90)
+            g.fillText(`₹${[15, 10, 25, 20, 18][i]}`, 900, 390 + i * 90)
+          })
+        }
+        draw()
+        window.setInterval(draw, 200)
+        return canvas.captureStream(10)
+      }
+      const audio = new AudioContext()
+      const destination = audio.createMediaStreamDestination()
+      audio.createOscillator().connect(destination)
+      return destination.stream
+    }
+  }, camera)
+  const tile = fakeTile()
+  await page.route('https://tile.openstreetmap.org/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: tile }),
+  )
+}
+
+/** Edit details is a journey of one question per screen: jump to a step from the step row. */
+export async function detailsStep(page: Page, step: string) {
+  await page
+    .getByRole('dialog', { name: 'Edit details' })
+    .getByRole('navigation')
+    .getByRole('button', { name: step, exact: true })
+    .click()
 }

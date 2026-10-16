@@ -7,7 +7,6 @@ import {
   ButtonBase,
   Chip,
   IconButton,
-  LinearProgress,
   List,
   ListItem,
   ListItemIcon,
@@ -18,14 +17,13 @@ import {
   useTheme,
 } from '@mui/material'
 import {
-  CalendarClock,
   CheckCircle2,
   ChevronRight,
   Circle,
   Copy,
   ExternalLink,
-  Gauge,
   Globe,
+  Images,
   MessageSquare,
   Pencil,
   Plus,
@@ -39,16 +37,15 @@ import { formatPrice, shopCurrency } from './format'
 import { FactList } from './FactList'
 import { PendingCard } from './PendingCard'
 import { MenuSheet } from '../shop/MenuSheet'
-import { FreshnessCard, RecapTile } from '../sales/ShopInsights'
-import { PrepPlanTile } from '../forecast/PrepPlan'
-import { CloseDayTile } from '../closeday/CloseDay'
-import { OrdersTile } from '../sourcing/Orders'
+import { FreshnessCard } from '../sales/ShopInsights'
 import { Sheet } from './Sheet'
 import { ShopQr } from './ShopQr'
+import { OwnerPerks } from '../passport/games/OwnerPerks'
 import { useUnread } from './useUnread'
 import { openNow, readiness } from './shopProgress'
 import { useCopy } from './strings'
-import { spanFor } from './tileSpan'
+import { isServiceShop, useTabsCopy } from './tabsCopy'
+import { spanFor, tileGrid } from './tileSpan'
 import { ShopLocation } from './CurrentLocation'
 import { useWorkspace } from './workspaceContext'
 import { Messages } from '../inquiries/Messages'
@@ -59,9 +56,8 @@ import { useRewardCopy } from '../rewards/strings'
 import { HoursList } from '../shop/Hours'
 import { hasHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
-import { MorningBrief } from '../owner/MorningBrief'
-import { RadarSheet, RadarTile } from '../owner/RadarTile'
-import { RescueTile } from '../owner/RescueTile'
+
+import { MapsHandoff } from './MapsHandoff'
 
 export type ShopSheetKind =
   'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
@@ -155,18 +151,18 @@ export function Supporting({ children }: { children: ReactNode }) {
 }
 
 /**
- * Tiles + their sheets + the one pending card: My shop, and the desktop pane beside the coach.
+ * Shop: the customer page leads ("this is your page"), then what is on it (menu or services,
+ * hours and address, photos, what customers ask). Also the desktop pane beside the coach.
  */
 export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
   // The pane beside the coach skips the pending card: the coach shows it there.
   const t = useCopy()
   const ws = useWorkspace()
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
-  const [radar, setRadar] = useState(false)
   const { unread, refresh } = useUnread()
   return (
     <Stack spacing={4}>
-      <MorningBrief key={ws.active?.id} onSheet={setSheet} onRadar={() => setRadar(true)} />
+      <YourPage onSheet={setSheet} />
       {!narrow && (
         <PendingCard
           compact
@@ -177,7 +173,6 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
       )}
       <ShopTiles unread={unread} onSheet={setSheet} />
       {!narrow && <FreshnessCard compact />}
-      <RadarSheet open={radar} onClose={() => setRadar(false)} />
       <ShopSheets
         kind={sheet}
         onClose={() => {
@@ -190,7 +185,94 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
   )
 }
 
-/** My shop: a grid of tiles; each opens a bottom sheet with the full list and actions. */
+/** The customer-facing page, first: what customers see, and one primary "Share page". */
+function YourPage({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
+  const t = useCopy()
+  const tabs = useTabsCopy()
+  const ws = useWorkspace()
+  const roles = useTheme().material
+  const shop = ws.active
+  if (!shop) return null
+  const url = ws.shareUrl
+  const live = shop.public && Boolean(url)
+  const summary = [shop.fields.category, shop.fields.location].filter(Boolean).join(' · ')
+  function share() {
+    if (!url || !shop) return
+    const data = { title: shop.fields.name, text: t.shareMessage(shop.fields.name), url }
+    if (navigator.share) void navigator.share(data).catch(() => undefined)
+    else
+      void navigator.clipboard
+        .writeText(url)
+        .then(() => ws.notify(t.linkCopied))
+        .catch(() => ws.notify(t.actionFailed))
+  }
+  return (
+    <Box
+      component="section"
+      aria-labelledby="your-page-title"
+      data-tour="customer"
+      sx={{
+        p: 4,
+        borderRadius: `${shape.lgIncreased}px`,
+        bgcolor: roles.primaryContainer,
+        color: roles.onPrimaryContainer,
+        ...enterRise,
+      }}
+    >
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
+        <Box component="span" aria-hidden="true" sx={{ display: 'flex' }}>
+          <Globe size={20} />
+        </Box>
+        <Typography id="your-page-title" component="h2" variant="labelLarge" sx={{ flex: 1 }}>
+          {tabs.yourPage}
+        </Typography>
+        <Chip
+          size="small"
+          label={live ? t.shared : t.notShared}
+          sx={{ bgcolor: roles.surfaceContainerLowest, color: roles.onSurface }}
+        />
+      </Stack>
+      <Typography variant="titleLarge" component="p" sx={{ mt: 2, overflowWrap: 'anywhere' }}>
+        {shop.fields.name}
+      </Typography>
+      {summary && (
+        <Typography variant="bodyMedium" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
+          {summary}
+        </Typography>
+      )}
+      <Typography variant="bodyMedium" sx={{ mt: 1 }}>
+        {live ? tabs.pageLive : tabs.pageOff}
+      </Typography>
+      <Stack direction="row" sx={{ mt: 3, gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+        {live ? (
+          <Button
+            variant="contained"
+            disableFocusRipple
+            startIcon={<Share2 size={18} />}
+            onClick={share}
+          >
+            {tabs.sharePage}
+          </Button>
+        ) : (
+          <Button variant="contained" disableFocusRipple onClick={() => onSheet('customer')}>
+            {tabs.turnOnPage}
+          </Button>
+        )}
+        <Button
+          color="inherit"
+          disableFocusRipple
+          aria-haspopup="dialog"
+          onClick={() => onSheet('customer')}
+          sx={{ minHeight: 48 }}
+        >
+          {t.customerPage}
+        </Button>
+      </Stack>
+    </Box>
+  )
+}
+
+/** Shop: a grid of tiles; each opens a bottom sheet with the full list and actions. */
 export function ShopTiles({
   unread,
   onSheet,
@@ -199,7 +281,7 @@ export function ShopTiles({
   onSheet: (kind: ShopSheetKind) => void
 }) {
   const t = useCopy()
-  const plan = usePlanCopy()
+  const tabs = useTabsCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   const shop = ws.active
@@ -215,43 +297,23 @@ export function ShopTiles({
     .filter((product) => product.available === false)
     .map((product) => product.name)
   const soldOut = soldOutNames.length
-  const { done, total } = readiness(ws)
   const hoursValue =
     open === null ? shop.fields.hours || t.fields.hours : open ? t.openNow : t.closedNow
   const details =
-    [open === null ? '' : shop.fields.hours, shop.fields.category, shop.fields.location]
-      .filter(Boolean)
-      .join(' · ') || t.notProvided
+    [open === null ? '' : shop.fields.hours, shop.fields.location].filter(Boolean).join(' · ') ||
+    t.notProvided
+  const photos = shop.gallery?.length ?? 0
   return (
     // Content-sized grid: as many 168px+ columns as fit (2 on a phone, 3 at 600px, 4 on a
     // desktop), each tile one or two columns wide by how much it shows, packed densely so no
     // row is left with a hole while a smaller tile could fill it.
-    <Box
-      data-testid="shop-tiles"
-      sx={{
-        containerType: 'inline-size',
-        containerName: 'tiles',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 168px), 1fr))',
-        gridAutoFlow: 'row dense',
-        gap: 3,
-      }}
-    >
-      <Tile
-        span={spanFor(hoursValue, details)}
-        icon={<Store size={20} />}
-        label={t.shopDetails}
-        value={hoursValue}
-        onClick={() => onSheet('details')}
-      >
-        <Supporting>{details}</Supporting>
-      </Tile>
+    <Box data-testid="shop-tiles" sx={tileGrid}>
       <Tile
         // The whole row, its category groups side by side where they fit.
         span={ws.products.length ? 'full' : 1}
         tour="menu"
         icon={<UtensilsCrossed size={20} />}
-        label={t.menu}
+        label={isServiceShop(shop.fields.category) ? tabs.services : t.menu}
         value={ws.products.length ? t.itemCount(ws.products.length) : t.noItems}
         onClick={() => onSheet('menu')}
       >
@@ -297,16 +359,20 @@ export function ShopTiles({
       >
         {soldOut > 0 && <Supporting>{soldOutNames.join(' · ')}</Supporting>}
       </Tile>
-      <CloseDayTile />
-      <RescueTile key={`rescue-${shop.id}`} />
-      <PrepPlanTile key={shop.id} />
-      <RadarTile key={`radar-${shop.id}`} />
       <Tile
-        icon={<Globe size={20} />}
-        tour="customer"
-        label={t.customerPage}
-        value={shop.public ? t.shared : t.notShared}
-        onClick={() => onSheet('customer')}
+        span={spanFor(hoursValue, details)}
+        icon={<Store size={20} />}
+        label={t.shopDetails}
+        value={hoursValue}
+        onClick={() => onSheet('details')}
+      >
+        <Supporting>{details}</Supporting>
+      </Tile>
+      <Tile
+        icon={<Images size={20} />}
+        label={tabs.photos}
+        value={photos ? tabs.photoCount(photos) : tabs.addPhotos}
+        onClick={() => ws.go('google')}
       />
       <Tile
         icon={
@@ -318,42 +384,6 @@ export function ShopTiles({
         value={unread === null ? '–' : t.unread(unread)}
         onClick={() => onSheet('messages')}
       />
-      <OrdersTile key={`orders-${shop.id}`} />
-      <Tile
-        icon={<CalendarClock size={20} />}
-        label={plan.title}
-        value={t.planHint}
-        onClick={() => onSheet('plan')}
-      />
-      <Tile
-        // Its progress bar wants width; done, it is one thin row across the grid.
-        span={done < total ? 2 : 'full'}
-        icon={<Gauge size={20} />}
-        compact={done === total}
-        label={t.readinessTitle}
-        value={t.readiness(done, total)}
-        onClick={() => onSheet('readiness')}
-      >
-        {shop.registration === 'verification_pending' && (
-          <Box component="span">
-            <Chip
-              component="span"
-              size="small"
-              label={t.verificationPending}
-              sx={{ bgcolor: roles.secondaryContainer, color: roles.onSecondaryContainer }}
-            />
-          </Box>
-        )}
-        {done < total && (
-          <LinearProgress
-            variant="determinate"
-            value={(done / total) * 100}
-            aria-hidden="true"
-            sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
-          />
-        )}
-      </Tile>
-      <RecapTile />
     </Box>
   )
 }
@@ -412,6 +442,11 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
           {kind === 'details' && (
             <Box sx={{ mb: 3 }}>
               <ShopLocation onReviewed={onClose} />
+            </Box>
+          )}
+          {kind === 'details' && (
+            <Box sx={{ mb: 4 }}>
+              <MapsHandoff fields={shop.fields} products={ws.products} />
             </Box>
           )}
           <Box component="dl" sx={{ m: 0, display: 'grid', gap: 4 }}>
@@ -585,7 +620,7 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
           title={t.readiness(done, total)}
           actions={
             <>
-              <Button onClick={then(() => ws.go('google'))}>{t.navGoogle}</Button>
+              <Button onClick={then(() => ws.go('google'))}>{t.googleTitle}</Button>
               {editDetails}
             </>
           }
@@ -710,6 +745,9 @@ function CustomerPage() {
           </Box>
         </>
       )}
+      <Box sx={{ mt: 6 }}>
+        <OwnerPerks />
+      </Box>
     </Box>
   )
 }

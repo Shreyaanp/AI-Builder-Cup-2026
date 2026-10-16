@@ -14,11 +14,10 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 import anyio
-import httpx
 import structlog
 from fastapi import Request
 
-from .face_transport import worker_headers
+from . import trust
 from .streaming import APP_NAME
 from .threads import thread_signals
 
@@ -74,21 +73,15 @@ async def _remember(request: Request, uid: str, failed: dict[str, list[str]]) ->
 
 
 async def _face(request: Request, uid: str) -> None:
-    settings = request.app.state.v1_settings
-    if not settings.face_worker_token.get_secret_value():
+    # The encrypted template, the check result and reviews about this owner live in the
+    # shared document store (the worker keeps nothing).
+    store = _docs(request)
+    if store is None:
         return
     try:
-        async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
-            # Same two auth layers as capture: Cloud Run identity token + worker token
-            # (without the identity token Cloud Run answered 401 and erasure stopped).
-            response = await client.delete(
-                settings.face_worker_url + "/template",
-                headers=await worker_headers(settings, uid),
-            )
-    except httpx.HTTPError as error:
-        raise StepFailed(f"face worker unreachable: {type(error).__name__}") from error
-    if not response.is_success:
-        raise StepFailed(f"face worker answered {response.status_code}")
+        await anyio.to_thread.run_sync(trust.erase, store, uid)
+    except Exception as error:
+        raise StepFailed(f"face data not erased: {type(error).__name__}") from error
 
 
 async def erase(request: Request, uid: str, only: set[str] | None = None) -> dict[str, Any]:

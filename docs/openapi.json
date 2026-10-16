@@ -677,150 +677,6 @@
         }
       }
     },
-    "/api/v1/face/challenges": {
-      "post": {
-        "summary": "Challenge",
-        "operationId": "challenge_api_v1_face_challenges_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChallengeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Challenge Api V1 Face Challenges Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/face/challenges/{challenge_id}": {
-      "get": {
-        "summary": "Result",
-        "operationId": "result_api_v1_face_challenges__challenge_id__get",
-        "parameters": [
-          {
-            "name": "challenge_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Challenge Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Result Api V1 Face Challenges  Challenge Id  Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/face/challenges/{challenge_id}/capture": {
-      "post": {
-        "summary": "Capture",
-        "operationId": "capture_api_v1_face_challenges__challenge_id__capture_post",
-        "parameters": [
-          {
-            "name": "challenge_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Challenge Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Capture Api V1 Face Challenges  Challenge Id  Capture Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/face/template": {
-      "delete": {
-        "summary": "Delete Template",
-        "operationId": "delete_template_api_v1_face_template_delete",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Delete Template Api V1 Face Template Delete"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/businesses/{business_id}/import": {
       "post": {
         "summary": "Import Table",
@@ -1580,7 +1436,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Decision"
+                "$ref": "#/components/schemas/app__planning_routes__Decision"
               }
             }
           }
@@ -4711,6 +4567,331 @@
         }
       }
     },
+    "/api/v1/customer/games/scratch/{ticket_id}/reveal": {
+      "post": {
+        "summary": "Scratch",
+        "operationId": "scratch_api_v1_customer_games_scratch__ticket_id__reveal_post",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticket Id"
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "UTC",
+              "title": "Tz"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/games/freeze": {
+      "post": {
+        "summary": "Freeze",
+        "operationId": "freeze_api_v1_customer_games_freeze_post",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "UTC",
+              "title": "Tz"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FreezeInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FreezeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/games/coop/claim": {
+      "post": {
+        "summary": "Claim Coop Reward",
+        "description": "Everyone who helped this week's goal collects the shared reward, once.",
+        "operationId": "claim_coop_reward_api_v1_customer_games_coop_claim_post",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "UTC",
+              "title": "Tz"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoopClaimInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassportView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/games/perks/{perk_id}/use": {
+      "post": {
+        "summary": "Use Won Perk",
+        "description": "Counter staff saw the won perk on the phone: it is marked used.",
+        "operationId": "use_won_perk_api_v1_customer_games_perks__perk_id__use_post",
+        "parameters": [
+          {
+            "name": "perk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Perk Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassportView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/shops/{business_id}/games": {
+      "get": {
+        "summary": "Shop Games",
+        "operationId": "shop_games_api_v1_public_shops__business_id__games_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopGames"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/public/today": {
       "get": {
         "summary": "Today",
@@ -4806,6 +4987,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TodayFeed"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/today": {
+      "get": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Today Page",
+        "operationId": "today_page_api_v1_businesses__business_id__today_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Today"
                 }
               }
             }
@@ -5674,6 +5897,266 @@
         }
       }
     },
+    "/api/v1/face/challenges": {
+      "post": {
+        "summary": "Challenge",
+        "operationId": "challenge_api_v1_face_challenges_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChallengeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Challenge Api V1 Face Challenges Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/face/challenges/{challenge_id}": {
+      "get": {
+        "summary": "Result",
+        "operationId": "result_api_v1_face_challenges__challenge_id__get",
+        "parameters": [
+          {
+            "name": "challenge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Challenge Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Result Api V1 Face Challenges  Challenge Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/face/challenges/{challenge_id}/capture": {
+      "post": {
+        "summary": "Capture",
+        "description": "One short capture: verified, in_review, or retry/unavailable with a reason the app turns\ninto a tip. The video stays in memory and is dropped when this request ends.",
+        "operationId": "capture_api_v1_face_challenges__challenge_id__capture_post",
+        "parameters": [
+          {
+            "name": "challenge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Challenge Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Capture Api V1 Face Challenges  Challenge Id  Capture Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/face/template": {
+      "delete": {
+        "summary": "Delete Template",
+        "description": "Delete the encrypted template, the check result and any review about this owner.",
+        "operationId": "delete_template_api_v1_face_template_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Delete Template Api V1 Face Template Delete"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trust": {
+      "get": {
+        "summary": "Trust Status",
+        "description": "The owner's check status and open notices; for reviewers, the whole queue.",
+        "operationId": "trust_status_api_v1_trust_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Trust Status Api V1 Trust Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trust/reviews/{review_id}": {
+      "post": {
+        "summary": "Decide",
+        "operationId": "decide_api_v1_trust_reviews__review_id__post",
+        "parameters": [
+          {
+            "name": "review_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Review Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__trust_routes__Decision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Decide Api V1 Trust Reviews  Review Id  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trust/scan": {
+      "post": {
+        "summary": "Scan Now",
+        "description": "Reviewers: check every shared shop now (also runs after each approved change).",
+        "operationId": "scan_now_api_v1_trust_scan_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Scan Now Api V1 Trust Scan Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/latency": {
+      "get": {
+        "summary": "Latency",
+        "description": "Time to first output per coach flow on this instance (p50/p95 of recent turns).",
+        "operationId": "latency_api_v1_latency_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Latency Api V1 Latency Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "summary": "Health",
@@ -6026,7 +6509,8 @@
             "type": "string",
             "enum": [
               "ai",
-              "keywords"
+              "keywords",
+              "command"
             ],
             "title": "Mode"
           },
@@ -6051,6 +6535,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/Anchor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "command": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Command"
               },
               {
                 "type": "null"
@@ -6501,6 +6995,12 @@
             "maxItems": 7,
             "title": "Weekly Hours"
           },
+          "closed_on": {
+            "type": "string",
+            "pattern": "^(\\d{4}-\\d{2}-\\d{2})?$",
+            "title": "Closed On",
+            "default": ""
+          },
           "phone": {
             "type": "string",
             "maxLength": 40,
@@ -6760,6 +7260,90 @@
         ],
         "title": "ChatSummary"
       },
+      "CoachLine": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "festival",
+              "rain",
+              "busiest_day"
+            ],
+            "title": "Kind"
+          },
+          "festival": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Festival"
+          },
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "rain": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rain"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekday"
+          },
+          "item": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "CoachLine"
+      },
       "CoachTurn": {
         "properties": {
           "message": {
@@ -6833,6 +7417,70 @@
         ],
         "title": "CoachTurn"
       },
+      "Command": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "my_stamps",
+              "directions",
+              "follow",
+              "ask_owner"
+            ],
+            "title": "Kind"
+          },
+          "shop_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Id"
+          },
+          "shop_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Name"
+          },
+          "maps_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maps Url"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "Command",
+        "description": "A customer command answered at once, by voice or text: my stamps, directions to a shop,\nfollow a shop, ask a shop's owner. Following and asking still happen on the shop's page."
+      },
       "ConsentRequest": {
         "properties": {
           "version": {
@@ -6857,6 +7505,101 @@
           "privacy"
         ],
         "title": "ConsentRequest"
+      },
+      "CoopClaimInput": {
+        "properties": {
+          "area": {
+            "type": "string",
+            "maxLength": 12,
+            "minLength": 1,
+            "title": "Area"
+          },
+          "week": {
+            "type": "string",
+            "pattern": "^\\d{4}-W\\d{2}$",
+            "title": "Week"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "area",
+          "week"
+        ],
+        "title": "CoopClaimInput"
+      },
+      "CoopView": {
+        "properties": {
+          "area": {
+            "type": "string",
+            "title": "Area"
+          },
+          "area_name": {
+            "type": "string",
+            "title": "Area Name"
+          },
+          "week": {
+            "type": "string",
+            "title": "Week"
+          },
+          "ends": {
+            "type": "string",
+            "title": "Ends"
+          },
+          "goal": {
+            "type": "integer",
+            "title": "Goal"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "demo_visits": {
+            "type": "integer",
+            "title": "Demo Visits"
+          },
+          "you": {
+            "type": "integer",
+            "title": "You"
+          },
+          "helpers": {
+            "type": "integer",
+            "title": "Helpers"
+          },
+          "reached": {
+            "type": "boolean",
+            "title": "Reached"
+          },
+          "claimed": {
+            "type": "boolean",
+            "title": "Claimed"
+          },
+          "bonus": {
+            "type": "integer",
+            "title": "Bonus"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "area",
+          "area_name",
+          "week",
+          "ends",
+          "goal",
+          "total",
+          "demo_visits",
+          "you",
+          "helpers",
+          "reached",
+          "claimed",
+          "bonus",
+          "demo"
+        ],
+        "title": "CoopView"
       },
       "CustomFact": {
         "properties": {
@@ -7089,55 +7832,6 @@
           "countdown_seconds"
         ],
         "title": "Deal"
-      },
-      "Decision": {
-        "properties": {
-          "source": {
-            "type": "string",
-            "enum": [
-              "demo",
-              "owner"
-            ],
-            "title": "Source",
-            "default": "owner"
-          },
-          "ready_stock": {
-            "type": "integer",
-            "maximum": 1000000.0,
-            "minimum": 0.0,
-            "title": "Ready Stock",
-            "default": 0
-          },
-          "capacity": {
-            "type": "integer",
-            "maximum": 1000000.0,
-            "minimum": 0.0,
-            "title": "Capacity",
-            "default": 0
-          },
-          "decision": {
-            "type": "string",
-            "enum": [
-              "accepted",
-              "edited",
-              "declined"
-            ],
-            "title": "Decision"
-          },
-          "quantity": {
-            "type": "integer",
-            "maximum": 1000000.0,
-            "minimum": 0.0,
-            "title": "Quantity"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "decision",
-          "quantity"
-        ],
-        "title": "Decision"
       },
       "DiscoveryPlace": {
         "properties": {
@@ -7648,6 +8342,111 @@
         ],
         "title": "Forecast"
       },
+      "FreezeInput": {
+        "properties": {
+          "week": {
+            "type": "string",
+            "enum": [
+              "this",
+              "next"
+            ],
+            "title": "Week"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "week"
+        ],
+        "title": "FreezeInput"
+      },
+      "FreezeResult": {
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "frozen",
+              "no_freezes",
+              "already",
+              "not_needed"
+            ],
+            "title": "Verdict"
+          },
+          "passport": {
+            "$ref": "#/components/schemas/PassportView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "verdict",
+          "passport"
+        ],
+        "title": "FreezeResult"
+      },
+      "GamesView": {
+        "properties": {
+          "scratch": {
+            "items": {
+              "$ref": "#/components/schemas/ScratchView"
+            },
+            "type": "array",
+            "title": "Scratch"
+          },
+          "sets": {
+            "items": {
+              "$ref": "#/components/schemas/SetView"
+            },
+            "type": "array",
+            "title": "Sets"
+          },
+          "coop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoopView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "won_perks": {
+            "items": {
+              "$ref": "#/components/schemas/WonPerk"
+            },
+            "type": "array",
+            "title": "Won Perks"
+          },
+          "next_reward": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextReward"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nudge": {
+            "type": "boolean",
+            "title": "Nudge"
+          },
+          "welcome_stamps": {
+            "type": "integer",
+            "title": "Welcome Stamps",
+            "default": 2
+          }
+        },
+        "type": "object",
+        "required": [
+          "scratch",
+          "sets",
+          "coop",
+          "won_perks",
+          "next_reward",
+          "nudge"
+        ],
+        "title": "GamesView"
+      },
       "Group": {
         "properties": {
           "id": {
@@ -8022,6 +8821,37 @@
         "type": "object",
         "title": "LocalSignIn"
       },
+      "LowItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "stock": {
+            "type": "integer",
+            "title": "Stock"
+          },
+          "runs_out": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runs Out"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "stock",
+          "runs_out"
+        ],
+        "title": "LowItem"
+      },
       "LowStock": {
         "properties": {
           "name": {
@@ -8210,6 +9040,45 @@
         ],
         "title": "NewThread"
       },
+      "NextReward": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "card",
+              "set",
+              "level"
+            ],
+            "title": "Kind"
+          },
+          "left": {
+            "type": "integer",
+            "title": "Left"
+          },
+          "reward": {
+            "type": "string",
+            "title": "Reward"
+          },
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id",
+            "default": ""
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "left",
+          "reward"
+        ],
+        "title": "NextReward",
+        "description": "The single next named reward (\"2 more stamps → free bun maska\")."
+      },
       "Observation": {
         "properties": {
           "date": {
@@ -8270,6 +9139,31 @@
           "status"
         ],
         "title": "Observation"
+      },
+      "Odd": {
+        "properties": {
+          "prize": {
+            "type": "string",
+            "enum": [
+              "points_10",
+              "points_25",
+              "perk",
+              "freeze",
+              "again"
+            ],
+            "title": "Prize"
+          },
+          "percent": {
+            "type": "integer",
+            "title": "Percent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prize",
+          "percent"
+        ],
+        "title": "Odd"
       },
       "Opportunity": {
         "properties": {
@@ -8573,6 +9467,16 @@
             "type": "boolean",
             "title": "Flagged",
             "default": false
+          },
+          "games": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GamesView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -8608,7 +9512,12 @@
               "regular",
               "full_card",
               "quest_finale",
-              "rescue_hero"
+              "rescue_hero",
+              "third_visit",
+              "tip",
+              "follow",
+              "scratch",
+              "set_complete"
             ],
             "title": "Trigger"
           },
@@ -8640,7 +9549,7 @@
               "$ref": "#/components/schemas/Perk"
             },
             "type": "array",
-            "maxItems": 8,
+            "maxItems": 12,
             "title": "Perks"
           }
         },
@@ -8668,7 +9577,12 @@
               "regular",
               "full_card",
               "quest_finale",
-              "rescue_hero"
+              "rescue_hero",
+              "third_visit",
+              "tip",
+              "follow",
+              "scratch",
+              "set_complete"
             ],
             "title": "Trigger"
           },
@@ -9433,6 +10347,79 @@
         ],
         "title": "PublicStampInput"
       },
+      "Pulse": {
+        "properties": {
+          "sales": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          },
+          "questions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questions"
+          },
+          "stamps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stamps"
+          },
+          "returning": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returning"
+          }
+        },
+        "type": "object",
+        "title": "Pulse",
+        "description": "One day's activity; None means \"no record\", never zero."
+      },
       "QrKey": {
         "properties": {
           "key": {
@@ -10087,6 +11074,22 @@
         "type": "object",
         "title": "RetailAttributes"
       },
+      "RevealResult": {
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/ScratchView"
+          },
+          "passport": {
+            "$ref": "#/components/schemas/PassportView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "card",
+          "passport"
+        ],
+        "title": "RevealResult"
+      },
       "SaleLine": {
         "properties": {
           "item": {
@@ -10148,6 +11151,81 @@
         "additionalProperties": false,
         "type": "object",
         "title": "SalonAttributes"
+      },
+      "ScratchView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          },
+          "first": {
+            "type": "boolean",
+            "title": "First"
+          },
+          "odds": {
+            "items": {
+              "$ref": "#/components/schemas/Odd"
+            },
+            "type": "array",
+            "title": "Odds"
+          },
+          "revealed": {
+            "type": "boolean",
+            "title": "Revealed"
+          },
+          "prize": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "points_10",
+                  "points_25",
+                  "perk",
+                  "freeze",
+                  "again"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prize"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points",
+            "default": 0
+          },
+          "perk_text": {
+            "type": "string",
+            "title": "Perk Text",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "shop_id",
+          "shop_name",
+          "demo",
+          "first",
+          "odds",
+          "revealed"
+        ],
+        "title": "ScratchView",
+        "description": "A scratch card. Before it is scratched, the prize stays on the server; the odds that\napply to this card are always shown."
       },
       "Search": {
         "properties": {
@@ -10217,6 +11295,106 @@
         "type": "object",
         "title": "ServiceAttributes"
       },
+      "SetStop": {
+        "properties": {
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done",
+            "default": false
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop_id",
+          "name"
+        ],
+        "title": "SetStop"
+      },
+      "SetView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "art": {
+            "type": "string",
+            "title": "Art"
+          },
+          "have": {
+            "type": "integer",
+            "title": "Have"
+          },
+          "need": {
+            "type": "integer",
+            "title": "Need"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done"
+          },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/SetStop"
+            },
+            "type": "array",
+            "title": "Stops"
+          },
+          "festival": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Festival"
+          },
+          "ends": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends"
+          },
+          "approximate": {
+            "type": "boolean",
+            "title": "Approximate",
+            "default": false
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "art",
+          "have",
+          "need",
+          "done"
+        ],
+        "title": "SetView"
+      },
       "ShareRequest": {
         "properties": {
           "public": {
@@ -10280,6 +11458,75 @@
         ],
         "title": "ShopCard"
       },
+      "ShopGames": {
+        "properties": {
+          "welcome": {
+            "type": "integer",
+            "title": "Welcome"
+          },
+          "needed": {
+            "type": "integer",
+            "title": "Needed"
+          },
+          "reward": {
+            "type": "string",
+            "title": "Reward"
+          },
+          "tried": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tried"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          },
+          "perks": {
+            "items": {
+              "$ref": "#/components/schemas/Perk"
+            },
+            "type": "array",
+            "title": "Perks"
+          },
+          "odds": {
+            "items": {
+              "$ref": "#/components/schemas/Odd"
+            },
+            "type": "array",
+            "title": "Odds"
+          },
+          "first_prize": {
+            "type": "string",
+            "enum": [
+              "points_10",
+              "points_25",
+              "perk",
+              "freeze",
+              "again"
+            ],
+            "title": "First Prize"
+          }
+        },
+        "type": "object",
+        "required": [
+          "welcome",
+          "needed",
+          "reward",
+          "tried",
+          "demo",
+          "perks",
+          "odds",
+          "first_prize"
+        ],
+        "title": "ShopGames",
+        "description": "What a shop page shows about its games, signed in or not."
+      },
       "ShopStamp": {
         "properties": {
           "id": {
@@ -10329,6 +11576,21 @@
           "last_day": {
             "type": "string",
             "title": "Last Day"
+          },
+          "needed": {
+            "type": "integer",
+            "title": "Needed",
+            "default": 8
+          },
+          "welcome": {
+            "type": "integer",
+            "title": "Welcome",
+            "default": 2
+          },
+          "reward": {
+            "type": "string",
+            "title": "Reward",
+            "default": ""
           }
         },
         "type": "object",
@@ -10944,6 +12206,11 @@
             "type": "string",
             "title": "Country",
             "default": ""
+          },
+          "made": {
+            "type": "boolean",
+            "title": "Made",
+            "default": false
           }
         },
         "type": "object",
@@ -10982,6 +12249,23 @@
               }
             ],
             "title": "Receipt"
+          },
+          "scratch": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScratchView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sets_completed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sets Completed"
           }
         },
         "type": "object",
@@ -11078,6 +12362,11 @@
             "type": "integer",
             "title": "Rain Checks"
           },
+          "freezes": {
+            "type": "integer",
+            "title": "Freezes",
+            "default": 0
+          },
           "this_week": {
             "type": "boolean",
             "title": "This Week"
@@ -11088,12 +12377,20 @@
               "enum": [
                 "done",
                 "rain",
+                "frozen",
                 "missed",
                 "current"
               ]
             },
             "type": "array",
             "title": "Row"
+          },
+          "planned": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Planned"
           }
         },
         "type": "object",
@@ -11332,6 +12629,68 @@
         ],
         "title": "TipList"
       },
+      "Today": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "yesterday": {
+            "$ref": "#/components/schemas/Pulse"
+          },
+          "today": {
+            "$ref": "#/components/schemas/Pulse"
+          },
+          "forecast": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayForecast"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "low_stock": {
+            "items": {
+              "$ref": "#/components/schemas/LowItem"
+            },
+            "type": "array",
+            "title": "Low Stock"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoachLine"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "currency",
+          "yesterday",
+          "today",
+          "forecast",
+          "low_stock",
+          "line",
+          "demo"
+        ],
+        "title": "Today"
+      },
       "TodayArea": {
         "properties": {
           "id": {
@@ -11399,6 +12758,29 @@
           "signed_in"
         ],
         "title": "TodayFeed"
+      },
+      "TodayForecast": {
+        "properties": {
+          "item": {
+            "type": "string",
+            "title": "Item"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "quantity",
+          "unit"
+        ],
+        "title": "TodayForecast"
       },
       "TopItem": {
         "properties": {
@@ -11659,6 +13041,58 @@
         ],
         "title": "Weather"
       },
+      "WonPerk": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name",
+            "default": ""
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "scratch",
+              "set"
+            ],
+            "title": "Source"
+          },
+          "day": {
+            "type": "string",
+            "title": "Day"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "default": false
+          },
+          "used": {
+            "type": "boolean",
+            "title": "Used",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "shop_id",
+          "text",
+          "source",
+          "day"
+        ],
+        "title": "WonPerk"
+      },
       "WorldReceipt": {
         "properties": {
           "shop_ids": {
@@ -11726,6 +13160,73 @@
         ],
         "title": "WorldRequest"
       },
+      "app__planning_routes__Decision": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "demo",
+              "owner"
+            ],
+            "title": "Source",
+            "default": "owner"
+          },
+          "ready_stock": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Ready Stock",
+            "default": 0
+          },
+          "capacity": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Capacity",
+            "default": 0
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "edited",
+              "declined"
+            ],
+            "title": "Decision"
+          },
+          "quantity": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Quantity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decision",
+          "quantity"
+        ],
+        "title": "Decision"
+      },
+      "app__trust_routes__Decision": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "cleared",
+              "upheld"
+            ],
+            "title": "Decision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "Decision"
+      },
       "StreamEvent": {
         "additionalProperties": false,
         "properties": {
@@ -11748,7 +13249,8 @@
               "suppliers",
               "order",
               "rescue_proposal",
-              "chart"
+              "chart",
+              "action"
             ],
             "title": "Kind",
             "type": "string"
