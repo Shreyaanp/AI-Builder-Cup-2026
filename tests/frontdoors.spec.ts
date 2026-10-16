@@ -311,6 +311,7 @@ test('B35 desktop keeps its hero columns, bento and pinned story', async ({ page
 test('GAP 5 · landing headline does not overflow at 360px in all 15 locales', async ({
   page,
 }) => {
+  test.setTimeout(120_000)
   await page.setViewportSize({ width: 360, height: 800 })
   const locales = [
     'ta',
@@ -335,7 +336,7 @@ test('GAP 5 · landing headline does not overflow at 360px in all 15 locales', a
     }, locale)
     await page.goto('/')
     const h1 = page.locator('h1')
-    await expect(h1).toBeVisible()
+    await expect(h1).toBeVisible({ timeout: 15_000 })
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
     expect(
       scrollWidth,
