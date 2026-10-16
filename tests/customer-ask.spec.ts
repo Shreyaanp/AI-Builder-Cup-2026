@@ -124,6 +124,46 @@ test('front door: the conversation opens with real local suggestions and Todayâ€
   await expect(page.getByRole('button', { name: 'New conversation' })).toBeVisible()
 })
 
+// The opening page (owner, 16 Oct): one purpose, this area's shops as large cards, big chips and
+// the composer in the thumb zone; the same in light and dark, on a phone and a desktop.
+for (const mode of ['light', 'dark'] as const)
+  test(`front door opens on this area's shops with the composer in reach (${mode})`, async ({
+    page,
+    isMobile,
+  }) => {
+    const shop = answer().groups[0]!.places[0]!
+    await page.route('**/api/v1/discover?**', (route) =>
+      route.fulfill({ json: { mode: 'demo', places: [shop], google_unavailable: false } }),
+    )
+    await page.addInitScript(
+      (appearance) =>
+        localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance })),
+      mode,
+    )
+    await page.goto('/explore/')
+    const nearby = page.getByRole('list', { name: 'Near you now' })
+    await expect(nearby.locator('a[href="/explore/s/demo-fixture-kopi"]')).toBeVisible({
+      timeout: 30_000,
+    })
+    const viewport = page.viewportSize()!
+    const field = (await page.getByRole('search').boundingBox())!
+    expect(field.y).toBeGreaterThan(viewport.height / 2)
+    const chips = page.getByRole('list', { name: 'Ask about anything nearby' }).getByRole('button')
+    await expect(chips.first()).toBeVisible()
+    await page.waitForTimeout(700)
+    await page.screenshot({
+      path: `docs/stories/customer-ai-0-opening-${isMobile ? 'phone' : 'desktop'}-${mode}.png`,
+    })
+    expect(
+      (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
+    ).toEqual([])
+    // A tap on a chip asks it; the chips give way to the answer.
+    await page.route('**/api/v1/discover/ask', (route) => route.fulfill({ json: answer() }))
+    await chips.first().click()
+    await expect(page.getByRole('article').first()).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Ask about anything nearby' })).toHaveCount(0)
+  })
+
 test('ask: a real shop answers with its exact item and price; back returns to the same place', async ({
   page,
   isMobile,
