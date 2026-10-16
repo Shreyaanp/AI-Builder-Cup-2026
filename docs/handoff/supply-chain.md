@@ -50,7 +50,12 @@ system. On the phone:
   emulator (`FIRESTORE_EMULATOR_HOST=127.0.0.1:8577`). ruff, ruff format, mypy clean.
 - Story S11 (forecast → PO → ORDRSP partial → ASN → invoice, IDoc ↔ JSON, axe): passes on phone
   and desktop.
-- `npm run check`: lint, build and hooks clean. The Playwright results are in the PR description.
+- `npm run check`: lint, build and hooks are clean. CI on PR #19 is fully green (backend, frontend,
+  six browser shards, container). Locally, the full suite ran while about six other sessions
+  were running Playwright, so page loads timed out. One real regression from this branch was
+  fixed: the tile text contained "coach" and clashed with the Coach nav button.
+- `npm run test:qa` (fresh `.cache/qa`): 162 passed on the first run. The 14 failures (cold page
+  loads under load) all passed on rerun, so 176/176.
 - **Live Gemini** (Vertex, `ichiropractic`, `gemini-3.5-flash`): all 8 sample documents read by the
   model (8/8), most in 2–3s. The model correctly reads the partial (15 kg now, 5 kg back-ordered) and
   flags `BAG`, the ambiguous `05/11` and unknown item codes. Three bugs found and fixed here:
