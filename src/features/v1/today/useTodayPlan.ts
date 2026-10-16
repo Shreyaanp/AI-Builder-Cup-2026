@@ -25,7 +25,7 @@ export function useTodayPlan(unread: number | null): {
     const timer = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(timer)
   }, [])
-  if (!ws.active) return { plan: null, answerMenu: () => undefined }
+  if (!ws.active || !ws.productsLoaded) return { plan: null, answerMenu: () => undefined }
   const plan = todayPlan({
     shop: ws.active,
     products: ws.products,
