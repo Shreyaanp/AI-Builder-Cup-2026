@@ -50,6 +50,7 @@ import { useUnread } from './useUnread'
 import { openNow, readiness } from './shopProgress'
 import { useCopy } from './strings'
 import { spanFor } from './tileSpan'
+import { ShopLocation } from './CurrentLocation'
 import { useWorkspace } from './workspaceContext'
 import { Messages } from '../inquiries/Messages'
 import { PlanTomorrow } from '../planning/PlanTomorrow'
@@ -401,6 +402,11 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
           title={shop.fields.name}
           actions={editDetails}
         >
+          {kind === 'details' && (
+            <Box sx={{ mb: 3 }}>
+              <ShopLocation onReviewed={onClose} />
+            </Box>
+          )}
           <Box component="dl" sx={{ m: 0, display: 'grid', gap: 4 }}>
             {(['category', 'location', 'hours', 'phone'] as const).map((key) => (
               <Box key={key}>
