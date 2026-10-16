@@ -93,11 +93,7 @@ export function GoogleScreen() {
           {t.googleTitle}
         </Typography>
         <Alert severity="info">{t.googleNeedsShop}</Alert>
-        <Button
-          variant="contained"
-          sx={{ alignSelf: 'flex-start' }}
-          onClick={() => ws.openEditor({ kind: 'business', fields: null })}
-        >
+        <Button variant="contained" sx={{ alignSelf: 'flex-start' }} onClick={ws.startNewShop}>
           {t.addShop}
         </Button>
       </Stack>

@@ -1,6 +1,18 @@
 import type { Copy } from '../strings'
 
 export const bn: Copy = {
+  newShopMode: 'নতুন দোকান',
+  newShopReady: 'আপনার নতুন দোকান তৈরি',
+  newShopReadyBody: 'এখন আপনি নতুন দোকানে কাজ করছেন। প্রস্তুত হলে গ্রাহক পেজ শেয়ার করুন।',
+  newShopContinue: 'আমার দোকানে এগিয়ে যান',
+  useCurrentLocation: 'আমার বর্তমান অবস্থান ব্যবহার করুন',
+  locationReason: 'দোকানে আছেন? পিন বসাতে অবস্থানের অনুমতি দিন। সংরক্ষণের আগে যাচাই করবেন।',
+  locating: 'আপনার অবস্থান খোঁজা হচ্ছে…',
+  locationDenied: 'অবস্থানের অনুমতি মেলেনি। ঠিকানা লিখুন বা GPS থাকা ছবি দিন।',
+  locationFailed: 'অবস্থান পাওয়া যায়নি। আবার চেষ্টা করুন, ঠিকানা লিখুন বা GPS থাকা ছবি দিন।',
+  yourLocation: 'আপনার অবস্থান',
+  description: 'বিবরণ',
+  locationAccuracy: (m: string) => `${m} মিটারের মধ্যে`,
   installApp: 'অ্যাপ ইনস্টল করুন',
   installIos: 'Safari-তে শেয়ার → হোম স্ক্রিনে যোগ করুন বেছে নিয়ে যোগ করুন চাপুন।',
   installUnavailable:
@@ -255,7 +267,6 @@ export const bn: Copy = {
   stock: 'মজুত',
   // Shop
   shopEmptyTitle: 'আপনার দোকান যোগ করি',
-  shopEmptyBody: 'বোর্ডের ছবি দিয়ে শুরু করুন বা নিজে তথ্য পূরণ করুন।',
   addShop: 'দোকানের তথ্য যোগ করুন',
   startPhoto: 'ছবি দিয়ে শুরু করুন',
   editDetails: 'তথ্য সম্পাদনা করুন',

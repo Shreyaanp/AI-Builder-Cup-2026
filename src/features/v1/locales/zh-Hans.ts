@@ -1,6 +1,18 @@
 import type { Copy } from '../strings'
 
 export const zhHans: Copy = {
+  newShopMode: '新店铺',
+  newShopReady: '您的新店铺已准备好',
+  newShopReadyBody: '您已切换到新店铺。准备好后即可分享顾客页面。',
+  newShopContinue: '继续管理店铺',
+  useCurrentLocation: '使用我的当前位置',
+  locationReason: '您在店里吗？允许位置访问以设置图钉。保存前您会先检查。',
+  locating: '正在获取您的位置…',
+  locationDenied: '位置访问被拒绝。您可以输入地址，或使用带有 GPS 的照片。',
+  locationFailed: '无法获取位置。请重试、输入地址，或使用带有 GPS 的照片。',
+  yourLocation: '您的位置',
+  description: '描述',
+  locationAccuracy: (m: string) => `误差 ${m} 米以内`,
   installApp: '安装应用',
   installIos: '在 Safari 中，点按“分享” → “添加到主屏幕”，然后点按“添加”。',
   installUnavailable: '暂时无法安装。请尝试浏览器的安装菜单，或继续使用网页版。',
@@ -235,7 +247,6 @@ export const zhHans: Copy = {
   notProvided: '未提供',
   stock: '库存',
   shopEmptyTitle: '添加您的店铺',
-  shopEmptyBody: '先拍下招牌，或自行填写资料。',
   addShop: '添加店铺资料',
   startPhoto: '从照片开始',
   editDetails: '编辑资料',

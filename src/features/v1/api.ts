@@ -25,6 +25,9 @@ export interface Business {
     place_id?: string | null
     pin_label?: string | null
     pin_demo?: boolean
+    pin_source?: 'device' | null
+    pin_accuracy_m?: number | null
+    description?: string
     timezone?: string
     hours: string
     weekly_hours?: import('../shop/hoursModel').DayHours[]
@@ -53,6 +56,8 @@ export interface Product {
   available?: boolean
 }
 export interface Proposal {
+  /** Client-only guided completion marker, outside the sealed snapshot. */
+  new_shop?: boolean
   import_flags?: { row: number; item: string; reasons: string[] }[]
   /** Client-only: what the photo reader was unsure of (or that it was a fixture), shown in review. */
   photo_notes?: string[]
@@ -82,12 +87,17 @@ export interface EraseResult {
 export interface Conversation {
   session_id: string
   business_id?: string | null
+  new_shop?: boolean
   updated: number
 }
 export interface PhotoResult {
   status: 'needs_review' | 'nothing_to_propose'
   photo_kind: string
-  extraction: { uncertain: string[] }
+  extraction: {
+    uncertain: string[]
+    business?: { name: string; category: string; location: string; hours: string; phone: string }
+    products?: { name: string; price: number | null; unit: string; category?: string }[]
+  }
   proposal: Proposal | null
   pin_proposal?: Proposal | null
 }

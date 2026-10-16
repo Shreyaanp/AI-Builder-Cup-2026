@@ -1,6 +1,19 @@
 import type { Copy } from '../strings'
 
 export const vi: Copy = {
+  newShopMode: 'Cửa hàng mới',
+  newShopReady: 'Cửa hàng mới của bạn đã sẵn sàng',
+  newShopReadyBody: 'Bạn đang quản lý cửa hàng mới. Chia sẻ trang khách hàng khi sẵn sàng.',
+  newShopContinue: 'Tiếp tục với cửa hàng',
+  useCurrentLocation: 'Dùng vị trí hiện tại của tôi',
+  locationReason:
+    'Bạn đang ở cửa hàng? Cho phép truy cập vị trí để đặt ghim. Bạn sẽ xem lại trước khi lưu.',
+  locating: 'Đang tìm vị trí…',
+  locationDenied: 'Quyền vị trí bị từ chối. Bạn có thể nhập địa chỉ hoặc dùng ảnh có GPS.',
+  locationFailed: 'Không lấy được vị trí. Thử lại, nhập địa chỉ hoặc dùng ảnh có GPS.',
+  yourLocation: 'Vị trí của bạn',
+  description: 'Mô tả',
+  locationAccuracy: (m: string) => `trong khoảng ${m} m`,
   installApp: 'Cài ứng dụng',
   installIos: 'Trong Safari, chạm Chia sẻ → Thêm vào Màn hình chính, rồi chạm Thêm.',
   installUnavailable:
@@ -245,7 +258,6 @@ export const vi: Copy = {
   notProvided: 'Chưa cung cấp',
   stock: 'Tồn kho',
   shopEmptyTitle: 'Hãy thêm cửa hàng của bạn',
-  shopEmptyBody: 'Bắt đầu từ ảnh bảng hiệu hoặc tự điền thông tin.',
   addShop: 'Thêm thông tin cửa hàng',
   startPhoto: 'Bắt đầu từ ảnh',
   editDetails: 'Sửa thông tin',

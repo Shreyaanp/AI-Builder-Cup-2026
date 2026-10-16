@@ -1,3 +1,4 @@
+import { createShop, editShopDetails } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import type { components } from '../src/api/generated.js'
@@ -214,8 +215,8 @@ for (const mode of ['offline', 'gemini']) {
 
 test('B11: weekday hours are reviewed, saved and shown publicly', async ({ page }) => {
   await enter(page, false)
-  await page.getByRole('button', { name: 'Add my shop', exact: true }).click()
-  await page.getByLabel('Shop name').fill('Katong Night Kopi')
+  await createShop(page, 'name: Katong Night Kopi')
+  await editShopDetails(page)
   await page.getByLabel('Hours note (optional)', { exact: true }).fill('Ask about holiday hours')
   await page.getByLabel('Set hours by weekday').check()
   await expect(page.locator('input[type="time"]')).toHaveCount(2)
