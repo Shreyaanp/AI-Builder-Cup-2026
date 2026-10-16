@@ -78,9 +78,10 @@ export function missingSteps(shop: TodayInput['shop'], products: Product[]): Ste
  * until the shop playbook (per-shop goals and key metrics) is available; then it leads.
  */
 export function metricsFor(shop: TodayInput['shop'], hints?: TodayHints | null): Metric[] {
+  const hasStamps = Boolean(shop.fields.reward_text?.trim())
   const base: Metric[] = isFood(shop.fields)
-    ? ['sales', 'items', 'views', 'questions', 'returning', 'stamps']
-    : ['sales', 'questions', 'views', 'returning', 'stamps', 'items']
+    ? ['sales', 'items', 'views', 'questions', 'returning', ...(hasStamps ? (['stamps'] as Metric[]) : [])]
+    : ['sales', 'questions', 'views', 'returning', ...(hasStamps ? (['stamps'] as Metric[]) : []), 'items']
   const first = (hints?.pulse ?? []).filter((key): key is Metric => base.includes(key as Metric))
   return [...new Set([...first, ...base])]
 }
