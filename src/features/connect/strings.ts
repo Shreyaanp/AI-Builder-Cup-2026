@@ -63,7 +63,8 @@ const translations: Record<Locale, Copy> = {
     pickSystem: 'अपना सिस्टम चुनें',
     uploadOrPaste: 'फ़ाइल अपलोड करें या नमूना चिपकाएँ',
     mappingTitle: 'AI कॉलम मैपिंग',
-    mappingSubtitle: 'Gemini ने आपके एक्सपोर्ट फ़ील्ड को मैप किया है। बदलने के लिए किसी भी पंक्ति पर टैप करें।',
+    mappingSubtitle:
+      'Gemini ने आपके एक्सपोर्ट फ़ील्ड को मैप किया है। बदलने के लिए किसी भी पंक्ति पर टैप करें।',
     sourceColumn: 'स्रोत कॉलम',
     targetField: 'चॉकबोर्ड फ़ील्ड',
     confidence: 'सटीकता',
@@ -145,11 +146,13 @@ const translations: Record<Locale, Copy> = {
   },
   ms: {
     connectTitle: 'Sambungkan sistem anda',
-    connectSubtitle: 'Palamkan perisian POS, ERP atau invois anda tanpa perlu memasukkan semula data',
+    connectSubtitle:
+      'Palamkan perisian POS, ERP atau invois anda tanpa perlu memasukkan semula data',
     pickSystem: 'Pilih sistem anda',
     uploadOrPaste: 'Muat naik eksport atau tampal sampel',
     mappingTitle: 'Pemetaan lajur AI',
-    mappingSubtitle: 'Gemini telah memetakan lajur eksport anda. Ketik mana-mana baris untuk laraskan.',
+    mappingSubtitle:
+      'Gemini telah memetakan lajur eksport anda. Ketik mana-mana baris untuk laraskan.',
     sourceColumn: 'Lajur sumber',
     targetField: 'Medan Chalkboard',
     confidence: 'Keyakinan',
@@ -446,11 +449,13 @@ const translations: Record<Locale, Copy> = {
   },
   fil: {
     connectTitle: 'Ikonekta ang iyong sistema',
-    connectSubtitle: 'I-plug in ang iyong POS, ERP o software sa pagsingil nang hindi muling nag-e-encode',
+    connectSubtitle:
+      'I-plug in ang iyong POS, ERP o software sa pagsingil nang hindi muling nag-e-encode',
     pickSystem: 'Piliin ang iyong sistema',
     uploadOrPaste: 'Mag-upload ng export o mag-paste ng sample',
     mappingTitle: 'AI column mapping',
-    mappingSubtitle: 'Itinugma ng Gemini ang iyong mga column. I-tap ang anumang row para i-adjust.',
+    mappingSubtitle:
+      'Itinugma ng Gemini ang iyong mga column. I-tap ang anumang row para i-adjust.',
     sourceColumn: 'Source column',
     targetField: 'Chalkboard field',
     confidence: 'Kumpiyansa',
@@ -493,7 +498,8 @@ const translations: Record<Locale, Copy> = {
     pickSystem: 'আপনার সিস্টেম নির্বাচন করুন',
     uploadOrPaste: 'ফাইল আপলোড করুন বা নমুনা পেস্ট করুন',
     mappingTitle: 'AI কলাম ম্যাপিং',
-    mappingSubtitle: 'Gemini আপনার ডেটা ফিল্ড ম্যাপ করেছে। পরিবর্তন করতে যে কোনো সারিতে ট্যাপ করুন।',
+    mappingSubtitle:
+      'Gemini আপনার ডেটা ফিল্ড ম্যাপ করেছে। পরিবর্তন করতে যে কোনো সারিতে ট্যাপ করুন।',
     sourceColumn: 'উৎস কলাম',
     targetField: 'চকবোর্ড ফিল্ড',
     confidence: 'নির্ভুলতা',
@@ -532,11 +538,13 @@ const translations: Record<Locale, Copy> = {
   },
   te: {
     connectTitle: 'మీ సిస్టమ్‌ను కనెక్ట్ చేయండి',
-    connectSubtitle: 'డేటాను మళ్లీ నమోదు చేయకుండా మీ POS, ERP లేదా బిల్లింగ్ సాఫ్ట్‌వేర్‌ను కనెక్ట్ చేయండి',
+    connectSubtitle:
+      'డేటాను మళ్లీ నమోదు చేయకుండా మీ POS, ERP లేదా బిల్లింగ్ సాఫ్ట్‌వేర్‌ను కనెక్ట్ చేయండి',
     pickSystem: 'మీ సిస్టమ్‌ను ఎంచుకోండి',
     uploadOrPaste: 'ఫైల్ అప్‌లోడ్ చేయండి లేదా నమూనా పేస్ట్ చేయండి',
     mappingTitle: 'AI కాలమ్ మ్యాపింగ్',
-    mappingSubtitle: 'Gemini మీ ఎగుమతి ఫీల్డ్‌లను మ్యాప్ చేసింది. మార్చడానికి ఏదైనా వరుసపై నొక్కండి.',
+    mappingSubtitle:
+      'Gemini మీ ఎగుమతి ఫీల్డ్‌లను మ్యాప్ చేసింది. మార్చడానికి ఏదైనా వరుసపై నొక్కండి.',
     sourceColumn: 'మూల కాలమ్',
     targetField: 'Chalkboard ఫీల్డ్',
     confidence: 'ఖచ్చితత్వం',
@@ -618,11 +626,13 @@ const translations: Record<Locale, Copy> = {
   },
   kn: {
     connectTitle: 'ನಿಮ್ಮ ಸಿಸ್ಟಮ್ ಸಂಪರ್ಕಿಸಿ',
-    connectSubtitle: 'ಡೇಟಾವನ್ನು ಪುನಃ ನಮೂದಿಸದೆ ನಿಮ್ಮ POS, ERP ಅಥವಾ ಬಿಲ್ಲಿಂಗ್ ತಂತ್ರಾಂಶವನ್ನು ಸಂಪರ್ಕಿಸಿ',
+    connectSubtitle:
+      'ಡೇಟಾವನ್ನು ಪುನಃ ನಮೂದಿಸದೆ ನಿಮ್ಮ POS, ERP ಅಥವಾ ಬಿಲ್ಲಿಂಗ್ ತಂತ್ರಾಂಶವನ್ನು ಸಂಪರ್ಕಿಸಿ',
     pickSystem: 'ನಿಮ್ಮ ಸಿಸ್ಟಮ್ ಆಯ್ಕೆಮಾಡಿ',
     uploadOrPaste: 'ಫೈಲ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ ಅಥವಾ ನಮೂನೆ ಅಂಟಿಸಿ',
     mappingTitle: 'AI ಕಾಲಮ್ ಮ್ಯಾಪಿಂಗ್',
-    mappingSubtitle: 'Gemini ನಿಮ್ಮ ರಫ್ತು ಕ್ಷೇತ್ರಗಳನ್ನು ಮ್ಯಾಪ್ ಮಾಡಿದೆ. ಬದಲಾಯಿಸಲು ಯಾವುದೇ ಸಾಲನ್ನು ಟ್ಯಾಪ್ ಮಾಡಿ.',
+    mappingSubtitle:
+      'Gemini ನಿಮ್ಮ ರಫ್ತು ಕ್ಷೇತ್ರಗಳನ್ನು ಮ್ಯಾಪ್ ಮಾಡಿದೆ. ಬದಲಾಯಿಸಲು ಯಾವುದೇ ಸಾಲನ್ನು ಟ್ಯಾಪ್ ಮಾಡಿ.',
     sourceColumn: 'ಮೂಲ ಕಾಲಮ್',
     targetField: 'Chalkboard ಕ್ಷೇತ್ರ',
     confidence: 'ನಿಖರತೆ',

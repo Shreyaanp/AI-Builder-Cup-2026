@@ -5,14 +5,14 @@ Status as of 16 Oct 2026, ~13:45 IST. Paid from the INR 57,593 Recommendations A
 
 ## What is set up
 
-| Piece | State | Where |
-| --- | --- | --- |
-| API `retail.googleapis.com` on `ichiropractic` | Enabled (was already on) | `gcloud services list --enabled` |
-| Catalog `default_catalog` / `default_branch` | **479 products imported, 0 failures** from 94 shared shops (465 demo products, 14 real) | `backend/scripts/retail_sync.py` |
-| "Similar items" model `similar_items` | **Not created: the API refuses it** (see below). Needs one console click | console link below |
-| Serving config `similar_items_default` | Waits for the model (the API refuses a config for a missing model) | `retail_sync.py --train` |
-| User events | Pipeline built, **off** (`RECS_EVENTS_ENABLED=false`) | `app/retail_recs.py`, `app/recs_routes.py` |
-| Serving hook `similar_items(product_id)` | Built, **off** (`RECS_ENABLED=false`); returns `None` until the model serves | `app/retail_recs.py` |
+| Piece                                          | State                                                                                   | Where                                      |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------ |
+| API `retail.googleapis.com` on `ichiropractic` | Enabled (was already on)                                                                | `gcloud services list --enabled`           |
+| Catalog `default_catalog` / `default_branch`   | **479 products imported, 0 failures** from 94 shared shops (465 demo products, 14 real) | `backend/scripts/retail_sync.py`           |
+| "Similar items" model `similar_items`          | **Not created: the API refuses it** (see below). Needs one console click                | console link below                         |
+| Serving config `similar_items_default`         | Waits for the model (the API refuses a config for a missing model)                      | `retail_sync.py --train`                   |
+| User events                                    | Pipeline built, **off** (`RECS_EVENTS_ENABLED=false`)                                   | `app/retail_recs.py`, `app/recs_routes.py` |
+| Serving hook `similar_items(product_id)`       | Built, **off** (`RECS_ENABLED=false`); returns `None` until the model serves            | `app/retail_recs.py`                       |
 
 Each product carries only what customers already see: stable ID (`<shop_id>--<hash of name+unit>`),
 title, category (`<shop category> > <menu section>`), price and currency, availability, and the
@@ -60,14 +60,14 @@ Ready means `servingState: ACTIVE`. Console: Search for commerce → Models / Da
 
 ## Events (real only)
 
-| App action | Retail event | Sent when |
-| --- | --- | --- |
-| Customer opens a shop page | `category-page-view` (shop category) | shop is shared |
-| Customer asks in Explore | `search` (query without emails/phone numbers, max 80 chars) | always |
-| "Tell me when it's back" on an item | `add-to-cart` for that item | item exists on that shop |
-| `item_open` (API ready, no item page in the UI yet) | `detail-page-view` | item exists |
-| Follow a shop, ask the owner | not sent: shop-level, no item | — |
-| Verified stamp | not sent: stamps are visits, not item purchases, so `purchase-complete` would need an invented product and revenue | — |
+| App action                                          | Retail event                                                                                                       | Sent when                |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------ |
+| Customer opens a shop page                          | `category-page-view` (shop category)                                                                               | shop is shared           |
+| Customer asks in Explore                            | `search` (query without emails/phone numbers, max 80 chars)                                                        | always                   |
+| "Tell me when it's back" on an item                 | `add-to-cart` for that item                                                                                        | item exists on that shop |
+| `item_open` (API ready, no item page in the UI yet) | `detail-page-view`                                                                                                 | item exists              |
+| Follow a shop, ask the owner                        | not sent: shop-level, no item                                                                                      | —                        |
+| Verified stamp                                      | not sent: stamps are visits, not item purchases, so `purchase-complete` would need an invented product and revenue | —                        |
 
 The visitor ID is a SHA-256 of the app's existing anonymous device ID; the raw ID never leaves the
 server. The server checks the shop and item really exist, rate-limits per IP (60/min, 600/day),
