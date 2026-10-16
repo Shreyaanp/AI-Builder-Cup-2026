@@ -5622,6 +5622,27 @@
         }
       }
     },
+    "/api/v1/latency": {
+      "get": {
+        "summary": "Latency",
+        "description": "Time to first output per coach flow on this instance (p50/p95 of recent turns).",
+        "operationId": "latency_api_v1_latency_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Latency Api V1 Latency Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "summary": "Health",
@@ -6343,6 +6364,12 @@
             "type": "array",
             "maxItems": 7,
             "title": "Weekly Hours"
+          },
+          "closed_on": {
+            "type": "string",
+            "pattern": "^(\\d{4}-\\d{2}-\\d{2})?$",
+            "title": "Closed On",
+            "default": ""
           },
           "phone": {
             "type": "string",
@@ -11261,7 +11288,8 @@
               "suppliers",
               "order",
               "rescue_proposal",
-              "chart"
+              "chart",
+              "action"
             ],
             "title": "Kind",
             "type": "string"

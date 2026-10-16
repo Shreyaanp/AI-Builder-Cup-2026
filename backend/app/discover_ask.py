@@ -228,7 +228,12 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
         return None
     if intent.locally_made and not facts.get("locally_made"):
         return None
-    is_open = open_now(shop["hours"], shop["timezone"], weekly_hours=shop.get("weekly_hours"))
+    is_open = open_now(
+        shop["hours"],
+        shop["timezone"],
+        weekly_hours=shop.get("weekly_hours"),
+        closed_on=shop.get("closed_on"),
+    )
     if intent.open_now and is_open is False:
         return None
     limit = (

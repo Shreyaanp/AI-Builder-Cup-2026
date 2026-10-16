@@ -138,6 +138,7 @@ def shop_view(shop: dict[str, Any], ctx: Context) -> FindShop:
             shop.get("timezone", "UTC"),
             datetime.fromtimestamp(ctx.now, UTC),
             shop.get("weekly_hours"),
+            shop.get("closed_on"),
         ),
         photo_url=(
             f"/api/v1/public/shops/{shop['id']}/photos/{gallery[0]}.jpg" if gallery else None

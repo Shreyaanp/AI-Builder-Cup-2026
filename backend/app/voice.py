@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from .auth import Principal
 from .contracts import NewShopVoiceContext, StreamEvent, VoiceControl
 from .coordinator import current
+from .latency import FirstOutput
 from .streaming import CoachRuntime, public_events
 
 log = structlog.get_logger()
@@ -176,8 +177,13 @@ async def gemini_voice(
                 save_live_blob=False,
             ),
         )
+        # Time from the owner's last transcribed words to the first audio of the reply.
+        heard = FirstOutput("voice_first_audio")
+        heard.done = True
         try:
             async for event in events:
+                if event.input_transcription and event.input_transcription.text:
+                    heard.restart()
                 if event.error_code:
                     log.warning(
                         "voice_provider_error",
@@ -192,6 +198,7 @@ async def gemini_voice(
                     for part in event.content.parts or []:
                         blob = part.inline_data
                         if blob and blob.data and (blob.mime_type or "").startswith("audio/pcm"):
+                            heard.mark()
                             await websocket.send_json(
                                 StreamEvent(
                                     kind="audio_format",

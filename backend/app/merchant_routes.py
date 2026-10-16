@@ -230,7 +230,10 @@ async def public_shop(business_id: str, request: Request) -> dict[str, Any]:
     from .discover import open_now
 
     shop["open_now"] = open_now(
-        shop["hours"], shop.get("timezone", "Asia/Singapore"), weekly_hours=shop.get("weekly_hours")
+        shop["hours"],
+        shop.get("timezone", "Asia/Singapore"),
+        weekly_hours=shop.get("weekly_hours"),
+        closed_on=shop.get("closed_on"),
     )
     return shop
 

@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     # Gemini Live (voice) models are regional on Vertex; `global` returns "model not found".
     google_live_location: str = "us-central1"
     google_embedding_location: str = "global"
+    # Instant path: common requests answered by rules before any model call; embeddings of known
+    # intents (Vertex) catch paraphrases of read-only and navigation requests when enabled.
+    instant_path_enabled: bool = True
+    instant_embeddings: bool = False
+    # Vertex context caching of the coach rules + tool schemas (text coach). Off by default
+    # until measured in production; without it the coach runs exactly as before.
+    context_cache_enabled: bool = False
+    context_cache_ttl_seconds: int = Field(default=1800, ge=60, le=86_400)
     max_turn_seconds: int = Field(default=30, ge=1, le=120)
     max_voice_seconds: int = Field(default=120, ge=1, le=600)
     max_active_runs: int = Field(default=8, ge=1, le=32)

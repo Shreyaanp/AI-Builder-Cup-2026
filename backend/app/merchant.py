@@ -109,6 +109,9 @@ class BusinessFields(BaseModel):
     timezone: str = Field(default="Asia/Singapore", max_length=100)
     hours: str = Field(default="", max_length=180)
     weekly_hours: list[DayHours] = Field(default_factory=list, max_length=7)
+    # Shop-local date (YYYY-MM-DD) the owner said the shop is closed ("closed today"); customers
+    # see it closed that day only, whatever the hours say.
+    closed_on: str = Field(default="", pattern=r"^(\d{4}-\d{2}-\d{2})?$")
     phone: str = Field(default="", max_length=40)
     reward_text: str = Field(default="", max_length=80)
     stamps_needed: int = Field(default=8, ge=3, le=20, strict=True)
@@ -173,6 +176,7 @@ class BusinessFields(BaseModel):
             and not (key == "reward_text" and value == "")
             and not (key == "stamps_needed" and value == 8)
             and not (key == "weekly_hours" and value == [])
+            and not (key == "closed_on" and value == "")
             and not (key == "description" and value == "")
         }
 
@@ -398,6 +402,7 @@ def public_projection(
         ),
         "hours": fields.get("hours", ""),
         **({"weekly_hours": fields["weekly_hours"]} if fields.get("weekly_hours") else {}),
+        **({"closed_on": fields["closed_on"]} if fields.get("closed_on") else {}),
         "phone": fields.get("phone", ""),
         "currency": fields.get("currency") or "SGD",
         **({"reward_text": fields["reward_text"]} if fields.get("reward_text") else {}),

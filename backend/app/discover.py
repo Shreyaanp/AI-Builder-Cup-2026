@@ -194,8 +194,17 @@ def open_now(
     timezone: str,
     now: datetime | None = None,
     weekly_hours: list[dict[str, Any]] | None = None,
+    closed_on: str | None = None,
 ) -> bool | None:
-    """Match the owner's plain daily-range logic; day-specific/ambiguous text stays unknown."""
+    """Match the owner's plain daily-range logic; day-specific/ambiguous text stays unknown.
+    A shop the owner closed for today (closed_on, shop-local date) is closed all that day."""
+    if closed_on:
+        try:
+            local_day = (now or datetime.now(UTC)).astimezone(shop_timezone(timezone)).date()
+        except (ValueError, KeyError):
+            local_day = None
+        if local_day and local_day.isoformat() == closed_on:
+            return False
     if weekly_hours:
         try:
             local = (now or datetime.now(UTC)).astimezone(shop_timezone(timezone))
@@ -585,7 +594,10 @@ async def discover(
             lng=shop["lng"],
             distance_m=d,
             open_now=open_now(
-                shop["hours"], shop["timezone"], weekly_hours=shop.get("weekly_hours")
+                shop["hours"],
+                shop["timezone"],
+                weekly_hours=shop.get("weekly_hours"),
+                closed_on=shop.get("closed_on"),
             ),
             currency=shop["currency"],
             halal={"yes": True, "no": False}.get(shop.get("facts", {}).get("halal")),
