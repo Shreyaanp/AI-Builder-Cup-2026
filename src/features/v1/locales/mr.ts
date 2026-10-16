@@ -1,6 +1,19 @@
 import type { Copy } from '../strings'
 
 export const mr: Copy = {
+  newShopMode: 'नवीन दुकान',
+  newShopReady: 'तुमचे नवीन दुकान तयार आहे',
+  newShopReadyBody: 'आता तुम्ही नवीन दुकानात काम करत आहात. तयार झाल्यावर ग्राहक पान शेअर करा.',
+  newShopContinue: 'माझ्या दुकानासह पुढे जा',
+  useCurrentLocation: 'माझे सध्याचे स्थान वापरा',
+  locationReason:
+    'दुकानात आहात? पिन ठेवण्यासाठी स्थानाची परवानगी द्या. जतन करण्यापूर्वी पुनरावलोकन कराल.',
+  locating: 'तुमचे स्थान शोधत आहोत…',
+  locationDenied: 'स्थानाची परवानगी नाकारली. पत्ता लिहा किंवा GPS असलेला फोटो वापरा.',
+  locationFailed: 'स्थान मिळाले नाही. पुन्हा प्रयत्न करा, पत्ता लिहा किंवा GPS असलेला फोटो वापरा.',
+  yourLocation: 'तुमचे स्थान',
+  description: 'वर्णन',
+  locationAccuracy: (m: string) => `${m} मीटरच्या आत`,
   installApp: 'अ‍ॅप इन्स्टॉल करा',
   installIos: 'Safari मध्ये शेअर → होम स्क्रीनवर जोडा निवडा, मग जोडा दाबा.',
   installUnavailable:
@@ -254,7 +267,6 @@ export const mr: Copy = {
   stock: 'साठा',
   // Shop
   shopEmptyTitle: 'तुमचे दुकान जोडूया',
-  shopEmptyBody: 'फलकाच्या फोटोपासून सुरुवात करा किंवा स्वतः माहिती भरा.',
   addShop: 'दुकानाची माहिती जोडा',
   startPhoto: 'फोटोपासून सुरू करा',
   editDetails: 'माहिती बदला',

@@ -331,11 +331,17 @@ class MapsService:
         lookup is unavailable the pin keeps the coordinates with a plain label."""
 
         async def lookup() -> dict[str, Any]:
+            nearest = min(AREAS, key=lambda area: distance(lat, lng, *AREAS[area]))
+            label = (
+                f"Near {nearest}"
+                if distance(lat, lng, *AREAS[nearest]) <= 5000
+                else "Your current location"
+            )
             pin: dict[str, Any] = {
                 "lat": lat,
                 "lng": lng,
                 "place_id": None,
-                "pin_label": f"{lat:.5f}, {lng:.5f}",
+                "pin_label": label,
                 "pin_demo": False,
             }
             if self.demo:
@@ -425,9 +431,29 @@ async def prepare_pin(
     # The "Demo shop" label is server-owned too: only the seed script sets it, and an owner's
     # edit can neither add nor remove it.
     body.business.demo = bool(old.get("demo"))
+    if body.owner_location is not None:
+        point = body.owner_location
+        pin = await maps.reverse(point.lat, point.lng)
+        body.business = type(body.business).model_validate(
+            {
+                **body.business.model_dump(),
+                **pin,
+                "pin_source": point.source,
+                "pin_accuracy_m": point.accuracy_m if point.source == "device" else None,
+                # Keep the measured point even when the readable address is approximate.
+                "lat": point.lat,
+                "lng": point.lng,
+                "pin_demo": False,
+                "location": str(pin["pin_label"])[:300]
+                if pin.get("place_id")
+                else body.business.location,
+            }
+        )
+        return
     exact = body.business
     if (
-        old.get("pin_demo")
+        old
+        and (old.get("lat") is None or old.get("pin_demo"))
         and old.get("location") == exact.location
         and exact.lat is not None
         and exact.lng is not None
@@ -438,6 +464,8 @@ async def prepare_pin(
         # itself, so the label is the coordinates and no Places id is trusted from the client.
         exact.place_id = None
         exact.pin_label = f"{exact.lat:.5f}, {exact.lng:.5f}"
+        exact.pin_source = None
+        exact.pin_accuracy_m = None
         return
     if (
         old
@@ -447,12 +475,19 @@ async def prepare_pin(
             or not body.geocode_confirmed
         )
     ):
-        for field in ("lat", "lng", "place_id", "pin_label", "pin_demo"):
-            if field in old:
-                setattr(body.business, field, old[field])
+        for field in (
+            "lat",
+            "lng",
+            "place_id",
+            "pin_label",
+            "pin_demo",
+            "pin_source",
+            "pin_accuracy_m",
+        ):
+            setattr(body.business, field, old.get(field, False if field == "pin_demo" else None))
         return
     # Pin fields never come from an untrusted client or an obsolete location.
-    for field in ("lat", "lng", "place_id", "pin_label"):
+    for field in ("lat", "lng", "place_id", "pin_label", "pin_source", "pin_accuracy_m"):
         setattr(body.business, field, None)
     body.business.pin_demo = False
     if body.geocode_confirmed and body.business.location:
@@ -487,6 +522,26 @@ async def find_place(request: Request, q: str = Query(min_length=2, max_length=1
     maps: MapsService = request.app.state.maps
     pin = await maps.geocode(q.strip())
     return PlaceMatch(lat=pin["lat"], lng=pin["lng"], label=pin["pin_label"] or q.strip())
+
+
+class PinAddress(BaseModel):
+    label: str
+    # No street address was found (offline maps, or open country): the label is only an area.
+    approximate: bool
+
+
+@router.get("/places/reverse", response_model=PinAddress)
+async def reverse_pin(
+    request: Request,
+    lat: float = Query(ge=-90, le=90, allow_inf_nan=False),
+    lng: float = Query(ge=-180, le=180, allow_inf_nan=False),
+) -> PinAddress:
+    """The readable address under the owner's map pin while they place it (nothing is saved)."""
+    uid = str((await request.app.state.services.identity.require(request)).uid)
+    await enforce_limits(request, [("reverse", uid)])
+    maps: MapsService = request.app.state.maps
+    pin = await maps.reverse(lat, lng)
+    return PinAddress(label=str(pin["pin_label"]), approximate=not pin.get("place_id"))
 
 
 @router.get("/discover", response_model=DiscoveryResponse)

@@ -1,3 +1,4 @@
+import { createShop } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -9,14 +10,7 @@ async function shop(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await page.getByRole('button', { name: 'Add my shop' }).click()
-  await page.getByLabel('Shop name').fill('Ah Seng Kopi')
-  await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await page
-    .getByRole('dialog', { name: 'Check before saving' })
-    .getByRole('button', { name: 'Confirm and save' })
-    .click()
-  await expect(page.getByRole('dialog', { name: 'Check before saving' })).not.toBeVisible()
+  await createShop(page, 'name: Ah Seng Kopi')
   return page.request
     .get('/api/v1/businesses')
     .then((r) => r.json())

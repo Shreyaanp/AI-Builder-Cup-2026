@@ -83,7 +83,8 @@ class DayHours(BaseModel):
 
 class BusinessFields(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-    name: str = Field(min_length=1, max_length=180)
+    # Empty only while a new shop is being described; every commit requires a name.
+    name: str = Field(max_length=180)
     category: str = Field(default="", max_length=180)
     location: str = Field(default="", max_length=300)
     lat: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
@@ -91,6 +92,10 @@ class BusinessFields(BaseModel):
     place_id: str | None = Field(default=None, max_length=300)
     pin_label: str | None = Field(default=None, max_length=300)
     pin_demo: bool = False
+    # "device": measured by the phone; "pin": placed by the owner on the map.
+    pin_source: Literal["device", "pin"] | None = None
+    pin_accuracy_m: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    description: str = Field(default="", max_length=500)
     # A clearly labelled sample shop (seed_demo_shops.py). Set only by the seed script, never by
     # an owner proposal (see merchant_routes.propose and coordinator.propose_business).
     demo: bool = False
@@ -145,7 +150,14 @@ class BusinessFields(BaseModel):
     def drop_unset_facts(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data: dict[str, Any] = handler(self)
         # Unset optional facts and an unset map pin are omitted, so older shops keep their shape.
-        pin_defaults = {"lat": None, "lng": None, "place_id": None, "pin_label": None}
+        pin_defaults = {
+            "lat": None,
+            "lng": None,
+            "place_id": None,
+            "pin_label": None,
+            "pin_source": None,
+            "pin_accuracy_m": None,
+        }
         return {
             key: value
             for key, value in data.items()
@@ -161,6 +173,7 @@ class BusinessFields(BaseModel):
             and not (key == "reward_text" and value == "")
             and not (key == "stamps_needed" and value == 8)
             and not (key == "weekly_hours" and value == [])
+            and not (key == "description" and value == "")
         }
 
     @model_validator(mode="after")
@@ -219,6 +232,21 @@ class ShareRequest(BaseModel):
     public: bool
 
 
+class OwnerLocation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    lat: float = Field(ge=-90, le=90, allow_inf_nan=False)
+    lng: float = Field(ge=-180, le=180, allow_inf_nan=False)
+    accuracy_m: float = Field(ge=0, allow_inf_nan=False)
+    # "pin": the owner moved the map pin onto the shop; the phone's accuracy no longer applies.
+    source: Literal["device", "pin"] = "device"
+
+
+class NewShopDraft(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    business: BusinessFields | None = None
+    products: list[ProductFields] = Field(default_factory=list, max_length=200)
+
+
 class ProposalRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: str = Field(pattern="^(business|inventory)$")
@@ -226,6 +254,8 @@ class ProposalRequest(BaseModel):
     revision: int = Field(default=0, ge=0)
     # Separate consent to look up a pin; never inferred from approval to save.
     geocode_confirmed: bool = False
+    # Sent only after the owner's explicit browser-location action; always reviewed.
+    owner_location: OwnerLocation | None = None
     business: BusinessFields | None = None
     products: list[ProductFields] = Field(default_factory=list, max_length=200)
 
@@ -394,6 +424,15 @@ class ConsentRequest(BaseModel):
     version: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     terms: bool
     privacy: bool
+
+
+NAME_REQUIRED = "Add your shop's name before opening it."
+
+
+def require_name(data: dict[str, Any]) -> None:
+    """A shop is never saved without a name (a new-shop draft may be unnamed while described)."""
+    if data["kind"] == "business" and not str((data.get("business") or {}).get("name", "")).strip():
+        raise HTTPException(422, NAME_REQUIRED)
 
 
 def validate_proposal(request: ProposalRequest) -> None:
@@ -628,6 +667,7 @@ class MerchantStore:
             if proposal["expires"] < time.time():
                 raise HTTPException(409, "Review expired; prepare a new proposal.")
             data = json.loads(proposal["payload"])
+            require_name(data)
             bid = data["business_id"]
             exists = db.execute("SELECT id FROM businesses WHERE id=?", (bid,)).fetchone()
             if exists:
