@@ -8064,6 +8064,25 @@
             "maxItems": 8,
             "title": "Payment Methods"
           },
+          "upi_id": {
+            "type": "string",
+            "pattern": "^(?:[A-Za-z0-9][A-Za-z0-9._-]{1,254}@[A-Za-z][A-Za-z0-9.-]{1,63})?$",
+            "title": "Upi Id",
+            "default": ""
+          },
+          "rider_providers": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "rapido",
+                "uber",
+                "porter"
+              ]
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Rider Providers"
+          },
           "busy_hours": {
             "type": "string",
             "maxLength": 80,
@@ -14731,7 +14750,8 @@
               "purchase_order",
               "supply_rules",
               "chart",
-              "action"
+              "action",
+              "payment_link"
             ],
             "title": "Kind",
             "type": "string"

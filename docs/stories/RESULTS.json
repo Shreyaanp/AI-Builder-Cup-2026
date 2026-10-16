@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-16T01:38:56.581Z",
+  "capturedAt": "2026-10-16T08:07:34.845Z",
   "mode": "audit",
   "scope": "390×844 offline audit; annotated gaps and live-only paths are not verified story outcomes",
   "stories": [
@@ -28,14 +28,6 @@
       "annotations": []
     },
     {
-      "story": "A11 · customer light mode separates menu and background surfaces",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
       "story": "A12 · coach scroll and Google waiting motion: reduce",
       "project": "phone",
       "status": "passed",
@@ -44,23 +36,15 @@
       "annotations": []
     },
     {
+      "story": "A11 · customer light mode separates menu and background surfaces",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
       "story": "A12 · coach scroll and Google waiting motion: no-preference",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
-      "story": "A3 · independent customer context polls visible prices and availability",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
-      "story": "A6 · an existing shop reviews menu and photo pin separately",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -78,15 +62,7 @@
     {
       "story": "A4 · no fact chip and offline answer agree",
       "project": "phone",
-      "status": "timedOut",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
-      "story": "A8 · coach photo reuse is explicit for new shops",
-      "project": "phone",
-      "status": "timedOut",
+      "status": "passed",
       "retry": 0,
       "steps": [],
       "annotations": []
@@ -100,7 +76,7 @@
       "annotations": []
     },
     {
-      "story": "A8 · coach photo reuse is explicit for existing shops",
+      "story": "A3 · independent customer context polls visible prices and availability",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -116,9 +92,33 @@
       "annotations": []
     },
     {
+      "story": "A6 · an existing shop reviews menu and photo pin separately",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A8 · coach photo reuse is explicit for new shops",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A8 · coach photo reuse is explicit for existing shops",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
       "story": "A9 · daily check survives conversation and dismisses per shop and day",
       "project": "phone",
-      "status": "timedOut",
+      "status": "passed",
       "retry": 0,
       "steps": [],
       "annotations": []
@@ -126,7 +126,7 @@
     {
       "story": "A8 · header and discovery use the first gallery photo with removal/error fallback",
       "project": "phone",
-      "status": "timedOut",
+      "status": "passed",
       "retry": 0,
       "steps": [],
       "annotations": []
@@ -258,6 +258,44 @@
       ]
     },
     {
+      "story": "S2 · daily upkeep and customer-page connection",
+      "project": "phone",
+      "status": "timedOut",
+      "retry": 0,
+      "steps": [
+        {
+          "title": "1 · natural text and voice path",
+          "status": "passed"
+        },
+        {
+          "title": "2 · one review card for both changes, one tap to confirm",
+          "status": "passed"
+        },
+        {
+          "title": "3 · already-open customer page updates within five seconds",
+          "status": "passed"
+        },
+        {
+          "title": "4 · sold-out switch reaches customer page",
+          "status": "passed"
+        },
+        {
+          "title": "5 · daily still-the-same check",
+          "status": "passed"
+        },
+        {
+          "title": "6 · tap a price, review inline and save",
+          "status": "failed"
+        }
+      ],
+      "annotations": [
+        {
+          "type": "live-only",
+          "description": "Speech recognition and live voice tool execution"
+        }
+      ]
+    },
+    {
       "story": "S7 · Indian language, local currency and eight-city discovery audit",
       "project": "phone",
       "status": "passed",
@@ -294,19 +332,6 @@
           "description": "Catalogue shops are seeded on the hosted demo; the local preview stays unseeded"
         }
       ]
-    },
-    {
-      "story": "S2 · daily upkeep and customer-page connection",
-      "project": "phone",
-      "status": "timedOut",
-      "retry": 0,
-      "steps": [
-        {
-          "title": "1 · natural text and voice path",
-          "status": "failed"
-        }
-      ],
-      "annotations": []
     }
   ]
 }
