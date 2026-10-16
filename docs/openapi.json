@@ -5937,7 +5937,8 @@
             "type": "string",
             "enum": [
               "ai",
-              "keywords"
+              "keywords",
+              "command"
             ],
             "title": "Mode"
           },
@@ -5952,6 +5953,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/Personal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "command": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Command"
               },
               {
                 "type": "null"
@@ -6615,6 +6626,70 @@
           "message"
         ],
         "title": "CoachTurn"
+      },
+      "Command": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "my_stamps",
+              "directions",
+              "follow",
+              "ask_owner"
+            ],
+            "title": "Kind"
+          },
+          "shop_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Id"
+          },
+          "shop_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Name"
+          },
+          "maps_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maps Url"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "Command",
+        "description": "A customer command answered at once, by voice or text: my stamps, directions to a shop,\nfollow a shop, ask a shop's owner. Following and asking still happen on the shop's page."
       },
       "ConsentRequest": {
         "properties": {

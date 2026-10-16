@@ -38,3 +38,10 @@ export function customerNavigate(event: MouseEvent<HTMLElement>) {
     document.startViewTransition(update)
   else update()
 }
+
+/** Navigate in the customer app without a click (a spoken command), keeping back/forward. */
+export function goTo(path: string) {
+  history.pushState({}, '', path)
+  dispatchEvent(new PopStateEvent('popstate'))
+  window.scrollTo({ top: 0, behavior: 'instant' })
+}

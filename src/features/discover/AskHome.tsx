@@ -13,7 +13,7 @@ import {
 } from '@mui/material'
 import { ArrowRight, ArrowUp, MapPin, Mic, RotateCcw } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
-import { customerNavigate } from '../frontdoors/navigation'
+import { customerNavigate, goTo } from '../frontdoors/navigation'
 import { PlaceImage } from '../frontdoors/PlaceImage'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { formatPrice } from '../v1/format'
@@ -52,9 +52,22 @@ type Pick = {
 }
 type Answer = {
   intent: { summary: string; followups: string[] }
-  mode: 'ai' | 'keywords'
+  mode: 'ai' | 'keywords' | 'command'
   groups: { id: 'for_you' | 'best' | 'open' | 'more'; places: Pick[] }[]
   personal?: { applied: string[]; saved: string[] } | null
+  /** Said or typed commands answered at once: my stamps, directions, follow, ask the owner. */
+  command?: {
+    kind: 'my_stamps' | 'directions' | 'follow' | 'ask_owner'
+    shop_id?: string | null
+    shop_name?: string | null
+    maps_url?: string | null
+  } | null
+}
+
+// Command copy; languages without their own copy use English.
+const COMMAND_COPY = {
+  directionsTo: (name: string) => `Directions to ${name}`,
+  openMaps: 'Open in Google Maps',
 }
 
 const EASE = 'cubic-bezier(0.2, 0, 0, 1)'
@@ -177,6 +190,23 @@ export default function AskHome({
         method: 'POST',
         body: JSON.stringify({ q, lat: searchPlace.lat, lng: searchPlace.lng, language: locale }),
       })
+      if (data.command) {
+        const { kind, shop_id } = data.command
+        const page =
+          kind === 'my_stamps'
+            ? '/explore/passport'
+            : (kind === 'follow' || kind === 'ask_owner') && shop_id
+              ? `/explore/s/${shop_id}`
+              : null
+        if (page) {
+          setPhase('idle')
+          goTo(page)
+          return
+        }
+        setAnswer(data)
+        setPhase('results')
+        return
+      }
       if (data.personal) {
         // Keep the profile sheet in step with what was just remembered.
         void account
@@ -503,7 +533,24 @@ export default function AskHome({
                 </Button>
               </Stack>
             )}
-            {total === 0 && (
+            {answer.command?.kind === 'directions' && answer.command.maps_url && (
+              <Box sx={{ mt: 6, animation: `askRise 500ms ${EASE} both` }}>
+                <Typography variant="titleLarge">
+                  {COMMAND_COPY.directionsTo(answer.command.shop_name ?? '')}
+                </Typography>
+                <Button
+                  variant="contained"
+                  href={answer.command.maps_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  startIcon={<MapPin size={18} />}
+                  sx={{ mt: 2 }}
+                >
+                  {COMMAND_COPY.openMaps}
+                </Button>
+              </Box>
+            )}
+            {total === 0 && !answer.command && (
               <Box sx={{ mt: 6, animation: `askRise 500ms ${EASE} both` }}>
                 <Typography variant="titleLarge">{t.nothing}</Typography>
                 <Typography color="text.secondary" sx={{ mt: 1 }}>

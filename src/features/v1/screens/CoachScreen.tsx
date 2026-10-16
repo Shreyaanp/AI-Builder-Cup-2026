@@ -77,6 +77,8 @@ import { useReceiveOrder } from '../../sourcing/orderData'
 import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
 import { utter } from '../phoneVoice'
+import { ActionChip, ReplyCard } from '../CoachActions'
+import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 // The composer grows with multi-line text up to this many lines, then scrolls.
@@ -88,6 +90,18 @@ type Message =
   | { role: 'order'; orderId: string }
   // A chart beside a forecast or "how is business" answer.
   | { role: 'chart'; chart: CoachChartData; key: string }
+  // An app action the coach prepared: a screen it opened, or a customer reply to send.
+  | { role: 'action'; action: CoachAction; key: string }
+// Coach actions that open a My shop sheet.
+const SHEETS: Partial<Record<CoachAction['target'], ShopSheetKind>> = {
+  messages: 'messages',
+  share: 'customer',
+  sold_out: 'soldOut',
+  menu: 'menu',
+  details: 'details',
+  stamps: 'details',
+  plan: 'plan',
+}
 const REPLY_POLL_MS = 1500
 const REPLY_WAIT_MS = 45_000
 
@@ -238,6 +252,21 @@ function CoachScreen({
             { role: 'order' as const, orderId: order.id },
           ].slice(-40),
         )
+      }
+      if (event.kind === 'action') {
+        const action = asCoachAction(event.data)
+        if (action) {
+          setMessages((items) =>
+            [...items, { role: 'action' as const, action, key: crypto.randomUUID() }].slice(-40),
+          )
+          // Screens open at once (everything by voice); pickers and Send wait for a tap.
+          if (!NEEDS_TAP.has(action.target)) {
+            const sheet = SHEETS[action.target]
+            if (sheet) setShopSheet(sheet)
+            else
+              go(action.target === 'close_day' ? 'shop' : (action.target as 'google' | 'privacy'))
+          }
+        }
       }
       if (event.kind === 'turn_complete') setSearching(null)
       if (event.kind === 'workflow' && event.data?.status === 'verification_required') {
@@ -484,6 +513,26 @@ function CoachScreen({
     }
   }
 
+  function openAction(action: CoachAction) {
+    if (action.target === 'photo') pick('library')
+    else if (action.target === 'import') pick('document')
+    else if (action.target === 'reply') return
+    else if (SHEETS[action.target]) setShopSheet(SHEETS[action.target]!)
+    else go(action.target === 'close_day' ? 'shop' : (action.target as 'google' | 'privacy'))
+  }
+  async function sendReply(action: CoachAction): Promise<boolean> {
+    if (!activeId || !action.thread_id || !action.text) return false
+    try {
+      await api(`/businesses/${activeId}/inquiries/${action.thread_id}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ text: action.text }),
+      })
+      refreshUnread()
+      return true
+    } catch {
+      return false
+    }
+  }
   async function sendOrder(order: Order): Promise<boolean> {
     setError('')
     try {
@@ -919,7 +968,17 @@ function CoachScreen({
             <Box role="log" aria-live="polite">
               <Stack component="ol" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0, pt: 2 }}>
                 {messages.map((message, index) =>
-                  message.role === 'chart' ? (
+                  message.role === 'action' ? (
+                    message.action.target === 'reply' ? (
+                      <ReplyCard key={message.key} action={message.action} onSend={sendReply} />
+                    ) : (
+                      <ActionChip
+                        key={message.key}
+                        action={message.action}
+                        onOpen={() => openAction(message.action)}
+                      />
+                    )
+                  ) : message.role === 'chart' ? (
                     <Box component="li" key={message.key} sx={{ display: 'flex' }}>
                       <CoachChart chart={message.chart} />
                     </Box>

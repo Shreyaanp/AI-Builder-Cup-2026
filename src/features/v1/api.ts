@@ -31,6 +31,8 @@ export interface Business {
     timezone?: string
     hours: string
     weekly_hours?: import('../shop/hoursModel').DayHours[]
+    /** Shop-local date the owner closed the shop for ("closed today"). */
+    closed_on?: string
     phone: string
     reward_text?: string
     stamps_needed?: number
