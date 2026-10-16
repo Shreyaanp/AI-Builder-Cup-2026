@@ -43,6 +43,7 @@ import { FreshnessCard, RecapTile } from '../sales/ShopInsights'
 import { PrepPlanTile } from '../forecast/PrepPlan'
 import { CloseDayTile } from '../closeday/CloseDay'
 import { OrdersTile } from '../sourcing/Orders'
+import { WeekPulseTile } from '../analytics/WeekPulse'
 import { Sheet } from './Sheet'
 import { ShopQr } from './ShopQr'
 import { useUnread } from './useUnread'
@@ -345,6 +346,7 @@ export function ShopTiles({
           />
         )}
       </Tile>
+      <WeekPulseTile />
       <RecapTile />
     </Box>
   )
