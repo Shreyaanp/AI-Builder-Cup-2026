@@ -9,14 +9,21 @@ import { useToday } from './useToday'
 export function useTodayPlan(unread: number | null): {
   plan: TodayPlan | null
   answerMenu: () => void
+  markCloseDay: () => void
 } {
   const ws = useWorkspace()
   const facts = useToday()
   const { scope } = useIdentity()
   const key = `chalkboard.freshness.${scope}.${ws.active?.id ?? ''}`
+  const closedKey = `chalkboard.closeday.${scope}.${ws.active?.id ?? ''}`
   const answered = useSyncExternalStore(
     subscribeDismissal,
     () => readDismissal(key),
+    () => null,
+  )
+  const closedDay = useSyncExternalStore(
+    subscribeDismissal,
+    () => readDismissal(closedKey),
     () => null,
   )
   // The greeting follows the clock; re-check each minute.
@@ -25,19 +32,23 @@ export function useTodayPlan(unread: number | null): {
     const timer = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(timer)
   }, [])
-  if (!ws.active) return { plan: null, answerMenu: () => undefined }
+  if (!ws.active) return { plan: null, answerMenu: () => undefined, markCloseDay: () => undefined }
   const plan = todayPlan({
     shop: ws.active,
     products: ws.products,
     unread,
     facts,
     menuAnswered: Boolean(facts && answered === facts.date),
+    dayClosed: Boolean(facts ? closedDay === facts.date : closedDay),
     now,
   })
   return {
     plan,
     answerMenu: () => {
       if (facts) dismissFreshness(key, facts.date)
+    },
+    markCloseDay: () => {
+      dismissFreshness(closedKey, facts?.date ?? new Date().toISOString().slice(0, 10))
     },
   }
 }
