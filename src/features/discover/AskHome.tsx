@@ -62,8 +62,8 @@ function fallbackPlace(): FoundPlace {
   const currency = defaultCurrency()
   if (currency === 'INR') return { lat: 12.9716, lng: 77.5946, label: 'Indiranagar' }
   if (currency === 'MYR') return { lat: 3.1319, lng: 101.6841, label: 'Bangsar' }
-  if (currency === 'JPY') return { lat: 35.6580, lng: 139.7016, label: 'Shibuya' }
-  if (currency === 'KRW') return { lat: 37.5665, lng: 126.9780, label: 'Hongdae' }
+  if (currency === 'JPY') return { lat: 35.658, lng: 139.7016, label: 'Shibuya' }
+  if (currency === 'KRW') return { lat: 37.5665, lng: 126.978, label: 'Hongdae' }
   if (currency === 'IDR') return { lat: -6.2088, lng: 106.8456, label: 'Senopati' }
   if (currency === 'THB') return { lat: 13.7563, lng: 100.5018, label: 'Thonglor' }
   if (currency === 'VND') return { lat: 10.7769, lng: 106.7009, label: 'District 1' }

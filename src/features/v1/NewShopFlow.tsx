@@ -1250,7 +1250,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
             {error}
           </Alert>
         )}
-        {!hasActiveCard && quickActions}
+        {quickActions}
         {typingView ? (
           <Box
             component="form"
@@ -1364,7 +1364,11 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
               <IconButton
                 aria-label={v.typeInstead}
                 onClick={typeInstead}
-                sx={roundButton(hasActiveCard ? 48 : 56, roles.surfaceContainerHigh, roles.onSurface)}
+                sx={roundButton(
+                  hasActiveCard ? 48 : 56,
+                  roles.surfaceContainerHigh,
+                  roles.onSurface,
+                )}
               >
                 <Keyboard size={hasActiveCard ? 20 : 24} />
               </IconButton>
@@ -1394,7 +1398,11 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
               <IconButton
                 aria-label={muted ? f.unmute : f.mute}
                 onClick={toggleMuted}
-                sx={roundButton(hasActiveCard ? 48 : 56, roles.surfaceContainerHigh, roles.onSurface)}
+                sx={roundButton(
+                  hasActiveCard ? 48 : 56,
+                  roles.surfaceContainerHigh,
+                  roles.onSurface,
+                )}
               >
                 {muted ? (
                   <VolumeX size={hasActiveCard ? 20 : 24} />

@@ -184,10 +184,9 @@ for (const scheme of ['light', 'dark'] as const) {
     // Full 48px touch target, completely visible within the 800px viewport without scrolling
     expect(box.height).toBeGreaterThanOrEqual(48)
     expect(box.y + box.height).toBeLessThanOrEqual(800)
-    const logScroll = await page.getByRole('region', { name: 'Conversation' }).evaluate(
-      (el) => el.scrollTop
-    )
+    const logScroll = await page
+      .getByRole('region', { name: 'Conversation' })
+      .evaluate((el) => el.scrollTop)
     expect(logScroll).toBe(0)
   })
 }
-

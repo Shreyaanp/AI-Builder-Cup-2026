@@ -71,16 +71,8 @@ export function TodayView({ actions }: { actions: TodayActions }) {
           <Skeleton variant="text" width="60%" height={36} />
           <Skeleton variant="text" width="40%" height={24} sx={{ mt: 1 }} />
         </Box>
-        <Skeleton
-          variant="rounded"
-          height={160}
-          sx={{ borderRadius: `${shape.xl}px` }}
-        />
-        <Skeleton
-          variant="rounded"
-          height={120}
-          sx={{ borderRadius: `${shape.lg}px` }}
-        />
+        <Skeleton variant="rounded" height={160} sx={{ borderRadius: `${shape.xl}px` }} />
+        <Skeleton variant="rounded" height={120} sx={{ borderRadius: `${shape.lg}px` }} />
       </Stack>
     )
   }

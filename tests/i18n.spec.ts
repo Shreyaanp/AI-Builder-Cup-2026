@@ -149,4 +149,3 @@ test('customer search hint uses area currency (₹) on Indian-English phone', as
   await expect(input).not.toHaveAttribute('placeholder', /\$3/)
   await context.close()
 })
-
