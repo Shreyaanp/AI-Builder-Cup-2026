@@ -148,8 +148,7 @@ export function RescueScreen() {
         fetch(`/api/v1/discover/place?lat=${lat}&lng=${lng}`)
           .then((res) => (res.ok ? res.json() : null))
           .then((data: { label?: string } | null) => {
-            const label =
-              data?.label && data.label.toLowerCase() !== 'you' ? data.label : t.here
+            const label = data?.label && data.label.toLowerCase() !== 'you' ? data.label : t.here
             const here = { lat, lng, label }
             rememberPlace(here)
             setPlace(here)

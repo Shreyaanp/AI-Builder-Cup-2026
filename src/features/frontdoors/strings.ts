@@ -1016,7 +1016,8 @@ const storyTranslations: Record<Exclude<Locale, 'en'>, StoryCopy> = {
   ta: {
     readingBoard: 'உங்கள் பலகையைப் படிக்கிறது…',
     bubbleMe: 'காபி இப்போது ₹18, சமோசா விற்றுத் தீர்ந்தது',
-    bubbleCoach: 'தயார்: காபி ₹ 20 → ₹ 18/கப், சமோசா விற்றுத் தீர்ந்தது. சரிபார்த்து உறுதிப்படுத்தவும்.',
+    bubbleCoach:
+      'தயார்: காபி ₹ 20 → ₹ 18/கப், சமோசா விற்றுத் தீர்ந்தது. சரிபார்த்து உறுதிப்படுத்தவும்.',
     checkBeforeSaving: 'சேமிப்பதற்கு முன் சரிபார்க்கவும்',
     confirmAndSave: 'உறுதிசெய்து சேமிக்கவும்',
     openNowArea: 'இப்போது திறந்துள்ளது · Indiranagar',
@@ -1223,7 +1224,8 @@ const storyTranslations: Record<Exclude<Locale, 'en'>, StoryCopy> = {
   id: {
     readingBoard: 'Membaca papan menu…',
     bubbleMe: 'Kopi sekarang $1.80, roti kaya habis',
-    bubbleCoach: 'Disiapkan: kopi $ 2.00 → $ 1.80 per cangkir, roti kaya habis. Cek dan konfirmasi.',
+    bubbleCoach:
+      'Disiapkan: kopi $ 2.00 → $ 1.80 per cangkir, roti kaya habis. Cek dan konfirmasi.',
     checkBeforeSaving: 'Periksa sebelum menyimpan',
     confirmAndSave: 'Konfirmasi dan simpan',
     openNowArea: 'Buka sekarang · Tiong Bahru',
@@ -1269,7 +1271,8 @@ const storyTranslations: Record<Exclude<Locale, 'en'>, StoryCopy> = {
   vi: {
     readingBoard: 'Đang đọc bảng hiệu…',
     bubbleMe: 'Cà phê giờ là $1.80, bánh mì kaya đã hết',
-    bubbleCoach: 'Đã chuẩn bị: cà phê $ 2.00 → $ 1.80 mỗi ly, bánh mì kaya hết hàng. Vui lòng kiểm tra và xác nhận.',
+    bubbleCoach:
+      'Đã chuẩn bị: cà phê $ 2.00 → $ 1.80 mỗi ly, bánh mì kaya hết hàng. Vui lòng kiểm tra và xác nhận.',
     checkBeforeSaving: 'Kiểm tra trước khi lưu',
     confirmAndSave: 'Xác nhận và lưu',
     openNowArea: 'Đang mở · Tiong Bahru',
@@ -1292,7 +1295,8 @@ const storyTranslations: Record<Exclude<Locale, 'en'>, StoryCopy> = {
   fil: {
     readingBoard: 'Binabasa ang pisara…',
     bubbleMe: 'Ang kape ay $1.80 na ngayon, ubos na ang kaya toast',
-    bubbleCoach: 'Naihanda na: kape $ 2.00 → $ 1.80 bawat tasa, ubos na ang kaya toast. Suriin at kumpirmahin.',
+    bubbleCoach:
+      'Naihanda na: kape $ 2.00 → $ 1.80 bawat tasa, ubos na ang kaya toast. Suriin at kumpirmahin.',
     checkBeforeSaving: 'Suriin bago i-save',
     confirmAndSave: 'Kumpirmahin at i-save',
     openNowArea: 'Bukas ngayon · Tiong Bahru',

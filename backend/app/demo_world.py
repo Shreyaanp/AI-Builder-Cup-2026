@@ -450,13 +450,10 @@ async def ensure_world(
     offline_names = {f"{spec['name']} (Demo)" for spec in FIXTURE}
     wrong_currency = stored is not None and stored.get("currency") != currency
     upgrade = (
-        (
-            stored is not None
-            and stored.get("name") in offline_names
-            and generator.settings.coach_mode == "gemini"
-        )
-        or wrong_currency
-    )
+        stored is not None
+        and stored.get("name") in offline_names
+        and generator.settings.coach_mode == "gemini"
+    ) or wrong_currency
     if stored and not upgrade:
         ids = [world_id(body.lat, body.lng, i) for i in range(len(SPREAD))]
         existing = [bid for bid in ids if await anyio.to_thread.run_sync(store.public_shop, bid)]

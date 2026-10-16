@@ -214,7 +214,10 @@ export default function Discover({
         if (!abort.signal.aborted) {
           const seen = new Set<string>()
           const uniquePlaces = data.places.filter((p) => {
-            const norm = p.name.replace(/\s*\((Tour|Demo)\)$/i, '').trim().toLowerCase()
+            const norm = p.name
+              .replace(/\s*\((Tour|Demo)\)$/i, '')
+              .trim()
+              .toLowerCase()
             if (seen.has(norm)) return false
             seen.add(norm)
             return true
@@ -807,7 +810,8 @@ export default function Discover({
                         {item.name} ·{' '}
                         {formatPrice(
                           item.price,
-                          place.currency ?? areaCurrency(lat, lng, filters.place?.label ?? filters.area),
+                          place.currency ??
+                            areaCurrency(lat, lng, filters.place?.label ?? filters.area),
                           locale,
                         )}
                       </Typography>
