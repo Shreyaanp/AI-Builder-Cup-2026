@@ -17,6 +17,7 @@ import { categoryLabel, useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { CurrentLocationAction, LocationPin } from './CurrentLocation'
 import { ClosedTodayNote } from './CoachActions'
+import { useNextStepsCopy } from './nextStepsCopy'
 
 /**
  * The only place a change is saved: the owner confirms the exact digest the server sealed.
@@ -35,7 +36,8 @@ export function ReviewDialog({
   const rewards = useRewardCopy()
   const shopCopy = useShopCopy()
   const pinCopy = discoverCopy(useLocale())
-  const { api, businesses, review, reload } = useWorkspace()
+  const next = useNextStepsCopy()
+  const { api, businesses, review, reload, openEditor } = useWorkspace()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const snapshot = proposal?.snapshot
@@ -45,6 +47,8 @@ export function ReviewDialog({
   // A new shop carries its currency in the proposal; edits use the saved shop's.
   const currency = snapshot?.business?.currency ?? shopCurrency(target)
   const open = proposal !== null
+  // A reader that found nothing (e.g. a photo without connected AI) has nothing to confirm.
+  const empty = Boolean(snapshot && !snapshot.business && snapshot.products.length === 0)
   async function findPin() {
     if (!proposal || busy) return
     setBusy(true)
@@ -100,6 +104,7 @@ export function ReviewDialog({
           </Box>
         </Alert>
       )}
+      {empty && <Alert severity="info">{next.reviewEmpty}</Alert>}
       {Boolean(proposal?.import_flags?.length) && (
         <Alert severity="warning">
           {t.importReviewFlags}: {proposal?.import_flags?.map((flag) => flag.item).join(', ')}
@@ -238,7 +243,20 @@ export function ReviewDialog({
       {error && <Alert severity="error">{error}</Alert>}
     </Stack>
   )
-  const actions = (
+  const actions = empty ? (
+    <>
+      <Button onClick={close}>{t.close}</Button>
+      <Button
+        variant="contained"
+        onClick={() => {
+          close()
+          openEditor({ kind: 'product', product: null })
+        }}
+      >
+        {next.typeItems}
+      </Button>
+    </>
+  ) : (
     <>
       <Button disabled={busy} onClick={close}>
         {t.cancel}
@@ -254,10 +272,11 @@ export function ReviewDialog({
       open={open}
       onClose={close}
       // An open review is unsaved by definition: Back asks before throwing it away.
-      dirty
+      dirty={!empty}
       titleId="review-title"
       title={t.reviewTitle}
       actions={actions}
+      dismissInActions
     >
       {body}
     </Sheet>

@@ -149,6 +149,19 @@ export function isFood(fields: { category?: string; name?: string }): boolean {
   return !fields.category?.trim() || FOOD.test(`${fields.category} ${fields.name ?? ''}`)
 }
 
+// Shops that serve meals (not a tea or coffee stall): customers ask what they can eat.
+const MEALS =
+  /restaurant|kitchen|hawker|eat|food|noodle|rice|bakery|bake|cake|dessert|dhaba|mess|tiffin|makan|warung|restoran|nhà hàng|kainan|karinderya|pagkain|食|餐|อาหาร|レストラン|음식|식당|உணவு|भोजन|खाना|ढाबा|टिफिन|नाश्ता|मिठाई/i
+
+/** A meal shop whose owner skipped the vegetarian question (it stays optional). */
+export function dietaryMissing(fields: ShopFacts & { category?: string; name?: string }) {
+  return (
+    Boolean(fields.category?.trim()) &&
+    MEALS.test(fields.category!) &&
+    fields.vegetarian_options == null
+  )
+}
+
 export function missingFacts(fields: ShopFacts & { category?: string; name?: string }): AskFact[] {
   // Unknown type yet: ask everything; food questions drop once the category says otherwise.
   const food = isFood(fields)
