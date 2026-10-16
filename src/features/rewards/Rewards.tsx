@@ -4,6 +4,7 @@ import { Bell, Award } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { useRewardCopy } from './strings'
 import { deviceId, remind, useRewards } from './storage'
+import { recsEvent } from '../recs/events'
 
 export function BadgeRow({ shop }: { shop?: string }) {
   const { data } = useRewards()
@@ -68,6 +69,7 @@ export function StockReminder({ shop, name, unit }: { shop: string; name: string
         },
       )
       if (response.ok) {
+        recsEvent({ kind: 'remind', shop_id: shop, item: { name, unit } })
         const receipt = (await response.json()) as { expires: number }
         remind(shop, name, unit, receipt.expires * 1000)
       }

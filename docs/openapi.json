@@ -3990,6 +3990,47 @@
         }
       }
     },
+    "/api/v1/public/recs/events": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Record Event",
+        "operationId": "record_event_api_v1_public_recs_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventReceipt"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/qr-key": {
       "get": {
         "summary": "Owner Qr Key",
@@ -9545,6 +9586,97 @@
           "places"
         ],
         "title": "DiscoveryResponse"
+      },
+      "EventInput": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "shop_open",
+              "item_open",
+              "ask",
+              "remind",
+              "follow",
+              "ask_owner"
+            ],
+            "title": "Kind"
+          },
+          "visitor": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 8,
+            "pattern": "^[A-Za-z0-9-]+$",
+            "title": "Visitor"
+          },
+          "shop_id": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Shop Id",
+            "default": ""
+          },
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Query",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "visitor"
+        ],
+        "title": "EventInput"
+      },
+      "EventItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "unit"
+        ],
+        "title": "EventItem"
+      },
+      "EventReceipt": {
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "title": "Accepted"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accepted",
+          "enabled"
+        ],
+        "title": "EventReceipt"
       },
       "Feed": {
         "properties": {
