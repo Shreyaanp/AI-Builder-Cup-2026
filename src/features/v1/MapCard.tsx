@@ -188,6 +188,7 @@ export function MapCard({
             onActive?.()
             setBig(true)
           }}
+          sx={{ minHeight: 48 }}
         >
           {c.biggerMap}
         </Button>
@@ -332,7 +333,7 @@ function BigMap({
       >
         <Stack direction="row" sx={{ alignItems: 'center', gap: 1, px: 2, minHeight: 56 }}>
           <Tooltip title={c.closeMap}>
-            <IconButton aria-label={c.closeMap} onClick={onClose}>
+            <IconButton aria-label={c.closeMap} onClick={onClose} sx={{ minWidth: 48, minHeight: 48 }}>
               <X size={22} />
             </IconButton>
           </Tooltip>
