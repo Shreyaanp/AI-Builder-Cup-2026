@@ -15,12 +15,16 @@ import {
 import { ArrowLeft, ArrowUp, Check, MessageCircle, RotateCcw, Sparkles, Store } from 'lucide-react'
 import { followInquiries } from '../../api/inquiryStream'
 import { useLocale } from '../../state/hooks'
-import { customerNavigate } from '../frontdoors/navigation'
+import { customerBack, customerNavigate } from '../frontdoors/navigation'
 import { PlaceImage } from '../frontdoors/PlaceImage'
 import { useCustomer } from './account'
 import { clockTime, useAccountCopy } from './copy'
 import type { AccountCopy } from './copy'
 import { SignInButton } from './SignIn'
+import { fill } from '../passport/copy'
+import { useRescueCopy } from '../rescue/copy'
+import type { RescueStrings } from '../rescue/copy'
+import { rescueMarker } from '../rescue/marker'
 import { chatPath, reduceMotion } from './paths'
 import './customer.css'
 
@@ -56,7 +60,13 @@ export function ShopAvatar({
   )
 }
 
-function preview(message: Message | undefined, t: AccountCopy) {
+/** A rescue hold's chat marker, in the reader's words; any other message as written. */
+function shown(text: string, r: RescueStrings) {
+  const hold = rescueMarker(text)
+  return hold ? fill(r.holdRequest, { n: hold.qty, item: hold.item }) : text
+}
+
+function preview(message: Message | undefined, t: AccountCopy, r: RescueStrings) {
   if (!message) return ''
   const prefix =
     message.author === 'customer'
@@ -66,7 +76,7 @@ function preview(message: Message | undefined, t: AccountCopy) {
         : message.kind === 'demo'
           ? `${t.demoReply}: `
           : ''
-  return prefix + message.text
+  return prefix + shown(message.text, r)
 }
 
 /** The Chats tab: one row per shop, newest first, like a messaging app. */
@@ -75,6 +85,7 @@ export function ChatList() {
   const locale = useLocale()
   const account = useCustomer()
   const t = useAccountCopy()
+  const r = useRescueCopy()
   const [chats, setChats] = useState<ChatSummary[] | null>(null)
   const [failed, setFailed] = useState(false)
   const signedIn = account.status === 'signed-in'
@@ -153,7 +164,7 @@ export function ChatList() {
       ) : !chats ? (
         <Stack spacing={1}>
           {[0, 1, 2].map((n) => (
-            <Stack key={n} direction="row" spacing={2} sx={{ p: 1.5, alignItems: 'center' }}>
+            <Stack key={n} direction="row" spacing={2} sx={{ p: 2, alignItems: 'center' }}>
               <Skeleton variant="circular" width={52} height={52} />
               <Box sx={{ flex: 1 }}>
                 <Skeleton width="50%" />
@@ -199,7 +210,7 @@ export function ChatList() {
                     display: 'flex',
                     gap: 2,
                     alignItems: 'center',
-                    p: 1.5,
+                    p: 2,
                     borderRadius: '20px',
                     color: 'inherit',
                     textDecoration: 'none',
@@ -253,7 +264,7 @@ export function ChatList() {
                           fontWeight: chat.unread ? 600 : 400,
                         }}
                       >
-                        {preview(last, t)}
+                        {preview(last, t, r)}
                       </Typography>
                       {chat.unread > 0 && (
                         <Box
@@ -264,7 +275,7 @@ export function ChatList() {
                           sx={{
                             minWidth: 22,
                             height: 22,
-                            px: 0.75,
+                            px: 1,
                             borderRadius: 999,
                             bgcolor: roles.primary,
                             color: roles.onPrimary,
@@ -444,7 +455,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
       {/* Header: back, the shop (shared element from the list), live state. */}
       <Stack
         direction="row"
-        spacing={1.5}
+        spacing={2}
         sx={{
           position: 'sticky',
           top: 0,
@@ -461,8 +472,9 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
         <IconButton
           component="a"
           href="/explore/chats"
-          onClick={customerNavigate}
+          onClick={customerBack}
           aria-label={t.back}
+          sx={{ width: 48, height: 48 }}
         >
           <ArrowLeft size={22} />
         </IconButton>
@@ -474,8 +486,9 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: 1.5,
+              gap: 2,
               minWidth: 0,
+              minHeight: 48,
               color: 'inherit',
               textDecoration: 'none',
               borderRadius: 2,
@@ -631,7 +644,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
           position: 'sticky',
           bottom: 0,
           zIndex: 3,
-          px: 1.5,
+          px: 2,
           pt: 1,
           pb: 'calc(env(safe-area-inset-bottom) + 10px)',
           bgcolor: roles.surfaceContainer,
@@ -642,7 +655,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
           <Typography
             variant="bodyMedium"
             color="text.secondary"
-            sx={{ p: 1.5, textAlign: 'center' }}
+            sx={{ p: 2, textAlign: 'center' }}
           >
             {t.closed}
           </Typography>
@@ -673,7 +686,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
               }}
               sx={{
                 flex: 1,
-                px: 2.5,
+                px: 3,
                 py: 1.25,
                 minHeight: 48,
                 borderRadius: '24px',
@@ -691,7 +704,6 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
                 bgcolor: roles.primary,
                 color: roles.onPrimary,
                 transition: 'transform 200ms var(--c-spring), background-color 200ms',
-                transform: text.trim() ? 'scale(1)' : 'scale(0.9)',
                 '&:hover': { bgcolor: roles.primary },
                 '&.Mui-disabled': {
                   bgcolor: roles.surfaceContainerHighest,
@@ -721,6 +733,7 @@ function Bubble({
 }) {
   const roles = useTheme().material
   const t = useAccountCopy()
+  const r = useRescueCopy()
   const mine = message.author === 'customer'
   const ai = message.kind === 'ai'
   const demo = message.kind === 'demo'
@@ -733,7 +746,7 @@ function Bubble({
       {(ai || demo) && (
         <Stack
           direction="row"
-          spacing={0.75}
+          spacing={1}
           sx={{
             alignItems: 'center',
             mb: 0.5,
@@ -770,7 +783,7 @@ function Bubble({
           component="span"
           sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}
         >
-          {message.text}
+          {shown(message.text, r)}
         </Typography>
       </Box>
       <Stack

@@ -60,6 +60,9 @@ import { HoursList } from '../shop/Hours'
 import { hasHours } from '../shop/hoursModel'
 import { usePlaybook } from './playbook/usePlaybook'
 import { CategoryGroups } from '../shop/CategoryGroups'
+import { MorningBrief } from '../owner/MorningBrief'
+import { RadarSheet, RadarTile } from '../owner/RadarTile'
+import { RescueTile } from '../owner/RescueTile'
 
 export type ShopSheetKind =
   'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
@@ -160,9 +163,11 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
   const t = useCopy()
   const ws = useWorkspace()
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
+  const [radar, setRadar] = useState(false)
   const { unread, refresh } = useUnread()
   return (
     <Stack spacing={4}>
+      <MorningBrief key={ws.active?.id} onSheet={setSheet} onRadar={() => setRadar(true)} />
       {!narrow && (
         <PendingCard
           compact
@@ -173,6 +178,7 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
       )}
       <ShopTiles unread={unread} onSheet={setSheet} />
       {!narrow && <FreshnessCard compact />}
+      <RadarSheet open={radar} onClose={() => setRadar(false)} />
       <ShopSheets
         kind={sheet}
         onClose={() => {
@@ -231,6 +237,7 @@ export function ShopTiles({
   // The tool tiles keep their slots; the shop's playbook only decides which tool comes first.
   const tools = byGrowOrder(grow, [
     ['close_day', <CloseDayTile key="close_day" />],
+    ['rescue', <RescueTile key={`rescue-${shop.id}`} />],
     ['prep', <PrepPlanTile key={`prep-${shop.id}`} />],
     ['orders', <OrdersTile key={`orders-${shop.id}`} />],
     [
@@ -321,6 +328,8 @@ export function ShopTiles({
       </Tile>
       {tools[0]}
       {tools[1]}
+      {tools[2]}
+      <RadarTile key={`radar-${shop.id}`} />
       <Tile
         icon={<Globe size={20} />}
         tour="customer"
@@ -338,8 +347,8 @@ export function ShopTiles({
         value={unread === null ? '–' : t.unread(unread)}
         onClick={() => onSheet('messages')}
       />
-      {tools[2]}
       {tools[3]}
+      {tools[4]}
       <Tile
         // Its progress bar wants width; done, it is one thin row across the grid.
         span={done < total ? 2 : 'full'}

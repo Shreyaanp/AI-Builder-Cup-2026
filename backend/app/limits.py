@@ -25,6 +25,8 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "discover:place": ((10, 60), (100, 86_400)),
     # Customer AI entry: one model call per ask.
     "discover:ask": ((15, 60), (300, 86_400)),
+    # Front-door suggestion chips: no model call, read once per area per visit.
+    "discover:suggest": ((20, 60),),
     # Demo world: at most one model call per new ~2 km area; repeats reuse stored shops.
     "demo:world": ((10, 60), (60, 86_400)),
     "stock:ip": ((30, 86_400),),
@@ -51,6 +53,8 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "playbook:edit": ((60, 600),),
     "tts": ((30, 60), (600, 86_400)),
     "proposal": ((60, 60),),
+    # The address under the owner's map pin, looked up once the map stops moving.
+    "reverse": ((60, 60), (600, 86_400)),
     "ask:ip": ((10, 60),),
     "ask:shop": ((200, 86_400),),
     "inquire:ip": ((30, 86_400),),

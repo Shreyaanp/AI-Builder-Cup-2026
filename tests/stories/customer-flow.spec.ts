@@ -70,10 +70,13 @@ test('customer fixes: changing Ask location uses the new coordinates and Browse 
     })
   })
   await page.goto('/explore/')
-  await page.getByRole('search').getByRole('textbox').fill('Coffee')
-  await page.getByRole('button', { name: 'Search', exact: true }).click()
-  await expect(page.getByText('Nothing nearby matches that yet.')).toBeVisible()
-  await page.getByRole('button', { name: 'Change', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Ask about anything nearby' }).fill('Coffee')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(
+    page.getByRole('article').getByText('Nothing nearby matches “Coffee” yet.'),
+  ).toBeVisible()
+  // Changing the area asks the open question again, for the new place.
+  await page.getByRole('button', { name: /^Area: / }).click()
   await page.getByRole('textbox', { name: 'City or area' }).fill('Bengaluru')
   await page.getByRole('textbox', { name: 'City or area' }).press('Enter')
   await expect.poll(() => searches.length).toBe(2)
@@ -134,6 +137,7 @@ test('customer fixes: passport board errors offer retry and failed opt-in stays 
 
 test('customer fixes: Today refresh failure is visible with cached finds', async ({ page }) => {
   await page.goto('/explore/')
+  await page.getByRole('button', { name: /Today’s 7 near you/ }).click()
   const today = page.getByRole('region', { name: /^Today/ })
   await expect(today.getByText('Quiet here so far. Try a nearby area.')).toBeVisible()
   await page.route('**/public/today?*', (route) => route.fulfill({ status: 503, json: {} }))
@@ -165,6 +169,7 @@ test('customer fixes: a Today festival trail opens the passport quests', async (
     await route.fulfill({ response, json: feed })
   })
   await page.goto('/explore/')
+  await page.getByRole('button', { name: /Today’s 7 near you/ }).click()
   await page.getByRole('link', { name: 'Start trail', exact: true }).click()
   await expect(page).toHaveURL(/\/explore\/passport#quests$/)
   await expect(page.locator('#quests')).toBeInViewport()
@@ -175,14 +180,16 @@ test('customer motion: shared entrances settle, reduced motion stays static', as
 }, info) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/explore/')
-  await expect(page.getByRole('search')).toHaveCSS('animation-name', 'chalkDealIn')
+  // Suggestions are dealt in like cards; the question is written in chalk.
+  const chip = page.getByRole('list', { name: 'Ask about anything nearby' }).getByRole('listitem')
+  await expect(chip.first()).toHaveCSS('animation-name', 'chalkDealIn')
   await expect(page.getByRole('heading', { level: 1 })).toHaveCSS('animation-name', 'chalkWrite')
   await page.waitForFunction(() =>
     document.getAnimations().every((animation) => animation.playState === 'finished'),
   )
   await page.screenshot({ path: `docs/stories/customer-${info.project.name}-motion.png` })
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await expect(page.getByRole('search')).toHaveCSS('animation-name', 'none')
+  await expect(chip.first()).toHaveCSS('animation-name', 'none')
   await expect(page.getByRole('heading', { level: 1 })).toHaveCSS('animation-name', 'none')
   await page.screenshot({ path: `docs/stories/customer-${info.project.name}-reduced-motion.png` })
 })
@@ -236,20 +243,28 @@ for (const mode of ['light', 'dark'] as const) {
       await customer.getByRole('textbox', { name: 'City or area' }).fill('Bengaluru')
       await customer.getByRole('textbox', { name: 'City or area' }).press('Enter')
       await customer.getByRole('button', { name: 'Explore my neighbourhood' }).click()
+      await expect(
+        customer.getByRole('heading', { name: 'What are you looking for nearby?' }),
+      ).toBeVisible()
+      await capture('ask')
+      await customer.getByRole('button', { name: /Today’s 7 near you/ }).click()
       await expect(customer.getByRole('region', { name: /^Today/ })).toBeVisible()
       await capture('ask-today')
-      await customer.getByRole('button', { name: 'Change', exact: true }).click()
+      await customer.getByRole('button', { name: /^Area: / }).click()
       await customer.getByRole('textbox', { name: 'City or area' }).fill('Delhi')
       await customer.getByRole('textbox', { name: 'City or area' }).press('Enter')
-      await expect(customer.getByText('Near Delhi', { exact: true })).toBeVisible()
+      await expect(customer.getByRole('button', { name: /^Area: Delhi/ })).toBeVisible()
+      await customer.getByRole('textbox', { name: 'Ask about anything nearby' }).fill('tea')
+      await customer.getByRole('button', { name: 'Send', exact: true }).click()
       await customer.getByRole('link', { name: 'Browse everything nearby' }).click()
       await expect(customer.getByRole('textbox', { name: 'City or area' })).toHaveValue('Delhi')
       await customer.getByRole('link', { name: 'Back', exact: true }).click()
-      await expect(customer.getByText('Near Delhi', { exact: true })).toBeVisible()
-      await customer.getByRole('button', { name: 'Change', exact: true }).click()
+      await expect(customer.getByRole('button', { name: /^Area: Delhi/ })).toBeVisible()
+      await customer.getByRole('button', { name: 'New conversation' }).click()
+      await customer.getByRole('button', { name: /^Area: / }).click()
       await customer.getByRole('textbox', { name: 'City or area' }).fill('Bengaluru')
       await customer.getByRole('textbox', { name: 'City or area' }).press('Enter')
-      await expect(customer.getByText('Near Bengaluru', { exact: true })).toBeVisible()
+      await expect(customer.getByRole('button', { name: /^Area: Bengaluru/ })).toBeVisible()
       // Ranking is a local UI fixture; the shop, facts, account and conversations use the real offline API.
       await customer.route('**/discover/ask', (route) =>
         route.fulfill({
@@ -265,6 +280,8 @@ for (const mode of ['light', 'dark'] as const) {
                     name: 'Courtyard Chai · Bengaluru',
                     source: 'chalkboard',
                     category: 'Cafe',
+                    lat: 12.9716,
+                    lng: 77.5946,
                     distance_m: 300,
                     open_now: true,
                     currency: 'INR',
@@ -277,8 +294,8 @@ for (const mode of ['light', 'dark'] as const) {
           },
         }),
       )
-      await customer.getByRole('search').getByRole('textbox').fill('Kopi')
-      await customer.getByRole('button', { name: 'Search', exact: true }).click()
+      await customer.getByRole('textbox', { name: 'Ask about anything nearby' }).fill('Kopi')
+      await customer.getByRole('button', { name: 'Send', exact: true }).click()
       await expect(customer.getByRole('link', { name: /Courtyard Chai/ })).toBeVisible()
       await capture('results')
       await customer.getByRole('link', { name: /Courtyard Chai/ }).click()

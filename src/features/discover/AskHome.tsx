@@ -1,65 +1,60 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  alpha,
   Box,
   Button,
-  Chip,
-  CircularProgress,
   IconButton,
   InputBase,
   Stack,
+  Tooltip,
   Typography,
   useTheme,
 } from '@mui/material'
-import { ArrowRight, ArrowUp, MapPin, Mic, RotateCcw } from 'lucide-react'
+import {
+  ArrowRight,
+  ArrowUp,
+  ChevronDown,
+  MapPin,
+  Mic,
+  RotateCcw,
+  Sparkles,
+  Square,
+  WifiOff,
+} from 'lucide-react'
 import { useLocale } from '../../state/hooks'
+import type { Locale } from '../../i18n/locales'
+import { chalkWrite, dealIn } from '../../design/chalkMotion'
+import { HAND_FONT } from '../../design/theme'
 import { customerNavigate } from '../frontdoors/navigation'
-import { PlaceImage } from '../frontdoors/PlaceImage'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
-import { formatPrice } from '../v1/format'
-import { askCopy } from './askStrings'
 import { useCustomer } from '../customer/account'
 import { accountCopyFor } from '../customer/copy'
-import { FollowButton } from '../customer/FollowButton'
 import { preferenceChips } from '../customer/preferences'
 import { ProfileSheet } from '../customer/Profile'
-import { PlaceSearch } from './PlaceSearch'
-import { ensureDemoWorld } from './demoWorld'
-import { locallyMadeLabel } from '../public/locallyMade'
-import type { Locale } from '../../i18n/locales'
-import type { FoundPlace } from './PlaceSearch'
+import { usePassportCopy } from '../passport/copy'
 import { TodayDeck } from '../passport/TodayDeck'
-import { dealIn, chalkWrite } from '../../design/chalkMotion'
+import { GoogleRows, MiniMap, PickCard } from './AnswerCards'
+import { askCopy } from './askStrings'
+import {
+  clearTurns,
+  lastIntent,
+  loadTurns,
+  saveTurns,
+  turnId,
+  type AskAnswer,
+  type Refine,
+  type Suggestions,
+  type Turn,
+} from './askThread'
+import { discoverCopy } from './strings'
+import { fillIn, useConversationCopy, type ConversationCopy } from './conversationCopy'
+import { ensureDemoWorld } from './demoWorld'
+import { PlaceSearch, type FoundPlace } from './PlaceSearch'
+import '../customer/customer.css'
 
-type Item = { name: string; price: number; unit: string; available: boolean }
-type Pick = {
-  id: string
-  name: string
-  source: 'chalkboard' | 'google'
-  locally_made?: boolean
-  category: string
-  distance_m: number
-  open_now: boolean | null
-  currency?: string | null
-  photo_url?: string | null
-  photo_authors?: string[]
-  google_maps_uri?: string | null
-  demo_shop?: boolean
-  items: Item[]
-  matched: Item[]
-  /** Why it is "For you" (signed-in customers only). */
-  reasons?: string[]
-}
-type Answer = {
-  intent: { summary: string; followups: string[] }
-  mode: 'ai' | 'keywords'
-  groups: { id: 'for_you' | 'best' | 'open' | 'more'; places: Pick[] }[]
-  personal?: { applied: string[]; saved: string[] } | null
-}
-
-const EASE = 'cubic-bezier(0.2, 0, 0, 1)'
 const FILTERS = 'chalkboard.discover.filters'
 const FALLBACK: FoundPlace = { lat: 1.2847, lng: 103.832, label: 'Tiong Bahru' }
+/** Nav bar (80) + composer (56) + breathing room. */
+const COMPOSER_CLEARANCE = 'calc(176px + env(safe-area-inset-bottom))'
 
 function savedPlace(): FoundPlace | null {
   try {
@@ -80,35 +75,12 @@ function rememberPlace(place: FoundPlace) {
   }
 }
 
-const motion = {
-  '@keyframes askDrift': {
-    from: { transform: 'translate(-8%, -4%) scale(1)' },
-    to: { transform: 'translate(8%, 6%) scale(1.15)' },
-  },
-  '@keyframes askPulse': {
-    '0%, 100%': { transform: 'scale(1)', opacity: 0.7 },
-    '50%': { transform: 'scale(1.3)', opacity: 1 },
-  },
-  '@keyframes askRise': {
-    from: { opacity: 0, transform: 'translateY(18px)' },
-    to: { opacity: 1, transform: 'none' },
-  },
-  '@keyframes askShimmer': {
-    from: { backgroundPosition: '200% 0' },
-    to: { backgroundPosition: '-200% 0' },
-  },
-  '@keyframes askLine': {
-    '0%': { opacity: 0, transform: 'translateY(10px)' },
-    '15%, 85%': { opacity: 1, transform: 'none' },
-    '100%': { opacity: 0, transform: 'translateY(-10px)' },
-  },
-}
-
 type SpeechRecognitionLike = {
   lang: string
   interimResults: boolean
   onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
   onend: (() => void) | null
+  onerror: (() => void) | null
   start: () => void
   stop: () => void
 }
@@ -119,18 +91,37 @@ function speechRecognition(): (new () => SpeechRecognitionLike) | null {
     (new () => SpeechRecognitionLike) | null
 }
 
-/** The customer front door: say or type what you need; the AI curates nearby results. */
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/** Singapore says MRT; elsewhere in English a station is a station. */
+function transitLabel(copy: ConversationCopy, locale: Locale, place: FoundPlace) {
+  const singapore = place.lat > 1.15 && place.lat < 1.48 && place.lng > 103.6 && place.lng < 104.1
+  return locale === 'en' && !singapore ? 'Near a station?' : copy.transit
+}
+
+type Chip = { label: string; q: string; refine?: Refine; kind?: Turn['kind'] }
+
+/**
+ * The customer front door is a conversation (owner decision, 16 Oct): ask in your own words,
+ * answers come back as cards with the exact item and price, and follow-ups keep the context
+ * ("cheaper?", "open now?", "near the MRT?"). Today's 7 is one tap away in the same thread.
+ */
 export default function AskHome({
   initialLocation,
   onLocationChange,
+  interests = [],
 }: {
   initialLocation?: CustomerLocation | null
   onLocationChange?: (location: CustomerLocation) => void
+  interests?: string[]
 }) {
   const locale = useLocale()
   const t = askCopy(locale)
-  const accountCopy = accountCopyFor(locale)
+  const c = useConversationCopy()
+  const discover = discoverCopy(locale)
+  const passport = usePassportCopy()
   const roles = useTheme().material
+  const account = useCustomer()
   const [place, setPlace] = useState<FoundPlace>(
     () =>
       (initialLocation?.gps
@@ -139,63 +130,164 @@ export default function AskHome({
       savedPlace() ??
       FALLBACK,
   )
-  const [query, setQuery] = useState('')
-  const [phase, setPhase] = useState<'idle' | 'thinking' | 'results'>('idle')
-  const [answer, setAnswer] = useState<Answer | null>(null)
-  const [failed, setFailed] = useState(false)
+  const [turns, setTurns] = useState<Turn[]>(loadTurns)
+  const [draft, setDraft] = useState('')
   const [changing, setChanging] = useState(false)
   const [listening, setListening] = useState(false)
+  const [suggested, setSuggested] = useState<{ key: string; data: Suggestions } | null>(null)
+  const placeKey = `${place.lat},${place.lng}`
+  const suggestions = suggested?.key === placeKey ? suggested.data : null
+  const [profileOpen, setProfileOpen] = useState(false)
   const [line, setLine] = useState(0)
   const input = useRef<HTMLInputElement>(null)
   const recognizer = useRef<SpeechRecognitionLike | null>(null)
+  const requests = useRef(new Map<string, AbortController>())
   const Speech = speechRecognition()
-  const account = useCustomer()
-  const [profileOpen, setProfileOpen] = useState(false)
+  const busy = turns.some((turn) => turn.status === 'thinking')
 
   useEffect(() => {
-    document.title = `${t.title} · Chalkboard`
-  }, [t.title])
+    document.title = `${c.hello} · Chalkboard`
+  }, [c.hello])
+
+  useEffect(() => saveTurns(turns), [turns])
+
+  // Back from a shop or a chat lands where you were in the conversation.
+  useEffect(() => {
+    const y = (history.state as { scrollY?: number } | null)?.scrollY
+    if (y) requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' }))
+  }, [])
 
   useEffect(() => {
-    if (phase !== 'thinking') return
+    if (!busy) return
     const timer = setInterval(() => setLine((n) => (n + 1) % t.thinking.length), 1100)
     return () => clearInterval(timer)
-  }, [phase, t.thinking.length])
+  }, [busy, t.thinking.length])
 
-  async function ask(text: string, searchPlace = place) {
-    const q = text.trim()
-    if (!q || phase === 'thinking') return
-    setQuery(q)
-    setFailed(false)
-    setLine(0)
-    setPhase('thinking')
-    const started = performance.now()
-    try {
-      await ensureDemoWorld(searchPlace.lat, searchPlace.lng, searchPlace.label)
-      // Signed-in customers get "For you" ranking and stated preferences remembered.
-      const data = await account.api<Answer>('/api/v1/discover/ask', {
-        method: 'POST',
-        body: JSON.stringify({ q, lat: searchPlace.lat, lng: searchPlace.lng, language: locale }),
+  // Suggestion chips come from this area's own shops (labelled demo shops included).
+  useEffect(() => {
+    let live = true
+    const key = `${place.lat},${place.lng}`
+    void ensureDemoWorld(place.lat, place.lng, place.label)
+      .then(() =>
+        fetch(
+          `/api/v1/discover/suggest?${new URLSearchParams({ lat: String(place.lat), lng: String(place.lng) })}`,
+        ),
+      )
+      .then((response) => (response.ok ? (response.json() as Promise<Suggestions>) : null))
+      .then((data) => {
+        if (live && data) setSuggested({ key, data })
       })
-      if (data.personal) {
-        // Keep the profile sheet in step with what was just remembered.
-        void account
-          .api<{ profile?: unknown }>('/api/v1/customer/me')
-          .then((me) => {
-            if (me.profile)
-              account.setProfile(me.profile as Parameters<typeof account.setProfile>[0])
-          })
-          .catch(() => undefined)
-      }
-      // Let the thinking motion read as a moment, not a flicker.
-      const wait = Math.max(0, 1300 - (performance.now() - started))
-      await new Promise((resolve) => setTimeout(resolve, wait))
-      setAnswer(data)
-      setPhase('results')
-    } catch {
-      setFailed(true)
-      setPhase('idle')
+      .catch(() => undefined)
+    return () => {
+      live = false
     }
+  }, [place.lat, place.lng, place.label])
+
+  const update = useCallback((id: string, patch: Partial<Turn>) => {
+    setTurns((all) => all.map((turn) => (turn.id === id ? { ...turn, ...patch } : turn)))
+  }, [])
+
+  const run = useCallback(
+    async (turn: Turn) => {
+      if (turn.kind === 'today') {
+        update(turn.id, { status: 'done' })
+        return
+      }
+      if (!navigator.onLine) {
+        update(turn.id, { status: 'offline' })
+        return
+      }
+      const controller = new AbortController()
+      requests.current.set(turn.id, controller)
+      update(turn.id, { status: 'thinking' })
+      const started = performance.now()
+      try {
+        await ensureDemoWorld(turn.place.lat, turn.place.lng, turn.place.label)
+        // Signed-in customers get "For you" ranking and stated preferences remembered.
+        const answer = await account.api<AskAnswer>('/api/v1/discover/ask', {
+          method: 'POST',
+          signal: controller.signal,
+          body: JSON.stringify({
+            q: turn.q,
+            lat: turn.place.lat,
+            lng: turn.place.lng,
+            language: locale,
+            context: turn.context ?? null,
+            refine: turn.refine ?? null,
+          }),
+        })
+        if (answer.personal) {
+          // Keep the profile sheet in step with what was just remembered.
+          void account
+            .api<{ profile?: unknown }>('/api/v1/customer/me')
+            .then((me) => {
+              if (me.profile)
+                account.setProfile(me.profile as Parameters<typeof account.setProfile>[0])
+            })
+            .catch(() => undefined)
+        }
+        // Let the thinking moment read as a moment, not a flicker.
+        const wait = reduced() ? 0 : Math.max(0, 900 - (performance.now() - started))
+        await new Promise((resolve) => setTimeout(resolve, wait))
+        if (controller.signal.aborted) return
+        update(turn.id, { status: 'done', answer })
+      } catch {
+        if (controller.signal.aborted) update(turn.id, { status: 'stopped' })
+        else update(turn.id, { status: navigator.onLine ? 'failed' : 'offline' })
+      } finally {
+        requests.current.delete(turn.id)
+      }
+    },
+    [account, locale, update],
+  )
+
+  // Offline turns try again by themselves when the connection is back.
+  const latestTurns = useRef(turns)
+  useEffect(() => {
+    latestTurns.current = turns
+  }, [turns])
+  useEffect(() => {
+    const online = () => {
+      for (const turn of latestTurns.current) if (turn.status === 'offline') void run(turn)
+    }
+    window.addEventListener('online', online)
+    return () => window.removeEventListener('online', online)
+  }, [run])
+
+  function send(text: string, options: { refine?: Refine; kind?: Turn['kind'] } = {}) {
+    const q = text.trim()
+    if (!q || busy) return
+    const turn: Turn = {
+      id: turnId(),
+      kind: options.kind ?? 'ask',
+      q,
+      refine: options.refine ?? null,
+      context: options.kind === 'today' ? null : lastIntent(turns),
+      status: 'thinking',
+      place,
+    }
+    setTurns((all) => [...all, turn])
+    setDraft('')
+    setLine(0)
+    void run(turn)
+    requestAnimationFrame(() =>
+      document
+        .getElementById(`turn-${turn.id}`)
+        ?.scrollIntoView({ behavior: reduced() ? 'instant' : 'smooth', block: 'start' }),
+    )
+  }
+
+  function stop() {
+    for (const controller of requests.current.values()) controller.abort()
+  }
+
+  function restart() {
+    stop()
+    clearTurns()
+    setTurns([])
+    setChanging(false)
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    requestAnimationFrame(() => input.current?.focus())
   }
 
   function listen() {
@@ -207,518 +299,689 @@ export default function AskHome({
     const recognition = new Speech()
     recognition.lang = locale
     recognition.interimResults = true
+    let heard = ''
     recognition.onresult = (event) => {
-      const text = Array.from(event.results)
+      heard = Array.from(event.results)
         .map((result) => result[0]?.transcript ?? '')
         .join('')
-      setQuery(text)
+      setDraft(heard)
     }
+    recognition.onerror = () => setListening(false)
     recognition.onend = () => {
       setListening(false)
-      setQuery((text) => {
-        if (text.trim()) void ask(text)
-        return text
-      })
+      if (heard.trim()) send(heard)
     }
     recognizer.current = recognition
     setListening(true)
     recognition.start()
   }
 
-  const compact = phase !== 'idle'
-  const total = answer?.groups.reduce((n, g) => n + g.places.length, 0) ?? 0
+  const chips = startChips(suggestions, interests, c, t, discover)
+  const last = turns.at(-1)
+  const anyDemo = turns.some((turn) =>
+    turn.answer?.groups.some((g) => g.places.some((p) => p.demo_shop || p.demo)),
+  )
 
   return (
     <Box
       component="main"
       sx={{
-        ...motion,
         position: 'relative',
         minHeight: '100dvh',
-        overflowX: 'hidden',
+        overflowX: 'clip',
         bgcolor: roles.surface,
-        // Room for the navigation bar.
-        pb: 'calc(112px + env(safe-area-inset-bottom))',
+        pb: COMPOSER_CLEARANCE,
       }}
     >
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
-      {/* Ambient glow: drifts while idle, pulses while thinking. */}
-      <Box
-        aria-hidden="true"
-        sx={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0 }}
-      >
-        {[0, 1].map((n) => (
-          <Box
-            key={n}
-            sx={{
-              position: 'absolute',
-              width: '70vmax',
-              height: '70vmax',
-              left: n ? '35%' : '-25%',
-              top: n ? '-30%' : compact ? '-45%' : '10%',
-              borderRadius: '50%',
-              filter: 'blur(60px)',
-              opacity: 1,
-              background: `radial-gradient(circle, ${alpha(n ? roles.tertiary : roles.primary, 0.14)} 0%, transparent 62%)`,
-              animation:
-                phase === 'thinking'
-                  ? `askPulse 1.6s ${EASE} infinite`
-                  : `askDrift 4s ease-in-out both`,
-            }}
-          />
-        ))}
-      </Box>
-
-      <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 720, mx: 'auto', px: 4 }}>
-        <Box
+      <Box sx={{ maxWidth: 720, mx: 'auto', px: 4 }}>
+        {/* Where we are looking, and a fresh start; the profile and theme buttons float right. */}
+        <Stack
+          direction="row"
           sx={{
-            pt: compact ? 'max(72px, env(safe-area-inset-top))' : 'max(18vh, 72px)',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1100,
+            mx: -4,
+            px: 4,
+            alignItems: 'center',
+            gap: 2,
+            pt: 'max(8px, env(safe-area-inset-top))',
+            pb: 2,
+            pr: { xs: '128px', md: 0 },
+            minHeight: 64,
+            bgcolor: roles.surface,
           }}
         >
-          {!compact && (
-            <Typography
-              component="h1"
-              variant="displaySmall"
-              sx={{
-                fontWeight: 500,
-                letterSpacing: '-0.02em',
-                ...chalkWrite,
-              }}
-            >
-              {t.title}
-            </Typography>
-          )}
-
-          <Box
-            component="form"
-            role="search"
-            onSubmit={(event) => {
-              event.preventDefault()
-              void ask(query)
-            }}
+          <Button
+            onClick={() => setChanging((open) => !open)}
+            aria-expanded={changing}
+            aria-label={fillIn(c.area, { place: place.label })}
+            startIcon={<MapPin size={18} aria-hidden="true" />}
+            endIcon={<ChevronDown size={18} aria-hidden="true" />}
             sx={{
-              mt: compact ? 0 : 5,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              pl: 4,
-              pr: 1,
-              minHeight: 60,
-              borderRadius: 999,
-              bgcolor: roles.surfaceContainerHigh,
-              boxShadow: listening ? `0 0 0 3px ${roles.primary}` : '0 6px 24px rgba(0,0,0,0.08)',
-              transition: `box-shadow 300ms ${EASE}`,
-              ...dealIn,
+              minHeight: 48,
+              minWidth: 0,
+              px: 3,
+              ml: -3,
+              color: roles.onSurface,
+              typography: 'titleSmall',
+              '& .MuiButton-startIcon': { color: roles.primary },
             }}
           >
-            <InputBase
-              inputRef={input}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={listening ? t.listening : t.placeholder}
-              inputProps={{ 'aria-label': t.title, enterKeyHint: 'search', maxLength: 300 }}
-              sx={{ flex: 1, minWidth: 0, fontSize: 18 }}
-            />
-            {Speech && (
-              <IconButton
-                aria-label={t.speak}
-                aria-pressed={listening}
-                onClick={listen}
-                disabled={phase === 'thinking'}
-                sx={{ color: listening ? roles.primary : undefined }}
-              >
-                <Mic size={22} />
-              </IconButton>
-            )}
-            <IconButton
-              type="submit"
-              aria-label={t.ask}
-              disabled={!query.trim() || phase === 'thinking'}
-              sx={{
-                bgcolor: roles.primary,
-                color: roles.onPrimary,
-                width: 44,
-                height: 44,
-                '&:hover': { bgcolor: roles.primary },
-                '&.Mui-disabled': { bgcolor: roles.surfaceContainerHighest },
-              }}
+            <Box
+              component="span"
+              sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
-              {phase === 'thinking' ? (
-                <CircularProgress size={20} sx={{ color: roles.onPrimary }} />
-              ) : (
-                <ArrowUp size={20} />
-              )}
-            </IconButton>
-          </Box>
-
-          <Stack
-            direction="row"
-            sx={{
-              mt: 2,
-              alignItems: 'center',
-              gap: 1,
-              animation: `askRise 600ms ${EASE} 160ms both`,
-            }}
-          >
-            <MapPin size={16} aria-hidden="true" />
-            <Typography variant="bodyMedium" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
-              {t.near.replace('{place}', place.label)}
-            </Typography>
-            <Button size="small" onClick={() => setChanging((open) => !open)}>
-              {t.change}
-            </Button>
-          </Stack>
-          {changing && (
-            <Box sx={{ mt: 2, animation: `askRise 300ms ${EASE} both` }}>
-              <PlaceSearch
-                value={place.label}
-                onFound={(found) => {
-                  setPlace(found)
-                  onLocationChange?.({ gps: null, place: found })
-                  rememberPlace(found)
-                  setChanging(false)
-                  if (query.trim() && phase === 'results') void ask(query, found)
-                }}
-              />
+              {place.label}
             </Box>
+          </Button>
+          {turns.length > 0 && (
+            <Tooltip title={c.newChat}>
+              <IconButton
+                aria-label={c.newChat}
+                onClick={restart}
+                sx={{ ml: 'auto', width: 48, height: 48 }}
+              >
+                <RotateCcw size={20} />
+              </IconButton>
+            </Tooltip>
           )}
+        </Stack>
+        {changing && (
+          <Box className="c-rise" sx={{ mb: 4 }}>
+            <PlaceSearch
+              value={place.label}
+              onFound={(found) => {
+                setPlace(found)
+                onLocationChange?.({ gps: null, place: found })
+                rememberPlace(found)
+                setChanging(false)
+                // An open question is asked again for the new area.
+                const previous = [...turns].reverse().find((turn) => turn.kind === 'ask')
+                if (previous && !busy) {
+                  const turn: Turn = {
+                    ...previous,
+                    id: turnId(),
+                    place: found,
+                    status: 'thinking',
+                    answer: undefined,
+                  }
+                  setTurns((all) => [...all, turn])
+                  void run(turn)
+                }
+              }}
+            />
+          </Box>
+        )}
 
-          {phase === 'idle' && (
-            <Stack direction="row" sx={{ mt: 4, gap: 1.5, flexWrap: 'wrap' }}>
-              {t.suggestions.map((text, index) => (
-                <Chip
-                  key={text}
-                  label={text}
-                  clickable
-                  onClick={() => void ask(text)}
-                  sx={{
-                    minHeight: 40,
-                    bgcolor: roles.surfaceContainer,
-                    ...dealIn,
-                    '--deal-index': index,
-                  }}
-                />
-              ))}
-            </Stack>
-          )}
-          {failed && (
-            <Typography role="alert" color="error" sx={{ mt: 3 }}>
-              {t.failed}
-            </Typography>
+        {/* The assistant opens the conversation. */}
+        <Box component="section" aria-labelledby="ask-hello" sx={{ pt: turns.length ? 2 : 10 }}>
+          <Typography
+            id="ask-hello"
+            component="h1"
+            variant={turns.length ? 'headlineSmall' : 'displaySmall'}
+            sx={{ fontWeight: 500, letterSpacing: '-0.02em', maxWidth: '16ch', ...chalkWrite }}
+          >
+            {c.hello}
+          </Typography>
+          {turns.length === 0 && (
+            <>
+              <Typography
+                variant="bodyLarge"
+                color="text.secondary"
+                sx={{ mt: 3, maxWidth: '42ch' }}
+              >
+                {suggestions?.shops
+                  ? fillIn(c.helloBody, { count: suggestions.shops, place: place.label })
+                  : fillIn(c.helloBodyEmpty, { place: place.label })}
+              </Typography>
+              <Box
+                component="ul"
+                aria-label={c.composer}
+                sx={{
+                  listStyle: 'none',
+                  p: 0,
+                  m: 0,
+                  mt: 6,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 2,
+                }}
+              >
+                {chips.map((chip, index) => (
+                  <Box component="li" key={chip.label} sx={{ ...dealIn, '--deal-index': index }}>
+                    <Button
+                      variant="outlined"
+                      onClick={() => send(chip.q, chip)}
+                      disabled={busy}
+                      sx={{ minHeight: 48, borderRadius: 999, px: 4, py: 2 }}
+                    >
+                      {chip.label}
+                    </Button>
+                  </Box>
+                ))}
+              </Box>
+              <TodayEntry
+                copy={c}
+                onOpen={() => send(c.today, { kind: 'today' })}
+                disabled={busy}
+              />
+            </>
           )}
         </Box>
 
-        {phase === 'thinking' && (
-          <Box aria-live="polite" sx={{ mt: 8, height: 32, textAlign: 'center' }}>
-            <Typography
-              key={line}
-              variant="titleMedium"
-              color="text.secondary"
-              sx={{ animation: `askLine 1100ms ${EASE} both` }}
-            >
-              {t.thinking[line]}
-            </Typography>
-            {/* Results forming: shimmering cards where the picks will land. */}
+        {/* The conversation so far. */}
+        <Box sx={{ mt: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {turns.map((turn) => (
             <Box
-              aria-hidden="true"
+              key={turn.id}
+              id={`turn-${turn.id}`}
+              component="article"
+              aria-label={turn.q}
+              sx={{ scrollMarginTop: 80 }}
+            >
+              <UserBubble text={turn.q} copy={c} />
+              <AssistantTurn
+                turn={turn}
+                latest={turn === last}
+                copy={c}
+                locale={locale}
+                line={t.thinking[line] ?? t.thinking[0]!}
+                transit={transitLabel(c, locale, turn.place)}
+                onSend={send}
+                onRetry={() => void run(turn)}
+                onCancel={() => setTurns((all) => all.filter((x) => x.id !== turn.id))}
+                onManage={() => setProfileOpen(true)}
+              />
+            </Box>
+          ))}
+        </Box>
+        {anyDemo && (
+          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 8 }}>
+            {passport.demoLabel}
+          </Typography>
+        )}
+        <Typography role="status" sx={visuallyHidden}>
+          {last?.status === 'done' && last.answer
+            ? count(last.answer)
+              ? fillIn(c.found, { place: last.place.label })
+              : fillIn(c.nothing, { q: last.q })
+            : last?.status === 'failed'
+              ? c.failed
+              : last?.status === 'offline'
+                ? c.offline
+                : ''}
+        </Typography>
+      </Box>
+
+      {/* The composer sits above the navigation bar, always within thumb reach. */}
+      <Box
+        sx={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 'calc(80px + env(safe-area-inset-bottom))',
+          zIndex: 1050,
+          px: 4,
+          pt: 4,
+          pb: 3,
+          background: `linear-gradient(to bottom, transparent, ${roles.surface} 40%)`,
+          viewTransitionName: 'customer-composer',
+        }}
+      >
+        <Box
+          component="form"
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault()
+            send(draft)
+          }}
+          sx={{
+            maxWidth: 720,
+            mx: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            pl: 5,
+            pr: 1,
+            minHeight: 56,
+            borderRadius: 999,
+            bgcolor: roles.surfaceContainerHigh,
+            border: `1px solid ${listening ? roles.primary : roles.outlineVariant}`,
+            boxShadow: listening ? `0 0 0 2px ${roles.primary}` : '0 4px 16px rgba(0,0,0,0.08)',
+            transition: 'box-shadow 200ms ease, border-color 200ms ease',
+          }}
+        >
+          <InputBase
+            inputRef={input}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder={listening ? t.listening : c.placeholder}
+            inputProps={{ 'aria-label': c.composer, enterKeyHint: 'send', maxLength: 300 }}
+            sx={{ flex: 1, minWidth: 0, minHeight: 48, fontSize: 16 }}
+          />
+          {Speech && !busy && (
+            <IconButton
+              aria-label={t.speak}
+              aria-pressed={listening}
+              onClick={listen}
+              sx={{ width: 48, height: 48, color: listening ? roles.primary : undefined }}
+            >
+              <Mic size={22} />
+            </IconButton>
+          )}
+          {busy ? (
+            <IconButton
+              aria-label={c.stop}
+              onClick={stop}
               sx={{
-                mt: 5,
-                display: 'grid',
-                gridAutoFlow: 'column',
-                gridAutoColumns: 'min(78vw, 280px)',
-                gap: 3,
-                overflow: 'hidden',
+                width: 48,
+                height: 48,
+                bgcolor: roles.surfaceContainerHighest,
+                color: roles.onSurface,
+                '&:hover': { bgcolor: roles.surfaceContainerHighest },
               }}
             >
-              {[0, 1, 2].map((n) => (
-                <Box
-                  key={n}
-                  sx={{
-                    height: 260,
-                    borderRadius: '20px',
-                    background: `linear-gradient(100deg, ${roles.surfaceContainer} 30%, ${roles.surfaceContainerHighest} 50%, ${roles.surfaceContainer} 70%)`,
-                    backgroundSize: '200% 100%',
-                    animation: `askShimmer 1.4s linear infinite, askRise 500ms ${EASE} both`,
-                    animationDelay: `0ms, ${n * 90}ms`,
-                  }}
-                />
-              ))}
-            </Box>
-          </Box>
-        )}
-
-        {phase === 'results' && answer && (
-          <Box sx={{ mt: 4 }}>
-            {answer.mode === 'ai' && answer.intent.summary && (
-              <Typography variant="titleMedium" sx={chalkWrite} aria-live="polite">
-                {answer.intent.summary}
-              </Typography>
-            )}
-            {answer.intent.followups.length > 0 && (
-              <Stack direction="row" sx={{ mt: 2, gap: 1, flexWrap: 'wrap' }}>
-                {answer.intent.followups.map((text, index) => (
-                  <Chip
-                    key={text}
-                    label={text}
-                    size="small"
-                    clickable
-                    onClick={() => void ask(`${query} ${text}`)}
-                    sx={{
-                      animation: `askRise 400ms ${EASE} both`,
-                      animationDelay: `${120 + index * 60}ms`,
-                    }}
-                  />
-                ))}
-              </Stack>
-            )}
-            {(answer.personal?.saved.length ?? 0) > 0 && (
-              <Stack
-                direction="row"
-                className="c-rise"
-                role="status"
-                sx={{
-                  mt: 2,
-                  gap: 1,
-                  alignItems: 'center',
-                  px: 2,
-                  py: 1,
-                  borderRadius: 999,
-                  bgcolor: roles.secondaryContainer,
-                  color: roles.onSecondaryContainer,
-                  width: 'fit-content',
-                  maxWidth: '100%',
-                }}
-              >
-                <Typography variant="labelLarge" noWrap>
-                  {accountCopy.remembered.replace(
-                    '{items}',
-                    preferenceChips(account.profile, accountCopy, locale)
-                      .filter((chip) => answer.personal!.saved.includes(chip.key))
-                      .map((chip) => chip.label)
-                      .join(' · ') || answer.personal!.saved.join(' · '),
-                  )}
-                </Typography>
-                <Button size="small" onClick={() => setProfileOpen(true)} sx={{ minWidth: 0 }}>
-                  {accountCopy.manage}
-                </Button>
-              </Stack>
-            )}
-            {total === 0 && (
-              <Box sx={{ mt: 6, animation: `askRise 500ms ${EASE} both` }}>
-                <Typography variant="titleLarge">{t.nothing}</Typography>
-                <Typography color="text.secondary" sx={{ mt: 1 }}>
-                  {t.tryAgain}
-                </Typography>
-              </Box>
-            )}
-            {answer.groups.map((group, groupIndex) => (
-              <Box
-                key={group.id}
-                component="section"
-                aria-label={group.id === 'for_you' ? accountCopy.forYou : t[group.id]}
-                sx={{
-                  mt: 5,
-                  ...dealIn,
-                  '--deal-index': groupIndex * 2,
-                }}
-              >
-                <Typography component="h2" variant="titleLarge">
-                  {group.id === 'for_you' ? accountCopy.forYou : t[group.id]}
-                </Typography>
-                <Box
-                  sx={{
-                    mt: 2,
-                    mx: -4,
-                    px: 4,
-                    display: 'grid',
-                    gridAutoFlow: 'column',
-                    gridAutoColumns: 'min(78vw, 280px)',
-                    gap: 3,
-                    overflowX: 'auto',
-                    scrollSnapType: 'x mandatory',
-                    scrollPaddingInline: '16px',
-                    pb: 2,
-                    '&::-webkit-scrollbar': { display: 'none' },
-                  }}
-                >
-                  {group.places.map((pick, index) => (
-                    <PickCard
-                      key={pick.id}
-                      pick={pick}
-                      delay={groupIndex * 140 + 120 + index * 70}
-                      copy={t}
-                      locale={locale}
-                    />
-                  ))}
-                </Box>
-              </Box>
-            ))}
-            <Stack direction="row" sx={{ mt: 6, gap: 2, flexWrap: 'wrap' }}>
-              <Button
-                variant="outlined"
-                startIcon={<RotateCcw size={18} />}
-                onClick={() => {
-                  setPhase('idle')
-                  setAnswer(null)
-                  setQuery('')
-                  requestAnimationFrame(() => input.current?.focus())
-                }}
-              >
-                {t.newSearch}
-              </Button>
-              <Button
-                component="a"
-                href="/explore/browse"
-                onClick={customerNavigate}
-                endIcon={<ArrowRight size={18} />}
-              >
-                {t.browse}
-              </Button>
-            </Stack>
-          </Box>
-        )}
-
-        {phase === 'idle' && <TodayDeck place={place} />}
-
-        {phase === 'idle' && (
-          <Box sx={{ mt: 8, animation: `askRise 600ms ${EASE} 600ms both` }}>
-            <Button
-              component="a"
-              href="/explore/browse"
-              onClick={customerNavigate}
-              endIcon={<ArrowRight size={18} />}
+              <Square size={16} fill="currentColor" />
+            </IconButton>
+          ) : (
+            <IconButton
+              type="submit"
+              aria-label={c.send}
+              disabled={!draft.trim()}
+              sx={{
+                width: 48,
+                height: 48,
+                bgcolor: roles.primary,
+                color: roles.onPrimary,
+                '&:hover': { bgcolor: roles.primary },
+                '&.Mui-disabled': {
+                  bgcolor: roles.surfaceContainerHighest,
+                  color: roles.onSurfaceVariant,
+                },
+              }}
             >
-              {t.browse}
-            </Button>
-          </Box>
-        )}
+              <ArrowUp size={20} />
+            </IconButton>
+          )}
+        </Box>
       </Box>
     </Box>
   )
 }
 
-function PickCard({
-  pick,
-  delay,
+const visuallyHidden = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+  whiteSpace: 'nowrap',
+} as const
+
+function count(answer: AskAnswer) {
+  return answer.groups.reduce((n, g) => n + g.places.length, 0)
+}
+
+/** First-message chips: this area's real items and states first, then the person's interests. */
+function startChips(
+  s: Suggestions | null,
+  interests: string[],
+  c: ConversationCopy,
+  t: ReturnType<typeof askCopy>,
+  discover: ReturnType<typeof discoverCopy>,
+): Chip[] {
+  const chips: Chip[] = []
+  for (const item of s?.items.slice(0, 2) ?? []) chips.push({ label: item, q: item })
+  if (s?.deals) chips.push({ label: c.chipDeals, q: c.chipDeals, refine: 'deals' })
+  if (s?.open_now) chips.push({ label: c.chipOpen, q: c.chipOpen, refine: 'open' })
+  if (s?.locally_made) chips.push({ label: c.chipLocal, q: c.chipLocal, refine: 'local' })
+  for (const interest of interests) {
+    const key = (interest === 'café' ? 'cafe' : interest) as keyof typeof discover
+    const label = typeof discover[key] === 'string' ? (discover[key] as string) : interest
+    chips.push({ label, q: label })
+  }
+  for (const text of t.suggestions) chips.push({ label: text, q: text })
+  const seen = new Set<string>()
+  return chips.filter((chip) => !seen.has(chip.label) && seen.add(chip.label)).slice(0, 4)
+}
+
+function TodayEntry({
   copy,
-  locale,
+  onOpen,
+  disabled,
 }: {
-  pick: Pick
-  delay: number
-  copy: ReturnType<typeof askCopy>
-  locale: string
+  copy: ConversationCopy
+  onOpen: () => void
+  disabled: boolean
 }) {
-  const roles = useTheme().material
-  const item = pick.matched[0] ?? pick.items.find((i) => i.available)
-  const distance = new Intl.NumberFormat(locale, {
-    style: 'unit',
-    unit: pick.distance_m < 1000 ? 'meter' : 'kilometer',
-    maximumFractionDigits: 1,
-  }).format(pick.distance_m < 1000 ? pick.distance_m : pick.distance_m / 1000)
-  const chalkboard = pick.source === 'chalkboard'
-  const reason = pick.reasons?.[0]
+  const theme = useTheme()
+  const tone = theme.chalk.sunflower
   return (
-    <Box sx={{ position: 'relative', scrollSnapAlign: 'start' }}>
+    <Box
+      component="button"
+      type="button"
+      onClick={onOpen}
+      disabled={disabled}
+      sx={{
+        mt: 8,
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        p: 4,
+        borderRadius: '20px',
+        cursor: 'pointer',
+        textAlign: 'start',
+        font: 'inherit',
+        // A calm card: the one sunflower accent is the small tile, not the whole surface.
+        bgcolor: theme.material.surfaceContainerLow,
+        color: theme.material.onSurface,
+        border: `1px solid ${theme.material.outlineVariant}`,
+        ...dealIn,
+        '--deal-index': 5,
+        '&:focus-visible': { outline: `3px solid ${theme.material.primary}`, outlineOffset: 2 },
+        '&:disabled': { opacity: 0.6, cursor: 'default' },
+      }}
+    >
       <Box
-        component="a"
-        href={chalkboard ? `/explore/s/${pick.id}` : (pick.google_maps_uri ?? '#')}
-        onClick={chalkboard ? customerNavigate : undefined}
-        target={chalkboard ? undefined : '_blank'}
-        rel={chalkboard ? undefined : 'noopener noreferrer'}
+        aria-hidden="true"
         sx={{
-          scrollSnapAlign: 'start',
-          display: 'block',
-          color: 'inherit',
-          textDecoration: 'none',
-          borderRadius: '20px',
-          overflow: 'hidden',
-          bgcolor: roles.surfaceContainerLow,
-          border: `1px solid ${roles.outlineVariant}`,
-          ...dealIn,
-          animationDelay: `${delay}ms`,
-          transition: `transform 200ms ${EASE}`,
-          '&:active': { transform: 'scale(0.98)' },
-          '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: 2 },
+          width: 48,
+          height: 48,
+          flexShrink: 0,
+          borderRadius: '14px',
+          display: 'grid',
+          placeItems: 'center',
+          bgcolor: tone.main,
+          color: tone.onMain,
+          transform: 'rotate(-4deg)',
         }}
       >
-        <Box sx={{ position: 'relative', aspectRatio: '16 / 11', overflow: 'hidden' }}>
-          <PlaceImage
-            id={pick.id}
-            category={pick.category}
-            photo={pick.photo_url}
-            authors={pick.photo_authors ?? []}
-            transition={chalkboard}
-            compact
-          />
-          {(pick.demo_shop || pick.locally_made) && (
-            <Stack direction="row" sx={{ position: 'absolute', top: 10, left: 10, gap: 1 }}>
-              {pick.locally_made && (
-                <Chip
-                  label={locallyMadeLabel(locale as Locale)}
-                  size="small"
-                  sx={{
-                    bgcolor: roles.tertiaryContainer,
-                    color: roles.onTertiaryContainer,
-                    fontWeight: 600,
-                  }}
-                />
-              )}
-              {pick.demo_shop && (
-                <Chip label={copy.demo} size="small" sx={{ bgcolor: roles.surface }} />
-              )}
-            </Stack>
-          )}
+        <Sparkles size={22} />
+      </Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography
+          sx={{ fontFamily: HAND_FONT, fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.1 }}
+        >
+          {copy.today}
+        </Typography>
+        <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
+          {copy.todayHint}
+        </Typography>
+      </Box>
+      <ArrowRight size={20} aria-hidden="true" />
+    </Box>
+  )
+}
+
+function UserBubble({ text, copy }: { text: string; copy: ConversationCopy }) {
+  const roles = useTheme().material
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <Typography
+        className="c-send"
+        sx={{
+          maxWidth: '80%',
+          px: 4,
+          py: 2,
+          borderRadius: '20px 20px 4px 20px',
+          bgcolor: roles.primaryContainer,
+          color: roles.onPrimaryContainer,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        <Box component="span" sx={visuallyHidden}>
+          {copy.you}:{' '}
         </Box>
-        {reason && (
-          <Typography
-            variant="labelMedium"
-            sx={{ px: 3, pt: 2, color: roles.primary, fontWeight: 700 }}
-          >
-            {accountCopyFor(locale as Locale).reasons[reason] ?? reason}
+        {text}
+      </Typography>
+    </Box>
+  )
+}
+
+function AssistantTurn({
+  turn,
+  latest,
+  copy,
+  locale,
+  line,
+  transit,
+  onSend,
+  onRetry,
+  onCancel,
+  onManage,
+}: {
+  turn: Turn
+  latest: boolean
+  copy: ConversationCopy
+  locale: Locale
+  line: string
+  transit: string
+  onSend: (text: string, options?: { refine?: Refine }) => void
+  onRetry: () => void
+  onCancel: () => void
+  onManage: () => void
+}) {
+  const roles = useTheme().material
+  const t = askCopy(locale)
+  const account = useCustomer()
+  const accountCopy = accountCopyFor(locale)
+  if (turn.kind === 'today')
+    return (
+      // The deck carries its own title ("Today near …"): no second heading above it.
+      <Box className="c-receive" sx={{ mt: 2 }}>
+        <TodayDeck place={turn.place} />
+      </Box>
+    )
+  if (turn.status === 'thinking')
+    return (
+      <Box sx={{ mt: 4 }} aria-busy="true">
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 3, color: roles.onSurfaceVariant }}>
+          <Box className="c-typing" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </Box>
+          <Typography key={line} className="c-rise" variant="bodyMedium">
+            {line}
           </Typography>
-        )}
-        <Box sx={{ p: 3 }}>
-          <Typography variant="titleMedium" noWrap>
-            {pick.name}
-          </Typography>
-          {item && pick.currency && (
-            <Typography variant="bodyMedium" sx={{ mt: 0.5, fontWeight: 600 }} noWrap>
-              {item.name} · {formatPrice(item.price, pick.currency)}
-            </Typography>
-          )}
-          <Stack direction="row" sx={{ mt: 1, gap: 1.5, alignItems: 'center' }}>
-            <Typography variant="bodySmall" color="text.secondary">
-              {distance}
-            </Typography>
-            {pick.open_now !== null && (
-              <Stack direction="row" sx={{ gap: 0.75, alignItems: 'center' }}>
-                <Box
-                  aria-hidden="true"
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    bgcolor: pick.open_now ? '#1e8e3e' : roles.outline,
-                  }}
-                />
-                <Typography variant="bodySmall" color="text.secondary">
-                  {pick.open_now ? copy.openNow : copy.closed}
-                </Typography>
-              </Stack>
-            )}
-            {!chalkboard && (
-              <Typography variant="bodySmall" color="text.secondary" sx={{ ml: 'auto' }}>
-                {copy.from}
-              </Typography>
-            )}
-          </Stack>
+        </Stack>
+        <Box
+          aria-hidden="true"
+          sx={{
+            mt: 4,
+            display: 'grid',
+            gridAutoFlow: 'column',
+            gridAutoColumns: 'min(78vw, 272px)',
+            gap: 3,
+            overflow: 'hidden',
+          }}
+        >
+          {[0, 1].map((n) => (
+            <Box
+              key={n}
+              className="c-shimmer"
+              sx={{ height: 240, borderRadius: '20px', bgcolor: roles.surfaceContainer }}
+            />
+          ))}
         </Box>
       </Box>
-      {chalkboard && (
-        // A sibling of the link (never nested inside it), floating over the photo.
-        <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
-          <FollowButton id={pick.id} name={pick.name} variant="icon" />
-        </Box>
+    )
+  if (turn.status !== 'done' || !turn.answer)
+    return (
+      <Box
+        role={turn.status === 'stopped' ? undefined : 'alert'}
+        className="c-receive"
+        sx={{
+          mt: 4,
+          p: 4,
+          borderRadius: '16px',
+          bgcolor: turn.status === 'stopped' ? roles.surfaceContainerLow : roles.errorContainer,
+          color: turn.status === 'stopped' ? roles.onSurface : roles.onErrorContainer,
+        }}
+      >
+        <Stack direction="row" sx={{ gap: 2, alignItems: 'center' }}>
+          {turn.status === 'offline' && <WifiOff size={18} aria-hidden="true" />}
+          <Typography variant="bodyMedium">
+            {turn.status === 'offline'
+              ? copy.offline
+              : turn.status === 'stopped'
+                ? copy.stopped
+                : copy.failed}
+          </Typography>
+        </Stack>
+        <Stack direction="row" sx={{ mt: 3, gap: 2 }}>
+          <Button variant="contained" onClick={onRetry} sx={{ minHeight: 48 }}>
+            {copy.retry}
+          </Button>
+          <Button onClick={onCancel} sx={{ minHeight: 48, color: 'inherit' }}>
+            {copy.cancel}
+          </Button>
+        </Stack>
+      </Box>
+    )
+  const answer = turn.answer
+  const intent = answer.intent
+  const ours = answer.groups
+    .filter((g) => g.id === 'for_you' || g.id === 'best')
+    .flatMap((g) => g.places)
+  const google = answer.groups
+    .filter((g) => g.id === 'open' || g.id === 'more')
+    .flatMap((g) => g.places)
+    .slice(0, 3)
+  const applied = [
+    intent.sort === 'price' && copy.sortPrice,
+    intent.sort === 'distance' && copy.sortDistance,
+    intent.open_now && copy.openOnly,
+    intent.deals && copy.dealsOnly,
+    intent.near === 'transit' &&
+      (answer.anchor ? fillIn(copy.nearStation, { station: answer.anchor.name }) : copy.noStation),
+  ].filter(Boolean) as string[]
+  const refinements: Chip[] = [
+    intent.sort !== 'price' && { label: copy.cheaper, q: copy.cheaper, refine: 'price' as const },
+    !intent.open_now && { label: copy.open, q: copy.open, refine: 'open' as const },
+    intent.near !== 'transit' && { label: transit, q: transit, refine: 'transit' as const },
+    !intent.deals && { label: copy.deals, q: copy.deals, refine: 'deals' as const },
+  ].filter(Boolean) as Chip[]
+  const followups: Chip[] = [
+    ...refinements.slice(0, 3),
+    ...(intent.followups ?? []).slice(0, 1).map((text) => ({ label: text, q: text })),
+  ]
+  const nothing = ours.length === 0 && google.length === 0
+  return (
+    <Box sx={{ mt: 4 }}>
+      <Typography variant="bodyLarge" sx={chalkWrite}>
+        {nothing
+          ? fillIn(copy.nothing, { q: intent.keywords?.join(' ') || turn.q })
+          : answer.mode === 'ai' && intent.summary
+            ? intent.summary
+            : fillIn(copy.found, { place: turn.place.label })}
+      </Typography>
+      {applied.length > 0 && (
+        <Typography variant="labelLarge" color="text.secondary" sx={{ mt: 1 }}>
+          {applied.join(' · ')}
+        </Typography>
+      )}
+      {nothing && (
+        <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
+          {copy.nothingHint}
+        </Typography>
+      )}
+      {(answer.personal?.saved.length ?? 0) > 0 && (
+        <Stack
+          direction="row"
+          role="status"
+          sx={{ mt: 2, gap: 2, alignItems: 'center', flexWrap: 'wrap' }}
+        >
+          <Typography variant="labelLarge" color="text.secondary">
+            {accountCopy.remembered.replace(
+              '{items}',
+              preferenceChips(account.profile, accountCopy, locale)
+                .filter((chip) => answer.personal!.saved.includes(chip.key))
+                .map((chip) => chip.label)
+                .join(' · ') || answer.personal!.saved.join(' · '),
+            )}
+          </Typography>
+          <Button onClick={onManage} sx={{ minHeight: 48 }}>
+            {accountCopy.manage}
+          </Button>
+        </Stack>
+      )}
+      {ours.length > 0 && (
+        <>
+          <Box
+            component="ul"
+            aria-label={fillIn(copy.found, { place: turn.place.label })}
+            // A scrolling row must be reachable by keyboard (axe scrollable-region-focusable).
+            tabIndex={0}
+            sx={{
+              m: 0,
+              mt: 4,
+              mx: { xs: -4, md: 0 },
+              px: { xs: 4, md: 0 },
+              display: 'grid',
+              gridAutoFlow: { xs: 'column', md: 'row' },
+              gridAutoColumns: 'min(78vw, 272px)',
+              gridTemplateColumns: { md: 'repeat(auto-fill, minmax(208px, 1fr))' },
+              gap: 3,
+              overflowX: { xs: 'auto', md: 'visible' },
+              scrollSnapType: 'x mandatory',
+              scrollPaddingInline: '16px',
+              pb: 2,
+              scrollbarWidth: 'none',
+              '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: 2 },
+            }}
+          >
+            {ours.slice(0, 8).map((pick, index) => (
+              <PickCard
+                key={pick.id}
+                pick={pick}
+                index={index}
+                anchor={answer.anchor}
+                copy={copy}
+                locale={locale}
+              />
+            ))}
+          </Box>
+          <MiniMap
+            picks={ours.slice(0, 8)}
+            center={turn.place}
+            anchor={answer.anchor}
+            copy={copy}
+          />
+        </>
+      )}
+      {google.length > 0 && <GoogleRows places={google} copy={copy} locale={locale} />}
+      {latest && (
+        <>
+          <Box
+            component="ul"
+            sx={{ listStyle: 'none', p: 0, m: 0, mt: 6, display: 'flex', flexWrap: 'wrap', gap: 2 }}
+          >
+            {followups.map((chip, index) => (
+              <Box component="li" key={chip.label} sx={{ ...dealIn, '--deal-index': index + 2 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => onSend(chip.q, chip)}
+                  sx={{ minHeight: 48, borderRadius: 999, px: 4, py: 2 }}
+                >
+                  {chip.label}
+                </Button>
+              </Box>
+            ))}
+          </Box>
+          <Button
+            component="a"
+            href="/explore/browse"
+            onClick={customerNavigate}
+            endIcon={<ArrowRight size={18} />}
+            sx={{ mt: 4, minHeight: 48, ml: -3 }}
+          >
+            {t.browse}
+          </Button>
+        </>
       )}
     </Box>
   )
