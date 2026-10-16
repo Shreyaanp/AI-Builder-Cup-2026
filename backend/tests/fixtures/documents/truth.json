@@ -1,0 +1,186 @@
+[
+  {
+    "file": "receipt-cafe-sgd.jpg",
+    "kind": "sales",
+    "date": "2026-10-14",
+    "currency": "SGD",
+    "lines": [
+      {
+        "item": "Kopi O",
+        "quantity": 3,
+        "amount": 4.8
+      },
+      {
+        "item": "Teh Tarik",
+        "quantity": 2,
+        "amount": 3.6
+      },
+      {
+        "item": "Kaya Toast Set",
+        "quantity": 4,
+        "amount": 22.0
+      },
+      {
+        "item": "Half Boiled Eggs",
+        "quantity": 2,
+        "amount": 4.0
+      },
+      {
+        "item": "Curry Puff",
+        "quantity": 5,
+        "amount": 9.0
+      }
+    ]
+  },
+  {
+    "file": "receipt-kirana-inr.jpg",
+    "kind": "sales",
+    "date": "2026-10-13",
+    "currency": "INR",
+    "lines": [
+      {
+        "item": "Toor Dal 1kg",
+        "quantity": 2,
+        "amount": 340.0
+      },
+      {
+        "item": "Sona Masoori Rice 5kg",
+        "quantity": 1,
+        "amount": 395.0
+      },
+      {
+        "item": "Sunflower Oil 1L",
+        "quantity": 3,
+        "amount": 465.0
+      },
+      {
+        "item": "Parle-G Biscuit",
+        "quantity": 6,
+        "amount": 60.0
+      },
+      {
+        "item": "Amul Butter 100g",
+        "quantity": 2,
+        "amount": 116.0
+      },
+      {
+        "item": "Tata Salt 1kg",
+        "quantity": 1,
+        "amount": 28.0
+      }
+    ]
+  },
+  {
+    "file": "zreport-bakery-sgd.jpg",
+    "kind": "sales",
+    "date": "2026-10-15",
+    "currency": "SGD",
+    "lines": [
+      {
+        "item": "Butter Croissant",
+        "quantity": 18,
+        "amount": 63.0
+      },
+      {
+        "item": "Sourdough Loaf",
+        "quantity": 6,
+        "amount": 51.0
+      },
+      {
+        "item": "Pandan Chiffon",
+        "quantity": 4,
+        "amount": 34.0
+      },
+      {
+        "item": "Egg Tart",
+        "quantity": 22,
+        "amount": 33.0
+      }
+    ]
+  },
+  {
+    "file": "invoice-supplier-inr.jpg",
+    "kind": "delivery",
+    "date": "2026-10-12",
+    "currency": "INR",
+    "number": "SKD/2026/0457",
+    "supplier": "Sree Krishna Distributors",
+    "lines": [
+      {
+        "item": "Toor Dal 30kg bag",
+        "quantity": 2,
+        "amount": 4950.0
+      },
+      {
+        "item": "Sunflower Oil 15L tin",
+        "quantity": 1,
+        "amount": 2180.0
+      },
+      {
+        "item": "Sugar 50kg bag",
+        "quantity": 1,
+        "amount": 2275.0
+      },
+      {
+        "item": "Parle-G carton (48)",
+        "quantity": 3,
+        "amount": 1440.0
+      }
+    ]
+  },
+  {
+    "file": "invoice-wholesale-sgd.jpg",
+    "kind": "delivery",
+    "date": "2026-10-09",
+    "currency": "SGD",
+    "number": "INV-30921",
+    "supplier": "Fresh Harvest Trading Pte Ltd",
+    "lines": [
+      {
+        "item": "Eggs grade A (tray of 30)",
+        "quantity": 6,
+        "amount": 54.0
+      },
+      {
+        "item": "Kaya jar 1kg",
+        "quantity": 4,
+        "amount": 38.0
+      },
+      {
+        "item": "White bread loaf",
+        "quantity": 20,
+        "amount": 46.0
+      },
+      {
+        "item": "Evaporated milk carton",
+        "quantity": 2,
+        "amount": 61.2
+      }
+    ]
+  },
+  {
+    "file": "delivery-note-flour-sgd.jpg",
+    "kind": "delivery",
+    "date": "2026-10-11",
+    "currency": "SGD",
+    "number": "DN-5512",
+    "supplier": "Prima Baking Supplies",
+    "lines": [
+      {
+        "item": "Bread flour 25kg",
+        "quantity": 3,
+        "amount": 117.0
+      },
+      {
+        "item": "Unsalted butter 5kg",
+        "quantity": 2,
+        "amount": 96.0
+      },
+      {
+        "item": "Caster sugar 10kg",
+        "quantity": 1,
+        "amount": 18.5
+      }
+    ]
+  }
+]
