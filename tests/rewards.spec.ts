@@ -293,4 +293,3 @@ test('shop without reward hides stamp card, stamp CTA and games, and QR scan giv
   const saved = raw ? JSON.parse(raw) : { shops: {} }
   expect(saved.shops?.[noRewardId]?.stamps ?? 0).toBe(0)
 })
-
