@@ -1,7 +1,6 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import {
   Alert,
-  Autocomplete,
   Button,
   Dialog,
   DialogActions,
@@ -14,23 +13,16 @@ import {
   useMediaQuery,
 } from '@mui/material'
 import type { Business, Product, Proposal } from './api'
-import { CURRENCIES, currencySymbol, shopCurrency, toMajor, toMinor } from './format'
+import { currencySymbol, shopCurrency, toMajor, toMinor } from './format'
 import { useBackClose } from './backStack'
+import { GuidedDetails, type GuidedResult } from './GuidedDetails'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { windowClass } from '../../design/theme'
-import { useRewardCopy } from '../rewards/strings'
-import { HoursEditor } from '../shop/Hours'
 import { useShopCopy } from '../shop/strings'
-import { factName, factSuggestions } from './factNames'
 import { UNITS, unitKey } from '../shop/units'
 
 const EMPTY: Business['fields'] = { name: '', category: '', location: '', hours: '', phone: '' }
-
-// Shop currency picker: the phone region's currency first, then the APAC list.
-function currencyOptions(current: string) {
-  return [current, ...CURRENCIES.filter((code) => code !== current)]
-}
 
 function useCompact() {
   return useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
@@ -50,54 +42,19 @@ export function BusinessDialog() {
 
 function BusinessForm({ initial }: { initial: Business['fields'] }) {
   const t = useCopy()
-  const rewards = useRewardCopy()
-  const shopCopy = useShopCopy()
   const { api, active, editor, openEditor, review } = useWorkspace()
-  const compact = useCompact()
-  const [fields, setFields] = useState(initial)
-  const nameInput = useRef<HTMLInputElement>(null)
-  const [stampTarget, setStampTarget] = useState(String(initial.stamps_needed ?? 8))
-  const stampInput = useRef<HTMLInputElement>(null)
-  const invalidTarget =
-    !/^\d+$/.test(stampTarget) || Number(stampTarget) < 3 || Number(stampTarget) > 20
-  const paymentInput = useRef<HTMLInputElement>(null)
-  const deliveryInput = useRef<HTMLInputElement>(null)
-  const suggestions = factSuggestions()
-  const invalidPayments =
-    (fields.payment_methods ?? []).some((name) => !name.trim() || [...name.trim()].length > 40) ||
-    (fields.payment_methods?.length ?? 0) > 8
-  const invalidDelivery =
-    fields.delivery != null && (!fields.delivery.trim() || [...fields.delivery.trim()].length > 40)
   const [error, setError] = useState('')
   // One request at a time: repeated taps must not create competing proposals.
   const [busy, setBusy] = useState(false)
+  const [dirty, setDirty] = useState(false)
   const editing = editor.kind === 'business' && editor.fields !== null
   const close = () => openEditor({ kind: 'none' })
-  // Back closes the form; typed changes ask "Discard changes?" first.
-  useBackClose(
-    true,
-    close,
-    JSON.stringify(fields) !== JSON.stringify(initial) ||
-      stampTarget !== String(initial.stamps_needed ?? 8),
-  )
-  async function submit() {
+  // Back closes the journey; typed changes ask "Discard changes?" first.
+  useBackClose(true, close, dirty)
+  async function submit({ fields, products, location }: GuidedResult) {
     if (busy) return
-    if (!fields.name.trim()) {
-      setError(t.enterName)
-      nameInput.current?.focus()
-      return
-    }
-    if (invalidPayments || invalidDelivery) {
-      setError(invalidPayments ? t.factInputHelp : t.deliveryInputHelp)
-      ;(invalidPayments ? paymentInput : deliveryInput).current?.focus()
-      return
-    }
-    if (invalidTarget) {
-      setError(rewards.neededHelp)
-      stampInput.current?.focus()
-      return
-    }
     setBusy(true)
+    setError('')
     try {
       const proposal = await api<Proposal>('/proposals', {
         method: 'POST',
@@ -105,7 +62,9 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
           kind: 'business',
           business_id: editing ? active?.id : null,
           revision: editing ? (active?.revision ?? 0) : 0,
-          business: { ...fields, stamps_needed: Number(stampTarget) },
+          business: fields,
+          ...(editing ? {} : { products }),
+          owner_location: location,
         }),
       })
       openEditor({ kind: 'none' })
@@ -116,148 +75,20 @@ function BusinessForm({ initial }: { initial: Business['fields'] }) {
       setBusy(false)
     }
   }
+  // Full screen on every size: a guided journey, one question per screen.
   return (
-    <Dialog open fullScreen={compact} onClose={close} aria-labelledby="business-form-title">
-      <DialogTitle id="business-form-title">{editing ? t.editDetails : t.addShop}</DialogTitle>
-      <DialogContent>
-        <Stack
-          component="form"
-          spacing={3}
-          sx={{ pt: 1 }}
-          onSubmit={(event) => {
-            event.preventDefault()
-            void submit()
-          }}
-        >
-          {(Object.keys(t.fields) as (keyof typeof t.fields)[])
-            .filter((key) => key !== 'hours')
-            .map((key) => (
-              <TextField
-                key={key}
-                label={t.fields[key]}
-                value={fields[key]}
-                required={key === 'name'}
-                autoFocus={key === 'name'}
-                id={`business-${key}`}
-                inputRef={key === 'name' ? nameInput : undefined}
-                error={key === 'name' && error === t.enterName && !fields.name.trim()}
-                helperText={
-                  key === 'name' && error === t.enterName && !fields.name.trim()
-                    ? t.enterName
-                    : undefined
-                }
-                type={key === 'phone' ? 'tel' : 'text'}
-                autoComplete={
-                  key === 'phone' ? 'tel' : key === 'location' ? 'street-address' : 'off'
-                }
-                onChange={(event) => setFields({ ...fields, [key]: event.target.value })}
-                slotProps={{ htmlInput: { maxLength: key === 'location' ? 300 : 180 } }}
-              />
-            ))}
-          <HoursEditor
-            value={fields.weekly_hours ?? []}
-            onChange={(weekly_hours) => setFields({ ...fields, weekly_hours })}
-          />
-          {/* Free text stays for what a schedule can't say (holidays, "until sold out"). */}
-          <TextField
-            label={shopCopy.hoursNote}
-            value={fields.hours}
-            autoComplete="off"
-            onChange={(event) => setFields({ ...fields, hours: event.target.value })}
-            slotProps={{ htmlInput: { maxLength: 180 } }}
-          />
-          <TextField
-            label={rewards.reward}
-            name="reward_text"
-            value={fields.reward_text ?? ''}
-            helperText={rewards.rewardHelp}
-            slotProps={{ htmlInput: { maxLength: 80 } }}
-            onChange={(event) => setFields({ ...fields, reward_text: event.target.value })}
-          />
-          <TextField
-            label={rewards.needed}
-            name="stamps_needed"
-            inputRef={stampInput}
-            type="number"
-            value={stampTarget}
-            required
-            error={invalidTarget}
-            helperText={rewards.neededHelp}
-            slotProps={{ htmlInput: { min: 3, max: 20, step: 1, inputMode: 'numeric' } }}
-            onChange={(event) => setStampTarget(event.target.value)}
-          />
-          <TextField
-            select
-            label={t.currency}
-            value={fields.currency ?? 'SGD'}
-            // Stored prices are in this currency's minor units, so it is fixed once saved.
-            disabled={editing}
-            helperText={editing ? t.currencyLocked : undefined}
-            // The reason it is locked must stay readable (AA), not greyed out like the field.
-            slotProps={{
-              formHelperText: { sx: { '&.Mui-disabled': { color: 'text.secondary' } } },
-            }}
-            onChange={(event) => setFields({ ...fields, currency: event.target.value })}
-          >
-            {currencyOptions(fields.currency ?? 'SGD').map((code) => (
-              <MenuItem key={code} value={code}>
-                {code} · {currencySymbol(code)}
-              </MenuItem>
-            ))}
-          </TextField>
-          <Autocomplete
-            multiple
-            freeSolo
-            autoSelect
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') event.preventDefault()
-            }}
-            options={suggestions.payment}
-            value={fields.payment_methods ?? []}
-            getOptionLabel={(value) => factName(value, t.paymentValues)}
-            onChange={(_, payment_methods) => setFields({ ...fields, payment_methods })}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                name="payment_methods"
-                inputRef={paymentInput}
-                label={t.factNames.payment_methods}
-                error={invalidPayments}
-                helperText={t.factInputHelp}
-              />
-            )}
-          />
-          <Autocomplete
-            freeSolo
-            autoSelect
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') event.preventDefault()
-            }}
-            options={suggestions.delivery}
-            value={fields.delivery ?? null}
-            getOptionLabel={(value) => factName(value, t.deliveryValues)}
-            onChange={(_, delivery) => setFields({ ...fields, delivery })}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                name="delivery"
-                inputRef={deliveryInput}
-                label={t.factNames.delivery}
-                error={invalidDelivery}
-                helperText={t.deliveryInputHelp}
-              />
-            )}
-          />
-          {error && <Alert severity="error">{error}</Alert>}
-          <button type="submit" hidden />
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={close}>{t.cancel}</Button>
-        <Button variant="contained" disabled={busy} onClick={() => void submit()}>
-          {t.reviewFirst}
-        </Button>
-      </DialogActions>
+    <Dialog open fullScreen onClose={close} aria-labelledby="business-form-title">
+      <GuidedDetails
+        mode={editing ? 'edit' : 'new'}
+        initial={initial}
+        startStep={editor.kind === 'business' ? editor.step : undefined}
+        busy={busy}
+        error={error}
+        titleId="business-form-title"
+        onCancel={close}
+        onSubmit={(result) => void submit(result)}
+        onDirty={setDirty}
+      />
     </Dialog>
   )
 }

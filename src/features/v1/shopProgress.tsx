@@ -46,7 +46,7 @@ export function nextStep(ws: Workspace, t: Copy): Step {
       body: t.nextFieldBody,
       action: t.nextFieldAction,
       icon: <PencilLine size={20} />,
-      run: () => ws.openEditor({ kind: 'business', fields: shop.fields }),
+      run: () => ws.openEditor({ kind: 'business', fields: shop.fields, step: missing }),
     }
   if (!shop.public)
     return {
