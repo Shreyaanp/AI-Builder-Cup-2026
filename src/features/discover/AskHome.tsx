@@ -363,7 +363,7 @@ export default function AskHome({
             gap: 2,
             pt: 'max(8px, env(safe-area-inset-top))',
             pb: 2,
-            pr: { xs: '128px', md: 0 },
+            pr: { xs: '180px', md: 0 },
             minHeight: 64,
             bgcolor: roles.surface,
           }}
