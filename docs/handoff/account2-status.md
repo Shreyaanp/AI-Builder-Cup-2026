@@ -34,7 +34,15 @@ running throughout.
 **Checks (16 Oct; ports 3449/3549, test backend on its own fresh data folder because another
 session's live server on 3547 holds `backend/data/conversation-vectors`):** backend **643 passed /
 165 skipped**, Ruff + mypy clean; ESLint (ignoring the untracked, gitignored `docs/launch/` GSAP
-bundle), `tsc -b`, Prettier, hook rules pass. BROWSER_RESULTS Evidence:
+bundle), `tsc -b`, Prettier, hook rules pass. Browser, with the machine at 99% CPU from other
+sessions: `tests/new-shop-inchat.spec.ts` passes on phone and desktop, light and dark (axe on
+every state), apart from one screenshot timeout in a single run; `tests/new-shop.spec.ts` passes;
+the S10 "type it in" and "entries" stories pass. The main S10 story passed every step across
+runs (including the Maps hand-off link), but never all in one run: each run timed out somewhere
+in the voice/orb steps. `tests/new-shop-voice.spec.ts` (not changed here) fails 8 tests on this
+branch, and the same 8 fail in a clean `origin/main` worktree on the same machine at the same
+time, so they are load or pre-existing, not this branch; worth a rerun on a quiet machine or CI.
+Evidence:
 `docs/stories/new-shop-camera-*.png`, `new-shop-map-*.png`, `new-shop-manual-*.png`, `S10-*.png`.
 
 Two test fixes on resume: the hand-pin test dragged the map leftwards and then pressed ArrowLeft,
