@@ -280,7 +280,7 @@ function PinDetails({
           startIcon={busy ? <CircularProgress size={18} /> : <LocateFixed size={18} />}
           disabled={busy || saving}
           onClick={onLocate}
-          sx={{ minHeight: { xs: 40, sm: 48 } }}
+          sx={{ minHeight: 48 }}
         >
           {busy ? t.locating : t.useCurrentLocation}
         </Button>
@@ -292,7 +292,7 @@ function PinDetails({
             }
             disabled={busy || saving}
             onClick={onConfirm}
-            sx={{ minHeight: { xs: 40, sm: 48 } }}
+            sx={{ minHeight: 48 }}
           >
             {c.confirmPin}
           </Button>

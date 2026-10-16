@@ -181,7 +181,8 @@ for (const scheme of ['light', 'dark'] as const) {
     const confirmBtn = page.getByRole('button', { name: 'This is my shop' })
     await expect(confirmBtn).toBeVisible()
     const box = (await confirmBtn.boundingBox())!
-    // Must be completely visible within 800px viewport without scrolling
+    // Full 48px touch target, completely visible within the 800px viewport without scrolling
+    expect(box.height).toBeGreaterThanOrEqual(48)
     expect(box.y + box.height).toBeLessThanOrEqual(800)
     const logScroll = await page.getByRole('region', { name: 'Conversation' }).evaluate(
       (el) => el.scrollTop
