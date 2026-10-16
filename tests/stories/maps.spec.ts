@@ -133,8 +133,11 @@ for (const mode of ['light', 'dark'] as const)
     await expect(page.getByText('Map unavailable · straight-line distances')).toBeVisible()
     await expect(page.getByText('Chalkboard shops', { exact: true })).toBeVisible()
     await expect(page.getByText('Google places', { exact: true })).toBeVisible()
-    // Pin → card: tapping our pin lights up its card.
-    await map.getByRole('button', { name }).click()
+    // Pin → card: choosing our pin lights up its card. By keyboard, since pins of shops left
+    // nearby by earlier runs (or the phone's bottom bar) can sit on top of it.
+    const ourPin = map.getByRole('button', { name })
+    await ourPin.focus()
+    await ourPin.press('Enter')
     await expect(card).toHaveAttribute('data-selected', 'true')
     await map.scrollIntoViewIfNeeded()
     await page.waitForTimeout(500)

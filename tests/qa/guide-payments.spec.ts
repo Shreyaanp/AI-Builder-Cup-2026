@@ -8,6 +8,8 @@ test('owner creates a UPI request; coach returns the same payee without sending 
   await preparePayment(page)
   await audit(page)
   await page.getByRole('button', { name: 'Back', exact: true }).click()
+  // Back returns to Grow; the chat is its own tab.
+  await page.getByRole('button', { name: 'Coach', exact: true }).click()
   await say(page, 'Send a payment link for ₹240 to the customer')
   await expect(page.getByRole('log').getByRole('link', { name: 'Open UPI' })).toHaveAttribute(
     'href',
