@@ -5,6 +5,7 @@ Implements the "Connect your system" integration journey for shops using existin
 ## Summary of Changes
 
 ### 1. Backend Mapping & Ingestion (`backend/app/connector.py`, `backend/app/connector_routes.py`)
+
 - **Multi-format parser (`parse_any`)**: Parses CSV, XLSX, JSON (detects nested item arrays e.g. Petpooja `items` or `menu`), and XML (extracts Tally `VOUCHER` sales / ledger entries or `STOCKITEM` catalog records, as well as generic XML tags).
 - **AI column mapping (`ai_map_fields`, `heuristic_map`)**: Gemini structured mapping via ADK with prompt schema, plus deterministic offline heuristic fallback mapping source columns to Chalkboard schema roles: `name`, `price`, `unit`, `stock`, `category`, `quantity`, `total`, `date`.
 - **Diff engine (`diff_preview`)**: Calculates added, updated, removed, and unchanged items against active shop inventory, with minor currency unit normalization.
@@ -13,6 +14,7 @@ Implements the "Connect your system" integration journey for shops using existin
 - **Dual database support**: Both SQLite (`connector_mappings` table with indexes and `erase_owner` cascading delete) and Firestore (`connector_mappings` subcollections with batch deletes on erasure).
 
 ### 2. Realistic Offline Fixtures (`backend/tests/fixtures/connect/`)
+
 - `pos_menu.csv`: Standard restaurant POS menu export with items, rates, categories, units, and inventory quantities.
 - `tally_sales.xml`: Tally ERP 9 XML export with vouchers, ledger entries, and itemized sales.
 - `shopify_products.csv`: E-commerce catalog export with Title, Variant Price, Variant Inventory Qty, and Type.
@@ -20,6 +22,7 @@ Implements the "Connect your system" integration journey for shops using existin
 - `backend/tests/test_connector.py`: Comprehensive test suite covering parsing, heuristic mapping, diff calculation, store lifecycle (SQLite + Firestore), and review endpoint proposals.
 
 ### 3. Frontend Experience (`src/features/connect/`, `src/features/v1/`)
+
 - **`ConnectSheet.tsx`**: Bottom sheet / dialog containing:
   - System picker: Text-only badges for Petpooja, Tally, Zoho, Square, Shopify, SAP, Other POS (no trademark logos).
   - Upload file (.csv, .xlsx, .json, .xml) or Paste sample tabs.
@@ -55,5 +58,6 @@ Implements the "Connect your system" integration journey for shops using existin
     - `docs/stories/connect-4-synced.png`
 
 ## What is Not Verified
+
 - Live Gemini model structured output in production cloud (offline heuristic mapper and structured schema tested; live Gemini requires Google AI Studio / Vertex AI credentials with cloud billing).
 - External POS webhook push synchronizations (designed around owner-initiated export upload/paste sync).

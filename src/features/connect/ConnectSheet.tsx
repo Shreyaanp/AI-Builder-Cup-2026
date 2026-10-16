@@ -16,12 +16,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import {
-  ArrowRight,
-  CheckCircle2,
-  Sparkles,
-  Upload,
-} from 'lucide-react'
+import { ArrowRight, CheckCircle2, Sparkles, Upload } from 'lucide-react'
 import { shape } from '../../design/theme'
 import type { Proposal } from '../v1/api'
 import { Sheet } from '../v1/Sheet'
@@ -407,9 +402,7 @@ export function ConnectSheet({
                   />
                   <Button
                     variant="outlined"
-                    startIcon={
-                      analyzing ? <CircularProgress size={18} /> : <Upload size={18} />
-                    }
+                    startIcon={analyzing ? <CircularProgress size={18} /> : <Upload size={18} />}
                     disabled={analyzing}
                     onClick={() => fileInputRef.current?.click()}
                     sx={{ minHeight: 48 }}
@@ -432,9 +425,7 @@ export function ConnectSheet({
                   <Button
                     variant="contained"
                     disabled={!pastedText.trim() || analyzing}
-                    startIcon={
-                      analyzing ? <CircularProgress size={18} /> : <Sparkles size={18} />
-                    }
+                    startIcon={analyzing ? <CircularProgress size={18} /> : <Sparkles size={18} />}
                     onClick={() => void handleAnalyzePasted()}
                     sx={{ alignSelf: 'flex-start', minHeight: 48 }}
                   >
@@ -532,8 +523,14 @@ export function ConnectSheet({
 
                       {/* One-tap field change picker */}
                       {isEditing && (
-                        <Box sx={{ mt: 1.5, pt: 1, borderTop: `1px dashed ${roles.outlineVariant}` }}>
-                          <Typography variant="labelSmall" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                        <Box
+                          sx={{ mt: 1.5, pt: 1, borderTop: `1px dashed ${roles.outlineVariant}` }}
+                        >
+                          <Typography
+                            variant="labelSmall"
+                            color="text.secondary"
+                            sx={{ mb: 1, display: 'block' }}
+                          >
                             Select Chalkboard role for &quot;{f.source_field}&quot;:
                           </Typography>
                           <Stack direction="row" sx={{ gap: 0.75, flexWrap: 'wrap' }}>
