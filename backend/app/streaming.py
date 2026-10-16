@@ -128,6 +128,16 @@ def public_events(event: Event) -> list[StreamEvent]:
                 )
                 if card:
                     output.append(StreamEvent(kind=card[0], data=card[1]))  # type: ignore[arg-type]
+            if response and response.name == "set_reply_language":
+                # The owner asked for another language: the app switches its own setting too.
+                changed = response.response or {}
+                if changed.get("status") == "changed":
+                    output.append(
+                        StreamEvent(
+                            kind="action",
+                            data={"target": "language", "language": str(changed["language"])},
+                        )
+                    )
             if response and response.name in PROPOSAL_TOOLS:
                 payload = response.response or {}
                 # The model sees only the id; the exact sealed proposal goes to the review UI.

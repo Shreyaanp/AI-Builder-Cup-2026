@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useIdentity } from '../../auth/useIdentity'
 import { reconnectDelay, waitOnline } from '../../api/stream'
 import type { CoachEvent } from '../../api/stream'
+import { useLocale } from '../../state/hooks'
+import { useLanguageSwitch } from './languageSwitch'
 import { useCopy } from './strings'
 import type { Business, Product } from './api'
 
@@ -83,6 +85,13 @@ export function useVoice(
 ) {
   const identity = useIdentity()
   const t = useCopy()
+  // The app's one language preference: the Live session speaks it (never guesses from audio).
+  const locale = useLocale()
+  const localeRef = useRef(locale)
+  useEffect(() => {
+    localeRef.current = locale
+  }, [locale])
+  const switchLanguage = useLanguageSwitch()
   const owner = useRef<AbortController | null>(null)
   const [state, setState] = useState<
     'idle' | 'connecting' | 'reconnecting' | 'recording' | 'replying'
@@ -296,6 +305,7 @@ export function useVoice(
     if (businessId) url.searchParams.set('business_id', businessId)
     if (newShop) url.searchParams.set('new_shop', 'true')
     if (sid) url.searchParams.set('session_id', sid)
+    url.searchParams.set('lang', localeRef.current)
     const audio = ensureMedia()
     const socket = new WebSocket(url)
     socket.binaryType = 'arraybuffer'
@@ -376,6 +386,7 @@ export function useVoice(
           return
         }
         if (event.kind === 'error') throw new Error(`server:${event.code ?? 'error'}`)
+        switchLanguage(event)
         eventRef.current(event)
         if (event.kind === 'ready') {
           clearTimeout(current.deadline)

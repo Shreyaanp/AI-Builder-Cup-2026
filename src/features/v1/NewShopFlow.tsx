@@ -73,6 +73,7 @@ import { useVoiceModeCopy } from './voiceModeCopy'
 import { useWorkspace } from './workspaceContext'
 import type { GalleryPhoto } from './screens/CoachScreen'
 import { utter } from './phoneVoice'
+import { useLanguageSwitch } from './languageSwitch'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 /** With no answer this long after the coach has spoken, the coach carries on by itself. */
@@ -199,6 +200,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const { api } = ws
   const identity = useIdentity()
   const language = useLocale()
+  const switchLanguage = useLanguageSwitch()
   const roles = useTheme().material
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const wide = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'))
@@ -491,6 +493,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     if (items.length) add({ role: 'action', title: f.added, items })
   }
   function receive(event: CoachEvent) {
+    switchLanguage(event)
     if (event.kind === 'ready' && event.session_id) session.current = event.session_id
     if (event.kind === 'delta') setLive((current) => current + (event.text ?? ''))
     if (event.kind === 'reply') setLive(event.text ?? '')
