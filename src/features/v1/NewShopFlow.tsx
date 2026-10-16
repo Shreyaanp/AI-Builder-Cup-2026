@@ -988,6 +988,10 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     </Stack>
   )
 
+  const hasActiveMap = lines.some((l) => l.role === 'map' && !l.done)
+  const hasActiveCamera = lines.some((l) => l.role === 'camera' && !l.closed)
+  const hasActiveCard = hasActiveMap || hasActiveCamera
+
   return (
     <Box
       data-view={typingView ? 'typing' : 'voice'}
@@ -997,9 +1001,9 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         width: '100%',
         maxWidth: 1440,
         mx: 'auto',
-        px: { xs: 4, md: 6 },
+        px: { xs: hasActiveCard ? 2 : 4, sm: 4, md: 6 },
         columnGap: { md: 5, lg: 6 },
-        rowGap: { xs: 1.5, md: 3 },
+        rowGap: { xs: hasActiveCard ? 1 : 1.5, md: 3 },
         pt: 'env(safe-area-inset-top)',
         pb: 'calc(12px + env(safe-area-inset-bottom))',
         gridTemplateColumns: {
@@ -1012,7 +1016,9 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         gridTemplateRows: {
           xs: typingView
             ? 'auto auto minmax(0, 1fr) auto auto'
-            : 'auto auto minmax(0, max-content) minmax(184px, 1fr) auto',
+            : hasActiveCard
+              ? 'auto auto minmax(0, 1fr) auto auto'
+              : 'auto auto minmax(0, max-content) minmax(184px, 1fr) auto',
           md: 'auto auto minmax(0, 1fr) auto',
           lg: 'auto minmax(0, 1fr) auto',
         },
@@ -1137,12 +1143,12 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         sx={{
           gridArea: 'stage',
           minHeight: 0,
-          containerType: { xs: typingView ? 'normal' : 'size', md: 'size' },
+          containerType: { xs: typingView || hasActiveCard ? 'normal' : 'size', md: 'size' },
           display: 'flex',
-          flexDirection: { xs: typingView ? 'row' : 'column', md: 'column' },
+          flexDirection: { xs: typingView || hasActiveCard ? 'row' : 'column', md: 'column' },
           alignItems: 'center',
           justifyContent: 'center',
-          gap: { xs: typingView ? 2 : 1, md: 4 },
+          gap: { xs: typingView || hasActiveCard ? 2 : 1, md: 4 },
           py: { md: 4 },
         }}
       >
@@ -1152,7 +1158,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
           onPhase={setOrbPhase}
           reducedMotion={reducedMotion}
           size={
-            typingView
+            typingView || hasActiveCard
               ? { xs: 44, md: 'clamp(140px, calc(100cqh - 180px), 260px)' }
               : {
                   xs: 'clamp(104px, calc(100cqh - 72px), 220px)',
@@ -1164,11 +1170,11 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
           data-testid="captions"
           aria-hidden="true"
           sx={{
-            minHeight: { xs: typingView ? 0 : 48, md: 96 },
-            flex: { xs: typingView ? 1 : 'none', md: 'none' },
+            minHeight: { xs: typingView || hasActiveCard ? 0 : 48, md: 96 },
+            flex: { xs: typingView || hasActiveCard ? 1 : 'none', md: 'none' },
             maxWidth: 560,
             minWidth: 0,
-            textAlign: { xs: typingView ? 'start' : 'center', md: 'center' },
+            textAlign: { xs: typingView || hasActiveCard ? 'start' : 'center', md: 'center' },
           }}
         >
           {/* Typing on a phone: the words are already in the chat; the stage says what happens. */}
@@ -1232,7 +1238,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
             {error}
           </Alert>
         )}
-        {quickActions}
+        {!hasActiveCard && quickActions}
         {typingView ? (
           <Box
             component="form"
@@ -1337,8 +1343,8 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: { xs: 3, md: 4 },
-              py: 1,
+              gap: { xs: hasActiveCard ? 2 : 3, md: 4 },
+              py: hasActiveCard ? 0.5 : 1,
               ...fieldFade,
             }}
           >
@@ -1346,9 +1352,9 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
               <IconButton
                 aria-label={v.typeInstead}
                 onClick={typeInstead}
-                sx={roundButton(56, roles.surfaceContainerHigh, roles.onSurface)}
+                sx={roundButton(hasActiveCard ? 48 : 56, roles.surfaceContainerHigh, roles.onSurface)}
               >
-                <Keyboard size={24} />
+                <Keyboard size={hasActiveCard ? 20 : 24} />
               </IconButton>
             </Tooltip>
             <Tooltip title={v.pauseMic}>
@@ -1359,31 +1365,39 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                 sx={
                   voice.micPaused
                     ? {
-                        ...roundButton(72, roles.surface, roles.onSurface),
+                        ...roundButton(hasActiveCard ? 56 : 72, roles.surface, roles.onSurface),
                         border: `2px solid ${roles.outline}`,
                       }
-                    : roundButton(72, roles.primary, roles.onPrimary)
+                    : roundButton(hasActiveCard ? 56 : 72, roles.primary, roles.onPrimary)
                 }
               >
-                {voice.micPaused ? <MicOff size={30} /> : <Mic size={30} />}
+                {voice.micPaused ? (
+                  <MicOff size={hasActiveCard ? 24 : 30} />
+                ) : (
+                  <Mic size={hasActiveCard ? 24 : 30} />
+                )}
               </IconButton>
             </Tooltip>
             <Tooltip title={muted ? f.unmute : f.mute}>
               <IconButton
                 aria-label={muted ? f.unmute : f.mute}
                 onClick={toggleMuted}
-                sx={roundButton(56, roles.surfaceContainerHigh, roles.onSurface)}
+                sx={roundButton(hasActiveCard ? 48 : 56, roles.surfaceContainerHigh, roles.onSurface)}
               >
-                {muted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                {muted ? (
+                  <VolumeX size={hasActiveCard ? 20 : 24} />
+                ) : (
+                  <Volume2 size={hasActiveCard ? 20 : 24} />
+                )}
               </IconButton>
             </Tooltip>
             <Tooltip title={v.endVoice}>
               <IconButton
                 aria-label={v.endVoice}
                 onClick={endVoice}
-                sx={roundButton(56, coral.container, coral.onContainer)}
+                sx={roundButton(hasActiveCard ? 48 : 56, coral.container, coral.onContainer)}
               >
-                <PhoneOff size={24} />
+                <PhoneOff size={hasActiveCard ? 20 : 24} />
               </IconButton>
             </Tooltip>
           </Box>
