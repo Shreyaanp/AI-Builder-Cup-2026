@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { enter } from './stories/support.js'
+import { enter, seedShop } from './stories/support.js'
 
 for (const enabled of [true, false]) {
   for (const appearance of ['light', 'dark']) {
@@ -20,7 +20,11 @@ for (const enabled of [true, false]) {
         await route.fulfill({ response, json: { ...value, features: { google_guide: enabled } } })
       })
       await enter(page)
-      const google = page.getByRole('button', { name: 'Google', exact: true })
+      await seedShop(page)
+      // Get on Google is a Grow card (a sub-page of Grow); the flag hides the card.
+      await page.getByRole('button', { name: 'Grow', exact: true }).click()
+      await expect(page.getByTestId('grow-tiles')).toBeVisible()
+      const google = page.getByRole('button', { name: /^Get on Google/ })
       if (enabled) await expect(google).toBeVisible()
       else await expect(google).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Coach', exact: true })).toBeVisible()
