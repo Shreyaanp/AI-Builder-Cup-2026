@@ -4771,6 +4771,48 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/today": {
+      "get": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Today Page",
+        "operationId": "today_page_api_v1_businesses__business_id__today_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Today"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/orders": {
       "get": {
         "summary": "List Orders",
@@ -6516,6 +6558,90 @@
         ],
         "title": "ChatSummary"
       },
+      "CoachLine": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "festival",
+              "rain",
+              "busiest_day"
+            ],
+            "title": "Kind"
+          },
+          "festival": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Festival"
+          },
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "rain": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rain"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekday"
+          },
+          "item": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "CoachLine"
+      },
       "CoachTurn": {
         "properties": {
           "message": {
@@ -7703,6 +7829,37 @@
         },
         "type": "object",
         "title": "LocalSignIn"
+      },
+      "LowItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "stock": {
+            "type": "integer",
+            "title": "Stock"
+          },
+          "runs_out": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runs Out"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "stock",
+          "runs_out"
+        ],
+        "title": "LowItem"
       },
       "LowStock": {
         "properties": {
@@ -9065,6 +9222,79 @@
           "shop_id"
         ],
         "title": "PublicStampInput"
+      },
+      "Pulse": {
+        "properties": {
+          "sales": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          },
+          "questions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questions"
+          },
+          "stamps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stamps"
+          },
+          "returning": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returning"
+          }
+        },
+        "type": "object",
+        "title": "Pulse",
+        "description": "One day's activity; None means \"no record\", never zero."
       },
       "QrKey": {
         "properties": {
@@ -10845,6 +11075,68 @@
         ],
         "title": "TipList"
       },
+      "Today": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "yesterday": {
+            "$ref": "#/components/schemas/Pulse"
+          },
+          "today": {
+            "$ref": "#/components/schemas/Pulse"
+          },
+          "forecast": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayForecast"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "low_stock": {
+            "items": {
+              "$ref": "#/components/schemas/LowItem"
+            },
+            "type": "array",
+            "title": "Low Stock"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoachLine"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "currency",
+          "yesterday",
+          "today",
+          "forecast",
+          "low_stock",
+          "line",
+          "demo"
+        ],
+        "title": "Today"
+      },
       "TodayArea": {
         "properties": {
           "id": {
@@ -10912,6 +11204,29 @@
           "signed_in"
         ],
         "title": "TodayFeed"
+      },
+      "TodayForecast": {
+        "properties": {
+          "item": {
+            "type": "string",
+            "title": "Item"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "quantity",
+          "unit"
+        ],
+        "title": "TodayForecast"
       },
       "TopItem": {
         "properties": {

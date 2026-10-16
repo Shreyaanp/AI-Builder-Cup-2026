@@ -1642,6 +1642,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Today Page */
+        get: operations["today_page_api_v1_businesses__business_id__today_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/orders": {
         parameters: {
             query?: never;
@@ -2287,6 +2304,26 @@ export interface components {
              */
             unread: number;
         };
+        /** CoachLine */
+        CoachLine: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "festival" | "rain" | "busiest_day";
+            /** Festival */
+            festival?: string | null;
+            /** Days */
+            days?: number | null;
+            /** Rain */
+            rain?: number | null;
+            /** Weekday */
+            weekday?: number | null;
+            /** Item */
+            item?: string | null;
+            /** Count */
+            count?: number | null;
+        };
         /** CoachTurn */
         CoachTurn: {
             /** Message */
@@ -2764,6 +2801,15 @@ export interface components {
              * @default Asha
              */
             name: string;
+        };
+        /** LowItem */
+        LowItem: {
+            /** Name */
+            name: string;
+            /** Stock */
+            stock: number;
+            /** Runs Out */
+            runs_out: string | null;
         };
         /** LowStock */
         LowStock: {
@@ -3301,6 +3347,24 @@ export interface components {
             accuracy?: number | null;
             /** Receipts */
             receipts?: string[];
+        };
+        /**
+         * Pulse
+         * @description One day's activity; None means "no record", never zero.
+         */
+        Pulse: {
+            /** Sales */
+            sales?: number | null;
+            /** Items */
+            items?: number | null;
+            /** Views */
+            views?: number | null;
+            /** Questions */
+            questions?: number | null;
+            /** Stamps */
+            stamps?: number | null;
+            /** Returning */
+            returning?: number | null;
         };
         /** QrKey */
         QrKey: {
@@ -4060,6 +4124,24 @@ export interface components {
             /** Average */
             average?: number | null;
         };
+        /** Today */
+        Today: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Currency */
+            currency: string;
+            yesterday: components["schemas"]["Pulse"];
+            today: components["schemas"]["Pulse"];
+            forecast: components["schemas"]["TodayForecast"] | null;
+            /** Low Stock */
+            low_stock: components["schemas"]["LowItem"][];
+            line: components["schemas"]["CoachLine"] | null;
+            /** Demo */
+            demo: boolean;
+        };
         /** TodayArea */
         TodayArea: {
             /** Id */
@@ -4084,6 +4166,15 @@ export interface components {
             demo: boolean;
             /** Signed In */
             signed_in: boolean;
+        };
+        /** TodayForecast */
+        TodayForecast: {
+            /** Item */
+            item: string;
+            /** Quantity */
+            quantity: number;
+            /** Unit */
+            unit: string;
         };
         /** TopItem */
         TopItem: {
@@ -7581,6 +7672,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodayFeed"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    today_page_api_v1_businesses__business_id__today_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Today"];
                 };
             };
             /** @description Validation Error */
