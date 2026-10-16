@@ -23,6 +23,7 @@ import {
 import { useLocale } from '../../state/hooks'
 import type { Locale } from '../../i18n/locales'
 import { chalkWrite, dealIn } from '../../design/chalkMotion'
+import { RichText } from '../../design/RichText'
 import { HAND_FONT, scrollArea } from '../../design/theme'
 import { customerNavigate, goTo } from '../frontdoors/navigation'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
@@ -1115,13 +1116,17 @@ function AssistantTurn({
   const nothing = ours.length === 0 && google.length === 0 && !(area?.status === 'ok')
   return (
     <Box sx={{ mt: 4 }}>
-      <Typography variant="bodyLarge" sx={chalkWrite}>
-        {nothing
-          ? fillIn(copy.nothing, { q: intent.keywords?.join(' ') || turn.q })
-          : answer.mode === 'ai' && intent.summary
-            ? intent.summary
-            : fillIn(copy.found, { place: turn.place.label })}
-      </Typography>
+      {nothing ? (
+        <Typography variant="bodyLarge" sx={chalkWrite}>
+          {fillIn(copy.nothing, { q: intent.keywords?.join(' ') || turn.q })}
+        </Typography>
+      ) : answer.mode === 'ai' && intent.summary ? (
+        <RichText content={intent.summary} streaming={turn.streaming} sx={chalkWrite} />
+      ) : (
+        <Typography variant="bodyLarge" sx={chalkWrite}>
+          {fillIn(copy.found, { place: turn.place.label })}
+        </Typography>
+      )}
       {applied.length > 0 && (
         <Typography variant="labelLarge" color="text.secondary" sx={{ mt: 1 }}>
           {applied.join(' · ')}
