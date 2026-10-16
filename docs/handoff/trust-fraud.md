@@ -74,8 +74,11 @@ production after deploy.
     recorder's real start time.
   - `tests/myshop.spec.ts` B26 still expected the "Check pending" chip that this branch
     removes on purpose. It now asserts that the chip never shows.
-- `npm run test:qa` (fresh DBs): not run to completion for the same reason.
-- **Before merging, re-run `npm run check` and `npm run test:qa` on an idle machine or in CI.**
+- `npm run test:qa` (fresh DBs, dedicated ports 3793/3893): **167 passed, 9 failed**. All 9 were
+  the run's first tests, failing on the first `page.goto` while Vite was still cold. Re-running
+  them: 7 passed, and the 2 that failed again were again the first page loads (60 s timeouts).
+  None of the 9 touch the trust code.
+- **Before merging, re-run `npm run check` on an idle machine or in CI.**
 
 ## Open
 
