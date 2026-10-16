@@ -61,6 +61,7 @@ class StreamEvent(StrictModel):
         "rescue_proposal",
         # A chart card (forecast, or how business is going) built from the tool result.
         "chart",
+        "payment_link",
     ]
     session_id: str | None = None
     text: str | None = None

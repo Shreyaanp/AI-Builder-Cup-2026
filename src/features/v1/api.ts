@@ -31,6 +31,8 @@ export interface Business {
     phone: string
     reward_text?: string
     stamps_needed?: number
+    upi_id?: string
+    rider_providers?: ('rapido' | 'uber' | 'porter')[]
     /** ISO 4217; shops saved before currencies existed have none (treated as SGD). */
     currency?: string
   } & ShopFacts

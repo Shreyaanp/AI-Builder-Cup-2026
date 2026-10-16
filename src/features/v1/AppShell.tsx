@@ -52,16 +52,32 @@ import { PrivacyScreen } from './screens/PrivacyScreen'
 import { DiscardPrompt } from './DiscardPrompt'
 import { Sheet } from './Sheet'
 import { installState, offerInstall, subscribeInstall } from '../../app/pwa'
+import { CoachGuide } from '../owner-tools/CoachGuide'
+import { PaymentsScreen } from '../owner-tools/PaymentsScreen'
+import { openOwnerFeature, useOwnerFeature } from '../owner-tools/entry'
+import { useToolCopy } from '../owner-tools/copy'
 
 export function AppShell() {
   const t = useCopy()
   const ws = useWorkspace()
+  const feature = useOwnerFeature()
+  const tools = useToolCopy()
   const roles = useTheme().material
   const rail = useMediaQuery(`(min-width:${windowClass.medium}px)`)
   const keyboard = useKeyboardOpen()
   const showNavBar = !rail && !keyboard
   // Large windows: My shop tiles beside the coach (phones keep the coach to one card).
   const supporting = useMediaQuery(`(min-width:${windowClass.large}px)`)
+  useEffect(() => {
+    if (!feature) return
+    const previousTitle = document.title
+    document.title = `${feature === 'guide' ? tools.guideTitle : tools.payTitle} · Chalkboard`
+    document.getElementById('main')?.focus({ preventScroll: true })
+    window.scrollTo(0, 0)
+    return () => {
+      document.title = previousTitle
+    }
+  }, [feature, tools.guideTitle, tools.payTitle])
   useEffect(() => {
     document.documentElement.style.setProperty('--nav-offset', showNavBar ? '84px' : '0px')
   }, [showNavBar])
@@ -109,7 +125,10 @@ export function AppShell() {
               key={item.id}
               item={item}
               selected={ws.destination === item.id}
-              onSelect={ws.go}
+              onSelect={(destination) => {
+                openOwnerFeature(null)
+                ws.go(destination)
+              }}
               rail
             />
           ))}
@@ -133,12 +152,18 @@ export function AppShell() {
           >
             {/* Coach stays mounted while hidden so drafts, replies and voice survive tab
                 changes; keyed by shop so each shop has its own thread. */}
-            <Box hidden={ws.destination !== 'coach'} sx={{ height: '100%' }}>
+            <Box hidden={ws.destination !== 'coach' || feature !== null} sx={{ height: '100%' }}>
               <CoachWorkspace />
             </Box>
-            {screen}
+            {feature === 'guide' ? (
+              <CoachGuide />
+            ) : feature === 'payments' ? (
+              <PaymentsScreen key={ws.activeId} />
+            ) : (
+              screen
+            )}
           </Box>
-          {supporting && ws.destination === 'coach' && ws.active && (
+          {supporting && ws.destination === 'coach' && !feature && ws.active && (
             <Box
               component="aside"
               aria-label={t.navShop}
@@ -181,7 +206,10 @@ export function AppShell() {
               key={item.id}
               item={item}
               selected={ws.destination === item.id}
-              onSelect={ws.go}
+              onSelect={(destination) => {
+                openOwnerFeature(null)
+                ws.go(destination)
+              }}
             />
           ))}
         </Box>
@@ -290,6 +318,7 @@ function NavItem({
 
 function TopBar() {
   const t = useCopy()
+  const tools = useToolCopy()
   const ws = useWorkspace()
   const identity = useIdentity()
   const preferences = usePreferences()
@@ -472,6 +501,24 @@ function TopBar() {
           />
         </Box>
         <TourMenuButton onStart={() => setSettings(null)} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', px: 2 }}>
+          <Button
+            onClick={() => {
+              setSettings(null)
+              openOwnerFeature('guide')
+            }}
+          >
+            {tools.guideTitle}
+          </Button>
+          <Button
+            onClick={() => {
+              setSettings(null)
+              openOwnerFeature('payments')
+            }}
+          >
+            {tools.payTitle}
+          </Button>
+        </Box>
         {installation !== 'installed' && (
           <ButtonBase
             sx={{

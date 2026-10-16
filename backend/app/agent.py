@@ -32,6 +32,7 @@ from .coordinator import (
     request_registration,
     shop_currency,
 )
+from .payments import prepare_payment_link
 from .settings import Settings
 from .sourcing_offline import sourcing_call, sourcing_reply
 
@@ -58,6 +59,10 @@ Language
   names or true/false values.
 
 How you work
+- For a payment link request call prepare_payment_link with the INR amount and optional note.
+  The owner shares the card; you never send it, process money or confirm receipt.
+  If add_upi_id, ask them to add their UPI ID in Payments & rides settings.
+  The inr_only status means UPI is INR only.
 - Use the "Current shop" snapshot at the end of these instructions when it is there; otherwise
   call get_business_context before changing an existing shop so you compare with what is saved.
 - Use propose_business for shop details and propose_products for items, prices, units, stock
@@ -276,6 +281,9 @@ class OfflineCoachModel(BaseLlm):
             ctx = current.get()
             question = ctx.message if ctx else text
             if responses:
+                payment_response = next(
+                    (r.response for r in responses if r.name == "prepare_payment_link"), None
+                )
                 prediction = next((r.response for r in responses if r.name == "get_forecast"), None)
                 sourced = next(
                     (
@@ -285,7 +293,21 @@ class OfflineCoachModel(BaseLlm):
                     ),
                     None,
                 )
-                if sourced:
+                if payment_response is not None:
+                    status = str(payment_response.get("status", "invalid"))
+                    reply = {
+                        "prepared": "Check the payee and amount, then share your link. "
+                        "Nothing has been sent or paid.",
+                        "add_upi_id": "Add your UPI ID in Payments & rides settings, "
+                        "then ask again.",
+                        "inr_only": "UPI links are for INR shops. "
+                        "Check your shop currency in shop details.",
+                        "needs_business": "Add your shop first, "
+                        "then set its UPI ID in Payments & rides.",
+                    }.get(
+                        status, "Use a positive INR amount with up to two decimals, then ask again."
+                    )
+                elif sourced:
                     reply = sourced
                 elif prediction is not None:
                     rows = prediction.get("predictions", [])
@@ -317,6 +339,25 @@ class OfflineCoachModel(BaseLlm):
                         "Your draft stays private."
                     )
             else:
+                payment = re.search(
+                    r"(?:payment|pay|upi)\s+link[^\d+-]*([+-]?\d[\d,]*(?:\.\d+)?)(?![\w.])",
+                    question,
+                    re.I,
+                )
+                if ctx and ctx.business_id and payment:
+                    yield LlmResponse(
+                        content=types.Content(
+                            role="model",
+                            parts=[
+                                types.Part(
+                                    function_call=types.FunctionCall(
+                                        name="prepare_payment_link", args={"amount": payment[1]}
+                                    )
+                                )
+                            ],
+                        )
+                    )
+                    return
                 rescue_match = re.search(
                     r"rescue(?: deal)?(?: for)?\s+(\d+)\s+(.+?)\s+at\s+(20|30|50)"
                     r"\s*%\s*off\s+until\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?",
@@ -581,6 +622,7 @@ def make_agent(settings: Settings, *, live: bool = False) -> LlmAgent:
             propose_customer_facts,
             propose_products,
             propose_rescue_deal,
+            prepare_payment_link,
             request_registration,
             find_suppliers,
             prepare_order,
