@@ -8,10 +8,11 @@ or price; every result comes from a shop's own data or from Google.
 
 from __future__ import annotations
 
+import json
 import re
 import time
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from datetime import datetime
 from typing import Any, Literal
 
@@ -19,6 +20,7 @@ import anyio
 import structlog
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+from sse_starlette import EventSourceResponse, ServerSentEvent
 
 from .community import Community, Profile, stated_preferences
 from .discover import (
@@ -537,21 +539,69 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
     )
 
 
-@router.post("/discover/ask", response_model=AskResponse)
-async def ask(body: AskRequest, request: Request) -> AskResponse:
-    await enforce_limits(request, [("discover:ask", client_ip(request))], anonymous=True)
-    repository: MerchantRepository | None = request.app.state.merchant
-    if repository is not None:
-        # Commands need no model: answered at once, before the intent model is called.
-        shared = await anyio.to_thread.run_sync(repository.shared_shops)
-        command = customer_command(body.q, shared, body.lat, body.lng, body.radius)
-        if command is not None:
-            return AskResponse(
-                intent=Intent(summary=body.q[:160]), mode="command", groups=[], command=command
+async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[str | Intent]:
+    settings = request.app.state.v1_settings
+    if settings.coach_mode != "gemini":
+        return
+    from google import genai
+    from google.genai import types
+
+    client = getattr(request.app.state, "ask_genai", None)
+    if client is None:
+        client = (
+            genai.Client(
+                vertexai=True,
+                project=settings.google_cloud_project,
+                location=settings.google_cloud_location,
             )
-    intent = await ai_intent(request, body)
-    mode: Literal["ai", "keywords"] = "ai" if intent else "keywords"
-    intent = intent or keyword_intent(body.q)
+            if settings.gemini_backend == "vertex"
+            else genai.Client(api_key=settings.google_api_key.get_secret_value())
+        )
+        request.app.state.ask_genai = client
+    full_text = ""
+    last_word_count = 0
+    try:
+        with anyio.fail_after(8):
+            stream = await client.aio.models.generate_content_stream(
+                model=settings.google_text_model,
+                contents=PROMPT.format(
+                    categories=", ".join(GENERIC["category"]),
+                    language=body.language,
+                    context=(
+                        CONTEXT.format(intent=body.context.model_dump_json(exclude={"followups"}))
+                        if body.context
+                        else ""
+                    ),
+                    q=body.q,
+                ),
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_json_schema=gemini_schema(Intent),
+                    temperature=0,
+                    max_output_tokens=400,
+                ),
+            )
+            async for chunk in stream:
+                if chunk.text:
+                    full_text += chunk.text
+                    match = re.search(r'"summary"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)', full_text)
+                    if match:
+                        summary_text = match.group(1).replace(r"\"", '"').replace(r"\n", " ")
+                        words = summary_text.split()
+                        if len(words) > last_word_count:
+                            for w in words[last_word_count:]:
+                                yield w + " "
+                            last_word_count = len(words)
+    except Exception:
+        log.warning("ask_intent_stream_unavailable")
+        return
+    parsed = parse_reply(Intent, full_text)
+    if isinstance(parsed, Intent):
+        yield parsed
+
+
+def resolve_intent_refinements(body: AskRequest, raw_intent: Intent) -> Intent:
+    intent = raw_intent
     if body.refine:
         # A chip only refines: its label (any language) is never a new subject.
         intent = intent.model_copy(update={"keywords": [], "category": ""})
@@ -572,11 +622,19 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
         intent.locally_made = True
     if intent.category not in CATEGORIES:
         intent.category = ""
-    maps: MapsService = request.app.state.maps
-    # "Near the MRT": measure from the nearest station, within a short walk of it.
-    anchor = await nearest_station(maps, body.lat, body.lng) if intent.near == "transit" else None
-    lat, lng = (anchor.lat, anchor.lng) if anchor else (body.lat, body.lng)
-    radius = min(body.radius, 1000) if anchor else body.radius
+    return intent
+
+
+async def match_local_shops(
+    request: Request,
+    body: AskRequest,
+    intent: Intent,
+    anchor: Anchor | None,
+    lat: float,
+    lng: float,
+    radius: int,
+    repository: MerchantRepository | None,
+) -> tuple[list[Pick], list[Pick], Personal | None, list[dict[str, Any]]]:
     shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
     picks = [
         pick
@@ -629,7 +687,18 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
         )
     picks.sort(key=ranking(intent, anchor))
     for_you.sort(key=ranking(intent, anchor))
-    query = " ".join(intent.keywords) or body.q
+    return picks, for_you, personal, shops
+
+
+async def query_google_places(
+    maps: MapsService,
+    intent: Intent,
+    lat: float,
+    lng: float,
+    radius: int,
+    query_text: str,
+) -> list[Pick]:
+    query = " ".join(intent.keywords) or query_text
     try:
         google = [] if intent.deals else await maps.places(lat, lng, radius, query, intent.category)
     except HTTPException:
@@ -672,6 +741,29 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
             else (0, p.distance_m)
         )
     )
+    return others
+
+
+def assemble_groups(for_you: list[Pick], picks: list[Pick], others: list[Pick]) -> list[Group]:
+    shown = {p.id for p in for_you[:6]}
+    groups = [
+        Group(id="for_you", places=for_you[:6]),
+        Group(id="best", places=[p for p in picks if p.id not in shown][:8]),
+        Group(id="open", places=[p for p in others if p.open_now][:10]),
+        Group(id="more", places=[p for p in others if not p.open_now][:10]),
+    ]
+    return [g for g in groups if g.places]
+
+
+async def record_demand(
+    request: Request,
+    repository: MerchantRepository | None,
+    maps: MapsService,
+    intent: Intent,
+    body: AskRequest,
+    shops: list[dict[str, Any]],
+    others: list[Pick],
+) -> None:
     is_owner = False
     if repository is not None:
         try:
@@ -734,17 +826,127 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
                 )
         except Exception:  # noqa: BLE001 - demand capture must never break discovery
             log.warning("demand_capture_unavailable")
-    shown = {p.id for p in for_you[:6]}
-    groups = [
-        Group(id="for_you", places=for_you[:6]),
-        Group(id="best", places=[p for p in picks if p.id not in shown][:8]),
-        Group(id="open", places=[p for p in others if p.open_now][:10]),
-        Group(id="more", places=[p for p in others if not p.open_now][:10]),
-    ]
+
+
+@router.post("/discover/ask", response_model=None, responses={200: {"model": AskResponse}})
+async def ask(body: AskRequest, request: Request) -> Any:
+    await enforce_limits(request, [("discover:ask", client_ip(request))], anonymous=True)
+    repository: MerchantRepository | None = request.app.state.merchant
+    maps: MapsService = request.app.state.maps
+    is_stream = (
+        "text/event-stream" in request.headers.get("accept", "")
+        or request.query_params.get("stream") == "1"
+    )
+
+    if is_stream:
+
+        async def stream_generator() -> AsyncIterator[ServerSentEvent]:
+            # Step 1: Commands need no model
+            if repository is not None:
+                shared = await anyio.to_thread.run_sync(repository.shared_shops)
+                command = customer_command(body.q, shared, body.lat, body.lng, body.radius)
+                if command is not None:
+                    resp = AskResponse(
+                        intent=Intent(summary=body.q[:160]),
+                        mode="command",
+                        groups=[],
+                        command=command,
+                    )
+                    yield ServerSentEvent(data=resp.model_dump_json(), event="complete")
+                    return
+
+            # Step 2: Instant keyword path (< 10 ms)
+            kw_intent = resolve_intent_refinements(body, keyword_intent(body.q))
+            anchor = (
+                await nearest_station(maps, body.lat, body.lng)
+                if kw_intent.near == "transit"
+                else None
+            )
+            lat, lng = (anchor.lat, anchor.lng) if anchor else (body.lat, body.lng)
+            radius = min(body.radius, 1000) if anchor else body.radius
+
+            picks, for_you, personal, shops = await match_local_shops(
+                request, body, kw_intent, anchor, lat, lng, radius, repository
+            )
+            instant_groups = assemble_groups(for_you, picks, [])
+            instant_resp = AskResponse(
+                intent=kw_intent,
+                mode="keywords",
+                groups=instant_groups,
+                personal=personal,
+                anchor=anchor,
+            )
+            yield ServerSentEvent(data=instant_resp.model_dump_json(), event="instant")
+
+            # Step 3: Stream Gemini words if enabled
+            ai_intent_result: Intent | None = None
+            settings = request.app.state.v1_settings
+            if settings.coach_mode == "gemini":
+                async for item in ai_intent_stream(request, body):
+                    if isinstance(item, str):
+                        yield ServerSentEvent(data=json.dumps({"text": item}), event="delta")
+                    elif isinstance(item, Intent):
+                        ai_intent_result = item
+
+            final_intent = resolve_intent_refinements(body, ai_intent_result or kw_intent)
+            mode: Literal["ai", "keywords"] = "ai" if ai_intent_result else "keywords"
+
+            # Re-score picks if ai_intent provided different keywords or category
+            if ai_intent_result and (
+                ai_intent_result.keywords != kw_intent.keywords
+                or ai_intent_result.category != kw_intent.category
+            ):
+                picks, for_you, personal, shops = await match_local_shops(
+                    request, body, final_intent, anchor, lat, lng, radius, repository
+                )
+
+            others = await query_google_places(maps, final_intent, lat, lng, radius, body.q)
+            await record_demand(request, repository, maps, final_intent, body, shops, others)
+
+            final_groups = assemble_groups(for_you, picks, others)
+            final_resp = AskResponse(
+                intent=final_intent,
+                mode=mode,
+                groups=final_groups,
+                personal=personal,
+                anchor=anchor,
+            )
+            yield ServerSentEvent(data=final_resp.model_dump_json(), event="complete")
+
+        return EventSourceResponse(
+            stream_generator(),
+            ping=15,
+            headers={"X-Accel-Buffering": "no", "Cache-Control": "no-store"},
+        )
+
+    # Non-streaming fallback / standard API response (e.g. tests)
+    if repository is not None:
+        shared = await anyio.to_thread.run_sync(repository.shared_shops)
+        command = customer_command(body.q, shared, body.lat, body.lng, body.radius)
+        if command is not None:
+            return AskResponse(
+                intent=Intent(summary=body.q[:160]), mode="command", groups=[], command=command
+            )
+
+    ai_intent_result = await ai_intent(request, body)
+    mode: Literal["ai", "keywords"] = "ai" if ai_intent_result else "keywords"
+    intent = resolve_intent_refinements(body, ai_intent_result or keyword_intent(body.q))
+
+    anchor = await nearest_station(maps, body.lat, body.lng) if intent.near == "transit" else None
+    lat, lng = (anchor.lat, anchor.lng) if anchor else (body.lat, body.lng)
+    radius = min(body.radius, 1000) if anchor else body.radius
+
+    picks, for_you, personal, shops = await match_local_shops(
+        request, body, intent, anchor, lat, lng, radius, repository
+    )
+    others = await query_google_places(maps, intent, lat, lng, radius, body.q)
+    await record_demand(request, repository, maps, intent, body, shops, others)
+
+    groups = assemble_groups(for_you, picks, others)
     return AskResponse(
         intent=intent,
         mode=mode,
-        groups=[g for g in groups if g.places],
+        groups=groups,
         personal=personal,
         anchor=anchor,
     )
