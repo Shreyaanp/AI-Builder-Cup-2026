@@ -62,9 +62,13 @@ for (const scheme of ['light', 'dark'] as const) {
       /^Rescue deals/,
       /^Get on Google/,
       /^Stamps & perks/,
+      // Release 2: payment links and rides, purchase orders.
+      /^Payments & rides/,
+      /^Purchase orders/,
     ])
       await expect(page.getByRole('button', { name: card })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Payments|POS/ })).toHaveCount(0)
+    // Connecting a POS lives on Shop, not Grow.
+    await expect(page.getByRole('button', { name: /POS/ })).toHaveCount(0)
     await axe(page)
     await capture(page, 'grow', isMobile, scheme)
     await page.getByRole('button', { name: /^Get on Google/ }).click()

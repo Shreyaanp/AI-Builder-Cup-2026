@@ -62,7 +62,8 @@ test('Your week: yesterday and this week against last week, from saved sales', a
   // Back into the workspace so it loads the shop and its saved sales.
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  // Insights live on Grow.
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   const tile = page.getByRole('button', { name: /^Your week/ })
   await expect(tile).toContainText(/\+\d+% vs last week/)
   await tile.click()
