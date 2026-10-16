@@ -48,6 +48,7 @@ async function setDay(page: Page, day: number) {
 }
 
 test('QR stamps are once per shop per calendar day and celebrate 5 and 10', async ({ page }) => {
+  test.slow()
   await fixture(page)
   await page.clock.install({ time: new Date('2026-10-01T08:00:00+08:00') })
   await page.goto(`/explore/s/${id}`)
@@ -243,3 +244,52 @@ for (const [locale, title] of locales) {
     })
   })
 }
+
+test('shop with reward displays stamp card and perks on phone and desktop', async ({ page }) => {
+  await fixture(page)
+  await page.goto(`/explore/s/${id}`)
+  await expect(card(page)).toBeVisible()
+  await expect(page.getByText('10th kopi free')).toBeVisible()
+})
+
+test('shop without reward hides stamp card, stamp CTA and games, and QR scan gives no stamp', async ({
+  page,
+}) => {
+  await localOnly(page)
+  const noRewardId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+  await page.route('**/api/v1/public/shops/*', (route) =>
+    route.fulfill({
+      json: {
+        id: noRewardId,
+        name: 'Plain Bakery',
+        timezone: 'Asia/Singapore',
+        category: 'Bakery',
+        location: 'Tiong Bahru',
+        hours: '08:00–18:00',
+        phone: '',
+        currency: 'SGD',
+        reward_text: '',
+        stamps_needed: 8,
+        stamps_enabled: false,
+        products: [{ name: 'Sourdough', unit: 'loaf', price: 600, available: true }],
+      },
+    }),
+  )
+  await page.route('**/api/v1/discover?**', (route) =>
+    route.fulfill({ json: { mode: 'demo', places: [], google_unavailable: false } }),
+  )
+
+  await page.goto(`/explore/s/${noRewardId}`)
+  await expect(card(page)).not.toBeVisible()
+  await expect(page.getByRole('button', { name: /collect daily stamp/i })).not.toBeVisible()
+  await expect(page.getByRole('region', { name: /games & loyalty/i })).not.toBeVisible()
+  await expect(page.getByRole('list', { name: 'Your badges' })).not.toBeVisible()
+
+  // QR scan should not show card or increment stamps
+  await page.goto(`/explore/s/${noRewardId}?source=qr`)
+  await expect(card(page)).not.toBeVisible()
+  await expect(page.getByRole('button', { name: /collect daily stamp/i })).not.toBeVisible()
+  const raw = await page.evaluate((key) => localStorage.getItem(key), progressKey)
+  const saved = raw ? JSON.parse(raw) : { shops: {} }
+  expect(saved.shops?.[noRewardId]?.stamps ?? 0).toBe(0)
+})
