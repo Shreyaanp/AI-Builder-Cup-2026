@@ -1,0 +1,202 @@
+{
+  "360x800-light": {
+    "open": {
+      "firstInputMs": 16167,
+      "cls": 0,
+      "horizontalScroll": false,
+      "scrollWidth": 360,
+      "pageHeight": 1370,
+      "smallTargets": ["input \"Ask about anything nearby\" 198x32"],
+      "inputTop": 664,
+      "clipped": []
+    },
+    "keyboard": {
+      "inputVisible": true,
+      "inputY": 304
+    },
+    "asked": {
+      "horizontalScroll": false,
+      "scrollWidth": 360,
+      "pageHeight": 2180,
+      "smallTargets": [
+        "g \"Sample filter coffee house\" 27x27",
+        "g \"Sample roastery café\" 27x27",
+        "input \"Ask about anything nearby\" 198x32"
+      ],
+      "inputTop": 664,
+      "clipped": ["Indiranagar"]
+    }
+  },
+  "390x844-light": {
+    "open": {
+      "firstInputMs": 1417,
+      "cls": 0,
+      "horizontalScroll": false,
+      "scrollWidth": 390,
+      "pageHeight": 1358,
+      "smallTargets": ["input \"Ask about anything nearby\" 228x32"],
+      "inputTop": 708,
+      "clipped": []
+    },
+    "keyboard": {
+      "inputVisible": true,
+      "inputY": 328
+    },
+    "asked": {
+      "horizontalScroll": false,
+      "scrollWidth": 390,
+      "pageHeight": 2180,
+      "smallTargets": [
+        "g \"Sample filter coffee house\" 27x27",
+        "g \"Sample roastery café\" 27x27",
+        "input \"Ask about anything nearby\" 228x32"
+      ],
+      "inputTop": 708,
+      "clipped": []
+    }
+  },
+  "412x915-light": {
+    "open": {
+      "firstInputMs": 1501,
+      "cls": 0,
+      "horizontalScroll": false,
+      "scrollWidth": 412,
+      "pageHeight": 1429,
+      "smallTargets": ["input \"Ask about anything nearby\" 250x32"],
+      "inputTop": 779,
+      "clipped": []
+    },
+    "keyboard": {
+      "inputVisible": true,
+      "inputY": 367
+    },
+    "asked": {
+      "horizontalScroll": false,
+      "scrollWidth": 412,
+      "pageHeight": 2068,
+      "smallTargets": [
+        "g \"Sample filter coffee house\" 27x27",
+        "g \"Sample roastery café\" 27x27",
+        "input \"Ask about anything nearby\" 250x32"
+      ],
+      "inputTop": 779,
+      "clipped": []
+    }
+  },
+  "360x800-dark": {
+    "open": {
+      "firstInputMs": 871,
+      "cls": 0,
+      "horizontalScroll": false,
+      "scrollWidth": 360,
+      "pageHeight": 1370,
+      "smallTargets": ["input \"Ask about anything nearby\" 198x32"],
+      "inputTop": 664,
+      "clipped": []
+    },
+    "keyboard": {
+      "inputVisible": true,
+      "inputY": 304
+    },
+    "asked": {
+      "horizontalScroll": false,
+      "scrollWidth": 360,
+      "pageHeight": 2180,
+      "smallTargets": [
+        "g \"Sample filter coffee house\" 27x27",
+        "g \"Sample roastery café\" 27x27",
+        "input \"Ask about anything nearby\" 198x32"
+      ],
+      "inputTop": 664,
+      "clipped": ["Indiranagar"]
+    }
+  },
+  "390x844-dark": {
+    "open": {
+      "firstInputMs": 754,
+      "cls": 0,
+      "horizontalScroll": false,
+      "scrollWidth": 390,
+      "pageHeight": 1358,
+      "smallTargets": ["input \"Ask about anything nearby\" 228x32"],
+      "inputTop": 708,
+      "clipped": []
+    },
+    "keyboard": {
+      "inputVisible": true,
+      "inputY": 328
+    },
+    "asked": {
+      "horizontalScroll": false,
+      "scrollWidth": 390,
+      "pageHeight": 2180,
+      "smallTargets": [
+        "g \"Sample filter coffee house\" 27x27",
+        "g \"Sample roastery café\" 27x27",
+        "input \"Ask about anything nearby\" 228x32"
+      ],
+      "inputTop": 708,
+      "clipped": []
+    }
+  },
+  "412x915-dark": {
+    "open": {
+      "firstInputMs": 1440,
+      "cls": 0,
+      "horizontalScroll": false,
+      "scrollWidth": 412,
+      "pageHeight": 1429,
+      "smallTargets": ["input \"Ask about anything nearby\" 250x32"],
+      "inputTop": 779,
+      "clipped": []
+    },
+    "keyboard": {
+      "inputVisible": true,
+      "inputY": 367
+    },
+    "asked": {
+      "horizontalScroll": false,
+      "scrollWidth": 412,
+      "pageHeight": 2068,
+      "smallTargets": [
+        "g \"Sample filter coffee house\" 27x27",
+        "g \"Sample roastery café\" 27x27",
+        "input \"Ask about anything nearby\" 250x32"
+      ],
+      "inputTop": 779,
+      "clipped": []
+    }
+  },
+  "360-ta": {
+    "horizontalScroll": false,
+    "scrollWidth": 360,
+    "pageHeight": 1417,
+    "smallTargets": ["input \"அருகில் உள்ள எதைப் பற்றியும் கேளுங்கள்\" 198x32"],
+    "inputTop": 664,
+    "clipped": []
+  },
+  "360-hi": {
+    "horizontalScroll": false,
+    "scrollWidth": 360,
+    "pageHeight": 1294,
+    "smallTargets": ["input \"आस-पास किसी भी चीज़ के बारे में पूछें\" 198x32"],
+    "inputTop": 664,
+    "clipped": []
+  },
+  "360-ja": {
+    "horizontalScroll": false,
+    "scrollWidth": 360,
+    "pageHeight": 1316,
+    "smallTargets": ["input \"近くの何でも質問\" 198x32"],
+    "inputTop": 664,
+    "clipped": []
+  },
+  "welcome-360": {
+    "horizontalScroll": false,
+    "scrollWidth": 360,
+    "pageHeight": 800,
+    "smallTargets": [],
+    "inputTop": null,
+    "clipped": []
+  }
+}

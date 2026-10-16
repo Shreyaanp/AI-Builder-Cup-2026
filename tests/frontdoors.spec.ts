@@ -138,39 +138,40 @@ test('separate standalone manifests and real-loading splash', async ({ page }) =
   )
 })
 
-test('first customer journey: denied location, interests, coach mark and return', async ({
+// The front door itself asks where (no setup wizard before it): denied location, an area,
+// this area's shops as cards, and a return visit that remembers the area.
+test('first customer visit: the Ask page asks where inline, then shows nearby cards', async ({
   page,
 }) => {
   await fixture(page)
+  await page.route('**/api/v1/discover/place?**', (route) =>
+    route.fulfill({ json: { lat: 1.2847, lng: 103.832, label: 'Tiong Bahru' } }),
+  )
   await page.addInitScript(() =>
     Object.defineProperty(navigator, 'geolocation', {
       value: { getCurrentPosition: (_ok: unknown, denied: () => void) => denied() },
     }),
   )
   await page.goto('/?app=customer')
-  await expect(page.getByText('Step 1 of 2', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Use my location' }).click()
-  await expect(page.getByText('Location unavailable. Please choose an area.')).toBeVisible()
-  await page.getByRole('button', { name: 'Continue', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'What are you in the mood for?' })).toBeFocused()
-  for (const category of ['Pharmacy', 'Hardware', 'Fashion', 'Beauty', 'Services', 'Other'])
-    await expect(page.getByRole('button', { name: category, exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Coffee & tea', exact: true }).click()
-  await page.getByRole('button', { name: 'Explore my neighbourhood' }).click()
-  // AI-first front door after the welcome; returning skips the welcome.
   await expect(page.getByRole('heading', { name: 'What are you looking for nearby?' })).toBeVisible(
     { timeout: 30_000 },
   )
-  // The picked interest becomes a one-tap question.
-  await expect(page.getByRole('button', { name: 'Coffee & tea', exact: true })).toBeVisible()
-  await page.reload()
-  await expect(page.getByRole('heading', { name: 'What are you looking for nearby?' })).toBeVisible(
-    { timeout: 30_000 },
-  )
+  await expect(page.getByRole('textbox', { name: 'Ask about anything nearby' })).toBeVisible()
   await expect(page.getByText('Step 1 of 2', { exact: true })).toHaveCount(0)
-  expect(await page.evaluate(() => localStorage.getItem('chalkboard.customer.journey'))).toBe(
-    'done',
-  )
+  const where = page.getByRole('region', { name: 'Start with your neighbourhood' })
+  await where.getByRole('button', { name: 'Use my location' }).click()
+  await expect(where.getByText('Location unavailable. Please choose an area.')).toBeVisible()
+  await where.getByRole('textbox', { name: 'City or area' }).fill('Tiong Bahru')
+  await where.getByRole('textbox', { name: 'City or area' }).press('Enter')
+  await expect(where).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Area: Tiong Bahru/ })).toBeVisible()
+  const nearby = page.getByRole('list', { name: 'Near you now' })
+  await expect(nearby.getByRole('link').filter({ hasText: shopName })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('button', { name: /Area: Tiong Bahru/ })).toBeVisible({
+    timeout: 30_000,
+  })
+  await expect(page.getByRole('region', { name: 'Start with your neighbourhood' })).toHaveCount(0)
 })
 
 for (const mode of ['light', 'dark'] as const) {

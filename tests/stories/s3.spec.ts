@@ -39,7 +39,6 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
     })
     await test.step('2 · GPS discovery and typed city fallback', async () => {
       await customer.getByRole('button', { name: 'Use my location' }).click()
-      await customer.getByRole('button', { name: 'Explore my neighbourhood' }).click()
       // The front door is an AI ask; browsing everything nearby is one tap away.
       await expect(
         customer.getByRole('heading', { name: 'What are you looking for nearby?' }),
