@@ -1,3 +1,4 @@
+import { createShop, editShopDetails } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
@@ -49,9 +50,9 @@ test('owner reviews custom payments and delivery; customer chips and answers kee
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await page.getByRole('button', { name: 'Add my shop' }).click()
   const name = `Global shop ${Date.now()}`
-  await page.getByLabel('Shop name').fill(name)
+  await createShop(page, `name: ${name}`)
+  await editShopDetails(page)
   const payment = page.getByRole('combobox', { name: 'Payment', exact: true })
   await payment.click()
   await expect(page.getByRole('option', { name: 'UPI', exact: true })).toBeVisible()
@@ -77,7 +78,7 @@ test('owner reviews custom payments and delivery; customer chips and answers kee
   await expect(review).toContainText('UPI, PayNow')
   await expect(review).toContainText('Swiggy')
   const before = await (await page.request.get('/api/v1/businesses')).json()
-  expect(before.some((shop: { fields: { name: string } }) => shop.fields.name === name)).toBe(false)
+  expect(before[0].fields.payment_methods ?? []).toEqual([])
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(review).toHaveCount(0)
   const shops = await (await page.request.get('/api/v1/businesses')).json()

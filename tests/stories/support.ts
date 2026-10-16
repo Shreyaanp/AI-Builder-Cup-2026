@@ -88,6 +88,49 @@ export async function confirm(page: Page) {
   await expect(page.getByRole('dialog')).toHaveCount(0)
 }
 
+/**
+ * Opens the full-screen new-shop flow from the header "+" (unless it is already open), lets the
+ * coach greet, answers in the chat and opens the full-screen review. The offline coach reads
+ * "name: …; location: …" notes into the draft.
+ */
+export async function openNewShopReview(
+  page: Page,
+  details = 'name: Courtyard Chai; category: Tea stall; location: Indiranagar, Bengaluru',
+) {
+  const begin = page.getByRole('button', { name: 'Let’s begin' })
+  if (!(await begin.isVisible()))
+    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await begin.click()
+  await expect(page.getByRole('log')).toContainText('What do you sell?')
+  await page.getByLabel('Message', { exact: true }).fill(details)
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByTestId('agent-action').last()).toBeVisible()
+  await page.getByRole('button', { name: 'Review my shop' }).click()
+  await expect(page.getByTestId('new-shop-review')).toBeVisible()
+}
+
+/** A whole new shop through the flow: chat, review, "Open my shop", back to the workspace. */
+export async function createShop(page: Page, details?: string) {
+  await openNewShopReview(page, details)
+  await createShopFromReview(page)
+}
+
+/** The saved shop's details form (My shop → Shop details → Edit details). */
+export async function editShopDetails(page: Page) {
+  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: /^Shop details/ }).click()
+  await page.getByRole('button', { name: 'Edit details' }).click()
+  await expect(page.getByLabel('Shop name')).toBeVisible()
+}
+
+/** From the flow's review page: "Open my shop", the ready moment, then the workspace. */
+export async function createShopFromReview(page: Page) {
+  await page.getByRole('button', { name: 'Open my shop' }).click()
+  await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeVisible()
+  await page.getByRole('button', { name: 'Continue with my shop' }).click()
+  await expect(page.getByTestId('new-shop-flow')).toHaveCount(0)
+}
+
 export async function closeSheet(page: Page) {
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
