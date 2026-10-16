@@ -49,6 +49,9 @@ const en = {
   chipOpen: 'Open now nearby',
   chipDeals: 'Deals tonight',
   chipLocal: 'Locally made',
+  nearbyNow: 'Near you now',
+  more: 'More',
+  less: 'Less',
 }
 
 export type ConversationCopy = typeof en
@@ -96,6 +99,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: '附近营业中',
     chipDeals: '今晚优惠',
     chipLocal: '本地制作',
+    nearbyNow: '附近推荐',
+    more: '展开',
+    less: '收起',
   },
   ms: {
     hello: 'Anda cari apa berdekatan?',
@@ -139,6 +145,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'Buka sekarang berdekatan',
     chipDeals: 'Tawaran malam ini',
     chipLocal: 'Buatan tempatan',
+    nearbyNow: 'Berdekatan sekarang',
+    more: 'Lagi',
+    less: 'Kurang',
   },
   ta: {
     hello: 'அருகில் என்ன தேடுகிறீர்கள்?',
@@ -183,6 +192,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'அருகில் இப்போது திறந்தவை',
     chipDeals: 'இன்றிரவு சலுகைகள்',
     chipLocal: 'உள்ளூர் தயாரிப்பு',
+    nearbyNow: 'இப்போது அருகில்',
+    more: 'மேலும்',
+    less: 'குறைவாக',
   },
   ja: {
     hello: '近くで何をお探しですか？',
@@ -227,6 +239,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: '近くで営業中',
     chipDeals: '今夜のお得',
     chipLocal: '地元産',
+    nearbyNow: '近くのお店',
+    more: 'もっと見る',
+    less: '閉じる',
   },
   ko: {
     hello: '근처에서 무엇을 찾으세요?',
@@ -271,6 +286,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: '근처 영업 중',
     chipDeals: '오늘 밤 할인',
     chipLocal: '로컬 제작',
+    nearbyNow: '지금 가까운 곳',
+    more: '더 보기',
+    less: '접기',
   },
   id: {
     hello: 'Cari apa di dekat sini?',
@@ -315,6 +333,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'Buka sekarang di dekat sini',
     chipDeals: 'Promo malam ini',
     chipLocal: 'Buatan lokal',
+    nearbyNow: 'Di dekat Anda',
+    more: 'Selengkapnya',
+    less: 'Lebih sedikit',
   },
   th: {
     hello: 'กำลังหาอะไรใกล้ๆ อยู่?',
@@ -358,6 +379,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'เปิดอยู่ใกล้ๆ',
     chipDeals: 'ส่วนลดคืนนี้',
     chipLocal: 'ผลิตในท้องถิ่น',
+    nearbyNow: 'ใกล้คุณตอนนี้',
+    more: 'เพิ่มเติม',
+    less: 'ย่อ',
   },
   vi: {
     hello: 'Bạn đang tìm gì gần đây?',
@@ -402,6 +426,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'Đang mở gần đây',
     chipDeals: 'Ưu đãi tối nay',
     chipLocal: 'Làm tại địa phương',
+    nearbyNow: 'Gần bạn lúc này',
+    more: 'Xem thêm',
+    less: 'Thu gọn',
   },
   fil: {
     hello: 'Ano ang hinahanap mo sa malapit?',
@@ -446,6 +473,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'Bukas ngayon sa malapit',
     chipDeals: 'Deal ngayong gabi',
     chipLocal: 'Gawang lokal',
+    nearbyNow: 'Malapit sa iyo ngayon',
+    more: 'Higit pa',
+    less: 'Mas kaunti',
   },
   hi: {
     hello: 'आस-पास क्या खोज रहे हैं?',
@@ -490,6 +520,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'आस-पास अभी खुला',
     chipDeals: 'आज रात के ऑफ़र',
     chipLocal: 'स्थानीय रूप से बना',
+    nearbyNow: 'अभी आपके पास',
+    more: 'और देखें',
+    less: 'कम देखें',
   },
   bn: {
     hello: 'কাছাকাছি কী খুঁজছেন?',
@@ -534,6 +567,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'কাছাকাছি এখন খোলা',
     chipDeals: 'আজ রাতের অফার',
     chipLocal: 'স্থানীয়ভাবে তৈরি',
+    nearbyNow: 'এখন আপনার কাছে',
+    more: 'আরও দেখুন',
+    less: 'কম দেখুন',
   },
   te: {
     hello: 'దగ్గరలో ఏమి వెతుకుతున్నారు?',
@@ -577,6 +613,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'దగ్గరలో ఇప్పుడు తెరిచినవి',
     chipDeals: 'ఈ రాత్రి ఆఫర్లు',
     chipLocal: 'స్థానికంగా తయారైనవి',
+    nearbyNow: 'ఇప్పుడు మీ దగ్గర',
+    more: 'మరింత',
+    less: 'తక్కువ',
   },
   mr: {
     hello: 'जवळपास काय शोधताय?',
@@ -620,6 +659,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'जवळपास आत्ता उघडे',
     chipDeals: 'आज रात्रीच्या ऑफर',
     chipLocal: 'स्थानिक बनावटीचे',
+    nearbyNow: 'आत्ता तुमच्या जवळ',
+    more: 'अधिक पहा',
+    less: 'कमी पहा',
   },
   kn: {
     hello: 'ಹತ್ತಿರದಲ್ಲಿ ಏನು ಹುಡುಕುತ್ತಿದ್ದೀರಿ?',
@@ -663,6 +705,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'ಹತ್ತಿರ ಈಗ ತೆರೆದಿರುವವು',
     chipDeals: 'ಇಂದು ರಾತ್ರಿಯ ಆಫರ್‌ಗಳು',
     chipLocal: 'ಸ್ಥಳೀಯವಾಗಿ ತಯಾರಿಸಿದ್ದು',
+    nearbyNow: 'ಈಗ ನಿಮ್ಮ ಹತ್ತಿರ',
+    more: 'ಇನ್ನಷ್ಟು',
+    less: 'ಕಡಿಮೆ',
   },
 }
 
