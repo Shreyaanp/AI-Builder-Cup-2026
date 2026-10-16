@@ -8,7 +8,7 @@ import type { CheckCode, DocFlag, DocKind, PoStatus, SystemFormat } from './type
 const en = {
   title: 'Purchase orders',
   tileValue: (open: number) => (open === 0 ? 'None open' : `${open} open`),
-  tileEmpty: 'The coach drafts orders from your forecast',
+  tileEmpty: 'Orders drafted from your forecast',
   suppliersRules: 'Suppliers and rules',
   draftReorder: 'Draft a reorder',
   drafting: 'Drafting from your forecast…',

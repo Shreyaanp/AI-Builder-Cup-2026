@@ -12,8 +12,10 @@ Others own: owner onboarding (NewShopFlow, useVoice: account 2 session 1), custo
 Plan the whole story first (plan mode), then build it end to end.
 
 ## The owner (from the supply-chain industry) wants
+
 A small shop (buyer) and its suppliers trade through Chalkboard even when each side runs a
 different system. The full loop, linked, on the phone, dead simple:
+
 1. **Business rules per supplier relationship** (all must-haves): MOQ and lead time per item;
    price tiers by quantity; credit terms (cash / 7 / 30 days) with a credit limit; approval
    limits (orders above an amount, or to a new supplier, need the owner's tap); substitutions
@@ -39,12 +41,14 @@ different system. The full loop, linked, on the phone, dead simple:
    (below MOQ, beyond credit limit, lead time misses the need date) with one-tap fixes.
 
 ## Definition of done
+
 Backend models/routes/tests (rules, document state machine, translators both ways with
 fixtures for each IDoc type, rule enforcement, both SQLite and Firestore stores), coach tools
 for rules and reorder, frontend screens and cards, all 15 locales, phone 390x844 + desktop, light
-+ dark, axe clean, motion via src/design/chalkMotion.ts (owner app: calm, cut to the chase).
-A story test tests/stories/s11-supply-chain.spec.ts runs forecast → PO → ORDRSP (partial) → ASN →
-invoice with format translation; screenshots docs/stories/supply-*.png. Live check against
-real Gemini for the translator (GCP token: see docs/PLAN-V2.md workers section). Run backend
-tests, `npm run check`, `npm run test:qa` (fresh DBs). Commit small (no AI co-author trailers),
-push, `gh pr create` into main, write docs/handoff/supply-chain.md. Summarise.
+
+- dark, axe clean, motion via src/design/chalkMotion.ts (owner app: calm, cut to the chase).
+  A story test tests/stories/s11-supply-chain.spec.ts runs forecast → PO → ORDRSP (partial) → ASN →
+  invoice with format translation; screenshots docs/stories/supply-*.png. Live check against
+  real Gemini for the translator (GCP token: see docs/PLAN-V2.md workers section). Run backend
+  tests, `npm run check`, `npm run test:qa` (fresh DBs). Commit small (no AI co-author trailers),
+  push, `gh pr create` into main, write docs/handoff/supply-chain.md. Summarise.
