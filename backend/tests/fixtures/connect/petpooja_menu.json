@@ -1,0 +1,42 @@
+{
+  "status": "success",
+  "restaurant_id": "PP-BLR-9021",
+  "items": [
+    {
+      "item_id": "PP-101",
+      "itemname": "Cold Coffee with Ice Cream",
+      "price": "140.00",
+      "categoryname": "Beverages",
+      "unit": "glass",
+      "stock": 45,
+      "description": "Rich creamy iced espresso shake"
+    },
+    {
+      "item_id": "PP-102",
+      "itemname": "Paneer Tikka Roll",
+      "price": "160.00",
+      "categoryname": "Rolls & Wraps",
+      "unit": "piece",
+      "stock": 30,
+      "description": "Smoky cottage cheese cubes rolled in soft paratha"
+    },
+    {
+      "item_id": "PP-103",
+      "itemname": "Veg Cheese Burger",
+      "price": "130.00",
+      "categoryname": "Fast Food",
+      "unit": "piece",
+      "stock": 25,
+      "description": "Crispy herb potato patty with melted cheddar"
+    },
+    {
+      "item_id": "PP-104",
+      "itemname": "Dark Chocolate Brownie",
+      "price": "90.00",
+      "categoryname": "Desserts",
+      "unit": "slice",
+      "stock": 15,
+      "description": "Fudgy warm walnut chocolate brownie"
+    }
+  ]
+}

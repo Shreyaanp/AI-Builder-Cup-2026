@@ -403,6 +403,7 @@ class FirestoreMerchantStore:
                 "sold_out_days",
                 "stock_alerts",
                 "supplier_orders",
+                "connector_mappings",
             ):
                 refs += [
                     item.reference for item in snapshot.reference.collection(collection).stream()
@@ -926,3 +927,43 @@ class FirestoreMerchantStore:
             return dict(state)
 
         return run(self.client.transaction())
+
+    def get_connector_mapping(
+        self, uid: str, bid: str, source_label: str
+    ) -> dict[str, Any] | None:
+        self.owned_business(uid, bid)
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        doc = ref.collection("connector_mappings").document(source_label.lower().strip()).get()
+        return doc.to_dict() if doc.exists else None
+
+    def list_connector_mappings(self, uid: str, bid: str) -> list[dict[str, Any]]:
+        self.owned_business(uid, bid)
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        docs = ref.collection("connector_mappings").stream()
+        return [doc.to_dict() for doc in docs]
+
+    def save_connector_mapping(
+        self, uid: str, bid: str, mapping: dict[str, Any]
+    ) -> dict[str, Any]:
+        self.owned_business(uid, bid)
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        now = time.time()
+        source_label = mapping["source_label"]
+        doc_ref = ref.collection("connector_mappings").document(source_label.lower().strip())
+        record = {
+            "source_label": source_label,
+            "fields": mapping,
+            "last_synced": None,
+            "updated": now,
+        }
+        doc_ref.set(record)
+        return record
+
+    def record_connector_sync(self, uid: str, bid: str, source_label: str) -> None:
+        self.owned_business(uid, bid)
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        now = time.time()
+        doc_ref = ref.collection("connector_mappings").document(source_label.lower().strip())
+        doc = doc_ref.get()
+        if doc.exists:
+            doc_ref.update({"last_synced": now})
