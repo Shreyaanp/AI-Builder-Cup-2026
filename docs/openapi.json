@@ -483,6 +483,18 @@
               "type": "string",
               "title": "Business Id"
             }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 16,
+              "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$",
+              "default": "en",
+              "title": "Lang"
+            }
           }
         ],
         "responses": {
