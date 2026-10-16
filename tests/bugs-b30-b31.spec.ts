@@ -102,9 +102,9 @@ test('B31: QR only, once per shop day across timezone midnight, full card and st
   await expect(card(page).getByRole('status')).toHaveText('0 stamps')
   await expect(card(page).locator('[data-filled]')).toHaveCount(3)
   await page.goto(`/explore/s/${id}?source=qr`)
-  await expect(card(page).getByRole('status')).toHaveText('1 stamps')
+  await expect(card(page).getByRole('status')).toHaveText('1 stamp')
   await page.reload()
-  await expect(card(page).getByRole('status')).toHaveText('1 stamps')
+  await expect(card(page).getByRole('status')).toHaveText('1 stamp')
   await page.clock.setSystemTime(new Date('2026-10-15T07:01:00Z'))
   await page.reload()
   await expect(card(page).getByRole('status')).toHaveText('2 stamps')
@@ -139,9 +139,9 @@ test('B31: QR only, once per shop day across timezone midnight, full card and st
   await expect(card(page)).toContainText('1 reward claimed')
   // This is a later calendar day than the last earned stamp, so one new stamp is allowed.
   await page.reload()
-  await expect(card(page).getByRole('status')).toHaveText('1 stamps')
+  await expect(card(page).getByRole('status')).toHaveText('1 stamp')
   await page.reload()
-  await expect(card(page).getByRole('status')).toHaveText('1 stamps')
+  await expect(card(page).getByRole('status')).toHaveText('1 stamp')
 })
 
 test('B31: same-day reset retains daily limit and saves claim count across reloads', async ({
