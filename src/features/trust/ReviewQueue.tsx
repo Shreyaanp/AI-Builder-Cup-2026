@@ -84,8 +84,8 @@ export function ReviewQueue({ queue, onChange }: { queue: Review[]; onChange: ()
               sx={{
                 p: 2.5,
                 borderRadius: `${shape.md}px`,
+                // Decided items are not dimmed (that broke text contrast); the chip says it.
                 bgcolor: roles.surfaceContainer,
-                opacity: item.status === 'open' ? 1 : 0.8,
               }}
             >
               <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap', mb: 1 }}>
