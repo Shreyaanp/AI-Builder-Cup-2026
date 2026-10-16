@@ -463,8 +463,8 @@ Seen during the local run (not fixed here; this PR only changes docs):
 - The customer front door's placeholder says "coffee under $3" even for an Indian (₹) phone.
 - Today can briefly show the day-one card ("Add your menu") for a filled shop before its data
   loads.
-- Passport's "Regulars this week" showed "Couldn’t complete that request" for a customer who
-  was not signed in.
+- In one local run, Passport's "Regulars this week" showed "Couldn’t complete that request"
+  for a signed-in customer with location off.
 
 ---
 
