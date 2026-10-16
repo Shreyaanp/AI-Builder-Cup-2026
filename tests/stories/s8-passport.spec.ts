@@ -184,7 +184,7 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     // The signed link is spent from the address bar, and the phone card counted the visit.
     await expect(customer).not.toHaveURL(/[?&]k=/)
     const card = customer.getByRole('region', { name: 'Stamp card' })
-    await expect(card.getByRole('status')).toHaveText('1 stamps')
+    await expect(card.getByRole('status')).toHaveText('1 stamp')
   })
   await test.step('4 · passport: level, streak, stamp book and quests', async () => {
     // Back to the Ask home, then the Passport tab.
@@ -221,7 +221,7 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     await moment.getByRole('button', { name: 'Done' }).click()
     await expect(
       customer.getByRole('region', { name: 'Stamp card' }).getByRole('status'),
-    ).toHaveText('1 stamps')
+    ).toHaveText('1 stamp')
   })
 }
 

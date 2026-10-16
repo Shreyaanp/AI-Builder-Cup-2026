@@ -322,11 +322,13 @@ const translations: Partial<Record<Locale, Copy>> = {
   },
 }
 
-export function useRewardCopy(): Copy & typeof rewardCardEnglish {
+export function useRewardCopy(): Copy & typeof rewardCardEnglish & { stamp: string } {
   const locale = useLocale()
   return {
     ...en,
     ...translations[locale],
+    // One stamp: English needs the singular; the translations already read for any count.
+    stamp: translations[locale]?.stamps ?? '{count} stamp',
     ...rewardCardEnglish,
     ...(locale === 'en' ? {} : rewardCardTranslations[locale]),
   }

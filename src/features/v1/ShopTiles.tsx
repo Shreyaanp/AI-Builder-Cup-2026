@@ -331,6 +331,10 @@ export function ShopTiles({
                   >
                     <Typography component="span" variant="bodyMedium" noWrap sx={{ minWidth: 0 }}>
                       {product.name}
+                      {/* Same item in two sizes (chai per cup and per pot): the unit tells them apart. */}
+                      {product.unit &&
+                        ws.products.filter((other) => other.name === product.name).length > 1 &&
+                        ` / ${product.unit}`}
                     </Typography>
                     <Typography
                       component="span"
