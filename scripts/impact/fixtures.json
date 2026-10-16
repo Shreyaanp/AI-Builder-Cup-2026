@@ -1,0 +1,72 @@
+{
+  "shops": [
+    {
+      "id": "tea",
+      "name": "Impact Chai",
+      "category": "Tea stall",
+      "location": "Katong, Singapore",
+      "hours": "7am-7pm",
+      "menu": [
+        ["Chai", "15.00"],
+        ["Samosa", "20.00"],
+        ["Coffee", "25.00"]
+      ]
+    },
+    {
+      "id": "bakery",
+      "name": "Impact Bakery",
+      "category": "Bakery",
+      "location": "Katong, Singapore",
+      "hours": "7am-7pm",
+      "menu": [
+        ["Kaya bun", "1.80"],
+        ["Pandan cake", "12.00"],
+        ["Curry puff", "1.60"]
+      ]
+    },
+    {
+      "id": "restaurant",
+      "name": "Impact Kitchen",
+      "category": "Restaurant",
+      "location": "Katong, Singapore",
+      "hours": "7am-7pm",
+      "menu": [
+        ["Chicken rice", "5.00"],
+        ["Vegetable rice", "4.50"],
+        ["Noodles", "6.00"]
+      ]
+    }
+  ],
+  "search": {
+    "note": "Hand-authored synthetic corpus and relevance labels, fixed before running. Each numbered variant is a distinct shop. Prices are SGD minor units; even variants confirm halal and vegetarian options, variants 0-2 confirm locally made. Category-only matches without an available budget-compliant requested item are irrelevant.",
+    "variants_per_type": 6,
+    "queries": [
+      { "q": "chai", "relevant": ["tea-0", "tea-1", "tea-2", "tea-3", "tea-4", "tea-5"] },
+      {
+        "q": "bakery",
+        "relevant": ["bakery-0", "bakery-1", "bakery-2", "bakery-3", "bakery-4", "bakery-5"]
+      },
+      {
+        "q": "chicken rice",
+        "relevant": [
+          "restaurant-0",
+          "restaurant-1",
+          "restaurant-2",
+          "restaurant-3",
+          "restaurant-4",
+          "restaurant-5"
+        ]
+      },
+      { "q": "halal chai", "relevant": ["tea-0", "tea-2", "tea-4"] },
+      { "q": "vegetarian noodles", "relevant": ["restaurant-0", "restaurant-2", "restaurant-4"] },
+      { "q": "homemade kaya bun", "relevant": ["bakery-0", "bakery-1", "bakery-2"] },
+      {
+        "q": "kaya bun under 2",
+        "relevant": ["bakery-0", "bakery-1", "bakery-2", "bakery-3", "bakery-4", "bakery-5"]
+      },
+      { "q": "chicken rice under 1", "relevant": [] },
+      { "q": "sold out special", "relevant": [] },
+      { "q": "bicycle repair", "relevant": [] }
+    ]
+  }
+}
