@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { LOCALE_NAMES, LOCALES } from '../../i18n/locales'
 import { formatPrice } from '../v1/format'
+import { LanguagePicker } from './LanguagePicker'
 import { useFrontCopy } from './strings'
 import './landing.css'
 
@@ -246,6 +247,7 @@ export default function Marketing() {
             Chalkboard
           </a>
           <nav aria-label="Chalkboard">
+            <LanguagePicker variant="nav" />
             <a href="/explore/">{t.find}</a>
             <Button variant="contained" href={businessUrl} endIcon={<ArrowUpRight size={16} />}>
               {t.business}
