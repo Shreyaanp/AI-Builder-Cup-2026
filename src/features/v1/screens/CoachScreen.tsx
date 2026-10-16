@@ -30,6 +30,7 @@ import {
   ImagePlus,
   ImageUp,
   FileSpreadsheet,
+  Layers,
   Paperclip,
   Leaf,
   MessageSquare,
@@ -56,6 +57,8 @@ import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
 import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
+import { ConnectSheet } from '../../connect/ConnectSheet'
+import { useConnectCopy } from '../../connect/strings'
 import { SalesImportSheet } from '../ImportMenu'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
 import { StartCard } from '../ShopCard'
@@ -205,6 +208,8 @@ function CoachScreen({
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [photoMenu, setPhotoMenu] = useState<HTMLElement | null>(null)
   const [sales, setSales] = useState<SalesImport | null>(null)
+  const [connectOpen, setConnectOpen] = useState(false)
+  const connectCopy = useConnectCopy()
   const importer = useImport({ onSales: setSales })
   const picking = useRef<'photo' | 'document'>('photo')
   const choices = touch || Boolean(ws.active)
@@ -1069,6 +1074,7 @@ function CoachScreen({
       </Box>
       <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
       <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
+      <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
       <ShopSheets
         kind={shopSheet}
         onClose={() => {
@@ -1207,6 +1213,20 @@ function CoachScreen({
                   <FileSpreadsheet size={20} />
                 </ListItemIcon>
                 <ListItemText primary={t.photoDocument} />
+              </MenuItem>
+            )}
+            {ws.active && (
+              <MenuItem
+                onClick={() => {
+                  setPhotoMenu(null)
+                  setConnectOpen(true)
+                }}
+                sx={{ minHeight: 48 }}
+              >
+                <ListItemIcon>
+                  <Layers size={20} />
+                </ListItemIcon>
+                <ListItemText primary={connectCopy.connectTitle} />
               </MenuItem>
             )}
           </Menu>
