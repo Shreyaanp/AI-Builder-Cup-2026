@@ -11864,6 +11864,18 @@
         ],
         "title": "VoiceControl",
         "type": "object"
+      },
+      "FeatureFlags": {
+        "additionalProperties": false,
+        "properties": {
+          "google_guide": {
+            "default": false,
+            "title": "Google Guide",
+            "type": "boolean"
+          }
+        },
+        "title": "FeatureFlags",
+        "type": "object"
       }
     }
   }

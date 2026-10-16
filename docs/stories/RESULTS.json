@@ -1,18 +1,10 @@
 {
-  "capturedAt": "2026-10-15T16:11:41.357Z",
+  "capturedAt": "2026-10-16T09:32:24.177Z",
   "mode": "audit",
   "scope": "390×844 offline audit; annotated gaps and live-only paths are not verified story outcomes",
   "stories": [
     {
       "story": "A11 · preview labels are inert and Call is absent",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
-      "story": "A12 · coach scroll and Google waiting motion: reduce",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -28,7 +20,7 @@
       "annotations": []
     },
     {
-      "story": "A12 · coach scroll and Google waiting motion: no-preference",
+      "story": "A11 · Tamil composer and navigation have room for script metrics",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -36,7 +28,23 @@
       "annotations": []
     },
     {
-      "story": "A11 · Tamil composer and navigation have room for script metrics",
+      "story": "A12 · coach scroll and Google waiting motion: reduce",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A11 · customer light mode separates menu and background surfaces",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A12 · coach scroll and Google waiting motion: no-preference",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -52,7 +60,31 @@
       "annotations": []
     },
     {
-      "story": "A11 · customer light mode separates menu and background surfaces",
+      "story": "A4 · no fact chip and offline answer agree",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A4 · muslim_owned fact chip and offline answer agree",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A4 · not_stated fact chip and offline answer agree",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A3 · independent customer context polls visible prices and availability",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -76,38 +108,6 @@
       "annotations": []
     },
     {
-      "story": "A4 · no fact chip and offline answer agree",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
-      "story": "A3 · independent customer context polls visible prices and availability",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
-      "story": "A9 · daily check survives conversation and dismisses per shop and day",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
-      "story": "A4 · muslim_owned fact chip and offline answer agree",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
       "story": "A8 · coach photo reuse is explicit for existing shops",
       "project": "phone",
       "status": "passed",
@@ -116,7 +116,7 @@
       "annotations": []
     },
     {
-      "story": "A4 · not_stated fact chip and offline answer agree",
+      "story": "A8 · header and discovery use the first gallery photo with removal/error fallback",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -124,7 +124,7 @@
       "annotations": []
     },
     {
-      "story": "A8 · header and discovery use the first gallery photo with removal/error fallback",
+      "story": "A9 · daily check survives conversation and dismisses per shop and day",
       "project": "phone",
       "status": "passed",
       "retry": 0,
