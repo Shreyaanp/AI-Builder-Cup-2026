@@ -28,6 +28,7 @@ from typing import Any
 import structlog
 from pydantic import BaseModel
 
+from .gemini_schema import gemini_schema, parse_reply
 from .settings import Settings
 
 log = structlog.get_logger()
@@ -183,13 +184,13 @@ class ShopTranslator:
             config=types.GenerateContentConfig(
                 system_instruction=PROMPT,
                 response_mime_type="application/json",
-                response_schema=_Batch,
+                response_json_schema=gemini_schema(_Batch),
                 temperature=0,
                 max_output_tokens=4000,
             ),
         )
-        parsed = response.parsed
-        return parsed.texts if isinstance(parsed, _Batch) else []
+        parsed = parse_reply(_Batch, response)
+        return parsed.texts if parsed else []
 
     async def _fill(self, language: str, wanted: dict[str, list[str]]) -> None:
         """One model call for every missing string of every shop, stored per shop."""
