@@ -1,22 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Box, LinearProgress, Stack, Typography, useTheme } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
-import { CalendarClock, Globe, HeartHandshake, Stamp } from 'lucide-react'
-import type { components } from '../../../api/generated'
+import { CalendarClock, Globe, Stamp } from 'lucide-react'
 import { CloseDayTile } from '../../closeday/CloseDay'
 import { PrepPlanTile } from '../../forecast/PrepPlan'
 import { useCopy as usePlanCopy } from '../../planning/strings'
 import { RecapTile } from '../../sales/ShopInsights'
 import { OrdersTile } from '../../sourcing/Orders'
 import { readiness } from '../shopProgress'
-import { ShopSheets, Supporting, Tile } from '../ShopTiles'
+import { ShopSheets, Supporting, Tile, type ShopSheetKind } from '../ShopTiles'
 import { tileGrid } from '../tileSpan'
 import { useCopy } from '../strings'
 import { useTabsCopy } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
 import { ShopGate } from './ShopScreen'
-
-type Deal = components['schemas']['Deal']
+import { MorningBrief } from '../../owner/MorningBrief'
+import { RadarSheet, RadarTile } from '../../owner/RadarTile'
+import { RescueTile } from '../../owner/RescueTile'
 
 /**
  * Grow: every owner tool as a card with its live one-line status. Cards open the existing
@@ -44,6 +44,8 @@ function GrowTiles() {
   const ws = useWorkspace()
   const roles = useTheme().material
   const [planOpen, setPlanOpen] = useState(false)
+  const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
+  const [radarOpen, setRadarOpen] = useState(false)
   const shop = ws.active
   if (!shop) return null
   const { done, total } = readiness(ws)
@@ -55,6 +57,7 @@ function GrowTiles() {
   const close = <CloseDayTile key="close" />
   return (
     <Stack spacing={4}>
+      <MorningBrief key={shop.id} onSheet={setSheet} onRadar={() => setRadarOpen(true)} />
       <Box data-testid="grow-tiles" sx={tileGrid}>
         {evening ? [close, prep] : [prep, close]}
         <OrdersTile />
@@ -65,6 +68,7 @@ function GrowTiles() {
           onClick={() => setPlanOpen(true)}
         />
         <RescueTile />
+        <RadarTile />
         <Tile
           span={2}
           tour="google"
@@ -92,34 +96,14 @@ function GrowTiles() {
         </Tile>
         <RecapTile />
       </Box>
-      <ShopSheets kind={planOpen ? 'plan' : null} onClose={() => setPlanOpen(false)} />
+      <ShopSheets
+        kind={sheet ?? (planOpen ? 'plan' : null)}
+        onClose={() => {
+          setSheet(null)
+          setPlanOpen(false)
+        }}
+      />
+      <RadarSheet open={radarOpen} onClose={() => setRadarOpen(false)} />
     </Stack>
-  )
-}
-
-/** Live rescue deals, or the coach starts one (it proposes an exact, expiring deal to review). */
-function RescueTile() {
-  const tabs = useTabsCopy()
-  const { api, activeId, startCoachDraft } = useWorkspace()
-  const [live, setLive] = useState<number | null>(null)
-  useEffect(() => {
-    if (!activeId) return
-    const abort = new AbortController()
-    void api<Deal[]>(`/businesses/${encodeURIComponent(activeId)}/rescue`, {
-      signal: abort.signal,
-    })
-      .then((deals) => {
-        if (!abort.signal.aborted) setLive(deals.filter((deal) => deal.status === 'live').length)
-      })
-      .catch(() => undefined)
-    return () => abort.abort()
-  }, [api, activeId])
-  return (
-    <Tile
-      icon={<HeartHandshake size={20} />}
-      label={tabs.rescue}
-      value={live ? tabs.rescueLive(live) : tabs.rescueIdle}
-      onClick={() => startCoachDraft(tabs.rescueAsk, { send: true })}
-    />
   )
 }

@@ -68,6 +68,8 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
   })
   await test.step('5 · daily still-the-same check', async () => {
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
+    const pill = page.getByTestId('today-pill')
+    if (await pill.isVisible()) await pill.getByRole('button').click()
     await expect(page.getByText('Still the same menu today?', { exact: true })).toBeVisible()
     await shot(page, 2, 5)
     await page.getByTestId('today-needs').getByRole('button', { name: 'Yes', exact: true }).click()

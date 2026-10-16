@@ -111,8 +111,8 @@ function recorder(mode: Mode) {
 
 async function ownerSends(page: Page, mode: Mode) {
   const evidence = recorder(mode)
-  await test.step('1 · My shop: the morning brief, a quiet Rescue tile and Asked nearby', async () => {
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await test.step('1 · Grow: the morning brief, a quiet Rescue tile and Asked nearby', async () => {
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
     const brief = page.getByRole('region', { name: 'Morning brief' })
     await expect(brief).toBeVisible()
     await expect(brief.getByRole('heading', { name: 'Prep today' })).toBeVisible()
@@ -238,7 +238,7 @@ async function ownerSeesHold(page: Page, mode: Mode) {
   await test.step('10 · the owner sees the hold, in the tile and in Messages', async () => {
     await page.reload()
     await page.getByRole('button', { name: 'Continue local preview' }).click()
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
     await expect(page.getByRole('button', { name: /^Rescue/ })).toContainText('Left: 5 of 6')
     await page.getByRole('button', { name: /^Rescue/ }).click()
     const sheet = page.getByRole('dialog', { name: 'Closing-time rescue' })
