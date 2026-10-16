@@ -2610,6 +2610,75 @@ export interface components {
             /** Digest */
             digest: string;
         };
+        /** AreaAnswer */
+        AreaAnswer: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "off" | "unavailable";
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /**
+             * Sources
+             * @default []
+             */
+            sources: components["schemas"]["AreaSource"][];
+            /**
+             * Places
+             * @default []
+             */
+            places: components["schemas"]["AreaPlace"][];
+            /** Widget Token */
+            widget_token?: string | null;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+            /**
+             * Cached
+             * @default false
+             */
+            cached: boolean;
+        };
+        /**
+         * AreaPlace
+         * @description A grounded Google place with coordinates, so the results map can pin it.
+         */
+        AreaPlace: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /** Distance M */
+            distance_m: number;
+            /** Open Now */
+            open_now?: boolean | null;
+            /** Rating */
+            rating?: number | null;
+            /** Google Maps Uri */
+            google_maps_uri?: string | null;
+        };
+        /**
+         * AreaSource
+         * @description A Google Maps place the answer used: shown with a link, as Google requires.
+         */
+        AreaSource: {
+            /** Title */
+            title: string;
+            /** Uri */
+            uri: string;
+            /** Place Id */
+            place_id?: string | null;
+        };
         /** AreaView */
         AreaView: {
             /** Id */
@@ -2658,6 +2727,7 @@ export interface components {
             personal?: components["schemas"]["Personal"] | null;
             anchor?: components["schemas"]["Anchor"] | null;
             command?: components["schemas"]["Command"] | null;
+            area?: components["schemas"]["AreaAnswer"] | null;
         };
         /**
          * AskSuggestions
@@ -3682,6 +3752,11 @@ export interface components {
              * @default false
              */
             deals: boolean;
+            /**
+             * Area
+             * @default false
+             */
+            area: boolean;
         };
         /** ItemRule */
         ItemRule: {
