@@ -487,6 +487,8 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
           flexDirection: { xs: 'row', md: 'column' },
           gap: { xs: 1, md: 1.5 },
           overflowX: { xs: 'auto', md: 'visible' },
+          // Holds the hidden "label:" spans (absolute) so they never widen the page.
+          position: 'relative',
           // The row scrolls sideways; its edge fades so it reads as "more this way".
           maskImage: {
             xs: 'linear-gradient(to right, #000 calc(100% - 28px), transparent)',
