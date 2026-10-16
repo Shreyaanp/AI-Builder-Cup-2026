@@ -406,8 +406,12 @@ def _propose_shop(
     custom_facts: list[FactInput] | None = None,
     weekly_hours: list[DayHours] | None = None,
     description: str = "",
+    closed_on: str | None = None,
+    reward_text: str | None = None,
+    stamps_needed: int | None = None,
 ) -> dict[str, Any]:
-    """Shared sealed-proposal logic for shop basics and customer facts."""
+    """Shared sealed-proposal logic for shop basics, customer facts, closed-today and the stamp
+    card (None leaves a field as saved; closed_on="" reopens)."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}
@@ -456,6 +460,13 @@ def _propose_shop(
     given.update({key: value for key, value in facts.items() if value is not None})
     if weekly_hours is not None:
         given["weekly_hours"] = weekly_hours
+    for key, value in (
+        ("closed_on", closed_on),
+        ("reward_text", reward_text),
+        ("stamps_needed", stamps_needed),
+    ):
+        if value is not None:
+            given[key] = value
     if custom_facts:
         # Merge by key: an answer replaces the earlier answer to the same question only.
         merged = {fact["key"]: fact for fact in given.get("custom_facts", [])}

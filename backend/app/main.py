@@ -245,6 +245,13 @@ def create_app(
             status_code=422,
         )
 
+    @app.get("/api/v1/latency")
+    async def latency() -> dict[str, object]:
+        """Time to first output per coach flow on this instance (p50/p95 of recent turns)."""
+        from .latency import stats
+
+        return {"flows": stats.summary(), "context_cache": settings.context_cache_enabled}
+
     @app.get("/api/v1/health")
     async def health() -> dict[str, object]:
         return {
