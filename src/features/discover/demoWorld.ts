@@ -9,6 +9,41 @@ const pending = new Map<string, Promise<void>>()
 const cell = (lat: number, lng: number) =>
   `${Math.round(lat * 50) / 50},${Math.round(lng * 50) / 50}`
 
+export function isIndianArea(lat: number, lng: number, place = ''): boolean {
+  const p = place.toLowerCase()
+  return (
+    (lat >= 6.5 && lat <= 37.5 && lng >= 68.0 && lng <= 97.5) ||
+    p.includes('india') ||
+    p.includes('bengaluru') ||
+    p.includes('bangalore') ||
+    p.includes('delhi') ||
+    p.includes('mumbai') ||
+    p.includes('pune') ||
+    p.includes('koramangala') ||
+    p.includes('indiranagar') ||
+    p.includes('chennai') ||
+    p.includes('kolkata') ||
+    p.includes('hyderabad')
+  )
+}
+
+export function isSingaporeArea(lat: number, lng: number, place = ''): boolean {
+  const p = place.toLowerCase()
+  return (
+    (lat >= 1.15 && lat <= 1.48 && lng >= 103.6 && lng <= 104.1) ||
+    p.includes('singapore') ||
+    p.includes('tiong bahru') ||
+    p.includes('bugis') ||
+    p.includes('katong')
+  )
+}
+
+export function areaCurrency(lat: number, lng: number, place = ''): string {
+  if (isIndianArea(lat, lng, place)) return 'INR'
+  if (isSingaporeArea(lat, lng, place)) return 'SGD'
+  return defaultCurrency()
+}
+
 export function ensureDemoWorld(lat: number, lng: number, place = ''): Promise<void> {
   const key = cell(lat, lng)
   const remembered = `chalkboard.demoWorld.${key}`
@@ -19,14 +54,18 @@ export function ensureDemoWorld(lat: number, lng: number, place = ''): Promise<v
   }
   let request = pending.get(key)
   if (!request) {
+    const currency = areaCurrency(lat, lng, place)
+    const timezone = isIndianArea(lat, lng, place)
+      ? 'Asia/Kolkata'
+      : Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
     request = fetch('/api/v1/demo/world', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         lat,
         lng,
-        currency: defaultCurrency(),
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        currency,
+        timezone,
         place: place.slice(0, 120),
       }),
     })
