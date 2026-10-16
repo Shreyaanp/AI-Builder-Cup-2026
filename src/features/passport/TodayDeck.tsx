@@ -309,7 +309,13 @@ function FindCard({ find, index, total }: { find: Find; index: number; total: nu
       : ICON[find.kind]
   const ended = find.kind === 'rescue' && (find.ends_at ?? 0) * 1000 <= now
   const href =
-    find.kind === 'festival' ? '/explore/passport#quests' : shop ? `/explore/s/${shop.id}` : '#'
+    find.kind === 'festival'
+      ? '/explore/passport#quests'
+      : find.kind === 'rescue'
+        ? '/explore/rescue'
+        : shop
+          ? `/explore/s/${shop.id}`
+          : '#'
   const action = { go: t.go, hold: t.hold, save: t.go, trail: t.trail }[find.action]
   const lead = index === 0
   const tilt = `${((index % 3) - 1) * 1.5}deg`

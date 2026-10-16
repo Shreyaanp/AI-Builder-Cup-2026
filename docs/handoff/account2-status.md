@@ -1,5 +1,42 @@
 # Account 2 status: passport + Today's 7 (`feat/passport`, merged as `merge/passport`)
 
+## Rescue UI (`feat/rescue-ui`, pull request into `main`)
+
+Branch from `a164b7e`, `origin/main` merged in at `b147f9f` (review pipeline). Reaches `main`
+only through the pull request (`docs/REVIEW.md`). `CoachScreen.tsx`, `AppShell.tsx` and
+`EditDialogs.tsx` are untouched.
+
+| Part                                                                                                                                                                                                                                                                                                        | Commit    |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| Read side uses the owners' real deals: Today's 7 and the passport read the rescue store (derived demo fallback gone); collecting at the counter needs the customer's own chat hold and counts its savings; demo shops answer a hold                                                                         | `b3156c6` |
+| Customer Rescue tab (`src/features/rescue/`): chalk map with pulsing pins (faster in the last 30 min), countdowns, "Hold one for me" through the signed-in shop chat (no payments), impact meter, holds collected by the counter QR                                                                         | `19f88c0` |
+| Owner, calm (`src/features/owner/`): Rescue tile + sheet (`RescueTile.tsx`: quiet "Leftovers?" when idle, 20/30/50 % send, end early), Morning brief card (`MorningBrief.tsx`, up to 4 slides, hide for today), Asked nearby radar tile (`RadarTile.tsx`, banded counts only after 5 people, demo labelled) | `19f88c0` |
+| S9 story (`tests/stories/s9-rescue.spec.ts`, `docs/stories/S9-*`): owner sends, customer holds in chat, collects at the counter; light + dark, axe on every screen                                                                                                                                          | `90207bd` |
+| A hold message skips the AI instant answer (it quoted the listed, not the rescue, price): `instant_answer` flag, contract regenerated                                                                                                                                                                       | `db78b5c` |
+| All rescue, brief and radar strings in 15 languages; struck-through price reads "Was ₹25" to screen readers                                                                                                                                                                                                 | `4c963ab` |
+
+**Checks (15 Oct, after merging `origin/main`):** backend 607 passed / 165 skipped, ruff and mypy
+clean; `tsc -b`, eslint (`src tests scripts`), Prettier and hook rules clean; S9 story 2 passed
+(light, dark).
+
+- **Full phone suite** (WEB_PORT=3446 API_PORT=3546, run alongside the QA suite): 202 passed,
+  3 skipped, 3 failed, all passing on rerun: S2 voice step and B3 composer (`phone-shell:94`)
+  timed out under the doubled load (B3 alone: 18.7 s of its 30 s); S8 step 3 had one
+  `color-contrast` hit on the stamp moment, which passed light and dark on rerun (caught
+  mid-animation). Watch S8/3 if it recurs: `StampMoment.tsx` changed for the leaf stamp.
+- **QA suite** (WEB_PORT=3447 API_PORT=3547, fresh `.cache/qa`): 120 passed, 2 failed, then
+  **122 passed**. `community.spec.ts:150` counted 4 customer tabs; it now expects 5 (Rescue) and
+  checks that Rescue is translated too, except Filipino, which keeps the loanword "Rescue" as its
+  passport stamp and quests do.
+
+**Not run:** desktop project of the main suite, live Gemini brief, real-phone GPS. Plain
+`npx eslint .` also lints the git-ignored local `docs/launch/source/dist` build (minified GSAP),
+which is not part of the repo. Test runs rewrite `docs/stories`/`docs/qa` screenshots (random
+shop numbers); I restored them, so the committed S9 shots are from `90207bd`/`db78b5c`.
+
+**Next:** review per `docs/REVIEW.md` (impact comment, light/dark phone + desktop shots), then
+`gh pr merge --squash --delete-branch`.
+
 ## New-shop onboarding as "voice mode" (`feat/new-shop-flow`, PR #3) — owner brief 16 Oct ~02:00
 
 Brief: `docs/briefs/task-VOICE-MODE-ONBOARDING.md`; design and behaviour in `docs/OWNER-NEW-SHOP.md`.

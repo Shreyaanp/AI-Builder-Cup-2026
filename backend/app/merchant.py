@@ -37,6 +37,13 @@ from .stock_alerts import (
     check_item,
 )
 from .threads import change_thread, contact_hash, new_thread
+from .vendor_profile import (
+    BusinessTypeProfile,
+    allowed_facts,
+    custom_keys,
+    migrate_profile,
+    profile_for,
+)
 
 Halal = Literal["yes", "no", "muslim_owned", "not_stated"]
 Delivery = Annotated[str, Field(min_length=1, max_length=40)]
@@ -126,6 +133,7 @@ class BusinessFields(BaseModel):
     busy_hours: str = Field(default="", max_length=80)
     # Type-specific facts from the question plan; owner-confirmed like every other field.
     custom_facts: list[CustomFact] = Field(default_factory=list, max_length=30)
+    profile: BusinessTypeProfile = Field(default_factory=BusinessTypeProfile)
 
     @field_validator("weekly_hours")
     @classmethod
@@ -149,6 +157,7 @@ class BusinessFields(BaseModel):
     @model_serializer(mode="wrap")
     def drop_unset_facts(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data: dict[str, Any] = handler(self)
+        data["profile"] = self.profile.model_dump(exclude_none=True)
         # Unset optional facts and an unset map pin are omitted, so older shops keep their shape.
         pin_defaults = {
             "lat": None,
@@ -174,6 +183,7 @@ class BusinessFields(BaseModel):
             and not (key == "stamps_needed" and value == 8)
             and not (key == "weekly_hours" and value == [])
             and not (key == "description" and value == "")
+            and not (key == "profile" and self.profile == BusinessTypeProfile())
         }
 
     @model_validator(mode="after")
@@ -186,15 +196,36 @@ class BusinessFields(BaseModel):
             raise ValueError("Use an IANA timezone.") from error
         return self
 
+    @model_validator(mode="after")
+    def relevant_facts(self) -> BusinessFields:
+        # Legacy generic records keep their confirmed data; typed profiles enforce relevance.
+        if self.profile.kind != "generic":
+            allowed = allowed_facts({"profile": self.profile.model_dump()})
+            for key in FACT_KEYS:
+                if getattr(self, key) not in (None, "", []) and key not in allowed:
+                    raise ValueError(f"{key} is not relevant to this business profile.")
+        return self
+
 
 def customer_facts(fields: dict[str, Any]) -> dict[str, Any]:
     """The facts a shop has stated, for customers (unset facts are simply absent)."""
-    facts = {key: fields[key] for key in FACT_KEYS if fields.get(key) not in (None, "", [])}
+    allowed = allowed_facts(fields)
+    facts = {
+        key: fields[key]
+        for key in FACT_KEYS
+        if fields.get(key) not in (None, "", []) and key in allowed
+    }
+    profile = profile_for(fields)
+    if profile.kind != "generic":
+        facts["profile"] = profile.model_dump(exclude_none=True)
     if fields.get("custom_facts"):
-        facts["custom"] = [
+        custom = [
             {"key": fact["key"], "label": fact["label"], "value": fact["value"]}
             for fact in fields["custom_facts"]
+            if profile.kind == "generic" or fact["key"] in custom_keys(profile)
         ]
+        if custom:
+            facts["custom"] = custom
     return facts
 
 
@@ -452,6 +483,17 @@ def validate_proposal(request: ProposalRequest) -> None:
         request.business.timezone = zone
 
 
+def preserve_profile(request: ProposalRequest, saved: dict[str, Any]) -> None:
+    """Older clients do not send profiles. Their ordinary edits must keep the approved type."""
+    if request.business and "profile" not in request.business.model_fields_set:
+        request.business = BusinessFields.model_validate(
+            {
+                **request.business.model_dump(),
+                "profile": profile_for(saved),
+            }
+        )
+
+
 def seal_proposal(request: ProposalRequest) -> tuple[dict[str, Any], str, str]:
     """Return the canonical snapshot, its JSON text and the digest the owner must approve."""
     payload = request.model_dump()
@@ -579,7 +621,7 @@ class MerchantStore:
             shared = db.execute("SELECT 1 FROM shares WHERE business_id=?", (row["id"],)).fetchone()
         return {
             "id": row["id"],
-            "fields": json.loads(row["fields"]),
+            "fields": migrate_profile(json.loads(row["fields"])),
             "revision": row["revision"],
             "last_confirmed": row["last_confirmed"],
             "coach_notes": json.loads(row["coach_notes"] or "[]"),
@@ -622,6 +664,7 @@ class MerchantStore:
             db.execute("BEGIN IMMEDIATE")
             if request.business_id:
                 row = self.owned(db, uid, request.business_id)
+                preserve_profile(request, json.loads(row["fields"]))
                 prior = db.execute(
                     "SELECT * FROM proposals WHERE id=? AND uid=?", (pid, uid)
                 ).fetchone()
@@ -675,6 +718,8 @@ class MerchantStore:
             elif data["kind"] != "business" or data["revision"] != 0:
                 raise HTTPException(404, "Business not found.")
             if data["kind"] == "business":
+                # Only the record is migrated; the exact approved snapshot stays immutable.
+                data["business"] = migrate_profile(data["business"])
                 if exists:
                     db.execute(
                         "UPDATE businesses SET fields=?,revision=revision+1 WHERE id=?",

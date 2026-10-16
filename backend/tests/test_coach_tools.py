@@ -28,7 +28,7 @@ from app.coordinator import (
     request_registration,
     ui_currency,
 )
-from app.merchant import BusinessFields, MerchantStore, ProductFields, ProposalRequest
+from app.merchant import BusinessFields, MerchantStore, NewShopDraft, ProductFields, ProposalRequest
 from app.streaming import public_events
 from scripts.coach_eval import Turn, no_internal_leaks, prepared_not_saved, sane_prices
 
@@ -60,6 +60,25 @@ def saved_shop(ctx: MerchantContext) -> MerchantContext:
     return ctx
 
 
+@pytest.fixture
+def multi_unit_shop(ctx: MerchantContext) -> MerchantContext:
+    proposal = ctx.store.propose(
+        "alice",
+        ProposalRequest(
+            kind="business",
+            business=BusinessFields(
+                name="Ah Kow Kopitiam", category="Cafe", location="Chinatown", hours="7–21"
+            ),
+            products=[
+                ProductFields(name="Kaya toast", price=250, unit="plate", stock=20),
+                ProductFields(name="Kaya toast", price=600, unit="box", stock=15),
+            ],
+        ),
+    )
+    ctx.business_id = ctx.store.commit("alice", proposal["id"], proposal["digest"])["business_id"]
+    return ctx
+
+
 def assert_sealed(proposal: dict[str, Any]) -> None:
     snapshot = json.dumps(proposal["snapshot"], sort_keys=True, ensure_ascii=False)
     assert proposal["digest"] == hashlib.sha256(snapshot.encode()).hexdigest()
@@ -79,6 +98,7 @@ def test_context_exposes_only_readable_shop_and_major_unit_products(saved_shop, 
             "hours": "7–21",
             "phone": "",
             "currency": "SGD",
+            "profile": {"version": 1, "kind": "generic", "subtype": ""},
         },
         "customer_page_shared": shared,
         "products": [
@@ -87,7 +107,6 @@ def test_context_exposes_only_readable_shop_and_major_unit_products(saved_shop, 
         "relevant_history": ctx.recalled,
         "remembered_notes": [],
         "customer_facts_to_ask": [
-            "halal",
             "payment_methods",
             "delivery",
             "vegetarian_options",
@@ -180,6 +199,99 @@ def test_sold_out_by_name_keeps_saved_price_and_unit(saved_shop):
     }
     assert result["changes"] == ["Chai: sold out"]
     assert propose_products([ProductInput(name="Bun")])["status"] == "invalid"
+
+
+def test_ambiguous_name_missing_unit_asks(multi_unit_shop):
+    # When an item exists in several units and the caller omits unit (defaults to "item"):
+    result = propose_products([ProductInput(name="Kaya toast", price=3.5)])
+    assert result["status"] == "invalid"
+    assert result["repairs_left"] == MAX_REPAIRS
+    assert len(result["errors"]) == 1
+    error = result["errors"][0]
+    assert error["field"] == "unit"
+    assert "plate" in error["problem"] and "box" in error["problem"]
+    assert "Kaya toast" in error["problem"]
+    assert multi_unit_shop.proposals == {}
+
+    # Repeated calls exhaust repairs and return ask_owner
+    propose_products([ProductInput(name="Kaya toast", price=3.5)])
+    final = propose_products([ProductInput(name="Kaya toast", price=3.5)])
+    assert final["status"] == "ask_owner"
+    assert "Ask the owner" in final["instruction"]
+
+
+def test_ambiguous_name_exact_unit_updates_the_right_one(multi_unit_shop):
+    # Updating plate price
+    result = propose_products([ProductInput(name="Kaya toast", price=3.0, unit="plate")])
+    assert result["status"] == "needs_review"
+    assert result["changes"] == ["Kaya toast: price 2.5 → 3 per plate"]
+    proposal = multi_unit_shop.proposals[result["proposal_id"]]
+    assert proposal["snapshot"]["products"][0]["unit"] == "plate"
+    assert proposal["snapshot"]["products"][0]["price"] == 300
+
+    # Updating box price
+    result_box = propose_products([ProductInput(name="Kaya toast", price=7.0, unit="box")])
+    assert result_box["status"] == "needs_review"
+    assert result_box["changes"] == ["Kaya toast: price 6 → 7 per box"]
+    proposal_box = multi_unit_shop.proposals[result_box["proposal_id"]]
+    assert proposal_box["snapshot"]["products"][0]["unit"] == "box"
+    assert proposal_box["snapshot"]["products"][0]["price"] == 700
+
+
+def test_ambiguous_name_unit_synonyms_resolve(multi_unit_shop):
+    # "plates" maps to "plate"
+    result = propose_products([ProductInput(name="kaya toast", price=2.8, unit="plates")])
+    assert result["status"] == "needs_review"
+    assert result["changes"] == ["Kaya toast: price 2.5 → 2.8 per plate"]
+
+    # "boxes" maps to "box"
+    result_box = propose_products([ProductInput(name="kaya toast", price=6.5, unit="boxes")])
+    assert result_box["status"] == "needs_review"
+    assert result_box["changes"] == ["Kaya toast: price 6 → 6.5 per box"]
+
+
+def test_ambiguous_shop_new_item_still_allowed(multi_unit_shop):
+    result = propose_products([ProductInput(name="Kopi", price=1.8, unit="cup")])
+    assert result["status"] == "needs_review"
+    assert result["changes"] == ["New item: Kopi, 1.8 per cup"]
+    proposal = multi_unit_shop.proposals[result["proposal_id"]]
+    assert proposal["snapshot"]["products"][0]["name"] == "Kopi"
+    assert proposal["snapshot"]["products"][0]["price"] == 180
+
+
+def test_sold_out_ambiguity_asks(multi_unit_shop):
+    # Ambiguous sold-out without unit asks which unit rather than saying "new item needs a price"
+    result = propose_products([ProductInput(name="Kaya toast", available=False)])
+    assert result["status"] == "invalid"
+    assert len(result["errors"]) == 1
+    error = result["errors"][0]
+    assert error["field"] == "unit"
+    assert "plate" in error["problem"] and "box" in error["problem"]
+    assert "a new item needs a price" not in error["problem"]
+
+    # Specifying unit marks that specific unit sold out
+    box_result = propose_products([ProductInput(name="Kaya toast", unit="box", available=False)])
+    assert box_result["status"] == "needs_review"
+    assert box_result["changes"] == ["Kaya toast: sold out"]
+    proposal = multi_unit_shop.proposals[box_result["proposal_id"]]
+    product = proposal["snapshot"]["products"][0]
+    assert product["unit"] == "box"
+    assert product["price"] == 600
+    assert product["available"] is False
+
+
+def test_new_shop_draft_path_ambiguity(ctx):
+    ctx.new_shop = True
+    ctx.new_shop_draft = NewShopDraft(
+        business=BusinessFields(name="Draft Shop", category="Cafe", location="Bedok"),
+        products=[
+            ProductFields(name="Kaya toast", price=250, unit="plate"),
+            ProductFields(name="Kaya toast", price=600, unit="box"),
+        ],
+    )
+    result = propose_products([ProductInput(name="Kaya toast", price=3.5)])
+    assert result["status"] == "invalid"
+    assert "plate" in result["errors"][0]["problem"] and "box" in result["errors"][0]["problem"]
 
 
 def test_zero_decimal_shop_uses_whole_yen(ctx):

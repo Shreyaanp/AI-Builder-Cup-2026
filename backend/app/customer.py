@@ -60,6 +60,8 @@ class ThreadMessage(MessageInput):
 
 class CustomerMessageInput(MessageInput):
     language: str = Field(default="en", pattern=r"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$")
+    # A rescue hold request is about the rescue price, not the listed one: no instant answer.
+    instant_answer: bool = True
 
 
 class CustomerThread(BaseModel):

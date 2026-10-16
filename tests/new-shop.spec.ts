@@ -31,7 +31,7 @@ async function audit(page: Page) {
 async function begin(page: Page) {
   await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
   await page.getByRole('button', { name: 'Let’s begin' }).click()
-  await expect(page.getByRole('log')).toContainText('What do you sell?')
+  await expect(page.getByRole('log')).toContainText('What is your business called?')
 }
 
 async function say(page: Page, text: string) {
@@ -53,10 +53,10 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0)
     await capture('1-hero')
     await page.getByRole('button', { name: 'Let’s begin' }).click()
-    await expect(page.getByRole('log')).toContainText('What do you sell?')
-    await say(page, 'I sell masala chai')
-    await expect(page.getByTestId('agent-action').last()).toContainText('Neighbourhood Masala Chai')
-    await expect(page.getByTestId('shop-so-far')).toContainText('Neighbourhood Masala Chai')
+    await expect(page.getByRole('log')).toContainText('What is your business called?')
+    await say(page, 'name: Market Chai; category: Tea stall')
+    await expect(page.getByTestId('agent-action').last()).toContainText('Market Chai')
+    await expect(page.getByTestId('shop-so-far')).toContainText('Market Chai')
     await expect(page.getByRole('log')).toContainText('Where is your shop?')
     await capture('2-chat')
     await page.getByRole('button', { name: 'Review my shop' }).click()
@@ -67,13 +67,11 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeFocused()
     await capture('4-ready')
     await page.getByRole('button', { name: 'Continue with my shop' }).click()
-    await expect(
-      page.getByRole('button', { name: 'Choose shop: Neighbourhood Masala Chai' }),
-    ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Choose shop: Market Chai' })).toBeVisible()
   })
 }
 
-test('a menu photo in the chat: the coach says what it read and suggests a name', async ({
+test('a menu photo in the chat: the coach says what it read and asks the actual name', async ({
   page,
 }) => {
   await enter(page)
@@ -97,8 +95,10 @@ test('a menu photo in the chat: the coach says what it read and suggests a name'
   await (await chooser).setFiles(await image(page))
   const actions = page.getByTestId('agent-action')
   await expect(actions.first()).toContainText('I read your menu: 1 item')
-  // The coach carries on by itself and proposes a name from the menu.
-  await expect(actions.last()).toContainText('Shop name: Chai Corner')
+  // The menu is not evidence of a name: the owner supplies it explicitly.
+  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await say(page, 'name: Chai Corner')
+  await expect(actions.last()).toContainText('Chai Corner')
   await page.getByRole('button', { name: 'Review my shop' }).click()
   const review = page.getByTestId('new-shop-review')
   await expect(review).toContainText('Chai Corner')
@@ -187,7 +187,7 @@ test('header plus opens a separate draft; cancel restores the current shop draft
   await page.getByRole('button', { name: /Choose shop/ }).click()
   await page.getByRole('menuitem', { name: 'New shop', exact: true }).click()
   await page.getByRole('button', { name: 'Let’s begin' }).click()
-  await expect(page.getByRole('log')).toContainText('What do you sell?')
+  await expect(page.getByRole('log')).toContainText('What is your business called?')
   await say(page, 'name: Second Bakery; category: Bakery')
   await expect(page.getByTestId('agent-action').last()).toContainText('Second Bakery')
   await page.getByRole('button', { name: 'Review my shop' }).click()

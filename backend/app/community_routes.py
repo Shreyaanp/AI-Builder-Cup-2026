@@ -236,6 +236,9 @@ def mentions(name: str, text: str) -> bool:
 
 
 def demo_reply_text(shop: dict[str, Any], message: str) -> str:
+    if message.startswith("[rescue "):
+        # The chat marker of "Hold one for me" (owner_routes.reserve_rescue).
+        return "Held for you! Show this chat at the counter when you pick it up."
     text = message.casefold()
     currency = shop.get("currency", "")
     products = shop.get("products", [])
@@ -264,24 +267,24 @@ async def shop_side_replies(
 ) -> None:
     """A labelled AI instant answer when the shop's facts answer it; demo shops also reply."""
     try:
-        answer = await request.app.state.customer_answers.answer(
-            shop, Question(question=body.text, language=body.language)
-        )
-        missing = FIXTURE_COPY.get(body.language, FIXTURE_COPY["en"])[0]
-        if answer.answer and answer.answer != missing:
-            text = answer.answer
-            if answer.price is not None:
-                currency = shop.get("currency", "")
-                text += f" {money(answer.price, currency)}"
-                text += f" / {answer.unit}" if answer.unit else ""
-            await act(request, bid, entry, "ai_answer", text[:500])
+        if body.instant_answer:
+            answer = await request.app.state.customer_answers.answer(
+                shop, Question(question=body.text, language=body.language)
+            )
+            missing = FIXTURE_COPY.get(body.language, FIXTURE_COPY["en"])[0]
+            if answer.answer and answer.answer != missing:
+                text = answer.answer
+                if answer.price is not None:
+                    currency = shop.get("currency", "")
+                    text += f" {money(answer.price, currency)}"
+                    text += f" / {answer.unit}" if answer.unit else ""
+                await act(request, bid, entry, "ai_answer", text[:500])
     except HTTPException:
         pass  # The owner still has the question; no instant answer is fine.
     if not DEMO_ID.fullmatch(bid):
         return
     delay = float(getattr(request.app.state, "demo_reply_delay", 2.5))
     app = request.app
-    reply = demo_reply_text(shop, body.text)
 
     async def later() -> None:
         await asyncio.sleep(delay)
@@ -292,6 +295,8 @@ async def shop_side_replies(
             # Reply once per customer turn: only when the customer still has the last word.
             humans = [m for m in record.messages if m.kind != "ai"]
             if humans and humans[-1].author == "customer":
+                # The customer's latest words: a rescue hold may have followed the message.
+                reply = demo_reply_text(shop, humans[-1].text)
                 await anyio.to_thread.run_sync(
                     app.state.merchant.thread_action,
                     None,

@@ -7,6 +7,8 @@ import { HAND_FONT } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { useCustomer } from '../customer/account'
 import { SignInSheet } from '../customer/SignIn'
+import { useRescueCopy } from '../rescue/copy'
+import { dropHold } from '../rescue/holds'
 import { Sticker } from './art'
 import { fill, requirementText, usePassportCopy } from './copy'
 import { keepReceipt, receipts, setPassport } from './store'
@@ -15,7 +17,7 @@ import type { Outcome, StampResult } from './store'
 type Phase =
   | { step: 'locating' }
   | { step: 'sending' }
-  | { step: 'result'; outcome: Outcome; result: StampResult }
+  | { step: 'result'; outcome: Outcome; result: StampResult; rescue: boolean }
   | { step: 'bad-key' }
   | { step: 'failed' }
 
@@ -33,18 +35,21 @@ function locate(): Promise<GeolocationPosition | null> {
 /**
  * The stamp moment: opened by a shop's QR (or a demo shop's on-screen QR). Checks the phone is
  * at the shop, stamps, then one celebration of at most 1.2 s that a tap skips. Under reduced
- * motion the timeline never runs and the final state shows at once.
+ * motion the timeline never runs and the final state shows at once. With `rescue` (this phone
+ * held one of the shop's rescues in chat), the same scan collects it: a leaf stamp and impact.
  */
 export function StampMoment({
   shop,
   qrKey,
   open,
   onClose,
+  rescue = null,
 }: {
   shop: { id: string; name: string; category?: string; demo?: boolean }
   qrKey: string
   open: boolean
   onClose: () => void
+  rescue?: string | null
 }) {
   const t = usePassportCopy()
   const account = useCustomer()
@@ -75,7 +80,21 @@ export function StampMoment({
       })
       const path = signedIn ? '/api/v1/customer/passport/stamps' : '/api/v1/public/passport/check'
       try {
-        const response = await account.raw(path, { method: 'POST', body })
+        let collected = false
+        let response: Response | null = null
+        if (signedIn && rescue) {
+          // A held rescue is collected by this scan; without a live hold it is an ordinary visit.
+          const body2 = JSON.stringify({ ...JSON.parse(body), rescue_id: rescue })
+          response = await account.raw('/api/v1/customer/passport/rescues', {
+            method: 'POST',
+            body: body2,
+          })
+          if (response.status === 409) {
+            dropHold(rescue)
+            response = null
+          } else collected = response.ok
+        }
+        response ??= await account.raw(path, { method: 'POST', body })
         if (!live) return
         if (response.status === 403) return setPhase({ step: 'bad-key' })
         if (!response.ok) throw new Error(String(response.status))
@@ -83,7 +102,9 @@ export function StampMoment({
         if (result.passport) setPassport(result.passport)
         if (result.receipt) keepReceipt(result.receipt)
         if (result.outcome.verdict === 'stamped') navigator.vibrate?.(30)
-        setPhase({ step: 'result', outcome: result.outcome, result })
+        const rescued = collected && result.outcome.verdict === 'stamped'
+        if (rescued && rescue) dropHold(rescue)
+        setPhase({ step: 'result', outcome: result.outcome, result, rescue: rescued })
       } catch {
         if (live) setPhase({ step: 'failed' })
       }
@@ -94,7 +115,7 @@ export function StampMoment({
     }
     // The account object changes identity on unread refreshes; the stamp must run once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, attempt, account.status, shop.id, qrKey, signedIn])
+  }, [open, attempt, account.status, shop.id, qrKey, signedIn, rescue])
 
   return (
     <Dialog
@@ -131,6 +152,7 @@ export function StampMoment({
             outcome={phase.outcome}
             result={phase.result}
             signedIn={signedIn}
+            rescue={phase.rescue}
           />
         ) : (
           <Problem phase={phase} />
@@ -227,13 +249,16 @@ function Celebration({
   outcome,
   result,
   signedIn,
+  rescue,
 }: {
   shop: { id: string; name: string; category?: string }
   outcome: Outcome
   result: StampResult
   signedIn: boolean
+  rescue: boolean
 }) {
   const t = usePassportCopy()
+  const r = useRescueCopy()
   const locale = useLocale()
   const theme = useTheme()
   const scope = useRef<HTMLDivElement>(null)
@@ -319,7 +344,7 @@ function Celebration({
               width: 10,
               height: 10,
               borderRadius: '50%',
-              bgcolor: theme.chalk.sunflower.main,
+              bgcolor: rescue ? theme.chalk.coral.main : theme.chalk.sunflower.main,
               opacity: 0,
             }}
           />
@@ -328,7 +353,7 @@ function Celebration({
           <Sticker
             id={shop.id}
             category={shop.category}
-            kind={outcome.first ? 'first' : 'visit'}
+            kind={rescue ? 'rescue' : outcome.first ? 'first' : 'visit'}
             size={128}
           />
         </Box>
@@ -339,7 +364,7 @@ function Celebration({
         className="stamp-line"
         sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: 40, lineHeight: 1.1, mt: 1 }}
       >
-        {outcome.first ? t.firstTry : t.stamped}
+        {rescue ? r.rescued : outcome.first ? t.firstTry : t.stamped}
       </Typography>
       <Typography className="stamp-line" variant="titleMedium" sx={{ mt: 1 }}>
         {shop.name}
@@ -353,6 +378,13 @@ function Celebration({
         {fill(outcome.demo ? t.plusDemo : t.plus, { n: number })}
       </Typography>
       <Stack id="stamp-moment-body" spacing={1} sx={{ mt: 2 }}>
+        {rescue && result.passport && (
+          <Typography className="stamp-line" variant="titleMedium">
+            {fill(r.rescuedBody, {
+              n: new Intl.NumberFormat(locale).format(result.passport.impact.meals),
+            })}
+          </Typography>
+        )}
         {levelUp && (
           <Typography className="stamp-line" variant="titleLarge" sx={{ fontWeight: 700 }}>
             {fill(t.levelUp, { level: t[outcome.level_after ?? 'newcomer'] })}

@@ -13,7 +13,8 @@ Legend: ☐ to do · ◐ in progress · ☑ done · 👤 owner action
 - ☑ #6 voice continuity, #7 customer polish, #8 CI flakes, #9 chart cards + TimesFM, #3 voice-mode onboarding
 - ◐ Codex integration: #13 business profiles → #12 unit fix → #4 rescue deals → #11 customer AI-first (CI fixes)
 - ☐ Review/merge: #14 story director docs, #15 connect your system, #16/#18 QA findings, #17 manual test script
-- ☐ Fix regression items: Tamil keyboard focus (onboarding), "Share customer page" switch
+  (#17 verified against main + green 08:35, awaiting merge), #19 supply chain, #20 trust, #21 in-chat
+- ☑ Regression items Tamil keyboard focus + "Share customer page" switch: 3/3 alone, machine load (no bug; PR #22 to close)
 - ☐ Green regression → release; verify runtime settings after each release (ship script gap)
 
 ## B. Features (cutoff Fri midnight; each behind a switch)
@@ -24,15 +25,15 @@ Owner app
   (yesterday sales, page views/questions, stamps, forecast), progress bar only while unfinished, day-one
   welcome, collapses to a pill while chatting (acct 3)
 - ◐ Tabs: Shop (refined), Grow (replaces Google), You (replaces Privacy); theme unchanged (acct 3)
-- ◐ In-chat camera, in-chat map + pin, Google Maps hand-off, phone-friendly manual form (acct 2, last task)
-- ◐ Supply chain: business rules (MOQ, lead time, price tiers, credit terms, approval limits, substitutions),
-  forecast → PO → ORDRSP → ASN → invoice, AI document translation (SAP IDoc ↔ JSON/chat) (acct 2, last task)
+- ☑ In-chat camera, in-chat map + pin, Google Maps hand-off, phone-friendly manual form → PR #21
+- ☑ Supply chain: business rules (MOQ, lead time, price tiers, credit terms, approval limits, substitutions),
+  forecast → PO → ORDRSP → ASN → invoice, AI document translation (SAP IDoc ↔ JSON/chat) → PR #19 (QA walk)
 - ◐ Connect your system (POS/Tally/Excel mapping) — PR #15 to review
 - ☐ Payments & rides deep links (UPI QR, Rapido/Uber/Porter), "talk to your coach" guide, new landing page (Codex)
 - ☐ Shop playbook + 2-3 onboarding questions + food sub-segments (tea stall: never veg/halal) (Codex)
 - ☐ Voice-everything: tool coverage audit + missing tools, app-guide tool, instant path (<100 ms),
   starter templates per type, Vertex context caching, latency report (Codex)
-- ◐ Trust: duplicate-owner face check that works + liveness + verified badge + Gemini fraud checks (acct 3)
+- ◐ Trust: duplicate-owner face check that works + liveness + verified badge + Gemini fraud checks → PR #20 (acct 4)
   Customer app
 - ◐ AI-first front door (PR #11) · ◐ search engine on Vertex embeddings + personalised picks (acct 3)
 - ☐ Gemini grounding with Google Maps (area questions) + interactive results map (pins ↔ cards) (acct 3)

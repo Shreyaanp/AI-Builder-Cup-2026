@@ -1563,7 +1563,8 @@ export interface paths {
         put?: never;
         /**
          * Collect Rescue
-         * @description Scanning the shop QR during the pickup window collects the rescue: leaf stamp.
+         * @description Scanning the shop QR during the pickup window collects what this customer held in chat:
+         *     leaf stamp, a rescued meal and the money saved.
          */
         post: operations["collect_rescue_api_v1_customer_passport_rescues_post"];
         delete?: never;
@@ -2370,6 +2371,38 @@ export interface components {
             busy_hours: string;
             /** Custom Facts */
             custom_facts?: components["schemas"]["CustomFact"][];
+            profile?: components["schemas"]["BusinessTypeProfile"];
+        };
+        /**
+         * BusinessTypeProfile
+         * @description Gemini proposes this from owner words/menu/photos; approval still belongs to the owner.
+         *
+         *     A single envelope keeps the ADK tool schema simple; only the matching typed block is valid.
+         *     Missing profiles are version 1 generic, without guessing anything about existing records.
+         */
+        BusinessTypeProfile: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /**
+             * Kind
+             * @default generic
+             * @enum {string}
+             */
+            kind: "generic" | "food" | "tailor" | "salon" | "retail" | "grocer" | "service";
+            /**
+             * Subtype
+             * @default
+             */
+            subtype: string;
+            food?: components["schemas"]["FoodAttributes"] | null;
+            tailor?: components["schemas"]["TailorAttributes"] | null;
+            salon?: components["schemas"]["SalonAttributes"] | null;
+            retail?: components["schemas"]["RetailAttributes"] | null;
+            service?: components["schemas"]["ServiceAttributes"] | null;
         };
         /** ChallengeRequest */
         ChallengeRequest: {
@@ -2440,6 +2473,11 @@ export interface components {
              * @default en
              */
             language: string;
+            /**
+             * Instant Answer
+             * @default true
+             */
+            instant_answer: boolean;
         };
         /** CustomerThread */
         CustomerThread: {
@@ -2676,6 +2714,24 @@ export interface components {
             open_now?: boolean | null;
             /** Photo Url */
             photo_url?: string | null;
+        };
+        /** FoodAttributes */
+        FoodAttributes: {
+            /** Cuisine */
+            cuisine?: string[];
+            /**
+             * Diet
+             * @default unknown
+             * @enum {string}
+             */
+            diet: "unknown" | "veg_only" | "vegan" | "non_veg" | "both";
+            /** Serves Meat */
+            serves_meat?: boolean | null;
+            /**
+             * Halal Relevant
+             * @default false
+             */
+            halal_relevant: boolean;
         };
         /** Forecast */
         Forecast: {
@@ -2951,6 +3007,11 @@ export interface components {
              * @default en
              */
             language: string;
+            /**
+             * Instant Answer
+             * @default true
+             */
+            instant_answer: boolean;
         };
         /** Observation */
         Observation: {
@@ -3702,6 +3763,16 @@ export interface components {
              */
             estimate: boolean;
         };
+        /** RetailAttributes */
+        RetailAttributes: {
+            /** Categories */
+            categories?: string[];
+            /**
+             * Delivery
+             * @default
+             */
+            delivery: string;
+        };
         /** SaleLine */
         SaleLine: {
             /** Item */
@@ -3710,6 +3781,18 @@ export interface components {
             quantity: number;
             /** Amount */
             amount: number;
+        };
+        /** SalonAttributes */
+        SalonAttributes: {
+            /** Services */
+            services?: string[];
+            /**
+             * Booking
+             * @default
+             */
+            booking: string;
+            /** Walk Ins */
+            walk_ins?: boolean | null;
         };
         /** Search */
         Search: {
@@ -3722,6 +3805,18 @@ export interface components {
         Seen: {
             /** Message Id */
             message_id: string;
+        };
+        /** ServiceAttributes */
+        ServiceAttributes: {
+            /** Services */
+            services?: string[];
+            /**
+             * Service Area
+             * @default
+             */
+            service_area: string;
+            /** Appointment */
+            appointment?: boolean | null;
         };
         /** ShareRequest */
         ShareRequest: {
@@ -4178,6 +4273,21 @@ export interface components {
              * @default Estimate assumes saved stock is opening prepared quantity; confirm what remains. Missing sales or closing hours prevents an estimate.
              */
             note: string;
+        };
+        /** TailorAttributes */
+        TailorAttributes: {
+            /** Services */
+            services?: string[];
+            /**
+             * Turnaround
+             * @default
+             */
+            turnaround: string;
+            /**
+             * Measurements
+             * @default
+             */
+            measurements: string;
         };
         /** ThreadMessage */
         ThreadMessage: {
