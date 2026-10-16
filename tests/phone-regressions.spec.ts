@@ -221,9 +221,9 @@ test('PHONE-2: every shop Add entry opens the full-screen new-shop flow (no dial
   await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
+  // Without a shop, Grow (and its Get on Google card) starts with "Create your shop".
   await page.getByRole('button', { name: 'Grow', exact: true }).tap()
-  await page.getByRole('button', { name: /^Get on Google/ }).tap()
-  await page.getByRole('main').getByRole('button', { name: 'Add shop details', exact: true }).tap()
+  await page.getByRole('button', { name: 'Create your shop', exact: true }).tap()
   await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
@@ -260,11 +260,13 @@ test('PHONE-2: every shop Add entry opens the full-screen new-shop flow (no dial
   await picker
 })
 
-test('PHONE-2-google-empty: Google Add opens the new-shop flow directly', async ({ page }) => {
+test('PHONE-2-google-empty: Grow without a shop opens the new-shop flow directly', async ({
+  page,
+}) => {
   await enter(page)
+  // Without a shop, Grow (and its Get on Google card) starts with "Create your shop".
   await page.getByRole('button', { name: 'Grow', exact: true }).tap()
-  await page.getByRole('button', { name: /^Get on Google/ }).tap()
-  await page.getByRole('main').getByRole('button', { name: 'Add shop details', exact: true }).tap()
+  await page.getByRole('button', { name: 'Create your shop', exact: true }).tap()
   await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })

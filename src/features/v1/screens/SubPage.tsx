@@ -23,7 +23,8 @@ export function SubPage({
   const ws = useWorkspace()
   useBackClose(true, () => ws.go(parent))
   return (
-    <Box sx={{ maxWidth: 760, mx: 'auto' }}>
+    // Entry motion (a step sliding in) must not widen a phone's page.
+    <Box sx={{ maxWidth: 760, mx: 'auto', overflowX: 'clip', overflowClipMargin: '8px' }}>
       <Button
         startIcon={<ArrowLeft size={18} />}
         onClick={() => ws.go(parent)}

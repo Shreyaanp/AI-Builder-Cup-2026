@@ -242,16 +242,22 @@ function YourPage({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
       </Typography>
       <Stack direction="row" sx={{ mt: 3, gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         {live ? (
-          <Button variant="contained" startIcon={<Share2 size={18} />} onClick={share}>
+          <Button
+            variant="contained"
+            disableFocusRipple
+            startIcon={<Share2 size={18} />}
+            onClick={share}
+          >
             {tabs.sharePage}
           </Button>
         ) : (
-          <Button variant="contained" onClick={() => onSheet('customer')}>
+          <Button variant="contained" disableFocusRipple onClick={() => onSheet('customer')}>
             {tabs.turnOnPage}
           </Button>
         )}
         <Button
           color="inherit"
+          disableFocusRipple
           aria-haspopup="dialog"
           onClick={() => onSheet('customer')}
           sx={{ minHeight: 48 }}
