@@ -1,4 +1,4 @@
-import { createShop } from './stories/support.js'
+import { createShop, detailsStep } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -188,6 +188,7 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   // Typed changes: Back asks first. Keep editing keeps them; Discard closes the form.
   await page.getByRole('button', { name: 'Shop details: Katong Kopi' }).first().tap()
   await sheet.getByRole('button', { name: 'Edit details' }).tap()
+  await detailsStep(page, 'Hours')
   await form.getByLabel('Hours note (optional)').fill('7am–3pm')
   await page.goBack()
   await expect(prompt).toBeVisible()
@@ -203,6 +204,7 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   // An open review is unsaved: Back asks, Discard closes it without saving.
   await page.getByRole('button', { name: 'Shop details: Katong Kopi' }).first().tap()
   await sheet.getByRole('button', { name: 'Edit details' }).tap()
+  await detailsStep(page, 'Hours')
   await form.getByLabel('Hours note (optional)').fill('7am–3pm')
   await form.getByRole('button', { name: 'Review', exact: true }).tap()
   const review = page.getByRole('dialog', { name: 'Check before saving' })
