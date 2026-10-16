@@ -248,7 +248,9 @@ for (const mode of ['light', 'dark'] as const)
 
 test('speed: first answer text appears quickly with the offline fixture', async ({ page }) => {
   test.setTimeout(60_000)
-  await page.route('**/api/v1/discover/ask', (route) => route.fulfill({ json: answer('Fast Kopi') }))
+  await page.route('**/api/v1/discover/ask', (route) =>
+    route.fulfill({ json: answer('Fast Kopi') }),
+  )
   await page.goto('/explore/')
 
   const firstWordRuns: number[] = []
@@ -286,4 +288,3 @@ test('speed: first answer text appears quickly with the offline fixture', async 
   for (const ms of firstWordRuns) expect(ms).toBeLessThan(700)
   for (const ms of completeRuns) expect(ms).toBeLessThan(2500)
 })
-

@@ -539,9 +539,7 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
     )
 
 
-async def ai_intent_stream(
-    request: Request, body: AskRequest
-) -> AsyncIterator[str | Intent]:
+async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[str | Intent]:
     settings = request.app.state.v1_settings
     if settings.coach_mode != "gemini":
         return
@@ -588,7 +586,7 @@ async def ai_intent_stream(
                     full_text += chunk.text
                     match = re.search(r'"summary"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)', full_text)
                     if match:
-                        summary_text = match.group(1).replace(r'\"', '"').replace(r'\n', ' ')
+                        summary_text = match.group(1).replace(r"\"", '"').replace(r"\n", " ")
                         words = summary_text.split()
                         if len(words) > last_word_count:
                             for w in words[last_word_count:]:
@@ -841,6 +839,7 @@ async def ask(body: AskRequest, request: Request) -> Any:
     )
 
     if is_stream:
+
         async def stream_generator() -> AsyncIterator[ServerSentEvent]:
             # Step 1: Commands need no model
             if repository is not None:

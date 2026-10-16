@@ -6,12 +6,12 @@ All metrics below are measured across 5 runs using Playwright with the same meth
 
 ## Summary: Before vs After
 
-| Metric | Target | Before (Live Audit, Broadband) | After (fix/customer-answer-speed) | Improvement |
-| :--- | :--- | :--- | :--- | :--- |
-| **First visible answer text / cards** | **< 700 ms** | 11,485 ms (p50) / 12,187 ms (p95) | **132 ms** (p50) / **308 ms** (p95) | **98.8% faster** |
-| **Complete answer text / cards** | **< 2,500 ms** | 11,485 ms (p50) / 12,187 ms (p95) | **138 ms** (p50) / **312 ms** (p95) | **98.8% faster** |
-| **Route-chunk prefetching** (`PublicShop`) | **< 100 ms** | 346 ms (p50) / 771 ms (p95) | **Prefetched on mount/hover/focus** | **Instant chunk availability** |
-| **Skeleton & Live Status UI** | Live region | Bare pulse / freeze for 11.5s | Live status line (`aria-live="polite"`) + shimmer skeleton cards | **No bare pulse; WCAG 2.1 AA compliant** |
+| Metric                                     | Target         | Before (Live Audit, Broadband)    | After (fix/customer-answer-speed)                                | Improvement                              |
+| :----------------------------------------- | :------------- | :-------------------------------- | :--------------------------------------------------------------- | :--------------------------------------- |
+| **First visible answer text / cards**      | **< 700 ms**   | 11,485 ms (p50) / 12,187 ms (p95) | **132 ms** (p50) / **308 ms** (p95)                              | **98.8% faster**                         |
+| **Complete answer text / cards**           | **< 2,500 ms** | 11,485 ms (p50) / 12,187 ms (p95) | **138 ms** (p50) / **312 ms** (p95)                              | **98.8% faster**                         |
+| **Route-chunk prefetching** (`PublicShop`) | **< 100 ms**   | 346 ms (p50) / 771 ms (p95)       | **Prefetched on mount/hover/focus**                              | **Instant chunk availability**           |
+| **Skeleton & Live Status UI**              | Live region    | Bare pulse / freeze for 11.5s     | Live status line (`aria-live="polite"`) + shimmer skeleton cards | **No bare pulse; WCAG 2.1 AA compliant** |
 
 ---
 

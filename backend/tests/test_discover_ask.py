@@ -186,4 +186,3 @@ def test_ask_stream_emits_instant_and_complete_events(
         assert "event: instant" in text
         assert "event: complete" in text
         assert bid in text
-

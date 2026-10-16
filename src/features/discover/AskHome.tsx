@@ -259,30 +259,30 @@ export default function AskHome({
         // Parallel demo world fetch: never blocks query dispatch
         void ensureDemoWorld(turn.place.lat, turn.place.lng, turn.place.label)
 
-      const handleAnswer = (answer: AskAnswer) => {
-        if (answer.command) {
-          const { kind, shop_id } = answer.command
-          const path =
-            kind === 'my_stamps'
-              ? '/explore/passport'
-              : (kind === 'follow' || kind === 'ask_owner') && shop_id
-                ? `/explore/s/${encodeURIComponent(shop_id)}`
-                : null
-          if (path) {
-            goTo(path)
-            return
+        const handleAnswer = (answer: AskAnswer) => {
+          if (answer.command) {
+            const { kind, shop_id } = answer.command
+            const path =
+              kind === 'my_stamps'
+                ? '/explore/passport'
+                : (kind === 'follow' || kind === 'ask_owner') && shop_id
+                  ? `/explore/s/${encodeURIComponent(shop_id)}`
+                  : null
+            if (path) {
+              goTo(path)
+              return
+            }
+          }
+          if (answer.personal) {
+            void account
+              .api<{ profile?: unknown }>('/api/v1/customer/me')
+              .then((me) => {
+                if (me.profile)
+                  account.setProfile(me.profile as Parameters<typeof account.setProfile>[0])
+              })
+              .catch(() => undefined)
           }
         }
-        if (answer.personal) {
-          void account
-            .api<{ profile?: unknown }>('/api/v1/customer/me')
-            .then((me) => {
-              if (me.profile)
-                account.setProfile(me.profile as Parameters<typeof account.setProfile>[0])
-            })
-            .catch(() => undefined)
-        }
-      }
 
         const response = await account.raw('/api/v1/discover/ask', {
           method: 'POST',

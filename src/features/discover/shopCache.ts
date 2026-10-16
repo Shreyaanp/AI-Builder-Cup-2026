@@ -7,7 +7,7 @@ const cellKey = (lat: number, lng: number) =>
   `${Math.round(lat * 50) / 50},${Math.round(lng * 50) / 50}`
 
 const STOP = new Set(
-  'a an the i im i\'m me my we want need looking for find some any near nearby around here please today now open cheap cheapest budget good best place places shop shops store under below less than with without and or to of in at on get buy something'.split(
+  "a an the i im i'm me my we want need looking for find some any near nearby around here please today now open cheap cheapest budget good best place places shop shops store under below less than with without and or to of in at on get buy something".split(
     ' ',
   ),
 )
@@ -101,11 +101,12 @@ export function localRankShops(q: string, lat: number, lng: number): AskPick[] {
     if (!nameHit && !matchedItems.length) continue
 
     const distance = shop.distance_m ?? 500
-    const score = matchedItems.length * 3 + (nameHit ? 2 : 0) + (shop.open_now ? 1 : 0) - distance / 1500
+    const score =
+      matchedItems.length * 3 + (nameHit ? 2 : 0) + (shop.open_now ? 1 : 0) - distance / 1500
 
     results.push({
       ...shop,
-      matched: matchedItems.length ? matchedItems : shop.items?.slice(0, 3) ?? [],
+      matched: matchedItems.length ? matchedItems : (shop.items?.slice(0, 3) ?? []),
       score,
     })
   }
