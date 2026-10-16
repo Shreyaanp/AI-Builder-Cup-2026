@@ -37,6 +37,7 @@ from .demo_world import router as demo_world_router
 from .discover import MapsService
 from .discover import router as discover_router
 from .discover_ask import router as discover_ask_router
+from .document_ai import DocumentAIReader
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .forecast import ForecastService
 from .forecast_routes import router as forecast_router
@@ -156,6 +157,7 @@ def create_app(
         app.state.world_generator = WorldGenerator(settings)
         app.state.column_mapper = ColumnMapper(settings)
         app.state.forecaster = ForecastService(settings)
+        app.state.document_ai = DocumentAIReader(settings)
         app.state.weather = WeatherService(settings)
         app.state.brief_writer = BriefWriter(settings)
         coordinator.forecaster = app.state.forecaster
