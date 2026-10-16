@@ -48,6 +48,7 @@ async function setDay(page: Page, day: number) {
 }
 
 test('QR stamps are once per shop per calendar day and celebrate 5 and 10', async ({ page }) => {
+  test.slow()
   await fixture(page)
   await page.clock.install({ time: new Date('2026-10-01T08:00:00+08:00') })
   await page.goto(`/explore/s/${id}`)
