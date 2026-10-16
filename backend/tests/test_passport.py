@@ -27,7 +27,7 @@ from app.passport import (
     valid_qr_key,
     week_of,
 )
-from app.rescue_feed import RescueDeal, demo_rescue, parse_deal
+from app.rescue import Deal, RescueItem
 from app.settings import Settings
 from app.shop_time import shop_timezone
 from scripts.seed_demo_shops import seed
@@ -256,30 +256,6 @@ def test_area_keys_and_names() -> None:
     assert area_name({"location": "Near you (generated demo address)"}) == ""
 
 
-def test_demo_rescue_and_lenient_deal_parsing() -> None:
-    place = {**shop("demo-a", demo=True), "hours": "07:00–19:00"}
-    found = [demo_rescue({**place, "id": f"demo-{i}"}, at(0, 18, 0)) for i in range(12)]
-    deals = [d for d in found if d]
-    assert deals, "about half of demo food shops post a rescue"
-    deal = deals[0]
-    assert deal.demo and deal.price <= deal.was_price * 0.7 + 1
-    assert deal.pickup_end == at(0, 19)
-    assert demo_rescue({**place, "category": "Tailor"}, at(0, 18)) is None
-    parsed = parse_deal(
-        {
-            "id": "r1",
-            "business_id": "b1",
-            "items": [{"name": "Kaya bun", "price": 150, "was_price": 250}],
-            "portions_left": 3,
-            "ends_at": "2026-10-14T11:45:00Z",
-            "currency": "SGD",
-        }
-    )
-    assert isinstance(parsed, RescueDeal)
-    assert parsed.shop_id == "b1" and parsed.price == 150 and parsed.was_price == 250
-    assert parse_deal({"id": "x"}) is None
-
-
 # --- Routes ---
 
 
@@ -480,22 +456,33 @@ def test_rescue_collect_with_qr_in_window(client: TestClient, monkeypatch) -> No
     now = time.time()
 
     async def fake_find(request, place, rescue_id, when):
-        return RescueDeal(
+        item = {"name": "Kaya bun", "qty": 3, "qty_left": 0, "price": 150, "was": 250}
+        return Deal(
             id=rescue_id,
             shop_id=place["id"],
-            item="Kaya bun",
-            portions=3,
-            price=150,
-            was_price=250,
+            items=[RescueItem(**item, unit="piece")],
             currency="SGD",
-            pickup_start=now - 600,
-            pickup_end=now + 600,
+            starts=now - 600,
+            ends=now + 600,
+            pickup_note="",
+            status="live",
             demo=True,
+            countdown_seconds=600,
         )
 
+    holds: dict[str, int] = {}
+
+    async def fake_holds(request, uid, business_id, rescue_id):
+        return holds
+
     monkeypatch.setattr(routes, "find_rescue", fake_find)
+    monkeypatch.setattr(routes, "rescue_holds", fake_holds)
     sign_in(client)
     body = {"shop_id": DEMO, "key": demo_key(client), "rescue_id": "r1", **at_shop(client)}
+    # Only what this customer held in chat is collected.
+    refused = client.post("/api/v1/customer/passport/rescues", json=body)
+    assert refused.status_code == 409 and refused.json()["detail"] == "NO_HOLD"
+    holds["Kaya bun"] = 1
     done = client.post("/api/v1/customer/passport/rescues", json=body).json()
     assert done["outcome"]["verdict"] == "stamped" and done["outcome"]["points"] == 40
     assert done["passport"]["impact"]["meals"] == 1

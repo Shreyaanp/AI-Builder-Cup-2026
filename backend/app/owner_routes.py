@@ -5,15 +5,14 @@ from typing import Annotated, Any
 
 import anyio
 from fastapi import APIRouter, HTTPException, Query, Request
-from pydantic import BaseModel
 
 from . import brief, demand, rescue
 from .community_routes import act, customer, owned
 from .customer_routes import shared
-from .discover import distance
 from .limits import client_ip, enforce_limits
 from .merchant import Approval
 from .merchant_routes import consented_owner, owner, store
+from .rescue_feed import PublicRescue, nearby
 
 router = APIRouter(prefix="/api/v1", tags=["owner features"])
 
@@ -72,15 +71,6 @@ async def end_rescue(business_id: str, rescue_id: str, request: Request) -> resc
     return await anyio.to_thread.run_sync(rescue.end, store(request), uid, business_id, rescue_id)
 
 
-class PublicRescue(BaseModel):
-    shop_id: str
-    shop_name: str
-    lat: float
-    lng: float
-    distance_m: float
-    deal: rescue.Deal
-
-
 @router.get("/public/rescue", response_model=list[PublicRescue])
 async def public_rescue(
     request: Request,
@@ -92,31 +82,7 @@ async def public_rescue(
     service = store(request)
 
     def load() -> list[PublicRescue]:
-        found = []
-        now = time.time()
-        for shop in service.shared_shops():
-            if shop.get("lat") is None or shop.get("lng") is None:
-                continue
-            d = distance(lat, lng, shop["lat"], shop["lng"])
-            if d > radius:
-                continue
-            for deal in rescue.deals(service, shop["id"], now):
-                if (
-                    deal.status == "live"
-                    and deal.starts <= now
-                    and any(p.qty_left for p in deal.items)
-                ):
-                    found.append(
-                        PublicRescue(
-                            shop_id=shop["id"],
-                            shop_name=shop["name"],
-                            lat=shop["lat"],
-                            lng=shop["lng"],
-                            distance_m=d,
-                            deal=deal,
-                        )
-                    )
-        return sorted(found, key=lambda r: (r.distance_m, r.deal.ends))[:50]
+        return nearby(service, service.shared_shops(), lat, lng, radius, time.time())[:50]
 
     return await anyio.to_thread.run_sync(load)
 
