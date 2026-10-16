@@ -423,6 +423,7 @@ export const ta: Copy = {
     gallery: 'கடை கேலரி புகைப்படங்கள்',
     community: 'கடையின் பொது நகல்கள்',
     memory: 'உதவியாளர் நினைவகம்',
+    analytics: 'கடை பகுப்பாய்வு',
     conversations: 'உரையாடல்கள்',
   } as Record<string, string>,
 }

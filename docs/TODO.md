@@ -41,7 +41,7 @@ Owner app
 - ◐ Gamification: scratch cards, endowed stamps, streak freeze, sets, co-op street goal, perks (acct 3)
   Google services
 - ☐ Document AI for receipts/invoices (Gemini vision stays for menus/photos) (Codex)
-- ☐ BigQuery analytics tables → in-app owner analytics; Looker Studio impact dashboard (Codex + 👤 2-min setup)
+- ◐ BigQuery analytics tables → in-app owner analytics; Looker Studio impact dashboard (feat/google-services; 👤 resume scheduler + Looker setup, docs/handoff/google-services.md)
 - ✗ Dropped: Routes API, Vertex Agent Engine, Imagen
 
 ## C. Quality (Fri night → Sat)

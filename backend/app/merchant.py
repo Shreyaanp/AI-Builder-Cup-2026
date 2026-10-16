@@ -349,6 +349,10 @@ class MerchantRepository(Protocol):
     def save_sales(self, uid: str, bid: str, iid: str, digest: str) -> dict[str, Any]: ...
     def confirm_menu(self, uid: str, bid: str) -> dict[str, Any]: ...
     def recap_signals(self, uid: str, bid: str) -> dict[str, Any]: ...
+    def analytics_shops(self, limit: int) -> list[tuple[str, str]]:
+        """(owner uid, business id) for every shop: the nightly analytics export only."""
+        ...
+
     def set_notes(self, uid: str, bid: str, notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Replace the coach's private notes for a shop (owner-only, never public)."""
         ...
@@ -1198,6 +1202,17 @@ class MerchantStore:
             self.owned(db, uid, bid)
             db.execute("UPDATE businesses SET gallery=? WHERE id=?", (json.dumps(photos), bid))
             return photos
+
+    def analytics_shops(self, limit: int) -> list[tuple[str, str]]:
+        with self.connect() as db:
+            return [
+                (r[0], r[1])
+                for r in db.execute(
+                    "SELECT uid, business_id FROM memberships WHERE role='owner' "
+                    "ORDER BY business_id LIMIT ?",
+                    (limit,),
+                )
+            ]
 
     def recap_signals(self, uid: str, bid: str) -> dict[str, Any]:
         with self.connect() as db:

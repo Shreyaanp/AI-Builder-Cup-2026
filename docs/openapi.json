@@ -5245,6 +5245,88 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/analytics": {
+      "get": {
+        "summary": "Shop Analytics",
+        "operationId": "shop_analytics_api_v1_businesses__business_id__analytics_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Analytics"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/analytics/export": {
+      "post": {
+        "summary": "Run Export",
+        "description": "Nightly: yesterday (UTC) and the day before, so late sales entries are picked up.",
+        "operationId": "run_export_api_v1_internal_analytics_export_post",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 2,
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Run Export Api V1 Internal Analytics Export Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/orders": {
       "get": {
         "summary": "List Orders",
@@ -7256,6 +7338,64 @@
   },
   "components": {
     "schemas": {
+      "Analytics": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "bigquery",
+              "live"
+            ],
+            "title": "Source"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/Day"
+            },
+            "type": "array",
+            "title": "Days"
+          },
+          "yesterday": {
+            "$ref": "#/components/schemas/Day"
+          },
+          "week": {
+            "$ref": "#/components/schemas/Totals"
+          },
+          "last_week": {
+            "$ref": "#/components/schemas/Totals"
+          },
+          "forecast_error": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Error"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "currency",
+          "days",
+          "yesterday",
+          "week",
+          "last_week",
+          "demo"
+        ],
+        "title": "Analytics"
+      },
       "Anchor": {
         "properties": {
           "name": {
@@ -8785,6 +8925,109 @@
           "id"
         ],
         "title": "CustomerThread"
+      },
+      "Day": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "sales": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items"
+          },
+          "questions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questions"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          },
+          "stamps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stamps"
+          },
+          "returning": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returning"
+          },
+          "forecast": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast"
+          },
+          "actual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date"
+        ],
+        "title": "Day",
+        "description": "One shop day. ``None`` means \"no record\", never zero."
       },
       "DayClose": {
         "properties": {
@@ -14292,6 +14535,67 @@
           "available"
         ],
         "title": "TopItem"
+      },
+      "Totals": {
+        "properties": {
+          "sales": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items"
+          },
+          "questions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questions"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          },
+          "stamps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stamps"
+          }
+        },
+        "type": "object",
+        "title": "Totals"
       },
       "Translation": {
         "properties": {
