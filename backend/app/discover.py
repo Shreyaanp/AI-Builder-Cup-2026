@@ -343,8 +343,8 @@ class MapsService:
             nearest = min(AREAS, key=lambda area: distance(lat, lng, *AREAS[area]))
             label = (
                 f"Near {nearest}"
-                if distance(lat, lng, *AREAS[nearest]) <= 5000
-                else "Your current location"
+                if distance(lat, lng, *AREAS[nearest]) <= 50000
+                else "Nearby"
             )
             pin: dict[str, Any] = {
                 "lat": lat,
@@ -525,10 +525,24 @@ class PlaceMatch(BaseModel):
 
 
 @router.get("/discover/place", response_model=PlaceMatch)
-async def find_place(request: Request, q: str = Query(min_length=2, max_length=180)) -> PlaceMatch:
-    """A typed city or area anywhere in the world, as the centre for discovery."""
+async def find_place(
+    request: Request,
+    q: str | None = Query(default=None, max_length=180),
+    lat: float | None = Query(default=None, ge=-90, le=90, allow_inf_nan=False),
+    lng: float | None = Query(default=None, ge=-180, le=180, allow_inf_nan=False),
+) -> PlaceMatch:
+    """A typed city or area anywhere in the world, or coordinates reverse-geocoded to an area."""
     await enforce_limits(request, [("discover:place", client_ip(request))], anonymous=True)
     maps: MapsService = request.app.state.maps
+    if lat is not None and lng is not None:
+        pin = await maps.reverse(lat, lng)
+        raw_label = str(pin.get("pin_label") or "")
+        label = re.sub(r"^Near\s+", "", raw_label, flags=re.I).strip()
+        if not label or label.lower() in ("your current location", "you"):
+            label = "Nearby"
+        return PlaceMatch(lat=lat, lng=lng, label=label)
+    if not q or len(q.strip()) < 2:
+        raise HTTPException(422, "PIN_NOT_FOUND")
     pin = await maps.geocode(q.strip())
     return PlaceMatch(lat=pin["lat"], lng=pin["lng"], label=pin["pin_label"] or q.strip())
 
