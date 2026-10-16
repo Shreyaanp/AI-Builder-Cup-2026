@@ -190,6 +190,11 @@ async function walk(customer: Page, qr: string, name: string, mode: Mode) {
   })
   await test.step('3 · scratch the foil: the prize, decided on the server', async () => {
     const moment = customer.getByRole('dialog')
+    const foil = customer.getByTestId('scratch-foil')
+    expect(await foil.evaluate((el) => getComputedStyle(el).touchAction)).toBe('none')
+    const container = customer.getByTestId('scratch-card-foil-container')
+    expect(await container.evaluate((el) => getComputedStyle(el).touchAction)).toBe('none')
+    expect(await container.evaluate((el) => getComputedStyle(el).overscrollBehavior)).toBe('none')
     await scratch(customer)
     const reveal = moment.getByRole('button', { name: /^Scratch card from/ })
     // A short rub may not clear enough foil; the Reveal button finishes it (keyboard path).
