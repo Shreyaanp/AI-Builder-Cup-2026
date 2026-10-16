@@ -1,7 +1,9 @@
 import { Box, Button, Skeleton, Stack, Typography, useTheme } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
 import { Store } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useCopy } from '../strings'
+import { useTabsCopy } from '../tabsCopy'
 import { useNewShopCopy } from '../newShopCopy'
 import { LoadError } from '../LoadError'
 import { useWorkspace } from '../workspaceContext'
@@ -9,7 +11,19 @@ import { ShopOverview } from '../ShopTiles'
 import { shape } from '../../../design/theme'
 
 export function ShopScreen() {
-  const t = useCopy()
+  const tabs = useTabsCopy()
+  const ws = useWorkspace()
+  return (
+    <ShopGate>
+      <Box component="section" aria-label={tabs.navShop} sx={{ maxWidth: 760, mx: 'auto', pt: 2 }}>
+        <ShopHome key={ws.activeId} />
+      </Box>
+    </ShopGate>
+  )
+}
+
+/** Shop and Grow need a shop: loading, load error and "add your shop" come first. */
+export function ShopGate({ children }: { children: ReactNode }) {
   const ws = useWorkspace()
   if (ws.loading)
     return (
@@ -25,23 +39,19 @@ export function ShopScreen() {
       </Box>
     )
   if (!ws.active) return <EmptyShop />
-  return (
-    <Box component="section" aria-label={t.navShop} sx={{ maxWidth: 760, mx: 'auto', pt: 2 }}>
-      <ShopHome key={ws.active.id} />
-    </Box>
-  )
+  return children
 }
 
 /**
  * Glanceable tiles; the detail lives in bottom sheets, not a long page. The top bar already
- * names the shop, so the tiles start at the top; a pending check shows in the Readiness tile.
+ * names the shop, so the customer page card starts at the top.
  */
 function ShopHome() {
-  const t = useCopy()
+  const tabs = useTabsCopy()
   return (
     <>
       <Typography component="h1" sx={visuallyHidden}>
-        {t.navShop}
+        {tabs.navShop}
       </Typography>
       <ShopOverview />
     </>
