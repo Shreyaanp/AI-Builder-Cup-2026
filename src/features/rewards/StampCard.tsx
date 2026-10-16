@@ -226,7 +226,11 @@ export function StampCard({
       <Typography variant="labelLarge" component="p" sx={{ mb: 1 }}>
         {fill(g.welcomeStamps, { n: number(WELCOME) })}
       </Typography>
-      <Typography variant="titleMedium" sx={{ overflowWrap: 'anywhere', fontWeight: 700 }}>
+      <Typography
+        variant="titleMedium"
+        component="p"
+        sx={{ overflowWrap: 'anywhere', fontWeight: 700 }}
+      >
         {reward
           ? full
             ? reward
