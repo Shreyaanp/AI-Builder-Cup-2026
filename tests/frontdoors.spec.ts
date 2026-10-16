@@ -308,9 +308,7 @@ test('B35 desktop keeps its hero columns, bento and pinned story', async ({ page
   await page.screenshot({ path: 'docs/bugs/B35-desktop.png' })
 })
 
-test('GAP 5 · landing headline does not overflow at 360px in all 15 locales', async ({
-  page,
-}) => {
+test('GAP 5 · landing headline does not overflow at 360px in all 15 locales', async ({ page }) => {
   test.setTimeout(120_000)
   await page.setViewportSize({ width: 360, height: 800 })
   const locales = [
@@ -349,4 +347,3 @@ test('GAP 5 · landing headline does not overflow at 360px in all 15 locales', a
     ).toBeLessThanOrEqual(h1Scroll.client + 1)
   }
 })
-
