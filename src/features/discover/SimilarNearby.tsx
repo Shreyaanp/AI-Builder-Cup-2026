@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Box, Button, Skeleton, Typography, useTheme } from '@mui/material'
 import type { components } from '../../api/generated'
+import { scrollArea } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { customerNavigate } from '../frontdoors/navigation'
 import { PlaceImage } from '../frontdoors/PlaceImage'
@@ -61,7 +62,7 @@ export function SimilarNearby({ shop, items }: { shop: string; items: string[] }
       <Box
         role="group"
         aria-label={copy.similarTitle}
-        sx={{ display: 'flex', gap: 2, mt: 2, overflowX: 'auto', pb: 1, scrollbarWidth: 'none' }}
+        sx={{ display: 'flex', gap: 2, mt: 2, overflowX: 'auto', pb: 1, ...scrollArea }}
       >
         {choices.map((choice) => (
           <Button

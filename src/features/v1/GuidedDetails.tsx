@@ -18,7 +18,7 @@ import {
   useTheme,
 } from '@mui/material'
 import { ArrowLeft, ArrowRight, Check, Plus, Trash2, X } from 'lucide-react'
-import { fieldFade, HAND_FONT, shape } from '../../design/theme'
+import { fieldFade, HAND_FONT, scrollArea, shape } from '../../design/theme'
 import { useRewardCopy } from '../rewards/strings'
 import { HoursEditor } from '../shop/Hours'
 import { useShopCopy } from '../shop/strings'
@@ -631,7 +631,7 @@ export function GuidedDetails({
           py: 2,
           mx: { xs: -4, sm: 0 },
           px: { xs: 4, sm: 0 },
-          scrollbarWidth: 'none',
+          ...scrollArea,
         }}
       >
         {steps.map((name, at) => (

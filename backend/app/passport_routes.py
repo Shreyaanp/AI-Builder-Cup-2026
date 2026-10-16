@@ -428,11 +428,16 @@ async def perk_views(
     for bid, shop in shops.items():
         progress = state.shops[bid]
         needed = int(shop.get("stamps_needed") or 8)
+        stamps_enabled = bool(
+            shop.get("stamps_enabled")
+            if "stamps_enabled" in shop
+            else shop.get("reward_text")
+        )
         for perk in await shop_perks(request, bid, shop):
             trigger = perk["trigger"]
             unlocked = (
                 (trigger == "regular" and regular and len(progress.days) >= 2)
-                or (trigger == "full_card" and progress.card >= needed)
+                or (trigger == "full_card" and stamps_enabled and progress.card >= needed)
                 or (trigger == "quest_finale" and bid in state.finale_shops)
                 or (trigger == "rescue_hero" and progress.rescues >= 3)
                 or (trigger == "third_visit" and len(progress.days) >= 3)
@@ -631,9 +636,14 @@ def next_reward(
     """The closest named reward: a shop card, then a collection set, else the next level."""
     options: list[tuple[int, int, NextReward]] = []
     for bid, shop in shops.items():
+        stamps_enabled = bool(
+            shop.get("stamps_enabled")
+            if "stamps_enabled" in shop
+            else shop.get("reward_text")
+        )
         reward = str(shop.get("reward_text") or "")
         progress = state.shops[bid]
-        if not reward or not progress.card:
+        if not stamps_enabled or not reward or not progress.card:
             continue
         left = max(0, int(shop.get("stamps_needed") or 8) - progress.card)
         card = NextReward(
@@ -686,7 +696,13 @@ async def build_view(
             rescues=p.rescues,
             last_day=(p.days or [""])[-1],
             needed=int((data.get(bid) or {}).get("stamps_needed") or 8),
-            reward=str((data.get(bid) or {}).get("reward_text") or "")[:120],
+            reward=(
+                str((data.get(bid) or {}).get("reward_text") or "")[:120]
+                if (data.get(bid) or {}).get(
+                    "stamps_enabled", bool((data.get(bid) or {}).get("reward_text"))
+                )
+                else ""
+            ),
         )
         for bid, p in sorted(state.shops.items(), key=lambda kv: kv[1].days[-1:], reverse=True)
     ]

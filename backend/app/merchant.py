@@ -501,6 +501,7 @@ def public_projection(
         "currency": fields.get("currency") or "SGD",
         **({"reward_text": fields["reward_text"]} if fields.get("reward_text") else {}),
         "stamps_needed": fields.get("stamps_needed", 8),
+        "stamps_enabled": bool(fields.get("reward_text") and str(fields["reward_text"]).strip()),
         # Only facts the owner confirmed; customer Q&A grounds on these too.
         "facts": customer_facts(fields),
         "products": [

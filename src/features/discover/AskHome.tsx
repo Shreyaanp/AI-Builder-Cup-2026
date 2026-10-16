@@ -23,7 +23,7 @@ import {
 import { useLocale } from '../../state/hooks'
 import type { Locale } from '../../i18n/locales'
 import { chalkWrite, dealIn } from '../../design/chalkMotion'
-import { HAND_FONT } from '../../design/theme'
+import { HAND_FONT, scrollArea } from '../../design/theme'
 import { customerNavigate, goTo } from '../frontdoors/navigation'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { useCustomer } from '../customer/account'
@@ -1173,7 +1173,7 @@ function AssistantTurn({
               scrollSnapType: 'x mandatory',
               scrollPaddingInline: '16px',
               pb: 2,
-              scrollbarWidth: 'none',
+              ...scrollArea,
               '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: 2 },
             }}
           >
