@@ -275,7 +275,8 @@ test.describe('Chat Markdown Phone Specs', () => {
           ...baseAnswer,
           intent: {
             ...baseAnswer.intent,
-            summary: 'Here are **recommendations** for you:\n\n* Fresh Filter Coffee\n* Hot Masala Chai',
+            summary:
+              'Here are **recommendations** for you:\n\n* Fresh Filter Coffee\n* Hot Masala Chai',
           },
         })}\n\n`,
       ]
