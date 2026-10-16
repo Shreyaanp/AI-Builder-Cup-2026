@@ -349,7 +349,14 @@ export function RulesEditor({ row, onSaved }: { row: Relationship; onSaved: () =
             <Typography component="legend" variant="labelLarge" sx={{ px: 1 }}>
               {rule.item} · {rule.unit}
             </Typography>
-            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+            {/* Wraps on a phone so labels in every language stay whole. */}
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))',
+              }}
+            >
               <TextField
                 size="small"
                 label={s.moq}
