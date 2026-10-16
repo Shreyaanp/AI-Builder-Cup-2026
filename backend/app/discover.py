@@ -418,6 +418,30 @@ class MapsService:
             )
         )
 
+    async def place(self, place_id: str) -> dict[str, Any] | None:
+        """One place by id (a grounded answer names places without coordinates). Cached."""
+
+        async def lookup() -> dict[str, Any] | None:
+            if self.demo:
+                return None
+            try:
+                response = await self.client.get(
+                    "https://places.googleapis.com/v1/places/" + place_id,
+                    headers={
+                        "X-Goog-Api-Key": self.key,
+                        "X-Goog-FieldMask": PLACES_MASK.replace("places.", ""),
+                    },
+                )
+                response.raise_for_status()
+                return dict(response.json())
+            except (httpx.HTTPError, ValueError):
+                log.warning("place_details_unavailable")
+                return None
+
+        if not re.fullmatch(r"[A-Za-z0-9_-]{8,256}", place_id):
+            return None
+        return await self.cached(("place", place_id), lookup)
+
 
 async def prepare_pin(
     body: ProposalRequest, repository: MerchantRepository, uid: str, maps: MapsService
