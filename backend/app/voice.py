@@ -11,10 +11,13 @@ from google.adk.live.live_request_queue import LiveRequestQueue
 from google.genai import types
 from pydantic import ValidationError
 
+from .agent import ui_language
 from .auth import Principal
 from .contracts import NewShopVoiceContext, StreamEvent, VoiceControl
 from .coordinator import current
 from .latency import FirstOutput
+from .reply_language import ReplyLanguage, reply_language
+from .settings import Settings
 from .streaming import CoachRuntime, public_events
 
 log = structlog.get_logger()
@@ -54,6 +57,28 @@ def refresh_new_shop_draft(raw: str) -> bool:
     return True
 
 
+def live_run_config(settings: Settings, language: ReplyLanguage, new_shop: bool) -> RunConfig:
+    """The Live session's setup. The owner's chosen language is pinned here (speech and
+    transcription) and in the instruction (agent.turn_instruction): left to detect it from the
+    audio, the model drifted, e.g. Hindi answered in Bhojpuri."""
+    code = language.code if language.live else None
+    return RunConfig(
+        response_modalities=[types.Modality.AUDIO],
+        max_llm_calls=NEW_SHOP_LLM_CALLS if new_shop else VOICE_LLM_CALLS,
+        input_audio_transcription=types.AudioTranscriptionConfig(
+            language_codes=[code] if code else None
+        ),
+        output_audio_transcription=types.AudioTranscriptionConfig(),
+        speech_config=types.SpeechConfig(
+            language_code=code,
+            voice_config=types.VoiceConfig(
+                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=settings.voice_name)
+            ),
+        ),
+        save_live_blob=False,
+    )
+
+
 async def receive_frame(websocket: WebSocket) -> MutableMapping[str, Any]:
     try:
         return await asyncio.wait_for(websocket.receive(), timeout=VOICE_IDLE_SECONDS)
@@ -62,7 +87,11 @@ async def receive_frame(websocket: WebSocket) -> MutableMapping[str, Any]:
 
 
 async def offline_voice(
-    websocket: WebSocket, runtime: CoachRuntime, principal: Principal, sid: str
+    websocket: WebSocket,
+    runtime: CoachRuntime,
+    principal: Principal,
+    sid: str,
+    language: ReplyLanguage,
 ) -> None:
     """Exercise the same socket contract without recording or interpreting audio."""
     total_audio = 0
@@ -104,12 +133,16 @@ async def offline_voice(
             text_turns += 1
             if text_turns > max_text_turns or not command.text.strip():
                 raise ValueError("Text turn limit exceeded")
-            async for event in runtime.text_events(principal, sid, command.text, "en"):
+            async for event in runtime.text_events(principal, sid, command.text, language.locale):
                 await websocket.send_json(event.payload())
 
 
 async def gemini_voice(
-    websocket: WebSocket, runtime: CoachRuntime, principal: Principal, sid: str
+    websocket: WebSocket,
+    runtime: CoachRuntime,
+    principal: Principal,
+    sid: str,
+    language: ReplyLanguage,
 ) -> None:
     queue = LiveRequestQueue()
     total_audio = 0
@@ -162,20 +195,7 @@ async def gemini_voice(
             user_id=principal.uid,
             session_id=sid,
             live_request_queue=queue,
-            run_config=RunConfig(
-                response_modalities=[types.Modality.AUDIO],
-                max_llm_calls=NEW_SHOP_LLM_CALLS if new_shop else VOICE_LLM_CALLS,
-                input_audio_transcription=types.AudioTranscriptionConfig(),
-                output_audio_transcription=types.AudioTranscriptionConfig(),
-                speech_config=types.SpeechConfig(
-                    voice_config=types.VoiceConfig(
-                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                            voice_name=runtime.settings.voice_name
-                        )
-                    )
-                ),
-                save_live_blob=False,
-            ),
+            run_config=live_run_config(runtime.settings, language, new_shop),
         )
         # Time from the owner's last transcribed words to the first audio of the reply.
         heard = FirstOutput("voice_first_audio")
@@ -224,8 +244,16 @@ async def gemini_voice(
 
 
 async def serve_voice(
-    websocket: WebSocket, runtime: CoachRuntime, principal: Principal, sid: str
+    websocket: WebSocket,
+    runtime: CoachRuntime,
+    principal: Principal,
+    sid: str,
+    lang: str | None = None,
 ) -> None:
+    language = reply_language(lang)
+    # The session's tasks inherit the owner's language for the coach instruction.
+    ui_language.set(language.locale)
+
     async def heartbeat() -> None:
         while True:
             await asyncio.sleep(VOICE_PING_SECONDS)
@@ -234,9 +262,9 @@ async def serve_voice(
     tasks = [
         asyncio.create_task(heartbeat(), name=f"voice-ping:{sid}"),
         asyncio.create_task(
-            offline_voice(websocket, runtime, principal, sid)
+            offline_voice(websocket, runtime, principal, sid, language)
             if runtime.settings.coach_mode == "offline"
-            else gemini_voice(websocket, runtime, principal, sid),
+            else gemini_voice(websocket, runtime, principal, sid, language),
             name=f"voice-session:{sid}",
         ),
     ]
