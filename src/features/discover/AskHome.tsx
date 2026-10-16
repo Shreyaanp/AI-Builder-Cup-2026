@@ -251,10 +251,13 @@ export default function AskHome({
               sort: 'best',
               near: '',
               deals: false,
+              area: false,
             },
             mode: 'keywords',
             groups: [{ id: 'best', places: localPicks.slice(0, 8) }],
             anchor: null,
+            // Ranked on this device, not by embeddings; the server's engine answer replaces it.
+            engine: 'fixture',
           }
           update(turn.id, { status: 'done', answer: instantAnswer, streaming: true })
         }

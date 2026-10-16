@@ -84,8 +84,9 @@ export function ReviewQueue({ queue, onChange }: { queue: Review[]; onChange: ()
               sx={{
                 p: 2.5,
                 borderRadius: `${shape.md}px`,
-                bgcolor: roles.surfaceContainer,
-                opacity: item.status === 'open' ? 1 : 0.8,
+                // Decided rows say so in their chip; dimming them failed text contrast.
+                bgcolor:
+                  item.status === 'open' ? roles.surfaceContainer : roles.surfaceContainerLowest,
               }}
             >
               <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap', mb: 1 }}>
