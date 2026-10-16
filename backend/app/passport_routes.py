@@ -62,7 +62,7 @@ from .passport import (
     valid_qr_key,
     week_of,
 )
-from .rescue_feed import find_rescue
+from .rescue_feed import find_rescue, held
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/api/v1")
@@ -664,28 +664,43 @@ async def claim(business_id: str, request: Request) -> PassportView:
 
 @router.post("/customer/passport/rescues", response_model=StampResult)
 async def collect_rescue(body: RescueStampInput, request: Request) -> StampResult:
-    """Scanning the shop QR during the pickup window collects the rescue: leaf stamp."""
+    """Scanning the shop QR during the pickup window collects what this customer held in chat:
+    leaf stamp, a rescued meal and the money saved."""
     principal = await customer(request)
     await enforce_limits(request, [("passport", principal.uid)], anonymous=True)
     shop, visit = await verified_visit(request, body, principal.uid)
     now = time.time()
     deal = await find_rescue(request, shop, body.rescue_id, now)
-    if deal is None or not deal.pickup_start - 15 * 60 <= now <= deal.pickup_end + 15 * 60:
+    if deal is None or not deal.starts - 15 * 60 <= now <= deal.ends + 15 * 60:
         raise HTTPException(409, "RESCUE_NOT_ACTIVE")
+    holds = await rescue_holds(request, principal.uid, body.shop_id, deal.id)
+    if not holds:
+        raise HTTPException(409, "NO_HOLD")
     probe = apply_visit(PassportState(), visit)
     if probe.verdict != "stamped" or visit.own_shop:
         return StampResult(outcome=probe)
+    saved = sum(max(0, p.was - p.price) * holds.get(p.name, 0) for p in deal.items)
     state, outcome = await anyio.to_thread.run_sync(
         passports(request).edit,
         principal.uid,
-        lambda s: apply_rescue(
-            s, body.shop_id, shop, deal.id, now, max(0, deal.was_price - deal.price)
-        ),
+        lambda s: apply_rescue(s, body.shop_id, shop, deal.id, now, saved),
     )
     await post_board(request, principal, state)
     return StampResult(
         outcome=outcome,
         passport=await build_view(request, state, signed_in=True, lat=body.lat, lng=body.lng),
+    )
+
+
+async def rescue_holds(
+    request: Request, uid: str, business_id: str, rescue_id: str
+) -> dict[str, int]:
+    """What this customer's chat with the shop holds in the deal ("Hold one for me")."""
+    entry = await anyio.to_thread.run_sync(community(request).thread_for_shop, uid, business_id)
+    if entry is None:
+        return {}
+    return await anyio.to_thread.run_sync(
+        held, store(request), business_id, rescue_id, entry["iid"]
     )
 
 

@@ -1526,7 +1526,8 @@ export interface paths {
         put?: never;
         /**
          * Collect Rescue
-         * @description Scanning the shop QR during the pickup window collects the rescue: leaf stamp.
+         * @description Scanning the shop QR during the pickup window collects what this customer held in chat:
+         *     leaf stamp, a rescued meal and the money saved.
          */
         post: operations["collect_rescue_api_v1_customer_passport_rescues_post"];
         delete?: never;
@@ -2371,6 +2372,11 @@ export interface components {
              * @default en
              */
             language: string;
+            /**
+             * Instant Answer
+             * @default true
+             */
+            instant_answer: boolean;
         };
         /** CustomerThread */
         CustomerThread: {
@@ -2883,6 +2889,11 @@ export interface components {
              * @default en
              */
             language: string;
+            /**
+             * Instant Answer
+             * @default true
+             */
+            instant_answer: boolean;
         };
         /** Observation */
         Observation: {

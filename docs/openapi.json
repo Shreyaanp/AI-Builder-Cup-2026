@@ -4340,7 +4340,7 @@
     "/api/v1/customer/passport/rescues": {
       "post": {
         "summary": "Collect Rescue",
-        "description": "Scanning the shop QR during the pickup window collects the rescue: leaf stamp.",
+        "description": "Scanning the shop QR during the pickup window collects what this customer held in chat:\nleaf stamp, a rescued meal and the money saved.",
         "operationId": "collect_rescue_api_v1_customer_passport_rescues_post",
         "requestBody": {
           "content": {
@@ -6744,6 +6744,11 @@
             "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$",
             "title": "Language",
             "default": "en"
+          },
+          "instant_answer": {
+            "type": "boolean",
+            "title": "Instant Answer",
+            "default": true
           }
         },
         "additionalProperties": false,
@@ -8010,6 +8015,11 @@
             "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$",
             "title": "Language",
             "default": "en"
+          },
+          "instant_answer": {
+            "type": "boolean",
+            "title": "Instant Answer",
+            "default": true
           }
         },
         "additionalProperties": false,

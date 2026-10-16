@@ -21,6 +21,10 @@ import { useCustomer } from './account'
 import { clockTime, useAccountCopy } from './copy'
 import type { AccountCopy } from './copy'
 import { SignInButton } from './SignIn'
+import { fill } from '../passport/copy'
+import { useRescueCopy } from '../rescue/copy'
+import type { RescueStrings } from '../rescue/copy'
+import { rescueMarker } from '../rescue/marker'
 import { chatPath, reduceMotion } from './paths'
 import './customer.css'
 
@@ -56,7 +60,13 @@ export function ShopAvatar({
   )
 }
 
-function preview(message: Message | undefined, t: AccountCopy) {
+/** A rescue hold's chat marker, in the reader's words; any other message as written. */
+function shown(text: string, r: RescueStrings) {
+  const hold = rescueMarker(text)
+  return hold ? fill(r.holdRequest, { n: hold.qty, item: hold.item }) : text
+}
+
+function preview(message: Message | undefined, t: AccountCopy, r: RescueStrings) {
   if (!message) return ''
   const prefix =
     message.author === 'customer'
@@ -66,7 +76,7 @@ function preview(message: Message | undefined, t: AccountCopy) {
         : message.kind === 'demo'
           ? `${t.demoReply}: `
           : ''
-  return prefix + message.text
+  return prefix + shown(message.text, r)
 }
 
 /** The Chats tab: one row per shop, newest first, like a messaging app. */
@@ -75,6 +85,7 @@ export function ChatList() {
   const locale = useLocale()
   const account = useCustomer()
   const t = useAccountCopy()
+  const r = useRescueCopy()
   const [chats, setChats] = useState<ChatSummary[] | null>(null)
   const [failed, setFailed] = useState(false)
   const signedIn = account.status === 'signed-in'
@@ -253,7 +264,7 @@ export function ChatList() {
                           fontWeight: chat.unread ? 600 : 400,
                         }}
                       >
-                        {preview(last, t)}
+                        {preview(last, t, r)}
                       </Typography>
                       {chat.unread > 0 && (
                         <Box
@@ -721,6 +732,7 @@ function Bubble({
 }) {
   const roles = useTheme().material
   const t = useAccountCopy()
+  const r = useRescueCopy()
   const mine = message.author === 'customer'
   const ai = message.kind === 'ai'
   const demo = message.kind === 'demo'
@@ -770,7 +782,7 @@ function Bubble({
           component="span"
           sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}
         >
-          {message.text}
+          {shown(message.text, r)}
         </Typography>
       </Box>
       <Stack

@@ -3,6 +3,9 @@ import { Alert, Box, Button, Stack, TextField, Typography, useTheme } from '@mui
 import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
 import { chatBubbleStyle } from '../coach/bubbleStyle'
+import { fill, useOwnerCopy } from '../owner/copy'
+import { useRescueCopy } from '../rescue/copy'
+import { rescueMarker } from '../rescue/marker'
 
 import type { ConversationCopy, Thread, Translation } from './conversationCopy'
 
@@ -128,6 +131,15 @@ function MessageBubble({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(false)
   const mine = message.author === viewer
+  const owner = useOwnerCopy()
+  const customer = useRescueCopy()
+  const hold = rescueMarker(message.text)
+  const text = hold
+    ? fill(viewer === 'owner' ? owner.holdRequest : customer.holdRequest, {
+        n: hold.qty,
+        item: hold.item,
+      })
+    : message.text
   // A changed viewer language requires a fresh, explicit translation request.
   const [translatedLocale, setTranslatedLocale] = useState(locale)
   const visible = show && translatedLocale === locale && translation
@@ -140,7 +152,7 @@ function MessageBubble({
           {mine ? t.you : message.author === 'owner' ? t.shop : t.customer}
         </Typography>
         <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-          {visible ? translation.text : message.text}
+          {visible ? translation.text : text}
         </Typography>
         <Typography variant="bodySmall" color="text.secondary">
           {new Intl.DateTimeFormat(dateLocale, { dateStyle: 'short', timeStyle: 'short' }).format(
