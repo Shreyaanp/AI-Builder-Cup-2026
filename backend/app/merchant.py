@@ -99,7 +99,8 @@ class BusinessFields(BaseModel):
     place_id: str | None = Field(default=None, max_length=300)
     pin_label: str | None = Field(default=None, max_length=300)
     pin_demo: bool = False
-    pin_source: Literal["device"] | None = None
+    # "device": measured by the phone; "pin": placed by the owner on the map.
+    pin_source: Literal["device", "pin"] | None = None
     pin_accuracy_m: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     description: str = Field(default="", max_length=500)
     # A clearly labelled sample shop (seed_demo_shops.py). Set only by the seed script, never by
@@ -267,6 +268,8 @@ class OwnerLocation(BaseModel):
     lat: float = Field(ge=-90, le=90, allow_inf_nan=False)
     lng: float = Field(ge=-180, le=180, allow_inf_nan=False)
     accuracy_m: float = Field(ge=0, allow_inf_nan=False)
+    # "pin": the owner moved the map pin onto the shop; the phone's accuracy no longer applies.
+    source: Literal["device", "pin"] = "device"
 
 
 class NewShopDraft(BaseModel):

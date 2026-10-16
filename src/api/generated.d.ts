@@ -1217,6 +1217,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/places/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reverse Pin
+         * @description The readable address under the owner's map pin while they place it (nothing is saved).
+         */
+        get: operations["reverse_pin_api_v1_places_reverse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/discover": {
         parameters: {
             query?: never;
@@ -2163,7 +2183,7 @@ export interface components {
              */
             pin_demo: boolean;
             /** Pin Source */
-            pin_source?: "device" | null;
+            pin_source?: ("device" | "pin") | null;
             /** Pin Accuracy M */
             pin_accuracy_m?: number | null;
             /**
@@ -2972,6 +2992,12 @@ export interface components {
             lng: number;
             /** Accuracy M */
             accuracy_m: number;
+            /**
+             * Source
+             * @default device
+             * @enum {string}
+             */
+            source: "device" | "pin";
         };
         /** PassportView */
         PassportView: {
@@ -3139,6 +3165,13 @@ export interface components {
              * @default []
              */
             reasons: string[];
+        };
+        /** PinAddress */
+        PinAddress: {
+            /** Label */
+            label: string;
+            /** Approximate */
+            approximate: boolean;
         };
         /** PlaceMatch */
         PlaceMatch: {
@@ -6823,6 +6856,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlaceMatch"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reverse_pin_api_v1_places_reverse_get: {
+        parameters: {
+            query: {
+                lat: number;
+                lng: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PinAddress"];
                 };
             };
             /** @description Validation Error */

@@ -438,8 +438,8 @@ async def prepare_pin(
             {
                 **body.business.model_dump(),
                 **pin,
-                "pin_source": "device",
-                "pin_accuracy_m": point.accuracy_m,
+                "pin_source": point.source,
+                "pin_accuracy_m": point.accuracy_m if point.source == "device" else None,
                 # Keep the measured point even when the readable address is approximate.
                 "lat": point.lat,
                 "lng": point.lng,
@@ -522,6 +522,26 @@ async def find_place(request: Request, q: str = Query(min_length=2, max_length=1
     maps: MapsService = request.app.state.maps
     pin = await maps.geocode(q.strip())
     return PlaceMatch(lat=pin["lat"], lng=pin["lng"], label=pin["pin_label"] or q.strip())
+
+
+class PinAddress(BaseModel):
+    label: str
+    # No street address was found (offline maps, or open country): the label is only an area.
+    approximate: bool
+
+
+@router.get("/places/reverse", response_model=PinAddress)
+async def reverse_pin(
+    request: Request,
+    lat: float = Query(ge=-90, le=90, allow_inf_nan=False),
+    lng: float = Query(ge=-180, le=180, allow_inf_nan=False),
+) -> PinAddress:
+    """The readable address under the owner's map pin while they place it (nothing is saved)."""
+    uid = str((await request.app.state.services.identity.require(request)).uid)
+    await enforce_limits(request, [("reverse", uid)])
+    maps: MapsService = request.app.state.maps
+    pin = await maps.reverse(lat, lng)
+    return PinAddress(label=str(pin["pin_label"]), approximate=not pin.get("place_id"))
 
 
 @router.get("/discover", response_model=DiscoveryResponse)

@@ -3460,6 +3460,59 @@
         }
       }
     },
+    "/api/v1/places/reverse": {
+      "get": {
+        "summary": "Reverse Pin",
+        "description": "The readable address under the owner's map pin while they place it (nothing is saved).",
+        "operationId": "reverse_pin_api_v1_places_reverse_get",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lng"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PinAddress"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/discover": {
       "get": {
         "summary": "Discover",
@@ -6216,7 +6269,10 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "device"
+                "enum": [
+                  "device",
+                  "pin"
+                ]
               },
               {
                 "type": "null"
@@ -8231,6 +8287,15 @@
             "type": "number",
             "minimum": 0.0,
             "title": "Accuracy M"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "device",
+              "pin"
+            ],
+            "title": "Source",
+            "default": "device"
           }
         },
         "additionalProperties": false,
@@ -8654,6 +8719,24 @@
           "sold_out"
         ],
         "title": "Pick"
+      },
+      "PinAddress": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "approximate": {
+            "type": "boolean",
+            "title": "Approximate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "approximate"
+        ],
+        "title": "PinAddress"
       },
       "PlaceMatch": {
         "properties": {

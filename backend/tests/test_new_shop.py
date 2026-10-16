@@ -368,3 +368,33 @@ def test_press_to_talk_voice_keeps_its_small_turn_budget(tmp_path: Path):
                 if event["kind"] == "error":
                     break
             assert codes[-1] == "INVALID_FRAME" and len(codes) == 13
+
+
+async def test_owner_placed_pin_is_sealed_as_a_pin_without_gps_accuracy(tmp_path: Path):
+    store = MerchantStore(str(tmp_path / "shops.sqlite"))
+    body = ProposalRequest(
+        kind="business",
+        business=BusinessFields(name="Tea"),
+        owner_location=OwnerLocation(lat=12.9718234, lng=77.6412345, accuracy_m=35, source="pin"),
+    )
+    maps = MapsService(settings(tmp_path))
+    try:
+        await prepare_pin(body, store, "alice", maps)
+    finally:
+        await maps.close()
+    assert body.business and body.business.pin_source == "pin"
+    assert body.business.pin_accuracy_m is None and body.business.lat == 12.9718234
+    assert body.business.pin_label == "Near Indiranagar"
+
+
+def test_reverse_pin_reads_the_address_under_the_pin_for_owners_only(tmp_path: Path):
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        point = {"lat": 12.9718234, "lng": 77.6412345}
+        assert client.get("/api/v1/places/reverse", params=point).status_code == 401
+        join(client)
+        found = client.get("/api/v1/places/reverse", params=point).json()
+        assert found == {"label": "Near Indiranagar", "approximate": True}
+        far = client.get("/api/v1/places/reverse", params={"lat": -40, "lng": 10}).json()
+        assert far == {"label": "Your current location", "approximate": True}
+        assert client.get("/api/v1/places/reverse", params={"lat": 91, "lng": 0}).status_code == 422
