@@ -769,9 +769,9 @@ function Bubble({
           px: 2,
           py: 1.25,
           borderRadius: mine ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
-          bgcolor: mine ? roles.primary : ai ? roles.tertiaryContainer : roles.surfaceContainerHigh,
-          color: mine ? roles.onPrimary : ai ? roles.onTertiaryContainer : roles.onSurface,
-          border: ai ? `1px dashed ${roles.tertiary}` : undefined,
+          bgcolor: mine ? roles.primary : ai ? roles.secondaryContainer : roles.surfaceContainerHigh,
+          color: mine ? roles.onPrimary : ai ? roles.onSecondaryContainer : roles.onSurface,
+          border: ai ? `1px dashed ${roles.secondary}` : undefined,
         }}
       >
         {/* Screen readers hear who said it, not only the bubble side. */}
