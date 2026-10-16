@@ -11,9 +11,9 @@ test('S14 · Connect your system (POS/ERP import, AI mapping, sync & review)', a
   await enter(page)
   await seedShop(page)
 
-  // Step 1: Open My shop and open Connect sheet
-  await test.step('1 · Open My shop and open Connect your system', async () => {
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  // Step 1: Open Shop and open Connect sheet
+  await test.step('1 · Open Shop and open Connect your system', async () => {
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
     const connectTile = page.getByRole('button', { name: /Connect your system/i })
     await expect(connectTile).toBeVisible()
     await connectTile.click()
@@ -141,7 +141,7 @@ Bun Maska,35.00,Snacks,25,piece`
   // Step 7: Desktop responsive check
   await test.step('7 · Desktop responsive check', async () => {
     await page.setViewportSize({ width: 1440, height: 1000 })
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
     const connectTile = page.getByRole('button', { name: /Connect your system/i })
     await expect(connectTile).toBeVisible()
     await connectTile.click()
@@ -165,11 +165,11 @@ Bun Maska,35.00,Snacks,25,piece`
 
   // Step 8: Dark mode check via in-app settings
   await test.step('8 · Dark mode check', async () => {
-    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    // Appearance lives on You.
+    await page.getByRole('button', { name: 'You', exact: true }).click()
     await page.getByRole('button', { name: 'Dark', exact: true }).click()
-    await page.keyboard.press('Escape')
 
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
     const connectTile = page.getByRole('button', { name: /Connect your system/i })
     await expect(connectTile).toBeVisible()
     await connectTile.click()
