@@ -992,6 +992,205 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/connect/mappings": {
+      "get": {
+        "summary": "List Mappings",
+        "description": "List all saved connector mappings for this business.",
+        "operationId": "list_mappings_api_v1_businesses__business_id__connect_mappings_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Mappings Api V1 Businesses  Business Id  Connect Mappings Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/connect/mapping": {
+      "post": {
+        "summary": "Save Mapping",
+        "description": "Save or update a confirmed column mapping for this business and source system.",
+        "operationId": "save_mapping_api_v1_businesses__business_id__connect_mapping_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorMapping"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Save Mapping Api V1 Businesses  Business Id  Connect Mapping Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/connect/analyze": {
+      "post": {
+        "summary": "Analyze Export",
+        "description": "Analyze an uploaded export or pasted sample.\n\nIf a confirmed mapping already exists for this source system, it is reused.\nOtherwise, Gemini (or heuristic fallback) generates a proposed mapping.\nShows preview rows and diff against existing inventory.",
+        "operationId": "analyze_export_api_v1_businesses__business_id__connect_analyze_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "source_label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Source Label"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/connect/sync": {
+      "post": {
+        "summary": "Sync Export",
+        "description": "Sync data using a saved or provided mapping.\n\nProduces a standard review proposal (menu or sales). NEVER writes silently.\nUpdates the last_synced timestamp for this source.",
+        "operationId": "sync_export_api_v1_businesses__business_id__connect_sync_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "source_label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Source Label"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Sync Export Api V1 Businesses  Business Id  Connect Sync Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/google-sim": {
       "get": {
         "summary": "State",
@@ -8255,6 +8454,112 @@
         ],
         "title": "ConfirmRules"
       },
+      "ConnectorMapping": {
+        "properties": {
+          "source_label": {
+            "type": "string",
+            "title": "Source Label",
+            "description": "E.g. Petpooja, Tally, Square, Shopify, SAP, Other"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "menu",
+              "sales"
+            ],
+            "title": "Kind"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/FieldMapping"
+            },
+            "type": "array",
+            "title": "Fields"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_label",
+          "kind",
+          "fields"
+        ],
+        "title": "ConnectorMapping",
+        "description": "Complete mapping from an external system export to the Chalkboard schema."
+      },
+      "ConnectorResult": {
+        "properties": {
+          "mapping": {
+            "$ref": "#/components/schemas/ConnectorMapping"
+          },
+          "preview_rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Preview Rows",
+            "description": "First 5 rows mapped to our schema"
+          },
+          "total_rows": {
+            "type": "integer",
+            "title": "Total Rows"
+          },
+          "reused": {
+            "type": "boolean",
+            "title": "Reused",
+            "default": false
+          },
+          "last_synced": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced"
+          },
+          "diff": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mapping",
+          "preview_rows",
+          "total_rows"
+        ],
+        "title": "ConnectorResult",
+        "description": "What we return to the frontend after parsing + AI mapping."
+      },
       "ConsentRequest": {
         "properties": {
           "version": {
@@ -8835,6 +9140,44 @@
           "updates"
         ],
         "title": "Feed"
+      },
+      "FieldMapping": {
+        "properties": {
+          "source_field": {
+            "type": "string",
+            "title": "Source Field",
+            "description": "Original column/field name from the export"
+          },
+          "target_field": {
+            "type": "string",
+            "title": "Target Field",
+            "description": "Our schema field: name, price, unit, stock, quantity, date, total, category"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "Mapping confidence 0–1"
+          },
+          "sample_values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Sample Values",
+            "description": "Sample values from that column"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_field",
+          "target_field",
+          "confidence"
+        ],
+        "title": "FieldMapping",
+        "description": "One source → target column mapping produced by Gemini or confirmed by the owner."
       },
       "Find": {
         "properties": {
