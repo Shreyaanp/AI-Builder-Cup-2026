@@ -113,7 +113,9 @@ export function todayPlan(input: TodayInput): TodayPlan {
   const forecast = facts?.forecast
     ? { quantity: facts.forecast.quantity, item: facts.forecast.item, busy }
     : null
-  const dayOne = facts && !pulse && !forecast && steps.length ? { step: steps[0]! } : null
+  // Without facts yet (loading or unavailable), a shop with no menu is still clearly day one.
+  const fresh = facts ? !pulse && !forecast : products.length === 0
+  const dayOne = fresh && steps.length ? { step: steps[0]! } : null
 
   const all: Need[] = []
   if (unread) all.push({ id: 'reply', kind: 'reply', count: unread })

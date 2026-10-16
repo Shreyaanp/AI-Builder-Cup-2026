@@ -248,8 +248,8 @@ test('PHONE-2: every shop Add entry opens the full-screen new-shop flow (no dial
   await page.getByLabel(/^Price/).fill('1.80')
   await page.getByRole('button', { name: 'Review', exact: true }).tap()
   await page.getByRole('button', { name: 'Confirm and save' }).tap()
-  // The shop card's next step (UI-1 folded the old "Add now" card into it).
-  await page.getByRole('button', { name: 'Add your opening hours', exact: true }).tap()
+  // Today's next setup step opens the details form.
+  await page.getByTestId('today-day-one').getByRole('button', { name: 'Add', exact: true }).tap()
   await expect(page.getByRole('dialog', { name: 'Edit details' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
   // Phones choose camera or gallery first (B7).

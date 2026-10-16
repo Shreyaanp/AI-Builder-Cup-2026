@@ -77,11 +77,12 @@ test('daily menu confirmation is an owner switch and changes the customer freshn
 }) => {
   await shopWithoutMenu(page)
   await page.getByRole('dialog', { name: 'Menu' }).getByRole('button', { name: 'Close' }).click()
+  // My shop keeps the daily check for a shop without a menu yet (Today asks once items exist).
   await page.getByRole('button', { name: 'Something changed' }).click()
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('Today: ')
-  const coach = page.getByRole('region', { name: 'Coach', exact: true })
-  await coach.getByRole('button', { name: 'Yes, all good' }).click()
-  await expect(coach.getByText('Still the same menu today?')).not.toBeVisible()
+  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Yes, all good' }).click()
+  await expect(page.getByText('Still the same menu today?')).not.toBeVisible()
   const businesses = await page.request.get('/api/v1/businesses').then((r) => r.json())
   const bid = businesses[0].id as string
   await page.request.post(`/api/v1/businesses/${bid}/share`, { data: { public: true } })
