@@ -5431,6 +5431,760 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/supply": {
+      "get": {
+        "summary": "Overview",
+        "operationId": "overview_api_v1_businesses__business_id__supply_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Overview Api V1 Businesses  Business Id  Supply Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/suppliers/{supplier_id}/rules": {
+      "put": {
+        "summary": "Save Rules",
+        "operationId": "save_rules_api_v1_businesses__business_id__supply_suppliers__supplier_id__rules_put",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "supplier_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Supplier Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RulesBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Save Rules Api V1 Businesses  Business Id  Supply Suppliers  Supplier Id  Rules Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/suppliers/{supplier_id}/rules/confirm": {
+      "post": {
+        "summary": "Confirm Rules",
+        "operationId": "confirm_rules_api_v1_businesses__business_id__supply_suppliers__supplier_id__rules_confirm_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "supplier_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Supplier Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmRules"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Confirm Rules Api V1 Businesses  Business Id  Supply Suppliers  Supplier Id  Rules Confirm Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/reorder": {
+      "post": {
+        "summary": "Reorder",
+        "operationId": "reorder_api_v1_businesses__business_id__supply_reorder_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Reorder Api V1 Businesses  Business Id  Supply Reorder Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}": {
+      "get": {
+        "summary": "Read Order",
+        "operationId": "read_order_api_v1_businesses__business_id__supply_orders__order_id__get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Read Order Api V1 Businesses  Business Id  Supply Orders  Order Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/fix": {
+      "post": {
+        "summary": "Fix Order",
+        "operationId": "fix_order_api_v1_businesses__business_id__supply_orders__order_id__fix_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FixBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Fix Order Api V1 Businesses  Business Id  Supply Orders  Order Id  Fix Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/approve": {
+      "post": {
+        "summary": "Approve Order",
+        "operationId": "approve_order_api_v1_businesses__business_id__supply_orders__order_id__approve_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Version"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Approve Order Api V1 Businesses  Business Id  Supply Orders  Order Id  Approve Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/cancel": {
+      "post": {
+        "summary": "Cancel Order",
+        "operationId": "cancel_order_api_v1_businesses__business_id__supply_orders__order_id__cancel_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Version"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancel Order Api V1 Businesses  Business Id  Supply Orders  Order Id  Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/simulate": {
+      "post": {
+        "summary": "Simulate",
+        "description": "Demo only: the simulated supplier sends its next document in its own format.",
+        "operationId": "simulate_api_v1_businesses__business_id__supply_orders__order_id__simulate_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Simulate Api V1 Businesses  Business Id  Supply Orders  Order Id  Simulate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/inbound": {
+      "post": {
+        "summary": "Inbound",
+        "description": "A document from the supplier in any format (IDoc XML, CSV, a message): translated.",
+        "operationId": "inbound_api_v1_businesses__business_id__supply_orders__order_id__inbound_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboundBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Inbound Api V1 Businesses  Business Id  Supply Orders  Order Id  Inbound Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/flags/{flag_id}": {
+      "post": {
+        "summary": "Resolve Flag",
+        "operationId": "resolve_flag_api_v1_businesses__business_id__supply_orders__order_id__flags__flag_id__post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          },
+          {
+            "name": "flag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Flag Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlagBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Resolve Flag Api V1 Businesses  Business Id  Supply Orders  Order Id  Flags  Flag Id  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/accept": {
+      "post": {
+        "summary": "Accept",
+        "operationId": "accept_api_v1_businesses__business_id__supply_orders__order_id__accept_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Version"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Accept Api V1 Businesses  Business Id  Supply Orders  Order Id  Accept Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/received": {
+      "post": {
+        "summary": "Received",
+        "description": "Goods arrived; returns the order and, when menu items match, a stock review.",
+        "operationId": "received_api_v1_businesses__business_id__supply_orders__order_id__received_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Version"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Received Api V1 Businesses  Business Id  Supply Orders  Order Id  Received Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/radar": {
       "get": {
         "tags": [
@@ -7481,6 +8235,26 @@
         "title": "Command",
         "description": "A customer command answered at once, by voice or text: my stamps, directions to a shop,\nfollow a shop, ask a shop's owner. Following and asking still happen on the shop's page."
       },
+      "ConfirmRules": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "apply": {
+            "type": "boolean",
+            "title": "Apply",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "ConfirmRules"
+      },
       "ConsentRequest": {
         "properties": {
           "version": {
@@ -8223,6 +8997,90 @@
         ],
         "title": "FindShop"
       },
+      "Fix": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "quantity",
+              "cash"
+            ],
+            "title": "Kind"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "Fix"
+      },
+      "FixBody": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "fix": {
+            "$ref": "#/components/schemas/Fix"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "fix"
+        ],
+        "title": "FixBody"
+      },
+      "FlagBody": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "value"
+        ],
+        "title": "FlagBody"
+      },
       "FoodAttributes": {
         "properties": {
           "cuisine": {
@@ -8556,6 +9414,28 @@
         ],
         "title": "Impact"
       },
+      "InboundBody": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 10,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "text"
+        ],
+        "title": "InboundBody"
+      },
       "Inquiry": {
         "properties": {
           "id": {
@@ -8753,6 +9633,82 @@
         "type": "object",
         "title": "Intent",
         "description": "What the customer asked for. Prices are in the local currency's major units."
+      },
+      "ItemRule": {
+        "properties": {
+          "item": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Item"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Unit",
+            "default": "kg"
+          },
+          "supplier_code": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Supplier Code",
+            "default": ""
+          },
+          "moq": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Moq",
+            "default": 0
+          },
+          "pack": {
+            "type": "number",
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Pack",
+            "description": "Sold in multiples of this",
+            "default": 0
+          },
+          "lead_days": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 0.0,
+            "title": "Lead Days",
+            "default": 1
+          },
+          "tiers": {
+            "items": {
+              "$ref": "#/components/schemas/PriceTier"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Tiers"
+          },
+          "substitutes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Substitutes"
+          },
+          "partial_ok": {
+            "type": "boolean",
+            "title": "Partial Ok",
+            "default": true
+          },
+          "backorder_ok": {
+            "type": "boolean",
+            "title": "Backorder Ok",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "item"
+        ],
+        "title": "ItemRule"
       },
       "LevelView": {
         "properties": {
@@ -10080,6 +11036,30 @@
         ],
         "title": "PrepRow"
       },
+      "PriceTier": {
+        "properties": {
+          "min_quantity": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Min Quantity"
+          },
+          "price": {
+            "type": "integer",
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Price",
+            "description": "Minor units per unit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "min_quantity",
+          "price"
+        ],
+        "title": "PriceTier"
+      },
       "ProductFields": {
         "properties": {
           "name": {
@@ -10737,6 +11717,38 @@
         ],
         "title": "RecapItem"
       },
+      "ReorderBody": {
+        "properties": {
+          "item": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Item",
+            "default": ""
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "supplier_id": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Supplier Id",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReorderBody"
+      },
       "Requirement": {
         "properties": {
           "key": {
@@ -11089,6 +12101,88 @@
           "passport"
         ],
         "title": "RevealResult"
+      },
+      "RuleSet": {
+        "properties": {
+          "terms_days": {
+            "type": "integer",
+            "enum": [
+              0,
+              7,
+              30
+            ],
+            "title": "Terms Days",
+            "default": 7
+          },
+          "credit_limit": {
+            "type": "integer",
+            "maximum": 10000000000000.0,
+            "minimum": 0.0,
+            "title": "Credit Limit",
+            "description": "0 = no credit limit",
+            "default": 0
+          },
+          "approval_over": {
+            "type": "integer",
+            "maximum": 10000000000000.0,
+            "minimum": 0.0,
+            "title": "Approval Over",
+            "description": "0 = approve every order",
+            "default": 0
+          },
+          "new_supplier_approval": {
+            "type": "boolean",
+            "title": "New Supplier Approval",
+            "default": true
+          },
+          "auto_send": {
+            "type": "boolean",
+            "title": "Auto Send",
+            "default": false
+          },
+          "system_format": {
+            "type": "string",
+            "enum": [
+              "idoc",
+              "csv",
+              "text",
+              "json"
+            ],
+            "title": "System Format",
+            "default": "json"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ItemRule"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RuleSet",
+        "description": "What the owner edits (screen or coach). Money is in minor units of the shop currency."
+      },
+      "RulesBody": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/RuleSet"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "rules"
+        ],
+        "title": "RulesBody"
       },
       "SaleLine": {
         "properties": {
@@ -12052,6 +13146,33 @@
         ],
         "title": "SimState"
       },
+      "SimulateBody": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "full",
+              "partial",
+              "substitute",
+              "match",
+              "price_mismatch"
+            ],
+            "title": "Variant",
+            "default": "full"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "SimulateBody"
+      },
       "SpeakRequest": {
         "properties": {
           "text": {
@@ -12988,6 +14109,21 @@
         ],
         "title": "ValidationError"
       },
+      "Version": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "Version"
+      },
       "Weather": {
         "properties": {
           "temperature_c": {
@@ -13249,6 +14385,8 @@
               "suppliers",
               "order",
               "rescue_proposal",
+              "purchase_order",
+              "supply_rules",
               "chart",
               "action"
             ],
