@@ -74,7 +74,9 @@ export function WorkspaceProvider({
       setCreatingShop(inFlow && value !== 'ready')
       if (value !== 'ready') setShopReady(false)
       // Forward into a review needs a fresh one: it opens the conversation instead.
-      setNewShopPhase(value === 'chat' || value === 'review' ? 'chat' : 'hero')
+      setNewShopPhase(
+        value === 'manual' ? 'manual' : value === 'chat' || value === 'review' ? 'chat' : 'hero',
+      )
     }
     window.addEventListener('popstate', restore)
     return () => window.removeEventListener('popstate', restore)

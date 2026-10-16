@@ -1,8 +1,9 @@
 import { createContext, use } from 'react'
+import type { DetailStep } from './inChatCopy'
 import type { Api, Business, Me, Product, Proposal } from './api'
 
 export type Destination = 'coach' | 'shop' | 'google' | 'privacy'
-export type NewShopPhase = 'hero' | 'chat' | 'review'
+export type NewShopPhase = 'hero' | 'chat' | 'manual' | 'review'
 
 export interface Workspace {
   api: Api
@@ -66,7 +67,7 @@ export interface Workspace {
 
 export type Editor =
   | { kind: 'none' }
-  | { kind: 'business'; fields: Business['fields'] | null }
+  | { kind: 'business'; fields: Business['fields'] | null; step?: DetailStep }
   | { kind: 'product'; product: Product | null }
 
 export const WorkspaceContext = createContext<Workspace | null>(null)

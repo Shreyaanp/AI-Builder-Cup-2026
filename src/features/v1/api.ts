@@ -25,7 +25,7 @@ export interface Business {
     place_id?: string | null
     pin_label?: string | null
     pin_demo?: boolean
-    pin_source?: 'device' | null
+    pin_source?: 'device' | 'pin' | null
     pin_accuracy_m?: number | null
     description?: string
     timezone?: string
