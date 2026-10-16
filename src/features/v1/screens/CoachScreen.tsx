@@ -61,6 +61,7 @@ import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
 import { ConnectSheet } from '../../connect/ConnectSheet'
 import { useConnectCopy } from '../../connect/strings'
+import { CloseDay } from '../../closeday/CloseDay'
 import { SalesImportSheet } from '../ImportMenu'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
 import { StartCard } from '../ShopCard'
@@ -213,6 +214,7 @@ function CoachScreen({
   const receiveOrder = useReceiveOrder()
   // My shop sheets opened from suggestion chips.
   const [shopSheet, setShopSheet] = useState<ShopSheetKind | null>(null)
+  const [closeDayOpen, setCloseDayOpen] = useState(false)
   const menuLinks = useRef<Message[]>([])
   // The menu item a "See … in your menu" link opened the menu at.
   const [menuFocus, setMenuFocus] = useState<string | null>(null)
@@ -859,6 +861,7 @@ function CoachScreen({
     openMessages: () => setShopSheet('messages'),
     openSoldOut: () => setShopSheet('soldOut'),
     talk: () => void restored.current.then(() => voice.start(session.current)),
+    openCloseDay: () => setCloseDayOpen(true),
   }
   const lastIsReply =
     messages.at(-1)?.role === 'assistant' && !liveReply && !reveal.active() && busy === 'idle'
@@ -1215,6 +1218,14 @@ function CoachScreen({
           setMenuFocus(null)
         }}
       />
+      {closeDayOpen && (
+        <CloseDay
+          onClose={() => {
+            setCloseDayOpen(false)
+            void ws.reload()
+          }}
+        />
+      )}
 
       <Box
         sx={{
@@ -1273,7 +1284,11 @@ function CoachScreen({
           }}
         >
           {voice.state !== 'idle' ? (
-            <IconButton aria-label={voice.muted ? t.unmute : t.mute} onClick={voice.toggleMute}>
+            <IconButton
+              aria-label={voice.muted ? t.unmute : t.mute}
+              onClick={voice.toggleMute}
+              sx={{ minWidth: 48, minHeight: 48 }}
+            >
               {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </IconButton>
           ) : (
@@ -1285,6 +1300,7 @@ function CoachScreen({
                   ref={photoButton}
                   aria-haspopup={choices ? 'menu' : undefined}
                   onClick={(event) => choosePhoto(event.currentTarget)}
+                  sx={{ minWidth: 48, minHeight: 48 }}
                 >
                   {busy === 'photo' || importer.busy ? (
                     <CircularProgress size={20} aria-label={t.checkingPhoto} />

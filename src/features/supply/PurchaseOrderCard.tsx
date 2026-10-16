@@ -515,11 +515,18 @@ function DocumentDetail({
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
           startIcon={<ArrowLeftRight size={16} />}
-          sx={{ ml: -2 }}
+          sx={{ ml: -2, minHeight: 48 }}
         >
-          {open ? s.hide : s.viewAs(theirs, ours)}
+          {open ? s.hide : s.forSupplierSystem}
         </Button>
         <Collapse in={open} unmountOnExit>
+          <Typography
+            variant="labelMedium"
+            color="text.secondary"
+            sx={{ display: 'block', mt: 1, mb: 1 }}
+          >
+            {s.viewAs(theirs, ours)}
+          </Typography>
           <Box
             sx={{
               mt: 2,
