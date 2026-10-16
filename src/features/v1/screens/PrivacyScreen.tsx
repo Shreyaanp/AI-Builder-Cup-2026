@@ -141,19 +141,12 @@ export function PrivacyScreen() {
             label={t.faceStatus[pending ? 'review_pending' : 'not_enrolled']}
             sx={{ mt: 1.5 }}
           />
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 2 }}>
-            <Button variant="contained" disabled={!ws.active} onClick={() => ws.setFaceOpen(true)}>
-              {t.faceStart}
-            </Button>
+          {/* Starting the check lives on You ("Verify it's you"); here the data can be deleted. */}
+          <Box sx={{ mt: 2 }}>
             <Button color="error" onClick={() => setConfirming('face')}>
               {t.faceDelete}
             </Button>
-          </Stack>
-          {!ws.active && (
-            <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              {t.faceNeedsShop}
-            </Typography>
-          )}
+          </Box>
         </Section>
 
         <Section icon={<ShieldCheck size={22} />} title={t.dataSection}>
