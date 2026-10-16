@@ -75,6 +75,9 @@ import { OrdersSheet } from '../../sourcing/Orders'
 import { useReceiveOrder } from '../../sourcing/orderData'
 import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
+import { GuideChips } from '../../owner-tools/CoachGuide'
+import { PaymentCard } from '../../owner-tools/PaymentsScreen'
+import type { PaymentLink } from '../../owner-tools/links'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 // The composer grows with multi-line text up to this many lines, then scrolls.
@@ -86,6 +89,7 @@ type Message =
   | { role: 'order'; orderId: string }
   // A chart beside a forecast or "how is business" answer.
   | { role: 'chart'; chart: CoachChartData; key: string }
+  | { role: 'payment'; payment: PaymentLink; key: string }
 const REPLY_POLL_MS = 1500
 const REPLY_WAIT_MS = 45_000
 
@@ -193,6 +197,12 @@ function CoachScreen({
       if (event.kind === 'input_transcript')
         setMessages((items) => [...items, { role: 'user', text: event.text ?? '' }])
       if (event.kind === 'proposal') review(event.data as unknown as Proposal)
+      if (event.kind === 'payment_link' && event.data) {
+        const payment = event.data as unknown as PaymentLink
+        setMessages((items) =>
+          [...items, { role: 'payment' as const, payment, key: crypto.randomUUID() }].slice(-40),
+        )
+      }
       if (event.kind === 'sourcing') setSearching(String(event.data?.item ?? ''))
       if (event.kind === 'suppliers') {
         setSearching(null)
@@ -303,11 +313,13 @@ function CoachScreen({
   })
   const { coachDraftSend } = ws
   useEffect(() => {
-    if (coachDraft === null) return
+    // A guide chip can be tapped while the previous reply/voice turn is finishing.
+    // Keep its sentence queued until send() can accept it.
+    if (coachDraft === null || busy !== 'idle' || voice.state !== 'idle') return
     consumeCoachDraft()
     if (coachDraftSend) sendDraft(coachDraft)
     else messageInput.current?.focus()
-  }, [coachDraft, coachDraftSend, consumeCoachDraft])
+  }, [coachDraft, coachDraftSend, consumeCoachDraft, busy, voice.state])
 
   // A typed draft: Back asks "Discard changes?" before leaving, and so does closing the tab.
   useBackClose(
@@ -816,7 +828,16 @@ function CoachScreen({
             {ws.businesses.length === 0 && <TourOffer />}
             {/* Suggestions right under the shop card; before a shop exists the start card is
                 the only thing shown. */}
-            {ws.active && chips}
+            {ws.active && (
+              <>
+                {chips}
+                <GuideChips
+                  compact
+                  disabled={busy !== 'idle' || voice.state !== 'idle'}
+                  onSend={(sentence) => void send(sentence)}
+                />
+              </>
+            )}
             {ws.active && (
               // Phones: one attention card at a time so the first view fits without scrolling.
               // The first card with something to say shows, the rest wait their turn (each one
@@ -875,7 +896,11 @@ function CoachScreen({
             <Box role="log" aria-live="polite">
               <Stack component="ol" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0, pt: 2 }}>
                 {messages.map((message, index) =>
-                  message.role === 'chart' ? (
+                  message.role === 'payment' ? (
+                    <Box component="li" key={message.key}>
+                      <PaymentCard payment={message.payment} />
+                    </Box>
+                  ) : message.role === 'chart' ? (
                     <Box component="li" key={message.key} sx={{ display: 'flex' }}>
                       <CoachChart chart={message.chart} />
                     </Box>

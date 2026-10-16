@@ -56,6 +56,15 @@ def public_events(event: Event) -> list[StreamEvent]:
                     StreamEvent(kind="sourcing", data={"stage": "searching", "item": item})
                 )
             response = part.function_response
+            if response and response.name == "prepare_payment_link":
+                merchant = current.get()
+                card = (
+                    merchant.cards.get(str((response.response or {}).get("card_id")))
+                    if merchant
+                    else None
+                )
+                if card:
+                    output.append(StreamEvent(kind="payment_link", data=card[1]))
             if response and response.name in CHART_TOOLS:
                 chart = chart_card(response.name, response.response)
                 if chart:

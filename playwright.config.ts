@@ -10,7 +10,11 @@ export default defineConfig({
   testIgnore: ['qa/**'],
   timeout: 30_000,
   // Each test gets its own browser context and workspace, so files run in parallel.
-  workers: process.env.CI ? 3 : 4,
+  workers: process.env.PLAYWRIGHT_WORKERS
+    ? Number(process.env.PLAYWRIGHT_WORKERS)
+    : process.env.CI
+      ? 3
+      : 4,
   // One retry on CI absorbs a random failure; the list reporter still marks it "flaky".
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['./tests/stories/audit-reporter.ts']],
