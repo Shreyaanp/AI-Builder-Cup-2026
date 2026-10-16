@@ -83,6 +83,8 @@ class StreamEvent(StrictModel):
         "chart",
         # An app action from the coach: open a screen, or a prepared customer reply to send.
         "action",
+        # A UPI payment link card the owner shares; the app never handles money.
+        "payment_link",
     ]
     session_id: str | None = None
     text: str | None = None

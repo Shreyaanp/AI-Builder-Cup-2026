@@ -928,9 +928,7 @@ class FirestoreMerchantStore:
 
         return run(self.client.transaction())
 
-    def get_connector_mapping(
-        self, uid: str, bid: str, source_label: str
-    ) -> dict[str, Any] | None:
+    def get_connector_mapping(self, uid: str, bid: str, source_label: str) -> dict[str, Any] | None:
         self.owned_business(uid, bid)
         ref = self.businesses.document(document_id(bid, "Business not found."))
         doc = ref.collection("connector_mappings").document(source_label.lower().strip()).get()
@@ -942,9 +940,7 @@ class FirestoreMerchantStore:
         docs = ref.collection("connector_mappings").stream()
         return [doc.to_dict() for doc in docs]
 
-    def save_connector_mapping(
-        self, uid: str, bid: str, mapping: dict[str, Any]
-    ) -> dict[str, Any]:
+    def save_connector_mapping(self, uid: str, bid: str, mapping: dict[str, Any]) -> dict[str, Any]:
         self.owned_business(uid, bid)
         ref = self.businesses.document(document_id(bid, "Business not found."))
         now = time.time()

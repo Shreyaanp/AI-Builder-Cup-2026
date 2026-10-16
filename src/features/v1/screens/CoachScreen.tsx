@@ -85,6 +85,9 @@ import { utter } from '../phoneVoice'
 import { ActionChip, ReplyCard } from '../CoachActions'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
 import type { Destination } from '../workspaceContext'
+import { GuideChips } from '../../owner-tools/CoachGuide'
+import { PaymentCard } from '../../owner-tools/PaymentsScreen'
+import type { PaymentLink } from '../../owner-tools/links'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 // The composer grows with multi-line text up to this many lines, then scrolls.
@@ -101,6 +104,7 @@ type Message =
   | { role: 'chart'; chart: CoachChartData; key: string }
   // An app action the coach prepared: a screen it opened, or a customer reply to send.
   | { role: 'action'; action: CoachAction; key: string }
+  | { role: 'payment'; payment: PaymentLink; key: string }
 // Coach actions that open a My shop sheet.
 const SHEETS: Partial<Record<CoachAction['target'], ShopSheetKind>> = {
   messages: 'messages',
@@ -252,6 +256,12 @@ function CoachScreen({
         setMessages((items) => [...items, { role: 'user', text: event.text ?? '' }])
       }
       if (event.kind === 'proposal') review(event.data as unknown as Proposal)
+      if (event.kind === 'payment_link' && event.data) {
+        const payment = event.data as unknown as PaymentLink
+        setMessages((items) =>
+          [...items, { role: 'payment' as const, payment, key: crypto.randomUUID() }].slice(-40),
+        )
+      }
       if (event.kind === 'sourcing') setSearching(String(event.data?.item ?? ''))
       if (event.kind === 'suppliers') {
         setSearching(null)
@@ -412,11 +422,13 @@ function CoachScreen({
   })
   const { coachDraftSend } = ws
   useEffect(() => {
-    if (coachDraft === null || !visible) return
+    // A guide chip can be tapped while the previous reply/voice turn is finishing.
+    // Keep its sentence queued until send() can accept it.
+    if (coachDraft === null || !visible || busy !== 'idle' || voice.state !== 'idle') return
     consumeCoachDraft()
     if (coachDraftSend) sendDraft(coachDraft)
     else messageInput.current?.focus()
-  }, [coachDraft, coachDraftSend, consumeCoachDraft, visible])
+  }, [coachDraft, coachDraftSend, consumeCoachDraft, visible, busy, voice.state])
 
   // A typed draft: Back asks "Discard changes?" before leaving, and so does closing the tab.
   useBackClose(
@@ -943,7 +955,14 @@ function CoachScreen({
           ws.loading || ws.loadError ? null : ws.active ? (
             // Today: how the shop is doing and what needs the owner now. Anything complete
             // goes away; the top bar already names the shop.
-            <TodayView key={ws.active.id} actions={today} />
+            <Stack spacing={3}>
+              <TodayView key={ws.active.id} actions={today} />
+              <GuideChips
+                compact
+                disabled={busy !== 'idle' || voice.state !== 'idle'}
+                onSend={(sentence) => void send(sentence)}
+              />
+            </Stack>
           ) : (
             <Stack spacing={{ xs: 3, sm: 5 }} sx={{ pt: { xs: 1, sm: 10 }, pb: 4 }}>
               {/* Before a shop exists the greeting introduces the coach. */}
@@ -992,6 +1011,10 @@ function CoachScreen({
                         onOpen={() => openAction(message.action)}
                       />
                     )
+                  ) : message.role === 'payment' ? (
+                    <Box component="li" key={message.key}>
+                      <PaymentCard payment={message.payment} />
+                    </Box>
                   ) : message.role === 'chart' ? (
                     <Box component="li" key={message.key} sx={{ display: 'flex' }}>
                       <CoachChart chart={message.chart} />
