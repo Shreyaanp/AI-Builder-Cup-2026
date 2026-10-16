@@ -59,6 +59,7 @@ import { useRewardCopy } from '../rewards/strings'
 import { HoursList } from '../shop/Hours'
 import { hasHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
+import { MapsHandoff } from './MapsHandoff'
 
 export type ShopSheetKind =
   'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
@@ -404,6 +405,11 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
           {kind === 'details' && (
             <Box sx={{ mb: 3 }}>
               <ShopLocation onReviewed={onClose} />
+            </Box>
+          )}
+          {kind === 'details' && (
+            <Box sx={{ mb: 4 }}>
+              <MapsHandoff fields={shop.fields} products={ws.products} />
             </Box>
           )}
           <Box component="dl" sx={{ m: 0, display: 'grid', gap: 4 }}>
