@@ -5424,7 +5424,9 @@ export interface operations {
     };
     public_shop_api_v1_public_shops__business_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                lang?: string;
+            };
             header?: never;
             path: {
                 business_id: string;

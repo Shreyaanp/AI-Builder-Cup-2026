@@ -64,6 +64,8 @@ import { useNewShopCopy } from './newShopCopy'
 import { factEntries } from './shopProgress'
 import { useCopy } from './strings'
 import { useVoice } from './useVoice'
+import { useSpokenReveal } from './useSpokenReveal'
+import { cardWords, mergeTranscript } from './speechReveal'
 import type { VoiceProblem } from './useVoice'
 import { ShopFill, VoiceAlert, VoiceOrb } from './VoiceStage'
 import type { OrbPhase } from './VoiceStage'
@@ -104,14 +106,6 @@ type Line =
   | { id: string; role: 'camera'; shots: Shot[]; closed: boolean }
   | { id: string; role: 'map'; locate: boolean; done: string | null }
 type NewLine = Line extends infer L ? (L extends Line ? Omit<L, 'id'> : never) : never
-
-/** Live transcripts arrive in pieces, sometimes repeated in full. */
-function mergeTranscript(current: string, next: string) {
-  if (!current.trim()) return next
-  if (next.trim().startsWith(current.trim())) return next
-  if (current.trim().endsWith(next.trim())) return current
-  return current + next
-}
 
 const filled = (value: unknown) =>
   value !== null && value !== undefined && value !== '' && !(Array.isArray(value) && !value.length)
@@ -257,6 +251,27 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const openCards = useRef(new Set<string>())
   // The live voice session, for handlers declared before it (set after each render).
   const voiceRef = useRef<ReturnType<typeof useVoice> | null>(null)
+  // The live voice's words appear as they are said; the shop card, camera and map join in when
+  // the voice reaches them (see speechReveal.ts).
+  const reveal = useSpokenReveal({
+    remaining: () => {
+      const seconds = voiceRef.current?.playbackRemaining() ?? 0
+      return seconds > 0 ? seconds * 1000 : null
+    },
+    reducedMotion,
+    onDone: (text) => addCoachLine(text),
+  })
+  // A typed turn read aloud: the caption follows the voice the same way.
+  const captionReveal = useSpokenReveal({
+    remaining: () => {
+      const audio = speaking.current
+      return audio && Number.isFinite(audio.duration) && !audio.paused
+        ? (audio.duration - audio.currentTime) * 1000
+        : null
+    },
+    reducedMotion,
+    onDone: () => undefined,
+  })
 
   const setLive = (next: string | ((current: string) => string)) => {
     liveRef.current = typeof next === 'function' ? next(liveRef.current) : next
@@ -309,6 +324,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   }
   function stopSpeaking() {
     silenceAudio()
+    captionReveal.discard()
     setTtsText('')
   }
   // The coach's text replies read aloud (natural Google voice; the phone's voice otherwise).
@@ -335,6 +351,11 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
             URL.revokeObjectURL(url)
             finish()
           }
+          // The caption follows the voice from its first sound.
+          audio.onplaying = () => {
+            captionReveal.push(text)
+            captionReveal.finish()
+          }
           audio.play().catch(finish)
         })
         return
@@ -350,22 +371,33 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       const finish = done(resolve)
       const utterance = utter(text, language)
       utterance.onend = utterance.onerror = finish
+      // The phone's voice has no clock to follow: the caption comes at a speaking rate.
+      utterance.onstart = () => {
+        captionReveal.push(text)
+        captionReveal.finish()
+      }
       speechSynthesis.speak(utterance)
       // Some devices never report the end of speech.
       window.setTimeout(finish, 1500 + text.length * 70)
     })
   }
 
-  /** The coach's turn is in: it joins the chat, is spoken, and the silence clock starts. */
+  /** A coach line joins the chat (and the camera or map it asks for, once). */
+  function addCoachLine(text: string) {
+    if (!text.trim()) return
+    add({ role: 'coach', text: text.trim() })
+    offerCards(text)
+  }
+  /**
+   * The coach's turn is in: it joins the chat, is spoken, and the silence clock starts. A live
+   * voice turn's words join the chat from the reveal once spoken; only the turn ends here.
+   */
   function commitCoach(finished: boolean) {
     const text = liveRef.current.trim()
     setLive('')
     setHeard('')
     ownerTurnOpen.current = false
-    if (text) {
-      add({ role: 'coach', text })
-      offerCards(text)
-    }
+    addCoachLine(text)
     if (!finished) return
     pending.current = null
     if (startSent.current) greeted.current = true
@@ -375,19 +407,33 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     else if (text && !mutedRef.current) void speak(text).then(() => armSilence())
     else armSilence()
   }
-  /** The coach asked for a photo or for the place: the camera or the map opens in the chat. */
-  function offerCards(text: string) {
+  /**
+   * The coach asked for a photo or for the place: the camera or the map opens in the chat. With
+   * `spoken`, it opens when the voice says the words (not when the transcript arrives).
+   */
+  function offerCards(text: string, spoken = false) {
     const business = draftRef.current.business
+    const show = (open: () => void, words: RegExp) =>
+      spoken
+        ? reveal.cue(
+            () => {
+              addCoachLine(reveal.split())
+              open()
+            },
+            [words],
+            0,
+          )
+        : open()
     if (c.photoWords.test(text) && !offered.current.camera && !draftRef.current.products.length) {
       offered.current.camera = true
-      openCamera(false)
+      show(() => openCamera(false), c.photoWords)
     } else if (
       c.placeWords.test(text) &&
       !offered.current.map &&
       !(business?.lat != null || business?.location)
     ) {
       offered.current.map = true
-      openMap(false, false)
+      show(() => openMap(false, false), c.placeWords)
     }
   }
   function openCamera(hold = true) {
@@ -455,11 +501,39 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     if (event.kind === 'interrupted') commitCoach(false)
     if (event.kind === 'turn_complete') commitCoach(true)
   }
+  /** The live voice: the same turn, its words and cards revealed in step with the audio. */
+  function receiveVoice(event: CoachEvent) {
+    if (event.kind === 'output_transcript' || event.kind === 'reply' || event.kind === 'delta') {
+      const heard = reveal.heard()
+      const spoken =
+        event.kind === 'delta'
+          ? heard + (event.text ?? '')
+          : mergeTranscript(heard, event.text ?? '')
+      reveal.push(spoken)
+      offerCards(spoken, true)
+      return
+    }
+    if (event.kind === 'proposal') {
+      // The shop card fills in as the coach says what it added.
+      const proposal = event.data as unknown as Proposal
+      reveal.cue(() => {
+        addCoachLine(reveal.split())
+        applyProposal(proposal)
+      }, cardWords(event.data))
+      return
+    }
+    // The owner talks over the coach: the voice and its words stop together.
+    if ((event.kind === 'input_transcript' && event.text?.trim()) || event.kind === 'interrupted')
+      if (reveal.active()) addCoachLine(reveal.cut())
+    if (event.kind === 'turn_complete') reveal.finish()
+    receive(event)
+  }
 
-  const voice = useVoice(null, receive, draft, {
+  const voice = useVoice(null, receiveVoice, draft, {
     onReady: (resumed) => {
       // A socket ended (time cap, network) and the same session is back: what the coach had
       // started saying stays in the chat (that turn was answered).
+      if (resumed && reveal.active()) addCoachLine(reveal.flush())
       if (resumed && liveRef.current.trim()) commitCoach(true)
       // The coach speaks first: the opening goes out as soon as the live session is ready.
       if (!startSent.current) {
@@ -562,6 +636,8 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     if (voice.error) wantVoice.current = false
     const unanswered = pending.current
     pending.current = null
+    // Ended normally under words still catching up: the rest shows at once.
+    if (reveal.active()) addCoachLine(reveal.flush())
     if (busyRef.current === 'reply' && !controller.current) {
       setLive('')
       setBusy('idle')
@@ -804,6 +880,8 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   }
   function endVoice() {
     wantVoice.current = false
+    // The voice and its words stop together; only what was said stays.
+    if (reveal.active()) addCoachLine(reveal.cut())
     stopVoice()
     setTyping(true)
   }
@@ -844,7 +922,8 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const typingView = typing || !voiceOn
   const problem = preflight ?? voice.problem
   const lastCoach = [...lines].reverse().find((line) => line.role === 'coach')
-  const caption = (live || ttsText).trim()
+  // What the coach is saying, as it says it (the live voice, or a typed turn read aloud).
+  const caption = (reveal.shown || live || (ttsText ? captionReveal.shown : '')).trim()
   const idle = busy === 'idle'
   const canSend = Boolean(note.trim()) && idle
   const orbBase: OrbPhase =
