@@ -84,6 +84,7 @@ import { PurchaseOrderCard } from '../../supply/PurchaseOrderCard'
 import { RulesChangeCard } from '../../supply/Supply'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
 import { utter } from '../phoneVoice'
+import { useLanguageSwitch } from '../languageSwitch'
 import { ActionChip, ReplyCard } from '../CoachActions'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
 import type { Destination } from '../workspaceContext'
@@ -181,6 +182,7 @@ function CoachScreen({
   const roles = theme.material
   const identity = useIdentity()
   const language = useLocale()
+  const switchLanguage = useLanguageSwitch()
   const photoText = photoCopy(language)
   const ws = useWorkspace()
   // Hidden behind the full-screen new-shop flow: no voice, no pickers, no draft prompts.
@@ -261,6 +263,7 @@ function CoachScreen({
 
   const receive = useCallback(
     (event: CoachEvent) => {
+      switchLanguage(event)
       if (event.kind === 'ready') {
         session.current = event.session_id ?? session.current
         setMode(event.mode ?? 'offline')
@@ -345,7 +348,7 @@ function CoachScreen({
         setFaceOpen(true)
       }
     },
-    [review, go, setFaceOpen, t.conversationRolledOver],
+    [review, go, setFaceOpen, t.conversationRolledOver, switchLanguage],
   )
   const restored = useRef<Promise<unknown>>(Promise.resolve())
   const addReply = useCallback((text: string) => {
