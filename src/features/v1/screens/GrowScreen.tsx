@@ -10,6 +10,7 @@ import { useCopy as usePlanCopy } from '../../planning/strings'
 import { RecapTile } from '../../sales/ShopInsights'
 import { OrdersTile } from '../../sourcing/Orders'
 import { SupplyTile } from '../../supply/Supply'
+import { WeekPulseTile } from '../../analytics/WeekPulse'
 import { readiness } from '../shopProgress'
 import { ShopSheets, Supporting, Tile, type ShopSheetKind } from '../ShopTiles'
 import { tileGrid } from '../tileSpan'
@@ -107,6 +108,7 @@ function GrowTiles() {
         >
           {shop.fields.reward_text && <Supporting>{tabs.perksAfter(stamps)}</Supporting>}
         </Tile>
+        <WeekPulseTile />
         <RecapTile />
       </Box>
       <ShopSheets

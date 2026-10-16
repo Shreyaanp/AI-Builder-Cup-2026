@@ -418,6 +418,7 @@ export const kn: Copy = {
     gallery: 'ಅಂಗಡಿ ಗ್ಯಾಲರಿ ಫೋಟೋಗಳು',
     community: 'ಅಂಗಡಿಯ ಸಾರ್ವಜನಿಕ ಪ್ರತಿಗಳು',
     memory: 'ಸಹಾಯಕನ ಮೆಮೊರಿ',
+    analytics: 'ಅಂಗಡಿ ವಿಶ್ಲೇಷಣೆ',
     conversations: 'ಸಂಭಾಷಣೆಗಳು',
   } as Record<string, string>,
 }
