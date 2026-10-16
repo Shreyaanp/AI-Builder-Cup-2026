@@ -170,11 +170,11 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       await moment.getByRole('button', { name: 'Done' }).click()
       await expect(customer).not.toHaveURL(/[?&]k=/)
       const card = customer.getByRole('region', { name: 'Stamp card' })
-      await expect(card.getByRole('status')).toHaveText('1 stamps')
+      await expect(card.getByRole('status')).toHaveText('1 stamp')
       await expect(customer.getByText('This card is saved to your account.')).toBeVisible()
       await shot(customer, 3, 7)
       await customer.reload()
-      await expect(card.getByRole('status')).toHaveText('1 stamps')
+      await expect(card.getByRole('status')).toHaveText('1 stamp')
     })
     await test.step('8 · light/dark and reduced motion', async () => {
       await customer.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
