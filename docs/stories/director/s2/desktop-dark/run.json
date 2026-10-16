@@ -1,0 +1,85 @@
+{
+  "id": "s2",
+  "title": "Daily upkeep by text or voice",
+  "variant": "desktop-dark",
+  "sha": "fa60840b0a231008e068275a62171790a36cd2e9",
+  "baseURL": "http://127.0.0.2:3537",
+  "serverRun": "1792101157322",
+  "started": "2026-10-15T22:01:16.569Z",
+  "status": "walked",
+  "evidence": [
+    {
+      "name": "01-coach",
+      "visibleElements": 37,
+      "competingAccents": 1,
+      "spacingOn4pxRhythm": 0.839,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 5
+    },
+    {
+      "name": "01-send-error-draft",
+      "visibleElements": 39,
+      "competingAccents": 1,
+      "spacingOn4pxRhythm": 0.803,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 5
+    },
+    {
+      "name": "01-offline-draft",
+      "visibleElements": 38,
+      "competingAccents": 1,
+      "spacingOn4pxRhythm": 0.802,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 5
+    },
+    {
+      "name": "02-review",
+      "visibleElements": 15,
+      "competingAccents": 1,
+      "spacingOn4pxRhythm": 0.8,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 0
+    },
+    {
+      "name": "03-public-saved",
+      "visibleElements": 33,
+      "competingAccents": 2,
+      "spacingOn4pxRhythm": 0.605,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 2
+    },
+    {
+      "name": "90-reduced-motion",
+      "visibleElements": 33,
+      "competingAccents": 2,
+      "spacingOn4pxRhythm": 0.605,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 2
+    }
+  ],
+  "gaps": [],
+  "checks": [
+    "Both edits reviewed before save; public menu shows approved values",
+    "Reduced-motion final state: 0 running infinite animations (manual interpretation required)"
+  ],
+  "error": null,
+  "finished": "2026-10-15T22:02:21.397Z"
+}

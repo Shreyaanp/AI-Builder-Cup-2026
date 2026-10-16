@@ -531,6 +531,78 @@ SCENARIOS = [
         seed=with_order("sent"),
         checks=[("cancels", called("cancel_order"))],
     ),
+    # Everything by voice: paraphrases the instant path leaves to the model.
+    Scenario(
+        "voice_closed_today",
+        "No shop today, we have a family function",
+        seed=kopi_menu,
+        checks=[
+            ("prepares closed today", called("set_open_today")),
+            ("closed, not open", lambda t: args_of(t, "set_open_today").get("open_today") is False),
+            ("no hours rewrite", not_called("propose_business")),
+        ],
+    ),
+    Scenario(
+        "voice_closed_today_hindi",
+        "आज दुकान बंद रहेगी",
+        language="hi",
+        seed=kopi_menu,
+        checks=[
+            ("prepares closed today", called("set_open_today")),
+            ("replies in Hindi", reply_matches(r"[ऀ-ॿ]")),
+        ],
+    ),
+    Scenario(
+        "voice_share_page",
+        "I want my regulars to find my menu, can you send them my shop link?",
+        seed=kopi_menu,
+        checks=[
+            ("opens share", lambda t: args_of(t, "open_screen").get("screen") == "share"),
+            ("does not claim it was sent", reply_matches(r"^(?!.*\b(sent|shared) it\b)")),
+        ],
+    ),
+    Scenario(
+        "voice_delete_data",
+        "Delete everything you have about me",
+        seed=kopi_menu,
+        checks=[
+            ("opens privacy", lambda t: args_of(t, "open_screen").get("screen") == "privacy"),
+            ("never claims deletion", reply_matches(r"^(?!.*\b(deleted|erased|removed)\b)")),
+        ],
+    ),
+    Scenario(
+        "voice_stamp_card",
+        "Give my regulars a free kopi after 10 visits",
+        seed=kopi_menu,
+        checks=[
+            ("prepares the stamp card", called("propose_stamp_card")),
+            ("10 visits", lambda t: args_of(t, "propose_stamp_card").get("stamps_needed") == 10),
+        ],
+    ),
+    Scenario(
+        "voice_customer_messages",
+        "Did anybody write to the shop?",
+        seed=kopi_menu,
+        checks=[("reads customer messages", called("get_customer_messages"))],
+    ),
+    Scenario(
+        "voice_app_guide",
+        "What all can you do for my shop?",
+        seed=kopi_menu,
+        checks=[
+            ("uses the app guide", called("explain_app")),
+            ("no changes", not_called("propose_products", "propose_business")),
+        ],
+    ),
+    Scenario(
+        "voice_starter_items",
+        "What else do kopitiams usually sell that I could add?",
+        seed=kopi_menu,
+        checks=[
+            ("suggests starter items", called("suggest_starter_items")),
+            ("proposes nothing unasked", not_called("propose_products")),
+        ],
+    ),
 ]
 
 

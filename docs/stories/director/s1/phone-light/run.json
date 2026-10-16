@@ -1,0 +1,98 @@
+{
+  "id": "s1",
+  "title": "Owner opens and shares a shop",
+  "variant": "phone-light",
+  "sha": "fa60840b0a231008e068275a62171790a36cd2e9",
+  "baseURL": "http://127.0.0.2:3537",
+  "serverRun": "1792101157322",
+  "started": "2026-10-15T21:57:22.409Z",
+  "status": "partial",
+  "evidence": [
+    {
+      "name": "01-welcome",
+      "visibleElements": 3,
+      "competingAccents": 0,
+      "spacingOn4pxRhythm": 1,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 0,
+      "accessibilityViolations": 0,
+      "smallTargets": 0
+    },
+    {
+      "name": "02-consent",
+      "visibleElements": 13,
+      "competingAccents": 0,
+      "spacingOn4pxRhythm": 0.875,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 0,
+      "accessibilityViolations": 0,
+      "smallTargets": 0
+    },
+    {
+      "name": "03-coach-empty",
+      "visibleElements": 13,
+      "competingAccents": 0,
+      "spacingOn4pxRhythm": 0.875,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 0,
+      "accessibilityViolations": 0,
+      "smallTargets": 0
+    },
+    {
+      "name": "04-photo-review",
+      "visibleElements": 14,
+      "competingAccents": 1,
+      "spacingOn4pxRhythm": 0.727,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 0
+    },
+    {
+      "name": "05-my-shop",
+      "visibleElements": 14,
+      "competingAccents": 1,
+      "spacingOn4pxRhythm": 0.741,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 0
+    },
+    {
+      "name": "06-sharing",
+      "visibleElements": 3,
+      "competingAccents": 0,
+      "spacingOn4pxRhythm": 1,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 0
+    },
+    {
+      "name": "90-reduced-motion",
+      "visibleElements": 3,
+      "competingAccents": 0,
+      "spacingOn4pxRhythm": 1,
+      "overflow": false,
+      "contrastViolations": 0,
+      "manualContrast": 1,
+      "accessibilityViolations": 0,
+      "smallTargets": 0
+    }
+  ],
+  "gaps": [
+    "This main checkout uses the existing coach/photo review. The full-screen name-first voice/camera/map onboarding contract needs the onboarding branch and physical-device review."
+  ],
+  "checks": [
+    "Consent gate; photo fixture disclosure; no preapproval save; My shop and sharing reachable",
+    "Reduced-motion final state: 0 running infinite animations (manual interpretation required)"
+  ],
+  "error": null,
+  "finished": "2026-10-15T21:58:00.724Z"
+}

@@ -58,11 +58,10 @@ import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
 import { SalesImportSheet } from '../ImportMenu'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
-import { ShopCard, ShopSheet, StartCard } from '../ShopCard'
+import { StartCard } from '../ShopCard'
 import { TourOffer } from '../../tour/Tour'
-import { PendingCard } from '../PendingCard'
 import { ShopSheets } from '../ShopTiles'
-import { FreshnessCard, RecapTile } from '../../sales/ShopInsights'
+import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
 import { useVoice } from '../useVoice'
@@ -70,13 +69,16 @@ import { useOnline } from '../useOnline'
 import { useWorkspace } from '../workspaceContext'
 import { OwnerJourney } from '../../frontdoors/OwnerJourney'
 import { LoadError } from '../LoadError'
-import { enterRise, shape, windowClass } from '../../../design/theme'
+import { enterRise, shape } from '../../../design/theme'
 import { useSourcingCopy } from '../../sourcing/copy'
 import { OrdersSheet } from '../../sourcing/Orders'
 import { useReceiveOrder } from '../../sourcing/orderData'
 import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
 import { utter } from '../phoneVoice'
+import { ActionChip, ReplyCard } from '../CoachActions'
+import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
+import type { Destination } from '../workspaceContext'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 // The composer grows with multi-line text up to this many lines, then scrolls.
@@ -88,6 +90,30 @@ type Message =
   | { role: 'order'; orderId: string }
   // A chart beside a forecast or "how is business" answer.
   | { role: 'chart'; chart: CoachChartData; key: string }
+  // An app action the coach prepared: a screen it opened, or a customer reply to send.
+  | { role: 'action'; action: CoachAction; key: string }
+// Coach actions that open a My shop sheet.
+const SHEETS: Partial<Record<CoachAction['target'], ShopSheetKind>> = {
+  messages: 'messages',
+  share: 'customer',
+  sold_out: 'soldOut',
+  menu: 'menu',
+  details: 'details',
+  stamps: 'details',
+  plan: 'plan',
+  games: 'customer',
+}
+const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
+  today: 'coach',
+  shop: 'shop',
+  grow: 'grow',
+  you: 'you',
+  trust: 'you',
+  games: 'grow',
+  close_day: 'grow',
+  google: 'google',
+  privacy: 'privacy',
+}
 const REPLY_POLL_MS = 1500
 const REPLY_WAIT_MS = 45_000
 
@@ -129,6 +155,7 @@ function CoachScreen({
   // Hidden behind the full-screen new-shop flow: no voice, no pickers, no draft prompts.
   const visible = !ws.creatingShop && !ws.newShopReady
   const [messages, setMessages] = useState<Message[]>([])
+  const [showToday, setShowToday] = useState(false)
   const [reply, setReply] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState<'idle' | 'reply' | 'photo'>('idle')
@@ -145,9 +172,6 @@ function CoachScreen({
   const [thread, setThread] = useState<string | null>(null)
   const watching = useRef(new Set<string>())
   const receiveOrder = useReceiveOrder()
-  // Shop details sheet: null = closed, -1 = open, n = open on product n.
-  const [sheet, setSheet] = useState<number | null>(null)
-  const openSheet = (product?: number) => setSheet(product ?? -1)
   // My shop sheets opened from suggestion chips.
   const [shopSheet, setShopSheet] = useState<ShopSheetKind | null>(null)
   const { unread, refresh: refreshUnread } = useUnread()
@@ -211,8 +235,10 @@ function CoachScreen({
       }
       if (event.kind === 'delta') setReply((text) => text + (event.text ?? ''))
       if (event.kind === 'reply' || event.kind === 'output_transcript') setReply(event.text ?? '')
-      if (event.kind === 'input_transcript')
+      if (event.kind === 'input_transcript') {
+        setShowToday(false)
         setMessages((items) => [...items, { role: 'user', text: event.text ?? '' }])
+      }
       if (event.kind === 'proposal') review(event.data as unknown as Proposal)
       if (event.kind === 'sourcing') setSearching(String(event.data?.item ?? ''))
       if (event.kind === 'suppliers') {
@@ -239,9 +265,25 @@ function CoachScreen({
           ].slice(-40),
         )
       }
+      if (event.kind === 'action') {
+        const action = asCoachAction(event.data)
+        if (action) {
+          setMessages((items) =>
+            [...items, { role: 'action' as const, action, key: crypto.randomUUID() }].slice(-40),
+          )
+          // Screens open at once (everything by voice); pickers and Send wait for a tap.
+          if (!NEEDS_TAP.has(action.target)) {
+            setShowToday(action.target === 'today')
+            const sheet = SHEETS[action.target]
+            if (action.target === 'games') go('grow')
+            if (sheet) setShopSheet(sheet)
+            else if (DESTINATIONS[action.target]) go(DESTINATIONS[action.target]!)
+          }
+        }
+      }
       if (event.kind === 'turn_complete') setSearching(null)
       if (event.kind === 'workflow' && event.data?.status === 'verification_required') {
-        go('privacy')
+        go('you')
         setFaceOpen(true)
       }
     },
@@ -359,6 +401,7 @@ function CoachScreen({
   )
 
   function resetThread() {
+    setShowToday(false)
     controller.current?.abort()
     voice.stop()
     session.current = null
@@ -396,6 +439,7 @@ function CoachScreen({
   async function send(text = note) {
     const message = text.trim()
     if (!message || busy !== 'idle' || voice.state !== 'idle') return
+    setShowToday(false)
     const abort = new AbortController()
     controller.current = abort
     setBusy('reply')
@@ -484,6 +528,28 @@ function CoachScreen({
     }
   }
 
+  function openAction(action: CoachAction) {
+    setShowToday(action.target === 'today')
+    if (action.target === 'games') go('grow')
+    if (action.target === 'photo') pick('library')
+    else if (action.target === 'import') pick('document')
+    else if (action.target === 'reply') return
+    else if (SHEETS[action.target]) setShopSheet(SHEETS[action.target]!)
+    else if (DESTINATIONS[action.target]) go(DESTINATIONS[action.target]!)
+  }
+  async function sendReply(action: CoachAction): Promise<boolean> {
+    if (!activeId || !action.thread_id || !action.text) return false
+    try {
+      await api(`/businesses/${activeId}/inquiries/${action.thread_id}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ text: action.text }),
+      })
+      refreshUnread()
+      return true
+    } catch {
+      return false
+    }
+  }
   async function sendOrder(order: Order): Promise<boolean> {
     setError('')
     try {
@@ -573,6 +639,7 @@ function CoachScreen({
   }
 
   async function restore(id: string) {
+    setShowToday(false)
     setActionsOpen(false)
     voice.stop()
     try {
@@ -648,6 +715,17 @@ function CoachScreen({
       ))}
     </Stack>
   )
+  const today: TodayActions = {
+    unread,
+    ask: (text) => void send(text),
+    draft: (text) => {
+      setNote(text)
+      messageInput.current?.focus()
+    },
+    openMessages: () => setShopSheet('messages'),
+    openSoldOut: () => setShopSheet('soldOut'),
+    talk: () => void restored.current.then(() => voice.start(session.current)),
+  }
   const lastIsReply = messages.at(-1)?.role === 'assistant' && !reply && busy === 'idle'
   const canSend = Boolean(note.trim()) && busy === 'idle' && voice.state === 'idle'
   const voiceText =
@@ -668,7 +746,7 @@ function CoachScreen({
         mx: 'auto',
       }}
     >
-      <OwnerJourney />
+      {!ws.active && <OwnerJourney />}
       {/* One quiet line: which coach is answering. Every other action is behind the top bar's +. */}
       {!empty && (
         <Typography
@@ -833,93 +911,60 @@ function CoachScreen({
               </Stack>
             </Alert>
           )}
-        {empty ? (
-          ws.loading || ws.loadError ? null : (
+        {empty || showToday ? (
+          ws.loading || ws.loadError ? null : ws.active ? (
+            // Today: how the shop is doing and what needs the owner now. Anything complete
+            // goes away; the top bar already names the shop.
+            <TodayView key={ws.active.id} actions={today} />
+          ) : (
             <Stack spacing={{ xs: 3, sm: 5 }} sx={{ pt: { xs: 1, sm: 10 }, pb: 4 }}>
-              {/* With a shop, the top bar already names it: no greeting line, only a heading for
-                screen readers. Before a shop exists the greeting introduces the coach. */}
-              {ws.active ? (
-                <Typography component="h1" sx={visuallyHidden}>
-                  {t.navCoach}
-                </Typography>
-              ) : (
-                <Typography
-                  component="h1"
-                  variant="headlineMedium"
-                  sx={{
-                    fontSize: { xs: '1.5rem', sm: undefined },
-                    lineHeight: { xs: '2rem', sm: undefined },
-                  }}
-                >
-                  {t.coachGreeting}
-                </Typography>
-              )}
-              {ws.active ? <ShopCard onOpen={openSheet} /> : <StartCard />}
+              {/* Before a shop exists the greeting introduces the coach. */}
+              <Typography
+                component="h1"
+                variant="headlineMedium"
+                sx={{
+                  fontSize: { xs: '1.5rem', sm: undefined },
+                  lineHeight: { xs: '2rem', sm: undefined },
+                }}
+              >
+                {t.coachGreeting}
+              </Typography>
+              <StartCard />
               {/* First visit: see the product working on a filled demo shop. */}
               {ws.businesses.length === 0 && <TourOffer />}
-              {/* Suggestions right under the shop card; before a shop exists the start card is
-                the only thing shown. */}
-              {ws.active && chips}
-              {ws.active && (
-                // Phones: one attention card at a time so the first view fits without scrolling.
-                // The first card with something to say shows, the rest wait their turn (each one
-                // also lives on My shop). A card with nothing to say renders nothing.
-                <Box
-                  data-testid="coach-attention"
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: { xs: 0, sm: 5 },
-                    '& > :empty': { display: 'none' },
-                    [`@media (max-width:${windowClass.medium - 1}px)`]: {
-                      '& > :not(:empty) ~ *': { display: 'none' },
-                    },
-                    '&:not(:has(> :not(:empty)))': { display: 'none' },
-                  }}
-                >
-                  <div>
-                    <FreshnessCard key={`freshness-${ws.active.id}`} />
-                  </div>
-                  <div>
-                    <RecapTile key={`recap-${ws.active.id}`} mondayOnly />
-                  </div>
-                  <div>
-                    <PendingCard
-                      unread={unread}
-                      onMessages={() => setShopSheet('messages')}
-                      onAnswer={(fact) => {
-                        setNote(`${t.factNames[fact]}: `)
-                        messageInput.current?.focus()
-                      }}
-                    />
-                  </div>
-                </Box>
-              )}
             </Stack>
           )
         ) : (
           <>
             {ws.active && (
-              // Stays under the app bar while the conversation scrolls, filling in as
-              // proposals are confirmed.
+              // While chatting the conversation gets the screen: what still needs the owner
+              // shrinks to one pill under the app bar (hidden when nothing does).
               <Box
                 sx={{
                   position: 'sticky',
                   top: 0,
                   zIndex: 2,
                   bgcolor: 'background.default',
-                  pb: 2,
                 }}
               >
-                <ShopCard dense onOpen={openSheet} />
-                <FreshnessCard key={`freshness-${ws.active.id}`} compact />
+                <NeedsPill key={ws.active.id} actions={today} />
               </Box>
             )}
             {/* The live region wraps the list: role="log" on the <ol> itself removed its list semantics. */}
             <Box role="log" aria-live="polite">
               <Stack component="ol" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0, pt: 2 }}>
                 {messages.map((message, index) =>
-                  message.role === 'chart' ? (
+                  message.role === 'action' ? (
+                    message.action.target === 'reply' ? (
+                      <ReplyCard key={message.key} action={message.action} onSend={sendReply} />
+                    ) : (
+                      <ActionChip
+                        key={message.key}
+                        action={message.action}
+                        onOpen={() => openAction(message.action)}
+                      />
+                    )
+                  ) : message.role === 'chart' ? (
                     <Box component="li" key={message.key} sx={{ display: 'flex' }}>
                       <CoachChart chart={message.chart} />
                     </Box>
@@ -975,15 +1020,6 @@ function CoachScreen({
         )}
         <div ref={end} />
       </Box>
-      <ShopSheet
-        open={sheet !== null}
-        focusProduct={sheet !== null && sheet >= 0 ? sheet : null}
-        onClose={() => setSheet(null)}
-        onAnswer={(fact) => {
-          setNote(`${t.factNames[fact]}: `)
-          messageInput.current?.focus()
-        }}
-      />
       <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
       <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
       <ShopSheets

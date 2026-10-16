@@ -7,9 +7,10 @@ draws the same passport from them, and they merge once on sign-in.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import time
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Literal
 
 import anyio
@@ -18,10 +19,30 @@ from fastapi import APIRouter, HTTPException, Request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from pydantic import BaseModel, ConfigDict, Field
 
+from . import shop_today
 from .auth import Principal
 from .community_routes import community, customer, display_name, identity
 from .customer_routes import shared
 from .discover import distance
+from .games import (
+    COOP_BONUS,
+    COOP_GOAL,
+    COOP_GOAL_DEMO,
+    PRIZE_POINTS,
+    SET_POINTS,
+    SETS,
+    WELCOME_STAMPS,
+    CoopStore,
+    Odd,
+    complete_sets,
+    coop_key,
+    demo_coop_visits,
+    issue_scratch,
+    odds,
+    record_help,
+    set_progress,
+    shop_in_set,
+)
 from .limits import client_ip, enforce_limits
 from .merchant_routes import owner, store
 from .passport import (
@@ -32,16 +53,20 @@ from .passport import (
     Outcome,
     PassportState,
     PassportStore,
+    PrizeKind,
     Quest,
     QuestStop,
     Requirement,
+    ScratchTicket,
     StampRecord,
     Streak,
     Visit,
+    WonPerk,
     apply_helpful,
     apply_rescue,
     apply_tip,
     apply_visit,
+    area_name,
     claim_card,
     demo_residents,
     display,
@@ -50,6 +75,7 @@ from .passport import (
     is_food,
     local_now,
     member_id,
+    monday_of,
     next_level,
     qr_key,
     quest_definitions,
@@ -75,6 +101,14 @@ def passports(request: Request) -> PassportStore:
     if service is None:
         service = PassportStore(community(request).docs)
         request.app.state.passport = service
+    return service
+
+
+def coops(request: Request) -> CoopStore:
+    service = getattr(request.app.state, "coop", None)
+    if service is None:
+        service = CoopStore(community(request).docs)
+        request.app.state.coop = service
     return service
 
 
@@ -148,6 +182,10 @@ class ShopStamp(BaseModel):
     claimed: int
     rescues: int
     last_day: str
+    # The owner's card (stamps needed, reward) plus the welcome stamps printed on every card.
+    needed: int = 8
+    welcome: int = WELCOME_STAMPS
+    reward: str = ""
 
 
 class AreaView(BaseModel):
@@ -164,13 +202,101 @@ class Impact(BaseModel):
     saved: dict[str, int]
 
 
+PerkTrigger = Literal[
+    "regular",
+    "full_card",
+    "quest_finale",
+    "rescue_hero",
+    # Reciprocity: small thank-yous the owner sets (docs/research/gamification.md §7).
+    "third_visit",
+    "tip",
+    "follow",
+    # Won, not unlocked: the shop's scratch-card prize and its collection-set finisher.
+    "scratch",
+    "set_complete",
+]
+EARNED_TRIGGERS = ("regular", "full_card", "quest_finale", "rescue_hero", "third_visit", "tip")
+
+
 class PerkView(BaseModel):
     shop_id: str
     shop_name: str
     id: str
-    trigger: Literal["regular", "full_card", "quest_finale", "rescue_hero"]
+    trigger: PerkTrigger
     text: str
     demo: bool
+
+
+class ScratchView(BaseModel):
+    """A scratch card. Before it is scratched, the prize stays on the server; the odds that
+    apply to this card are always shown."""
+
+    id: str
+    shop_id: str
+    shop_name: str
+    demo: bool
+    first: bool
+    odds: list[Odd]
+    revealed: bool
+    prize: PrizeKind | None = None
+    points: int = 0
+    perk_text: str = ""
+
+
+class SetStop(BaseModel):
+    shop_id: str
+    name: str
+    done: bool = False
+    demo: bool = False
+
+
+class SetView(BaseModel):
+    id: str  # chai_trail, locally_made, night_market, or festival:<id>
+    art: str
+    have: int
+    need: int
+    done: bool
+    stops: list[SetStop] = Field(default_factory=list)
+    festival: str | None = None
+    ends: str | None = None
+    approximate: bool = False
+    points: int = 0
+
+
+class CoopView(BaseModel):
+    area: str
+    area_name: str
+    week: str
+    ends: str  # the week's Sunday (shop-local date)
+    goal: int
+    total: int
+    demo_visits: int  # generated neighbours' visits included in total (demo areas only)
+    you: int
+    helpers: int
+    reached: bool
+    claimed: bool
+    bonus: int
+    demo: bool
+
+
+class NextReward(BaseModel):
+    """The single next named reward ("2 more stamps → free bun maska")."""
+
+    kind: Literal["card", "set", "level"]
+    left: int
+    reward: str  # card: the owner's reward text; set: set id; level: level key
+    shop_id: str = ""
+    shop_name: str = ""
+
+
+class GamesView(BaseModel):
+    scratch: list[ScratchView]  # waiting to be scratched, newest first
+    sets: list[SetView]
+    coop: CoopView | None
+    won_perks: list[WonPerk]
+    next_reward: NextReward | None
+    nudge: bool  # a gentle "keep your streak" line (Friday on, no visit yet, streak running)
+    welcome_stamps: int = WELCOME_STAMPS
 
 
 class PassportView(BaseModel):
@@ -189,6 +315,7 @@ class PassportView(BaseModel):
     perks: list[PerkView]
     leaderboard: bool
     flagged: bool = False
+    games: GamesView | None = None
 
 
 class StampResult(BaseModel):
@@ -196,6 +323,9 @@ class StampResult(BaseModel):
     passport: PassportView | None = None
     # Signed-out visitors keep this on the phone; it merges on sign-in.
     receipt: str | None = None
+    # Signed in: the scratch card this stamp earned, and any collection sets it completed.
+    scratch: ScratchView | None = None
+    sets_completed: list[str] = Field(default_factory=list)
 
 
 class QrKey(BaseModel):
@@ -224,21 +354,21 @@ class Board(BaseModel):
 class Perk(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     id: str = Field(min_length=1, max_length=40, pattern=r"^[a-z0-9-]+$")
-    trigger: Literal["regular", "full_card", "quest_finale", "rescue_hero"]
+    trigger: PerkTrigger
     text: str = Field(min_length=3, max_length=80)
     active: bool = True
 
 
 class PerkList(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    perks: list[Perk] = Field(default_factory=list, max_length=8)
+    perks: list[Perk] = Field(default_factory=list, max_length=12)
 
 
 # --- View ---
 
 
 def demo_perks(shop: dict[str, Any]) -> list[dict[str, Any]]:
-    """Demo shops offer a fixed demo perk so the unlock can be shown; labelled demo."""
+    """Demo shops offer fixed demo perks so every unlock can be shown; labelled demo."""
     return [
         {"id": "demo-regular", "trigger": "regular", "text": "Free upgrade on your next order"},
         {
@@ -247,31 +377,68 @@ def demo_perks(shop: dict[str, Any]) -> list[dict[str, Any]]:
             "text": str(shop.get("reward_text") or "A small treat on the house")[:80],
         },
         {"id": "demo-rescue", "trigger": "rescue_hero", "text": "First pick of tomorrow's bake"},
+        {"id": "demo-third", "trigger": "third_visit", "text": "Your third visit: a free refill"},
+        {"id": "demo-tip", "trigger": "tip", "text": "Thanks for the tip: a free taster"},
+        {"id": "demo-scratch", "trigger": "scratch", "text": "A free biscuit with any drink"},
+        {"id": "demo-set", "trigger": "set_complete", "text": "Set finisher: pick any pastry"},
     ]
 
 
-async def perk_views(request: Request, state: PassportState) -> list[PerkView]:
-    service = passports(request)
-    views: list[PerkView] = []
+async def shop_perks(request: Request, bid: str, shop: dict[str, Any]) -> list[dict[str, Any]]:
+    """The shop's active perks (or the demo set for a demo shop without its own)."""
+    perks = await anyio.to_thread.run_sync(passports(request).perks, bid)
+    if not perks and shop.get("demo"):
+        perks = demo_perks(shop)
+    return [p for p in perks if p.get("active", True)]
+
+
+def perk_text(perks: list[dict[str, Any]], trigger: str) -> str:
+    return next((str(p["text"]) for p in perks if p.get("trigger") == trigger), "")
+
+
+async def recent_shops(request: Request, state: PassportState) -> dict[str, dict[str, Any]]:
+    """The 30 most recently stamped shops that are still shared (one read each)."""
     recent = sorted(state.shops.items(), key=lambda kv: kv[1].days[-1:] or [""], reverse=True)
-    regular = LEVELS.index(state.level) >= 1
-    for bid, progress in recent[:30]:
+    found: dict[str, dict[str, Any]] = {}
+    for bid, _ in recent[:30]:
         shop = await anyio.to_thread.run_sync(store(request).public_shop, bid)
-        if shop is None:
-            continue
-        perks = await anyio.to_thread.run_sync(service.perks, bid)
-        if not perks and shop.get("demo"):
-            perks = demo_perks(shop)
+        if shop is not None:
+            found[bid] = shop
+    return found
+
+
+async def followed_shops(request: Request, uid: str | None) -> set[str]:
+    if not uid:
+        return set()
+    try:
+        profile = await anyio.to_thread.run_sync(community(request).profile, uid)
+    except Exception:
+        return set()
+    return set(profile.follows)
+
+
+async def perk_views(
+    request: Request,
+    state: PassportState,
+    shops: dict[str, dict[str, Any]],
+    followed: set[str],
+) -> list[PerkView]:
+    views: list[PerkView] = []
+    regular = LEVELS.index(state.level) >= 1
+    for bid, shop in shops.items():
+        progress = state.shops[bid]
         needed = int(shop.get("stamps_needed") or 8)
-        for perk in perks:
-            if perk.get("active") is False:
-                continue
+        for perk in await shop_perks(request, bid, shop):
             trigger = perk["trigger"]
             unlocked = (
                 (trigger == "regular" and regular and len(progress.days) >= 2)
                 or (trigger == "full_card" and progress.card >= needed)
                 or (trigger == "quest_finale" and bid in state.finale_shops)
                 or (trigger == "rescue_hero" and progress.rescues >= 3)
+                or (trigger == "third_visit" and len(progress.days) >= 3)
+                or (trigger == "tip" and progress.tipped)
+                # A follow counts once the customer has also been to the shop.
+                or (trigger == "follow" and bid in followed and bool(progress.days))
             )
             if unlocked:
                 views.append(
@@ -347,6 +514,145 @@ def quest_views(state: PassportState, today: date, nearby: list[dict[str, Any]])
     return views
 
 
+def scratch_view(ticket: ScratchTicket) -> ScratchView:
+    return ScratchView(
+        id=ticket.id,
+        shop_id=ticket.shop_id,
+        shop_name=ticket.shop_name,
+        demo=ticket.demo,
+        first=ticket.first,
+        odds=odds(ticket.has_perk),
+        revealed=ticket.revealed,
+        prize=ticket.prize if ticket.revealed else None,
+        points=PRIZE_POINTS.get(ticket.prize, 0) if ticket.revealed else 0,
+        perk_text=ticket.perk_text if ticket.revealed else "",
+    )
+
+
+def set_views(
+    state: PassportState, quests: list[Quest], nearby: list[dict[str, Any]]
+) -> list[SetView]:
+    views: list[SetView] = []
+    for definition in SETS:
+        collected = set_progress(state, definition.id)
+        stops = [
+            SetStop(
+                shop_id=s["id"],
+                name=s["name"],
+                done=s["id"] in collected,
+                demo=bool(s.get("demo")),
+            )
+            for s in nearby
+            if shop_in_set(definition.id, s)
+        ][:5]
+        views.append(
+            SetView(
+                id=definition.id,
+                art=definition.art,
+                have=min(len(collected), definition.need),
+                need=definition.need,
+                done=definition.id in state.sets_done,
+                stops=stops,
+                points=SET_POINTS,
+            )
+        )
+    # Festival trails are the festival quests, shown as limited-time sets.
+    for quest in quests:
+        if quest.kind != "festival":
+            continue
+        views.append(
+            SetView(
+                id=f"festival:{quest.festival}",
+                art=quest.art or "",
+                have=quest.have,
+                need=quest.need,
+                done=quest.done,
+                stops=[SetStop(**stop.model_dump()) for stop in quest.stops],
+                festival=quest.festival,
+                ends=quest.ends,
+                approximate=True,
+                points=quest.points,
+            )
+        )
+    return views
+
+
+async def coop_view(
+    request: Request,
+    state: PassportState,
+    today: date,
+    nearby: list[dict[str, Any]],
+    lat: float | None,
+    lng: float | None,
+) -> CoopView | None:
+    """This week's shared goal for the customer's own area (their latest stamp, else here)."""
+    latest = next((s for s in state.stamps if s.area), None)
+    if latest:
+        area, name, demo = latest.area, latest.area_name, latest.demo
+    elif lat is not None and lng is not None:
+        area = geohash(lat, lng)
+        local = [s for s in nearby if shop_area(s) == area]
+        if not local:
+            return None
+        name = next((n for s in local if (n := area_name(s))), "")
+        demo = all(s.get("demo") for s in local)
+    else:
+        return None
+    week = week_of(today)
+    data = await anyio.to_thread.run_sync(coops(request).get, area, week)
+    real = int(data.get("visits", 0))
+    generated = demo_coop_visits(area, week, today) if demo else 0
+    goal = COOP_GOAL_DEMO if demo else COOP_GOAL
+    total = real + generated
+    key = coop_key(area, week)
+    return CoopView(
+        area=area,
+        area_name=name,
+        week=week,
+        ends=(monday_of(week) + timedelta(days=6)).isoformat(),
+        goal=goal,
+        total=total,
+        demo_visits=generated,
+        you=state.coop_helped.get(key, 0),
+        helpers=len(data.get("helpers", {})),
+        reached=total >= goal,
+        claimed=key in state.coop_claimed,
+        bonus=COOP_BONUS,
+        demo=demo,
+    )
+
+
+def next_reward(
+    state: PassportState,
+    shops: dict[str, dict[str, Any]],
+    sets: list[SetView],
+    level: LevelView,
+) -> NextReward | None:
+    """The closest named reward: a shop card, then a collection set, else the next level."""
+    options: list[tuple[int, int, NextReward]] = []
+    for bid, shop in shops.items():
+        reward = str(shop.get("reward_text") or "")
+        progress = state.shops[bid]
+        if not reward or not progress.card:
+            continue
+        left = max(0, int(shop.get("stamps_needed") or 8) - progress.card)
+        card = NextReward(
+            kind="card", left=left, reward=reward[:120], shop_id=bid, shop_name=progress.name
+        )
+        options.append((left, 0, card))
+    for view in sets:
+        if not view.done and view.have and not view.festival:
+            left = view.need - view.have
+            options.append((left, 1, NextReward(kind="set", left=left, reward=view.id)))
+    if options:
+        return min(options, key=lambda option: (option[0], option[1]))[2]
+    requirement = level.next_requirement
+    if level.next and requirement:
+        left = max(0, requirement.need - requirement.have)
+        return NextReward(kind="level", left=left, reward=level.next)
+    return None
+
+
 async def build_view(
     request: Request,
     state: PassportState,
@@ -356,6 +662,7 @@ async def build_view(
     lng: float | None = None,
     timezone: str = "UTC",
     device_only: bool = False,
+    uid: str | None = None,
 ) -> PassportView:
     now = time.time()
     today = local_now(timezone, now).date()
@@ -363,6 +670,7 @@ async def build_view(
     upcoming = next_level(level)
     reqs = requirements(state, upcoming) if upcoming else []
     nearby = await nearby_shops(request, lat, lng)
+    data = await recent_shops(request, state)
     shops = [
         ShopStamp(
             id=bid,
@@ -377,6 +685,8 @@ async def build_view(
             claimed=p.claimed,
             rescues=p.rescues,
             last_day=(p.days or [""])[-1],
+            needed=int((data.get(bid) or {}).get("stamps_needed") or 8),
+            reward=str((data.get(bid) or {}).get("reward_text") or "")[:120],
         )
         for bid, p in sorted(state.shops.items(), key=lambda kv: kv[1].days[-1:], reverse=True)
     ]
@@ -393,29 +703,49 @@ async def build_view(
         area.demo = area.demo and shop.demo
         area.name = area.name or shop.area_name
     meals = sum(p.rescues for p in state.shops.values())
+    level_view = LevelView(
+        key=level,
+        next=upcoming,
+        next_requirement=next((r for r in reqs if not r.met), None),
+        requirements=reqs,
+    )
+    this_week = week_of(today)
+    run = streak(state, this_week)
+    quests = quest_views(state, today, nearby)
+    sets = set_views(state, quests, nearby)
+    games = GamesView(
+        scratch=[scratch_view(t) for t in state.scratch if not t.revealed][:5],
+        sets=sets,
+        coop=await coop_view(request, state, today, nearby, lat, lng),
+        won_perks=state.won_perks[:20],
+        next_reward=next_reward(state, data, sets, level_view),
+        # Gentle and rare: from Friday, only while a streak runs and this week has no visit.
+        nudge=bool(
+            run.weeks
+            and not run.this_week
+            and this_week not in run.planned
+            and today.weekday() >= 4
+        ),
+    )
     return PassportView(
         signed_in=signed_in,
         device_only=device_only,
         points=state.points,
         demo_points=state.demo_points,
         total=state.points + state.demo_points,
-        level=LevelView(
-            key=level,
-            next=upcoming,
-            next_requirement=next((r for r in reqs if not r.met), None),
-            requirements=reqs,
-        ),
-        streak=streak(state, week_of(today)),
+        level=level_view,
+        streak=run,
         stamps=state.stamps[:60],
         shops=shops,
         areas=list(areas.values()),
-        quests=quest_views(state, today, nearby),
+        quests=quests,
         impact=Impact(
             meals=meals, co2_kg=round(meals * CO2_KG_PER_MEAL, 1), saved=state.rescue_saved
         ),
-        perks=await perk_views(request, state),
+        perks=await perk_views(request, state, data, await followed_shops(request, uid)),
         leaderboard=state.leaderboard,
         flagged=flagged(state, now),
+        games=games,
     )
 
 
@@ -492,11 +822,45 @@ async def stamp(body: StampInput, request: Request) -> StampResult:
     await enforce_limits(request, [("passport", principal.uid)], anonymous=True)
     shop, visit = await verified_visit(request, body, principal.uid)
     service = passports(request)
-    state, outcome = await anyio.to_thread.run_sync(
-        service.edit, principal.uid, lambda s: apply_visit(s, visit)
+    perks = await shop_perks(request, body.shop_id, shop)
+
+    def edit(state: PassportState) -> tuple[Outcome, ScratchTicket | None, list[str]]:
+        outcome = apply_visit(state, visit)
+        record = outcome.stamp
+        if outcome.verdict != "stamped" or record is None or flagged(state, visit.at):
+            return outcome, None, []
+        # The game layer: a scratch card, collection sets, and this visit's co-op share.
+        ticket = issue_scratch(state, record, perk_text(perks, "scratch"))
+        sets = complete_sets(state, record, perk_text(perks, "set_complete"))
+        outcome.points += SET_POINTS * len(sets)
+        if record.area:
+            record_help(state, record.area, record.week)
+        return outcome, ticket, sets
+
+    state, (outcome, ticket, sets) = await anyio.to_thread.run_sync(
+        service.edit, principal.uid, edit
     )
+    if ticket and outcome.stamp:
+        record = outcome.stamp
+        if record.area:
+            await anyio.to_thread.run_sync(
+                coops(request).add, record.area, record.week, principal.uid
+            )
+        await anyio.to_thread.run_sync(
+            coops(request).add_tried, body.shop_id, principal.uid, record.day
+        )
     await post_board(request, principal, state)
-    log.info("passport_stamp", verdict=outcome.verdict, demo=outcome.demo)
+    log.info("passport_stamp", verdict=outcome.verdict, demo=outcome.demo, sets=len(sets))
+    if outcome.verdict in ("stamped", "card_only"):
+        # Daily totals for the owner's Today page; no customer is identified.
+        zone = str(shop.get("timezone") or "Asia/Singapore")
+        returning = outcome.verdict == "stamped" and not outcome.first
+        metrics: list[shop_today.Metric] = ["stamps", "returning"] if returning else ["stamps"]
+        with contextlib.suppress(Exception):
+            for metric in metrics:
+                await anyio.to_thread.run_sync(
+                    shop_today.count, store(request), body.shop_id, metric, zone
+                )
     return StampResult(
         outcome=outcome,
         passport=await build_view(
@@ -506,7 +870,10 @@ async def stamp(body: StampInput, request: Request) -> StampResult:
             lat=body.lat,
             lng=body.lng,
             timezone=str(shop.get("timezone") or "UTC"),
+            uid=principal.uid,
         ),
+        scratch=scratch_view(ticket) if ticket else None,
+        sets_completed=sets,
     )
 
 
@@ -626,7 +993,9 @@ async def merge(
 
     state, _ = await anyio.to_thread.run_sync(service.edit, principal.uid, edit)
     await post_board(request, principal, state)
-    return await build_view(request, state, signed_in=True, lat=lat, lng=lng, timezone=tz)
+    return await build_view(
+        request, state, signed_in=True, lat=lat, lng=lng, timezone=tz, uid=principal.uid
+    )
 
 
 @router.get("/customer/passport", response_model=PassportView)
@@ -635,12 +1004,23 @@ async def passport(
 ) -> PassportView:
     principal = await customer(request)
     state = await anyio.to_thread.run_sync(passports(request).get, principal.uid)
-    return await build_view(request, state, signed_in=True, lat=lat, lng=lng, timezone=tz)
+    return await build_view(
+        request, state, signed_in=True, lat=lat, lng=lng, timezone=tz, uid=principal.uid
+    )
 
 
 @router.delete("/customer/passport")
 async def erase_passport(request: Request) -> dict[str, bool]:
     principal = await customer(request)
+    state = await anyio.to_thread.run_sync(passports(request).get, principal.uid)
+    # The shared tallies forget this customer too (co-op help, "neighbours tried this").
+    helped: dict[str, list[str]] = {}
+    for key in state.coop_helped:
+        area, _, week = key.partition("|")
+        helped.setdefault(area, []).append(week)
+    await anyio.to_thread.run_sync(
+        coops(request).erase_member, principal.uid, helped, list(state.shops)
+    )
     await anyio.to_thread.run_sync(passports(request).erase, principal.uid)
     return {"deleted": True}
 
@@ -656,7 +1036,7 @@ async def claim(business_id: str, request: Request) -> PassportView:
     )
     if not claimed:
         raise HTTPException(409, "CARD_NOT_FULL")
-    return await build_view(request, state, signed_in=True)
+    return await build_view(request, state, signed_in=True, uid=principal.uid)
 
 
 # --- Rescue collected (QR at pickup) ---
@@ -688,7 +1068,9 @@ async def collect_rescue(body: RescueStampInput, request: Request) -> StampResul
     await post_board(request, principal, state)
     return StampResult(
         outcome=outcome,
-        passport=await build_view(request, state, signed_in=True, lat=body.lat, lng=body.lng),
+        passport=await build_view(
+            request, state, signed_in=True, lat=body.lat, lng=body.lng, uid=principal.uid
+        ),
     )
 
 
@@ -772,7 +1154,7 @@ async def join_board(body: BoardInput, request: Request) -> PassportView:
     else:
         for area in state.week_points:
             await anyio.to_thread.run_sync(service.leave_board, principal.uid, area)
-    return await build_view(request, state, signed_in=True)
+    return await build_view(request, state, signed_in=True, uid=principal.uid)
 
 
 @router.get("/customer/passport/board", response_model=Board)

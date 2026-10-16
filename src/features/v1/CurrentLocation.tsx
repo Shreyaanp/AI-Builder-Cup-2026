@@ -4,6 +4,7 @@ import { useLocale } from '../../state/hooks'
 import type { Business, Proposal } from './api'
 import { useCopy } from './strings'
 import { useNewShopCopy } from './newShopCopy'
+import { useInChatCopy } from './inChatCopy'
 import { useWorkspace } from './workspaceContext'
 import { readablePlace, useMeasureLocation, type OwnerLocation } from './location'
 
@@ -40,6 +41,7 @@ export function CurrentLocationAction({
 export function LocationPin({ fields }: { fields: Business['fields'] }) {
   const t = useCopy()
   const f = useNewShopCopy()
+  const c = useInChatCopy()
   const locale = useLocale()
   if (fields.lat == null || fields.lng == null) return null
   const readable = readablePlace(fields, f)
@@ -52,7 +54,11 @@ export function LocationPin({ fields }: { fields: Business['fields'] }) {
       <MapPin size={24} aria-hidden="true" style={{ flexShrink: 0 }} />
       <Box>
         <Typography variant="titleSmall">
-          {fields.pin_source === 'device' ? t.yourLocation : t.fields.location}
+          {fields.pin_source === 'device'
+            ? t.yourLocation
+            : fields.pin_source === 'pin'
+              ? c.pinPlaced
+              : t.fields.location}
         </Typography>
         <Typography variant="bodyMedium">{readable}</Typography>
         {fields.pin_source === 'device' && fields.pin_accuracy_m != null && (

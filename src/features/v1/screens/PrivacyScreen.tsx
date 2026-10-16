@@ -4,7 +4,6 @@ import {
   AlertTitle,
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -15,7 +14,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { FileText, RotateCcw, ScanFace, ShieldCheck, Trash2 } from 'lucide-react'
+import { FileText, RotateCcw, ShieldCheck, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useLocale } from '../../../state/hooks'
 import type { EraseResult } from '../api'
@@ -26,6 +25,7 @@ import { useBackClose } from '../backStack'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
 import { shape } from '../../../design/theme'
+import { TrustCard } from '../../trust/TrustCard'
 
 function Section({
   icon,
@@ -64,8 +64,7 @@ export function PrivacyScreen() {
   const ws = useWorkspace()
   const [legal, setLegal] = useState<LegalDocument>(null)
   // Destructive actions always confirm first.
-  const [confirming, setConfirming] = useState<'none' | 'all' | 'face'>('none')
-  const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   // "Delete all my data": each server step reports on its own, so a partial result is shown with
   // what is still pending (the server also retries it) and a Try again.
   const [erase, setErase] = useState<EraseState>(() =>
@@ -73,25 +72,10 @@ export function PrivacyScreen() {
       ? { kind: 'partial', pending: ws.me.erase_pending }
       : { kind: 'idle' },
   )
-  const pending = ws.businesses.some((shop) => shop.registration === 'verification_pending')
-  useBackClose(confirming !== 'none', () => !busy && setConfirming('none'))
-
-  async function deleteFace() {
-    setBusy(true)
-    try {
-      await ws.api('/face/template', { method: 'DELETE' })
-      await ws.reload()
-      ws.notify(t.faceDeleted)
-    } catch {
-      ws.notify(t.actionFailed)
-    } finally {
-      setBusy(false)
-      setConfirming('none')
-    }
-  }
+  useBackClose(confirming, () => setConfirming(false))
 
   async function eraseEverything() {
-    setConfirming('none')
+    setConfirming(false)
     setErase({ kind: 'working' })
     try {
       const result = await ws.api<EraseResult>('/me/data', { method: 'DELETE' })
@@ -132,29 +116,7 @@ export function PrivacyScreen() {
           </Stack>
         </Section>
 
-        <Section icon={<ScanFace size={22} />} title={t.faceSection}>
-          <Typography variant="bodyMedium" color="text.secondary">
-            {t.faceBody}
-          </Typography>
-          <Chip
-            size="small"
-            label={t.faceStatus[pending ? 'review_pending' : 'not_enrolled']}
-            sx={{ mt: 1.5 }}
-          />
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 2 }}>
-            <Button variant="contained" disabled={!ws.active} onClick={() => ws.setFaceOpen(true)}>
-              {t.faceStart}
-            </Button>
-            <Button color="error" onClick={() => setConfirming('face')}>
-              {t.faceDelete}
-            </Button>
-          </Stack>
-          {!ws.active && (
-            <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              {t.faceNeedsShop}
-            </Typography>
-          )}
-        </Section>
+        <TrustCard />
 
         <Section icon={<ShieldCheck size={22} />} title={t.dataSection}>
           <Typography variant="bodyMedium" color="text.secondary">
@@ -167,7 +129,7 @@ export function PrivacyScreen() {
               startIcon={<Trash2 size={18} />}
               sx={{ mt: 2 }}
               disabled={erase.kind === 'working'}
-              onClick={() => setConfirming('all')}
+              onClick={() => setConfirming(true)}
             >
               {t.deleteAll}
             </Button>
@@ -212,29 +174,14 @@ export function PrivacyScreen() {
       </Stack>
 
       <LegalDialog open={legal} onClose={() => setLegal(null)} />
-      <Dialog
-        open={confirming !== 'none'}
-        onClose={() => !busy && setConfirming('none')}
-        aria-labelledby="erase-title"
-      >
-        <DialogTitle id="erase-title">
-          {confirming === 'face' ? t.faceDeleteTitle : t.deleteTitle}
-        </DialogTitle>
+      <Dialog open={confirming} onClose={() => setConfirming(false)} aria-labelledby="erase-title">
+        <DialogTitle id="erase-title">{t.deleteTitle}</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            {confirming === 'face' ? t.faceDeleteBody : t.deleteBody}
-          </DialogContentText>
+          <DialogContentText>{t.deleteBody}</DialogContentText>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button disabled={busy} onClick={() => setConfirming('none')}>
-            {t.cancel}
-          </Button>
-          <Button
-            variant="contained"
-            color="error"
-            disabled={busy}
-            onClick={() => void (confirming === 'face' ? deleteFace() : eraseEverything())}
-          >
+          <Button onClick={() => setConfirming(false)}>{t.cancel}</Button>
+          <Button variant="contained" color="error" onClick={() => void eraseEverything()}>
             {t.deleteConfirm}
           </Button>
         </DialogActions>

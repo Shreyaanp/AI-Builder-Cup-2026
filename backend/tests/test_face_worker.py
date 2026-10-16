@@ -18,13 +18,12 @@ def client(monkeypatch, tmp_path):
             pass
 
         def analyze(self, capture, prompts):
-            assert capture == b"offline-capture"
             assert prompts == ["turn_left"]
-            return {
-                "status": "review_pending",
-                "reason": "calibration_required",
-                "liveness": "scored_uncalibrated",
-            }, face_worker.FaceGallery.vector(np.ones(256))
+            if capture == b"offline-capture":
+                return {"status": "live", "reason": "ok", "liveness": "passed"}, (
+                    face_worker.template(np.ones(256))
+                )
+            raise face_worker.CaptureRejected("several_faces")
 
     monkeypatch.setattr(face_worker, "CpuModels", FixtureModels)
     with TestClient(face_worker.app) as test_client:
@@ -48,18 +47,34 @@ def test_authentication_and_owner_scope(client):
     )
 
 
-def test_evaluate_enroll_owner_isolation_and_delete(client):
-    def evaluate(owner):
-        response = client.post("/evaluate", headers=headers(owner), content=b"offline-capture")
-        assert response.status_code == 200
-        return response.json()
-
-    assert client.get("/health", headers=headers()).json()["models_ready"] is True
-    assert evaluate("owner-a")["one_to_one"] == "no_reference"
-    assert evaluate("owner-b")["one_to_one"] == "no_reference"
-    assert evaluate("owner-a")["one_to_one"] == "scored_uncalibrated"
+def test_evaluate_returns_a_template_only_for_a_live_capture_and_stores_nothing(client):
+    assert client.get("/health", headers=headers()).json() == {
+        "models_ready": True,
+        "model": face_worker.MODEL_ID,
+        "stores_templates": False,
+    }
+    live = client.post("/evaluate", headers=headers(), content=b"offline-capture").json()
+    assert live["status"] == "live" and live["liveness"] == "passed"
+    assert len(live["template"]) == 256
+    assert abs(float(np.linalg.norm(live["template"])) - 1) < 1e-5
+    # A rejected capture says why (the app shows a tip) and carries no template.
+    rejected = client.post("/evaluate", headers=headers(), content=b"two-people").json()
+    assert rejected == {"status": "retry", "reason": "several_faces", "liveness": "not_evaluated"}
+    # Kept for older app revisions: nothing is stored, so deletion is a confirmation.
     assert client.delete("/template", headers=headers()).json() == {"status": "deleted"}
-    assert evaluate("owner-a")["one_to_one"] == "no_reference"
+
+
+def test_movement_needs_each_prompt_in_order_and_opposite_turns():
+    left_then_right = [(0.0, 0.0), (22.0, 0.0), (0.0, 0.0), (-20.0, 0.0)]
+    assert face_worker.movement_seen(["turn_left", "turn_right"], left_then_right)
+    # Two turns to the same side are not a left-then-right challenge.
+    assert not face_worker.movement_seen(
+        ["turn_left", "turn_right"], [(22.0, 0.0), (0.0, 0.0), (25.0, 0.0)]
+    )
+    assert face_worker.movement_seen(["turn_left", "look_up"], [(18.0, 0.0), (0.0, -14.0)])
+    # Order matters: looking up first does not satisfy a turn-then-look-up challenge.
+    assert not face_worker.movement_seen(["turn_left", "look_up"], [(0.0, -14.0), (18.0, 0.0)])
+    assert not face_worker.movement_seen(["look_up"], [(3.0, 2.0)] * 8)
 
 
 def test_capture_limit(client):

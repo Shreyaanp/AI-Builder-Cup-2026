@@ -40,7 +40,9 @@ from .discover_ask import router as discover_ask_router
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .forecast import ForecastService
 from .forecast_routes import router as forecast_router
+from .fraud import FraudReviewer
 from .frontend import serve_frontend
+from .games_routes import router as games_router
 from .google_profile import BusinessProfileAdapter, SimulatedBusinessProfile
 from .google_sim_routes import router as google_sim_router
 from .imports import ColumnMapper
@@ -63,10 +65,12 @@ from .recap import RecapWriter
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
 from .sales_routes import router as sales_router
 from .settings import Settings
+from .shop_today import router as shop_today_router
 from .sourcing import SupplierGenerator
 from .sourcing_routes import router as sourcing_router
 from .streaming import CoachRuntime
 from .today import router as today_router
+from .trust_routes import router as trust_router
 from .tts import Speech
 from .voice import VOICE_SESSION_CAP_SECONDS, serve_voice
 
@@ -155,6 +159,7 @@ def create_app(
         coordinator.supplier_generator = SupplierGenerator(settings)
         app.state.world_generator = WorldGenerator(settings)
         app.state.column_mapper = ColumnMapper(settings)
+        app.state.fraud_reviewer = FraudReviewer(settings)
         app.state.forecaster = ForecastService(settings)
         app.state.weather = WeatherService(settings)
         app.state.brief_writer = BriefWriter(settings)
@@ -187,6 +192,7 @@ def create_app(
             await app.state.recap_writer.close()
             await app.state.brief_writer.close()
         await app.state.column_mapper.close()
+        await app.state.fraud_reviewer.close()
         if coordinator.supplier_generator is not None:
             await coordinator.supplier_generator.close()
         await app.state.world_generator.close()
@@ -220,9 +226,12 @@ def create_app(
     app.include_router(demo_workspace_router)
     app.include_router(demo_world_router)
     app.include_router(passport_router)
+    app.include_router(games_router)
     app.include_router(today_router)
+    app.include_router(shop_today_router)
     app.include_router(sourcing_router)
     app.include_router(owner_router)
+    app.include_router(trust_router)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
@@ -244,6 +253,13 @@ def create_app(
             },
             status_code=422,
         )
+
+    @app.get("/api/v1/latency")
+    async def latency() -> dict[str, object]:
+        """Time to first output per coach flow on this instance (p50/p95 of recent turns)."""
+        from .latency import stats
+
+        return {"flows": stats.summary(), "context_cache": settings.context_cache_enabled}
 
     @app.get("/api/v1/health")
     async def health() -> dict[str, object]:

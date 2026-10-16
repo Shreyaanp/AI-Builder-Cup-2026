@@ -11,6 +11,7 @@ import { useCopy } from './strings'
 import { useNewShopCopy } from './newShopCopy'
 import { useWorkspace } from './workspaceContext'
 import { ShopSheets } from './ShopTiles'
+import { MapsHandoff } from './MapsHandoff'
 
 /** The "Your shop is ready" moment that ends the new-shop flow (full screen, no dialog). */
 export function NewShopReady() {
@@ -123,6 +124,11 @@ export function NewShopReady() {
         </Button>
         {failed && <Alert severity="error">{tour.failed}</Alert>}
       </Stack>
+      {ws.active && (
+        <Box sx={{ mt: 3 }}>
+          <MapsHandoff fields={ws.active.fields} products={ws.products} />
+        </Box>
+      )}
       <Button sx={{ mt: 3 }} onClick={ws.dismissNewShopReady}>
         {t.newShopContinue}
       </Button>

@@ -39,7 +39,8 @@ for (const existing of [false, true]) {
       page.getByText('Add this photo to your shop gallery?', { exact: true }),
     ).toHaveCount(0)
     expect((await (await page.request.get('/api/v1/businesses')).json())[0].gallery).toHaveLength(1)
-    await page.getByRole('button', { name: 'Google', exact: true }).click()
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    await page.getByRole('button', { name: /^Get on Google/ }).click()
     await page.getByRole('button', { name: 'Step 2 of 4: Photos' }).click()
     await expect(page.getByRole('button', { name: 'Remove photo 1' })).toBeVisible()
   })

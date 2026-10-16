@@ -36,7 +36,7 @@ test('Prep plan uses approved sales, labels its method and passes axe on phone',
       headers: { 'Content-Type': 'text/csv' },
     })
     .then((r) => r.json())
-  await page.getByRole('button', { name: 'My shop' }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   const tile = page.getByRole('button', { name: /^Prep plan/ })
   await expect(tile).toContainText('Import and save at least 4 weeks')
   await page.request.post(`/api/v1/businesses/${bid}/import/${proposed.import_id}/approve`, {
@@ -44,7 +44,7 @@ test('Prep plan uses approved sales, labels its method and passes axe on phone',
   })
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await page.getByRole('button', { name: 'My shop' }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await expect(tile).toContainText('Kopi · 30')
   await expect(tile).toContainText('Weekday average · seasonality and trend')
   const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
@@ -90,7 +90,7 @@ test('phone import offers capture and pasted notes with review warnings before s
       json: { ...proposed, flags: [{ row: 1, item: 'Kopi', reasons: ['extraction'] }] },
     })
   })
-  await page.getByRole('button', { name: 'My shop' }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Menu/ }).click()
   await page.getByRole('button', { name: 'Import sales or menu (Excel, photo, notes)' }).click()
   await expect(page.getByRole('button', { name: 'Take photo', exact: true })).toBeVisible()

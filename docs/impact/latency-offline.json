@@ -1,0 +1,14 @@
+{
+  "live": false,
+  "runs": 20,
+  "common_instant": {
+    "n": 160,
+    "p50_ms": 14.8,
+    "p95_ms": 34.3
+  },
+  "common_agent": {
+    "n": 160,
+    "p50_ms": 36.2,
+    "p95_ms": 55.6
+  }
+}

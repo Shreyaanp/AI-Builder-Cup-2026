@@ -1,0 +1,354 @@
+{
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "horizontalOverflow": false,
+  "visibleElements": 14,
+  "elementsPer100kPixels": 4.25,
+  "accentHueBins": {
+    "30": 1
+  },
+  "competingAccents": 1,
+  "spacingOn4pxRhythm": 0.741,
+  "smallTargets": [],
+  "grid": [
+    [1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 2, 1, 1],
+    [1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1],
+    [2, 2, 2, 2, 2, 2],
+    [1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1],
+    [2, 2, 2, 2, 2, 2],
+    [2, 3, 2, 2, 3, 2],
+    [2, 3, 2, 2, 3, 2]
+  ],
+  "elements": [
+    {
+      "tag": "button",
+      "role": null,
+      "x": 4,
+      "y": 8,
+      "w": 273,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [6, 6, 6, 6],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 338,
+      "y": 8,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [8, 8, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "h2",
+      "role": null,
+      "x": 44,
+      "y": 85,
+      "w": 167.3125,
+      "h": 40,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [0, 0, 0, 0],
+      "target": false
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 219.3125,
+      "y": 80,
+      "w": 98.6875,
+      "h": 48,
+      "background": "rgb(246, 201, 69)",
+      "color": "rgb(58, 44, 0)",
+      "font": 14,
+      "gap": "normal",
+      "spacing": [6, 24, 6, 24],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 326,
+      "y": 80,
+      "w": 48,
+      "h": 48,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "font": 24,
+      "gap": "normal",
+      "spacing": [8, 8, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 152,
+      "w": 181,
+      "h": 144,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 308,
+      "w": 374,
+      "h": 178,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 201,
+      "y": 152,
+      "w": 181,
+      "h": 144,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 498,
+      "w": 374,
+      "h": 136,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 8,
+      "y": 646,
+      "w": 374,
+      "h": 144,
+      "background": "rgb(33, 53, 42)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "8px",
+      "spacing": [16, 16, 16, 16, 8, 8],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 0,
+      "y": 772,
+      "w": 97.5,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(191, 203, 191)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [0, 0, 0, 0, 2, 2],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 97.5,
+      "y": 772,
+      "w": 97.5,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(241, 238, 227)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [0, 0, 0, 0, 2, 2],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 195,
+      "y": 772,
+      "w": 97.5,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(191, 203, 191)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [0, 0, 0, 0, 2, 2],
+      "target": true
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "x": 292.5,
+      "y": 772,
+      "w": 97.5,
+      "h": 56,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(191, 203, 191)",
+      "font": 13.3333,
+      "gap": "2px",
+      "spacing": [0, 0, 0, 0, 2, 2],
+      "target": true
+    }
+  ],
+  "loadedFonts": ["Google Sans Flex Variable"],
+  "method": "DOM viewport density proxy; overlapping parent/child elements count separately. Not eye tracking or a medical eye-strain measurement.",
+  "contrast": {
+    "violations": [],
+    "manualReview": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "shortTextContent",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element content is too short to determine if it is actual text content"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span aria-hidden=\"true\" class=\"MuiBadge-badge MuiBa...\" style=\"--Badge-translate: 5...\">",
+            "target": [
+              ".css-s13u7i-MuiButtonBase-root[type=\"button\"]:nth-child(7) > .css-1rlitzi-MuiStack-root.MuiStack-root > .css-1bks13r.MuiBox-root[aria-hidden=\"true\"] > .MuiBadge-root.css-63ezxx-MuiBadge-root[aria-hidden=\"true\"] > .MuiBadge-badge.MuiBadge-standard.MuiBadge-invisible"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "shortTextContent",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element content is too short to determine if it is actual text content"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span aria-hidden=\"true\" class=\"MuiBadge-badge MuiBa...\" style=\"--Badge-translate: 5...\">",
+            "target": [
+              "button[data-tour=\"orders\"] > .css-1rlitzi-MuiStack-root.MuiStack-root > .css-1bks13r.MuiBox-root[aria-hidden=\"true\"] > .MuiBadge-root.css-63ezxx-MuiBadge-root[aria-hidden=\"true\"] > .MuiBadge-badge.MuiBadge-standard.MuiBadge-invisible"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-labelMedium css-10m0t4w-MuiTypography-root\">My shop</span>",
+            "target": [".css-10m0t4w-MuiTypography-root"],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "contrastRatio": 0,
+                  "fontSize": "9.0pt (12px)",
+                  "fontWeight": "normal",
+                  "messageKey": "bgOverlap",
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [],
+                "impact": "serious",
+                "message": "Element's background color could not be determined because it is overlapped by another element"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"MuiTypography-root MuiTypography-labelMedium css-1z07d8r-MuiTypography-root\">Google</span>",
+            "target": [
+              "button[data-tour=\"nav-google\"] > .css-1z07d8r-MuiTypography-root.MuiTypography-labelMedium.MuiTypography-root"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+          }
+        ]
+      }
+    ]
+  },
+  "accessibility": []
+}

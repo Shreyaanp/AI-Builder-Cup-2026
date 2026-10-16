@@ -12,6 +12,8 @@ const env = {
   MERCHANT_BACKEND: 'sqlite',
   SESSION_BACKEND: 'sqlite',
   MODERATION_MODE: 'fixture',
+  FACE_MODE: 'fixture',
+  TRUST_ADMINS: '["*"]',
   RATE_LIMITS_ENABLED: 'false',
   MERCHANT_DATABASE: '../.cache/qa/merchant.sqlite3',
   SESSION_DATABASE_URL: 'sqlite+aiosqlite:///../.cache/qa/sessions.sqlite3',

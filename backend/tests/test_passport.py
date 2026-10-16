@@ -185,17 +185,22 @@ def test_levels_need_points_shops_and_a_repeat_and_never_drop() -> None:
     assert earned_level(state) == "regular"
 
 
-def test_weekly_streak_with_rain_check() -> None:
-    weeks = [week_of(datetime(2026, 9, 7).date() + timedelta(weeks=n)) for n in range(6)]
-    state = PassportState(weeks=weeks[:4])  # 4 weeks in a row: a rain check is earned.
-    current = weeks[5]
-    result = streak(state, current)  # weeks[4] missed: the rain check covers it.
-    assert result.weeks == 4 and result.rain_checks == 0
+def test_weekly_streak_with_freezes() -> None:
+    weeks = [week_of(datetime(2026, 9, 7).date() + timedelta(weeks=n)) for n in range(8)]
+    # 4 weeks in a row: the welcome freeze plus one earned (at most 2 banked).
+    state = PassportState(weeks=weeks[:4])
+    result = streak(state, weeks[5])  # weeks[4] missed: a freeze covers it on its own.
+    assert result.weeks == 4 and result.freezes == 1 == result.rain_checks
     assert result.row[-3:] == ["done", "rain", "current"]
-    broken = streak(PassportState(weeks=weeks[:3]), current)  # 3 weeks: no rain check yet.
-    assert broken.weeks == 0 and broken.row[-1] == "current"
-    empty = streak(PassportState(), current)
-    assert empty.weeks == 0 and len(empty.row) == 8
+    # Two missed weeks spend both freezes; a third breaks the streak.
+    assert streak(state, weeks[6]).weeks == 4 and streak(state, weeks[6]).freezes == 0
+    broken = streak(state, weeks[7])
+    assert broken.weeks == 0 and broken.row[-2:] == ["missed", "current"]
+    # 1 week: only the welcome freeze, which covers one missed week.
+    short = PassportState(weeks=weeks[:1])
+    assert streak(short, weeks[2]).weeks == 1 and streak(short, weeks[3]).weeks == 0
+    empty = streak(PassportState(), weeks[5])
+    assert empty.weeks == 0 and len(empty.row) == 8 and empty.freezes == 1
 
 
 def test_streak_milestone_awarded_once() -> None:

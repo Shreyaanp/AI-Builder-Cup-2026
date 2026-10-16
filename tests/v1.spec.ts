@@ -46,7 +46,7 @@ test('declining consent returns to the welcome screen', async ({ page }) => {
 test('a shop is saved only after reviewing the exact proposal, and persists', async ({ page }) => {
   await open(page)
   await addShop(page, 'Ram Tea Stall')
-  await page.getByRole('button', { name: 'My shop' }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   // The top bar names the shop; My shop starts with its tiles (B26).
   await expect(page.getByRole('button', { name: /^Shop details/ })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Choose shop: Ram Tea Stall' })).toBeVisible()
@@ -97,7 +97,7 @@ test('the coach turns a typed description into a proposal, never a save', async 
 test('switching shops never shows the other shop’s products or conversation', async ({ page }) => {
   await open(page)
   await addShop(page, 'Alpha Tea')
-  await page.getByRole('button', { name: 'My shop' }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   // My shop is tiles; the menu and its Add product live in the Menu sheet.
   await page.getByRole('button', { name: /^Menu/ }).click()
   await page.getByRole('button', { name: 'Add product' }).click()
@@ -124,14 +124,15 @@ test('switching shops never shows the other shop’s products or conversation', 
   await createShop(page, 'name: Beta Bakery')
   await expect(page.getByRole('button', { name: 'Choose shop: Beta Bakery' })).toBeVisible()
   await expect(page.getByText('Hello from Alpha')).toHaveCount(0)
-  await page.getByRole('button', { name: 'My shop' }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await expect(page.getByText('Alpha Chai')).toHaveCount(0)
 })
 
 test('Google flow: details, photos, preview, then official links', async ({ page }) => {
   await open(page)
   await addShop(page, 'Morning Crumb')
-  await page.getByRole('button', { name: 'Google' }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  await page.getByRole('button', { name: /^Get on Google/ }).click()
   const flow = page.getByRole('region', { name: 'Google' })
   await expect(flow.getByRole('heading', { name: 'Check your details' })).toBeVisible()
   await expect(flow.getByText('Missing').first()).toBeVisible()
@@ -154,7 +155,8 @@ test('Google flow: details, photos, preview, then official links', async ({ page
 test('delete all my data erases shops and asks for consent again', async ({ page }) => {
   await open(page)
   await addShop(page, 'Gone Soon Kirana')
-  await page.getByRole('button', { name: 'Privacy' }).click()
+  await page.getByRole('button', { name: 'You', exact: true }).click()
+  await page.getByRole('button', { name: /^Privacy & your data/ }).click()
   await page.getByRole('button', { name: 'Delete all my data' }).click()
   const confirm = page.getByRole('dialog', { name: 'Delete everything?' })
   await confirm.getByRole('button', { name: 'Delete permanently' }).click()
@@ -164,15 +166,13 @@ test('delete all my data erases shops and asks for consent again', async ({ page
 
 test('customer facts: the card starts the chat, the owner confirms, customers see a chip', async ({
   page,
-  isMobile,
 }) => {
   // Outside busy hours, so the facts card (not the sold-out sweep) is the pending item.
   await page.clock.setFixedTime(new Date('2026-10-14T09:00:00+08:00'))
   await open(page)
   await addShop(page, 'Halal Corner')
-  await page.getByRole('button', { name: 'Coach', exact: true }).click()
-  // Phones show one coach card at a time; today's menu check comes first.
-  if (isMobile) await page.getByRole('button', { name: 'Yes, all good' }).click()
+  // Before the page is shared, what customers ask waits on My shop (Today shows setup first).
+  await page.getByRole('button', { name: 'My shop', exact: true }).click()
   const card = page.getByRole('region', { name: 'Customers ask: halal? payment?' })
   await expect(card).toBeVisible()
   await card.getByRole('button', { name: 'Answer' }).click()
@@ -188,7 +188,7 @@ test('customer facts: the card starts the chat, the owner confirms, customers se
   // Next unanswered fact moves up; halal is no longer asked.
   await expect(page.getByRole('button', { name: /^Customers ask: payment\?/ })).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
   const details = page.getByRole('dialog', { name: 'Halal Corner' })
   await expect(details.getByRole('region', { name: 'What customers ask' })).toContainText('Halal')
@@ -206,10 +206,7 @@ test('customer facts: the card starts the chat, the owner confirms, customers se
   await expect(page.getByRole('list', { name: 'Good to know' })).toContainText('Halal')
 })
 
-test('busy-hours sweep asks about top items; Sold out uses the owner switch', async ({
-  page,
-  isMobile,
-}) => {
+test('busy-hours sweep asks about top items; Sold out uses the owner switch', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-10-14T12:30:00+08:00'))
   await open(page)
   const proposal = await (
@@ -231,8 +228,8 @@ test('busy-hours sweep asks about top items; Sold out uses the owner switch', as
   ).json()
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  // Phones show one coach card at a time; today's menu check comes first.
-  if (isMobile) await page.getByRole('button', { name: 'Yes, all good' }).click()
+  // The busy-hours sweep lives on My shop; Today asks about sold out items directly.
+  await page.getByRole('button', { name: 'My shop', exact: true }).click()
   const kopi = page.getByRole('region', { name: 'Still have Kopi?' })
   await expect(kopi).toBeVisible()
   await kopi.getByRole('button', { name: 'Sold out' }).click()
@@ -251,6 +248,7 @@ test('busy-hours sweep asks about top items; Sold out uses the owner switch', as
   // Remembered for this shop today.
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await page.getByRole('button', { name: 'My shop', exact: true }).click()
   await expect(page.getByRole('region', { name: /^Customers ask:/ })).toBeVisible()
   await expect(page.getByRole('region', { name: /^Still have/ })).toHaveCount(0)
 })

@@ -78,6 +78,8 @@ class StreamEvent(StrictModel):
         "rescue_proposal",
         # A chart card (forecast, or how business is going) built from the tool result.
         "chart",
+        # An app action from the coach: open a screen, or a prepared customer reply to send.
+        "action",
     ]
     session_id: str | None = None
     text: str | None = None

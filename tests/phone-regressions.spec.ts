@@ -75,7 +75,7 @@ test('PHONE-1-history: refreshing history cannot erase a completed conversation'
     return historyReads > 1 ? route.fulfill({ status: 503, json: {} }) : route.fulfill({ json: [] })
   })
   // Start with a successful read; the post-turn refresh fails.
-  await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
   await page.getByRole('button', { name: 'Coach', exact: true }).tap()
   historyReads = 1
   await reply(page)
@@ -119,7 +119,7 @@ test('PHONE-1-offline: the real Python coach shows both sides and survives navig
   await expect(log.locator('li')).toHaveCount(2)
   await expect(log).toContainText('You: Hello')
   await expect(log.locator('li').last()).toContainText('Coach:')
-  await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
   await page.getByRole('button', { name: 'Coach', exact: true }).tap()
   await expect(log.locator('li')).toHaveCount(2)
   await expect(log).toContainText('You: Hello')
@@ -216,19 +216,20 @@ test('PHONE-2: every shop Add entry opens the full-screen new-shop flow (no dial
   await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
-  await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
   await page.getByRole('button', { name: 'Create your shop', exact: true }).tap()
   await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
-  await page.getByRole('button', { name: 'Google', exact: true }).tap()
-  await page.getByRole('main').getByRole('button', { name: 'Add shop details', exact: true }).tap()
+  // Without a shop, Grow (and its Get on Google card) starts with "Create your shop".
+  await page.getByRole('button', { name: 'Grow', exact: true }).tap()
+  await page.getByRole('button', { name: 'Create your shop', exact: true }).tap()
   await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
   await page.getByRole('button', { name: 'Coach', exact: true }).tap()
   await saveShop(page)
-  await page.getByRole('button', { name: 'My shop', exact: true }).tap()
+  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
   // My shop tiles: Add product lives in the Menu sheet.
   await page.getByRole('button', { name: /^Menu/ }).tap()
   await page.getByRole('button', { name: 'Add product', exact: true }).tap()
@@ -248,8 +249,8 @@ test('PHONE-2: every shop Add entry opens the full-screen new-shop flow (no dial
   await page.getByLabel(/^Price/).fill('1.80')
   await page.getByRole('button', { name: 'Review', exact: true }).tap()
   await page.getByRole('button', { name: 'Confirm and save' }).tap()
-  // The shop card's next step (UI-1 folded the old "Add now" card into it).
-  await page.getByRole('button', { name: 'Add your opening hours', exact: true }).tap()
+  // Today's next setup step opens the details form.
+  await page.getByTestId('today-day-one').getByRole('button', { name: 'Add', exact: true }).tap()
   await expect(page.getByRole('dialog', { name: 'Edit details' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
   // Phones choose camera or gallery first (B7).
@@ -259,10 +260,13 @@ test('PHONE-2: every shop Add entry opens the full-screen new-shop flow (no dial
   await picker
 })
 
-test('PHONE-2-google-empty: Google Add opens the new-shop flow directly', async ({ page }) => {
+test('PHONE-2-google-empty: Grow without a shop opens the new-shop flow directly', async ({
+  page,
+}) => {
   await enter(page)
-  await page.getByRole('button', { name: 'Google', exact: true }).tap()
-  await page.getByRole('main').getByRole('button', { name: 'Add shop details', exact: true }).tap()
+  // Without a shop, Grow (and its Get on Google card) starts with "Create your shop".
+  await page.getByRole('button', { name: 'Grow', exact: true }).tap()
+  await page.getByRole('button', { name: 'Create your shop', exact: true }).tap()
   await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
@@ -273,7 +277,8 @@ test('PHONE-3: the Google flow ends with official links and an honest waiting st
 }) => {
   await enter(page)
   await saveShop(page)
-  await page.getByRole('button', { name: 'Google', exact: true }).tap()
+  await page.getByRole('button', { name: 'Grow', exact: true }).tap()
+  await page.getByRole('button', { name: /^Get on Google/ }).tap()
   await page.getByRole('button', { name: 'Step 4 of 4: Google', exact: true }).tap()
   await expect(page.getByText('Waiting for Google API access', { exact: true })).toBeVisible()
   const maps = page.getByRole('link', { name: 'Find & claim on Maps', exact: true })

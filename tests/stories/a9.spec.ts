@@ -6,22 +6,20 @@ test.skip(({ isMobile }) => !isMobile, 'Phone evidence')
 test('A9 · daily check survives conversation and dismisses per shop and day', async ({ page }) => {
   await localOnly(page)
   let today = '2026-10-15'
-  await page.route(/\/api\/v1\/businesses\/[^/]+\/freshness$/, (route) =>
-    route.fulfill({
-      json: {
-        today,
-        last_confirmed: null,
-        monday: false,
-        recap_week: '2026-W42',
-      },
-    }),
-  )
+  // The shop's day comes from the Today facts; the test moves it forward.
+  await page.route(/\/api\/v1\/businesses\/[^/]+\/today$/, async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({ response, json: { ...(await response.json()), date: today } })
+  })
   await enter(page)
   await seedShop(page)
   await page.getByLabel('Message', { exact: true }).fill('Hello')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByRole('log')).toContainText('This is a scripted reply')
   const title = page.getByText('Still the same menu today?', { exact: true })
+  // While chatting the check waits in the pill; opening it shows the question.
+  const pill = page.locator('[aria-controls="today-pill-panel"]')
+  await pill.click()
   await expect(title).toBeVisible()
   await page.getByLabel('Message', { exact: true }).fill('A continuing conversation. '.repeat(50))
   await page.getByRole('button', { name: 'Send', exact: true }).click()
@@ -29,10 +27,9 @@ test('A9 · daily check survives conversation and dismisses per shop and day', a
   await page.getByRole('log').locator('li').last().scrollIntoViewIfNeeded()
   await expect(title).toBeInViewport()
   await shot(page, 2, 'A9-continuing')
-  await page.getByRole('button', { name: 'Something changed' }).click()
+  await page.getByTestId('today-pill').getByRole('button', { name: 'Changed', exact: true }).click()
   await expect(page.getByLabel('Message', { exact: true })).not.toBeEmpty()
   await page.getByLabel('Message', { exact: true }).fill('')
-  await title.locator('..').getByRole('button', { name: 'Dismiss', exact: true }).click()
   await expect(title).toHaveCount(0)
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
@@ -45,6 +42,8 @@ test('A9 · daily check survives conversation and dismisses per shop and day', a
         kind: 'business',
         revision: 0,
         business: { ...original.fields, name: 'Second shop' },
+        // The daily menu question needs a menu to ask about.
+        products: [{ name: 'Kopi', price: 180, unit: 'cup' }],
       },
     })
   ).json()
@@ -66,6 +65,8 @@ test('A9 · daily check survives conversation and dismisses per shop and day', a
   today = '2026-10-16'
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await expect(page.getByRole('log')).toContainText('This is a scripted reply')
+  await pill.click()
   await expect(title).toBeVisible()
   await shot(page, 2, 'A9-next-day')
 })

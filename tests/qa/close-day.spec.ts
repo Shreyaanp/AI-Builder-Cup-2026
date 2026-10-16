@@ -2,7 +2,7 @@ import { test, expect, owner, image, audit, evidence, tamil } from './support.js
 
 async function open(page: import('@playwright/test').Page) {
   const id = await owner(page)
-  await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /^Close the day/ }).click()
   return id
 }
@@ -105,7 +105,7 @@ test('Tamil Close the day is localized and keyboard dismissible', async ({ page 
   await owner(page)
   await tamil(page)
   // Stable data-tour marker avoids baking an English label into this locale case.
-  await page.getByRole('button', { name: 'என் கடை', exact: true }).click()
+  await page.locator('[data-tour="nav-grow"]').click()
   await page.locator('[data-tour="closeday"]').click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await audit(page, 'Q14')

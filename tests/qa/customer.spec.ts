@@ -73,7 +73,7 @@ test('instant facts remain anonymous; owner chat needs sign-in, replies arrive, 
     await expect(customer).toHaveURL(new RegExp(`/explore/chats/${id}/`))
     await page.reload()
     await page.getByRole('button', { name: 'Continue local preview' }).click()
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await page.getByRole('button', { name: /^Messages 1/ }).click()
     const messages = page.getByRole('region', { name: /Messages/ })
     await messages.getByRole('button', { name: 'Open conversation', exact: true }).click()
@@ -116,7 +116,7 @@ test('customer chat message failure preserves text and can retry', async ({ page
 
 test('Tamil public facts and prices remain consistent with owner data', async ({ page }) => {
   const id = await owner(page)
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: 'You', exact: true }).click()
   await page.getByRole('combobox', { name: 'Language' }).click()
   await page.getByRole('option', { name: /தமிழ்/ }).click()
   await page.keyboard.press('Escape')

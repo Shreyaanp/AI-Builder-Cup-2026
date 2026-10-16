@@ -10,6 +10,8 @@ const api = Number(process.env.API_PORT ?? 3300)
 export default defineConfig({
   plugins: [react()],
   build: { manifest: true },
+  // Pre-bundled at start: found only when the face check opened, it reloaded the page mid-capture.
+  optimizeDeps: { include: ['@mediapipe/tasks-vision'] },
   server: {
     host: '127.0.0.1',
     port: web,

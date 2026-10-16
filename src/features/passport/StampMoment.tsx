@@ -13,6 +13,9 @@ import { Sticker } from './art'
 import { fill, requirementText, usePassportCopy } from './copy'
 import { keepReceipt, receipts, setPassport } from './store'
 import type { Outcome, StampResult } from './store'
+import { SetComplete } from './games/CollectionSets'
+import { useGamesCopy } from './games/copy'
+import { ScratchCard } from './games/ScratchCard'
 
 type Phase =
   | { step: 'locating' }
@@ -131,7 +134,7 @@ export function StampMoment({
           bgcolor: roles.surfaceContainerLow,
           m: 2,
           width: 'calc(100% - 32px)',
-          overflow: 'visible',
+          overflowY: 'auto',
         },
       }}
     >
@@ -147,13 +150,21 @@ export function StampMoment({
             </Typography>
           </Stack>
         ) : phase.step === 'result' && phase.outcome.verdict === 'stamped' ? (
-          <Celebration
-            shop={shop}
-            outcome={phase.outcome}
-            result={phase.result}
-            signedIn={signedIn}
-            rescue={phase.rescue}
-          />
+          <>
+            <Celebration
+              shop={shop}
+              outcome={phase.outcome}
+              result={phase.result}
+              signedIn={signedIn}
+              rescue={phase.rescue}
+            />
+            {/* The variable reward: a scratch card for this verified stamp. */}
+            {phase.result.scratch && (
+              <Box sx={{ mt: 4, textAlign: 'start' }}>
+                <ScratchCard card={phase.result.scratch} />
+              </Box>
+            )}
+          </>
         ) : (
           <Problem phase={phase} />
         )}
@@ -259,10 +270,12 @@ function Celebration({
 }) {
   const t = usePassportCopy()
   const r = useRescueCopy()
+  const g = useGamesCopy()
   const locale = useLocale()
   const theme = useTheme()
   const scope = useRef<HTMLDivElement>(null)
   const points = outcome.points ?? 0
+  const coop = result.passport?.games?.coop
   const number = new Intl.NumberFormat(locale).format(points)
   const levelUp = outcome.level_after !== outcome.level_before
   const next = result.passport?.level.next_requirement
@@ -400,6 +413,17 @@ function Celebration({
             {fill(t.milestone, { n: outcome.milestone })}
           </Typography>
         )}
+        {(result.sets_completed ?? []).map((id) => (
+          <SetComplete key={id} set={{ id, art: '' }} />
+        ))}
+        {coop && coop.you > 0 && (
+          <Typography className="stamp-line" variant="bodyLarge">
+            {fill(g.coopHelped, {
+              total: new Intl.NumberFormat(locale).format(coop.total),
+              goal: new Intl.NumberFormat(locale).format(coop.goal),
+            })}
+          </Typography>
+        )}
         {next && nextLevel && (
           <Typography className="stamp-line" variant="bodyLarge" color="text.secondary">
             {requirementText(next, nextLevel, t)}
@@ -407,7 +431,7 @@ function Celebration({
         )}
         {!signedIn && (
           <Typography className="stamp-line" variant="bodyMedium" color="text.secondary">
-            {t.keptOnPhone}
+            {t.keptOnPhone} {g.signInScratch}
           </Typography>
         )}
       </Stack>
