@@ -46,24 +46,21 @@ export function ConversationView({
   }
   return (
     <Stack spacing={2}>
-      <Stack
-        component="ol"
-        role="log"
-        aria-label={t.conversation}
-        aria-live="polite"
-        spacing={2}
-        sx={{ p: 0, listStyle: 'none' }}
-      >
-        {(thread.messages ?? []).map((message) => (
-          <MessageBubble
-            key={message.id}
-            message={message}
-            viewer={viewer}
-            copy={t}
-            onTranslate={onTranslate}
-          />
-        ))}
-      </Stack>
+      {/* The log role sits on a wrapper: on the <ol> itself it replaced the list role and left
+          every message an <li> outside any list (axe "listitem"). */}
+      <Box role="log" aria-label={t.conversation} aria-live="polite">
+        <Stack component="ol" spacing={2} sx={{ m: 0, p: 0, listStyle: 'none' }}>
+          {(thread.messages ?? []).map((message) => (
+            <MessageBubble
+              key={message.id}
+              message={message}
+              viewer={viewer}
+              copy={t}
+              onTranslate={onTranslate}
+            />
+          ))}
+        </Stack>
+      </Box>
       {thread.done || thread.blocked ? (
         <Typography role="status" variant="bodyMedium">
           {thread.blocked ? t.blocked : t.closed}

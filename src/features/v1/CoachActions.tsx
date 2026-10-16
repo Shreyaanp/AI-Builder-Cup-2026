@@ -45,6 +45,21 @@ export function ActionChip({ action, onOpen }: { action: CoachAction; onOpen: ()
   )
 }
 
+/** After a coach change is saved: one tap to that item in the menu (no duplicate to hunt for). */
+export function MenuLinkChip({ label, onOpen }: { label: string; onOpen: () => void }) {
+  return (
+    <Box component="li" sx={{ pl: { xs: 0, sm: 10 }, ...enterRise }}>
+      <Chip
+        icon={<ArrowUpRight size={18} />}
+        label={label}
+        variant="outlined"
+        onClick={onOpen}
+        sx={{ minHeight: 48 }}
+      />
+    </Box>
+  )
+}
+
 /** A reply the coach prepared for a customer; the owner sends it with one tap. */
 export function ReplyCard({
   action,

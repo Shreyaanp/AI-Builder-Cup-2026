@@ -389,7 +389,16 @@ export function ShopTiles({
 }
 
 /** Every My shop sheet. Also opened from coach suggestion chips. */
-export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onClose: () => void }) {
+export function ShopSheets({
+  kind,
+  onClose,
+  menuFocus = null,
+}: {
+  kind: ShopSheetKind | null
+  onClose: () => void
+  /** The menu opens at this item (a coach link to a change it just saved). */
+  menuFocus?: string | null
+}) {
   const t = useCopy()
   const rewards = useRewardCopy()
   const plan = usePlanCopy()
@@ -531,7 +540,7 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
         </Sheet>
       )
     case 'menu':
-      return <MenuSheet {...common} />
+      return <MenuSheet {...common} focus={menuFocus} />
     case 'soldOut':
       return (
         <Sheet {...common} titleId="soldout-sheet-title" title={t.soldOutToday}>
