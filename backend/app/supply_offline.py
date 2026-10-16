@@ -13,6 +13,7 @@ from google.genai import types
 
 from .money import to_minor
 from .sourcing import money_text
+from .supply_docs import human_date
 
 REORDER = re.compile(
     r"\b(?:re-?order|purchase order|draft (?:a |the )?(?:po|order)|what should i order|"
@@ -140,7 +141,8 @@ def supply_reply(name: str, result: dict[str, Any]) -> str | None:
         reason = result.get("reason") or {}
         total = money_text(to_minor(result["total"] or 0, currency), currency)
         why = (
-            f" You have {reason['stock']:g} {reason['unit']} and run out {reason['runs_out']}."
+            f" You have {reason['stock']:g} {reason['unit']} and run out "
+            f"{human_date(reason['runs_out'])}."
             if reason.get("runs_out")
             else ""
         )
@@ -154,7 +156,7 @@ def supply_reply(name: str, result: dict[str, Any]) -> str | None:
         return (
             f"Offline coach: I've drafted PO {result['po_number']}: {line['quantity']:g} "
             f"{line['unit']} {line['item']} from {result['supplier']}, {total}, deliver "
-            f"{result['deliver_on']}.{why}{demo}{broken}{tail}"
+            f"{human_date(result['deliver_on'])}.{why}{demo}{broken}{tail}"
         )
     if name == "set_supplier_rules":
         if result.get("status") != "needs_owner_tap":
