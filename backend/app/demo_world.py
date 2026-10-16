@@ -386,6 +386,7 @@ def world_records(
             pin_label=f"Near {place or 'you'} (approximate) · Demo",
             pin_demo=True,
             demo=True,
+            reward_text="A small treat on the house",
             timezone=timezone,
             currency=currency,
             hours=hours,
