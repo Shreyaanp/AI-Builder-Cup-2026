@@ -159,6 +159,11 @@ honest demo labels, reduced motion, axe clean, a story walkthrough test, live on
 
 ## Status log (newest first)
 
+- **16 Oct 04:10** Merged #3 (voice-mode onboarding). Regression on main 172/176 (2 load timeouts;
+  Tamil keyboard-focus and share-switch checks queued for Codex at 08:04); live voice + voice back OK.
+  Not shipped (regression red). All Claude accounts and Codex hit 5-hour limits; resumes 05:52 (acct2),
+  06:12 (acct3, all 5), 08:04 (Codex x2). Open PRs: #4 #11 #12 #13 #14 #15.
+
 - **16 Oct 02:25** Merged #6 voice continuity, #7 customer polish, #8 CI flakes (Follow flash,
   Back hand-off), #9 coach chart cards + TimesFM fixed and ON + mic waits for restore + stream
   kind/chat a11y fixes. Live coach eval on gemini-3.5-flash: **25/27 scenarios (93%)**, 8

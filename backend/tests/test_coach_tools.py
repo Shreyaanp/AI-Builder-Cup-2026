@@ -28,7 +28,7 @@ from app.coordinator import (
     request_registration,
     ui_currency,
 )
-from app.merchant import BusinessFields, MerchantStore, ProductFields, ProposalRequest
+from app.merchant import BusinessFields, MerchantStore, NewShopDraft, ProductFields, ProposalRequest
 from app.streaming import public_events
 from scripts.coach_eval import Turn, no_internal_leaks, prepared_not_saved, sane_prices
 
@@ -281,15 +281,14 @@ def test_sold_out_ambiguity_asks(multi_unit_shop):
 
 
 def test_new_shop_draft_path_ambiguity(ctx):
-    class MockDraft:
-        business = BusinessFields(name="Draft Shop", category="Cafe", location="Bedok")
-        products = [
+    ctx.new_shop = True
+    ctx.new_shop_draft = NewShopDraft(
+        business=BusinessFields(name="Draft Shop", category="Cafe", location="Bedok"),
+        products=[
             ProductFields(name="Kaya toast", price=250, unit="plate"),
             ProductFields(name="Kaya toast", price=600, unit="box"),
-        ]
-
-    ctx.new_shop = True
-    ctx.new_shop_draft = MockDraft()
+        ],
+    )
     result = propose_products([ProductInput(name="Kaya toast", price=3.5)])
     assert result["status"] == "invalid"
     assert "plate" in result["errors"][0]["problem"] and "box" in result["errors"][0]["problem"]
@@ -656,3 +655,21 @@ def test_instruction_carries_a_shop_snapshot_to_save_a_tool_round_trip(ctx, save
     assert "Ram Tea Stall" in text and "Chai 15/cup" in text
     ctx.business_id = None  # no saved shop yet: no snapshot
     assert "Current shop (saved" not in instruction(None)  # type: ignore[arg-type]
+
+
+def test_new_shop_records_items_before_the_name_but_never_opens_unnamed(ctx):
+    # Owner feedback (16 Oct): the coach asks for the real name and never invents one, so items
+    # mentioned first are recorded on an unnamed draft; opening it still requires a name.
+    ctx.new_shop = True
+    result = propose_products([ProductInput(name="Masala chai", price=15, unit="cup")])
+    assert result["status"] == "needs_review"
+    proposal = ctx.proposals[result["proposal_id"]]
+    assert proposal["snapshot"]["business"]["name"] == ""
+    assert [p["name"] for p in proposal["snapshot"]["products"]] == ["Masala chai"]
+    with pytest.raises(HTTPException) as refused:
+        ctx.store.commit("alice", proposal["id"], proposal["digest"])
+    assert refused.value.status_code == 422
+    named = propose_business(name="Sharma Chai Corner")
+    sealed = ctx.proposals[named["proposal_id"]]
+    assert [p["name"] for p in sealed["snapshot"]["products"]] == ["Masala chai"]
+    assert ctx.store.commit("alice", sealed["id"], sealed["digest"])["business_id"]

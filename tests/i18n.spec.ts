@@ -1,3 +1,4 @@
+import { createShop } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -82,13 +83,7 @@ test('the customer page follows the customer’s phone language', async ({ page,
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await page.getByRole('button', { name: 'Add my shop' }).click()
-  await page.getByLabel('Shop name').fill('Ah Ming Kopi')
-  await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await page
-    .getByRole('dialog', { name: 'Check before saving' })
-    .getByRole('button', { name: 'Confirm and save' })
-    .click()
+  await createShop(page, 'name: Ah Ming Kopi')
   await page.getByRole('button', { name: 'My shop', exact: true }).click()
   await page.getByRole('button', { name: /^Customer page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })

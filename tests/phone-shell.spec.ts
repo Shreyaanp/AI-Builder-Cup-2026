@@ -1,3 +1,4 @@
+import { createShop } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -32,11 +33,7 @@ async function axe(page: Page) {
 }
 
 async function saveShop(page: Page) {
-  await page.getByRole('button', { name: 'Add my shop' }).tap()
-  await page.getByLabel('Shop name').fill('Katong Kopi')
-  await page.getByLabel('Address or area').fill('Katong, Singapore')
-  await page.getByRole('button', { name: 'Review', exact: true }).click()
-  await page.getByRole('button', { name: 'Confirm and save' }).click()
+  await createShop(page, 'name: Katong Kopi; location: Katong, Singapore')
   await expect(page.getByRole('button', { name: 'Choose shop: Katong Kopi' })).toBeVisible()
 }
 
@@ -94,6 +91,8 @@ test('B2: the navigation stays after "Something changed" and returns when the ke
 test('B3: the composer is one line (even with a long translated hint), grows for multi-line text, and voice never moves it', async ({
   page,
 }) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
   // A local tone stands in for the microphone; the voice socket answers "ready" and waits.
   await page.addInitScript(() => {
     navigator.mediaDevices.getUserMedia = async () => {
@@ -136,10 +135,17 @@ test('B3: the composer is one line (even with a long translated hint), grows for
   const before = (await form.boundingBox())!
   const micBefore = (await mic.boundingBox())!
   // A long press shows no tooltip over the composer.
-  await mic.dispatchEvent('touchstart')
+  const touch = {
+    identifier: 1,
+    clientX: micBefore.x + micBefore.width / 2,
+    clientY: micBefore.y + micBefore.height / 2,
+    pageX: micBefore.x + micBefore.width / 2,
+    pageY: micBefore.y + micBefore.height / 2,
+  }
+  await mic.dispatchEvent('touchstart', { touches: [touch], changedTouches: [touch] })
   await page.waitForTimeout(1000)
   await expect(page.getByRole('tooltip')).toHaveCount(0)
-  await mic.dispatchEvent('touchend')
+  await mic.dispatchEvent('touchend', { touches: [], changedTouches: [touch] })
   await mic.tap()
   const finish = page.getByRole('button', { name: 'Finish speaking', exact: true })
   await expect(finish).toHaveAttribute('aria-pressed', 'true')
@@ -151,6 +157,7 @@ test('B3: the composer is one line (even with a long translated hint), grows for
   await finish.tap()
   await expect(form.getByRole('status')).toHaveText('Replying…')
   expect(await form.boundingBox()).toEqual(before)
+  expect(pageErrors).toEqual([])
 })
 
 test('B4: Back closes the top sheet or dialog first, and asks before throwing away unsaved input', async ({
@@ -221,12 +228,16 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   expect(await unload).toBe('beforeunload')
 })
 
-test('B5: no "What’s new at …" line; + sits top-right next to settings', async ({ page }) => {
+test('B5: no "What’s new at …" line; + (new shop) sits top-right next to settings', async ({
+  page,
+}) => {
   await enter(page)
   await saveShop(page)
   await expect(page.getByText(/What’s new at/)).toHaveCount(0)
   const header = page.getByRole('banner')
-  const plus = header.getByRole('button', { name: 'New conversation', exact: true })
+  // "+" opens the new-shop flow directly; new conversation sits just before it.
+  await expect(header.getByRole('button', { name: 'New conversation', exact: true })).toBeVisible()
+  const plus = header.getByRole('button', { name: 'Add shop details', exact: true })
   const settings = header.getByRole('button', { name: 'Settings', exact: true })
   await expect(plus).toBeVisible()
   const a = (await plus.boundingBox())!
@@ -240,11 +251,17 @@ test('B5: no "What’s new at …" line; + sits top-right next to settings', asy
   )
   await axe(page)
   await plus.tap()
+  await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
+  const newChat = header.getByRole('button', { name: 'New conversation', exact: true })
+  await newChat.tap()
   await expect(page.getByRole('dialog', { name: 'New conversation' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
-  // It belongs to the coach; other screens don't show it.
+  // New conversation belongs to the coach; "+" (a new shop) is on every screen.
   await page.getByRole('button', { name: 'My shop', exact: true }).tap()
-  await expect(plus).toHaveCount(0)
+  await expect(newChat).toHaveCount(0)
+  await expect(plus).toBeVisible()
 })
 
 test('B6: the coach fits the phone without scrolling, suggestions sit under the shop card, and finished setup is one chip', async ({

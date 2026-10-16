@@ -2,6 +2,22 @@ import { useLocale } from '../../state/hooks'
 import { translations } from './locales'
 
 export const en = {
+  newShopMode: 'New shop',
+  newShopReady: 'Your new shop is ready',
+  newShopReadyBody:
+    'You’re now working in your new shop. Share its customer page when you’re ready.',
+  newShopContinue: 'Continue with my shop',
+  useCurrentLocation: 'Use my current location',
+  locationReason:
+    'At your shop? Allow location access to place its pin. You’ll review it before saving.',
+  locating: 'Finding your location…',
+  locationDenied:
+    'Location access was denied. You can type an address or use a photo with GPS instead.',
+  locationFailed:
+    'We couldn’t get your location. Try again, type an address, or use a photo with GPS.',
+  yourLocation: 'Your location',
+  description: 'Description',
+  locationAccuracy: (m: string) => `within ${m} m`,
   installApp: 'Install app',
   installIos: 'In Safari, tap Share → Add to Home Screen, then tap Add.',
   installUnavailable:
@@ -259,7 +275,6 @@ export const en = {
   stock: 'Stock',
   // Shop
   shopEmptyTitle: 'Let’s add your shop',
-  shopEmptyBody: 'Start from a photo of your board, or fill in the details yourself.',
   addShop: 'Add shop details',
   startPhoto: 'Start from a photo',
   editDetails: 'Edit details',

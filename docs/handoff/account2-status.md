@@ -1,5 +1,85 @@
 # Account 2 status: passport + Today's 7 (`feat/passport`, merged as `merge/passport`)
 
+## New-shop onboarding as "voice mode" (`feat/new-shop-flow`, PR #3) — owner brief 16 Oct ~02:00
+
+Brief: `docs/briefs/task-VOICE-MODE-ONBOARDING.md`; design and behaviour in `docs/OWNER-NEW-SHOP.md`.
+
+- **Voice mode** (`NewShopFlow.tsx` `Journey` + new `VoiceStage.tsx`): after the hero, one open
+  conversation with the mic always on (pause, never auto-off). Phone first (390×844): shop card →
+  conversation (scrolls, content height) → stage (chalk orb + live captions of both sides, fills
+  the rest so there is no dead space; the orb shrinks as the chat grows) → quick actions → call
+  controls (keyboard, mic pause `aria-pressed`, mute, End voice). Desktop: conversation | stage |
+  shop card. The orb reacts to real audio levels (mic analyser, coach playback bus) per frame via
+  a CSS variable: listening mint, thinking lilac, speaking sunflower, (re)connecting sky,
+  paused/typing quiet; reduced motion keeps colour/shape only. The shop card's places (products
+  with prices, location, hours, payment, delivery, other facts) start as dashed outlines and
+  stamp in as answers arrive.
+- **Voice never silently dies** (`useVoice.ts` conversation mode): mic, audio context and meters
+  live for the whole conversation; any socket end reconnects to the same `session_id` with the mic
+  open (at once after SESSION_TIMEOUT/idle, backoff 0.5–4 s after failures, 4 tries); turns sent
+  while reconnecting wait for the session instead of opening a competing text stream. Backend
+  (`voice.py`): new-shop sockets get the full 150 s window (under Cloud Run's 180 s), 40 model calls
+  and 40 text turns (press-to-talk keeps 8/12); run-lease TTL follows the 150 s cap.
+- **Alerts** (`VoiceAlert`, in the page, dismissible): mic blocked (refused, or already "denied"
+  before any socket) with lock icon → Microphone → Allow, Try again / Type instead; no mic;
+  connection lost after retries (Reconnect); rate limited (live countdown); voice unavailable
+  (carry on typing). 22 new strings × 15 locales (`voiceModeCopy.ts`, Hindi coach feminine).
+- **S10 phone failure fixed at the cause:** the story granted only geolocation, which leaves the
+  microphone "denied" for the page, so the (correct) preflight reported a blocked mic. It now
+  grants the microphone for its stand-in mic and asserts the new controls.
+
+**Checks (16 Oct, fresh SQLite DBs; ports 3449/3549 and QA 3448/3548 because a live Gemini server
+from another session holds 3547):** backend **636 passed / 164 skipped**, Ruff + mypy clean; ESLint
+(repo, ignoring another session's untracked `tests/zz-mic-probe.mjs`), build, hook rules pass. New
+`tests/new-shop-voice.spec.ts` + `tests/new-shop.spec.ts` + S10: **49 passed / 17 skipped (phone-only
+language cases on desktop), 0 failed**. Full browser suite: **371 passed / 99 skipped / 8 failed**
+under load from other sessions; rerun in isolation everything passes except
+`s8-passport` step 4 ("Quests 1 of 3" count 2), which touches no changed file. QA (`npm run test:qa`,
+fresh `.cache/qa`): **174 passed / 2 failed**, both `voice-continuity` "mic waits for saved
+conversation restoration" — it expects the coach mic disabled while restoring, which commit
+`a067256` on this branch (before this task) changed on purpose; not touched here, needs an owner
+call. Evidence: `docs/stories/new-shop-{1-hero,2-listening,3-thinking,4-speaking,5-reconnecting,
+6-mic-blocked,7-typing,8-review,9-ready}-{light,dark}[-desktop].png` (old `2-chat/3-review/4-ready`
+removed), `docs/stories/S10-*.png`. Viewed in a real browser (Chrome via Playwright) at every state,
+phone and desktop, light and dark.
+
+**Not validated:** real Gemini Live turn-taking and its own session end, real microphone levels and
+echo on a physical phone, native-speaker review of the new strings.
+
+## New-shop flow (`feat/new-shop-flow`, PR #3) — owner answers of 15 Oct
+
+Built from the six owner answers (brief: PLAN-V2 §New-shop onboarding; details in
+`docs/OWNER-NEW-SHOP.md`). `origin/wip/new-shop-grand` merged first; kept: GPS shop pins with
+accuracy, the location reason/denial handling, the sealed one-review approval, the ready moment,
+coach fixes (photo abort, keyboard-resize scroll). Replaced: the stepped coach page, the step
+banner, the review portal and the "Fill in a form instead" path.
+
+| Owner answer                           | Built                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Kill the modals                     | "Add my shop" form dialog gone for new shops (the form stays only as **Edit details**); tour end, "+", shop menu, empty My shop, Google empty all open the flow; no dialog/sheet anywhere in it (tests assert `dialog` count 0).                                                                                                                                      |
+| 2. Big hero, then chat                 | Full-screen "Let’s open your shop" hero: chalk-drawn shop (stroke draw), written title, sparkles via `useChalkTimeline` (off with reduced motion), then a full-screen conversation.                                                                                                                                                                                   |
+| 3. AI speaks first                     | One Gemini Live session (`useVoice` conversation mode): opening sent once the mic is granted, coach greets aloud, mic opens after the greeting; mute button, mic toggle, live captions bar. No mic → same chat by text, replies read by `/tts`.                                                                                                                       |
+| 4. Entry points                        | Header "+" (direct, next to settings), tour "Start my own shop", empty My shop "Create your shop". First run after sign-in is main's (start card), not auto-entered.                                                                                                                                                                                                  |
+| 5. Agent drives; acts in chat; silence | One question at a time; every proposal is an action card in the chat ("Added to your shop · Shop name: …", "I read your menu: N items", "Saved your location: Near …"); ~9 s silence (or Skip) → coach suggests/leaves it out and moves on (max 2 in a row); live "Your shop so far" card; full-screen review page with one "Open my shop"; full-screen ready moment. |
+| 6. Must not break                      | Main coach voice/photo/document, Import, Close the day: their suites pass unchanged.                                                                                                                                                                                                                                                                                  |
+
+Backend (small): `NEW_SHOP_INSTRUCTION` speak-first/silence rules; offline fixture greets first and
+remembers skipped questions; voice socket accepts a mid-session `new_shop` draft frame. Removed
+`tests/zz-live-owner.spec.ts` (main had already removed it; it needs private photos).
+
+**Checks (fresh SQLite DBs, WEB_PORT=3447 API_PORT=3547):** backend 620 passed / 164 skipped,
+Ruff + mypy clean; lint (ESLint over the repo, ignoring the untracked local `docs/launch/source/dist`
+build output), build and hook rules pass; full browser suite phone + desktop **348 passed / 84
+skipped / 0 failed**; QA suite (`npm run test:qa`, fresh `.cache/qa`) **122 passed**. New:
+`tests/stories/s10-new-shop.spec.ts` (hero → greeting → answer → action → silence → location +
+photo → review → ready; entries from tour end and empty My shop), `tests/new-shop.spec.ts` (axe
+light/dark on phone and desktop, photo, location, denial, Back, separate drafts). Screenshots:
+`docs/stories/S10-*.png`, `docs/stories/new-shop-{1-hero,2-chat,3-review,4-ready}-{light,dark}[-desktop].png`.
+New strings in all 15 locales (`newShopCopy.ts`).
+
+**Not validated:** real Gemini Live greeting/turn-taking, ASR, speaker echo on a real phone, live
+coaching quality, native-speaker review of the new translations.
+
 ## Erase hardening (`fix/erase-hardening`, 15 Oct evening; owner rule: no new features)
 
 "Delete all my data" returned 500 in production (face worker, then a GCS 403). Now:

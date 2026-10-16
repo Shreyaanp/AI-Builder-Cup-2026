@@ -15,6 +15,7 @@ import { useRewardCopy } from '../rewards/strings'
 import { HoursList } from '../shop/Hours'
 import { categoryLabel, useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
+import { CurrentLocationAction, LocationPin } from './CurrentLocation'
 
 /**
  * The only place a change is saved: the owner confirms the exact digest the server sealed.
@@ -56,7 +57,7 @@ export function ReviewDialog({
           geocode_confirmed: true,
         }),
       })
-      review(pinned)
+      review({ ...pinned, photo_notes: proposal.photo_notes })
     } catch {
       setError(pinCopy.pinError)
     } finally {
@@ -113,6 +114,31 @@ export function ReviewDialog({
       </Stack>
       {snapshot.business && (
         <>
+          <CurrentLocationAction
+            disabled={busy}
+            onLocation={async (owner_location, signal) => {
+              setBusy(true)
+              try {
+                const next = await api<Proposal>('/proposals', {
+                  method: 'POST',
+                  signal,
+                  body: JSON.stringify({
+                    ...snapshot,
+                    business_id: target?.id ?? null,
+                    owner_location,
+                  }),
+                })
+                signal.throwIfAborted()
+                review({ ...next, photo_notes: proposal?.photo_notes })
+              } finally {
+                setBusy(false)
+              }
+            }}
+          />
+          <LocationPin fields={snapshot.business} />
+          {snapshot.business.description && (
+            <Typography variant="bodyLarge">{snapshot.business.description}</Typography>
+          )}
           <Divider />
           <Box>
             <Typography variant="labelMedium" color="text.secondary">
