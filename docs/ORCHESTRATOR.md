@@ -11,7 +11,9 @@ You coordinate workers; you write NO feature code. Read docs/TODO.md (what is le
 - **Account 3 / account 4** (full capacity, max 2 sessions each, resume after every 5-hour reset):
   `$env:TOOL_CONFIG_DIR="$env:USERPROFILE\.tool-account3"` (or 4), then
   `Start-Process devtool.exe -ArgumentList '-p','"<one-line prompt: read docs/briefs/<task>.md and do it end to end; no parallel sub-agents>"','--dangerously-skip-permissions' -WorkingDirectory <worktree> -RedirectStandardOutput $env:TEMP\account3-<name>.log -WindowStyle Hidden`.
-  A log with "You've hit your session limit · resets HH:MM" = schedule a resume then.
+  A log with "You've hit your session limit · resets HH:MM" = schedule a resume then. Headless sessions EXIT if they
+  start a command in the background and wait for it: every prompt must say "never run commands in the background;
+  run tests in the foreground and wait". A log ending in "I'll wait…" means it exited early: relaunch with "continue".
   Account 3: Today (~/work/chalkboard-today), tabs (~/work/chalkboard-tabs), search (~/work/chalkboard-customer).
   Account 4: trust/face (~/work/chalkboard-trust), games (~/work/chalkboard-games).
 - **Account 2**: sunset after its last two tasks (in-chat camera/map on feat/onboarding-inchat; supply chain). Its
