@@ -1,20 +1,21 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { publish } from '../qa/support.js'
-import { enter, seedShop } from './support.js'
+import { enter } from './support.js'
 
 // Story: a customer asks about the area ("best kopi near me", "parking near…"). Our shop that
 // sells it comes first, Google's live local answer (Gemini grounding with Google Maps; labelled
 // sample answer offline) follows with its Google Maps sources, and every place is on one map,
 // pins and cards linked both ways. External hosts are blocked, so the map is the honest local
 // fallback (straight-line distances); a real Google map needs the live browser key.
-const INDIRANAGAR = { lat: 12.9719, lng: 77.6412, label: 'Indiranagar' }
+// Koramangala, so these shops never crowd other stories' Indiranagar answers (4.5 km away).
+const AREA = { lat: 12.9352, lng: 77.6245, label: 'Koramangala' }
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((area) => {
     localStorage.setItem('chalkboard.customer.journey', 'done')
     localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place: area }))
-  }, INDIRANAGAR)
+  }, AREA)
   await page.route('**/*', (route) =>
     ['127.0.0.1', 'localhost'].includes(new URL(route.request().url()).hostname)
       ? route.fallback()
@@ -41,11 +42,40 @@ async function axe(page: Page) {
   ).toEqual([])
 }
 
+/** A shared shop selling kopi, pinned in Koramangala (approximate demo pin, labelled). */
 async function seeded(page: Page) {
   await enter(page)
   const name = `Courtyard Kopi ${Date.now().toString().slice(-6)}`
-  await seedShop(page, true, name)
-  const id = (await (await page.request.get('/api/v1/businesses')).json())[0].id as string
+  const prepared = await page.request.post('/api/v1/proposals', {
+    data: {
+      kind: 'business',
+      revision: 0,
+      geocode_confirmed: true,
+      business: {
+        name,
+        category: 'Cafe',
+        location: 'Koramangala, Bengaluru',
+        currency: 'INR',
+        timezone: 'Asia/Kolkata',
+        halal: 'not_stated',
+        locally_made: true,
+        phone: '',
+        payment_methods: ['UPI', 'cash'],
+        delivery: 'Pickup',
+        weekly_hours: [{ day: 'thu', open: '07:00', close: '20:00', closed: false }],
+        reward_text: 'Your eighth kopi is free',
+        stamps_needed: 8,
+      },
+      products: [{ name: 'Kopi', price: 1800, unit: 'cup', category: 'Drinks' }],
+    },
+  })
+  expect(prepared.ok(), await prepared.text()).toBe(true)
+  const proposal = await prepared.json()
+  const approved = await page.request.post(`/api/v1/proposals/${proposal.id}/approve`, {
+    data: { digest: proposal.digest },
+  })
+  expect(approved.ok(), await approved.text()).toBe(true)
+  const id = (await approved.json()).business_id as string
   await publish(page, id)
   return { id, name }
 }
