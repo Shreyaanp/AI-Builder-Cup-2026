@@ -428,10 +428,12 @@ export default function PublicShop({ id }: { id: string }) {
 
   const fetchShop = useCallback(
     (signal?: AbortSignal) =>
-      // Categories, sections and the demo story come back in the customer's language.
-      fetch(`/api/v1/public/shops/${encodeURIComponent(id)}?lang=${encodeURIComponent(locale)}`, {
-        signal,
-      }).then(async (response) => {
+      // Categories, sections and the demo story come back in the customer's language (English
+      // is the source, so it needs no parameter).
+      fetch(
+        `/api/v1/public/shops/${encodeURIComponent(id)}${locale === 'en' ? '' : `?lang=${locale}`}`,
+        { signal },
+      ).then(async (response) => {
         // 404 = owner stopped sharing; anything else is a transient failure.
         if (response.status === 404) throw new Error('missing')
         if (!response.ok) throw new Error('error')

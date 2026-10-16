@@ -3,8 +3,8 @@ import { SpeechTimeline } from './speechReveal'
 
 /** Frame rate of the reveal: smooth enough for words, cheap enough for a phone. */
 const TICK_MS = 50
-// A turn whose end never came (the socket dropped mid-reply): once its words have all been said
-// and nothing more arrived for this long, it is complete.
+// A turn whose end never came (the socket dropped mid-reply): once its words have been said
+// and nothing more arrived for this long after them, it is complete.
 const STALL_MS = 6000
 
 /**
@@ -38,7 +38,7 @@ export function useSpokenReveal({
     if (
       line.text &&
       !line.isFinished &&
-      now - lastPush.current > STALL_MS &&
+      now - Math.max(lastPush.current, line.endsAt()) > STALL_MS &&
       line.spoken(now) >= line.text.length &&
       !queued()
     )
