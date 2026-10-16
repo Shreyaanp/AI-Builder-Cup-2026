@@ -1,6 +1,7 @@
 import type { components } from '../../../api/generated'
 import type { Business, Product } from '../api'
 import { hasHours } from '../../shop/hoursModel'
+import { closingMinutes, shopNow } from '../../owner/time'
 import { isFood, missingFacts, timeRanges, type AskFact } from '../shopProgress'
 import type { DayPart } from './todayCopy'
 
@@ -12,6 +13,7 @@ type TodayHints = components['schemas']['TodayHints']
 export type StepId = 'items' | 'category' | 'location' | 'hours' | 'phone' | 'share'
 export type Need =
   | { id: string; kind: 'reply'; count: number }
+  | { id: string; kind: 'closeDay' }
   | { id: string; kind: 'menu' }
   | { id: string; kind: 'low'; item: string; left: number }
   | { id: string; kind: 'soldOut'; items: Product[] }
@@ -48,7 +50,17 @@ export interface TodayInput {
   facts: TodayFacts | null
   /** The daily menu question was answered (or confirmed) today. */
   menuAnswered: boolean
+  /** The day was closed today by the owner. */
+  dayClosed?: boolean
   now: Date
+}
+
+export function isCloseDayWindow(fields: Business['fields'], now: Date): boolean {
+  const tz = fields.timezone || 'Asia/Singapore'
+  const currentMinutes = shopNow(tz, now.getTime()).minutes
+  const close = closingMinutes(fields, tz)
+  const threshold = close !== null ? Math.max(0, close - 60) : 19 * 60
+  return currentMinutes >= threshold
 }
 
 const MAX_NEEDS = 3
@@ -88,6 +100,7 @@ export function metricsFor(shop: TodayInput['shop'], hints?: TodayHints | null):
 // The playbook's "needs you now" kinds, mapped onto what Today can show.
 const NEED_HINT: Record<Need['kind'], TodayHints['needs_you'][number] | null> = {
   reply: 'questions',
+  closeDay: null,
   menu: 'menu_check',
   low: 'low_stock',
   soldOut: null,
@@ -144,8 +157,15 @@ export function todayPlan(input: TodayInput): TodayPlan {
   const fresh = facts ? !pulse && !forecast : products.length === 0
   const dayOne = fresh && steps.length ? { step: steps[0]! } : null
 
+  const serverClosed = Boolean(
+    facts && (facts.today.sales != null || facts.today.items != null),
+  )
+  const isClosed = Boolean(input.dayClosed || serverClosed)
+  const closeWindow = isCloseDayWindow(shop.fields, input.now)
+
   const all: Need[] = []
   if (unread) all.push({ id: 'reply', kind: 'reply', count: unread })
+  if (closeWindow && !isClosed) all.push({ id: 'close-day', kind: 'closeDay' })
   if (products.length && facts && shop.last_confirmed !== facts.date && !input.menuAnswered)
     all.push({ id: 'menu', kind: 'menu' })
   const soldOut = products.filter((product) => product.available === false)

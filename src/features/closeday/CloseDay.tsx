@@ -17,6 +17,8 @@ import { useLocale } from '../../state/hooks'
 import { formatPrice, shopCurrency, toMinor } from '../v1/format'
 import { Tile, Supporting } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useIdentity } from '../../auth/useIdentity'
+import { dismissFreshness } from '../sales/freshnessDismissal'
 import { closeDayCopy } from './strings'
 
 type Kind = 'sales' | 'stock_count' | 'delivery'
@@ -81,6 +83,7 @@ export function CloseDayTile() {
 export function CloseDay({ onClose }: { onClose: () => void }) {
   const t = closeDayCopy(useLocale())
   const ws = useWorkspace()
+  const { scope } = useIdentity()
   const roles = useTheme().material
   const phone = useMediaQuery('(max-width:599px)')
   const shop = ws.active
@@ -207,6 +210,7 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
       }
       setSaved({ revenue, stock: stockBody.length })
       await ws.reload()
+      dismissFreshness(`chalkboard.closeday.${scope}.${shop.id}`, progress.current.date || day)
       setPhase('done')
     } catch {
       const status = (value: string) =>

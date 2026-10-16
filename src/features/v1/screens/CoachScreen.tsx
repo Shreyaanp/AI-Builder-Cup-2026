@@ -59,6 +59,7 @@ import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
 import { ConnectSheet } from '../../connect/ConnectSheet'
 import { useConnectCopy } from '../../connect/strings'
+import { CloseDay } from '../../closeday/CloseDay'
 import { SalesImportSheet } from '../ImportMenu'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
 import { StartCard } from '../ShopCard'
@@ -206,6 +207,7 @@ function CoachScreen({
   const receiveOrder = useReceiveOrder()
   // My shop sheets opened from suggestion chips.
   const [shopSheet, setShopSheet] = useState<ShopSheetKind | null>(null)
+  const [closeDayOpen, setCloseDayOpen] = useState(false)
   const { unread, refresh: refreshUnread } = useUnread()
   const messageInput = useRef<HTMLTextAreaElement>(null)
   const session = useRef<string | null>(null)
@@ -826,6 +828,7 @@ function CoachScreen({
     openMessages: () => setShopSheet('messages'),
     openSoldOut: () => setShopSheet('soldOut'),
     talk: () => void restored.current.then(() => voice.start(session.current)),
+    openCloseDay: () => setCloseDayOpen(true),
   }
   const lastIsReply =
     messages.at(-1)?.role === 'assistant' && !liveReply && !reveal.active() && busy === 'idle'
@@ -1167,6 +1170,14 @@ function CoachScreen({
           setShopSheet(null)
         }}
       />
+      {closeDayOpen && (
+        <CloseDay
+          onClose={() => {
+            setCloseDayOpen(false)
+            void ws.reload()
+          }}
+        />
+      )}
 
       <Box
         sx={{
