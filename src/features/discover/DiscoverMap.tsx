@@ -52,8 +52,9 @@ export default function DiscoverMap({
           {demoLabel}
         </Alert>
       )}
-      <Box sx={{ height: { xs: 320, md: 420 } }}>
+      <Box>
         <ResultsMap
+          height={{ xs: 320, md: 420 }}
           pins={pins}
           center={center}
           selected={selected}

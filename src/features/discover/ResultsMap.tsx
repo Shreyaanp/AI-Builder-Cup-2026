@@ -26,6 +26,8 @@ type Props = {
   copy: MapCopy
   /** Inline in the conversation (short, page scroll wins) or the full-screen explorer. */
   variant: 'inline' | 'full'
+  /** Inline height (any MUI responsive value); the full variant fills its container. */
+  height?: number | Record<string, number>
 }
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -43,7 +45,7 @@ export function ResultsMap(props: Props) {
     <Box
       sx={{
         position: 'relative',
-        height: props.variant === 'full' ? '100%' : 220,
+        height: props.variant === 'full' ? '100%' : (props.height ?? 220),
         overflow: 'hidden',
         borderRadius: props.variant === 'full' ? 0 : '16px',
         bgcolor: roles.surfaceContainerLow,
