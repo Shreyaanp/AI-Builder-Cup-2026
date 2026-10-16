@@ -27,7 +27,7 @@
 - **Consumers**:
   - `GET /businesses/{id}/playbook/today` and `view.today` give the pulse order, line topics,
     "needs you now" order, metrics and units.
-  - `view.grow` orders the My shop tool tiles (close day, prep plan, orders, plan
+  - `view.grow` orders the My shop tool tiles (close day, rescue, prep plan, orders, plan
     tomorrow) in `ShopTiles.tsx`. The tiles keep their slots, so without a playbook the
     order is unchanged.
   - The coach shop snapshot carries `coach_summary` (at most 900 characters, owner data,
@@ -40,7 +40,7 @@
 
 - Backend: `backend/tests/test_playbook.py` covers generation, bounds, the single Gemini
   call, refresh rules, edits, migration in both stores, consumers, routes and the coach
-  snapshot. Full backend suite: 724 passed, 202 skipped.
+  snapshot. Full backend suite after merging main: 739 passed, 209 skipped.
 - Coach eval: `backend/scripts/coach_eval.py` has a tea-stall scenario with a seeded playbook.
 - UI: `tests/playbook.spec.ts` covers phone and desktop in light and dark, axe clean, with
   no horizontal scroll. It checks the grow tile order, editing, removal that survives a
@@ -53,5 +53,5 @@
 
 - The v1 app has no Today page yet. The Today hints are served and tested, but nothing on
   screen reads them until a Today/pulse surface lands. Use `usePlaybook().view.today`.
-- Grow has no Rescue, Google, perks or recap tiles on this branch. Once those tiles exist,
+- Google, perks and recap are not My shop tiles yet. Once those tiles exist,
   add them to `byGrowOrder` in `ShopTiles.tsx`.

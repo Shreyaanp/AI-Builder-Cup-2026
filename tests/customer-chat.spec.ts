@@ -35,16 +35,20 @@ test('customer story: ask, follow, sign in to chat, demo reply, Chats and Saved'
 
   // 1. Ask the AI. No account needed.
   await page.goto('/explore/')
-  await expect(page.getByRole('heading', { name: 'What are you looking for?' })).toBeVisible({
-    timeout: 30_000,
-  })
+  await expect(page.getByRole('heading', { name: 'What are you looking for nearby?' })).toBeVisible(
+    {
+      timeout: 30_000,
+    },
+  )
   const nav = page.getByRole('navigation', { name: 'Main' })
   await expect(nav.getByRole('link', { name: 'Ask' })).toHaveAttribute('aria-current', 'page')
   await shot('C-1-ask')
-  await page.getByRole('search').getByRole('textbox').fill('croissant in Tiong Bahru')
-  await page.getByRole('search').getByRole('button', { name: 'Search' }).click()
-  const groups = page.getByRole('region', { name: /Best matches|Open now nearby|More nearby/ })
-  await expect(groups.first()).toBeVisible({ timeout: 15_000 })
+  await page
+    .getByRole('textbox', { name: 'Ask about anything nearby' })
+    .fill('croissant in Tiong Bahru')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  const answers = page.getByRole('article', { name: 'croissant in Tiong Bahru' })
+  await expect(answers.getByRole('link').first()).toBeVisible({ timeout: 15_000 })
   await page.waitForTimeout(1600)
   await shot('C-2-results')
 
@@ -129,9 +133,11 @@ test('personalisation: stated preferences are remembered, rank For you, and can 
 }) => {
   test.setTimeout(60_000)
   await page.goto('/explore/')
-  await expect(page.getByRole('heading', { name: 'What are you looking for?' })).toBeVisible({
-    timeout: 30_000,
-  })
+  await expect(page.getByRole('heading', { name: 'What are you looking for nearby?' })).toBeVisible(
+    {
+      timeout: 30_000,
+    },
+  )
   // Sign in (local stand-in for Google) and follow the demo bakery.
   expect(
     (await page.request.post('/api/v1/customer/session', { data: { name: 'Asha' } })).ok(),
@@ -139,16 +145,15 @@ test('personalisation: stated preferences are remembered, rank For you, and can 
   expect((await page.request.put(`/api/v1/customer/follows/${SHOP}`)).ok()).toBeTruthy()
   await page.reload()
   await page
-    .getByRole('search')
-    .getByRole('textbox')
+    .getByRole('textbox', { name: 'Ask about anything nearby' })
     .fill("I'm vegetarian, croissant in Tiong Bahru")
-  await page.getByRole('search').getByRole('button', { name: 'Search' }).click()
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Remembered:' })).toContainText(
     'Vegetarian',
     { timeout: 15_000 },
   )
-  const forYou = page.getByRole('region', { name: 'For you' })
-  await expect(forYou).toBeVisible()
+  // "For you" picks lead the answer, each saying why.
+  const forYou = page.getByRole('article', { name: "I'm vegetarian, croissant in Tiong Bahru" })
   await expect(forYou.getByText(/You follow this shop|Vegetarian options/).first()).toBeVisible()
   await page.waitForTimeout(1600)
   if (isMobile) await page.screenshot({ path: shots('C-8-for-you') })

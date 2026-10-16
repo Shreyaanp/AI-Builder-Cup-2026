@@ -1217,6 +1217,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/places/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reverse Pin
+         * @description The readable address under the owner's map pin while they place it (nothing is saved).
+         */
+        get: operations["reverse_pin_api_v1_places_reverse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/discover": {
         parameters: {
             query?: never;
@@ -1262,6 +1282,23 @@ export interface paths {
         put?: never;
         /** Ask */
         post: operations["ask_api_v1_discover_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/discover/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Suggest */
+        get: operations["suggest_api_v1_discover_suggest_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1506,7 +1543,8 @@ export interface paths {
         put?: never;
         /**
          * Collect Rescue
-         * @description Scanning the shop QR during the pickup window collects the rescue: leaf stamp.
+         * @description Scanning the shop QR during the pickup window collects what this customer held in chat:
+         *     leaf stamp, a rescued meal and the money saved.
          */
         post: operations["collect_rescue_api_v1_customer_passport_rescues_post"];
         delete?: never;
@@ -2046,6 +2084,23 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * Anchor
+         * @description The station a "near the MRT" follow-up measured from (demo map data offline).
+         */
+        Anchor: {
+            /** Name */
+            name: string;
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+        };
         /** Answer */
         Answer: {
             /** Answer */
@@ -2097,6 +2152,9 @@ export interface components {
              * @default en
              */
             language: string;
+            context?: components["schemas"]["Intent"] | null;
+            /** Refine */
+            refine?: ("price" | "distance" | "transit" | "open" | "deals" | "local") | null;
         };
         /** AskResponse */
         AskResponse: {
@@ -2109,6 +2167,23 @@ export interface components {
             /** Groups */
             groups: components["schemas"]["Group"][];
             personal?: components["schemas"]["Personal"] | null;
+            anchor?: components["schemas"]["Anchor"] | null;
+        };
+        /**
+         * AskSuggestions
+         * @description What the front door can suggest here, from the area's own shops (never invented).
+         */
+        AskSuggestions: {
+            /** Items */
+            items: string[];
+            /** Shops */
+            shops: number;
+            /** Open Now */
+            open_now: number;
+            /** Locally Made */
+            locally_made: number;
+            /** Deals */
+            deals: number;
         };
         /** AvailabilityRequest */
         AvailabilityRequest: {
@@ -2239,7 +2314,7 @@ export interface components {
              */
             pin_demo: boolean;
             /** Pin Source */
-            pin_source?: "device" | null;
+            pin_source?: ("device" | "pin") | null;
             /** Pin Accuracy M */
             pin_accuracy_m?: number | null;
             /**
@@ -2428,6 +2503,11 @@ export interface components {
              * @default en
              */
             language: string;
+            /**
+             * Instant Answer
+             * @default true
+             */
+            instant_answer: boolean;
         };
         /** CustomerThread */
         CustomerThread: {
@@ -2874,6 +2954,23 @@ export interface components {
             open_now: boolean;
             /** Followups */
             followups?: string[];
+            /**
+             * Sort
+             * @default best
+             * @enum {string}
+             */
+            sort: "best" | "price" | "distance";
+            /**
+             * Near
+             * @default
+             * @enum {string}
+             */
+            near: "" | "transit";
+            /**
+             * Deals
+             * @default false
+             */
+            deals: boolean;
         };
         /** Item */
         Item: {
@@ -3000,6 +3097,11 @@ export interface components {
              * @default en
              */
             language: string;
+            /**
+             * Instant Answer
+             * @default true
+             */
+            instant_answer: boolean;
         };
         /** Observation */
         Observation: {
@@ -3109,6 +3211,12 @@ export interface components {
             lng: number;
             /** Accuracy M */
             accuracy_m: number;
+            /**
+             * Source
+             * @default device
+             * @enum {string}
+             */
+            source: "device" | "pin";
         };
         /** PassportView */
         PassportView: {
@@ -3276,6 +3384,33 @@ export interface components {
              * @default []
              */
             reasons: string[];
+            deal?: components["schemas"]["PickDeal"] | null;
+        };
+        /**
+         * PickDeal
+         * @description A live closing-time rescue on this shop (demo rescues are labelled).
+         */
+        PickDeal: {
+            /** Item */
+            item: string;
+            /** Price */
+            price: number;
+            /** Was Price */
+            was_price: number;
+            /** Pickup End */
+            pickup_end: number;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+        };
+        /** PinAddress */
+        PinAddress: {
+            /** Label */
+            label: string;
+            /** Approximate */
+            approximate: boolean;
         };
         /** PlaceMatch */
         PlaceMatch: {
@@ -7125,6 +7260,38 @@ export interface operations {
             };
         };
     };
+    reverse_pin_api_v1_places_reverse_get: {
+        parameters: {
+            query: {
+                lat: number;
+                lng: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PinAddress"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     discover_api_v1_discover_get: {
         parameters: {
             query: {
@@ -7211,6 +7378,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AskResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_api_v1_discover_suggest_get: {
+        parameters: {
+            query: {
+                lat: number;
+                lng: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskSuggestions"];
                 };
             };
             /** @description Validation Error */

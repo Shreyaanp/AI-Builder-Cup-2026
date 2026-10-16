@@ -241,6 +241,21 @@ class ProductInput(BaseModel):
         return normalize_unit(value) if isinstance(value, str) else value
 
 
+class AmbiguousUnitError(ValueError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.field = "unit"
+
+
+def _format_unit_options(units: list[str]) -> str:
+    deduped = list(dict.fromkeys(units))
+    if len(deduped) <= 1:
+        return f"per {deduped[0]}" if deduped else "per item"
+    if len(deduped) == 2:
+        return f"per {deduped[0]} or per {deduped[1]}"
+    return ", ".join(f"per {u}" for u in deduped[:-1]) + f" or per {deduped[-1]}"
+
+
 def _invalid(
     error: ValidationError | HTTPException | ValueError, ctx: MerchantContext
 ) -> dict[str, Any]:
@@ -258,6 +273,8 @@ def _invalid(
         ]
     elif isinstance(error, HTTPException):
         problems = [{"field": "record", "problem": str(error.detail)}]
+    elif hasattr(error, "field"):
+        problems = [{"field": str(error.field), "problem": str(error)}]
     else:
         problems = [{"field": "input", "problem": str(error)}]
     return {
@@ -841,9 +858,14 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
         for item in items:
             name = item.name.strip().casefold()
             known = saved.get((name, item.unit.strip().casefold()))
-            if not known and len(by_name.get(name, [])) == 1:
+            matching = by_name.get(name, [])
+            if not known and len(matching) == 1:
                 # "Kaya toast is sold out" names the item but rarely its unit.
-                known = by_name[name][0]
+                known = matching[0]
+            elif not known and len(matching) > 1:
+                options = _format_unit_options([p["unit"] for p in matching])
+                matching_name = matching[0]["name"]
+                raise AmbiguousUnitError(f"{matching_name}: which unit? ({options})")
             if item.price is None and not known:
                 raise ValueError(f"{item.name}: a new item needs a price")
             products.append(

@@ -1,0 +1,22 @@
+{
+  "label": "before",
+  "screen": "welcome",
+  "project": "phone",
+  "theme": "dark",
+  "marks": 10,
+  "words": 32,
+  "busiest": 1,
+  "busyCells": 0,
+  "accentFamilies": 1,
+  "filledActions": 1,
+  "typeSizes": 5,
+  "weights": 4,
+  "spacingValues": 33,
+  "offGrid": 8,
+  "offValues": ["6px×4", "14px×2", "16.5px×2"],
+  "smallTargets": 0,
+  "smallNames": [],
+  "pageHeight": 844,
+  "contrastIssues": 0,
+  "axeViolations": []
+}

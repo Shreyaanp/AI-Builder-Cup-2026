@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Box, Button, Typography } from '@mui/material'
 import { Stamp } from 'lucide-react'
 import { usePassportCopy } from './copy'
+import { holdAt } from '../rescue/holds'
 import { StampMoment } from './StampMoment'
 import { demoKey } from './store'
 
@@ -65,7 +66,16 @@ export function ShopStamp({
           </Typography>
         </Box>
       )}
-      {open && <StampMoment shop={shop} qrKey={key} open={open} onClose={() => setOpen(false)} />}
+      {open && (
+        <StampMoment
+          shop={shop}
+          qrKey={key}
+          open={open}
+          onClose={() => setOpen(false)}
+          // A scan where this phone holds a rescue collects it (checked against the shop chat).
+          rescue={holdAt(shop.id)?.rescue ?? null}
+        />
+      )}
     </>
   )
 }

@@ -9,12 +9,15 @@ or price; every result comes from a shop's own data or from Google.
 from __future__ import annotations
 
 import re
+import time
+from collections import Counter
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any, Literal
 
 import anyio
 import structlog
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from .community import Community, Profile, stated_preferences
@@ -30,6 +33,7 @@ from .gemini_schema import gemini_schema, parse_reply
 from .limits import client_ip, enforce_limits
 from .merchant import MerchantRepository
 from .money import exponent
+from .rescue_feed import live_rescues
 from .shop_time import shop_timezone, valid_timezone
 
 log = structlog.get_logger()
@@ -55,6 +59,11 @@ class Intent(BaseModel):
     locally_made: bool = False
     open_now: bool = False
     followups: list[str] = Field(default_factory=list, max_length=3)
+    # Conversation refinements: "cheaper?" → price, "closer?" → distance, "near the MRT?" →
+    # transit, "any deals?" → deals. The model may set them; follow_up() always does.
+    sort: Literal["best", "price", "distance"] = "best"
+    near: Literal["", "transit"] = ""
+    deals: bool = False
 
 
 class AskRequest(BaseModel):
@@ -63,6 +72,20 @@ class AskRequest(BaseModel):
     lng: float = Field(ge=-180, le=180, allow_inf_nan=False)
     radius: int = Field(default=4000, ge=200, le=30000)
     language: str = Field(default="en", max_length=16)
+    # The previous answer's intent when this message continues the same conversation.
+    context: Intent | None = None
+    # A tapped follow-up chip says exactly what it refines, whatever the language of its label.
+    refine: Literal["price", "distance", "transit", "open", "deals", "local"] | None = None
+
+
+class PickDeal(BaseModel):
+    """A live closing-time rescue on this shop (demo rescues are labelled)."""
+
+    item: str
+    price: int  # minor units
+    was_price: int
+    pickup_end: float  # epoch seconds
+    demo: bool = False
 
 
 class Pick(DiscoveryPlace):
@@ -70,6 +93,16 @@ class Pick(DiscoveryPlace):
     score: float = 0
     # Why a signed-in customer sees this "For you": followed, vegetarian, halal, budget.
     reasons: list[str] = []
+    deal: PickDeal | None = None
+
+
+class Anchor(BaseModel):
+    """The station a "near the MRT" follow-up measured from (demo map data offline)."""
+
+    name: str
+    lat: float
+    lng: float
+    demo: bool = False
 
 
 class Group(BaseModel):
@@ -89,6 +122,7 @@ class AskResponse(BaseModel):
     mode: Literal["ai", "keywords"]
     groups: list[Group]
     personal: Personal | None = None
+    anchor: Anchor | None = None
 
 
 def personal_reasons(shop: dict[str, Any], pick: Pick, profile: Profile) -> list[str]:
@@ -136,7 +170,134 @@ Reply in JSON matching the schema. Rules:
 - locally_made: true only if they want home-made, handmade, made in-house or local makers.
 - summary: one short friendly line, in language "{language}", restating what you will look for.
 - followups: up to 3 short refinements in language "{language}" (e.g. "Open now", "Under ₹100").
-Request: {q}"""
+- sort: "price" if they want it cheaper, "distance" if closer; near: "transit" if they want it
+  near a train/metro/MRT station; deals: true if they ask for deals or discounts.
+{context}Request: {q}"""
+
+CONTEXT = """This message continues a conversation. The earlier search was (JSON): {intent}
+If the new request only refines it ("cheaper?", "open now?", "near the MRT?"), keep its keywords,
+category and filters and add the refinement. If it asks for something new, start a new search but
+keep dietary needs (halal, vegetarian).
+"""
+
+# Follow-up refinements, in English and the common words of the supported languages.
+CHEAPER = re.compile(
+    r"\b(cheaper|cheapest|less expensive|lower price|more affordable|budget|cheap)\b"
+    r"|सस्ता|सस्ते|更便宜|便宜|murah|より安い|安い|더 싼|ถูกกว่า|rẻ hơn|mas mura|மலிவ"
+)
+CLOSER = re.compile(
+    r"\b(closer|nearer|nearest|walking distance|walkable)\b|पास में|更近|近く|더 가까"
+)
+TRANSIT = re.compile(r"\b(mrt|lrt|bts|mtr|metro|subway|station|train)\b|मेट्रो|地铁|駅|역|สถานี")
+OPEN = re.compile(r"\b(open now|open|still open|right now)\b|अभी खुल|营业|buka|営業|영업|เปิด|mở")
+DEALS = re.compile(
+    r"\b(deals?|discounts?|offers?|rescue|on sale|sale)\b|ऑफ़र|छूट|优惠|割引|할인|ส่วนลด"
+)
+REFINEMENT_WORDS = {
+    *("cheaper", "cheapest", "expensive", "lower", "price", "affordable", "closer", "nearer"),
+    *("nearest", "walking", "distance", "walkable", "mrt", "lrt", "bts", "mtr", "metro"),
+    *("subway", "station", "train", "still", "deal", "deals", "discount", "discounts", "offer"),
+    *("offers", "rescue", "sale", "what", "about", "how", "more", "less", "only", "just", "one"),
+    *("ones", "those", "these", "them", "that", "it", "is", "are", "there", "also", "too"),
+}
+
+
+def follow_up(q: str, previous: Intent, parsed: Intent) -> Intent:
+    """Merge a follow-up message into the previous search ("cheaper?" keeps "kopi")."""
+    text = q.casefold()
+    subject = [k for k in parsed.keywords if k.casefold() not in REFINEMENT_WORDS]
+    if subject and subject != previous.keywords:
+        # Something new ("and bread?"): a new subject, still with the earlier dietary needs.
+        merged = parsed.model_copy(update={"keywords": subject})
+    else:
+        merged = previous.model_copy(
+            update={"summary": parsed.summary or previous.summary, "followups": parsed.followups}
+        )
+        if parsed.max_price is not None:
+            merged.max_price = parsed.max_price
+        merged.open_now = previous.open_now or parsed.open_now
+        merged.locally_made = previous.locally_made or parsed.locally_made
+        merged.sort = parsed.sort if parsed.sort != "best" else previous.sort
+        merged.near = parsed.near or previous.near
+        merged.deals = previous.deals or parsed.deals
+    merged.halal = previous.halal or parsed.halal
+    merged.vegetarian = previous.vegetarian or parsed.vegetarian
+    if OPEN.search(text):
+        merged.open_now = True
+    return refine(text, merged)
+
+
+def refine(text: str, intent: Intent) -> Intent:
+    """Ordering and place refinements any message can carry ("cheapest coffee near the MRT")."""
+    if CHEAPER.search(text):
+        intent.sort = "price"
+    if CLOSER.search(text):
+        intent.sort = "distance"
+    if TRANSIT.search(text):
+        intent.near = "transit"
+    if DEALS.search(text):
+        intent.deals = True
+    return intent
+
+
+# Offline station positions (approximate public coordinates) for the demo neighbourhoods; live
+# requests ask Google Places for the nearest station instead.
+STATIONS = [
+    ("Tiong Bahru MRT", 1.28618, 103.82696),
+    ("Outram Park MRT", 1.28025, 103.83946),
+    ("Orchard MRT", 1.30406, 103.83214),
+    ("Tampines MRT", 1.35459, 103.94515),
+    ("Jurong East MRT", 1.33315, 103.7422),
+    ("Toa Payoh MRT", 1.33256, 103.84731),
+    ("Indiranagar Metro", 12.97837, 77.63855),
+    ("Hauz Khas Metro", 28.54343, 77.20659),
+    ("Bangsar LRT", 3.12765, 101.67907),
+]
+STATION_TYPES = {"subway_station", "train_station", "transit_station", "light_rail_station"}
+
+
+async def nearest_station(maps: MapsService, lat: float, lng: float) -> Anchor | None:
+    if maps.demo:
+        near = min(STATIONS, key=lambda s: distance(lat, lng, s[1], s[2]))
+        if distance(lat, lng, near[1], near[2]) > 2500:
+            return None
+        return Anchor(name=near[0], lat=near[1], lng=near[2], demo=True)
+    try:
+        rows = await maps.places(lat, lng, 2000, "metro train station", "")
+    except HTTPException:
+        return None
+    for row in rows:
+        if row.get("primaryType") in STATION_TYPES:
+            point = row["location"]
+            return Anchor(
+                name=row["displayName"]["text"], lat=point["latitude"], lng=point["longitude"]
+            )
+    return None
+
+
+PRICE_LEVELS = {
+    "PRICE_LEVEL_FREE": 0,
+    "PRICE_LEVEL_INEXPENSIVE": 1,
+    "PRICE_LEVEL_MODERATE": 2,
+    "PRICE_LEVEL_EXPENSIVE": 3,
+    "PRICE_LEVEL_VERY_EXPENSIVE": 4,
+}
+
+
+def min_price(pick: Pick) -> int:
+    prices = [p.price for p in (pick.matched or pick.items) if p.available]
+    if pick.deal is not None:
+        prices.append(pick.deal.price)
+    return min(prices) if prices else 1 << 40
+
+
+def ranking(intent: Intent, anchor: Anchor | None) -> Callable[[Pick], tuple[float, ...]]:
+    """Best match first, unless the conversation asked for cheaper or closer."""
+    if intent.sort == "price":
+        return lambda p: (min_price(p), p.distance_m)
+    if intent.sort == "distance" or anchor is not None:
+        return lambda p: (p.distance_m, -p.score)
+    return lambda p: (-p.score, p.distance_m)
 
 
 LOCALLY_MADE = re.compile(
@@ -198,6 +359,11 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
                     language=body.language,
+                    context=(
+                        CONTEXT.format(intent=body.context.model_dump_json(exclude={"followups"}))
+                        if body.context
+                        else ""
+                    ),
                     q=body.q,
                 ),
                 config=types.GenerateContentConfig(
@@ -289,8 +455,31 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
     intent = await ai_intent(request, body)
     mode: Literal["ai", "keywords"] = "ai" if intent else "keywords"
     intent = intent or keyword_intent(body.q)
+    if body.refine:
+        # A chip only refines: its label (any language) is never a new subject.
+        intent = intent.model_copy(update={"keywords": [], "category": ""})
+    intent = (
+        follow_up(body.q, body.context, intent)
+        if body.context
+        else refine(body.q.casefold(), intent)
+    )
+    if body.refine in {"price", "distance"}:
+        intent.sort = "price" if body.refine == "price" else "distance"
+    elif body.refine == "transit":
+        intent.near = "transit"
+    elif body.refine == "open":
+        intent.open_now = True
+    elif body.refine == "deals":
+        intent.deals = True
+    elif body.refine == "local":
+        intent.locally_made = True
     if intent.category not in CATEGORIES:
         intent.category = ""
+    maps: MapsService = request.app.state.maps
+    # "Near the MRT": measure from the nearest station, within a short walk of it.
+    anchor = await nearest_station(maps, body.lat, body.lng) if intent.near == "transit" else None
+    lat, lng = (anchor.lat, anchor.lng) if anchor else (body.lat, body.lng)
+    radius = min(body.radius, 1000) if anchor else body.radius
     repository: MerchantRepository | None = request.app.state.merchant
     shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
     picks = [
@@ -298,9 +487,27 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
         for shop in shops
         if shop["lat"] is not None
         and shop["lng"] is not None
-        and distance(body.lat, body.lng, shop["lat"], shop["lng"]) <= body.radius
-        and (pick := shop_pick(shop, intent, body.lat, body.lng)) is not None
+        and distance(lat, lng, shop["lat"], shop["lng"]) <= radius
+        and (pick := shop_pick(shop, intent, lat, lng)) is not None
     ]
+    try:
+        rescues = await live_rescues(request, shops, lat, lng, time.time())
+    except Exception:  # noqa: BLE001 - deals decorate results; they never block them
+        log.warning("ask_rescues_unavailable")
+        rescues = []
+    by_shop = {deal.shop_id: deal for deal in rescues}
+    for pick in picks:
+        if (deal := by_shop.get(pick.id)) is not None:
+            pick.deal = PickDeal(
+                item=deal.item,
+                price=deal.price,
+                was_price=deal.was_price,
+                pickup_end=deal.pickup_end,
+                demo=deal.demo,
+            )
+            pick.score += 1
+    if intent.deals:
+        picks = [p for p in picks if p.deal]
     profile, saved = await customer_profile(request, body.q)
     personal: Personal | None = None
     for_you: list[Pick] = []
@@ -324,18 +531,18 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
             ],
             saved=saved,
         )
-    picks.sort(key=lambda p: (-p.score, p.distance_m))
-    maps: MapsService = request.app.state.maps
+    picks.sort(key=ranking(intent, anchor))
+    for_you.sort(key=ranking(intent, anchor))
     query = " ".join(intent.keywords) or body.q
     try:
-        google = await maps.places(body.lat, body.lng, body.radius, query, intent.category)
+        google = [] if intent.deals else await maps.places(lat, lng, radius, query, intent.category)
     except HTTPException:
         google = []
     others: list[Pick] = []
     for row in google:
         point = row["location"]
-        d = distance(body.lat, body.lng, point["latitude"], point["longitude"])
-        if d > body.radius:
+        d = distance(lat, lng, point["latitude"], point["longitude"])
+        if d > radius:
             continue
         is_open = row.get("currentOpeningHours", {}).get("openNow")
         if intent.open_now and is_open is False:
@@ -362,7 +569,13 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
                 photo_authors=authors,
             )
         )
-    others.sort(key=lambda p: p.distance_m)
+    others.sort(
+        key=lambda p: (
+            (PRICE_LEVELS.get(p.price_level or "", 9), p.distance_m)
+            if intent.sort == "price"
+            else (0, p.distance_m)
+        )
+    )
     is_owner = False
     if repository is not None:
         try:
@@ -433,5 +646,67 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
         Group(id="more", places=[p for p in others if not p.open_now][:10]),
     ]
     return AskResponse(
-        intent=intent, mode=mode, groups=[g for g in groups if g.places], personal=personal
+        intent=intent,
+        mode=mode,
+        groups=[g for g in groups if g.places],
+        personal=personal,
+        anchor=anchor,
+    )
+
+
+class AskSuggestions(BaseModel):
+    """What the front door can suggest here, from the area's own shops (never invented)."""
+
+    items: list[str]
+    shops: int
+    open_now: int
+    locally_made: int
+    deals: int
+
+
+@router.get("/discover/suggest", response_model=AskSuggestions)
+async def suggest(
+    request: Request,
+    lat: float = Query(ge=-90, le=90, allow_inf_nan=False),
+    lng: float = Query(ge=-180, le=180, allow_inf_nan=False),
+) -> AskSuggestions:
+    await enforce_limits(request, [("discover:suggest", client_ip(request))], anonymous=True)
+    repository: MerchantRepository | None = request.app.state.merchant
+    shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
+    near = [
+        shop
+        for shop in shops
+        if shop.get("lat") is not None
+        and shop.get("lng") is not None
+        and not shop.get("supplier")
+        and distance(lat, lng, shop["lat"], shop["lng"]) <= 2000
+    ]
+    # The item names most shops nearby sell today: one vote per shop, short names only.
+    votes: Counter[str] = Counter()
+    names: dict[str, str] = {}
+    for shop in near:
+        seen = set()
+        for product in shop["products"]:
+            name = str(product.get("name") or "").strip()
+            key = name.casefold()
+            if not product.get("available") or not name or len(name) > 24 or key in seen:
+                continue
+            seen.add(key)
+            votes[key] += 1
+            names.setdefault(key, name)
+    ranked = [names[key] for key, _ in votes.most_common(4)]
+    try:
+        rescues = await live_rescues(request, near, lat, lng, time.time())
+    except Exception:  # noqa: BLE001 - a missing deals count only hides one chip
+        rescues = []
+    return AskSuggestions(
+        items=ranked,
+        shops=len(near),
+        open_now=sum(
+            1
+            for shop in near
+            if open_now(shop["hours"], shop["timezone"], weekly_hours=shop.get("weekly_hours"))
+        ),
+        locally_made=sum(1 for shop in near if (shop.get("facts") or {}).get("locally_made")),
+        deals=len(rescues),
     )

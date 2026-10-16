@@ -34,6 +34,9 @@ const ChatList = lazy(() => import('../customer/Chats').then((m) => ({ default: 
 const ChatThread = lazy(() => import('../customer/Chats').then((m) => ({ default: m.ChatThread })))
 const Saved = lazy(() => import('../customer/Saved').then((m) => ({ default: m.Saved })))
 const Passport = lazy(() => import('../passport/Passport').then((m) => ({ default: m.Passport })))
+const RescueScreen = lazy(() =>
+  import('../rescue/RescueScreen').then((m) => ({ default: m.RescueScreen })),
+)
 const journeyKey = 'chalkboard.customer.journey'
 export type CustomerLocation = { gps: [number, number] | null; place: FoundPlace | null }
 function firstRun() {
@@ -86,6 +89,7 @@ function CustomerPages() {
   const chats = /^\/explore\/chats\/?$/.test(path)
   const saved = /^\/explore\/saved\/?$/.test(path)
   const passport = /^\/explore\/passport\/?$/.test(path)
+  const rescue = /^\/explore\/rescue\/?$/.test(path)
   // The full list: its own path, or any shared list link with filters (?category=, ?area=…).
   const browse =
     /^\/explore\/browse\/?$/.test(path) ||
@@ -103,7 +107,7 @@ function CustomerPages() {
     window.addEventListener('popstate', restore)
     return () => window.removeEventListener('popstate', restore)
   }, [])
-  if (!id && !thread && !chats && !saved && !passport && setup)
+  if (!id && !thread && !chats && !saved && !passport && !rescue && setup)
     return (
       <CustomerWelcome
         onComplete={(value, picks) => {
@@ -126,9 +130,11 @@ function CustomerPages() {
       ? 'saved'
       : passport
         ? 'passport'
-        : !id && !thread && !browse
-          ? 'ask'
-          : null
+        : rescue
+          ? 'rescue'
+          : !id && !thread && !browse
+            ? 'ask'
+            : null
   return (
     <>
       <a href="#customer-content" className="skip-link">
@@ -153,6 +159,8 @@ function CustomerPages() {
             <Saved />
           ) : passport ? (
             <Passport initialLocation={locationChoice} />
+          ) : rescue ? (
+            <RescueScreen />
           ) : browse ? (
             <Discover
               initialLocation={locationChoice}
@@ -161,7 +169,11 @@ function CustomerPages() {
             />
           ) : (
             // AI-first front door (user decision, Oct 15); the full list is one tap away.
-            <AskHome initialLocation={locationChoice} onLocationChange={setLocationChoice} />
+            <AskHome
+              initialLocation={locationChoice}
+              onLocationChange={setLocationChoice}
+              interests={interests}
+            />
           )}
         </Suspense>
       </div>

@@ -516,7 +516,7 @@ function Quests({ quests }: { quests: Quest[] }) {
                             clickable
                             icon={stop.done ? <Check size={14} /> : undefined}
                             label={stop.name.replace(/\s*\(Demo\)$/, '')}
-                            sx={{ minHeight: 36, bgcolor: roles.surface }}
+                            sx={{ minHeight: 48, borderRadius: 999, bgcolor: roles.surface }}
                           />
                         ))}
                       </Stack>

@@ -1,0 +1,22 @@
+{
+  "label": "before",
+  "screen": "browse",
+  "project": "desktop",
+  "theme": "light",
+  "marks": 46,
+  "words": 104,
+  "busiest": 2,
+  "busyCells": 0,
+  "accentFamilies": 1,
+  "filledActions": 1,
+  "typeSizes": 6,
+  "weights": 4,
+  "spacingValues": 167,
+  "offGrid": 20,
+  "offValues": ["9px×12", "6px×4", "14px×2", "16.5px×2"],
+  "smallTargets": 0,
+  "smallNames": [],
+  "pageHeight": 5821,
+  "contrastIssues": 0,
+  "axeViolations": []
+}
