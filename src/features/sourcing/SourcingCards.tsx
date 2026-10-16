@@ -22,7 +22,7 @@ import {
   Truck,
 } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
-import { enterRise, fieldFade, motion, shape } from '../../design/theme'
+import { enterRise, fieldFade, motion, scrollArea, shape } from '../../design/theme'
 import { formatPrice, toMinor } from '../v1/format'
 import { useSourcingCopy } from './copy'
 import { deliveryLabel } from './orderData'
@@ -214,8 +214,7 @@ export function SupplierCarousel({
           mx: { xs: -4, sm: 0 },
           px: { xs: 4, sm: 0 },
           pb: 2,
-          scrollbarWidth: 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
+          ...scrollArea,
         }}
       >
         {result.suppliers.map((card, index) => (

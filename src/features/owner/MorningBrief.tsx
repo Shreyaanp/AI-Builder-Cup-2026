@@ -5,7 +5,7 @@ import { gsap } from 'gsap'
 import { CloudSun, PackageMinus, Sparkles, Sunrise, UtensilsCrossed, X } from 'lucide-react'
 import type { components } from '../../api/generated'
 import { useChalkTimeline } from '../../design/chalkMotion'
-import { shape } from '../../design/theme'
+import { scrollArea, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { CloseDay } from '../closeday/CloseDay'
 import { closeDayCopy } from '../closeday/strings'
@@ -271,8 +271,7 @@ export function MorningBrief({
           display: 'flex',
           overflowX: 'auto',
           scrollSnapType: 'x mandatory',
-          scrollbarWidth: 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
+          ...scrollArea,
         }}
       >
         {slides.map((slide, i) => (
