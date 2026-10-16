@@ -455,6 +455,70 @@ def release_hold(store: MerchantRepository, bid: str, rid: str, body: HoldInput)
     store.feature_docs.update("rescue", bid, bid, change)
 
 
+def is_food_or_perishable(category: str) -> bool:
+    cat = category.strip().casefold()
+    if not cat:
+        return False
+    non_perishable = (
+        "bicycle",
+        "repair",
+        "tailor",
+        "hardware",
+        "salon",
+        "barber",
+        "service",
+        "clothing",
+        "shoe",
+        "fashion",
+        "laundry",
+        "dry clean",
+        "electronic",
+        "appliance",
+        "plumb",
+        "electric",
+        "auto",
+        "mechanic",
+    )
+    if any(term in cat for term in non_perishable):
+        return False
+    perishable = (
+        "food",
+        "beverage",
+        "bakery",
+        "bake",
+        "bread",
+        "cafe",
+        "café",
+        "coffee",
+        "kopi",
+        "tea",
+        "teh",
+        "chai",
+        "restaurant",
+        "hawker",
+        "eatery",
+        "cater",
+        "dhaba",
+        "tiffin",
+        "grocer",
+        "grocery",
+        "minimart",
+        "supermarket",
+        "convenience",
+        "fruit",
+        "vegetable",
+        "florist",
+        "flower",
+        "meal",
+        "snack",
+        "sweet",
+        "mithai",
+        "juice",
+        "perishable",
+    )
+    return any(term in cat for term in perishable)
+
+
 def seed_demo_deals(
     store: MerchantRepository, uid: str, bids: list[str], now: float | None = None
 ) -> None:
@@ -463,6 +527,9 @@ def seed_demo_deals(
     for bid in bids:
         context = store.context(uid, bid)
         if not context["business"]["fields"].get("demo"):
+            continue
+        category = str(context["business"]["fields"].get("category", ""))
+        if not is_food_or_perishable(category):
             continue
         if any(d.status == "live" for d in deals(store, bid, now)):
             made += 1

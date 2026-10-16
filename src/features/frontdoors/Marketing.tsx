@@ -15,6 +15,7 @@ import { gsap } from 'gsap'
 import { useChalkTimeline } from '../../design/chalkMotion'
 import { motion } from '../../design/theme'
 import { useToolCopy } from '../owner-tools/copy'
+import { LanguagePicker } from './LanguagePicker'
 import { useFrontCopy } from './strings'
 import './landing.css'
 
@@ -79,6 +80,7 @@ export default function Marketing() {
           Chalkboard
         </a>
         <nav aria-label="Chalkboard">
+          <LanguagePicker variant="nav" />
           <a href="/explore/">{t.find}</a>
           <Button variant="outlined" href={businessUrl}>
             {t.business}
