@@ -1,0 +1,10 @@
+{
+  "timings": {
+    "landingLoad": 1562,
+    "askResponse": 16444,
+    "instantAnswer": 3029
+  },
+  "targetViolations": [],
+  "storyScores": {},
+  "findings": []
+}
