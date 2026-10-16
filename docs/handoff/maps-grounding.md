@@ -73,3 +73,14 @@ Branch `feat/maps-grounding`, built on `feat/customer-ai-first` (PR #11). Brief:
   `gemini-3.5-flash` (or `MAPS_GROUNDING_MODEL`) supports the Maps tool in the chosen location.
 - Google's optional contextual Maps widget (`widget_token`) is returned by the API but not rendered.
 - Sheet drag tested by tap/keyboard in Playwright; not on a physical phone.
+
+## Final gates (16 Oct)
+
+- `npm run lint`, `npm run build`, `npm run test:hooks`, Prettier: pass.
+- Backend: Ruff, `ruff format --check`, mypy clean; pytest 639 passed, 171 skipped.
+- Playwright: every spec file run with `--workers=1` in chunks (the machine is shared, so not
+  one `npm run check`). All pass; first-test cold-start timeouts (`customer.spec.ts:62`,
+  `budget`, `bugs-b30-b31`, `forecast`, `story-google-hours`) passed on rerun/retry.
+- `tests/customer-ask.spec.ts` now finds the answer map as a `group` (it was an `img` before
+  it had tappable pins). The maps story seeds its shops in Koramangala so it never pushes other
+  stories' Indiranagar shops out of the top eight results.
