@@ -47,6 +47,8 @@ import { CategoryGroups } from '../shop/CategoryGroups'
 import { useShopCopy } from '../shop/strings'
 import { VerifiedBadge } from '../trust/VerifiedBadge'
 import { unitLabel } from '../shop/units'
+import { rememberOpened } from '../discover/opened'
+import { SimilarNearby } from '../discover/SimilarNearby'
 
 interface PublicShopData {
   id: string
@@ -443,6 +445,8 @@ export default function PublicShop({ id }: { id: string }) {
     )
     if (changed.length) setChangedPrices(changed.map((product) => product.name + product.unit))
     previous.current = data
+    // A personal signal for this person's own search and Today's 7, kept on this device.
+    rememberOpened(data.id)
     setShop(data)
     setStale(false)
     setState('ready')
@@ -947,6 +951,11 @@ export default function PublicShop({ id }: { id: string }) {
       {!stale && <BackInStock shop={id} products={shop.products} />}
       <BadgeRow shop={id} />
       <Tips shop={id} />
+      <SimilarNearby
+        key={id}
+        shop={id}
+        items={menu.filter((product) => product.available).map((product) => product.name)}
+      />
       <Stack
         direction="row"
         spacing={1}

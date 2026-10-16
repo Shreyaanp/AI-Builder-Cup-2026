@@ -15,6 +15,7 @@ import type { AreaAnswer, AskAnswer, AskPick } from './askThread'
 import { mapCopy } from './mapCopy'
 import { mapsLink } from './types'
 import { fillIn, type ConversationCopy } from './conversationCopy'
+import { becauseLine, ratingLine, searchCopy } from './searchCopy'
 
 const prefetchPublicShop = () => {
   void import('../public/PublicShop')
@@ -59,6 +60,8 @@ export function PickCard({
   const ask = askCopy(locale)
   const item = pick.matched[0] ?? pick.items.find((i) => i.available)
   const reason = pick.reasons?.[0]
+  // Their own signal, in one line: Gemini's words for the top picks, else the app's own.
+  const personal = pick.why ?? (pick.because ? becauseLine(pick.because, searchCopy(locale)) : null)
   const distance = formatDistance(pick.distance_m, locale)
   const deal = pick.deal
 
@@ -139,9 +142,20 @@ export function PickCard({
           </Box>
         </Box>
         <Box sx={{ p: 4, pt: 3, display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
-          {reason && (
-            <Typography variant="labelMedium" sx={{ color: roles.primary, fontWeight: 700 }}>
-              {accountCopyFor(locale).reasons[reason] ?? reason}
+          {(personal || reason) && (
+            <Typography
+              variant="labelMedium"
+              data-testid="pick-because"
+              sx={{
+                color: roles.primary,
+                fontWeight: 700,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {personal ?? (reason && (accountCopyFor(locale).reasons[reason] ?? reason))}
             </Typography>
           )}
           <Typography variant="titleMedium" component="h3" noWrap>
@@ -246,6 +260,7 @@ export function GoogleRows({
 }) {
   const roles = useTheme().material
   const ask = askCopy(locale)
+  const search = searchCopy(locale)
   return (
     <Box component="section" aria-label={copy.google} sx={{ mt: 6 }}>
       <Typography component="h3" variant="labelLarge" color="text.secondary">
@@ -281,6 +296,10 @@ export function GoogleRows({
                   {[
                     formatDistance(place.distance_m, locale),
                     place.open_now === null ? null : place.open_now ? ask.openNow : ask.closed,
+                    // Google's own rating, live and attributed; never stored by us.
+                    place.rating != null && place.user_rating_count
+                      ? ratingLine(place.rating, place.user_rating_count, locale, search)
+                      : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')}

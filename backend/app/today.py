@@ -22,6 +22,7 @@ from .community import Community
 from .community_routes import community, identity
 from .demo_world import WorldGenerator, WorldRequest, ensure_world
 from .discover import distance, open_now
+from .discover_ask import search_engine
 from .limits import client_ip, enforce_limits
 from .merchant_routes import store
 from .passport import (
@@ -35,6 +36,7 @@ from .passport import (
 )
 from .passport_routes import passports
 from .rescue_feed import RescueDeal, closing_today, live_rescues
+from .search_engine import Taste
 from .shop_time import valid_timezone
 
 log = structlog.get_logger()
@@ -121,6 +123,8 @@ class Context(BaseModel):
     halal: bool = False
     stamped_categories: list[str] = Field(default_factory=list)
     visited: list[str] = Field(default_factory=list)
+    # Shop id → 0..1 likeness to this customer's own stamps, follows and searches (search engine).
+    affinity: dict[str, float] = Field(default_factory=dict)
 
 
 def shop_view(shop: dict[str, Any], ctx: Context) -> FindShop:
@@ -155,6 +159,7 @@ def score(find: Find, ctx: Context, surprise: float, age_hours: float = 0.0) -> 
             relevance += 0.2
         if shop.category and shop.category in ctx.stamped_categories:
             relevance += 0.2
+        relevance += 0.5 * ctx.affinity.get(shop.id, 0.0)
         reach = math.exp(-shop.distance_m / 1200) * (0.4 if shop.open_now is False else 1.0)
     freshness = 1.0 if find.kind == "rescue" else math.exp(-age_hours / 48)
     return round(surprise * relevance * freshness * reach, 4)
@@ -536,6 +541,7 @@ async def today(
     place: str = Query(default="", max_length=120),
     seen: str = Query(default="", max_length=4000, description="Finds shown on earlier days"),
     keep: str = Query(default="", max_length=2000, description="Today's finds, to keep them"),
+    opened: str = Query(default="", max_length=1200, description="Shops opened on this device"),
 ) -> TodayFeed:
     """Anonymous; signed-in customers also get their follows, preferences and stamps applied,
     and the server remembers what they saw."""
@@ -559,6 +565,7 @@ async def today(
     ctx = Context(lat=lat, lng=lng, now=now)
     state = PassportState()
     memory: dict[str, Any] = {}
+    asked: list[str] = []
     if principal is not None:
         profile = await anyio.to_thread.run_sync(community(request).profile, principal.uid)
         state = await anyio.to_thread.run_sync(passports(request).get, principal.uid)
@@ -567,8 +574,24 @@ async def today(
         ctx.follows = profile.follows
         ctx.vegetarian = profile.preferences.vegetarian
         ctx.halal = profile.preferences.halal
+        asked = [s.q for s in profile.searches][:20]
     ctx.visited = list(state.shops)
     ctx.stamped_categories = sorted({s.category for s in state.shops.values() if s.category})
+    taste = Taste(
+        follows=ctx.follows[:200],
+        stamped={bid: max(1, p.visits) for bid, p in state.shops.items()},
+        asked=asked,
+        opened=[i for i in opened.split(",") if i][:30],
+    )
+    if not taste.empty:
+        # Zero data keeps the plain order (distance, open now, freshness); taste only reorders.
+        try:
+            engine = search_engine(request)
+            known = await anyio.to_thread.run_sync(store(request).shared_shops)
+            scores = await anyio.to_thread.run_sync(engine.personal, shops, taste, known)
+            ctx.affinity = {bid: value for bid, (value, _) in scores.items()}
+        except Exception:  # noqa: BLE001 - personal order is a refinement, never a blocker
+            log.warning("today_affinity_unavailable")
     found = await candidates_for(request, shops, ctx, local.date())
     if principal is not None:
         history: dict[str, str] = dict(memory.get("seen", {}))

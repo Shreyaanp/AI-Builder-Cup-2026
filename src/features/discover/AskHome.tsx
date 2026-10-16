@@ -29,6 +29,7 @@ import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { useCustomer } from '../customer/account'
 import { accountCopyFor } from '../customer/copy'
 import { preferenceChips } from '../customer/preferences'
+import { openedShops } from './opened'
 import { ProfileSheet } from '../customer/Profile'
 import { usePassportCopy } from '../passport/copy'
 import { TodayDeck } from '../passport/TodayDeck'
@@ -300,6 +301,7 @@ export default function AskHome({
             language: locale,
             context: turn.context ?? null,
             refine: turn.refine ?? null,
+            opened: openedShops(),
           }),
         })
 

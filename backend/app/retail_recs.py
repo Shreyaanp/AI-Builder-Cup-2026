@@ -15,7 +15,7 @@ import hashlib
 import re
 import threading
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -359,6 +359,39 @@ def configure_recommender(recommender: Recommender | None) -> None:
 def similar_items(product: str, visitor: str = "", page_size: int = 6) -> list[str] | None:
     """Module-level hook for the search engine: product IDs, or None to use embeddings."""
     return _recommender.similar_items(product, visitor, page_size) if _recommender else None
+
+
+class SimilarShops:
+    """The search engine's "Similar nearby" provider: Recommendations AI similar items for the
+    viewed item (or the shop's first available item), mapped to the other shops that sell them.
+    An empty list sends the engine to its embeddings path (switch off, model not serving)."""
+
+    def __init__(self, recommender: Recommender) -> None:
+        self.recommender = recommender
+
+    def similar_items(
+        self,
+        shop_id: str,
+        item: str | None,
+        limit: int,
+        products: Sequence[dict[str, Any]] = (),
+    ) -> list[str]:
+        menu = [p for p in products if p.get("available", True)]
+        anchor = next((p for p in menu if p.get("name") == item), None) if item else None
+        anchor = anchor or (menu[0] if menu else None)
+        if anchor is None:
+            return []
+        ids = self.recommender.similar_items(
+            product_id(shop_id, str(anchor["name"]), str(anchor.get("unit") or "")),
+            page_size=limit * 3,
+        )
+        own = product_id(shop_id, "", "").split("--")[0]
+        shops: list[str] = []
+        for found in ids or []:
+            shop = found.split("--")[0]
+            if shop != own and shop not in shops:
+                shops.append(shop)
+        return shops[:limit]
 
 
 # --- events --------------------------------------------------------------------------------

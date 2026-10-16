@@ -32,6 +32,7 @@ from .money import DEFAULT_CURRENCY, to_major, to_minor
 from .product_categories import suggest_category
 from .product_units import UNITS, normalize_unit
 from .recap import recap_facts
+from .search_engine import SearchEngine
 from .sourcing import OrderItem, SupplierGenerator
 from .vendor_profile import (
     BusinessTypeProfile,
@@ -898,6 +899,8 @@ async def propose_rescue_deal(
 # --- Sourcing: find suppliers, prepare order requests, talk to suppliers (sourcing.py) -------
 
 supplier_generator: SupplierGenerator | None = None
+# The shared search engine (search_engine.py); set at startup, customers use the same one.
+search_engine: SearchEngine | None = None
 # Owner of every generated demo supplier; no person signs in as this account.
 DEMO_OWNER_UID = "chalkboard-demo-supplier-owner"
 
@@ -943,6 +946,7 @@ async def find_suppliers(
         unit,
         _generator(),
         DEMO_OWNER_UID,
+        search_engine,
     )
     if not result["suppliers"]:
         return {

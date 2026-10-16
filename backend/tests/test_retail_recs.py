@@ -14,6 +14,7 @@ from app.retail_recs import (
     EventPipeline,
     Recommender,
     RetailClient,
+    SimilarShops,
     catalog_products,
     map_event,
     product_id,
@@ -245,6 +246,33 @@ def test_module_hook_is_none_until_configured() -> None:
         assert retail_recs.similar_items("p") == ["a", "b"]
     finally:
         retail_recs.configure_recommender(None)
+
+
+def test_similar_shops_maps_recommended_items_to_other_shops() -> None:
+    class Picks(Recommender):
+        def __init__(self, ids: list[str] | None) -> None:
+            self.ids = ids
+            self.asked: list[str] = []
+
+        def similar_items(
+            self, product: str, visitor: str = "", page_size: int = 6
+        ) -> list[str] | None:
+            self.asked.append(product)
+            return self.ids
+
+    menu = [
+        {"name": "Tea", "unit": "cup", "available": False},
+        {"name": "Bun", "unit": "piece", "available": True},
+    ]
+    picks = Picks([product_id("cafe", "Bun", "piece"), "bakery--x", "bakery--y", "deli--z"])
+    shops = SimilarShops(picks)
+    # The viewed item when it is on the menu, else the first available item.
+    assert shops.similar_items("cafe", None, 6, menu) == ["bakery", "deli"]
+    assert picks.asked == [product_id("cafe", "Bun", "piece")]
+    assert shops.similar_items("cafe", None, 1, menu) == ["bakery"]
+    # Nothing to anchor on, or the model is not serving: the engine uses embeddings.
+    assert shops.similar_items("cafe", None, 6, []) == []
+    assert SimilarShops(Picks(None)).similar_items("cafe", "Bun", 6, menu) == []
 
 
 # --- route -----------------------------------------------------------------------------------
