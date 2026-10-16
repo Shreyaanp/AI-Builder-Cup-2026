@@ -58,11 +58,10 @@ import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
 import { SalesImportSheet } from '../ImportMenu'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
-import { ShopCard, ShopSheet, StartCard } from '../ShopCard'
+import { StartCard } from '../ShopCard'
 import { TourOffer } from '../../tour/Tour'
-import { PendingCard } from '../PendingCard'
 import { ShopSheets } from '../ShopTiles'
-import { FreshnessCard, RecapTile } from '../../sales/ShopInsights'
+import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
 import { useVoice } from '../useVoice'
@@ -70,7 +69,7 @@ import { useOnline } from '../useOnline'
 import { useWorkspace } from '../workspaceContext'
 import { OwnerJourney } from '../../frontdoors/OwnerJourney'
 import { LoadError } from '../LoadError'
-import { enterRise, shape, windowClass } from '../../../design/theme'
+import { enterRise, shape } from '../../../design/theme'
 import { useSourcingCopy } from '../../sourcing/copy'
 import { OrdersSheet } from '../../sourcing/Orders'
 import { useReceiveOrder } from '../../sourcing/orderData'
@@ -145,9 +144,6 @@ function CoachScreen({
   const [thread, setThread] = useState<string | null>(null)
   const watching = useRef(new Set<string>())
   const receiveOrder = useReceiveOrder()
-  // Shop details sheet: null = closed, -1 = open, n = open on product n.
-  const [sheet, setSheet] = useState<number | null>(null)
-  const openSheet = (product?: number) => setSheet(product ?? -1)
   // My shop sheets opened from suggestion chips.
   const [shopSheet, setShopSheet] = useState<ShopSheetKind | null>(null)
   const { unread, refresh: refreshUnread } = useUnread()
@@ -648,6 +644,17 @@ function CoachScreen({
       ))}
     </Stack>
   )
+  const today: TodayActions = {
+    unread,
+    ask: (text) => void send(text),
+    draft: (text) => {
+      setNote(text)
+      messageInput.current?.focus()
+    },
+    openMessages: () => setShopSheet('messages'),
+    openSoldOut: () => setShopSheet('soldOut'),
+    talk: () => void restored.current.then(() => voice.start(session.current)),
+  }
   const lastIsReply = messages.at(-1)?.role === 'assistant' && !reply && busy === 'idle'
   const canSend = Boolean(note.trim()) && busy === 'idle' && voice.state === 'idle'
   const voiceText =
@@ -668,7 +675,7 @@ function CoachScreen({
         mx: 'auto',
       }}
     >
-      <OwnerJourney />
+      {!ws.active && <OwnerJourney />}
       {/* One quiet line: which coach is answering. Every other action is behind the top bar's +. */}
       {!empty && (
         <Typography
@@ -834,85 +841,42 @@ function CoachScreen({
             </Alert>
           )}
         {empty ? (
-          ws.loading || ws.loadError ? null : (
+          ws.loading || ws.loadError ? null : ws.active ? (
+            // Today: how the shop is doing and what needs the owner now. Anything complete
+            // goes away; the top bar already names the shop.
+            <TodayView key={ws.active.id} actions={today} />
+          ) : (
             <Stack spacing={{ xs: 3, sm: 5 }} sx={{ pt: { xs: 1, sm: 10 }, pb: 4 }}>
-              {/* With a shop, the top bar already names it: no greeting line, only a heading for
-                screen readers. Before a shop exists the greeting introduces the coach. */}
-              {ws.active ? (
-                <Typography component="h1" sx={visuallyHidden}>
-                  {t.navCoach}
-                </Typography>
-              ) : (
-                <Typography
-                  component="h1"
-                  variant="headlineMedium"
-                  sx={{
-                    fontSize: { xs: '1.5rem', sm: undefined },
-                    lineHeight: { xs: '2rem', sm: undefined },
-                  }}
-                >
-                  {t.coachGreeting}
-                </Typography>
-              )}
-              {ws.active ? <ShopCard onOpen={openSheet} /> : <StartCard />}
+              {/* Before a shop exists the greeting introduces the coach. */}
+              <Typography
+                component="h1"
+                variant="headlineMedium"
+                sx={{
+                  fontSize: { xs: '1.5rem', sm: undefined },
+                  lineHeight: { xs: '2rem', sm: undefined },
+                }}
+              >
+                {t.coachGreeting}
+              </Typography>
+              <StartCard />
               {/* First visit: see the product working on a filled demo shop. */}
               {ws.businesses.length === 0 && <TourOffer />}
-              {/* Suggestions right under the shop card; before a shop exists the start card is
-                the only thing shown. */}
-              {ws.active && chips}
-              {ws.active && (
-                // Phones: one attention card at a time so the first view fits without scrolling.
-                // The first card with something to say shows, the rest wait their turn (each one
-                // also lives on My shop). A card with nothing to say renders nothing.
-                <Box
-                  data-testid="coach-attention"
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: { xs: 0, sm: 5 },
-                    '& > :empty': { display: 'none' },
-                    [`@media (max-width:${windowClass.medium - 1}px)`]: {
-                      '& > :not(:empty) ~ *': { display: 'none' },
-                    },
-                    '&:not(:has(> :not(:empty)))': { display: 'none' },
-                  }}
-                >
-                  <div>
-                    <FreshnessCard key={`freshness-${ws.active.id}`} />
-                  </div>
-                  <div>
-                    <RecapTile key={`recap-${ws.active.id}`} mondayOnly />
-                  </div>
-                  <div>
-                    <PendingCard
-                      unread={unread}
-                      onMessages={() => setShopSheet('messages')}
-                      onAnswer={(fact) => {
-                        setNote(`${t.factNames[fact]}: `)
-                        messageInput.current?.focus()
-                      }}
-                    />
-                  </div>
-                </Box>
-              )}
             </Stack>
           )
         ) : (
           <>
             {ws.active && (
-              // Stays under the app bar while the conversation scrolls, filling in as
-              // proposals are confirmed.
+              // While chatting the conversation gets the screen: what still needs the owner
+              // shrinks to one pill under the app bar (hidden when nothing does).
               <Box
                 sx={{
                   position: 'sticky',
                   top: 0,
                   zIndex: 2,
                   bgcolor: 'background.default',
-                  pb: 2,
                 }}
               >
-                <ShopCard dense onOpen={openSheet} />
-                <FreshnessCard key={`freshness-${ws.active.id}`} compact />
+                <NeedsPill key={ws.active.id} actions={today} />
               </Box>
             )}
             {/* The live region wraps the list: role="log" on the <ol> itself removed its list semantics. */}
@@ -975,15 +939,6 @@ function CoachScreen({
         )}
         <div ref={end} />
       </Box>
-      <ShopSheet
-        open={sheet !== null}
-        focusProduct={sheet !== null && sheet >= 0 ? sheet : null}
-        onClose={() => setSheet(null)}
-        onAnswer={(fact) => {
-          setNote(`${t.factNames[fact]}: `)
-          messageInput.current?.focus()
-        }}
-      />
       <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
       <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
       <ShopSheets
