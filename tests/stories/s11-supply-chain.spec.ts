@@ -96,9 +96,10 @@ async function axe(page: Page) {
 }
 
 async function theme(page: Page, name: 'Dark' | 'Light') {
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  // Appearance lives on You; the coach stays mounted, so its cards keep their state.
+  await page.getByRole('button', { name: 'You', exact: true }).click()
   await page.getByRole('button', { name, exact: true }).click()
-  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Coach', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 }
 
@@ -198,8 +199,8 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     await snap(page, '7-done', project, card.getByText(/Pay the supplier/))
   })
 
-  await test.step('5 · rules screen in My shop', async () => {
-    await page.getByRole('button', { name: 'My shop', exact: true }).click()
+  await test.step('5 · rules screen on Grow', async () => {
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
     await page.getByRole('button', { name: /^Purchase orders/ }).click()
     const sheet = page.getByRole('dialog', { name: 'Purchase orders' })
     await expect(sheet).toContainText('PO 4500012346')
