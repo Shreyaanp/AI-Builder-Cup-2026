@@ -113,6 +113,7 @@ export function CustomerConversation({
         onClose={() => setOpen(false)}
         titleId="customer-conversation-title"
         title={t.conversation}
+        dismissInActions
         actions={<Button onClick={() => setOpen(false)}>{t.back}</Button>}
       >
         <Stack spacing={2}>

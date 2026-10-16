@@ -61,7 +61,8 @@ import { FactList } from './FactList'
 import { defaultCurrency, formatPrice, toMinor } from './format'
 import { NewShopReady } from './NewShopStage'
 import { useNewShopCopy } from './newShopCopy'
-import { factEntries } from './shopProgress'
+import { dietaryMissing, factEntries } from './shopProgress'
+import { useNextStepsCopy } from './nextStepsCopy'
 import { useCopy } from './strings'
 import { useVoice } from './useVoice'
 import { useSpokenReveal } from './useSpokenReveal'
@@ -73,6 +74,7 @@ import { useVoiceModeCopy } from './voiceModeCopy'
 import { useWorkspace } from './workspaceContext'
 import type { GalleryPhoto } from './screens/CoachScreen'
 import { utter } from './phoneVoice'
+import { useLanguageSwitch } from './languageSwitch'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 /** With no answer this long after the coach has spoken, the coach carries on by itself. */
@@ -199,6 +201,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const { api } = ws
   const identity = useIdentity()
   const language = useLocale()
+  const switchLanguage = useLanguageSwitch()
   const roles = useTheme().material
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const wide = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'))
@@ -491,6 +494,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     if (items.length) add({ role: 'action', title: f.added, items })
   }
   function receive(event: CoachEvent) {
+    switchLanguage(event)
     if (event.kind === 'ready' && event.session_id) session.current = event.session_id
     if (event.kind === 'delta') setLive((current) => current + (event.text ?? ''))
     if (event.kind === 'reply') setLive(event.text ?? '')
@@ -911,6 +915,14 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         proposal={review}
         onChange={setReview}
         onBack={() => window.history.back()}
+        onAddDietary={() => {
+          // Back to the typed chat with the answer started; the coach records it like any other.
+          wantVoice.current = false
+          focusComposer.current = true
+          setTyping(true)
+          setNote(`${t.factNames.vegetarian_options}: `)
+          window.history.back()
+        }}
         onOpened={async (businessId) => {
           if (photoFile.current) setGalleryPhoto({ file: photoFile.current, businessId })
           await ws.finishNewShop(businessId)
@@ -1645,14 +1657,17 @@ function Review({
   proposal,
   onChange,
   onBack,
+  onAddDietary,
   onOpened,
 }: {
   proposal: Proposal
   onChange: (proposal: Proposal) => void
   onBack: () => void
+  onAddDietary: () => void
   onOpened: (businessId: string) => Promise<void>
 }) {
   const t = useCopy()
+  const next = useNextStepsCopy()
   const f = useNewShopCopy()
   const ws = useWorkspace()
   const shopCopy = useShopCopy()
@@ -1825,6 +1840,21 @@ function Review({
             </Stack>,
           )}
           {factEntries(fields, t).length > 0 && <FactList fields={fields} />}
+          {dietaryMissing(fields) &&
+            section(
+              next.dietaryTitle,
+              <Stack spacing={1} sx={{ alignItems: 'flex-start' }} data-testid="dietary-optional">
+                <Typography color="text.secondary">{next.dietaryOptional}</Typography>
+                <Button
+                  variant="outlined"
+                  startIcon={<Leaf size={18} />}
+                  disabled={busy}
+                  onClick={onAddDietary}
+                >
+                  {next.addDietary}
+                </Button>
+              </Stack>,
+            )}
         </Stack>
       </Box>
       {Boolean(proposal.photo_notes?.length) && (
