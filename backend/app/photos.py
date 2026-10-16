@@ -258,6 +258,7 @@ class PhotoPipeline:
         photo_id = str(uuid4())
         owner = hashlib.sha256(uid.encode()).hexdigest()
         blob = self._bucket.blob(f"approved/{owner}/{bid or 'unassigned'}/{photo_id}.jpg")
+        blob.cache_control = "private, no-store"
         blob.upload_from_string(image, content_type="image/jpeg")
         return photo_id
 
@@ -291,6 +292,8 @@ class PhotoPipeline:
     def save_gallery_sync(self, bid: str, photo_id: str, image: bytes) -> None:
         if self.settings.media_bucket:
             blob = self._gallery_bucket().blob(f"shops/{bid}/{photo_id}.jpg")
+            # Bucket stays private; public delivery is authorized by the gallery route.
+            blob.cache_control = "private, max-age=3600"
             blob.upload_from_string(image, content_type="image/jpeg")
             return
         path = self._gallery_path(bid, photo_id)

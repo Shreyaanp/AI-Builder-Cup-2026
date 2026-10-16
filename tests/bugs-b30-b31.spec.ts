@@ -124,7 +124,8 @@ test('B31: QR only, once per shop day across timezone midnight, full card and st
   await expect(redeem).toContainText('A free kopi')
   await expect(redeem).toContainText('Saturday, October 17, 2026')
   const before = await redeem.locator('time').textContent()
-  await page.clock.setSystemTime(new Date('2026-10-17T07:01:00Z'))
+  // Advance from the captured instant. Resetting backwards could make the next
+  // interval tick display the same second and fail despite a running clock.
   await page.clock.runFor(2000)
   await expect(redeem.locator('time')).not.toHaveText(before!)
   await axe(page)

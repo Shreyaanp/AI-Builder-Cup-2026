@@ -5735,6 +5735,14 @@ export interface components {
              */
             text: string;
         };
+        /** FeatureFlags */
+        FeatureFlags: {
+            /**
+             * Google Guide
+             * @default false
+             */
+            google_guide: boolean;
+        };
     };
     responses: never;
     parameters: never;
