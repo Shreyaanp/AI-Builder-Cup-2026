@@ -165,7 +165,7 @@ export function StampCard({
       >
         {celebrations.has(shop) && [5, 10].includes(count)
           ? t.milestone.replace('{count}', number(count))
-          : t.stamps.replace('{count}', number(count))}
+          : (count === 1 ? t.stamp : t.stamps).replace('{count}', number(count))}
       </Typography>
       <Stack
         direction="row"
