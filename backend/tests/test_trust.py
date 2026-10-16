@@ -222,7 +222,11 @@ def test_reviews_are_for_reviewers_only(tmp_path: Path):
         assert denied.status_code == 403
 
 
-def test_production_refuses_the_fixture_and_open_reviews():
+def test_production_refuses_the_fixture_and_open_reviews(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("FIRESTORE_EMULATOR_HOST", raising=False)
+    monkeypatch.delenv("FIREBASE_AUTH_EMULATOR_HOST", raising=False)
     production = {
         "app_env": "production",
         "auth_mode": "firebase",
