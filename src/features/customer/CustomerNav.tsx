@@ -1,26 +1,29 @@
 import { Box, Typography, useTheme } from '@mui/material'
-import { Bookmark, MessageCircle, Sparkles, Stamp } from 'lucide-react'
+import { Bookmark, Leaf, MessageCircle, Sparkles, Stamp } from 'lucide-react'
 import { customerNavigate } from '../frontdoors/navigation'
 import { useCustomer } from './account'
 import { useAccountCopy } from './copy'
 import { usePassportCopy } from '../passport/copy'
+import { useRescueCopy } from '../rescue/copy'
 import './customer.css'
 
-export type CustomerTab = 'ask' | 'passport' | 'chats' | 'saved'
+export type CustomerTab = 'ask' | 'rescue' | 'passport' | 'chats' | 'saved'
 
 const tabs: { id: CustomerTab; href: string; Icon: typeof Sparkles }[] = [
   { id: 'ask', href: '/explore/', Icon: Sparkles },
+  { id: 'rescue', href: '/explore/rescue', Icon: Leaf },
   { id: 'passport', href: '/explore/passport', Icon: Stamp },
   { id: 'chats', href: '/explore/chats', Icon: MessageCircle },
   { id: 'saved', href: '/explore/saved', Icon: Bookmark },
 ]
 
-/** M3 navigation bar: three top-level customer destinations, unread badge on Chats. */
+/** M3 navigation bar: the top-level customer destinations, unread badge on Chats. */
 export function CustomerNav({ active }: { active: CustomerTab }) {
   const roles = useTheme().material
   const { unread } = useCustomer()
   const t = useAccountCopy()
   const passport = usePassportCopy()
+  const rescue = useRescueCopy()
   return (
     <Box
       component="nav"
@@ -52,7 +55,7 @@ export function CustomerNav({ active }: { active: CustomerTab }) {
         }}
       >
         {tabs.map(({ id, href, Icon }) => {
-          const label = id === 'passport' ? passport.nav : t[id]
+          const label = id === 'passport' ? passport.nav : id === 'rescue' ? rescue.nav : t[id]
           const current = id === active
           const badge = id === 'chats' && unread > 0
           return (
