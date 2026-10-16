@@ -5,9 +5,7 @@ import { confirm, enter, localOnly, phone, reviewName, seedShop } from './suppor
 test.use(phone)
 test.skip(({ isMobile }) => !isMobile, 'Story evidence uses the phone project')
 
-test('S14 · Connect your system (POS/ERP import, AI mapping, sync & review)', async ({
-  page,
-}) => {
+test('S14 · Connect your system (POS/ERP import, AI mapping, sync & review)', async ({ page }) => {
   test.setTimeout(120_000)
   await localOnly(page)
   await enter(page)
@@ -34,9 +32,7 @@ test('S14 · Connect your system (POS/ERP import, AI mapping, sync & review)', a
     await page.screenshot({ path: 'docs/stories/connect-1-select.png', animations: 'disabled' })
 
     // Verify accessibility (Axe clean)
-    const { violations } = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa'])
-      .analyze()
+    const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
     expect(
       violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
       'Connect sheet accessibility violations',
@@ -89,9 +85,7 @@ Bun Maska,35.00,Snacks,25,piece`
     })
     await page.screenshot({ path: 'docs/stories/connect-3-diff.png', animations: 'disabled' })
 
-    const { violations } = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa'])
-      .analyze()
+    const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
     expect(
       violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
       'Mapping review accessibility violations',
@@ -160,9 +154,7 @@ Bun Maska,35.00,Snacks,25,piece`
     })
     await page.waitForTimeout(500)
 
-    const { violations } = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa'])
-      .analyze()
+    const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
     expect(
       violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
       'Desktop accessibility violations',
@@ -190,9 +182,7 @@ Bun Maska,35.00,Snacks,25,piece`
     })
     await page.waitForTimeout(500)
 
-    const { violations } = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa'])
-      .analyze()
+    const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
     expect(
       violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
       'Dark mode accessibility violations',

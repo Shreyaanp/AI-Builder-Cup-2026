@@ -769,7 +769,11 @@ function Bubble({
           px: 2,
           py: 1.25,
           borderRadius: mine ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
-          bgcolor: mine ? roles.primary : ai ? roles.secondaryContainer : roles.surfaceContainerHigh,
+          bgcolor: mine
+            ? roles.primary
+            : ai
+              ? roles.secondaryContainer
+              : roles.surfaceContainerHigh,
           color: mine ? roles.onPrimary : ai ? roles.onSecondaryContainer : roles.onSurface,
           border: ai ? `1px dashed ${roles.secondary}` : undefined,
         }}
