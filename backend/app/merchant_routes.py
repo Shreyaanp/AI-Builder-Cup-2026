@@ -5,7 +5,7 @@ from typing import Any, cast
 from uuid import UUID, uuid4
 
 import anyio
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from . import erasure
@@ -224,7 +224,13 @@ async def share(
 
 
 @router.get("/public/shops/{business_id}")
-async def public_shop(business_id: str, request: Request) -> dict[str, Any]:
+async def public_shop(
+    business_id: str,
+    request: Request,
+    lang: str = Query(
+        default="en", max_length=16, pattern=r"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$"
+    ),
+) -> dict[str, Any]:
     """Customer page data. No sign-in; only shops the owner chose to share are visible.
 
     Responses are not cached (boundary middleware), so a sold-out change shows immediately.
@@ -254,7 +260,9 @@ async def public_shop(business_id: str, request: Request) -> dict[str, Any]:
     verified = await anyio.to_thread.run_sync(trust.verified_owner, trust.docs(request), owners)
     if verified:
         shop["verified_owner"] = verified
-    return shop
+    # Categories, sections and demo stories in the customer's language (cached per shop).
+    translator = getattr(request.app.state, "shop_translator", None)
+    return await translator.localize_shop(shop, lang) if translator else shop
 
 
 @router.post("/public/shops/{business_id}/stock-alerts")

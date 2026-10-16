@@ -16,6 +16,7 @@ export type Turn = {
   /** The previous answer's intent this message continues (follow-ups keep context). */
   context?: AskIntent | null
   status: 'thinking' | 'done' | 'failed' | 'offline' | 'stopped'
+  streaming?: boolean
   answer?: AskAnswer
   place: { lat: number; lng: number; label: string }
 }
