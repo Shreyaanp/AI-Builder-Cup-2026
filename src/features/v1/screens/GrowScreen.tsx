@@ -8,6 +8,7 @@ import { PrepPlanTile } from '../../forecast/PrepPlan'
 import { useCopy as usePlanCopy } from '../../planning/strings'
 import { RecapTile } from '../../sales/ShopInsights'
 import { OrdersTile } from '../../sourcing/Orders'
+import { SupplyTile } from '../../supply/Supply'
 import { readiness } from '../shopProgress'
 import { ShopSheets, Supporting, Tile } from '../ShopTiles'
 import { tileGrid } from '../tileSpan'
@@ -58,6 +59,7 @@ function GrowTiles() {
       <Box data-testid="grow-tiles" sx={tileGrid}>
         {evening ? [close, prep] : [prep, close]}
         <OrdersTile />
+        <SupplyTile />
         <Tile
           icon={<CalendarClock size={20} />}
           label={plan.title}
