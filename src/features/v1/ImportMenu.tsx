@@ -11,13 +11,18 @@ import {
   TextField,
   Stack,
 } from '@mui/material'
-import { Camera, FileSpreadsheet } from 'lucide-react'
+import { Camera, FileSpreadsheet, Keyboard, RotateCcw } from 'lucide-react'
 import { formatPrice, shopCurrency, toMinor } from './format'
 import { Sheet } from './Sheet'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { IMPORT_ACCEPT, type Importer, type SalesImport } from './useImport'
 import { useShopCopy } from '../shop/strings'
+import { useNextStepsCopy } from './nextStepsCopy'
+
+/** Spreadsheets read without AI, so they stay a way forward when photo reading is off (MIME types
+ * only: the main picker is the one that lists extensions). */
+const SHEET_ACCEPT = 'text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 /** The menu sheet's compact "Import" action; its choices open in the sheet body. */
 export function ImportButton({
@@ -49,18 +54,26 @@ export function ImportButton({
 
 /**
  * Import a menu or sales export from any POS or spreadsheet, a photo, or pasted notes. AI maps
- * it on the server; menu and sales imports wait for the owner's exact confirmation.
+ * it on the server; menu and sales imports wait for the owner's exact confirmation. A read that
+ * fails never ends the story: the owner can type the items, try again or send a spreadsheet.
  */
-export function ImportPanel({ importer }: { importer: Importer }) {
+export function ImportPanel({
+  importer,
+  onTypeItems,
+}: {
+  importer: Importer
+  onTypeItems: () => void
+}) {
   const t = useCopy()
+  const next = useNextStepsCopy()
   const input = useRef<HTMLInputElement>(null)
   const camera = useRef<HTMLInputElement>(null)
+  const sheet = useRef<HTMLInputElement>(null)
   const [notes, setNotes] = useState('')
   const { busy, failed } = importer
   const upload = (file: File) => {
     void importer.upload(file).finally(() => {
-      if (input.current) input.current.value = ''
-      if (camera.current) camera.current.value = ''
+      for (const picker of [input, camera, sheet]) if (picker.current) picker.current.value = ''
     })
   }
   return (
@@ -117,7 +130,44 @@ export function ImportPanel({ importer }: { importer: Importer }) {
           }
         }}
       />
-      {failed && <Alert severity="error">{failed}</Alert>}
+      <input
+        ref={sheet}
+        type="file"
+        accept={SHEET_ACCEPT}
+        hidden
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) upload(file)
+        }}
+      />
+      {failed && (
+        <Alert severity="error" data-testid="import-failed">
+          {failed}
+          <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap', mt: 2, ml: -2 }}>
+            <Button color="inherit" startIcon={<Keyboard size={18} />} onClick={onTypeItems}>
+              {next.typeItems}
+            </Button>
+            <Button
+              color="inherit"
+              startIcon={<RotateCcw size={18} />}
+              disabled={busy}
+              onClick={importer.retry}
+            >
+              {next.tryAgain}
+            </Button>
+            <Button
+              color="inherit"
+              startIcon={<FileSpreadsheet size={18} />}
+              disabled={busy}
+              onClick={() => sheet.current?.click()}
+            >
+              {next.importSheet}
+            </Button>
+          </Stack>
+        </Alert>
+      )}
       <Button
         disabled={busy}
         onClick={() => upload(new File([notes], 'notes.txt', { type: 'text/plain' }))}

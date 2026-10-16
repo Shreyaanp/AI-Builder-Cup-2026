@@ -269,9 +269,11 @@ export function ConnectSheet({
       onClose={handleClose}
       titleId="connect-sheet-title"
       title={t.connectTitle}
+      // Without a mapping the only action is Close, so the phone sheet adds no second one.
+      dismissInActions={!currentMapping}
       actions={
         currentMapping ? (
-          <Stack direction="row" spacing={1.5} sx={{ width: '100%', justifyContent: 'flex-end' }}>
+          <Stack direction="row" spacing={1.5} sx={{ justifyContent: 'flex-end' }}>
             <Button
               variant="outlined"
               disabled={busy}

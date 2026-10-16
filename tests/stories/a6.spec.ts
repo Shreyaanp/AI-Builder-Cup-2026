@@ -54,7 +54,8 @@ test('A6 · an existing shop reviews menu and photo pin separately', async ({ pa
   ).toBeNull()
   expect(before.fields.lat ?? null).toBeNull()
   await expect(page.getByRole('button', { name: 'Confirm and save' })).toBeEnabled()
-  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
+  // The review's own Cancel is its way out on every window size.
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Review photo location' }).click()
   await expect(page.getByRole('dialog', { name: reviewName })).toContainText('+919876543210')

@@ -84,7 +84,8 @@ import { PurchaseOrderCard } from '../../supply/PurchaseOrderCard'
 import { RulesChangeCard } from '../../supply/Supply'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
 import { utter } from '../phoneVoice'
-import { ActionChip, ReplyCard } from '../CoachActions'
+import { ActionChip, MenuLinkChip, ReplyCard } from '../CoachActions'
+import { useNextStepsCopy } from '../nextStepsCopy'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
 import type { Destination } from '../workspaceContext'
 import { GuideChips } from '../../owner-tools/CoachGuide'
@@ -108,6 +109,8 @@ type Message =
   // An app action the coach prepared: a screen it opened, or a customer reply to send.
   | { role: 'action'; action: CoachAction; key: string }
   | { role: 'payment'; payment: PaymentLink; key: string }
+  // A menu item the coach changed; the link shows once the owner saved that proposal.
+  | { role: 'menuLink'; proposalId: string; item: string; key: string }
 /** Cards a spoken reply refers to: shown when the voice reaches them, not before. */
 const SPOKEN_CARDS = new Set<CoachEvent['kind']>([
   'proposal',
@@ -206,6 +209,10 @@ function CoachScreen({
   const receiveOrder = useReceiveOrder()
   // My shop sheets opened from suggestion chips.
   const [shopSheet, setShopSheet] = useState<ShopSheetKind | null>(null)
+  const menuLinks = useRef<Message[]>([])
+  // The menu item a "See … in your menu" link opened the menu at.
+  const [menuFocus, setMenuFocus] = useState<string | null>(null)
+  const next = useNextStepsCopy()
   const { unread, refresh: refreshUnread } = useUnread()
   const messageInput = useRef<HTMLTextAreaElement>(null)
   const session = useRef<string | null>(null)
@@ -273,7 +280,22 @@ function CoachScreen({
         setShowToday(false)
         setMessages((items) => [...items, { role: 'user', text: event.text ?? '' }])
       }
-      if (event.kind === 'proposal') review(event.data as unknown as Proposal)
+      if (event.kind === 'proposal') {
+        const proposal = event.data as unknown as Proposal
+        review(proposal)
+        // E.g. after "per cup or per pot?": once saved, one tap shows the item in the menu.
+        const items = proposal.snapshot?.kind === 'inventory' ? proposal.snapshot.products : []
+        // The links follow the coach's words, so they wait for the end of the turn.
+        if (items.length > 0 && items.length <= 3)
+          menuLinks.current.push(
+            ...items.map((product) => ({
+              role: 'menuLink' as const,
+              proposalId: proposal.id,
+              item: product.name,
+              key: crypto.randomUUID(),
+            })),
+          )
+      }
       if (event.kind === 'payment_link' && event.data) {
         const payment = event.data as unknown as PaymentLink
         setMessages((items) =>
@@ -348,8 +370,14 @@ function CoachScreen({
     [review, go, setFaceOpen, t.conversationRolledOver],
   )
   const restored = useRef<Promise<unknown>>(Promise.resolve())
+  /** The coach's reply text (if any), then the menu links its proposals earned so far. */
   const addReply = useCallback((text: string) => {
-    if (text) setMessages((items) => [...items, { role: 'assistant' as const, text }].slice(-40))
+    const links = menuLinks.current
+    menuLinks.current = []
+    if (!text && !links.length) return
+    setMessages((items) =>
+      [...items, ...(text ? [{ role: 'assistant' as const, text }] : []), ...links].slice(-40),
+    )
   }, [])
   // The spoken reply appears word by word as it is said; its cards when the voice reaches them.
   const playback = useRef<() => number>(() => 0)
@@ -360,6 +388,8 @@ function CoachScreen({
     },
     reducedMotion,
     onDone: addReply,
+    // Menu links still waiting (the reply ended at the card) show at the end of the turn.
+    onEnd: () => addReply(''),
   })
   const voice = useVoice(activeId, (event) => {
     if (event.kind === 'output_transcript' || event.kind === 'reply' || event.kind === 'delta') {
@@ -568,10 +598,7 @@ function CoachScreen({
       // The model occasionally returns an empty turn; treat it like a failed reply so the
       // owner sees why and can resend, instead of an empty bubble.
       if (!finalReply.trim() && !proposed) throw new Error('EMPTY_REPLY')
-      if (finalReply.trim())
-        setMessages((items) =>
-          [...items, { role: 'assistant' as const, text: finalReply }].slice(-40),
-        )
+      addReply(finalReply.trim() ? finalReply : '')
       setReply('')
       if (speakReplies && finalReply) void speakReply(finalReply)
       // History is supplemental; a failed refresh must never roll back a completed turn.
@@ -865,6 +892,7 @@ function CoachScreen({
         onClose={() => setActionsOpen(false)}
         titleId="coach-actions-title"
         title={t.newChat}
+        dismissInActions
         actions={<Button onClick={() => setActionsOpen(false)}>{t.cancel}</Button>}
       >
         <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
@@ -1063,7 +1091,18 @@ function CoachScreen({
             <Box role="log" aria-live="polite">
               <Stack component="ol" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0, pt: 2 }}>
                 {messages.map((message, index) =>
-                  message.role === 'action' ? (
+                  message.role === 'menuLink' ? (
+                    ws.savedProposals.includes(message.proposalId) && (
+                      <MenuLinkChip
+                        key={message.key}
+                        label={next.seeInMenu(message.item)}
+                        onOpen={() => {
+                          setMenuFocus(message.item)
+                          setShopSheet('menu')
+                        }}
+                      />
+                    )
+                  ) : message.role === 'action' ? (
                     message.action.target === 'reply' ? (
                       <ReplyCard key={message.key} action={message.action} onSend={sendReply} />
                     ) : (
@@ -1162,9 +1201,11 @@ function CoachScreen({
       <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
       <ShopSheets
         kind={shopSheet}
+        menuFocus={menuFocus}
         onClose={() => {
           if (shopSheet === 'messages') refreshUnread()
           setShopSheet(null)
+          setMenuFocus(null)
         }}
       />
 
