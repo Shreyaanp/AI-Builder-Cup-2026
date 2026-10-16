@@ -72,6 +72,7 @@ from .playbook_routes import router as playbook_router
 from .recap import RecapWriter
 from .recs_routes import router as recs_router
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
+from .reply_language import reply_language
 from .retail_recs import (
     EventPipeline,
     Recommender,
@@ -555,8 +556,15 @@ def create_app(
                     code="CONVERSATION_ROLLED_OVER" if requested and requested != sid else None,
                 ).payload()
             )
-            log.info("voice_ready", business=bool(bid), resumed=bool(requested))
-            await serve_voice(websocket, services.runtime, principal, sid)
+            log.info(
+                "voice_ready",
+                business=bool(bid),
+                resumed=bool(requested),
+                language=reply_language(websocket.query_params.get("lang")).locale,
+            )
+            await serve_voice(
+                websocket, services.runtime, principal, sid, websocket.query_params.get("lang")
+            )
             log.info("voice_closed")
         except (HTTPException, ValueError, TimeoutError) as error:
             code = (
