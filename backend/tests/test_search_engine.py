@@ -417,3 +417,14 @@ def test_supplier_search_calls_the_same_engine(client: TestClient) -> None:
     from app import coordinator
 
     assert coordinator.search_engine is client.app.state.search
+
+
+def test_item_recall_relaxes_only_relative_to_the_best_match_nearby() -> None:
+    from app.search_engine import ITEM_RECALL, ITEM_RECALL_MIN, RECALL_MARGIN, item_recall
+
+    strong = {"a": Relevance(items={"Kopi": 0.9})}
+    assert item_recall(strong) == ITEM_RECALL
+    weak = {"a": Relevance(items={"Filter coffee": 0.4}), "b": Relevance(items={"Hair": 0.1})}
+    assert item_recall(weak) == pytest.approx(0.4 - RECALL_MARGIN)
+    assert item_recall({"a": Relevance(items={"Hair": 0.2})}) == ITEM_RECALL_MIN
+    assert item_recall({}) == ITEM_RECALL_MIN

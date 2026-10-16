@@ -46,6 +46,7 @@ from .search_engine import (
     blend,
     build_engine,
     fresh_days,
+    item_recall,
     popularity,
 )
 from .shop_time import shop_timezone, valid_timezone
@@ -423,6 +424,7 @@ def shop_pick(
     lat: float,
     lng: float,
     meaning: Relevance | None = None,
+    recall: float = ITEM_RECALL,
 ) -> Pick | None:
     """Match a shared Chalkboard shop against the intent using only its own data: its words
     first, then (search engine) its meaning. Filters are never relaxed by meaning."""
@@ -449,7 +451,7 @@ def shop_pick(
     if words and not matched:
         # "Something sweet" finds the pandan cake: items close in meaning, best first.
         matched = sorted(
-            (p for p in products if meaning.items.get(p["name"], 0.0) >= ITEM_RECALL),
+            (p for p in products if meaning.items.get(p["name"], 0.0) >= recall),
             key=lambda p: -meaning.items.get(p["name"], 0.0),
         )
     if limit is not None:
@@ -569,10 +571,11 @@ async def ask(body: AskRequest, request: Request) -> AskResponse:
     engine = search_engine(request)
     wanted = " ".join(intent.keywords) or (body.q if not body.refine else "")
     meaning = await anyio.to_thread.run_sync(engine.relevance, wanted, reachable) if wanted else {}
+    recall = item_recall(meaning)
     picks = [
         pick
         for shop in reachable
-        if (pick := shop_pick(shop, intent, lat, lng, meaning.get(shop["id"]))) is not None
+        if (pick := shop_pick(shop, intent, lat, lng, meaning.get(shop["id"]), recall)) is not None
     ]
     try:
         rescues = await live_rescues(request, shops, lat, lng, time.time())
