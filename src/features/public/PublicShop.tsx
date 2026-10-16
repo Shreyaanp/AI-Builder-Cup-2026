@@ -610,8 +610,8 @@ export default function PublicShop({ id }: { id: string }) {
         mx: 'auto',
         px: 4,
         pt: 'calc(16px + env(safe-area-inset-top))',
-        // Room for the pinned chat bar.
-        pb: 'calc(104px + env(safe-area-inset-bottom))',
+        // Room for the pinned chat bar (prevents occlusion at 200% font zoom).
+        pb: 'calc(148px + env(safe-area-inset-bottom))',
       }}
     >
       {/* Compact header: who, open or not, how to get there. The menu is the page. */}
