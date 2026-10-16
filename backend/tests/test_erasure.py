@@ -35,8 +35,8 @@ def shop(client: TestClient, name: str = "Tea") -> str:
 
 
 @pytest.fixture
+def worker(monkeypatch):
     """Face data erasure (the encrypted template store) fails until up["ok"] is set."""
-    """Face data erasure (encrypted template store) fails until  is set."""
     up = {"ok": False, "calls": 0}
     real = trust.erase
 
