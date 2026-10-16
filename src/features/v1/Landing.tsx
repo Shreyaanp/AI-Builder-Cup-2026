@@ -287,7 +287,10 @@ function Feature({ title, items }: { title: string; items: { icon: ReactNode; te
             spacing={2}
             sx={{ alignItems: 'flex-start' }}
           >
-            <Box aria-hidden="true" sx={{ color: roles.primary, display: 'flex', flexShrink: 0, pt: 0.5 }}>
+            <Box
+              aria-hidden="true"
+              sx={{ color: roles.primary, display: 'flex', flexShrink: 0, pt: 0.5 }}
+            >
               {item.icon}
             </Box>
             <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere', minWidth: 0 }}>
