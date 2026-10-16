@@ -20,10 +20,10 @@ Script: `backend/scripts/search_eval.py`. Raw results: `search-eval-fixture.json
 
 ## Results
 
-| Engine | Precision@5 before | Precision@5 after | Empty answers before | after | Texts embedded |
-|---|---|---|---|---|---|
-| Offline fixture embeddings | 0.728 | **0.942** | 2 | **0** | 179 |
-| Vertex AI `gemini-embedding-2` (live) | 0.728 | **0.902** | 2 | **0** | 179 (once, then cached) |
+| Engine                                | Precision@5 before | Precision@5 after | Empty answers before | after | Texts embedded          |
+| ------------------------------------- | ------------------ | ----------------- | -------------------- | ----- | ----------------------- |
+| Offline fixture embeddings            | 0.728              | **0.942**         | 2                    | **0** | 179                     |
+| Vertex AI `gemini-embedding-2` (live) | 0.728              | **0.902**         | 2                    | **0** | 179 (once, then cached) |
 
 Biggest gains (live): "a hot brew" 0 → 0.8, "lunch" 0 → 0.8, "dessert" 0.2 → 1.0, "noodles" 0.5 →
 1.0, "fix my trousers" 0 → 1.0 (the old word match never reached the tailor; meaning does).

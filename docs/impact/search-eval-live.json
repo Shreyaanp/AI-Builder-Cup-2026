@@ -15,13 +15,7 @@
       "after": 1.0,
       "before_found": 5,
       "after_found": 6,
-      "after_top5": [
-        "india-cafe",
-        "tokyo-cafe",
-        "jakarta-cafe",
-        "kl-cafe",
-        "bangkok-cafe"
-      ]
+      "after_top5": ["india-cafe", "tokyo-cafe", "jakarta-cafe", "kl-cafe", "bangkok-cafe"]
     },
     {
       "q": "a hot brew",
@@ -29,12 +23,7 @@
       "after": 0.8,
       "before_found": 0,
       "after_found": 4,
-      "after_top5": [
-        "india-cafe",
-        "jakarta-cafe",
-        "tokyo-cafe",
-        "bangkok-cafe"
-      ]
+      "after_top5": ["india-cafe", "jakarta-cafe", "tokyo-cafe", "bangkok-cafe"]
     },
     {
       "q": "latte",
@@ -42,12 +31,7 @@
       "after": 1.0,
       "before_found": 3,
       "after_found": 4,
-      "after_top5": [
-        "jakarta-cafe",
-        "tokyo-cafe",
-        "bangkok-cafe",
-        "kirana"
-      ]
+      "after_top5": ["jakarta-cafe", "tokyo-cafe", "bangkok-cafe", "kirana"]
     },
     {
       "q": "tea",
@@ -55,13 +39,7 @@
       "after": 0.6,
       "before_found": 8,
       "after_found": 10,
-      "after_top5": [
-        "kirana",
-        "jakarta-grocery",
-        "tokyo-cafe",
-        "india-cafe",
-        "bangkok-cafe"
-      ]
+      "after_top5": ["kirana", "jakarta-grocery", "tokyo-cafe", "india-cafe", "bangkok-cafe"]
     },
     {
       "q": "something sweet",
@@ -69,13 +47,7 @@
       "after": 0.4,
       "before_found": 2,
       "after_found": 8,
-      "after_top5": [
-        "delhi-food",
-        "jakarta-grocery",
-        "india-bakery",
-        "kirana",
-        "kl-bakery"
-      ]
+      "after_top5": ["delhi-food", "jakarta-grocery", "india-bakery", "kirana", "kl-bakery"]
     },
     {
       "q": "cake",
@@ -83,13 +55,7 @@
       "after": 1.0,
       "before_found": 5,
       "after_found": 6,
-      "after_top5": [
-        "india-bakery",
-        "kl-bakery",
-        "kl-cafe",
-        "tokyo-cafe",
-        "bangkok-cafe"
-      ]
+      "after_top5": ["india-bakery", "kl-bakery", "kl-cafe", "tokyo-cafe", "bangkok-cafe"]
     },
     {
       "q": "dessert",
@@ -97,13 +63,7 @@
       "after": 1.0,
       "before_found": 1,
       "after_found": 5,
-      "after_top5": [
-        "bangkok-food",
-        "india-bakery",
-        "kl-bakery",
-        "tokyo-cafe",
-        "bangkok-cafe"
-      ]
+      "after_top5": ["bangkok-food", "india-bakery", "kl-bakery", "tokyo-cafe", "bangkok-cafe"]
     },
     {
       "q": "fresh bread",
@@ -111,13 +71,7 @@
       "after": 1.0,
       "before_found": 5,
       "after_found": 5,
-      "after_top5": [
-        "india-cafe",
-        "india-bakery",
-        "kl-bakery",
-        "tokyo-bakery",
-        "jakarta-grocery"
-      ]
+      "after_top5": ["india-cafe", "india-bakery", "kl-bakery", "tokyo-bakery", "jakarta-grocery"]
     },
     {
       "q": "breakfast",
@@ -125,10 +79,7 @@
       "after": 0.4,
       "before_found": 2,
       "after_found": 2,
-      "after_top5": [
-        "india-cafe",
-        "kl-cafe"
-      ]
+      "after_top5": ["india-cafe", "kl-cafe"]
     },
     {
       "q": "lunch",
@@ -136,13 +87,7 @@
       "after": 0.8,
       "before_found": 0,
       "after_found": 7,
-      "after_top5": [
-        "india-cafe",
-        "delhi-food",
-        "mumbai-food",
-        "kl-cafe",
-        "jakarta-food"
-      ]
+      "after_top5": ["india-cafe", "delhi-food", "mumbai-food", "kl-cafe", "jakarta-food"]
     },
     {
       "q": "street food snacks",
@@ -150,13 +95,7 @@
       "after": 0.75,
       "before_found": 7,
       "after_found": 7,
-      "after_top5": [
-        "delhi-food",
-        "mumbai-food",
-        "india-cafe",
-        "kl-cafe",
-        "jakarta-food"
-      ]
+      "after_top5": ["delhi-food", "mumbai-food", "india-cafe", "kl-cafe", "jakarta-food"]
     },
     {
       "q": "chaat",
@@ -164,13 +103,7 @@
       "after": 1.0,
       "before_found": 2,
       "after_found": 8,
-      "after_top5": [
-        "delhi-food",
-        "mumbai-food",
-        "india-cafe",
-        "kirana",
-        "india-bakery"
-      ]
+      "after_top5": ["delhi-food", "mumbai-food", "india-cafe", "kirana", "india-bakery"]
     },
     {
       "q": "noodles",
@@ -178,13 +111,7 @@
       "after": 1.0,
       "before_found": 1,
       "after_found": 6,
-      "after_top5": [
-        "jakarta-grocery",
-        "kirana",
-        "jakarta-food",
-        "delhi-food",
-        "kl-cafe"
-      ]
+      "after_top5": ["jakarta-grocery", "kirana", "jakarta-food", "delhi-food", "kl-cafe"]
     },
     {
       "q": "a cold drink",
@@ -192,13 +119,7 @@
       "after": 0.8,
       "before_found": 8,
       "after_found": 9,
-      "after_top5": [
-        "india-cafe",
-        "mumbai-food",
-        "delhi-food",
-        "jakarta-cafe",
-        "kl-cafe"
-      ]
+      "after_top5": ["india-cafe", "mumbai-food", "delhi-food", "jakarta-cafe", "kl-cafe"]
     },
     {
       "q": "groceries",
@@ -206,10 +127,7 @@
       "after": 1.0,
       "before_found": 2,
       "after_found": 2,
-      "after_top5": [
-        "kirana",
-        "jakarta-grocery"
-      ]
+      "after_top5": ["kirana", "jakarta-grocery"]
     },
     {
       "q": "rice and dal",
@@ -217,12 +135,7 @@
       "after": 1.0,
       "before_found": 3,
       "after_found": 4,
-      "after_top5": [
-        "kirana",
-        "jakarta-grocery",
-        "bangkok-food",
-        "mumbai-food"
-      ]
+      "after_top5": ["kirana", "jakarta-grocery", "bangkok-food", "mumbai-food"]
     },
     {
       "q": "milk",
@@ -230,13 +143,7 @@
       "after": 1.0,
       "before_found": 2,
       "after_found": 7,
-      "after_top5": [
-        "kirana",
-        "india-bakery",
-        "india-cafe",
-        "delhi-food",
-        "jakarta-cafe"
-      ]
+      "after_top5": ["kirana", "india-bakery", "india-cafe", "delhi-food", "jakarta-cafe"]
     },
     {
       "q": "haircut",
@@ -244,10 +151,7 @@
       "after": 1.0,
       "before_found": 2,
       "after_found": 2,
-      "after_top5": [
-        "kl-salon",
-        "bangkok-salon"
-      ]
+      "after_top5": ["kl-salon", "bangkok-salon"]
     },
     {
       "q": "trim my beard",
@@ -255,10 +159,7 @@
       "after": 1.0,
       "before_found": 2,
       "after_found": 2,
-      "after_top5": [
-        "kl-salon",
-        "bangkok-salon"
-      ]
+      "after_top5": ["kl-salon", "bangkok-salon"]
     },
     {
       "q": "fix my trousers",
@@ -266,10 +167,7 @@
       "after": 1.0,
       "before_found": 1,
       "after_found": 2,
-      "after_top5": [
-        "hardware",
-        "tailor"
-      ]
+      "after_top5": ["hardware", "tailor"]
     },
     {
       "q": "alterations",
@@ -277,9 +175,7 @@
       "after": 1.0,
       "before_found": 1,
       "after_found": 1,
-      "after_top5": [
-        "tailor"
-      ]
+      "after_top5": ["tailor"]
     },
     {
       "q": "flowers for a gift",
@@ -287,10 +183,7 @@
       "after": 1.0,
       "before_found": 2,
       "after_found": 2,
-      "after_top5": [
-        "florist",
-        "tokyo-florist"
-      ]
+      "after_top5": ["florist", "tokyo-florist"]
     },
     {
       "q": "bouquet",
@@ -298,10 +191,7 @@
       "after": 1.0,
       "before_found": 2,
       "after_found": 2,
-      "after_top5": [
-        "florist",
-        "tokyo-florist"
-      ]
+      "after_top5": ["florist", "tokyo-florist"]
     },
     {
       "q": "light bulb",
@@ -309,9 +199,7 @@
       "after": 1.0,
       "before_found": 1,
       "after_found": 1,
-      "after_top5": [
-        "hardware"
-      ]
+      "after_top5": ["hardware"]
     },
     {
       "q": "tools to fix a shelf",
@@ -319,10 +207,7 @@
       "after": 1.0,
       "before_found": 1,
       "after_found": 2,
-      "after_top5": [
-        "hardware",
-        "tailor"
-      ]
+      "after_top5": ["hardware", "tailor"]
     }
   ]
 }
