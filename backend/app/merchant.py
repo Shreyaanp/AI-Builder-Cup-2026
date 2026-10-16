@@ -26,6 +26,7 @@ from pydantic import (
 
 from .community import Documents, SqliteDocuments
 from .customer import Inquiry, InquiryInput, InquiryReceipt
+from .playbook import migrate_stored
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
 from .shop_time import client_timezone, shop_timezone
 from .stock_alerts import (
@@ -70,6 +71,31 @@ class CustomFact(BaseModel):
     key: str = Field(pattern=r"^[a-z0-9_]{1,40}$")
     label: str = Field(min_length=1, max_length=80)
     value: str = Field(min_length=1, max_length=200)
+
+
+Focus = Literal["more_customers", "less_waste", "save_time", "other"]
+UNDERSTAND_KEYS = ("focus", "busy_hours", "regulars")
+
+
+class Understanding(BaseModel):
+    """The owner's own answers to "what matters most now" and "who are your regulars". Private:
+    it shapes the shop playbook and never appears in any customer projection. Busiest times are
+    the existing busy_hours fact (customers benefit from it too)."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    focus: Focus | None = None
+    # "Something else" in the owner's words, or a detail about the chosen focus.
+    focus_note: str = Field(default="", max_length=120)
+    regulars: str = Field(default="", max_length=200)
+    # Questions the owner chose to skip are never asked again (they can still answer later).
+    skipped: list[Literal["focus", "busy_hours", "regulars"]] = Field(
+        default_factory=list, max_length=3
+    )
+
+    @field_validator("skipped")
+    @classmethod
+    def unique_skips(cls, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(value))
 
 
 class DayHours(BaseModel):
@@ -133,6 +159,7 @@ class BusinessFields(BaseModel):
     # Type-specific facts from the question plan; owner-confirmed like every other field.
     custom_facts: list[CustomFact] = Field(default_factory=list, max_length=30)
     profile: BusinessTypeProfile = Field(default_factory=BusinessTypeProfile)
+    understanding: Understanding | None = None
 
     @field_validator("weekly_hours")
     @classmethod
@@ -183,6 +210,7 @@ class BusinessFields(BaseModel):
             and not (key == "weekly_hours" and value == [])
             and not (key == "description" and value == "")
             and not (key == "profile" and self.profile == BusinessTypeProfile())
+            and not (key == "understanding" and value is None)
         }
 
     @model_validator(mode="after")
@@ -338,6 +366,8 @@ class MerchantRepository(Protocol):
     def recap_cache(
         self, uid: str, bid: str, key: str, value: dict[str, Any] | None = None
     ) -> dict[str, Any] | None: ...
+    def playbook(self, uid: str, bid: str) -> dict[str, Any] | None: ...
+    def set_playbook(self, uid: str, bid: str, value: dict[str, Any] | None) -> None: ...
     # Simulator records are isolated from confirmed merchant facts.
     def sim_state(self, uid: str, bid: str) -> dict[str, Any] | None: ...
     def save_sim_state(self, uid: str, bid: str, state: dict[str, Any]) -> None: ...
@@ -561,6 +591,10 @@ class MerchantStore:
                 db.execute("ALTER TABLE businesses ADD COLUMN coach_notes TEXT")
             if "gallery" not in columns:
                 db.execute("ALTER TABLE businesses ADD COLUMN gallery TEXT")
+            # Lazy schema migration: older databases gain the column; rows stay NULL until a
+            # playbook is first generated for that shop (never a bulk backfill).
+            if "playbook" not in columns:
+                db.execute("ALTER TABLE businesses ADD COLUMN playbook TEXT")
 
     def connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10)
@@ -1151,6 +1185,21 @@ class MerchantStore:
             self.owned(db, uid, bid)
             db.execute("UPDATE businesses SET gallery=? WHERE id=?", (json.dumps(photos), bid))
             return photos
+
+    def playbook(self, uid: str, bid: str) -> dict[str, Any] | None:
+        with self.connect() as db:
+            row = self.owned(db, uid, bid)
+            stored = migrate_stored(row["playbook"])
+            return stored.model_dump() if stored else None
+
+    def set_playbook(self, uid: str, bid: str, value: dict[str, Any] | None) -> None:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self.owned(db, uid, bid)
+            db.execute(
+                "UPDATE businesses SET playbook=? WHERE id=?",
+                (json.dumps(value, ensure_ascii=False) if value else None, bid),
+            )
 
     def recap_signals(self, uid: str, bid: str) -> dict[str, Any]:
         with self.connect() as db:
