@@ -57,6 +57,9 @@ import { installState, offerInstall, subscribeInstall } from '../../app/pwa'
 export function AppShell() {
   const t = useCopy()
   const ws = useWorkspace()
+  const { features } = useIdentity()
+  const destination =
+    ws.destination === 'google' && !features.google_guide ? 'coach' : ws.destination
   const roles = useTheme().material
   const rail = useMediaQuery(`(min-width:${windowClass.medium}px)`)
   const keyboard = useKeyboardOpen()
@@ -73,15 +76,15 @@ export function AppShell() {
   const destinations: { id: Destination; label: string; icon: ReactNode }[] = [
     { id: 'coach', label: t.navCoach, icon: <MessageCircle size={22} /> },
     { id: 'shop', label: t.navShop, icon: <Store size={22} /> },
-    { id: 'google', label: t.navGoogle, icon: <Globe size={22} /> },
+    ...(features.google_guide
+      ? [{ id: 'google' as const, label: t.navGoogle, icon: <Globe size={22} /> }]
+      : []),
     { id: 'privacy', label: t.navPrivacy, icon: <ShieldCheck size={22} /> },
   ]
   const screen =
-    ws.destination === 'coach'
+    destination === 'coach'
       ? null
-      : { shop: <ShopScreen />, google: <GoogleScreen />, privacy: <PrivacyScreen /> }[
-          ws.destination
-        ]
+      : { shop: <ShopScreen />, google: <GoogleScreen />, privacy: <PrivacyScreen /> }[destination]
 
   return (
     <>
@@ -115,7 +118,7 @@ export function AppShell() {
               <NavItem
                 key={item.id}
                 item={item}
-                selected={ws.destination === item.id}
+                selected={destination === item.id}
                 onSelect={ws.go}
                 rail
               />
@@ -140,12 +143,12 @@ export function AppShell() {
             >
               {/* Coach stays mounted while hidden so drafts, replies and voice survive tab
                 changes; keyed by shop so each shop has its own thread. */}
-              <Box hidden={ws.destination !== 'coach'} sx={{ height: '100%' }}>
+              <Box hidden={destination !== 'coach'} sx={{ height: '100%' }}>
                 <CoachWorkspace galleryPhoto={galleryPhoto} setGalleryPhoto={setGalleryPhoto} />
               </Box>
               {screen}
             </Box>
-            {supporting && ws.destination === 'coach' && ws.active && !inFlow && (
+            {supporting && destination === 'coach' && ws.active && !inFlow && (
               <Box
                 component="aside"
                 aria-label={t.navShop}
@@ -187,7 +190,7 @@ export function AppShell() {
               <NavItem
                 key={item.id}
                 item={item}
-                selected={ws.destination === item.id}
+                selected={destination === item.id}
                 onSelect={ws.go}
               />
             ))}

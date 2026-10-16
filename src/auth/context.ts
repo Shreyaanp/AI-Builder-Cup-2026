@@ -1,6 +1,8 @@
 import { createContext } from 'react'
+import type { FeatureFlags } from './features'
 
 export interface Identity {
+  features: FeatureFlags
   mode: 'local' | 'firebase'
   status: 'loading' | 'ready' | 'signed-out' | 'error'
   scope: string

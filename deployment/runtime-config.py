@@ -23,6 +23,7 @@ config = {
     "GOOGLE_LIVE_MODEL": "gemini-3.8-live",
     "GOOGLE_EMBEDDING_LOCATION": "global",
     "V1_ENABLED": "true",
+    "FEATURE_GOOGLE_GUIDE": os.environ.get("FEATURE_GOOGLE_GUIDE", "true"),
     "MERCHANT_BACKEND": "firestore",
     "MODERATION_MODE": "vision",
     # Demand forecast with TimesFM in BigQuery (AI.FORECAST); owner approved, budget alert set.
@@ -44,6 +45,8 @@ config = {
     "FACE_WORKER_URL": os.environ["FACE_WORKER_URL"].strip().rstrip("/"),
 }
 output = Path(".deployment/runtime.json")
+if config["FEATURE_GOOGLE_GUIDE"] not in {"true", "false"}:
+    raise SystemExit("FEATURE_GOOGLE_GUIDE must be true or false.")
 output.parent.mkdir(exist_ok=True)
 output.write_text(json.dumps(config), encoding="utf-8")
 print("Prepared ignored Cloud Run runtime configuration; Vertex Gemini uses the runtime identity.")
