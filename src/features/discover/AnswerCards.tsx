@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Box, Stack, Typography, useTheme } from '@mui/material'
 import { ExternalLink, Leaf, TrainFront } from 'lucide-react'
 import type { Locale } from '../../i18n/locales'
@@ -12,6 +13,10 @@ import { formatPrice } from '../v1/format'
 import { askCopy } from './askStrings'
 import type { AskAnswer, AskPick } from './askThread'
 import { fillIn, type ConversationCopy } from './conversationCopy'
+
+const prefetchPublicShop = () => {
+  void import('../public/PublicShop')
+}
 
 function formatDistance(metres: number, locale: string) {
   return new Intl.NumberFormat(locale, {
@@ -48,6 +53,11 @@ export function PickCard({
   const reason = pick.reasons?.[0]
   const distance = formatDistance(pick.distance_m, locale)
   const deal = pick.deal
+
+  useEffect(() => {
+    prefetchPublicShop()
+  }, [])
+
   return (
     <Box
       component="li"
@@ -64,6 +74,9 @@ export function PickCard({
         component="a"
         href={`/explore/s/${pick.id}`}
         onClick={customerNavigate}
+        onPointerEnter={prefetchPublicShop}
+        onFocus={prefetchPublicShop}
+        onTouchStart={prefetchPublicShop}
         sx={{
           display: 'flex',
           flexDirection: 'column',
