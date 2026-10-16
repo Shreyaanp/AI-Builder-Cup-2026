@@ -37,6 +37,7 @@ from .merchant import (
     seal_proposal,
     validate_proposal,
 )
+from .playbook import migrate_stored
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
 from .stock_alerts import (
     ALERT_SECONDS,
@@ -742,6 +743,21 @@ class FirestoreMerchantStore:
             return notes
 
         return cast(list[dict[str, Any]], run(self.client.transaction()))
+
+    def playbook(self, uid: str, bid: str) -> dict[str, Any] | None:
+        # Businesses saved before playbooks simply have no field (lazy migration on first use).
+        stored = migrate_stored(self.owned_business(uid, bid).get("playbook"))
+        return stored.model_dump() if stored else None
+
+    def set_playbook(self, uid: str, bid: str, value: dict[str, Any] | None) -> None:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        snapshot = ref.get()
+        self.owned(snapshot, uid)
+        # Precondition on the read version: an ownership change in between fails the write.
+        ref.update(
+            {"playbook": value if value else firestore.DELETE_FIELD},
+            option=self.client.write_option(last_update_time=snapshot.update_time),
+        )
 
     def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
