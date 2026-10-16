@@ -21,6 +21,7 @@ import { useLocale } from '../../state/hooks'
 import { useAccountCopy } from './copy'
 import { SignInButton } from './SignIn'
 import { preferenceChips } from './preferences'
+import { forgetOpened } from '../discover/opened'
 import type { PreferenceKey } from './preferences'
 
 /** Fixed beside the appearance switch on Ask, Chats and Saved. */
@@ -114,6 +115,8 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
       account.setProfile(
         await account.api<Profile>('/api/v1/customer/preferences', { method: 'DELETE' }),
       )
+      // Shops opened on this phone are a personal signal too.
+      forgetOpened()
       setNotice({ kind: 'success', text: t.cleared })
     } catch {
       setNotice({ kind: 'error', text: t.clearFailed, retry: () => void clearAll() })
