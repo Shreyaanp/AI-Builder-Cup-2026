@@ -27,6 +27,7 @@ const KNOWN: Record<CoachEvent['kind'], true> = {
   pong: true,
   ping: true,
   proposal: true,
+  draft: true,
   workflow: true,
   sourcing: true,
   suppliers: true,

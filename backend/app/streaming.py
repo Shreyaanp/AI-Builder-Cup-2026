@@ -20,6 +20,8 @@ from .contracts import StreamEvent
 from .coordinator import current, ui_currency
 from .instant import InstantResult, IntentIndex, route
 from .latency import FirstOutput
+from .merchant import NewShopDraft
+from .new_shop_resume import adoptable, last_question, saved_draft
 from .settings import Settings
 
 log = structlog.get_logger()
@@ -238,6 +240,31 @@ class CoachRuntime:
             state={"business_id": business_id, "new_shop": new_shop},
         )
         return session_id
+
+    async def new_shop_progress(
+        self, principal: Principal, session_id: str
+    ) -> tuple[NewShopDraft | None, str, bool]:
+        """A new-shop conversation's saved draft, the coach's last question and whether it has
+        turns already (a socket that comes back to it continues, never starts over)."""
+        session = await self.sessions.get_session(
+            app_name=APP_NAME, user_id=principal.uid, session_id=session_id
+        )
+        if not session:
+            return None, "", False
+        return saved_draft(session.state), last_question(session.events), bool(session.events)
+
+    async def unfinished_new_shop(self, principal: Principal, finished: set[str]) -> str | None:
+        """The owner's most recent new-shop conversation whose shop was never opened: a fresh
+        start after the app lost its own draft (reload, a crash) continues it."""
+        listing = await self.sessions.list_sessions(app_name=APP_NAME, user_id=principal.uid)
+        for session in sorted(
+            listing.sessions, key=lambda item: item.last_update_time or 0, reverse=True
+        ):
+            if not session.state.get("business_id") and adoptable(
+                session.state, session.last_update_time or 0, finished
+            ):
+                return session.id
+        return None
 
     async def text_events(
         self,

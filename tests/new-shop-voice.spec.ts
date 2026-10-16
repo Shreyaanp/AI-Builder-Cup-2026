@@ -304,10 +304,10 @@ test('session end: the app reconnects to the same conversation and it carries on
   expect(said).toContain('name: Night Owl Kopi; category: Cafe')
 })
 
-test('lost connection: retries by itself, then a "Reconnect" alert; typing carries on', async ({
+test('lost connection: retries by itself, then a calm "Voice paused" with Retry; typing carries on', async ({
   page,
 }) => {
-  test.setTimeout(60_000)
+  test.setTimeout(90_000)
   await quietMicrophone(page)
   let fail = false
   let sockets = 0
@@ -324,16 +324,20 @@ test('lost connection: retries by itself, then a "Reconnect" alert; typing carri
   await page.evaluate(() => window.dispatchEvent(new Event('offline')))
   await expect(orb(page)).toHaveAttribute('data-phase', 'reconnecting')
   const alert = page.getByTestId('voice-alert')
-  await expect(alert).toContainText('Connection lost', { timeout: 20_000 })
-  expect(sockets).toBe(5)
+  // Six retries with growing pauses (about half a minute), then a calm pause, never a dead end.
+  await expect(alert).toContainText('Voice paused', { timeout: 45_000 })
+  await expect(alert).toContainText('We carry on from the same question')
+  expect(sockets).toBe(7)
   await expect(alert.getByRole('button', { name: 'Type instead' })).toBeVisible()
   await expect(page.getByLabel('Message', { exact: true })).toBeVisible()
   await audit(page)
-  // Back online: "Reconnect" brings voice back in the same conversation.
+  // Back online: "Retry" brings voice back in the same conversation.
   fail = false
-  await alert.getByRole('button', { name: 'Reconnect' }).click()
+  await alert.getByRole('button', { name: 'Retry' }).click()
   await expect(page.getByTestId('voice-alert')).toHaveCount(0)
-  await expect(orb(page)).toHaveAttribute('data-phase', 'listening')
+  // The mic is live again (a reply typed meanwhile may still be read aloud first).
+  await expect(page.getByRole('button', { name: 'Pause the mic' })).toBeVisible()
+  await expect(orb(page)).toHaveAttribute('data-phase', 'listening', { timeout: 30_000 })
 })
 
 test('voice rate limit: the alert says how long to wait; voice unavailable: carry on typing', async ({

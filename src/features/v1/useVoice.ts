@@ -53,8 +53,13 @@ export interface VoiceConversation {
   onReady?: (resumed: boolean) => void
 }
 
-/** Consecutive reconnect attempts before a conversation gives up and says so. */
-const RETRIES = 4
+/**
+ * Consecutive reconnect attempts before a conversation pauses and offers Retry (with growing
+ * pauses up to 8 s, about half a minute in all: long enough for a network switch or a lift).
+ */
+const RETRIES = 6
+/** Attempts after the server itself refused the session (provider down, a bad session). */
+const REFUSED_RETRIES = 4
 const METER = new Float32Array(512)
 
 function level(meter: AnalyserNode | undefined) {
@@ -289,7 +294,7 @@ export function useVoice(
       if (retry) {
         const recovery = AbortSignal.any([operation.signal, AbortSignal.timeout(45_000)])
         await waitOnline(recovery)
-        await reconnectDelay(quick ? 150 : Math.min(500 * 2 ** (attempt - 1), 4000), recovery)
+        await reconnectDelay(quick ? 150 : Math.min(500 * 2 ** (attempt - 1), 8000), recovery)
       }
       token = await identity.getToken()
     } catch {
@@ -380,6 +385,12 @@ export function useVoice(
           stop()
           return
         }
+        if (event.kind === 'error' && event.code === 'TAKEN_OVER') {
+          // The same conversation was opened again (another tab, or this phone's newer socket):
+          // this one steps aside quietly; the conversation itself carries on there.
+          stop()
+          return
+        }
         if (event.kind === 'error' && conversationRef.current) {
           // The socket closes next; `onclose` decides between reconnecting and saying so.
           lastCode = event.code ?? 'error'
@@ -448,12 +459,13 @@ export function useVoice(
         // A conversation only ends when the owner ends it: reconnect to the same session, at
         // once after a planned end (time cap, idle), with growing pauses after failures.
         const planned = ['SESSION_TIMEOUT', 'VOICE_IDLE'].includes(lastCode || event.reason)
-        if (attempts.current >= RETRIES) {
-          fail(
-            ['PROVIDER_UNAVAILABLE', 'AUTH_OR_SESSION_ERROR', 'INVALID_FRAME'].includes(lastCode)
-              ? { kind: 'unavailable' }
-              : { kind: 'connection' },
-          )
+        // The server said no (provider down, a bad session): fewer, shorter tries than a network
+        // that may come back in a moment.
+        const refused = ['PROVIDER_UNAVAILABLE', 'AUTH_OR_SESSION_ERROR', 'INVALID_FRAME'].includes(
+          lastCode,
+        )
+        if (attempts.current >= (refused ? REFUSED_RETRIES : RETRIES)) {
+          fail(refused ? { kind: 'unavailable' } : { kind: 'connection' })
           stop()
           return
         }

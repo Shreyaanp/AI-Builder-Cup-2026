@@ -1,0 +1,510 @@
+"""Voice onboarding never drops, repeats or gets stuck (owner report, 17 Oct, Hindi).
+
+Covers the Live call budget and server-side rotation, resume from the saved draft (no re-asked
+fields), reconnect takeover instead of 409, idempotent saves and a long onboarding on one socket.
+"""
+
+import asyncio
+import json
+import time
+from collections.abc import AsyncIterator
+from pathlib import Path
+from typing import Any
+
+import pytest
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+from google.adk.events import Event
+from google.adk.live.live_request_queue import LiveRequestQueue
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+from structlog.testing import capture_logs
+
+from app.agent import turn_instruction, ui_language
+from app.auth import Principal
+from app.coordinator import (
+    MerchantContext,
+    ProductInput,
+    current,
+    propose_business,
+    propose_products,
+)
+from app.limits import RunRegistry, lease_lost
+from app.main import create_app
+from app.merchant import BusinessFields, MerchantStore, NewShopDraft, ProductFields
+from app.new_shop_resume import (
+    DRAFT_STATE,
+    known_and_missing,
+    last_question,
+    merge_drafts,
+    progress_note,
+)
+from app.reply_language import reply_language
+from app.settings import Settings
+from app.streaming import APP_NAME
+from app.voice import AudioBudget, VoiceStats, gemini_voice
+from tests.test_discover import settings
+from tests.test_photos import join
+
+ORIGIN = {"origin": "http://127.0.0.1:3200"}
+
+
+def chai_draft(**business: Any) -> NewShopDraft:
+    return NewShopDraft(
+        business=BusinessFields(name="Sharma Chai", category="Tea stall", **business),
+        products=[ProductFields(name="Masala chai", price=1500, unit="cup", category="Tea")],
+    )
+
+
+# --- Resume = continue: the instruction says what is known, what is next, what was asked ---
+
+
+def test_resume_prompt_lists_known_fields_and_continues_from_the_next_missing_one(
+    tmp_path: Path,
+) -> None:
+    context = MerchantContext(
+        MerchantStore(str(tmp_path / "shops.sqlite")),
+        "alice",
+        None,
+        [],
+        new_shop=True,
+        new_shop_draft=chai_draft(),
+        resumed=True,
+        last_question="आपकी दुकान कहाँ है?",
+    )
+    token = current.set(context)
+    language = ui_language.set("hi")
+    try:
+        text = turn_instruction()
+    finally:
+        ui_language.reset(language)
+        current.reset(token)
+    assert 'NEVER ask for these again: name "Sharma Chai"; kind "Tea stall"' in text
+    assert "1 menu items (Masala chai)" in text
+    assert "Ask next: where the shop is." in text
+    # Name, kind and menu are known: never listed as missing.
+    missing = text.split("Still missing, in this order:")[1].split("\n")[0]
+    assert "name" not in missing and "kind" not in missing and "what they sell" not in missing
+    assert 'Your last question was: "आपकी दुकान कहाँ है?"' in text
+    assert "Do not greet again" in text
+
+
+def test_progress_order_and_a_complete_draft() -> None:
+    assert known_and_missing(None) == (
+        [],
+        [
+            "the shop's real name",
+            "what kind of business it is",
+            "what they sell, with prices (offer a photo of the menu or price board once)",
+            "where the shop is",
+            "opening hours",
+        ],
+    )
+    full = chai_draft(location="Lajpat Nagar", hours="7am-9pm", payment_methods=["UPI"])
+    known, missing = known_and_missing(full)
+    assert missing == []
+    assert any("payment" in item for item in known)
+    note = progress_note(full, "", resumed=False)
+    assert "basics are complete" in note and "welcome them back" in note
+
+
+def test_last_question_is_read_from_the_saved_turns() -> None:
+    events = [
+        Event(author="user", input_transcription=types.Transcription(text="नमस्ते")),
+        Event(
+            author="business_coach",
+            output_transcription=types.Transcription(text="नमस्ते! चाय की दुकान, बढ़िया। "),
+        ),
+        Event(
+            author="business_coach",
+            output_transcription=types.Transcription(text="आपकी दुकान का नाम क्या है?"),
+        ),
+    ]
+    assert last_question(events) == "आपकी दुकान का नाम क्या है?"
+    answered = [*events, Event(author="user", input_transcription=types.Transcription(text="x"))]
+    # The owner spoke after it: still the coach's last question.
+    assert last_question(answered) == "आपकी दुकान का नाम क्या है?"
+    assert last_question([]) == ""
+
+
+def test_merge_never_erases_and_the_overlay_wins() -> None:
+    saved = chai_draft(location="Lajpat Nagar")
+    app_copy = NewShopDraft(
+        business=BusinessFields(name="Sharma Chai", category="", hours="7am-9pm"),
+        products=[ProductFields(name="Samosa", price=2000, unit="piece", category="Snacks")],
+    )
+    merged = merge_drafts(saved, app_copy)
+    assert merged and merged.business
+    assert merged.business.category == "Tea stall"  # empty never erases
+    assert merged.business.location == "Lajpat Nagar"
+    assert merged.business.hours == "7am-9pm"
+    assert {p.name for p in merged.products} == {"Masala chai", "Samosa"}
+    assert merge_drafts(None, app_copy) == app_copy
+    assert merge_drafts(saved, None) == saved
+
+
+# --- Idempotent saves: the same answer twice, or a replayed tool call, changes nothing ---
+
+
+def test_same_answer_twice_and_replayed_tool_calls_are_no_ops(tmp_path: Path) -> None:
+    store = MerchantStore(str(tmp_path / "shops.sqlite"))
+    context = MerchantContext(store, "alice", None, [], new_shop=True, new_shop_draft=None)
+    token = current.set(context)
+    try:
+        first = propose_business("Sharma Chai", category="Tea stall")
+        draft = context.new_shop_draft
+        again = propose_business("Sharma Chai", category="Tea stall")
+        assert again["proposal_id"] == first["proposal_id"] and again["changes"] == []
+        assert context.new_shop_draft == draft and len(context.proposals) == 1
+        items = [ProductInput(name="Masala chai", price=15, unit="cup")]
+        menu = propose_products(items)
+        replay = propose_products(items)
+        assert replay["proposal_id"] == menu["proposal_id"] and replay["changes"] == []
+        assert len(context.proposals) == 2
+        # A real change still records.
+        hours = propose_business("", hours="7am-9pm")
+        assert hours["proposal_id"] not in {first["proposal_id"], menu["proposal_id"]}
+        assert context.new_shop_draft and context.new_shop_draft.business
+        assert context.new_shop_draft.business.hours == "7am-9pm"
+        assert store.list_businesses("alice") == []
+    finally:
+        current.reset(token)
+
+
+# --- Stream lock: a reconnect takes over, never 409 ---
+
+
+def test_voice_reconnect_takes_over_instead_of_409() -> None:
+    registry = RunRegistry(4)
+    old = registry.acquire("alice", "s1", "voice")
+    lost = lease_lost(old)
+    new = registry.acquire("alice", "s1", "voice")
+    assert lost.is_set() and not registry.holds(old) and registry.holds(new)
+    # The old socket's late release never frees the new one.
+    registry.release(old)
+    assert registry.holds(new)
+    # Typing while a voice socket is open takes it over too; two text turns stay exclusive.
+    text = registry.acquire("alice", "s1", "text")
+    with pytest.raises(HTTPException) as busy:
+        registry.acquire("alice", "s1", "text")
+    assert busy.value.status_code == 409
+    registry.release(text)
+    registry.release(new)
+    assert not registry.active
+
+
+def test_second_socket_for_the_same_conversation_takes_it_over(tmp_path: Path) -> None:
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        join(client)
+        with client.websocket_connect("/api/v1/voice?new_shop=true", headers=ORIGIN) as first:
+            first.send_json({"kind": "new_shop", "draft": None})
+            sid = first.receive_json()["session_id"]
+            with client.websocket_connect(
+                f"/api/v1/voice?new_shop=true&session_id={sid}", headers=ORIGIN
+            ) as second:
+                second.send_json({"kind": "new_shop", "draft": None})
+                ready = second.receive_json()
+                assert ready["kind"] == "ready" and ready["session_id"] == sid
+                # The old socket is told and closed: a dropped phone never blocks the new one.
+                assert first.receive_json() == {"kind": "error", "code": "TAKEN_OVER"}
+                second.send_json({"kind": "text", "text": "name: Sharma Chai"})
+                while second.receive_json()["kind"] != "turn_complete":
+                    pass
+                second.send_json({"kind": "close"})
+        assert not app.state.services.registry.active
+
+
+# --- Resume from the saved draft over real sockets (offline coach) ---
+
+
+def answer(socket: Any, text: str) -> list[dict[str, Any]]:
+    socket.send_json({"kind": "text", "text": text})
+    events = []
+    while (event := socket.receive_json())["kind"] != "turn_complete":
+        assert event["kind"] != "error", event
+        events.append(event)
+    return events
+
+
+def coach_said(events: list[dict[str, Any]]) -> str:
+    return " ".join(e.get("text") or "" for e in events if e["kind"] in {"reply", "delta"})
+
+
+def test_reconnect_with_a_stale_app_draft_continues_from_the_next_missing_field(
+    tmp_path: Path,
+) -> None:
+    """The socket dropped right after the name was saved, before the app heard about it: the
+    reconnect brings the saved draft back and the coach asks the next thing, not the name."""
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        join(client)
+        with client.websocket_connect(
+            "/api/v1/voice?new_shop=true&lang=hi", headers=ORIGIN
+        ) as socket:
+            socket.send_json({"kind": "new_shop", "draft": None})
+            sid = socket.receive_json()["session_id"]
+            answer(socket, "Hello! I want to open a new shop.")
+            saved = answer(socket, "name: Sharma Chai; category: Tea stall")
+            assert any(e["kind"] == "proposal" for e in saved)
+        session = asyncio.run(
+            app.state.services.runtime.sessions.get_session(
+                app_name=APP_NAME, user_id=_uid(app), session_id=sid
+            )
+        )
+        assert session is not None
+        assert session.state[DRAFT_STATE]["business"]["name"] == "Sharma Chai"
+        # The app lost the last proposal: it reconnects with an empty draft.
+        with client.websocket_connect(
+            f"/api/v1/voice?new_shop=true&lang=hi&session_id={sid}", headers=ORIGIN
+        ) as socket:
+            socket.send_json({"kind": "new_shop", "draft": None})
+            assert socket.receive_json()["session_id"] == sid
+            restored = socket.receive_json()
+            assert restored["kind"] == "draft"
+            assert restored["data"]["business"]["name"] == "Sharma Chai"
+            reply = coach_said(answer(socket, "I'm not sure."))
+            assert "What is your business called?" not in reply
+            assert "What kind of business do you run?" not in reply
+            socket.send_json({"kind": "close"})
+
+
+def test_fresh_start_with_an_unfinished_draft_continues_it(tmp_path: Path) -> None:
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        join(client)
+        with client.websocket_connect("/api/v1/voice?new_shop=true", headers=ORIGIN) as socket:
+            socket.send_json({"kind": "new_shop", "draft": None})
+            sid = socket.receive_json()["session_id"]
+            answer(socket, "name: Sharma Chai; category: Tea stall")
+            socket.send_json({"kind": "close"})
+        # The page reloaded: the flow starts with no draft and no session id.
+        with client.websocket_connect("/api/v1/voice?new_shop=true", headers=ORIGIN) as socket:
+            socket.send_json({"kind": "new_shop", "draft": None})
+            ready = socket.receive_json()
+            assert ready["session_id"] == sid and "code" not in ready
+            assert socket.receive_json()["data"]["business"]["name"] == "Sharma Chai"
+            socket.send_json({"kind": "close"})
+        # An app that holds its own draft is a separate flow and never adopts.
+        with client.websocket_connect("/api/v1/voice?new_shop=true", headers=ORIGIN) as socket:
+            socket.send_json({"kind": "new_shop", "draft": {"business": {"name": "Other"}}})
+            assert socket.receive_json()["session_id"] != sid
+            socket.send_json({"kind": "close"})
+
+
+def _uid(app: Any) -> str:
+    sessions = app.state.services.runtime.sessions.sessions[APP_NAME]
+    return next(iter(sessions))
+
+
+def test_long_hindi_onboarding_stays_on_one_socket_and_logs_why_it_ended(
+    tmp_path: Path,
+) -> None:
+    """20 turns (more than the old 40-call budget allowed) on one socket, never an error."""
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    turns = [
+        "Hello! I want to open a new shop.",
+        "name: Sharma Chai",
+        "category: Tea stall",
+        "location: Lajpat Nagar",
+        "hours: 7am-9pm",
+        "payment: UPI, cash",
+        "delivery: none",
+    ] + ["मुझे नहीं पता।"] * 13
+    with capture_logs() as logs, TestClient(app) as client:
+        join(client)
+        with client.websocket_connect(
+            "/api/v1/voice?new_shop=true&lang=hi", headers=ORIGIN
+        ) as socket:
+            socket.send_json({"kind": "new_shop", "draft": None})
+            assert socket.receive_json()["kind"] == "ready"
+            asked: list[str] = []
+            for text in turns:
+                reply = coach_said(answer(socket, text))
+                asked.append(reply)
+            socket.send_json({"kind": "close"})
+    # Every question the coach asked about a saved field came before the answer, never after.
+    after_name = " ".join(asked[2:])
+    assert "What is your business called?" not in after_name
+    closed = [entry for entry in logs if entry["event"] == "voice_closed"]
+    assert closed and closed[-1]["reason"] == "client_close"
+    assert closed[-1]["turns"] == len(turns)
+
+
+def test_microphone_budget_grows_with_the_conversation() -> None:
+    conversation = AudioBudget(Settings(app_env="test", _env_file=None), new_shop=True)
+    conversation.started = time.monotonic() - 600
+    chunk = b"\x00\x00" * 8000
+    for _ in range(1200):  # 19 MB: ten minutes of always-on microphone
+        conversation.take(chunk)
+    press = AudioBudget(Settings(app_env="test", _env_file=None), new_shop=False)
+    with pytest.raises(ValueError, match="Audio budget"):
+        for _ in range(1200):
+            press.take(chunk)
+
+
+# --- The Live call budget and server-side rotation (Gemini Live, faked) ---
+
+
+class FakeSocket:
+    def __init__(self) -> None:
+        self.frames: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self.sent: list[Any] = []
+
+    def push(self, payload: dict[str, Any]) -> None:
+        self.frames.put_nowait({"type": "websocket.receive", "text": json.dumps(payload)})
+
+    async def receive(self) -> dict[str, Any]:
+        return await self.frames.get()
+
+    async def send_json(self, payload: Any) -> None:
+        self.sent.append(payload)
+
+    async def send_bytes(self, payload: bytes) -> None:
+        self.sent.append(payload)
+
+
+class FakeLive:
+    """One scripted Live connection per run_live call."""
+
+    def __init__(self, scripts: list[Any]) -> None:
+        self.scripts = scripts
+        self.queues: list[LiveRequestQueue] = []
+        self.instructions: list[str] = []
+
+    def run_live(self, *, live_request_queue: LiveRequestQueue, **_: Any) -> AsyncIterator[Event]:
+        self.queues.append(live_request_queue)
+        self.instructions.append(turn_instruction())
+        script = self.scripts[min(len(self.queues), len(self.scripts)) - 1]
+        return script(live_request_queue)
+
+
+class FakeRuntime:
+    def __init__(self, live: FakeLive) -> None:
+        self.settings = Settings(app_env="test", _env_file=None)
+        self.live_runner = live
+
+
+def turn(question: str, tools: int = 1) -> list[Event]:
+    calls = [
+        Event(
+            author="business_coach",
+            content=types.Content(
+                role="model",
+                parts=[types.Part(function_call=types.FunctionCall(name="propose_business"))],
+            ),
+        )
+        for _ in range(tools)
+    ]
+    return [
+        *calls,
+        Event(author="business_coach", output_transcription=types.Transcription(text=question)),
+        Event(author="business_coach", turn_complete=True),
+    ]
+
+
+async def forever(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+    for event in turn("आपकी दुकान का नाम क्या है?"):
+        yield event
+    await asyncio.Event().wait()
+    yield Event(author="business_coach")  # pragma: no cover
+
+
+async def run_voice(live: FakeLive, socket: FakeSocket, context: MerchantContext) -> VoiceStats:
+    stats = VoiceStats()
+    token = current.set(context)
+    try:
+        async with asyncio.timeout(10):
+            await gemini_voice(
+                socket,  # type: ignore[arg-type]
+                FakeRuntime(live),  # type: ignore[arg-type]
+                Principal("alice", "test"),
+                "sid",
+                reply_language("hi"),
+                stats,
+            )
+    finally:
+        current.reset(token)
+    return stats
+
+
+def new_shop_context(tmp_path: Path) -> MerchantContext:
+    return MerchantContext(
+        MerchantStore(str(tmp_path / "shops.sqlite")),
+        "alice",
+        None,
+        [],
+        new_shop=True,
+        new_shop_draft=chai_draft(),
+    )
+
+
+async def test_call_budget_moves_to_a_fresh_live_connection_without_ending(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.voice.NEW_SHOP_LLM_CALLS", 8)
+
+    async def busy(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        # Two tool calls and a reply per turn: three model calls a turn.
+        for question in ["दुकान कहाँ है?", "कितने बजे खुलती है?", "UPI लेते हैं?"]:
+            for event in turn(question, tools=2):
+                yield event
+        await asyncio.Event().wait()
+
+    socket = FakeSocket()
+
+    async def owner_leaves(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        # The third connection: the owner closes the conversation.
+        socket.push({"kind": "close"})
+        async for event in forever(queue):
+            yield event
+
+    live = FakeLive([busy, busy, owner_leaves])
+    context = new_shop_context(tmp_path)
+    stats = await run_voice(live, socket, context)
+    assert stats.reason == "client_close"
+    assert stats.rotations == 2
+    assert not any(isinstance(e, dict) and e.get("kind") == "error" for e in socket.sent)
+    # The fresh connection knows where the conversation stood.
+    assert context.resumed and context.last_question == "कितने बजे खुलती है?"
+    assert 'Your last question was: "कितने बजे खुलती है?"' in live.instructions[1]
+    assert "Do not greet again" in live.instructions[1]
+    assert 'NEVER ask for these again: name "Sharma Chai"' in live.instructions[1]
+
+
+async def test_provider_close_rotates_and_replays_the_unanswered_turn(tmp_path: Path) -> None:
+    async def closes_after_text(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        await queue.get()
+        # The provider ended the connection (a normal close; ADK ends the run quietly).
+        return
+        yield  # pragma: no cover
+
+    async def answers(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        request = await queue.get()
+        assert request.content and request.content.parts
+        yield Event(
+            author="business_coach",
+            output_transcription=types.Transcription(text=f"echo {request.content.parts[0].text}"),
+        )
+        yield Event(author="business_coach", turn_complete=True)
+        socket.push({"kind": "close"})
+        await asyncio.Event().wait()
+
+    live = FakeLive([closes_after_text, answers])
+    socket = FakeSocket()
+    socket.push({"kind": "text", "text": "location: Lajpat Nagar"})
+    with capture_logs() as logs:
+        stats = await run_voice(live, socket, new_shop_context(tmp_path))
+    assert stats.reason == "client_close" and stats.rotations == 1
+    assert {"kind": "output_transcript", "text": "echo location: Lajpat Nagar"} in socket.sent
+    rotated = [entry for entry in logs if entry["event"] == "voice_rotated"]
+    assert rotated and rotated[0]["reason"] == "provider_closed"
+
+
+async def test_a_provider_that_keeps_closing_ends_with_a_reason(tmp_path: Path) -> None:
+    async def closes(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        return
+        yield  # pragma: no cover
+
+    with pytest.raises(RuntimeError, match="keeps ending"):
+        await run_voice(FakeLive([closes]), FakeSocket(), new_shop_context(tmp_path))

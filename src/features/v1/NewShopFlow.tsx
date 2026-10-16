@@ -502,6 +502,10 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       setLive((current) => mergeTranscript(current, event.text ?? ''))
     if (event.kind === 'input_transcript' && event.text?.trim()) hearOwner(event.text)
     if (event.kind === 'proposal') applyProposal(event.data as unknown as Proposal)
+    // The conversation came back with answers this screen never received (the connection
+    // dropped right after they were saved, or the page reloaded): the shop card catches up.
+    if (event.kind === 'draft' && event.data)
+      setDraft(mergeDraft(draftRef.current, event.data as unknown as Proposal['snapshot']))
     if (event.kind === 'interrupted') commitCoach(false)
     if (event.kind === 'turn_complete') commitCoach(true)
   }
@@ -636,8 +640,9 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const voiceState = voice.state
   const voiceEnded = useEffectEvent(() => {
     if (!started.current) return
-    // A refused microphone is not retried by itself; the mic button still offers it.
-    if (voice.error) wantVoice.current = false
+    // A refused microphone is not retried by itself; the mic button still offers it. A lost
+    // connection is: voice comes back when the network or the screen does.
+    if (voice.error && voice.problem?.kind !== 'connection') wantVoice.current = false
     const unanswered = pending.current
     pending.current = null
     // Ended normally under words still catching up: the rest shows at once.
@@ -889,6 +894,29 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     stopVoice()
     setTyping(true)
   }
+  // Voice paused after its retries (no network, the phone slept): when the network or the screen
+  // comes back, it resumes by itself at the same step, as if the owner had tapped Retry.
+  const resumeVoice = useEffectEvent(() => {
+    if (
+      started.current &&
+      wantVoice.current &&
+      phase === 'chat' &&
+      voice.state === 'idle' &&
+      voice.problem?.kind === 'connection' &&
+      navigator.onLine &&
+      document.visibilityState === 'visible'
+    )
+      void retryVoice()
+  })
+  useEffect(() => {
+    const resume = () => resumeVoice()
+    window.addEventListener('online', resume)
+    document.addEventListener('visibilitychange', resume)
+    return () => {
+      window.removeEventListener('online', resume)
+      document.removeEventListener('visibilitychange', resume)
+    }
+  }, [])
   const coral = useTheme().chalk.coral
 
   if (phase === 'hero') return <Hero onBegin={begin} onCancel={ws.cancelNewShop} />

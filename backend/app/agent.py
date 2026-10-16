@@ -33,6 +33,7 @@ from .coordinator import (
     request_registration,
     shop_currency,
 )
+from .new_shop_resume import keep_draft, progress_note
 from .reply_language import language_rule, reply_language
 from .settings import Settings
 from .sourcing_offline import sourcing_call, sourcing_reply
@@ -799,6 +800,7 @@ def turn_instruction(_: ReadonlyContext | None = None) -> str:
             NEW_SHOP_INSTRUCTION
             + "\nUnverified new shop draft: "
             + json.dumps(draft, ensure_ascii=False)
+            + progress_note(ctx.new_shop_draft, ctx.last_question, ctx.resumed)
         )
     rule = language_rule(reply_language(ui_language.get()))
     return f"{rule}{shop_snapshot()}{guided}"
@@ -915,6 +917,8 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
         instruction=turn_instruction if cached else instruction,
         static_instruction=INSTRUCTION if cached else None,
         tools=list(tools),
+        # Each recorded new-shop answer is saved in the conversation at once (resume = continue).
+        after_tool_callback=keep_draft,
         # Thinking shares the output budget: a small cap left some turns completely empty.
         # Low temperature keeps tool calls for reported changes consistent.
         # The Live (voice) model rejects a custom thinking level ("project is not allowlisted"),

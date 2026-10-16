@@ -70,6 +70,8 @@ class StreamEvent(StrictModel):
         "pong",
         "ping",
         "proposal",
+        # The saved new-shop draft, when the server knows more than the app (a resumed draft).
+        "draft",
         "workflow",
         # Sourcing: the "Searching nearby suppliers…" state, supplier cards, an order card.
         "sourcing",

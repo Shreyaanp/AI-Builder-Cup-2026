@@ -334,7 +334,7 @@ def test_new_shop_voice_session_end_resumes_the_same_conversation(
     """A Live socket always ends (time cap); the app reconnects to the same session id and the
     conversation, its turns and the draft carry on. The open conversation also allows far more
     turns than a press-to-talk coach session."""
-    monkeypatch.setattr("app.voice.VOICE_SESSION_CAP_SECONDS", 1)
+    monkeypatch.setattr("app.voice.NEW_SHOP_SESSION_CAP_SECONDS", 1)
     app = create_app(settings(tmp_path), InMemorySessionService())
     origin = {"origin": "http://127.0.0.1:3200"}
     with TestClient(app) as client:
@@ -350,7 +350,7 @@ def test_new_shop_voice_session_end_resumes_the_same_conversation(
                 pass
             assert event["code"] == "SESSION_TIMEOUT"
         assert not app.state.services.registry.active
-        monkeypatch.setattr("app.voice.VOICE_SESSION_CAP_SECONDS", 60)
+        monkeypatch.setattr("app.voice.NEW_SHOP_SESSION_CAP_SECONDS", 60)
         with client.websocket_connect(
             f"/api/v1/voice?new_shop=true&session_id={sid}", headers=origin
         ) as socket:
