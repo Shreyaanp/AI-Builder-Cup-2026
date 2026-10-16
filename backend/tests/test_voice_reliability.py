@@ -79,33 +79,36 @@ def test_resume_prompt_lists_known_fields_and_continues_from_the_next_missing_on
     finally:
         ui_language.reset(language)
         current.reset(token)
-    assert 'NEVER ask for these again: name "Sharma Chai"; kind "Tea stall"' in text
-    assert "1 menu items (Masala chai)" in text
-    assert "Ask next: where the shop is." in text
-    # Name, kind and menu are known: never listed as missing.
-    missing = text.split("Still missing, in this order:")[1].split("\n")[0]
-    assert "name" not in missing and "kind" not in missing and "what they sell" not in missing
+    assert 'NEVER ask for these again: name "Sharma Chai"; sells "Tea stall"' in text
+    # Name and kind are known: never listed as missing; the menu is never asked at all.
+    missing = text.split("Still missing (ask ONE, the most natural next):")[1].split("\n")[0]
+    assert missing.strip().startswith("where the shop is")
+    assert "real name" not in missing and "what they sell" not in missing
+    assert "menu" not in missing
     assert 'Your last question was: "आपकी दुकान कहाँ है?"' in text
-    assert "Do not greet again" in text
+    assert "Do not greet" in text and "wait for the owner" in text
 
 
 def test_progress_order_and_a_complete_draft() -> None:
-    assert known_and_missing(None) == (
-        [],
-        [
-            "the shop's real name",
-            "what kind of business it is",
-            "what they sell, with prices (offer a photo of the menu or price board once)",
-            "where the shop is",
-            "opening hours",
-        ],
-    )
-    full = chai_draft(location="Lajpat Nagar", hours="7am-9pm", payment_methods=["UPI"])
+    _, missing = known_and_missing(None)
+    # Only the five onboarding steps (owner decision, 17 Oct): never the menu.
+    assert [item.split(" (")[0].split(",")[0] for item in missing] == [
+        "the shop's real name",
+        "what they sell",
+        "where the shop is",
+        "opening hours",
+        "a photo of the shop",
+    ]
+    full = chai_draft(location="Lajpat Nagar", hours="7am-9pm").model_copy(update={"photo": True})
     known, missing = known_and_missing(full)
     assert missing == []
-    assert any("payment" in item for item in known)
+    assert "shop photo taken" in known
     note = progress_note(full, "", resumed=False)
-    assert "basics are complete" in note and "welcome them back" in note
+    assert "Everything is gathered" in note and "face check" in note
+    # Skipped hours and photo count as done: never asked again, never invented.
+    skipped = chai_draft(location="Lajpat Nagar").model_copy(update={"skipped": ["hours", "photo"]})
+    known, missing = known_and_missing(skipped)
+    assert missing == [] and any("hours: skipped" in item for item in known)
 
 
 def test_last_question_is_read_from_the_saved_turns() -> None:
@@ -439,37 +442,88 @@ def new_shop_context(tmp_path: Path) -> MerchantContext:
     )
 
 
-async def test_call_budget_moves_to_a_fresh_live_connection_without_ending(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr("app.voice.NEW_SHOP_LLM_CALLS", 8)
+def test_live_run_config_has_no_call_cap_and_the_tuned_voice() -> None:
+    """The old 40-call cap is gone from the Live conversation (ADK never counted Live calls; the
+    provider's close ended it); the new-shop session keeps resumption and a sliding window, with
+    VAD that waits for owners who pause, barge-in, affective dialog and proactive audio."""
+    from app.voice import END_OF_TURN_SILENCE_MS, VOICE_LLM_CALLS, live_run_config
 
-    async def busy(queue: LiveRequestQueue) -> AsyncIterator[Event]:
-        # Two tool calls and a reply per turn: three model calls a turn.
-        for question in ["दुकान कहाँ है?", "कितने बजे खुलती है?", "UPI लेते हैं?"]:
-            for event in turn(question, tools=2):
-                yield event
-        await asyncio.Event().wait()
+    hindi = reply_language("hi")
+    config = live_run_config(Settings(app_env="test", _env_file=None), hindi, new_shop=True)
+    assert config.max_llm_calls != VOICE_LLM_CALLS and config.max_llm_calls > 100
+    assert config.session_resumption is not None
+    assert config.context_window_compression
+    assert config.context_window_compression.sliding_window
+    vad = config.realtime_input_config
+    assert vad and vad.automatic_activity_detection
+    assert vad.automatic_activity_detection.silence_duration_ms == END_OF_TURN_SILENCE_MS
+    assert END_OF_TURN_SILENCE_MS >= 1000
+    assert (
+        vad.automatic_activity_detection.end_of_speech_sensitivity
+        == types.EndSensitivity.END_SENSITIVITY_LOW
+    )
+    assert vad.activity_handling == types.ActivityHandling.START_OF_ACTIVITY_INTERRUPTS
+    assert config.enable_affective_dialog is True
+    assert config.proactivity and config.proactivity.proactive_audio is True
+    plain = live_run_config(
+        Settings(app_env="test", _env_file=None), hindi, new_shop=True, extras=False
+    )
+    assert plain.realtime_input_config is None and plain.enable_affective_dialog is None
+    assert plain.speech_config and plain.speech_config.language_code == "hi-IN"
 
+
+async def test_many_tool_calls_never_end_or_rotate_the_live_connection(tmp_path: Path) -> None:
+    """A long onboarding (20 turns, two tool calls each) stays on one Live connection."""
     socket = FakeSocket()
 
-    async def owner_leaves(queue: LiveRequestQueue) -> AsyncIterator[Event]:
-        # The third connection: the owner closes the conversation.
+    async def busy(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        for index in range(20):
+            for event in turn(f"सवाल {index}?", tools=2):
+                yield event
         socket.push({"kind": "close"})
-        async for event in forever(queue):
-            yield event
+        await asyncio.Event().wait()
 
-    live = FakeLive([busy, busy, owner_leaves])
-    context = new_shop_context(tmp_path)
-    stats = await run_voice(live, socket, context)
+    stats = await run_voice(FakeLive([busy]), socket, new_shop_context(tmp_path))
     assert stats.reason == "client_close"
-    assert stats.rotations == 2
+    assert stats.rotations == 0 and stats.turns == 20 and stats.tool_calls == 40
     assert not any(isinstance(e, dict) and e.get("kind") == "error" for e in socket.sent)
-    # The fresh connection knows where the conversation stood.
-    assert context.resumed and context.last_question == "कितने बजे खुलती है?"
-    assert 'Your last question was: "कितने बजे खुलती है?"' in live.instructions[1]
-    assert "Do not greet again" in live.instructions[1]
-    assert 'NEVER ask for these again: name "Sharma Chai"' in live.instructions[1]
+
+
+async def test_rejected_voice_options_fall_back_to_a_plain_session(tmp_path: Path) -> None:
+    """A model that refuses an option (affective dialog, proactivity, VAD) never ends the
+    conversation: the same socket reconnects without them and the turn is answered."""
+    socket = FakeSocket()
+    socket.push({"kind": "text", "text": "name: Lakshmi Tea Stall"})
+    configs: list[Any] = []
+
+    async def refuses(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        raise RuntimeError("1007 invalid argument: enable_affective_dialog is not supported")
+        yield  # pragma: no cover
+
+    async def answers(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        request = await queue.get()
+        assert request.content and request.content.parts
+        for event in turn("आप क्या बेचते हैं?"):
+            yield event
+        socket.push({"kind": "close"})
+        await asyncio.Event().wait()
+
+    live = FakeLive([refuses, answers])
+    original = live.run_live
+
+    def recording(**kwargs: Any) -> AsyncIterator[Event]:
+        configs.append(kwargs["run_config"])
+        return original(**kwargs)
+
+    live.run_live = recording  # type: ignore[method-assign]
+    with capture_logs() as logs:
+        stats = await run_voice(live, socket, new_shop_context(tmp_path))
+    assert stats.reason == "client_close" and stats.turns == 1
+    assert configs[0].enable_affective_dialog is True
+    assert configs[1].enable_affective_dialog is None
+    assert any(entry["event"] == "voice_options_rejected" for entry in logs)
+    # Not a rotation: the owner's first words were never answered, so no "resumed" note.
+    assert stats.rotations == 0
 
 
 async def test_provider_close_rotates_and_replays_the_unanswered_turn(tmp_path: Path) -> None:

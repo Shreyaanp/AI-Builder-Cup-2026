@@ -616,8 +616,14 @@ def _propose_shop(
     ctx.proposals[proposal["id"]] = proposal
     if ctx.new_shop:
         ctx.last_proposal = proposal["id"]
-        ctx.new_shop_draft = NewShopDraft(
-            business=fields, products=proposal["snapshot"]["products"]
+        # Skipped steps, the photo and the live shop stay (only the shop's fields change).
+        ctx.new_shop_draft = (ctx.new_shop_draft or NewShopDraft()).model_copy(
+            update={
+                "business": fields,
+                "products": TypeAdapter(list[ProductFields]).validate_python(
+                    proposal["snapshot"]["products"]
+                ),
+            }
         )
     changes = (
         [
@@ -830,7 +836,7 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
     ctx.proposals[proposal["id"]] = proposal
     if draft:
         ctx.last_proposal = proposal["id"]
-        ctx.new_shop_draft = NewShopDraft(business=draft.business, products=products)
+        ctx.new_shop_draft = draft.model_copy(update={"products": products})
     changes, warnings = [], []
 
     def money(minor: int) -> float:

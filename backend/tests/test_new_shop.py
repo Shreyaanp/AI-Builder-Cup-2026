@@ -284,7 +284,7 @@ def test_new_shop_coach_speaks_first_and_moves_on_when_the_owner_does_not_answer
         assert "What is your business called?" in greeting and "Hi" in greeting
         # The name can wait when skipped; never invent one to move the conversation along.
         idea, _ = turn(client, "I'm not sure. Suggest something or skip it.", sid, empty)
-        assert "leave the name out" in idea and "What kind of business" in idea
+        assert "leave the name out" in idea and "What do you sell?" in idea
         _, events = turn(client, "name: Chai Corner", sid, empty)
         business = next(e for e in events if e["kind"] == "proposal")["data"]["snapshot"][
             "business"
@@ -297,10 +297,12 @@ def test_new_shop_coach_speaks_first_and_moves_on_when_the_owner_does_not_answer
         # Silence on location: the coach leaves it out, says so and asks the next question.
         moved, _ = turn(client, "I'm not sure. Suggest something or skip it.", sid, draft)
         assert "leave the location out" in moved and "opening hours" in moved
-        # Skipped questions stay skipped on later turns.
+        # Skipped questions stay skipped on later turns; never payment, delivery or the menu.
         _, events = turn(client, "hours: 7am-9pm", sid, draft)
         later = next(event["text"] for event in reversed(events) if event["kind"] == "reply")
-        assert "How can customers pay?" in later
+        assert "photo of your shop" in later
+        assert "pay" not in later and "menu" not in later
+        # Without a place the shop is not live yet.
         assert client.get("/api/v1/businesses").json() == []
 
 
@@ -345,10 +347,11 @@ def test_new_shop_voice_session_end_resumes_the_same_conversation(
             socket.send_json({"kind": "text", "text": "Hello! I want to open a new shop."})
             while socket.receive_json()["kind"] != "turn_complete":
                 pass
-            # The cap ends the socket with a reason the app treats as "reconnect".
+            # The 15-minute cap ends the socket politely: the app offers typing and a tap
+            # to talk again in the same conversation.
             while (event := socket.receive_json())["kind"] != "error":
                 pass
-            assert event["code"] == "SESSION_TIMEOUT"
+            assert event["code"] == "SESSION_CAP"
         assert not app.state.services.registry.active
         monkeypatch.setattr("app.voice.NEW_SHOP_SESSION_CAP_SECONDS", 60)
         with client.websocket_connect(
@@ -357,6 +360,8 @@ def test_new_shop_voice_session_end_resumes_the_same_conversation(
             socket.send_json({"kind": "new_shop", "draft": None})
             ready = socket.receive_json()
             assert ready["session_id"] == sid and "code" not in ready
+            # The conversation continues: the app resumes silently (no second greeting).
+            assert ready["data"] == {"continues": True}
             for _ in range(14):
                 socket.send_json({"kind": "text", "text": "I'm not sure. Skip it."})
                 while socket.receive_json()["kind"] != "turn_complete":

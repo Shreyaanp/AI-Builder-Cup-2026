@@ -48,7 +48,8 @@ def test_live_run_config_and_instruction_carry_the_locale(tag: str, code: str, n
     finally:
         ui_language.reset(token)
     assert f"Always speak and write in {name} ({code})." in rule
-    assert f"If the owner mixes languages, still reply in {name}." in rule
+    assert f"understand it and still reply only in {name}" in rule
+    assert "never a mix" in rule
     assert "Never switch to another language or dialect (e.g. Bhojpuri, Maithili, Urdu)" in rule
 
 

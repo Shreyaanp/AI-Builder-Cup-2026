@@ -19,6 +19,7 @@ from .contracts import NewShopVoiceContext, StreamEvent, VoiceControl
 from .coordinator import current
 from .latency import FirstOutput
 from .new_shop_resume import merge_drafts, question_in
+from .new_shop_tools import go_live
 from .reply_language import ReplyLanguage, reply_language
 from .settings import Settings
 from .streaming import CoachRuntime, public_events
@@ -29,16 +30,15 @@ VOICE_PING_SECONDS = 20
 VOICE_IDLE_SECONDS = 45
 # Press-to-talk: leave time for teardown before a 180-second request cap.
 VOICE_SESSION_CAP_SECONDS = 150
-# The new-shop conversation is one open socket for the whole onboarding (the service's request
-# timeout is 3600 s, see deploy.yml). At this cap the app reconnects and the conversation resumes.
-NEW_SHOP_SESSION_CAP_SECONDS = 1800
-# Model calls (turns plus tool calls) per Live connection. ADK's Live flow never counts calls
-# against RunConfig.max_llm_calls (only its request/response flow does), so the budget is counted
-# here. A press-to-talk turn needs a few; a measured new-shop onboarding uses about 2-3 per turn
-# (one reply, one or two tool calls), so 120 is 40+ turns. When it is reached the new-shop
-# conversation moves to a fresh Live connection at the end of a turn instead of ending.
+# The new-shop conversation is one open socket for the whole onboarding (about a minute; the
+# service's request timeout is 3600 s, see deploy.yml). After 15 minutes it ends politely: the
+# app offers "let's continue by typing" and a tap to talk again (owner decision, 17 Oct).
+NEW_SHOP_SESSION_CAP_SECONDS = 900
+# No model-call cap for the Live conversation: ADK's Live flow never counts calls against
+# RunConfig.max_llm_calls (only its request/response flow does), so the old 40-call cap never
+# ended a session; the provider's own close did (no session resumption). Press-to-talk keeps a
+# small budget for its request/response fallback.
 VOICE_LLM_CALLS = 8
-NEW_SHOP_LLM_CALLS = 120
 VOICE_TEXT_TURNS = 12
 # Typed answers and the app's own notes (photo, location, "no answer" nudges) in one socket.
 NEW_SHOP_TEXT_TURNS = 400
@@ -104,7 +104,28 @@ def refresh_new_shop_draft(raw: str) -> bool:
     return True
 
 
-def live_run_config(settings: Settings, language: ReplyLanguage, new_shop: bool) -> RunConfig:
+async def publish_if_ready(websocket: WebSocket) -> None:
+    """The app's own update (the GPS pin) can complete name + kind + place: the shop goes live
+    now, and the app learns it (the draft with its live shop)."""
+    merchant = current.get()
+    if not merchant or not merchant.new_shop:
+        return
+    if await anyio.to_thread.run_sync(go_live, merchant) and merchant.new_shop_draft:
+        await websocket.send_json(
+            StreamEvent(
+                kind="draft", data=merchant.new_shop_draft.model_dump(mode="json")
+            ).payload()
+        )
+
+
+# Owners often pause mid-sentence ("Lakshmi Tea Stall… Indiranagar metro ke paas"): the model
+# waits this long in silence before it takes the turn (the default cut them off).
+END_OF_TURN_SILENCE_MS = 1200
+
+
+def live_run_config(
+    settings: Settings, language: ReplyLanguage, new_shop: bool, extras: bool = True
+) -> RunConfig:
     """The Live session's setup. The owner's chosen language is pinned here (speech and
     transcription) and in the instruction (agent.turn_instruction): left to detect it from the
     audio, the model drifted, e.g. Hindi answered in Bhojpuri.
@@ -112,11 +133,33 @@ def live_run_config(settings: Settings, language: ReplyLanguage, new_shop: bool)
     The new-shop conversation also asks for session resumption: when the provider closes the
     connection (it did, with a normal close, after 1-2 minutes, which ended the run silently),
     ADK reconnects to the same Live session with its handle instead of ending, and a sliding
-    context window keeps a long conversation inside the model's limit."""
+    context window keeps a long conversation inside the model's limit. A GoAway is handled by
+    ADK itself: it reconnects with the latest resumption handle (transparent on Vertex AI).
+
+    `extras`: voice activity detection tuned for owners who pause, barge-in, affective dialog and
+    proactive audio. A model that rejects one of them gets a session without them (logged)."""
     code = language.code if language.live else None
+    tuned: dict[str, Any] = (
+        {
+            "realtime_input_config": types.RealtimeInputConfig(
+                automatic_activity_detection=types.AutomaticActivityDetection(
+                    end_of_speech_sensitivity=types.EndSensitivity.END_SENSITIVITY_LOW,
+                    prefix_padding_ms=300,
+                    silence_duration_ms=END_OF_TURN_SILENCE_MS,
+                ),
+                # Barge-in: the owner speaking stops the coach (audio and captions together).
+                activity_handling=types.ActivityHandling.START_OF_ACTIVITY_INTERRUPTS,
+            ),
+            "enable_affective_dialog": True,
+            "proactivity": types.ProactivityConfig(proactive_audio=True),
+        }
+        if extras
+        else {}
+    )
+    if not new_shop:
+        tuned["max_llm_calls"] = VOICE_LLM_CALLS
     return RunConfig(
         response_modalities=[types.Modality.AUDIO],
-        max_llm_calls=NEW_SHOP_LLM_CALLS if new_shop else VOICE_LLM_CALLS,
         input_audio_transcription=types.AudioTranscriptionConfig(
             language_codes=[code] if code else None
         ),
@@ -134,6 +177,7 @@ def live_run_config(settings: Settings, language: ReplyLanguage, new_shop: bool)
         if new_shop
         else None,
         save_live_blob=False,
+        **tuned,
     )
 
 
@@ -189,6 +233,7 @@ async def offline_voice(
         if len(text) > 5000:
             raise ValueError("Frame too large")
         if refresh_new_shop_draft(text):
+            await publish_if_ready(websocket)
             continue
         command = VoiceControl.model_validate_json(text)
         if command.kind == "close":
@@ -239,6 +284,8 @@ async def gemini_voice(
     stats: VoiceStats,
 ) -> None:
     link = LiveLink()
+    # Tuned voice options on; off for this socket once the model rejected one of them.
+    extras = True
     text_turns = 0
     new_shop = is_new_shop()
     budget = AudioBudget(runtime.settings, new_shop)
@@ -262,6 +309,7 @@ async def gemini_voice(
             if len(raw) > 5000:
                 raise ValueError("Frame too large")
             if refresh_new_shop_draft(raw):
+                await publish_if_ready(websocket)
                 continue
             command = VoiceControl.model_validate_json(raw)
             if command.kind == "close":
@@ -286,19 +334,21 @@ async def gemini_voice(
 
     async def one_connection() -> str:
         """Run one Live connection; returns why it ended (the socket itself stays open)."""
+        nonlocal extras
         events = runtime.live_runner.run_live(
             user_id=principal.uid,
             session_id=sid,
             live_request_queue=link.queue,
-            run_config=live_run_config(runtime.settings, language, new_shop),
+            run_config=live_run_config(runtime.settings, language, new_shop, extras),
         )
         # Time from the owner's last transcribed words to the first audio of the reply.
         heard = FirstOutput("voice_first_audio")
         heard.done = True
-        calls = 0
         said = ""
+        received = False
         try:
             async for event in events:
+                received = True
                 if event.input_transcription and event.input_transcription.text:
                     heard.restart()
                 if event.error_code:
@@ -312,9 +362,7 @@ async def gemini_voice(
                         return "provider_error"
                 if event.output_transcription and event.output_transcription.text:
                     said += event.output_transcription.text
-                tools = len(event.get_function_calls())
-                calls += tools
-                stats.tool_calls += tools
+                stats.tool_calls += len(event.get_function_calls())
                 for visible in public_events(event):
                     await websocket.send_json(visible.payload())
                     if visible.kind == "error":
@@ -332,15 +380,19 @@ async def gemini_voice(
                             )
                             await websocket.send_bytes(blob.data)
                 if event.turn_complete:
-                    calls += 1
                     stats.turns += 1
                     unanswered.clear()
                     stats.last_question = question_in(said) or stats.last_question
                     said = ""
-                    # Near the budget: the next turn starts on a fresh connection.
-                    if new_shop and NEW_SHOP_LLM_CALLS - calls <= 3:
-                        return "llm_budget"
             return "provider_closed"
+        except Exception as failure:
+            if extras and not received:
+                # The model refused the session setup (an option it does not accept): carry on
+                # without the tuned options instead of failing the conversation.
+                log.warning("voice_options_rejected", reason=str(failure)[:300])
+                extras = False
+                return "options_rejected"
+            raise
         finally:
             await events.aclose()
 
@@ -348,10 +400,14 @@ async def gemini_voice(
         while True:
             began = time.monotonic()
             ended = await one_connection()
+            if ended == "options_rejected":
+                # The same conversation, at once, on a plain connection (nothing was said yet).
+                fresh(resumed=False)
+                continue
             if not new_shop or stats.rotations >= MAX_ROTATIONS:
                 stats.end(ended)
                 return
-            if ended != "llm_budget" and time.monotonic() - began < 3 and stats.rotations:
+            if time.monotonic() - began < 3 and stats.rotations:
                 # Two connections in a row that ended at once: the provider is down.
                 stats.end(ended)
                 raise RuntimeError(f"Live connection keeps ending: {ended}")
@@ -359,16 +415,21 @@ async def gemini_voice(
             # saved turns and draft, and the instruction says where the conversation stood.
             stats.rotations += 1
             log.info("voice_rotated", reason=ended, rotation=stats.rotations)
-            previous, link.queue = link.queue, LiveRequestQueue()
-            previous.close()
-            merchant = current.get()
-            if merchant:
-                merchant.resumed = True
-                merchant.last_question = stats.last_question
-            if unanswered:
-                link.queue.send_content(
-                    types.Content(role="user", parts=[types.Part(text=unanswered[0])])
-                )
+            fresh(resumed=True)
+
+    def fresh(resumed: bool) -> None:
+        """A new request queue for the next Live connection; a typed turn the coach never
+        answered goes again."""
+        previous, link.queue = link.queue, LiveRequestQueue()
+        previous.close()
+        merchant = current.get()
+        if merchant and resumed:
+            merchant.resumed = True
+            merchant.last_question = stats.last_question
+        if unanswered:
+            link.queue.send_content(
+                types.Content(role="user", parts=[types.Part(text=unanswered[0])])
+            )
 
     tasks = [asyncio.create_task(upstream()), asyncio.create_task(downstream())]
     try:
@@ -451,7 +512,10 @@ async def serve_voice(
         code, reason, error = 1000, "TAKEN_OVER", "TAKEN_OVER"
     except TimeoutError:
         stats.end("time_cap")
-        code, reason, error = 1001, "SESSION_TIMEOUT", "SESSION_TIMEOUT"
+        # The new-shop conversation ends politely: the app offers typing and a tap to talk again
+        # (it does not reconnect by itself). Press-to-talk simply times out.
+        cap = "SESSION_CAP" if is_new_shop() else "SESSION_TIMEOUT"
+        code, reason, error = 1000 if is_new_shop() else 1001, cap, cap
     except (ValueError, ValidationError, HTTPException) as failure:
         stats.end(f"invalid_frame: {str(failure)[:80]}")
         code, reason, error = 1008, "INVALID_FRAME", "INVALID_FRAME"

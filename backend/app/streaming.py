@@ -30,9 +30,10 @@ APP_NAME = "ogoogle_ai"
 # Tools whose results reach the chat as supplier or order cards.
 SOURCING_TOOLS = {"find_suppliers", "prepare_order", "message_supplier", "cancel_order"}
 # Tools whose result is an app action card: open a screen, or a prepared customer reply.
-ACTION_TOOLS = {"open_screen", "prepare_customer_reply"}
+ACTION_TOOLS = {"open_screen", "prepare_customer_reply", "show_step"}
 # Tools that prepare a sealed proposal for the review dialog.
 PROPOSAL_TOOLS = {
+    "update_shop",
     "propose_business",
     "propose_customer_facts",
     "propose_products",
@@ -130,6 +131,13 @@ def public_events(event: Event) -> list[StreamEvent]:
                 )
                 if proposal:
                     output.append(StreamEvent(kind="proposal", data=proposal))
+                if response.name == "update_shop" and merchant and merchant.new_shop_draft:
+                    # The whole draft, with what the owner skipped: the shop card follows it.
+                    output.append(
+                        StreamEvent(
+                            kind="draft", data=merchant.new_shop_draft.model_dump(mode="json")
+                        )
+                    )
                 if payload.get("status") in {"verification_required", "save_business_first"}:
                     output.append(StreamEvent(kind="workflow", data={"status": payload["status"]}))
     return output

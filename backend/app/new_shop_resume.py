@@ -13,6 +13,7 @@ import re
 import time
 from typing import Any
 
+from google.adk.agents.callback_context import CallbackContext
 from google.adk.events import Event
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.tool_context import ToolContext
@@ -32,7 +33,8 @@ def _filled(value: Any) -> bool:
 
 def merge_drafts(base: NewShopDraft | None, overlay: NewShopDraft | None) -> NewShopDraft | None:
     """`overlay`'s filled values win; an empty value never erases what the owner said. Items are
-    merged by name and unit (the overlay's version of an item wins)."""
+    merged by name and unit (the overlay's version of an item wins); skipped steps, the photo and
+    the live shop only ever add up (a replayed or older copy never undoes them)."""
     if not overlay:
         return base
     if not base:
@@ -44,7 +46,14 @@ def merge_drafts(base: NewShopDraft | None, overlay: NewShopDraft | None) -> New
         business = BusinessFields.model_validate(fields)
     products = {(p.name.casefold(), p.unit.casefold()): p for p in base.products}
     products.update({(p.name.casefold(), p.unit.casefold()): p for p in overlay.products})
-    return NewShopDraft(business=business, products=list(products.values()))
+    skipped = list(dict.fromkeys([*base.skipped, *overlay.skipped]))
+    return NewShopDraft(
+        business=business,
+        products=list(products.values()),
+        skipped=skipped,
+        photo=base.photo or overlay.photo,
+        live_id=overlay.live_id or base.live_id,
+    )
 
 
 def is_empty(draft: NewShopDraft | None) -> bool:
@@ -76,54 +85,73 @@ def saved_draft(state: dict[str, Any]) -> NewShopDraft | None:
         return None
 
 
-# The details the coach gathers, in the order it asks for them: (key, label for the model).
+# What onboarding gathers (owner decision, 17 Oct): name, what they sell, where, hours, a shop
+# photo. Never the menu: that comes after, from Today. (key, label for the model).
 STEPS = (
     ("name", "the shop's real name"),
-    ("kind", "what kind of business it is"),
-    ("menu", "what they sell, with prices (offer a photo of the menu or price board once)"),
-    ("place", "where the shop is"),
-    ("hours", "opening hours"),
+    ("category", "what they sell (the kind of shop)"),
+    (
+        "place",
+        "where the shop is (ask if they are at the shop right now: if yes, call show_step"
+        ' "location" and the phone\'s GPS pins it; if not, ask the area and a landmark)',
+    ),
+    ("hours", 'opening hours, per day ("pata nahi" or no answer: skip it, never invent)'),
+    ("photo", 'a photo of the shop (show_step "camera"; "baad mein" skips it)'),
 )
+
+
+def has_place(fields: BusinessFields | None) -> bool:
+    return bool(fields and (fields.location or fields.lat is not None))
+
+
+def done_steps(draft: NewShopDraft | None) -> dict[str, bool]:
+    """Each step: answered (or skipped, for the optional ones)."""
+    fields = draft.business if draft else None
+    skipped = set(draft.skipped) if draft else set()
+    return {
+        "name": bool(fields and fields.name),
+        "category": bool(fields and fields.category),
+        "place": has_place(fields),
+        "hours": bool(fields and (fields.hours or fields.weekly_hours)) or "hours" in skipped,
+        "photo": bool(draft and draft.photo) or "photo" in skipped,
+    }
+
+
+def ready_to_go_live(draft: NewShopDraft | None) -> bool:
+    """The shop goes live by itself once its name, kind and place are known."""
+    done = done_steps(draft)
+    return done["name"] and done["category"] and done["place"]
 
 
 def known_and_missing(draft: NewShopDraft | None) -> tuple[list[str], list[str]]:
     """What the draft already answers (as the model should read it) and the steps still open."""
     fields = draft.business if draft else None
-    products = draft.products if draft else []
-    done = {
-        "name": bool(fields and fields.name),
-        "kind": bool(fields and fields.category),
-        "menu": bool(products),
-        "place": bool(fields and (fields.location or fields.lat is not None)),
-        "hours": bool(fields and (fields.hours or fields.weekly_hours)),
-    }
+    done = done_steps(draft)
+    skipped = set(draft.skipped) if draft else set()
     known: list[str] = []
     if fields and fields.name:
         known.append(f'name "{fields.name}"')
     if fields and fields.category:
-        known.append(f'kind "{fields.category}"')
-    if products:
-        names = ", ".join(p.name for p in products[:8])
-        more = f" and {len(products) - 8} more" if len(products) > 8 else ""
-        known.append(f"{len(products)} menu items ({names}{more})")
+        known.append(f'sells "{fields.category}"')
     if fields and fields.location:
         known.append(f'place "{fields.location}"')
     elif fields and fields.lat is not None:
-        known.append("place (a pin on the map)")
+        known.append("place (pinned on the map)")
     if fields and (fields.hours or fields.weekly_hours):
-        known.append(f'hours "{fields.hours}"' if fields.hours else "weekly hours")
-    if fields:
-        answers = fields.model_dump(include={"payment_methods", "delivery", "halal"})
-        answers["vegetarian options"] = fields.vegetarian_options
-        known += [f"{k.replace('_', ' ')}" for k, v in answers.items() if v not in (None, [], "")]
-        known += [str(fact.label) for fact in getattr(fields, "custom_facts", []) or []]
+        known.append(f'hours "{fields.hours}"' if fields.hours else "hours (per day)")
+    elif "hours" in skipped:
+        known.append("hours: skipped by the owner (added later from Today)")
+    if draft and draft.photo:
+        known.append("shop photo taken")
+    elif "photo" in skipped:
+        known.append("shop photo: skipped (added later from Today)")
     missing = [label for key, label in STEPS if not done[key]]
     return known, missing
 
 
 def progress_note(draft: NewShopDraft | None, last_question: str, resumed: bool) -> str:
-    """The new-shop instruction's progress part: never ask again what is known, carry on from
-    the next missing step, and after a reconnect, no second greeting or repeated question."""
+    """The new-shop instruction's progress part, rebuilt every turn: never ask again what is
+    known, ask only what is missing, and after a reconnect carry on silently."""
     known, missing = known_and_missing(draft)
     lines = ["\nProgress so far (the saved draft is the source of truth):"]
     lines.append(
@@ -132,27 +160,32 @@ def progress_note(draft: NewShopDraft | None, last_question: str, resumed: bool)
         else "- Nothing is known yet."
     )
     if missing:
-        lines.append("- Still missing, in this order: " + "; ".join(missing) + ".")
-        lines.append(f"- Ask next: {missing[0]}.")
+        lines.append(
+            "- Still missing (ask ONE, the most natural next): " + "; ".join(missing) + "."
+        )
     else:
         lines.append(
-            "- The basics are complete: ask the shop's customer questions from "
-            "get_question_plan (skip any already known), then invite them to review the shop."
+            "- Everything is gathered. Say in one short sentence that the shop is set up (the app"
+            " shows the summary card), then offer the optional face check once"
+            ' (show_step "face_check"); if they decline, wish them well. No more questions.'
         )
+    if draft and draft.live_id:
+        lines.append(
+            "- The shop is already LIVE for customers (the app published it by itself). If you"
+            " have not said so yet, say it once in a few words; never again."
+        )
+    elif ready_to_go_live(draft):
+        lines.append("- Name, kind and place are known: the app is putting the shop live now.")
     if resumed:
         lines.append(
-            "- The connection dropped and the conversation has just resumed. Do not greet again,"
-            " introduce yourself or start over, and do not repeat your last question unprompted."
+            "- The connection dropped and has just come back. Do not greet, introduce yourself,"
+            " summarise or start over, and do not repeat your last question unprompted: wait"
+            " for the owner and answer what they say next."
         )
     if last_question:
         lines.append(
             f'- Your last question was: "{last_question[:240]}". The owner\'s next words '
             "most likely answer it. If the draft already answers it, never ask it again."
-        )
-    if known and not resumed:
-        lines.append(
-            "- If the app's opening message arrives now, the owner is coming back to this shop:"
-            " welcome them back in a few words (no introduction) and ask the next missing step."
         )
     return "\n".join(lines)
 
@@ -221,10 +254,25 @@ def keep_draft(
     return None
 
 
+def keep_draft_after_model(callback_context: CallbackContext, llm_response: Any) -> None:
+    """ADK after-model callback: what the app sent without a tool call (the GPS pin, the photo,
+    a skip) is saved with the coach's next words."""
+    ctx = current.get()
+    if not ctx or not ctx.new_shop or not ctx.new_shop_draft:
+        return None
+    draft = ctx.new_shop_draft.model_dump(mode="json")
+    if callback_context.state.get(DRAFT_STATE) != draft:
+        callback_context.state[DRAFT_STATE] = draft
+    return None
+
+
 def adoptable(state: dict[str, Any], updated: float, finished: set[str]) -> bool:
-    """An owner's recent new-shop conversation with an unfinished draft (its shop not opened)."""
+    """An owner's recent new-shop conversation with an unfinished draft (its shop not opened).
+    A shop that already went live is not adopted: Today asks for what it still misses."""
     draft = saved_draft(state)
     if not state.get("new_shop") or is_empty(draft) or time.time() - updated > ADOPT_SECONDS:
+        return False
+    if draft and draft.live_id:
         return False
     name = draft.business.name.strip().casefold() if draft and draft.business else ""
     return not (name and name in finished)

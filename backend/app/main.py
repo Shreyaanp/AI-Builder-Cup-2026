@@ -66,6 +66,7 @@ from .merchant import MerchantRepository, MerchantStore, NewShopDraft
 from .merchant_firestore import FirestoreMerchantStore
 from .merchant_routes import router as merchant_router
 from .new_shop_resume import is_empty, merge_drafts
+from .new_shop_tools import go_live
 from .owner_routes import router as owner_router
 from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
@@ -349,6 +350,7 @@ def create_app(
         async def produce(turn: TurnReplay) -> None:
             token = None
             merchant: MerchantContext | None = None
+            continues = False
             try:
                 async with asyncio.timeout(settings.max_turn_seconds):
                     if app.state.merchant:
@@ -366,7 +368,9 @@ def create_app(
                         )
                         token = current.set(merchant)
                         if body.new_shop:
-                            await resume_new_shop(merchant, principal, sid, adopted, voice=False)
+                            continues = await resume_new_shop(
+                                merchant, principal, sid, adopted, voice=False
+                            )
                     turn.append(
                         StreamEvent(
                             kind="ready",
@@ -375,6 +379,7 @@ def create_app(
                             code="CONVERSATION_ROLLED_OVER"
                             if body.session_id and str(body.session_id) != sid
                             else None,
+                            data={"continues": True} if continues else None,
                         )
                     )
                     resumed_draft = merchant.new_shop_draft if merchant else None
@@ -492,15 +497,21 @@ def create_app(
 
     async def resume_new_shop(
         merchant: MerchantContext, principal: Principal, sid: str, adopted: bool, *, voice: bool
-    ) -> None:
+    ) -> bool:
         """The saved draft fills what the app's copy is missing (answers saved just before the
         socket dropped never reached it); what the app holds (a moved pin, a photo's items)
-        stays. The coach learns where the conversation stood."""
+        stays. The coach learns where the conversation stood, and a shop whose name, kind and
+        place are all known goes live now (the app's pin can complete it).
+
+        Returns whether the conversation already has turns: the app then resumes SILENTLY (the
+        shop card and the next step's card, no second greeting)."""
         saved, asked, has_turns = await app.state.services.runtime.new_shop_progress(principal, sid)
         merchant.new_shop_draft = merge_drafts(saved, merchant.new_shop_draft)
         merchant.last_question = asked
         # Only a socket that comes back is "resumed"; text turns read the whole history anyway.
-        merchant.resumed = voice and has_turns and not adopted
+        merchant.resumed = voice and has_turns
+        await anyio.to_thread.run_sync(go_live, merchant)
+        return has_turns or adopted
 
     @app.websocket("/api/v1/voice")
     async def voice(websocket: WebSocket) -> None:
@@ -546,8 +557,9 @@ def create_app(
                 )
                 context_token = current.set(merchant)
             sid, adopted = await new_shop_session(principal, requested, bid, new_shop, draft)
+            continues = False
             if merchant and new_shop:
-                await resume_new_shop(merchant, principal, sid, adopted, voice=True)
+                continues = await resume_new_shop(merchant, principal, sid, adopted, voice=True)
             # A reconnect takes the conversation over from its previous socket (never a 409).
             lease = await services.registry.acquire_async(principal.uid, sid, "voice")
             await websocket.send_json(
@@ -556,6 +568,7 @@ def create_app(
                     session_id=sid,
                     mode=settings.coach_mode,
                     code="CONVERSATION_ROLLED_OVER" if requested and requested != sid else None,
+                    data={"continues": True} if continues else None,
                 ).payload()
             )
             resumed_draft = merchant.new_shop_draft if merchant and new_shop else None

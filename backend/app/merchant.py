@@ -276,10 +276,19 @@ class OwnerLocation(BaseModel):
     source: Literal["device", "pin"] = "device"
 
 
+NewShopStep = Literal["hours", "photo", "face"]
+
+
 class NewShopDraft(BaseModel):
     model_config = ConfigDict(extra="forbid")
     business: BusinessFields | None = None
     products: list[ProductFields] = Field(default_factory=list, max_length=200)
+    # Onboarding progress beyond the shop's fields (new_shop_resume): steps the owner skipped
+    # ("pata nahi", "baad mein"), whether the shop photo was taken, and the shop once it is live
+    # (it goes live by itself as soon as name, kind and place are known).
+    skipped: list[NewShopStep] = Field(default_factory=list, max_length=3)
+    photo: bool = False
+    live_id: str | None = Field(default=None, max_length=64)
 
 
 class ProposalRequest(BaseModel):

@@ -194,13 +194,11 @@ async def test_name_then_type_even_when_items_arrive_first(store):
             MerchantContext(store, "alice", None, []),
             vague=True,
         )
-        assert (
-            new_shop_call(
-                "I sell chai", MerchantContext(store, "alice", None, [])
-            ).function_call.args["name"]
-            == ""
-        )
-        assert "REAL NAME first" in NEW_SHOP_INSTRUCTION
+        call = new_shop_call("I sell chai", MerchantContext(store, "alice", None, []))
+        assert call and call.function_call and call.function_call.name == "update_shop"
+        # What they sell is never taken for a name.
+        assert "name" not in (call.function_call.args or {})
+        assert "never invent, suggest or rename it" in NEW_SHOP_INSTRUCTION
     finally:
         current.reset(token)
 
