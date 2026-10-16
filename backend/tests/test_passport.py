@@ -552,3 +552,24 @@ def test_passport_quests_list_nearby_stops(client: TestClient) -> None:
     kinds = {q["kind"] for q in view["quests"]}
     assert {"breakthrough", "crawl", "rescue", "makers"} <= kinds
     assert all(q["need"] >= 3 for q in view["quests"])
+
+
+def test_board_without_location_returns_calm_empty_board(client: TestClient) -> None:
+    sign_in(client, "Naveen Kumar")
+    # Signed in customer with location off and no previous stamps/points
+    board_res = client.get("/api/v1/customer/passport/board")
+    assert board_res.status_code == 200
+    data = board_res.json()
+    assert data["rows"] == []
+    assert data["you"] is None
+    assert data["area"] == ""
+    assert data["joined"] is False
+
+    # Joining the leaderboard still returns a calm empty board without 422
+    client.put("/api/v1/customer/passport/leaderboard", json={"on": True})
+    joined_res = client.get("/api/v1/customer/passport/board")
+    assert joined_res.status_code == 200
+    joined_data = joined_res.json()
+    assert joined_data["joined"] is True
+    assert joined_data["rows"] == []
+
