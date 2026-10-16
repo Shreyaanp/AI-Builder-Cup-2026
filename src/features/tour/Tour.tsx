@@ -22,11 +22,11 @@ const EASE = 'cubic-bezier(0.2, 0, 0, 1)'
 const STEPS: { target: string; destination: Destination }[] = [
   { target: 'menu', destination: 'shop' },
   { target: 'menu', destination: 'shop' },
-  { target: 'prep', destination: 'shop' },
-  { target: 'closeday', destination: 'shop' },
-  { target: 'orders', destination: 'shop' },
+  { target: 'prep', destination: 'grow' },
+  { target: 'closeday', destination: 'grow' },
+  { target: 'orders', destination: 'grow' },
   { target: 'composer', destination: 'coach' },
-  { target: 'nav-google', destination: 'coach' },
+  { target: 'google', destination: 'grow' },
   { target: 'customer', destination: 'shop' },
 ]
 const PAD = 8

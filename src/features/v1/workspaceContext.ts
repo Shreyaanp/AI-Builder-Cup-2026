@@ -1,7 +1,12 @@
 import { createContext, use } from 'react'
 import type { Api, Business, Me, Product, Proposal } from './api'
 
-export type Destination = 'coach' | 'shop' | 'google' | 'privacy'
+/** Bottom tabs, plus sub-pages that open from a tab: Google from Grow, Privacy from You. */
+export type Destination = 'coach' | 'shop' | 'grow' | 'you' | 'google' | 'privacy'
+export const PARENT_TAB: Partial<Record<Destination, Destination>> = {
+  google: 'grow',
+  privacy: 'you',
+}
 export type NewShopPhase = 'hero' | 'chat' | 'review'
 
 export interface Workspace {
@@ -57,7 +62,7 @@ export interface Workspace {
   /** The coach's "+" sheet (new chat, add shop or product, earlier chats); the top bar opens it. */
   coachActions: boolean
   setCoachActions: (open: boolean) => void
-  /** Opens the optional duplicate-owner check (Privacy). */
+  /** Opens the optional duplicate-owner check (You → Verify it's you). */
   faceOpen: boolean
   setFaceOpen: (open: boolean) => void
   editor: Editor
