@@ -452,6 +452,7 @@ export const fil: Copy = {
     gallery: 'mga larawan sa gallery ng tindahan',
     community: 'mga pampublikong kopya ng tindahan',
     memory: 'memory ng assistant',
+    analytics: 'analytics ng tindahan',
     conversations: 'mga usapan',
   } as Record<string, string>,
 }

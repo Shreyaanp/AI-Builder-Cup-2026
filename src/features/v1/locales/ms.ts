@@ -437,6 +437,7 @@ export const ms: Copy = {
     gallery: 'foto galeri kedai',
     community: 'salinan awam kedai',
     memory: 'memori pembantu',
+    analytics: 'analitik kedai',
     conversations: 'perbualan',
   } as Record<string, string>,
 }

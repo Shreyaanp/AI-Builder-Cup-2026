@@ -424,6 +424,7 @@ export const th: Copy = {
     gallery: 'รูปในแกลเลอรีร้าน',
     community: 'สำเนาสาธารณะของร้าน',
     memory: 'หน่วยความจำผู้ช่วย',
+    analytics: 'ข้อมูลวิเคราะห์ร้าน',
     conversations: 'บทสนทนา',
   } as Record<string, string>,
 }
