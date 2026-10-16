@@ -1324,6 +1324,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/discover/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Similar
+         * @description "Similar nearby" on a shop or item page: other shared shops alike in meaning, close by.
+         */
+        get: operations["similar_api_v1_discover_similar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/day/read": {
         parameters: {
             query?: never;
@@ -2730,6 +2750,8 @@ export interface components {
             context?: components["schemas"]["Intent"] | null;
             /** Refine */
             refine?: ("price" | "distance" | "transit" | "open" | "deals" | "local") | null;
+            /** Opened */
+            opened?: string[];
         };
         /** AskResponse */
         AskResponse: {
@@ -2745,6 +2767,12 @@ export interface components {
             anchor?: components["schemas"]["Anchor"] | null;
             command?: components["schemas"]["Command"] | null;
             area?: components["schemas"]["AreaAnswer"] | null;
+            /**
+             * Engine
+             * @default fixture
+             * @enum {string}
+             */
+            engine: "vertex" | "fixture";
         };
         /**
          * AskSuggestions
@@ -2766,6 +2794,25 @@ export interface components {
         AvailabilityRequest: {
             /** Available */
             available: boolean;
+        };
+        /**
+         * Because
+         * @description Why a pick is personal, as facts the app words in each language.
+         */
+        Because: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "followed" | "stamped" | "opened" | "asked" | "like_stamped" | "like_followed";
+            /** Shop Id */
+            shop_id?: string | null;
+            /** Shop */
+            shop?: string | null;
+            /** Item */
+            item?: string | null;
+            /** Query */
+            query?: string | null;
         };
         /** BestAction */
         BestAction: {
@@ -4277,6 +4324,9 @@ export interface components {
              */
             reasons: string[];
             deal?: components["schemas"]["PickDeal"] | null;
+            because?: components["schemas"]["Because"] | null;
+            /** Why */
+            why?: string | null;
         };
         /**
          * PickDeal
@@ -5275,6 +5325,46 @@ export interface components {
              * @default false
              */
             rehearsal_complete: boolean;
+        };
+        /** SimilarPlace */
+        SimilarPlace: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Category */
+            category: string;
+            /** Distance M */
+            distance_m: number;
+            /** Open Now */
+            open_now: boolean | null;
+            /** Currency */
+            currency: string;
+            /**
+             * Demo Shop
+             * @default false
+             */
+            demo_shop: boolean;
+            /** Photo Url */
+            photo_url?: string | null;
+            item?: components["schemas"]["TopItem"] | null;
+            /** Similarity */
+            similarity: number;
+        };
+        /** SimilarResponse */
+        SimilarResponse: {
+            /** Places */
+            places: components["schemas"]["SimilarPlace"][];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "recommendations" | "embeddings";
+            /**
+             * Engine
+             * @enum {string}
+             */
+            engine: "vertex" | "fixture";
         };
         /** SimulateBody */
         SimulateBody: {
@@ -8537,6 +8627,41 @@ export interface operations {
             };
         };
     };
+    similar_api_v1_discover_similar_get: {
+        parameters: {
+            query: {
+                shop: string;
+                item?: string;
+                lat?: number | null;
+                lng?: number | null;
+                radius?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_day_photo_api_v1_businesses__business_id__day_read_post: {
         parameters: {
             query?: {
@@ -9407,6 +9532,8 @@ export interface operations {
                 seen?: string;
                 /** @description Today's finds, to keep them */
                 keep?: string;
+                /** @description Shops opened on this device */
+                opened?: string;
             };
             header?: never;
             path?: never;

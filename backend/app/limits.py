@@ -27,6 +27,7 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "discover:ask": ((15, 60), (300, 86_400)),
     # Front-door suggestion chips: no model call, read once per area per visit.
     "discover:suggest": ((20, 60),),
+    "discover:similar": ((30, 60), (600, 86_400)),
     # Demo world: at most one model call per new ~2 km area; repeats reuse stored shops.
     "demo:world": ((10, 60), (60, 86_400)),
     "recs:event": ((60, 60), (600, 86_400)),

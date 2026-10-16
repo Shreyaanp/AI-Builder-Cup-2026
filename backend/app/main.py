@@ -70,8 +70,15 @@ from .planning_routes import router as planning_router
 from .recap import RecapWriter
 from .recs_routes import router as recs_router
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
-from .retail_recs import EventPipeline, Recommender, RetailClient, configure_recommender
+from .retail_recs import (
+    EventPipeline,
+    Recommender,
+    RetailClient,
+    SimilarShops,
+    configure_recommender,
+)
 from .sales_routes import router as sales_router
+from .search_engine import build_engine
 from .settings import Settings
 from .shop_today import router as shop_today_router
 from .sourcing import SupplierGenerator
@@ -168,6 +175,10 @@ def create_app(
         coordinator.question_planner = QuestionPlanner(settings)
         coordinator.supplier_generator = SupplierGenerator(settings)
         supply_chain.translator = DocumentTranslator(settings)
+        app.state.search = build_engine(
+            settings, app.state.community.docs if app.state.community else None
+        )
+        coordinator.search_engine = app.state.search
         app.state.world_generator = WorldGenerator(settings)
         app.state.column_mapper = ColumnMapper(settings)
         app.state.fraud_reviewer = FraudReviewer(settings)
@@ -189,7 +200,11 @@ def create_app(
             else None
         )
         app.state.recs_events = EventPipeline(retail, settings.recs_events_enabled)
-        configure_recommender(Recommender(retail, settings.recs_enabled))
+        recommender = Recommender(retail, settings.recs_enabled)
+        configure_recommender(recommender)
+        # "Similar nearby": Recommendations AI while its switch is on, else embeddings.
+        if settings.recs_enabled:
+            app.state.search.similar_provider = SimilarShops(recommender)
         app.state.services = Services(
             identity,
             CoachRuntime(settings, session_service),
