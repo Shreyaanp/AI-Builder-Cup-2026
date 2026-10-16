@@ -41,6 +41,7 @@ import { PrivacyScreen } from './screens/PrivacyScreen'
 import { SubPage } from './screens/SubPage'
 import { YouScreen } from './screens/YouScreen'
 import { DiscardPrompt } from './DiscardPrompt'
+import { useIdentity } from '../../auth/useIdentity'
 import { CoachGuide } from '../owner-tools/CoachGuide'
 import { PaymentsScreen } from '../owner-tools/PaymentsScreen'
 import { openOwnerFeature, useOwnerFeature } from '../owner-tools/entry'
@@ -52,6 +53,10 @@ export function AppShell() {
   const ws = useWorkspace()
   const feature = useOwnerFeature()
   const tools = useToolCopy()
+  const { features } = useIdentity()
+  // The Google guide can be switched off for a release; its sub-page then falls back to Coach.
+  const destination =
+    ws.destination === 'google' && !features.google_guide ? 'coach' : ws.destination
   const roles = useTheme().material
   const rail = useMediaQuery(`(min-width:${windowClass.medium}px)`)
   const keyboard = useKeyboardOpen()
@@ -82,14 +87,14 @@ export function AppShell() {
     { id: 'you', label: tabs.navYou, icon: <CircleUserRound size={22} /> },
   ]
   // A sub-page (Google, Privacy) keeps its tab selected.
-  const tab = PARENT_TAB[ws.destination] ?? ws.destination
+  const tab = PARENT_TAB[destination] ?? destination
   // Leaving for a tab closes an open owner feature (guide, payments).
   const go = (destination: Destination) => {
     openOwnerFeature(null)
     ws.go(destination)
   }
   const screen =
-    ws.destination === 'coach'
+    destination === 'coach'
       ? null
       : {
           shop: <ShopScreen />,
@@ -105,7 +110,7 @@ export function AppShell() {
               <PrivacyScreen />
             </SubPage>
           ),
-        }[ws.destination]
+        }[destination]
 
   return (
     <>
@@ -158,7 +163,7 @@ export function AppShell() {
             >
               {/* Coach stays mounted while hidden so drafts, replies and voice survive tab
                 changes; keyed by shop so each shop has its own thread. */}
-              <Box hidden={ws.destination !== 'coach' || feature !== null} sx={{ height: '100%' }}>
+              <Box hidden={destination !== 'coach' || feature !== null} sx={{ height: '100%' }}>
                 <CoachWorkspace galleryPhoto={galleryPhoto} setGalleryPhoto={setGalleryPhoto} />
               </Box>
               {feature === 'guide' ? (
@@ -169,7 +174,7 @@ export function AppShell() {
                 screen
               )}
             </Box>
-            {supporting && ws.destination === 'coach' && !feature && ws.active && !inFlow && (
+            {supporting && destination === 'coach' && !feature && ws.active && !inFlow && (
               <Box
                 component="aside"
                 aria-label={tabs.navShop}

@@ -3,7 +3,10 @@ import assert from 'node:assert/strict'
 const origin = process.env.SMOKE_ORIGIN || 'http://127.0.0.1:8080'
 const request = (path, init = {}) =>
   fetch(`${origin}${path}`, { signal: AbortSignal.timeout(15_000), ...init })
-const health = await (await request('/api/v1/health')).json()
+const healthResponse = await request('/api/v1/health')
+assert.ok(healthResponse.ok)
+const health = await healthResponse.json()
+assert.equal(health.status, 'ok')
 assert.equal(health.product, 'oGoogle AI')
 assert.equal(health.coach_mode, process.env.SMOKE_COACH_MODE || 'offline')
 const authMode = process.env.SMOKE_AUTH_MODE || 'firebase'

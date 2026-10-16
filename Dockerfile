@@ -1,5 +1,7 @@
 FROM node:24-bookworm-slim AS frontend
 WORKDIR /frontend
+ARG ASSET_BASE_URL=/
+ENV ASSET_BASE_URL=$ASSET_BASE_URL
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY src ./src
