@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { enter, localOnly } from './stories/support.js'
+import { enter, image, localOnly } from './stories/support.js'
 
 // The Coach tab's first view ("Today"): day one, items that need the owner, all set, and the
 // pill it shrinks to while chatting. Server facts are the real endpoint unless a test needs
@@ -60,8 +60,14 @@ async function shop(
   page: Page,
   fields: Record<string, unknown>,
   products: Record<string, unknown>[],
-  options: { share?: boolean; confirm?: boolean } = {},
+  options: { share?: boolean; confirm?: boolean; complete?: boolean } = {},
 ) {
+  if (options.complete)
+    // The owner's face check is done (onboarding offers it; skipped, Today reminds).
+    await page.route('**/api/v1/trust', async (route) => {
+      const response = await route.fetch()
+      await route.fulfill({ response, json: { ...(await response.json()), face: 'verified' } })
+    })
   const prepared = await page.request.post('/api/v1/proposals', {
     data: { kind: 'business', revision: 0, business: fields, products },
   })
@@ -78,6 +84,16 @@ async function shop(
     ).toBe(true)
   if (options.confirm)
     expect((await page.request.post(`/api/v1/businesses/${id}/freshness/confirm`)).ok()).toBe(true)
+  if (options.complete)
+    // The shop photo (onboarding asks for it; skipped, Today reminds).
+    expect(
+      (
+        await page.request.post(`/api/v1/businesses/${id}/gallery`, {
+          headers: { 'content-type': 'image/png' },
+          data: (await image(page)).buffer,
+        })
+      ).ok(),
+    ).toBe(true)
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await expect(page.getByRole('button', { name: `Choose shop: ${fields.name}` })).toBeVisible()
@@ -166,7 +182,11 @@ test('all set: nothing pending means no card, one calm line and the pulse', asyn
     yesterday: { sales: 615000, items: 300, views: 52, questions: 4 },
     forecast: { item: 'Masala chai', quantity: 60, unit: 'cup' },
   })
-  await shop(page, { name: 'Courtyard Chai', ...FULL }, PRODUCTS, { share: true, confirm: true })
+  await shop(page, { name: 'Courtyard Chai', ...FULL }, PRODUCTS, {
+    share: true,
+    confirm: true,
+    complete: true,
+  })
   await expect(page.getByTestId('today-all-set')).toHaveText('All set for today')
   await expect(page.getByTestId('today-needs')).toHaveCount(0)
   await expect(page.getByTestId('today-progress')).toHaveCount(0)
@@ -183,7 +203,7 @@ test('all set: nothing pending means no card, one calm line and the pulse', asyn
 
 test('while chatting the card shrinks to one pill that opens the same items', async ({ page }) => {
   await facts(page, { yesterday: { sales: 420000, views: 38 } })
-  await shop(page, { name: 'Courtyard Chai', ...FULL, phone: '' }, PRODUCTS)
+  await shop(page, { name: 'Courtyard Chai', ...FULL, phone: '' }, PRODUCTS, { complete: true })
   await expect(page.getByTestId('today-needs').getByRole('listitem')).toHaveCount(3)
   await page.getByLabel('Message', { exact: true }).fill('Hello')
   await page.getByRole('button', { name: 'Send', exact: true }).click()

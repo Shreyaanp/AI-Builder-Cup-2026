@@ -80,9 +80,10 @@ export function missingSteps(
     // A GPS pin is a place too (onboarding pins the shop; the address may stay empty).
     ['location', !f.location.trim() && f.lat == null],
     ['hours', !hasHours(f)],
-    ['photo', !shop.gallery?.length],
     ['phone', !f.phone.trim()],
     ['share', !shop.public],
+    // Reminders last: what the owner put off is never more urgent than what the shop lacks.
+    ['photo', !shop.gallery?.length],
     ['face', face === 'not_started' || face === 'not_verified'],
   ]
   return steps.filter(([, missing]) => missing).map(([id]) => id)
