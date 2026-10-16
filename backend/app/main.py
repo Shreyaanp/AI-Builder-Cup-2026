@@ -63,6 +63,7 @@ from .recap import RecapWriter
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
 from .sales_routes import router as sales_router
 from .settings import Settings
+from .shop_today import router as shop_today_router
 from .sourcing import SupplierGenerator
 from .sourcing_routes import router as sourcing_router
 from .streaming import CoachRuntime
@@ -221,6 +222,7 @@ def create_app(
     app.include_router(demo_world_router)
     app.include_router(passport_router)
     app.include_router(today_router)
+    app.include_router(shop_today_router)
     app.include_router(sourcing_router)
     app.include_router(owner_router)
     app.add_middleware(

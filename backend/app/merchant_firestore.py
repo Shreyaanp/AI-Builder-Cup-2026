@@ -383,7 +383,7 @@ class FirestoreMerchantStore:
             # Seal the parent before enumerating children: racing transactions either commit
             # before this update (and are enumerated) or retry against the deletion marker.
             snapshot.reference.update({"deleting": True, "public": False})
-            for kind in ("rescue", "brief", "brief_wording"):
+            for kind in ("rescue", "brief", "brief_wording", "shop_daily"):
                 self.feature_docs.delete_scope(kind, snapshot.id)
             owned.append(snapshot.id)
             refs += [item.reference for item in snapshot.reference.collection("inventory").stream()]

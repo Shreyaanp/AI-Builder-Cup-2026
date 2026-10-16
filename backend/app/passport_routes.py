@@ -7,6 +7,7 @@ draws the same passport from them, and they merge once on sign-in.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import time
 from datetime import date
@@ -18,6 +19,7 @@ from fastapi import APIRouter, HTTPException, Request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from pydantic import BaseModel, ConfigDict, Field
 
+from . import shop_today
 from .auth import Principal
 from .community_routes import community, customer, display_name, identity
 from .customer_routes import shared
@@ -497,6 +499,16 @@ async def stamp(body: StampInput, request: Request) -> StampResult:
     )
     await post_board(request, principal, state)
     log.info("passport_stamp", verdict=outcome.verdict, demo=outcome.demo)
+    if outcome.verdict in ("stamped", "card_only"):
+        # Daily totals for the owner's Today page; no customer is identified.
+        zone = str(shop.get("timezone") or "Asia/Singapore")
+        returning = outcome.verdict == "stamped" and not outcome.first
+        metrics: list[shop_today.Metric] = ["stamps", "returning"] if returning else ["stamps"]
+        with contextlib.suppress(Exception):
+            for metric in metrics:
+                await anyio.to_thread.run_sync(
+                    shop_today.count, store(request), body.shop_id, metric, zone
+                )
     return StampResult(
         outcome=outcome,
         passport=await build_view(
