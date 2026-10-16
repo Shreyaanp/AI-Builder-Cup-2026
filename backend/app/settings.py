@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     v1_enabled: bool = False
     merchant_backend: Literal["sqlite", "firestore"] = "sqlite"
     embedding_model: str = "gemini-embedding-2"
+    # The shared search engine: Vertex embeddings when Gemini runs on Vertex ("auto"), or the
+    # offline concept fixture; Gemini one-line reasons for the top personal picks.
+    search_embeddings: Literal["auto", "fixture", "vertex"] = "auto"
+    search_explanations: bool = True
     media_bucket: str = ""
     # Shop gallery photos when no bucket is configured (local development and tests).
     media_dir: str = "data/media"
