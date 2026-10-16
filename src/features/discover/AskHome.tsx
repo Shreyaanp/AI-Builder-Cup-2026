@@ -32,7 +32,8 @@ import { preferenceChips } from '../customer/preferences'
 import { ProfileSheet } from '../customer/Profile'
 import { usePassportCopy } from '../passport/copy'
 import { TodayDeck } from '../passport/TodayDeck'
-import { GoogleRows, MiniMap, PickCard } from './AnswerCards'
+import { AreaAnswerCard, GoogleRows, PickCard } from './AnswerCards'
+import { AnswerMap, type MapSelection } from './AnswerMap'
 import { askCopy } from './askStrings'
 import {
   clearTurns,
@@ -916,6 +917,8 @@ function AssistantTurn({
   const t = askCopy(locale)
   const account = useCustomer()
   const accountCopy = accountCopyFor(locale)
+  // Pins and cards are linked both ways: tap a pin, its card lights up; focus a card, its pin.
+  const [selected, setSelected] = useState<MapSelection>(null)
   if (turn.kind === 'today')
     return (
       // The deck carries its own title ("Today near …"): no second heading above it.
@@ -1071,7 +1074,8 @@ function AssistantTurn({
     ...refinements.slice(0, 3),
     ...(intent.followups ?? []).slice(0, 1).map((text) => ({ label: text, q: text })),
   ]
-  const nothing = ours.length === 0 && google.length === 0
+  const area = answer.area ?? null
+  const nothing = ours.length === 0 && google.length === 0 && !(area?.status === 'ok')
   return (
     <Box sx={{ mt: 4 }}>
       <Typography variant="bodyLarge" sx={chalkWrite}>
@@ -1144,17 +1148,22 @@ function AssistantTurn({
                 anchor={answer.anchor}
                 copy={copy}
                 locale={locale}
+                selected={selected?.id === pick.id && selected.from === 'pin'}
+                onFocusPin={() => setSelected({ id: pick.id, from: 'card' })}
               />
             ))}
           </Box>
-          <MiniMap
-            picks={ours.slice(0, 8)}
-            center={turn.place}
-            anchor={answer.anchor}
-            copy={copy}
-          />
         </>
       )}
+      {area && <AreaAnswerCard area={area} locale={locale} />}
+      <AnswerMap
+        answer={answer}
+        ours={ours.slice(0, 8)}
+        center={turn.place}
+        locale={locale}
+        selected={selected}
+        onSelect={setSelected}
+      />
       {google.length > 0 && <GoogleRows places={google} copy={copy} locale={locale} />}
       {latest && (
         <>

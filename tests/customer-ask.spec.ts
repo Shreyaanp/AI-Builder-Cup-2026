@@ -115,7 +115,7 @@ test('ask: a real shop answers with its exact item and price; back returns to th
   await expect(card).toContainText('Kopi', { timeout: 15_000 })
   await expect(card).toContainText('₹18.00')
   await expect(card).toContainText(/\d+ (m|km)/)
-  await expect(page.getByRole('img', { name: 'Map of these places' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Map of these places' })).toBeVisible()
   await page.waitForTimeout(900)
   if (isMobile) await page.screenshot({ path: 'docs/stories/customer-ai-3-answer.png' })
   expect(
