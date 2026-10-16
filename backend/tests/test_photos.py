@@ -1,5 +1,6 @@
 import io
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7,7 +8,7 @@ from google.adk.sessions import InMemorySessionService
 from PIL import Image
 
 from app.main import create_app
-from app.photos import FIXTURE_BLOCK_WIDTH, PhotoRejected, sanitize
+from app.photos import FIXTURE_BLOCK_WIDTH, PhotoPipeline, PhotoRejected, sanitize
 from app.settings import Settings
 
 
@@ -21,6 +22,21 @@ def jpeg(width: int = 64, *, exif: bool = False) -> bytes:
     else:
         image.save(output, format="JPEG")
     return output.getvalue()
+
+
+def test_gcs_uploads_set_cache_metadata_without_making_objects_public() -> None:
+    pipeline = PhotoPipeline(Settings(_env_file=None, media_bucket="fixture-private-bucket"))
+    bucket = Mock()
+    pipeline._bucket = bucket
+    blob = bucket.blob.return_value
+    pipeline.store_sync("fixture-owner", None, b"sanitized-intake")
+    assert blob.cache_control == "private, no-store"
+    blob.upload_from_string.assert_called_once_with(b"sanitized-intake", content_type="image/jpeg")
+    blob.reset_mock()
+    pipeline.save_gallery_sync("fixture-shop", "fixture-photo", b"sanitized-gallery")
+    assert blob.cache_control == "private, max-age=3600"
+    blob.upload_from_string.assert_called_once_with(b"sanitized-gallery", content_type="image/jpeg")
+    blob.make_public.assert_not_called()
 
 
 @pytest.fixture

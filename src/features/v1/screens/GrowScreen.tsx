@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Box, LinearProgress, Stack, Typography, useTheme } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
 import { CalendarClock, Globe, IndianRupee, Stamp } from 'lucide-react'
+import { useIdentity } from '../../../auth/useIdentity'
 import { CloseDayTile } from '../../closeday/CloseDay'
 import { openOwnerFeature } from '../../owner-tools/entry'
 import { useToolCopy } from '../../owner-tools/copy'
@@ -46,6 +47,7 @@ function GrowTiles() {
   const tabs = useTabsCopy()
   const plan = usePlanCopy()
   const tools = useToolCopy()
+  const { features } = useIdentity()
   const ws = useWorkspace()
   const roles = useTheme().material
   const [planOpen, setPlanOpen] = useState(false)
@@ -83,23 +85,25 @@ function GrowTiles() {
         >
           <Supporting>{tools.riderTitle}</Supporting>
         </Tile>
-        <Tile
-          span={2}
-          tour="google"
-          icon={<Globe size={20} />}
-          label={t.googleTitle}
-          value={missing > 0 ? tabs.googleMissing(missing) : tabs.googleReady}
-          onClick={() => ws.go('google')}
-        >
-          {missing > 0 && (
-            <LinearProgress
-              variant="determinate"
-              value={(done / total) * 100}
-              aria-hidden="true"
-              sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
-            />
-          )}
-        </Tile>
+        {features.google_guide && (
+          <Tile
+            span={2}
+            tour="google"
+            icon={<Globe size={20} />}
+            label={t.googleTitle}
+            value={missing > 0 ? tabs.googleMissing(missing) : tabs.googleReady}
+            onClick={() => ws.go('google')}
+          >
+            {missing > 0 && (
+              <LinearProgress
+                variant="determinate"
+                value={(done / total) * 100}
+                aria-hidden="true"
+                sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
+              />
+            )}
+          </Tile>
+        )}
         <Tile
           icon={<Stamp size={20} />}
           label={tabs.perks}

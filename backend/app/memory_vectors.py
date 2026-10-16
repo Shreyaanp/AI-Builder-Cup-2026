@@ -9,6 +9,7 @@ import hashlib
 import re
 import time
 from collections.abc import Callable
+from threading import Lock
 from typing import Any, Protocol
 from uuid import uuid4
 
@@ -118,6 +119,8 @@ class ConversationRecall:
     collection = "conversation_lexical_v1"
 
     def __init__(self, path: str) -> None:
+        # Local Qdrant shares mutable arrays and one SQLite connection across workers.
+        self._lock = Lock()
         self.client = QdrantClient(path=path, force_disable_check_same_thread=True)
         if not self.client.collection_exists(self.collection):
             self.client.create_collection(
@@ -129,48 +132,52 @@ class ConversationRecall:
         vector = lexical_vector(text)
         if not any(vector):
             return
-        self.client.upsert(
-            self.collection,
-            [
-                models.PointStruct(
-                    id=str(uuid4()),
-                    vector=vector,
-                    payload={
-                        "uid": uid,
-                        "business_id": bid or "",
-                        "text": text[:2000],
-                        "at": time.time(),
-                    },
-                )
-            ],
-        )
+        with self._lock:
+            self.client.upsert(
+                self.collection,
+                [
+                    models.PointStruct(
+                        id=str(uuid4()),
+                        vector=vector,
+                        payload={
+                            "uid": uid,
+                            "business_id": bid or "",
+                            "text": text[:2000],
+                            "at": time.time(),
+                        },
+                    )
+                ],
+            )
 
     def search(self, uid: str, bid: str | None, text: str) -> list[str]:
         vector = lexical_vector(text)
         if not any(vector):
             return []
-        result = self.client.query_points(
-            self.collection,
-            query=vector,
-            limit=4,
-            query_filter=models.Filter(
-                must=[
-                    models.FieldCondition(key="uid", match=models.MatchValue(value=uid)),
-                    models.FieldCondition(
-                        key="business_id", match=models.MatchValue(value=bid or "")
-                    ),
-                ]
-            ),
-        )
-        return [
-            str((point.payload or {}).get("text", ""))
-            for point in result.points
-            if point.score > 0.1
-        ]
+        with self._lock:
+            result = self.client.query_points(
+                self.collection,
+                query=vector,
+                limit=4,
+                query_filter=models.Filter(
+                    must=[
+                        models.FieldCondition(key="uid", match=models.MatchValue(value=uid)),
+                        models.FieldCondition(
+                            key="business_id", match=models.MatchValue(value=bid or "")
+                        ),
+                    ]
+                ),
+            )
+            return [
+                str((point.payload or {}).get("text", ""))
+                for point in result.points
+                if point.score > 0.1
+            ]
 
     def forget(self, uid: str, bids: list[str]) -> None:
         owner = models.FieldCondition(key="uid", match=models.MatchValue(value=uid))
-        self.client.delete(self.collection, models.Filter(must=[owner]))
+        with self._lock:
+            self.client.delete(self.collection, models.Filter(must=[owner]))
 
     def close(self) -> None:
-        self.client.close()
+        with self._lock:
+            self.client.close()
