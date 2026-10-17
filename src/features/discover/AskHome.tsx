@@ -55,7 +55,7 @@ import {
   type Turn,
 } from './askThread'
 import { discoverCopy } from './strings'
-import { fillIn, useConversationCopy, type ConversationCopy } from './conversationCopy'
+import { fillIn, samplePrice, useConversationCopy, type ConversationCopy } from './conversationCopy'
 import { ensureDemoWorld, isIndianArea } from './demoWorld'
 import { localRankShops, prefetchAreaShops } from './shopCache'
 import { recsEvent } from '../recs/events'
@@ -198,7 +198,7 @@ export default function AskHome({
     if (listening) return t.listening
     if (turns.length) return c.composer
     if (isIndianArea(place.lat, place.lng, place.label)) {
-      return c.placeholder.replace('$3', '₹50')
+      return c.placeholder.replace(samplePrice(currency, locale), samplePrice('INR', locale))
     }
     return c.placeholder
   }, [
@@ -210,6 +210,8 @@ export default function AskHome({
     place.lat,
     place.lng,
     place.label,
+    currency,
+    locale,
   ])
   const [suggested, setSuggested] = useState<{ key: string; data: Suggestions } | null>(null)
   const placeKey = `${place.lat},${place.lng}`
