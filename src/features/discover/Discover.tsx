@@ -28,7 +28,7 @@ import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { Sheet } from '../v1/Sheet'
 import { formatPrice } from '../v1/format'
 import { discoverCopy } from './strings'
-import { ensureDemoWorld } from './demoWorld'
+import { areaCurrency, ensureDemoWorld } from './demoWorld'
 import { locallyMadeLabel } from '../public/locallyMade'
 import { PlaceSearch } from './PlaceSearch'
 import type { FoundPlace } from './PlaceSearch'
@@ -212,7 +212,17 @@ export default function Discover({
         if (!response.ok) throw new Error('Discovery unavailable')
         const data = (await response.json()) as Discovery
         if (!abort.signal.aborted) {
-          setResult(data)
+          const seen = new Set<string>()
+          const uniquePlaces = data.places.filter((p) => {
+            const norm = p.name
+              .replace(/\s*\((Tour|Demo)\)$/i, '')
+              .trim()
+              .toLowerCase()
+            if (seen.has(norm)) return false
+            seen.add(norm)
+            return true
+          })
+          setResult({ ...data, places: uniquePlaces })
           setStatus('ready')
         }
       } catch {
@@ -653,6 +663,7 @@ export default function Discover({
           onClose={() => setMap(false)}
           titleId="customer-map-title"
           title={t.map}
+          dismissInActions
           actions={<Button onClick={() => setMap(false)}>{t.list}</Button>}
         >
           <Suspense fallback={<Typography role="status">{t.loading}</Typography>}>
@@ -797,7 +808,13 @@ export default function Discover({
                         variant="bodyMedium"
                         sx={{ fontVariantNumeric: 'tabular-nums' }}
                       >
-                        {item.name} · {formatPrice(item.price, place.currency ?? 'SGD', locale)}
+                        {item.name} ·{' '}
+                        {formatPrice(
+                          item.price,
+                          place.currency ??
+                            areaCurrency(lat, lng, filters.place?.label ?? filters.area),
+                          locale,
+                        )}
                       </Typography>
                     ))}
                     {place.sold_out.length > 0 && (

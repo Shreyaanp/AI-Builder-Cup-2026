@@ -34,8 +34,17 @@ from .gemini_schema import gemini_schema, parse_reply
 from .merchant import BusinessFields, CustomFact, MerchantRepository, ProductFields
 from .money import exponent, to_major, to_minor
 from .product_units import UNITS, normalize_unit
+from .search_engine import (
+    SOURCING_ITEM_RECALL,
+    Components,
+    Relevance,
+    SearchEngine,
+    blend,
+    fresh_days,
+)
 from .settings import Settings
 from .shop_time import shop_timezone
+from .words import words as words_of
 
 log = structlog.get_logger()
 
@@ -107,7 +116,7 @@ SYNONYMS: dict[str, tuple[str, ...]] = {
 
 
 def words(text: str) -> set[str]:
-    return set(re.findall(r"[^\W\d_]+", text.casefold()))
+    return set(words_of(text.casefold()))
 
 
 def canonical(item: str) -> str | None:
@@ -642,8 +651,13 @@ def fact(shop: dict[str, Any], key: str, default: str) -> str:
 
 
 def candidates(
-    shops: Iterable[dict[str, Any]], own_id: str, pin: ShopPin, item: str
+    shops: Iterable[dict[str, Any]],
+    own_id: str,
+    pin: ShopPin,
+    item: str,
+    relevance: dict[str, Relevance] | None = None,
 ) -> list[dict[str, Any]]:
+    """Shops within reach that stock the item, by its words or (search engine) its meaning."""
     found = []
     for shop in shops:
         if shop["id"] == own_id or shop.get("lat") is None or shop.get("lng") is None:
@@ -653,11 +667,17 @@ def candidates(
         km = haversine(pin.lat, pin.lng, shop["lat"], shop["lng"])
         if km > SEARCH_KM:
             continue
-        products = [p for p in shop.get("products", []) if matches(p["name"], item)]
+        meaning = (relevance or {}).get(shop["id"]) or Relevance()
+        products = [p for p in shop.get("products", []) if matches(p["name"], item)] or [
+            # No product by name: one close in meaning ("maida" for "all-purpose flour").
+            p
+            for p in shop.get("products", [])
+            if meaning.items.get(p["name"], 0.0) >= SOURCING_ITEM_RECALL
+        ]
         if not shop.get("supplier"):
             products = [p for p in products if unit_of(p["unit"]) in BULK_UNITS]
         if products:
-            found.append({"shop": shop, "km": km, "products": products})
+            found.append({"shop": shop, "km": km, "products": products, "meaning": meaning})
     return found
 
 
@@ -668,7 +688,11 @@ def per_unit(product: dict[str, Any], unit: str) -> float:
 
 
 def rank(
-    found: list[dict[str, Any]], unit: str, quantity: float | None, currency: str
+    found: list[dict[str, Any]],
+    unit: str,
+    quantity: float | None,
+    currency: str,
+    item: str = "",
 ) -> list[dict[str, Any]]:
     if not found:
         return []
@@ -676,15 +700,22 @@ def rank(
         entry["product"] = sorted(
             entry["products"], key=lambda p: (not p.get("available", True), per_unit(p, unit))
         )[0]
-    far = max(entry["km"] for entry in found) or 1.0
-    dear = max(per_unit(entry["product"], unit) for entry in found) or 1.0
-    found.sort(
-        key=lambda e: (
-            0.5 * e["km"] / far
-            + 0.4 * per_unit(e["product"], unit) / dear
-            + (0 if e["product"].get("available", True) else 2)
+    cheapest = min(per_unit(entry["product"], unit) for entry in found) or 1.0
+
+    def score(entry: dict[str, Any]) -> float:
+        product = entry["product"]
+        meaning = entry.get("meaning") or Relevance()
+        components = Components(
+            semantic=meaning.items.get(product["name"], 0.0),
+            keyword=1.0 if matches(product["name"], item) else 0.0,
+            distance_m=entry["km"] * 1000,
+            price_fit=cheapest / (per_unit(product, unit) or cheapest),
+            fresh_days=fresh_days(entry["shop"].get("last_confirmed")),
         )
-    )
+        # The same engine and weights as customer search, with the sourcing profile.
+        return blend(components, "sourcing") - (0 if product.get("available", True) else 2)
+
+    found.sort(key=lambda e: -score(e))
     cards = []
     for position, entry in enumerate(found[:RESULTS], start=1):
         shop, product = entry["shop"], entry["product"]
@@ -726,13 +757,26 @@ async def find(
     unit: str,
     generator: SupplierGenerator,
     demo_owner: str,
+    engine: SearchEngine | None = None,
 ) -> dict[str, Any]:
     import anyio
 
     context = await anyio.to_thread.run_sync(store.context, uid, bid)
     pin = shop_pin(context["business"]["fields"])
-    shops = await anyio.to_thread.run_sync(store.shared_shops)
-    found = candidates(shops, bid, pin, item)
+
+    async def search() -> list[dict[str, Any]]:
+        shops = await anyio.to_thread.run_sync(store.shared_shops)
+        near = [
+            s
+            for s in shops
+            if s.get("lat") is not None
+            and s.get("lng") is not None
+            and haversine(pin.lat, pin.lng, s["lat"], s["lng"]) <= SEARCH_KM
+        ]
+        relevance = await anyio.to_thread.run_sync(engine.relevance, item, near) if engine else None
+        return candidates(near, bid, pin, item, relevance)
+
+    found = await search()
     generated = False
     source = ""
     if not found:
@@ -748,10 +792,9 @@ async def find(
             except HTTPException:
                 # A demo ID owned by someone else is never taken over; skip that one.
                 log.warning("demo_supplier_seed_skipped", supplier=sid)
-        shops = await anyio.to_thread.run_sync(store.shared_shops)
-        found = candidates(shops, bid, pin, item)
+        found = await search()
         generated = True
-    cards = rank(found, unit_of(unit), quantity, pin.currency)
+    cards = rank(found, unit_of(unit), quantity, pin.currency, item)
     return {
         "item": item,
         "quantity": quantity,

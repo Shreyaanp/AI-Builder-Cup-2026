@@ -164,7 +164,9 @@ async function customerHolds(customer: Page, shopName: string, qr: string, mode:
   await test.step('4 · the customer sees it on the Rescue map and list', async () => {
     await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/rescue`)
     await customer.getByRole('button', { name: 'Use my location' }).click()
-    await expect(customer.getByText('Leftovers from shops near your location')).toBeVisible()
+    const rescueLead =
+      /Leftovers from shops near|दुकानों का बचा हुआ खाना|দোকানের বেঁচে যাওয়া খাবার|దుకాಣాల్లో మిగిలిన ఆహారం|दुकानांतील उरलेले पदार्थ|ಅಂಗಡಿಗಳಲ್ಲಿ ಉಳಿದ ಆಹಾರ|கடைகளில் மீதமான உணவு|店铺打烊前剩下的食物|周辺のお店の|가게들이 문 닫기 전|อาหารเหลือจากร้าน|Lebihan makanan dari kedai|Sisa makanan dari toko|Đồ ăn còn dư|Mga natirang pagkain/
+    await expect(customer.getByText(rescueLead)).toBeVisible()
     const card = customer.getByRole('listitem').filter({ hasText: shopName })
     await expect(card).toBeVisible({ timeout: 20_000 })
     await expect(card).toContainText('Masala bun')
@@ -216,7 +218,12 @@ async function customerHolds(customer: Page, shopName: string, qr: string, mode:
     await customer.goto(qr)
     const moment = customer.getByRole('dialog')
     await expect(moment.getByRole('button', { name: 'Done' })).toBeVisible()
+    // Tap only once the check is done: a tap during it has no celebration to skip, and axe
+    // would then read lines still fading in (as S8 does).
+    await expect(moment.getByRole('progressbar')).toHaveCount(0)
     await moment.getByRole('heading').first().click()
+    for (const line of await moment.locator('.stamp-line').all())
+      await expect(line).toHaveCSS('opacity', '1', { timeout: 500 })
     await expect(moment.getByRole('heading', { name: 'Rescued!' })).toBeVisible()
     await expect(moment.getByText('Meals you kept out of the bin: 1')).toBeVisible()
     await expect(moment.getByText('+40 points')).toBeVisible()

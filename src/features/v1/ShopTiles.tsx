@@ -38,6 +38,7 @@ import { FactList } from './FactList'
 import { PendingCard } from './PendingCard'
 import { MenuSheet } from '../shop/MenuSheet'
 import { FreshnessCard } from '../sales/ShopInsights'
+import { ConnectTile } from '../connect/ConnectTile'
 import { Sheet } from './Sheet'
 import { ShopQr } from './ShopQr'
 import { OwnerPerks } from '../passport/games/OwnerPerks'
@@ -330,6 +331,10 @@ export function ShopTiles({
                   >
                     <Typography component="span" variant="bodyMedium" noWrap sx={{ minWidth: 0 }}>
                       {product.name}
+                      {/* Same item in two sizes (chai per cup and per pot): the unit tells them apart. */}
+                      {product.unit &&
+                        ws.products.filter((other) => other.name === product.name).length > 1 &&
+                        ` / ${product.unit}`}
                     </Typography>
                     <Typography
                       component="span"
@@ -384,12 +389,22 @@ export function ShopTiles({
         value={unread === null ? '–' : t.unread(unread)}
         onClick={() => onSheet('messages')}
       />
+      <ConnectTile />
     </Box>
   )
 }
 
 /** Every My shop sheet. Also opened from coach suggestion chips. */
-export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onClose: () => void }) {
+export function ShopSheets({
+  kind,
+  onClose,
+  menuFocus = null,
+}: {
+  kind: ShopSheetKind | null
+  onClose: () => void
+  /** The menu opens at this item (a coach link to a change it just saved). */
+  menuFocus?: string | null
+}) {
   const t = useCopy()
   const rewards = useRewardCopy()
   const plan = usePlanCopy()
@@ -531,7 +546,7 @@ export function ShopSheets({ kind, onClose }: { kind: ShopSheetKind | null; onCl
         </Sheet>
       )
     case 'menu':
-      return <MenuSheet {...common} />
+      return <MenuSheet {...common} focus={menuFocus} />
     case 'soldOut':
       return (
         <Sheet {...common} titleId="soldout-sheet-title" title={t.soldOutToday}>

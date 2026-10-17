@@ -149,11 +149,51 @@ export function isFood(fields: { category?: string; name?: string }): boolean {
   return !fields.category?.trim() || FOOD.test(`${fields.category} ${fields.name ?? ''}`)
 }
 
-export function missingFacts(fields: ShopFacts & { category?: string; name?: string }): AskFact[] {
+// Shops that serve meals (not a tea or coffee stall): customers ask what they can eat.
+const MEALS =
+  /restaurant|kitchen|hawker|eat|food|noodle|rice|bakery|bake|cake|dessert|dhaba|mess|tiffin|makan|warung|restoran|nhà hàng|kainan|karinderya|pagkain|食|餐|อาหาร|レストラン|음식|식당|உணவு|भोजन|खाना|ढाबा|टिफिन|नाश्ता|मिठाई/i
+
+/** A meal shop whose owner skipped the vegetarian question (it stays optional). */
+export function dietaryMissing(fields: ShopFacts & { category?: string; name?: string }) {
+  return (
+    Boolean(fields.category?.trim()) &&
+    MEALS.test(fields.category!) &&
+    fields.vegetarian_options == null
+  )
+}
+
+/** The saved shop's typed profile, as far as the facts it may hold go (backend vendor_profile). */
+interface FactProfile {
+  kind?: string
+  food?: { diet?: string; serves_meat?: boolean | null; halal_relevant?: boolean } | null
+}
+
+/**
+ * Mirrors halal_allowed in backend/app/vendor_profile.py: a typed profile takes halal only for
+ * a food shop that serves meat where the question is relevant. Asking otherwise was a dead end
+ * (the card asked, and saving the answer was refused).
+ */
+function halalAsked(profile: FactProfile | null | undefined) {
+  if (!profile?.kind || profile.kind === 'generic')
+    return !['veg_only', 'vegan'].includes(profile?.food?.diet ?? '')
+  const food = profile.food
+  return Boolean(
+    profile.kind === 'food' &&
+    food &&
+    !['veg_only', 'vegan'].includes(food.diet ?? '') &&
+    food.serves_meat === true &&
+    food.halal_relevant,
+  )
+}
+
+export function missingFacts(
+  fields: ShopFacts & { category?: string; name?: string; profile?: FactProfile | null },
+): AskFact[] {
   // Unknown type yet: ask everything; food questions drop once the category says otherwise.
   const food = isFood(fields)
   return ASK_ORDER.filter((key) => {
     if (!food && FOOD_ONLY.includes(key)) return false
+    if (key === 'halal' && !halalAsked(fields.profile)) return false
     const value = fields[key]
     return value == null || value === '' || (Array.isArray(value) && value.length === 0)
   })

@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import json
 import math
@@ -27,8 +28,10 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "discover:ask": ((15, 60), (300, 86_400)),
     # Front-door suggestion chips: no model call, read once per area per visit.
     "discover:suggest": ((20, 60),),
+    "discover:similar": ((30, 60), (600, 86_400)),
     # Demo world: at most one model call per new ~2 km area; repeats reuse stored shops.
     "demo:world": ((10, 60), (60, 86_400)),
+    "recs:event": ((60, 60), (600, 86_400)),
     "stock:ip": ((30, 86_400),),
     "stock:shop": ((300, 86_400),),
     "stock:read": ((60, 60),),
@@ -46,6 +49,11 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "rescue:public": ((30, 60),),
     "rescue:hold": ((20, 60), (100, 86_400)),
     "recap": ((30, 60), (300, 86_400)),
+    # Shop playbook: automatic rebuilds (missing / material change / weekly) and the owner's
+    # "make a fresh one". Each rebuild is at most one model call; GCP credit is limited.
+    "playbook": ((10, 3_600), (30, 86_400)),
+    "playbook:regenerate": ((3, 3_600), (10, 86_400)),
+    "playbook:edit": ((60, 600),),
     "tts": ((30, 60), (600, 86_400)),
     "proposal": ((60, 60),),
     # The address under the owner's map pin, looked up once the map stops moving.
@@ -217,6 +225,36 @@ async def enforce_limits(
 class Lease:
     key: tuple[str, str]
     token: str
+    # "voice": a Live socket; "text": one streamed text turn.
+    kind: str = "text"
+
+
+# How long a lease lives without renewal. Voice sockets renew on every heartbeat, so a socket
+# whose server task died (instance gone, missed close) frees its conversation within this time.
+LEASE_TTL_SECONDS = 90
+
+# Leases taken over in this process: the old holder's signal to end its stream at once.
+_lost: dict[str, asyncio.Event] = {}
+
+
+def lease_lost(lease: Lease) -> asyncio.Event:
+    """Set when a newer stream takes this lease over (see `takes_over`)."""
+    return _lost.setdefault(lease.token, asyncio.Event())
+
+
+def signal_lost(token: str) -> None:
+    _lost.setdefault(token, asyncio.Event()).set()
+
+
+def forget_lease(token: str) -> None:
+    _lost.pop(token, None)
+
+
+def takes_over(held: str, wanted: str) -> bool:
+    """A reconnect replaces the conversation's open voice socket (the old one is a dropped
+    network or a phone that slept) instead of being refused with 409. A text turn also replaces
+    a voice socket: the owner switched to typing. Two text turns stay exclusive."""
+    return held == "voice" or wanted == "voice"
 
 
 class RunRegistry:
@@ -225,23 +263,38 @@ class RunRegistry:
     def __init__(self, maximum: int) -> None:
         self.maximum = maximum
         self.active: dict[tuple[str, str], str] = {}
+        self.kinds: dict[tuple[str, str], str] = {}
 
-    def acquire(self, user_id: str, session_id: str) -> Lease:
+    def acquire(self, user_id: str, session_id: str, kind: str = "text") -> Lease:
         key = (user_id, session_id)
-        if key in self.active:
+        held = self.active.get(key)
+        if held is not None and not takes_over(self.kinds.get(key, "text"), kind):
             raise HTTPException(409, "This conversation already has an active stream.")
-        if len(self.active) >= self.maximum:
+        if held is None and len(self.active) >= self.maximum:
             raise HTTPException(429, "The coach is busy. Try again shortly.")
-        lease = Lease(key, str(uuid4()))
+        lease = Lease(key, str(uuid4()), kind)
+        if held is not None:
+            log.info("stream_taken_over", held=self.kinds.get(key, "text"), by=kind)
+            signal_lost(held)
         self.active[key] = lease.token
+        self.kinds[key] = kind
         return lease
 
     def release(self, lease: Lease) -> None:
+        forget_lease(lease.token)
         if self.active.get(lease.key) == lease.token:
             del self.active[lease.key]
+            self.kinds.pop(lease.key, None)
 
-    async def acquire_async(self, user_id: str, session_id: str) -> Lease:
-        return self.acquire(user_id, session_id)
+    def holds(self, lease: Lease) -> bool:
+        return self.active.get(lease.key) == lease.token
+
+    async def acquire_async(self, user_id: str, session_id: str, kind: str = "text") -> Lease:
+        return self.acquire(user_id, session_id, kind)
 
     async def release_async(self, lease: Lease) -> None:
         self.release(lease)
+
+    async def renew_async(self, lease: Lease) -> bool:
+        """Keep a long stream's lease; False once a newer stream took the conversation."""
+        return self.holds(lease)

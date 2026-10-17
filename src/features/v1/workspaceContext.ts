@@ -31,6 +31,8 @@ export interface Workspace {
   newShopReady: boolean
   dismissNewShopReady: () => void
   products: Product[]
+  /** True once products for the active shop have finished loading. */
+  productsLoaded: boolean
   destination: Destination
   speakReplies: boolean
   setSpeakReplies: (value: boolean) => void
@@ -44,6 +46,8 @@ export interface Workspace {
   shareUrl: string | null
   /** Show an exact proposal for owner review; saving happens only from the review dialog. */
   review: (proposal: Proposal) => void
+  /** IDs of proposals the owner confirmed in the review during this session (latest last). */
+  savedProposals: string[]
   /**
    * Save a sealed proposal the owner has just seen in full and tapped to confirm in place
    * (e.g. one inline price change), then refresh. Same exact-digest approval as the review.

@@ -84,7 +84,7 @@ export function FollowButton({
         <Button
           aria-pressed={following}
           aria-label={label}
-          variant={following ? 'contained' : 'outlined'}
+          variant="outlined"
           size="small"
           startIcon={icon}
           aria-busy={busy}

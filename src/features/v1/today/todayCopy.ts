@@ -88,7 +88,7 @@ const copy: Record<Locale, TodayCopy> = {
     sold: (n) => `${n} sold`,
     views: (n) => `${n} saw your page`,
     asked: (n) => `${n} asked`,
-    stamps: (n) => `${n} stamps`,
+    stamps: (n) => (n === '1' ? '1 stamp' : `${n} stamps`),
     regulars: (n) => `${n} came back`,
     forecast: (q, item) => `Today: about ${q} ${item}`,
     busy: (hours) => `busiest ${hours}`,

@@ -55,7 +55,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: 'What you tell me appears here.',
     more: (n) => `+${n} more`,
     tryAgain: 'Try again',
-    reconnect: 'Reconnect',
+    reconnect: 'Retry',
     close: 'Close',
     micBlockedTitle: 'Your microphone is blocked',
     micBlockedBody:
@@ -63,9 +63,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: 'No microphone found',
     noMicBody:
       'Connect a microphone or close other apps that are using it, then try again. You can type meanwhile.',
-    connectionTitle: 'Connection lost',
+    connectionTitle: 'Voice paused',
     connectionBody:
-      'I tried to reconnect but couldn’t. Check your internet, then reconnect. Everything we said is kept.',
+      'The connection dropped. Voice comes back by itself when your internet does, or tap Retry. We carry on from the same question, and you can keep typing.',
     rateTitle: 'Voice is busy',
     rateBody: (s) => `Too many voice sessions just now. Try again in ${s} s, or type meanwhile.`,
     unavailableTitle: 'Voice isn’t available right now',
@@ -88,7 +88,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: 'आप जो बताएँगे, वह यहाँ दिखेगा।',
     more: (n) => `+${n} और`,
     tryAgain: 'फिर कोशिश करें',
-    reconnect: 'फिर से जोड़ें',
+    reconnect: 'फिर से कोशिश करें',
     close: 'बंद करें',
     micBlockedTitle: 'आपका माइक ब्लॉक है',
     micBlockedBody:
@@ -96,9 +96,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: 'कोई माइक नहीं मिला',
     noMicBody:
       'माइक जोड़ें या उसे इस्तेमाल कर रहे दूसरे ऐप बंद करें, फिर कोशिश करें। तब तक आप लिख सकते हैं।',
-    connectionTitle: 'कनेक्शन टूट गया',
+    connectionTitle: 'आवाज़ रुकी है',
     connectionBody:
-      'मैंने फिर से जुड़ने की कोशिश की, पर नहीं हो पाया। इंटरनेट जाँचें, फिर से जोड़ें। हमारी सारी बात सहेजी हुई है।',
+      'कनेक्शन टूट गया। इंटरनेट लौटते ही आवाज़ अपने आप लौट आएगी, या फिर से कोशिश करें दबाएँ। हम उसी सवाल से आगे बढ़ेंगे, और आप लिखते रह सकते हैं।',
     rateTitle: 'आवाज़ अभी व्यस्त है',
     rateBody: (s) => `अभी बहुत सारे वॉइस सत्र हैं। ${s} सेकंड बाद फिर कोशिश करें, या तब तक लिखें।`,
     unavailableTitle: 'आवाज़ अभी उपलब्ध नहीं है',
@@ -121,7 +121,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: 'আপনি যা বলবেন, এখানে দেখা যাবে।',
     more: (n) => `আরও ${n}টি`,
     tryAgain: 'আবার চেষ্টা করুন',
-    reconnect: 'আবার সংযোগ করুন',
+    reconnect: 'আবার চেষ্টা করুন',
     close: 'বন্ধ করুন',
     micBlockedTitle: 'আপনার মাইক ব্লক করা আছে',
     micBlockedBody:
@@ -129,9 +129,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: 'কোনো মাইক পাওয়া যায়নি',
     noMicBody:
       'একটি মাইক যুক্ত করুন বা যে অ্যাপগুলো এটি ব্যবহার করছে সেগুলো বন্ধ করুন, তারপর আবার চেষ্টা করুন। ততক্ষণ লিখতে পারেন।',
-    connectionTitle: 'সংযোগ বিচ্ছিন্ন',
+    connectionTitle: 'ভয়েস থেমে আছে',
     connectionBody:
-      'আবার সংযোগের চেষ্টা করেছি, কিন্তু হয়নি। ইন্টারনেট দেখে আবার সংযোগ করুন। আমাদের সব কথা রাখা আছে।',
+      'সংযোগ বিচ্ছিন্ন হয়েছে। ইন্টারনেট ফিরলে ভয়েস নিজেই ফিরবে, অথবা আবার চেষ্টা করুন চাপুন। আমরা একই প্রশ্ন থেকে চালিয়ে যাব, আর আপনি লিখতে থাকতে পারেন।',
     rateTitle: 'কণ্ঠ এখন ব্যস্ত',
     rateBody: (s) =>
       `এই মুহূর্তে অনেক ভয়েস সেশন। ${s} সেকেন্ড পরে আবার চেষ্টা করুন, বা ততক্ষণ লিখুন।`,
@@ -155,7 +155,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: 'మీరు చెప్పేది ఇక్కడ కనిపిస్తుంది.',
     more: (n) => `+${n} మరిన్ని`,
     tryAgain: 'మళ్ళీ ప్రయత్నించండి',
-    reconnect: 'మళ్ళీ కనెక్ట్ చేయండి',
+    reconnect: 'మళ్ళీ ప్రయత్నించండి',
     close: 'మూసివేయండి',
     micBlockedTitle: 'మీ మైక్ బ్లాక్ చేయబడింది',
     micBlockedBody:
@@ -163,9 +163,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: 'మైక్ కనబడలేదు',
     noMicBody:
       'మైక్ కనెక్ట్ చేయండి లేదా దాన్ని వాడుతున్న ఇతర యాప్‌లను మూసివేసి మళ్ళీ ప్రయత్నించండి. అప్పటిదాకా టైప్ చేయవచ్చు.',
-    connectionTitle: 'కనెక్షన్ పోయింది',
+    connectionTitle: 'వాయిస్ ఆగింది',
     connectionBody:
-      'మళ్ళీ కనెక్ట్ చేయడానికి ప్రయత్నించాను, కానీ కాలేదు. ఇంటర్నెట్ చూసి మళ్ళీ కనెక్ట్ చేయండి. మనం మాట్లాడినదంతా భద్రంగా ఉంది.',
+      'కనెక్షన్ పోయింది. ఇంటర్నెట్ రాగానే వాయిస్ దానంతట అదే వస్తుంది, లేదా మళ్ళీ ప్రయత్నించండి నొక్కండి. అదే ప్రశ్న నుంచి కొనసాగిస్తాం, మీరు టైప్ చేస్తూ ఉండవచ్చు.',
     rateTitle: 'వాయిస్ బిజీగా ఉంది',
     rateBody: (s) =>
       `ప్రస్తుతం చాలా వాయిస్ సెషన్లు ఉన్నాయి. ${s} సెకన్ల తర్వాత మళ్ళీ ప్రయత్నించండి, లేదా టైప్ చేయండి.`,
@@ -189,7 +189,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: 'तुम्ही जे सांगाल ते इथे दिसेल.',
     more: (n) => `+${n} आणखी`,
     tryAgain: 'पुन्हा प्रयत्न करा',
-    reconnect: 'पुन्हा जोडा',
+    reconnect: 'पुन्हा प्रयत्न करा',
     close: 'बंद करा',
     micBlockedTitle: 'तुमचा माइक ब्लॉक आहे',
     micBlockedBody:
@@ -197,9 +197,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: 'माइक सापडला नाही',
     noMicBody:
       'माइक जोडा किंवा तो वापरणारे इतर अ‍ॅप बंद करा, मग पुन्हा प्रयत्न करा. तोपर्यंत तुम्ही लिहू शकता.',
-    connectionTitle: 'जोडणी तुटली',
+    connectionTitle: 'आवाज थांबला आहे',
     connectionBody:
-      'मी पुन्हा जोडण्याचा प्रयत्न केला, पण जमले नाही. इंटरनेट तपासा, मग पुन्हा जोडा. आपले सर्व बोलणे जपले आहे.',
+      'जोडणी तुटली. इंटरनेट परत आले की आवाज आपोआप परत येईल, किंवा पुन्हा प्रयत्न करा दाबा. आपण त्याच प्रश्नापासून पुढे जाऊ, आणि तुम्ही लिहीत राहू शकता.',
     rateTitle: 'आवाज सध्या व्यस्त आहे',
     rateBody: (s) =>
       `सध्या खूप व्हॉइस सत्रे आहेत. ${s} सेकंदांनी पुन्हा प्रयत्न करा, किंवा तोपर्यंत लिहा.`,
@@ -223,7 +223,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: 'ನೀವು ಹೇಳುವುದು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ.',
     more: (n) => `+${n} ಇನ್ನಷ್ಟು`,
     tryAgain: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
-    reconnect: 'ಮತ್ತೆ ಸಂಪರ್ಕಿಸಿ',
+    reconnect: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
     close: 'ಮುಚ್ಚಿ',
     micBlockedTitle: 'ನಿಮ್ಮ ಮೈಕ್ ನಿರ್ಬಂಧಿಸಲಾಗಿದೆ',
     micBlockedBody:
@@ -231,9 +231,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: 'ಮೈಕ್ ಸಿಗಲಿಲ್ಲ',
     noMicBody:
       'ಮೈಕ್ ಸಂಪರ್ಕಿಸಿ ಅಥವಾ ಅದನ್ನು ಬಳಸುತ್ತಿರುವ ಇತರ ಆ್ಯಪ್‌ಗಳನ್ನು ಮುಚ್ಚಿ, ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ. ಅಲ್ಲಿಯವರೆಗೆ ಬರೆಯಬಹುದು.',
-    connectionTitle: 'ಸಂಪರ್ಕ ಕಡಿತಗೊಂಡಿದೆ',
+    connectionTitle: 'ಧ್ವನಿ ನಿಂತಿದೆ',
     connectionBody:
-      'ಮತ್ತೆ ಸಂಪರ್ಕಿಸಲು ಪ್ರಯತ್ನಿಸಿದೆ, ಆದರೆ ಆಗಲಿಲ್ಲ. ಇಂಟರ್ನೆಟ್ ಪರಿಶೀಲಿಸಿ, ಮತ್ತೆ ಸಂಪರ್ಕಿಸಿ. ನಾವು ಮಾತನಾಡಿದ್ದೆಲ್ಲ ಉಳಿದಿದೆ.',
+      'ಸಂಪರ್ಕ ಕಡಿತಗೊಂಡಿದೆ. ಇಂಟರ್ನೆಟ್ ಬಂದ ಕೂಡಲೇ ಧ್ವನಿ ತಾನಾಗಿ ಮರಳುತ್ತದೆ, ಅಥವಾ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ ಒತ್ತಿ. ಅದೇ ಪ್ರಶ್ನೆಯಿಂದ ಮುಂದುವರಿಯುತ್ತೇವೆ, ನೀವು ಟೈಪ್ ಮಾಡುತ್ತಿರಬಹುದು.',
     rateTitle: 'ಧ್ವನಿ ಈಗ ಬ್ಯುಸಿಯಾಗಿದೆ',
     rateBody: (s) =>
       `ಈಗ ತುಂಬಾ ಧ್ವನಿ ಸೆಷನ್‌ಗಳಿವೆ. ${s} ಸೆಕೆಂಡುಗಳ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ, ಅಥವಾ ಬರೆಯಿರಿ.`,
@@ -257,15 +257,16 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: '你告诉我的内容会显示在这里。',
     more: (n) => `还有 ${n} 项`,
     tryAgain: '重试',
-    reconnect: '重新连接',
+    reconnect: '重试',
     close: '关闭',
     micBlockedTitle: '麦克风已被阻止',
     micBlockedBody:
       '如需说话，请允许本网站使用麦克风：点按网址旁的锁形图标，选择“麦克风”，然后选择“允许”。在此之前我们先打字继续。',
     noMicTitle: '未找到麦克风',
     noMicBody: '请连接麦克风，或关闭正在使用它的其他应用，然后重试。你也可以先打字。',
-    connectionTitle: '连接已断开',
-    connectionBody: '我尝试重新连接但没有成功。请检查网络后重新连接。我们说过的内容都已保留。',
+    connectionTitle: '语音已暂停',
+    connectionBody:
+      '连接已断开。网络恢复后语音会自动回来，也可以点“重试”。我们会从同一个问题继续，你也可以继续打字。',
     rateTitle: '语音繁忙',
     rateBody: (s) => `当前语音会话过多。请在 ${s} 秒后重试，或先打字。`,
     unavailableTitle: '语音暂时不可用',
@@ -288,7 +289,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: 'Apa yang anda beritahu akan muncul di sini.',
     more: (n) => `+${n} lagi`,
     tryAgain: 'Cuba lagi',
-    reconnect: 'Sambung semula',
+    reconnect: 'Cuba lagi',
     close: 'Tutup',
     micBlockedTitle: 'Mikrofon anda disekat',
     micBlockedBody:
@@ -296,9 +297,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: 'Tiada mikrofon ditemui',
     noMicBody:
       'Sambungkan mikrofon atau tutup aplikasi lain yang menggunakannya, kemudian cuba lagi. Anda boleh menaip sementara itu.',
-    connectionTitle: 'Sambungan terputus',
+    connectionTitle: 'Suara dijeda',
     connectionBody:
-      'Saya cuba menyambung semula tetapi gagal. Semak internet anda, kemudian sambung semula. Semua perbualan kita disimpan.',
+      'Sambungan terputus. Suara akan kembali sendiri apabila internet pulih, atau ketik Cuba lagi. Kita sambung dari soalan yang sama, dan anda boleh terus menaip.',
     rateTitle: 'Suara sedang sibuk',
     rateBody: (s) =>
       `Terlalu banyak sesi suara sekarang. Cuba lagi dalam ${s} saat, atau taip sementara itu.`,
@@ -322,7 +323,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: 'நீங்கள் சொல்வது இங்கே தோன்றும்.',
     more: (n) => `+${n} மேலும்`,
     tryAgain: 'மீண்டும் முயலவும்',
-    reconnect: 'மீண்டும் இணை',
+    reconnect: 'மீண்டும் முயல்',
     close: 'மூடு',
     micBlockedTitle: 'உங்கள் மைக் தடுக்கப்பட்டுள்ளது',
     micBlockedBody:
@@ -330,9 +331,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: 'மைக் கிடைக்கவில்லை',
     noMicBody:
       'மைக்கை இணைக்கவும் அல்லது அதைப் பயன்படுத்தும் பிற ஆப்களை மூடவும், பின் மீண்டும் முயலவும். அதுவரை தட்டச்சு செய்யலாம்.',
-    connectionTitle: 'இணைப்பு துண்டிக்கப்பட்டது',
+    connectionTitle: 'குரல் நின்றுள்ளது',
     connectionBody:
-      'மீண்டும் இணைக்க முயன்றேன், முடியவில்லை. இணையத்தைச் சரிபார்த்து மீண்டும் இணைக்கவும். நாம் பேசியவை அனைத்தும் சேமிக்கப்பட்டுள்ளன.',
+      'இணைப்பு துண்டிக்கப்பட்டது. இணையம் வந்ததும் குரல் தானாகத் திரும்பும், அல்லது மீண்டும் முயல் என்பதைத் தட்டவும். அதே கேள்வியிலிருந்து தொடர்வோம், நீங்கள் தட்டச்சு செய்துகொண்டே இருக்கலாம்.',
     rateTitle: 'குரல் பிஸியாக உள்ளது',
     rateBody: (s) =>
       `இப்போது அதிக குரல் அமர்வுகள் உள்ளன. ${s} விநாடிகளில் மீண்டும் முயலவும், அல்லது தட்டச்சு செய்யவும்.`,
@@ -356,7 +357,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: '教えてくれた内容がここに表示されます。',
     more: (n) => `ほか ${n} 件`,
     tryAgain: 'もう一度試す',
-    reconnect: '再接続',
+    reconnect: '再試行',
     close: '閉じる',
     micBlockedTitle: 'マイクがブロックされています',
     micBlockedBody:
@@ -364,9 +365,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: 'マイクが見つかりません',
     noMicBody:
       'マイクを接続するか、マイクを使っている他のアプリを閉じてから、もう一度お試しください。その間は入力できます。',
-    connectionTitle: '接続が切れました',
+    connectionTitle: '音声を一時停止中',
     connectionBody:
-      '再接続を試みましたが、できませんでした。インターネット接続を確認して再接続してください。これまでの会話は保存されています。',
+      '接続が切れました。インターネットが戻ると音声も自動で戻ります。「再試行」を押しても大丈夫です。同じ質問から続けます。入力はそのまま続けられます。',
     rateTitle: '音声が混み合っています',
     rateBody: (s) =>
       `音声セッションが多すぎます。${s} 秒後にもう一度試すか、その間は入力してください。`,
@@ -390,7 +391,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: '말씀하신 내용이 여기에 표시됩니다.',
     more: (n) => `외 ${n}개`,
     tryAgain: '다시 시도',
-    reconnect: '다시 연결',
+    reconnect: '다시 시도',
     close: '닫기',
     micBlockedTitle: '마이크가 차단되어 있어요',
     micBlockedBody:
@@ -398,9 +399,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: '마이크를 찾을 수 없어요',
     noMicBody:
       '마이크를 연결하거나 마이크를 사용 중인 다른 앱을 닫은 뒤 다시 시도하세요. 그동안 입력할 수 있어요.',
-    connectionTitle: '연결이 끊어졌어요',
+    connectionTitle: '음성이 잠시 멈췄어요',
     connectionBody:
-      '다시 연결하려 했지만 실패했어요. 인터넷을 확인한 뒤 다시 연결하세요. 나눈 대화는 모두 저장되어 있어요.',
+      '연결이 끊어졌어요. 인터넷이 돌아오면 음성도 자동으로 돌아와요. 다시 시도를 눌러도 돼요. 같은 질문부터 이어가고, 입력은 계속할 수 있어요.',
     rateTitle: '음성이 혼잡해요',
     rateBody: (s) => `지금 음성 세션이 너무 많아요. ${s}초 후 다시 시도하거나 그동안 입력하세요.`,
     unavailableTitle: '지금은 음성을 사용할 수 없어요',
@@ -423,7 +424,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: 'Apa yang Anda ceritakan muncul di sini.',
     more: (n) => `+${n} lagi`,
     tryAgain: 'Coba lagi',
-    reconnect: 'Hubungkan ulang',
+    reconnect: 'Coba lagi',
     close: 'Tutup',
     micBlockedTitle: 'Mikrofon Anda diblokir',
     micBlockedBody:
@@ -431,9 +432,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: 'Mikrofon tidak ditemukan',
     noMicBody:
       'Sambungkan mikrofon atau tutup aplikasi lain yang memakainya, lalu coba lagi. Anda bisa mengetik sementara itu.',
-    connectionTitle: 'Koneksi terputus',
+    connectionTitle: 'Suara dijeda',
     connectionBody:
-      'Saya mencoba menghubungkan ulang tetapi gagal. Periksa internet Anda, lalu hubungkan ulang. Semua percakapan kita tersimpan.',
+      'Koneksi terputus. Suara akan kembali sendiri saat internet pulih, atau ketuk Coba lagi. Kita lanjut dari pertanyaan yang sama, dan Anda bisa terus mengetik.',
     rateTitle: 'Suara sedang sibuk',
     rateBody: (s) =>
       `Terlalu banyak sesi suara saat ini. Coba lagi dalam ${s} detik, atau ketik sementara itu.`,
@@ -457,16 +458,16 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: 'สิ่งที่คุณบอกจะแสดงที่นี่',
     more: (n) => `อีก ${n} รายการ`,
     tryAgain: 'ลองอีกครั้ง',
-    reconnect: 'เชื่อมต่อใหม่',
+    reconnect: 'ลองอีกครั้ง',
     close: 'ปิด',
     micBlockedTitle: 'ไมโครโฟนถูกบล็อก',
     micBlockedBody:
       'หากต้องการพูด ให้อนุญาตไมโครโฟนสำหรับเว็บไซต์นี้: แตะไอคอนแม่กุญแจข้างที่อยู่เว็บ เลือกไมโครโฟน แล้วเลือกอนุญาต ระหว่างนี้เราพิมพ์คุยกันไปก่อน',
     noMicTitle: 'ไม่พบไมโครโฟน',
     noMicBody: 'เชื่อมต่อไมโครโฟนหรือปิดแอปอื่นที่ใช้งานอยู่ แล้วลองอีกครั้ง ระหว่างนี้พิมพ์ได้',
-    connectionTitle: 'การเชื่อมต่อขาดหาย',
+    connectionTitle: 'เสียงหยุดชั่วคราว',
     connectionBody:
-      'ฉันพยายามเชื่อมต่อใหม่แต่ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วเชื่อมต่อใหม่ ทุกอย่างที่เราคุยกันยังอยู่ครบ',
+      'การเชื่อมต่อขาดหาย เสียงจะกลับมาเองเมื่ออินเทอร์เน็ตกลับมา หรือแตะลองอีกครั้ง เราจะต่อจากคำถามเดิม และคุณพิมพ์ต่อได้เลย',
     rateTitle: 'ระบบเสียงไม่ว่าง',
     rateBody: (s) => `ขณะนี้มีการใช้เสียงมากเกินไป ลองอีกครั้งใน ${s} วินาที หรือพิมพ์ไปก่อน`,
     unavailableTitle: 'ยังใช้เสียงไม่ได้ในขณะนี้',
@@ -489,7 +490,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: 'Những gì bạn kể sẽ hiện ở đây.',
     more: (n) => `+${n} nữa`,
     tryAgain: 'Thử lại',
-    reconnect: 'Kết nối lại',
+    reconnect: 'Thử lại',
     close: 'Đóng',
     micBlockedTitle: 'Micrô của bạn đang bị chặn',
     micBlockedBody:
@@ -497,9 +498,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: 'Không tìm thấy micrô',
     noMicBody:
       'Hãy kết nối micrô hoặc đóng các ứng dụng khác đang dùng nó, rồi thử lại. Trong lúc đó bạn có thể nhập.',
-    connectionTitle: 'Mất kết nối',
+    connectionTitle: 'Giọng nói tạm dừng',
     connectionBody:
-      'Tôi đã thử kết nối lại nhưng không được. Hãy kiểm tra Internet rồi kết nối lại. Mọi điều chúng ta đã nói vẫn được giữ.',
+      'Mất kết nối. Giọng nói sẽ tự quay lại khi có Internet, hoặc chạm Thử lại. Chúng ta sẽ tiếp tục từ đúng câu hỏi đó, và bạn vẫn có thể gõ.',
     rateTitle: 'Giọng nói đang bận',
     rateBody: (s) =>
       `Hiện có quá nhiều phiên giọng nói. Hãy thử lại sau ${s} giây, hoặc nhập trong lúc chờ.`,
@@ -523,7 +524,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     cardHint: 'Lalabas dito ang mga sinasabi mo.',
     more: (n) => `+${n} pa`,
     tryAgain: 'Subukan muli',
-    reconnect: 'Kumonektang muli',
+    reconnect: 'Subukang muli',
     close: 'Isara',
     micBlockedTitle: 'Naka-block ang mikropono mo',
     micBlockedBody:
@@ -531,9 +532,9 @@ const copy: Record<Locale, VoiceModeCopy> = {
     noMicTitle: 'Walang nahanap na mikropono',
     noMicBody:
       'Magkonekta ng mikropono o isara ang ibang app na gumagamit nito, saka subukan muli. Puwede kang mag-type habang naghihintay.',
-    connectionTitle: 'Naputol ang koneksyon',
+    connectionTitle: 'Naka-pause ang boses',
     connectionBody:
-      'Sinubukan kong kumonektang muli pero hindi nagawa. Tingnan ang internet mo, saka kumonektang muli. Nakatabi ang lahat ng pinag-usapan natin.',
+      'Naputol ang koneksyon. Babalik ang boses kapag bumalik ang internet, o i-tap ang Subukang muli. Itutuloy natin mula sa parehong tanong, at puwede kang mag-type habang naghihintay.',
     rateTitle: 'Abala ang boses',
     rateBody: (s) =>
       `Masyadong maraming voice session ngayon. Subukan muli pagkalipas ng ${s} segundo, o mag-type muna.`,

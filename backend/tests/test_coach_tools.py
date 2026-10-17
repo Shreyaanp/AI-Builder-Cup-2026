@@ -451,11 +451,14 @@ def test_model_text_excludes_thought_parts(ctx, partial, kind):
     assert public_events(event) == []
 
 
-@pytest.mark.parametrize("language", ["hi", "es", "ta-IN"])
-def test_instruction_uses_current_fallback_language(ctx, language):
+@pytest.mark.parametrize(
+    ("language", "pinned"),
+    [("hi", "Hindi (hi-IN)"), ("es", "English (en-US)"), ("ta-IN", "Tamil (ta-IN)")],
+)
+def test_instruction_pins_the_app_language(ctx, language, pinned):
     token = ui_language.set(language)
     try:
-        assert instruction(object()).endswith(f"App language (fallback only): {language}")
+        assert f"Always speak and write in {pinned}." in instruction(object())
     finally:
         ui_language.reset(token)
 
@@ -569,10 +572,12 @@ def test_question_plan_fits_the_business_type(ctx):
     assert plan["business_type"] == "beauty salon"
     keys = [question["key"] for question in plan["pending"]]
     assert "walk_ins" in keys and "booking" in keys
-    # One list: common facts first (no food facts for a salon), then salon questions.
-    assert keys[0] == "payment_methods"
+    # One list: the owner's skippable goals first, then common facts (no food facts for a
+    # salon), then salon questions.
+    assert keys[:4] == ["focus", "busy_hours", "regulars", "payment_methods"]
+    assert all(q["skippable"] for q in plan["pending"][:3])
     assert not {"halal", "delivery", "vegetarian_options"} & set(keys)
-    assert plan["pending"][0]["record_with"] == "payment_methods"
+    assert plan["pending"][3]["record_with"] == "payment_methods"
     assert plan["pending"][-1]["record_with"] == "custom_facts"
 
 

@@ -13,13 +13,11 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { LOCALE_NAMES, LOCALES } from '../../i18n/locales'
-import { formatPrice } from '../v1/format'
-import { useFrontCopy } from './strings'
+import { LanguagePicker } from './LanguagePicker'
+import { useFrontCopy, useStoryCopy } from './strings'
 import './landing.css'
 
 const businessUrl = 'https://business.chalkboard.shreyaan.work'
-// Demo prices are shown as a Singapore shop would see them.
-const sgd = (minor: number) => formatPrice(minor, 'SGD', 'en-SG')
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches
 // The same semantic roles and appearance as the app, including a remembered dark theme.
 const brandVars = (roles: Theme['material'], mode: Theme['palette']['mode']) =>
@@ -139,33 +137,36 @@ function Phone({ children, label }: { children: ReactNode; label: string }) {
 
 /** Three screens of the product, shown as the story scrolls. */
 function StoryScreen({ step }: { step: number }) {
+  const s = useStoryCopy()
   return (
     <>
       <div className={`lp-screen ${step === 0 ? 'on' : ''}`} aria-hidden={step !== 0}>
         <div className="lp-viewfinder">
           <div className="lp-board">
             <span>MENU</span>
-            <span>Kopi ........ 2.00</span>
-            <span>Kopi O ...... 1.60</span>
-            <span>Kaya toast .. 2.50</span>
+            <span>{s.boardItem1}</span>
+            <span>{s.boardItem2}</span>
+            <span>{s.boardItem3}</span>
           </div>
           <div className="lp-scanline" />
         </div>
         <div className="lp-shimmer">
-          <Camera size={16} /> Reading your board…
+          <Camera size={16} /> {s.readingBoard}
         </div>
       </div>
       <div className={`lp-screen ${step === 1 ? 'on' : ''}`} aria-hidden={step !== 1}>
-        <div className="lp-bubble me">Kopi is $1.80 now, kaya toast sold out</div>
-        <div className="lp-bubble coach">
-          Prepared: kopi {sgd(200)} → {sgd(180)} per cup, kaya toast sold out. Check and confirm.
-        </div>
+        <div className="lp-bubble me">{s.bubbleMe}</div>
+        <div className="lp-bubble coach">{s.bubbleCoach}</div>
         <div className="lp-review">
-          <small>Check before saving</small>
-          <strong>Kopi · {sgd(180)} / cup</strong>
-          <em>Kaya toast · Sold out</em>
+          <small>{s.checkBeforeSaving}</small>
+          <strong>
+            {s.item1} · {s.priceNew} / cup
+          </strong>
+          <em>
+            {s.item3} · {s.soldOut}
+          </em>
           <span className="lp-confirm">
-            <Check size={16} /> Confirm and save
+            <Check size={16} /> {s.confirmAndSave}
           </span>
         </div>
       </div>
@@ -173,31 +174,31 @@ function StoryScreen({ step }: { step: number }) {
         <div className="lp-shop-head">
           <div className="lp-thumb" />
           <div>
-            <strong>Ah Seng Kopi</strong>
-            <span className="lp-open">Open now · Tiong Bahru</span>
+            <strong>{s.shopName}</strong>
+            <span className="lp-open">{s.openNowArea}</span>
           </div>
         </div>
         <div className="lp-chips">
-          <span>Halal</span>
-          <span>PayNow</span>
-          <span>Updated today</span>
+          <span>{s.chipDiet}</span>
+          <span>{s.chipPayment}</span>
+          <span>{s.updatedToday}</span>
         </div>
         <ul className="lp-menu">
           <li>
-            <span>Kopi</span>
-            <b>{sgd(180)}</b>
+            <span>{s.item1}</span>
+            <b>{s.priceNew}</b>
           </li>
           <li>
-            <span>Kopi O</span>
-            <b>{sgd(160)}</b>
+            <span>{s.item2}</span>
+            <b>{s.price2}</b>
           </li>
           <li className="out">
-            <span>Kaya toast</span>
-            <i>Sold out</i>
+            <span>{s.item3}</span>
+            <i>{s.soldOut}</i>
           </li>
         </ul>
         <span className="lp-chat">
-          <MessageCircle size={16} /> Chat with the shop
+          <MessageCircle size={16} /> {s.chatWithShop}
         </span>
       </div>
     </>
@@ -207,6 +208,7 @@ function StoryScreen({ step }: { step: number }) {
 export default function Marketing() {
   const theme = useTheme()
   const t = useFrontCopy()
+  const s = useStoryCopy()
   const page = useRef<HTMLDivElement>(null)
   const [step, setStep] = useState(0)
   const onStory = useCallback((p: number) => setStep(p < 0.34 ? 0 : p < 0.67 ? 1 : 2), [])
@@ -246,8 +248,16 @@ export default function Marketing() {
             Chalkboard
           </a>
           <nav aria-label="Chalkboard">
-            <a href="/explore/">{t.find}</a>
-            <Button variant="contained" href={businessUrl} endIcon={<ArrowUpRight size={16} />}>
+            <LanguagePicker variant="nav" />
+            <a href="/explore/" className="lp-nav-find">
+              {t.find}
+            </a>
+            <Button
+              className="lp-nav-business"
+              variant="outlined"
+              href={businessUrl}
+              endIcon={<ArrowUpRight size={16} />}
+            >
               {t.business}
             </Button>
           </nav>
@@ -275,9 +285,6 @@ export default function Marketing() {
                 >
                   {t.find}
                 </Button>
-                <Button variant="outlined" size="large" href={businessUrl}>
-                  {t.business}
-                </Button>
               </div>
             </div>
             <div className="lp-hero-phone">
@@ -285,17 +292,18 @@ export default function Marketing() {
                 <div className="lp-screen on static">
                   <div className="lp-app-bar">Chalkboard</div>
                   <div className="lp-bubble me">
-                    <Typed text="Kopi is $1.80 now, kaya toast sold out" delay={400} />
+                    <Typed text={s.bubbleMe} delay={400} />
                   </div>
-                  <div className="lp-bubble coach delay">
-                    Prepared: kopi {sgd(200)} → {sgd(180)} per cup, kaya toast sold out. Check and
-                    confirm.
-                  </div>
+                  <div className="lp-bubble coach delay">{s.bubbleCoach}</div>
                   <div className="lp-review delay2">
-                    <small>Check before saving</small>
-                    <strong>Kopi · {sgd(180)} / cup</strong>
-                    <em>Kaya toast · Sold out</em>
-                    <span className="lp-confirm">Confirm and save</span>
+                    <small>{s.checkBeforeSaving}</small>
+                    <strong>
+                      {s.item1} · {s.priceNew} / cup
+                    </strong>
+                    <em>
+                      {s.item3} · {s.soldOut}
+                    </em>
+                    <span className="lp-confirm">{s.confirmAndSave}</span>
                   </div>
                 </div>
               </Phone>

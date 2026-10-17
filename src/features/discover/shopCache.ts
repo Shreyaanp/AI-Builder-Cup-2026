@@ -1,4 +1,5 @@
 import type { AskPick } from './askThread'
+import { isIndianArea } from './demoWorld'
 
 const cache = new Map<string, AskPick[]>()
 const inFlight = new Map<string, Promise<AskPick[]>>()
@@ -88,8 +89,17 @@ export function localRankShops(q: string, lat: number, lng: number): AskPick[] {
   if (!words.length) return []
 
   const results: AskPick[] = []
+  // Same rules as the server: one currency per area, one card per shop ("(Tour)"/"(Demo)").
+  const inIndia = isIndianArea(lat, lng)
+  const seen = new Set<string>()
 
   for (const shop of shops) {
+    if (inIndia && shop.currency === 'SGD') continue
+    const nameKey = shop.name
+      .replace(/\s*\((Tour|Demo)\)$/i, '')
+      .trim()
+      .toLowerCase()
+    if (seen.has(nameKey)) continue
     const shopText = `${shop.name} ${shop.category}`.toLowerCase()
     const nameHit = words.some((w) => shopText.includes(w))
 
@@ -99,6 +109,7 @@ export function localRankShops(q: string, lat: number, lng: number): AskPick[] {
     })
 
     if (!nameHit && !matchedItems.length) continue
+    seen.add(nameKey)
 
     const distance = shop.distance_m ?? 500
     const score =

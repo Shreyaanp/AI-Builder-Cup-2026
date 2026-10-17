@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useIdentity } from '../../auth/useIdentity'
 import { reconnectDelay, waitOnline } from '../../api/stream'
 import type { CoachEvent } from '../../api/stream'
+import { useLocale } from '../../state/hooks'
+import { useLanguageSwitch } from './languageSwitch'
 import { useCopy } from './strings'
+import { useOnboardingCopy } from './onboardingCopy'
 import type { Business, Product } from './api'
 
 /** One socket to the Live session. A conversation may use many in a row (see `connect`). */
@@ -11,6 +14,8 @@ interface VoiceRuntime {
   deadline?: ReturnType<typeof setTimeout>
   cleanup: () => void
   complete: boolean
+  /** Press-to-talk: the owner finished; every server message restarts the reply deadline. */
+  replying?: boolean
   /** The server said ready: audio may flow (before that it expects its setup frames). */
   ready: boolean
 }
@@ -39,6 +44,10 @@ export type VoiceProblem =
   | { kind: 'connection' }
   | { kind: 'rate-limited'; seconds: number }
   | { kind: 'unavailable' }
+  /** The reply took too long (no word from the server): thinking stops, Retry is offered. */
+  | { kind: 'slow' }
+  /** The open conversation reached its time cap: continue by typing, or tap to talk again. */
+  | { kind: 'session-cap' }
 
 /**
  * Conversation mode (the new-shop flow): one open conversation for many turns. The coach speaks
@@ -47,13 +56,25 @@ export type VoiceProblem =
  * drop) the hook reconnects to the same session with the microphone still open.
  */
 export interface VoiceConversation {
-  /** The session is open and the microphone granted (`resumed`: after a reconnect). */
-  onReady?: (resumed: boolean) => void
+  /**
+   * The session is open and the microphone granted (`resumed`: after a reconnect;
+   * `continues`: the server already holds this conversation, so the coach must not greet again).
+   */
+  onReady?: (resumed: boolean, continues: boolean) => void
+  /** The owner asked to stop ("bas", "that's all"): the goodbye has played, nothing reconnects. */
+  onEnded?: () => void
 }
 
-/** Consecutive reconnect attempts before a conversation gives up and says so. */
-const RETRIES = 4
+/**
+ * Consecutive reconnect attempts before a conversation pauses and offers Retry (with growing
+ * pauses up to 8 s, about half a minute in all: long enough for a network switch or a lift).
+ */
+const RETRIES = 6
+/** Attempts after the server itself refused the session (provider down, a bad session). */
+const REFUSED_RETRIES = 4
 const METER = new Float32Array(512)
+/** Press-to-talk: with no word from the server this long after speaking, thinking stops. */
+const REPLY_IDLE_MS = 12_000
 
 function level(meter: AnalyserNode | undefined) {
   if (!meter) return 0
@@ -83,6 +104,14 @@ export function useVoice(
 ) {
   const identity = useIdentity()
   const t = useCopy()
+  const o = useOnboardingCopy()
+  // The app's one language preference: the Live session speaks it (never guesses from audio).
+  const locale = useLocale()
+  const localeRef = useRef(locale)
+  useEffect(() => {
+    localeRef.current = locale
+  }, [locale])
+  const switchLanguage = useLanguageSwitch()
   const owner = useRef<AbortController | null>(null)
   const [state, setState] = useState<
     'idle' | 'connecting' | 'reconnecting' | 'recording' | 'replying'
@@ -151,8 +180,16 @@ export function useVoice(
         ? t.voiceMicDenied
         : next.kind === 'rate-limited'
           ? t.voiceRateLimited(next.seconds)
-          : t.voiceFailed,
+          : next.kind === 'slow'
+            ? o.tooSlow
+            : t.voiceFailed,
     )
+  }
+  /** No reply in time: the "thinking" state ends with Retry instead of staying on. */
+  function replyStalled(current: VoiceRuntime) {
+    if (runtime.current !== current || current.complete) return
+    fail({ kind: 'slow' })
+    stop()
   }
   function toggleMute() {
     mutedRef.current = !mutedRef.current
@@ -181,6 +218,8 @@ export function useVoice(
     if (current.socket.readyState === WebSocket.OPEN)
       current.socket.send(JSON.stringify({ kind: 'audio_end' }))
     setState('replying')
+    current.replying = true
+    current.deadline = setTimeout(() => replyStalled(current), REPLY_IDLE_MS)
   }
   /** `listening`: a conversation the coach has already opened, so the mic opens at once. */
   async function start(sessionId: string | null = null, listening = false) {
@@ -280,7 +319,7 @@ export function useVoice(
       if (retry) {
         const recovery = AbortSignal.any([operation.signal, AbortSignal.timeout(45_000)])
         await waitOnline(recovery)
-        await reconnectDelay(quick ? 150 : Math.min(500 * 2 ** (attempt - 1), 4000), recovery)
+        await reconnectDelay(quick ? 150 : Math.min(500 * 2 ** (attempt - 1), 8000), recovery)
       }
       token = await identity.getToken()
     } catch {
@@ -296,6 +335,7 @@ export function useVoice(
     if (businessId) url.searchParams.set('business_id', businessId)
     if (newShop) url.searchParams.set('new_shop', 'true')
     if (sid) url.searchParams.set('session_id', sid)
+    url.searchParams.set('lang', localeRef.current)
     const audio = ensureMedia()
     const socket = new WebSocket(url)
     socket.binaryType = 'arraybuffer'
@@ -339,6 +379,10 @@ export function useVoice(
     socket.onmessage = async (message: MessageEvent<string | ArrayBuffer>) => {
       if (runtime.current !== current) return
       lastMessage = performance.now()
+      if (current.replying && !current.complete) {
+        clearTimeout(current.deadline)
+        current.deadline = setTimeout(() => replyStalled(current), REPLY_IDLE_MS)
+      }
       try {
         if (typeof message.data !== 'string') {
           if (mutedRef.current) return
@@ -370,12 +414,22 @@ export function useVoice(
           stop()
           return
         }
+        if (event.kind === 'error' && event.code === 'TAKEN_OVER') {
+          // The same conversation was opened again (another tab, or this phone's newer socket):
+          // this one steps aside quietly; the conversation itself carries on there.
+          stop()
+          return
+        }
         if (event.kind === 'error' && conversationRef.current) {
           // The socket closes next; `onclose` decides between reconnecting and saying so.
           lastCode = event.code ?? 'error'
           return
         }
         if (event.kind === 'error') throw new Error(`server:${event.code ?? 'error'}`)
+        switchLanguage(event)
+        if (event.kind === 'action' && event.data?.target === 'end_conversation')
+          // The owner asked to stop: the microphone closes now; the goodbye still plays.
+          micOpen.current = false
         eventRef.current(event)
         if (event.kind === 'ready') {
           clearTimeout(current.deadline)
@@ -388,7 +442,7 @@ export function useVoice(
           attempts.current = 0
           if (!conversationRef.current) current.deadline = setTimeout(finishRecording, 30_000)
           setState('recording')
-          conversationRef.current?.onReady?.(retry)
+          conversationRef.current?.onReady?.(retry, Boolean(event.data?.continues))
         }
         if (event.kind === 'interrupted') {
           // The owner spoke over the coach: what was queued stops now.
@@ -434,15 +488,35 @@ export function useVoice(
       if (current.complete) {
         stop()
       } else if (conversationRef.current) {
-        // A conversation only ends when the owner ends it: reconnect to the same session, at
-        // once after a planned end (time cap, idle), with growing pauses after failures.
-        const planned = ['SESSION_TIMEOUT', 'VOICE_IDLE'].includes(lastCode || event.reason)
-        if (attempts.current >= RETRIES) {
-          fail(
-            ['PROVIDER_UNAVAILABLE', 'AUTH_OR_SESSION_ERROR', 'INVALID_FRAME'].includes(lastCode)
-              ? { kind: 'unavailable' }
-              : { kind: 'connection' },
+        if (event.reason === 'ENDED') {
+          // The owner ended the conversation: the goodbye finishes playing, then all stops.
+          micOpen.current = false
+          const ended = conversationRef.current
+          setTimeout(
+            () => {
+              ended.onEnded?.()
+              stop()
+            },
+            Math.max(0, (audio.next - audio.audio.currentTime) * 1000 + 100),
           )
+          return
+        }
+        if (lastCode === 'SESSION_CAP' || event.reason === 'SESSION_CAP') {
+          // The 15-minute cap: a calm pause, never a dead end (typing works; tap to talk again).
+          fail({ kind: 'session-cap' })
+          stop()
+          return
+        }
+        // A conversation only ends when the owner ends it: reconnect to the same session, at
+        // once after a planned end (idle), with growing pauses after failures.
+        const planned = ['SESSION_TIMEOUT', 'VOICE_IDLE'].includes(lastCode || event.reason)
+        // The server said no (provider down, a bad session): fewer, shorter tries than a network
+        // that may come back in a moment.
+        const refused = ['PROVIDER_UNAVAILABLE', 'AUTH_OR_SESSION_ERROR', 'INVALID_FRAME'].includes(
+          lastCode,
+        )
+        if (attempts.current >= (refused ? REFUSED_RETRIES : RETRIES)) {
+          fail(refused ? { kind: 'unavailable' } : { kind: 'connection' })
           stop()
           return
         }

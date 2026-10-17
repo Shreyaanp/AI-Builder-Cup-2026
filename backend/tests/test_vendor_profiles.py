@@ -33,7 +33,12 @@ from app.vendor_profile import BusinessTypeProfile, infer_profile, migrate_profi
 from tests.test_merchant_store import store as store
 
 CASES = [
-    ("Tea stall", {"kind": "food", "food": {"serves_meat": False}}, "menu", {"cuisine", "diet"}),
+    (
+        "Tea stall",
+        {"kind": "food", "food": {"serves_meat": False}},
+        "menu",
+        {"milk_options", "sugar_free", "takeaway_cups"},
+    ),
     ("Vegetarian restaurant", {"kind": "food", "food": {"diet": "veg_only"}}, "menu", {"cuisine"}),
     (
         "Halal butcher",
@@ -56,7 +61,12 @@ CASES = [
     ),
     ("Salon", {"kind": "salon", "salon": {}}, "services", {"services", "booking", "walk_ins"}),
     ("Hardware shop", {"kind": "retail", "retail": {}}, "items", {"categories", "delivery"}),
-    ("Home baker", {"kind": "food", "food": {}}, "menu", {"preorders", "cuisine", "diet"}),
+    (
+        "Home baker",
+        {"kind": "food", "food": {}},
+        "menu",
+        {"preorders", "bakes", "eggless", "custom_orders"},
+    ),
     (
         "Grocer",
         {"kind": "grocer", "retail": {}},
@@ -113,9 +123,8 @@ async def test_each_vendor_gets_only_relevant_questions_and_round_trips(
         if category == "Halal butcher":
             assert {"cuts", "selling_units", "sourcing"} <= keys
             assert not {"seating", "signature_dish", "price_range"} & keys
-        if category == "Home baker":
-            assert {"bakes", "custom_orders"} <= keys
-            assert "seating" not in keys
+        if category in {"Home baker", "Tea stall"}:
+            assert not {"seating", "diet", "serves_meat", "cuisine", "vegetarian_options"} & keys
         store.share("alice", bid, True)
         public = store.public_shop(bid)
         assert public and public["facts"]["profile"]["kind"] == profile["kind"]
@@ -184,23 +193,22 @@ async def test_name_then_type_even_when_items_arrive_first(store):
     token = current.set(context)
     try:
         propose_business("", category="Tailor")
-        plan = await get_question_plan()
-        assert [q["key"] for q in plan["pending"]] == ["name"]
+        # Onboarding asks only the core (and the business's own extras): no question plan.
+        assert (await get_question_plan())["status"] == "not_in_onboarding"
         propose_business("Actual name")
-        assert (await get_question_plan())["profile"]["kind"] == "tailor"
+        assert context.new_shop_draft and context.new_shop_draft.business
+        assert context.new_shop_draft.business.profile.kind == "tailor"
+        context.new_shop = False
         context.new_shop_draft = NewShopDraft(business=BusinessFields(name="Actual name"))
         assert [q["key"] for q in (await get_question_plan())["pending"]] == ["category"]
-        assert "What is your business called?" in new_shop_reply(
-            MerchantContext(store, "alice", None, []),
-            vague=True,
-        )
-        assert (
-            new_shop_call(
-                "I sell chai", MerchantContext(store, "alice", None, [])
-            ).function_call.args["name"]
-            == ""
-        )
-        assert "REAL NAME first" in NEW_SHOP_INSTRUCTION
+        context.new_shop = True
+        greeting = new_shop_reply(MerchantContext(store, "alice", None, []), vague=True)
+        assert greeting.startswith("Offline template: Hi") and greeting.endswith("?")
+        call = new_shop_call("I sell chai", MerchantContext(store, "alice", None, []))
+        assert call and call.function_call and call.function_call.name == "update_shop"
+        # What they sell is never taken for a name.
+        assert "name" not in (call.function_call.args or {})
+        assert "never invent, suggest or rename it" in NEW_SHOP_INSTRUCTION
     finally:
         current.reset(token)
 

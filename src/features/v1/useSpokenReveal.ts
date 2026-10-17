@@ -11,30 +11,33 @@ const STALL_MS = 6000
  * The coach's reply revealed in step with its voice (see `speechReveal.ts`).
  *
  * `remaining()` is the milliseconds of coach audio still queued to play (null: no audio clock,
- * reveal at a speaking rate). `onDone` receives the whole reply once it has been spoken.
+ * reveal at a speaking rate). `onDone` receives the whole reply once it has been spoken; `onEnd`
+ * follows every finished turn, words or not.
  */
 export function useSpokenReveal({
   remaining,
   reducedMotion,
   onDone,
+  onEnd,
 }: {
   remaining: () => number | null
   reducedMotion: boolean
   onDone: (text: string) => void
+  onEnd?: () => void
 }) {
   const timeline = useRef(new SpeechTimeline())
   const [shown, setShown] = useState('')
   const timer = useRef<number | undefined>(undefined)
   const lastPush = useRef(0)
-  const latest = useRef({ remaining, reducedMotion, onDone })
+  const latest = useRef({ remaining, reducedMotion, onDone, onEnd })
   useEffect(() => {
-    latest.current = { remaining, reducedMotion, onDone }
+    latest.current = { remaining, reducedMotion, onDone, onEnd }
   })
 
   const tick = useCallback(function tick() {
     const line = timeline.current
     const now = performance.now()
-    const { reducedMotion: reduced, onDone: done, remaining: queued } = latest.current
+    const { reducedMotion: reduced, onDone: done, onEnd: end, remaining: queued } = latest.current
     if (
       line.text &&
       !line.isFinished &&
@@ -53,6 +56,7 @@ export function useSpokenReveal({
       timer.current = undefined
       setShown('')
       if (whole) done(whole)
+      end?.()
     }
   }, [])
   const run = useCallback(() => {
@@ -67,6 +71,7 @@ export function useSpokenReveal({
       if (line.isFinished) {
         const whole = line.flush()
         if (whole) latest.current.onDone(whole)
+        latest.current.onEnd?.()
       }
       lastPush.current = performance.now()
       line.update(text, lastPush.current, latest.current.remaining())

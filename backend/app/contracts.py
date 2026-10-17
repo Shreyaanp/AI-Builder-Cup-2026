@@ -70,16 +70,23 @@ class StreamEvent(StrictModel):
         "pong",
         "ping",
         "proposal",
+        # The saved new-shop draft, when the server knows more than the app (a resumed draft).
+        "draft",
         "workflow",
         # Sourcing: the "Searching nearby suppliers…" state, supplier cards, an order card.
         "sourcing",
         "suppliers",
         "order",
         "rescue_proposal",
+        # Supply chain: a purchase order drafted from the forecast, a supplier rule change.
+        "purchase_order",
+        "supply_rules",
         # A chart card (forecast, or how business is going) built from the tool result.
         "chart",
         # An app action from the coach: open a screen, or a prepared customer reply to send.
         "action",
+        # A UPI payment link card the owner shares; the app never handles money.
+        "payment_link",
     ]
     session_id: str | None = None
     text: str | None = None

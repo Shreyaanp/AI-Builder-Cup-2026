@@ -405,6 +405,7 @@ export const vi: Copy = {
     gallery: 'ảnh thư viện cửa hàng',
     community: 'bản sao công khai của cửa hàng',
     memory: 'bộ nhớ trợ lý',
+    analytics: 'số liệu phân tích cửa hàng',
     conversations: 'cuộc trò chuyện',
   } as Record<string, string>,
 }

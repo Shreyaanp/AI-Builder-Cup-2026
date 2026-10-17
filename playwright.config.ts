@@ -9,8 +9,14 @@ export default defineConfig({
   // The QA machine has its own servers and config: npm run test:qa
   testIgnore: ['qa/**', 'heatmap/**'],
   timeout: 30_000,
+  // Shard individual isolated tests, so large story files cannot dominate one shard.
+  fullyParallel: true,
   // Each test gets its own browser context and workspace, so files run in parallel.
-  workers: process.env.CI ? 3 : 4,
+  workers: process.env.PLAYWRIGHT_WORKERS
+    ? Number(process.env.PLAYWRIGHT_WORKERS)
+    : process.env.CI
+      ? 3
+      : 4,
   // One retry on CI absorbs a random failure; the list reporter still marks it "flaky".
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['./tests/stories/audit-reporter.ts']],
@@ -49,5 +55,19 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },
+    // The real private face worker (s12-face-real-worker.spec.ts), only with its token set.
+    ...(process.env.FACE_WORKER_TOKEN
+      ? [
+          {
+            command: 'uv run --extra face uvicorn face_worker:app --port 3401',
+            // Models load from backend/data/face-models, relative to the worker.
+            cwd: 'backend',
+            // A 401 (no token) counts as up: the models load before it answers at all.
+            url: 'http://127.0.0.1:3401/health',
+            reuseExistingServer: !process.env.CI,
+            timeout: 120_000,
+          },
+        ]
+      : []),
   ],
 })

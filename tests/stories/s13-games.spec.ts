@@ -190,6 +190,11 @@ async function walk(customer: Page, qr: string, name: string, mode: Mode) {
   })
   await test.step('3 · scratch the foil: the prize, decided on the server', async () => {
     const moment = customer.getByRole('dialog')
+    const foil = customer.getByTestId('scratch-foil')
+    expect(await foil.evaluate((el) => getComputedStyle(el).touchAction)).toBe('none')
+    const container = customer.getByTestId('scratch-card-foil-container')
+    expect(await container.evaluate((el) => getComputedStyle(el).touchAction)).toBe('none')
+    expect(await container.evaluate((el) => getComputedStyle(el).overscrollBehavior)).toBe('none')
     await scratch(customer)
     const reveal = moment.getByRole('button', { name: /^Scratch card from/ })
     // A short rub may not clear enough foil; the Reveal button finishes it (keyboard path).
@@ -206,7 +211,8 @@ async function walk(customer: Page, qr: string, name: string, mode: Mode) {
     // 50 for the first try + 25 from the scratch card.
     await expect(customer.getByText('225 more points to Regular')).toBeVisible()
     await expect(customer.getByText('Next reward')).toBeVisible()
-    await expect(customer.getByText('2 more stops → Locally made badge')).toBeVisible()
+    // The shop's stamp card outranks a badge (welcome stamps count: 8 needed, 1 scanned → 7 more).
+    await expect(customer.getByText('7 more stamps → Free bun maska')).toBeVisible()
     const sets = customer.getByRole('region', { name: 'Collection sets' })
     const made = sets.getByRole('listitem').filter({ hasText: 'Locally made' })
     await expect(made.getByRole('img', { name: '1 of 3' })).toBeVisible()

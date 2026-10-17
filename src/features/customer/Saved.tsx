@@ -3,6 +3,7 @@ import type { MouseEvent, ReactNode } from 'react'
 import { Alert, Box, Button, Chip, Skeleton, Stack, Typography, useTheme } from '@mui/material'
 import { BadgeCheck, Bookmark, PackageCheck, Sparkle, TrendingDown, TrendingUp } from 'lucide-react'
 import type { Feed, ShopCard, Update } from './types'
+import { scrollArea } from '../../design/theme'
 import { customerNavigate } from '../frontdoors/navigation'
 import { formatPrice } from '../v1/format'
 import { useCustomer } from './account'
@@ -183,7 +184,7 @@ export function Saved() {
                 display: 'flex',
                 gap: 2,
                 overflowX: 'auto',
-                '&::-webkit-scrollbar': { display: 'none' },
+                ...scrollArea,
               }}
             >
               {feed.shops.map((shop, index) => (

@@ -55,14 +55,14 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
           sx={{
             ...section,
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: '1.1fr 0.9fr' },
+            gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: '1.1fr 0.9fr' },
             gap: { xs: 5, md: 8 },
             alignItems: 'center',
             pt: { xs: 4, md: 8 },
             pb: { xs: 6, md: 10 },
           }}
         >
-          <Stack spacing={3}>
+          <Stack spacing={3} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
             <JourneyProgress step={1} />
             <Typography variant="labelLarge" sx={{ color: roles.primary }}>
               {t.landingEyebrow}

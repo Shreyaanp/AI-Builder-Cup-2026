@@ -6,9 +6,11 @@ on:
         description: Commit SHA on main (blank uses current main)
         type: string
         required: false
-  # Releases ship from the lead's machine (scripts/ship.ps1: local checks → Cloud Build →
-  # Cloud Run). No automatic trigger here, so a slower CI run can never overwrite a newer
-  # local release with an older commit.
+      release_tag:
+        description: Published release-* tag pointing to the selected main commit
+        type: string
+        required: true
+  # scripts/ship.ps1 dispatches this same checked, tagged release path.
 permissions:
   contents: read
 concurrency:
@@ -31,10 +33,13 @@ jobs:
       - id: select
         env:
           REQUESTED_SHA: ${{ inputs.revision || github.event.workflow_run.head_sha }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           revision="${REQUESTED_SHA:-$GITHUB_SHA}"
           [[ "$revision" =~ ^[a-f0-9]{40}$ ]]
           git merge-base --is-ancestor "$revision" origin/main
+          [[ "$RELEASE_TAG" =~ ^release-[a-zA-Z0-9._-]+$ ]]
+          test "$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")" = "$revision"
           echo "sha=$revision" >> "$GITHUB_OUTPUT"
   # Skip re-testing when the push checks already passed for this exact commit.
   gate:
@@ -50,7 +55,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ needs.revision.outputs.sha }}
         run: |
-          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/checks.yml/runs?head_sha=$SHA&status=success&per_page=1" --jq '.total_count')
+          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/checks.yml/runs?head_sha=$SHA&branch=main&event=push&status=success&per_page=1" --jq '.total_count')
           if [[ "$passed" -gt 0 ]]; then echo "tested=true" >> "$GITHUB_OUTPUT"; else echo "tested=false" >> "$GITHUB_OUTPUT"; fi
           echo "Successful checks runs for $SHA: $passed"
   checks:
@@ -73,6 +78,7 @@ jobs:
       RELEASE_SHA: ${{ needs.revision.outputs.sha }}
       FIREBASE_WEB_API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
       FIREBASE_WEB_APP_ID: ${{ vars.FIREBASE_WEB_APP_ID }}
+      FEATURE_GOOGLE_GUIDE: ${{ vars.FEATURE_GOOGLE_GUIDE || 'true' }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -94,6 +100,7 @@ jobs:
           context: .
           load: true
           tags: asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:${{ needs.revision.outputs.sha }}
+          build-args: ASSET_BASE_URL=${{ vars.CDN_HOSTING_SITE && format('https://{0}.web.app/', vars.CDN_HOSTING_SITE) || '/' }}
           cache-from: type=gha
       - id: google
         uses: google-github-actions/auth@v3
@@ -105,6 +112,18 @@ jobs:
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: '24'
+      - name: Publish exact image assets to Firebase CDN (opt-in)
+        if: vars.CDN_HOSTING_SITE != ''
+        env:
+          CDN_HOSTING_SITE: ${{ vars.CDN_HOSTING_SITE }}
+        run: |
+          mkdir -p .deployment/cdn
+          container=$(docker create "asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA")
+          docker cp "$container:/app/frontend/assets" .deployment/cdn/assets
+          docker rm "$container"
+          python -c 'import json,os; from pathlib import Path; config=json.loads(Path("deployment/firebase.assets.json").read_text()); config["hosting"].update(site=os.environ["CDN_HOSTING_SITE"], public="cdn"); Path(".deployment/firebase-cdn.json").write_text(json.dumps(config))'
+          npx --yes --package=firebase-tools@14.22.0 firebase deploy --project ichiropractic \
+            --config .deployment/firebase-cdn.json --only hosting --non-interactive
       - name: Publish immutable image
         env:
           GOOGLE_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
@@ -122,6 +141,8 @@ jobs:
           if [[ "$current" == *":inputs-$inputs" ]]; then
             echo "current=true" >> "$GITHUB_OUTPUT"
             echo "Face worker already runs inputs-$inputs; skipping its build and release."
+            # A no-traffic test revision pins traffic; make sure the current image serves.
+            gcloud run services update-traffic ogoogle-face --project=ichiropractic --region=asia-south1 --to-latest --quiet
             echo "FACE_WORKER_URL=$(gcloud run services describe ogoogle-face --project=ichiropractic --region=asia-south1 --format='value(status.url)')" >> "$GITHUB_ENV"
           fi
       - name: Build private face worker
@@ -147,6 +168,8 @@ jobs:
             --set-env-vars=FACE_REQUIRE_MODELS=true \
             --no-allow-unauthenticated --min=0 --max=1 --concurrency=1 \
             --cpu=1 --memory=2Gi --timeout=60 --cpu-boost --quiet
+          # Without this, traffic pinned by a no-traffic test revision stays on the old worker.
+          gcloud run services update-traffic ogoogle-face --project=ichiropractic --region=asia-south1 --to-latest --quiet
           url=$(gcloud run services describe ogoogle-face --project=ichiropractic --region=asia-south1 --format='value(status.url)')
           test -n "$url"
           echo "FACE_WORKER_URL=$url" >> "$GITHUB_ENV"
@@ -158,8 +181,6 @@ jobs:
             --service-account=ogoogle-runtime@ichiropractic.iam.gserviceaccount.com \
             --env-vars-file=.deployment/runtime.json --allow-unauthenticated \
             --update-secrets=FACE_WORKER_TOKEN=ogoogle-face-token:1,MAPS_SERVER_KEY=maps-server-key:1,MAPS_BROWSER_KEY=maps-browser-key:1 \
-            --min=1 --max=10 --concurrency=40 --cpu=1 --memory=2Gi --timeout=3600 \
-            --no-cpu-throttling --session-affinity \
             --cpu-boost --quiet
       - name: Verify the released revision
         env:

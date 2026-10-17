@@ -27,13 +27,17 @@ const KNOWN: Record<CoachEvent['kind'], true> = {
   pong: true,
   ping: true,
   proposal: true,
+  draft: true,
   workflow: true,
   sourcing: true,
   suppliers: true,
   order: true,
   rescue_proposal: true,
+  purchase_order: true,
+  supply_rules: true,
   chart: true,
   action: true,
+  payment_link: true,
 }
 const kinds = new Set(Object.keys(KNOWN))
 
@@ -103,12 +107,57 @@ export async function waitOnline(signal: AbortSignal): Promise<void> {
   })
 }
 
+/** No event for the turn's idle limit: the screen stops "thinking" and offers Retry. */
+export class TooSlowError extends StreamFailure {}
+
+/** A turn with no event for this long stops thinking ("That took too long — try again"). */
+export const TURN_IDLE_MS = 12_000
+
+/**
+ * One coach turn. `idleMs`: with no event for that long the turn ends with `TooSlowError`, so a
+ * "thinking" state can never stay on (the reply, an error or a timeout always ends it).
+ */
 export async function streamCoach(
   turn: CoachTurn,
   signal: AbortSignal,
   onEvent: (event: CoachEvent) => void,
   token: string | null | (() => Promise<string | null>) = null,
   onConnection: (state: 'connected' | 'reconnecting') => void = () => {},
+  idleMs = 0,
+): Promise<void> {
+  if (!idleMs) return streamTurn(turn, signal, onEvent, token, onConnection)
+  const stall = new AbortController()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const kick = () => {
+    clearTimeout(timer)
+    timer = setTimeout(() => stall.abort(), idleMs)
+  }
+  kick()
+  try {
+    await streamTurn(
+      turn,
+      AbortSignal.any([signal, stall.signal]),
+      (event) => {
+        kick()
+        onEvent(event)
+      },
+      token,
+      onConnection,
+    )
+  } catch (error) {
+    if (stall.signal.aborted && !signal.aborted) throw new TooSlowError('TOO_SLOW')
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function streamTurn(
+  turn: CoachTurn,
+  signal: AbortSignal,
+  onEvent: (event: CoachEvent) => void,
+  token: string | null | (() => Promise<string | null>),
+  onConnection: (state: 'connected' | 'reconnecting') => void,
 ): Promise<void> {
   // Overall recovery is bounded; each silent connection has its own watchdog.
   signal = AbortSignal.any([signal, AbortSignal.timeout(175_000)])

@@ -17,6 +17,7 @@ from .merchant import MerchantRepository, ProposalRequest
 from .place_photos import PlacesPhotos
 from .settings import Settings
 from .shop_time import shop_timezone
+from .words import words
 
 log = structlog.get_logger()
 
@@ -418,6 +419,30 @@ class MapsService:
             )
         )
 
+    async def place(self, place_id: str) -> dict[str, Any] | None:
+        """One place by id (a grounded answer names places without coordinates). Cached."""
+
+        async def lookup() -> dict[str, Any] | None:
+            if self.demo:
+                return None
+            try:
+                response = await self.client.get(
+                    "https://places.googleapis.com/v1/places/" + place_id,
+                    headers={
+                        "X-Goog-Api-Key": self.key,
+                        "X-Goog-FieldMask": PLACES_MASK.replace("places.", ""),
+                    },
+                )
+                response.raise_for_status()
+                return dict(response.json())
+            except (httpx.HTTPError, ValueError):
+                log.warning("place_details_unavailable")
+                return None
+
+        if not re.fullmatch(r"[A-Za-z0-9_-]{8,256}", place_id):
+            return None
+        return await self.cached(("place", place_id), lookup)
+
 
 async def prepare_pin(
     body: ProposalRequest, repository: MerchantRepository, uid: str, maps: MapsService
@@ -508,7 +533,8 @@ async def prepare_pin(
 def matches(place: DiscoveryPlace, q: str, category: str, only_open: bool) -> bool:
     text = " ".join([place.name, place.category, *(item.name for item in place.items)]).casefold()
     query = re.sub(r"\b(near me|open now|nearby)\b", "", q, flags=re.I).strip()
-    if query and not all(word in text for word in re.findall(r"\w+", query.casefold())):
+    terms = [*words(query.casefold()), *re.findall(r"\d+", query)]
+    if query and not all(word in text for word in terms):
         return False
     if category and not any(term in place.category.casefold() for term in CATEGORIES[category][1]):
         return False
@@ -525,10 +551,24 @@ class PlaceMatch(BaseModel):
 
 
 @router.get("/discover/place", response_model=PlaceMatch)
-async def find_place(request: Request, q: str = Query(min_length=2, max_length=180)) -> PlaceMatch:
-    """A typed city or area anywhere in the world, as the centre for discovery."""
+async def find_place(
+    request: Request,
+    q: str | None = Query(default=None, max_length=180),
+    lat: float | None = Query(default=None, ge=-90, le=90, allow_inf_nan=False),
+    lng: float | None = Query(default=None, ge=-180, le=180, allow_inf_nan=False),
+) -> PlaceMatch:
+    """A typed city or area anywhere in the world, or coordinates reverse-geocoded to an area."""
     await enforce_limits(request, [("discover:place", client_ip(request))], anonymous=True)
     maps: MapsService = request.app.state.maps
+    if lat is not None and lng is not None:
+        pin = await maps.reverse(lat, lng)
+        raw_label = str(pin.get("pin_label") or "")
+        label = re.sub(r"^Near\s+", "", raw_label, flags=re.I).strip()
+        if not label or label.lower() in ("your current location", "you"):
+            label = "Nearby"
+        return PlaceMatch(lat=lat, lng=lng, label=label)
+    if not q or len(q.strip()) < 2:
+        raise HTTPException(422, "PIN_NOT_FOUND")
     pin = await maps.geocode(q.strip())
     return PlaceMatch(lat=pin["lat"], lng=pin["lng"], label=pin["pin_label"] or q.strip())
 
@@ -572,16 +612,40 @@ async def discover(
     open_now_filter = open_now_filter or bool(re.search(r"\bopen now\b", q, re.I))
     maps: MapsService = request.app.state.maps
     repository: MerchantRepository | None = request.app.state.merchant
+    in_sg = 1.15 <= lat <= 1.48 and 103.6 <= lng <= 104.1
+    in_india = 6.5 <= lat <= 37.5 and 68.0 <= lng <= 97.5
+
+    def norm_name(name: str) -> str:
+        return re.sub(r"\s*\((Tour|Demo)\)$", "", name, flags=re.I).strip().casefold()
+
     shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
     places: list[DiscoveryPlace] = []
+    seen_places_names: set[str] = set()
     for shop in shops:
         if shop["lat"] is None or shop["lng"] is None:
             continue
         # Generated demo wholesalers serve shops (sourcing), not customers exploring nearby.
         if shop.get("supplier") and shop.get("demo"):
             continue
+        # Singapore demo shops only when browsing Singapore
+        is_sg_shop = shop.get("demo") and (
+            shop.get("city") == "singapore"
+            or (
+                shop.get("currency") == "SGD"
+                and 1.15 <= shop["lat"] <= 1.48
+                and 103.6 <= shop["lng"] <= 104.1
+            )
+        )
+        if is_sg_shop and not in_sg:
+            continue
+        # Results near an Indian location never show SGD
+        if in_india and shop.get("currency") == "SGD":
+            continue
         d = distance(lat, lng, shop["lat"], shop["lng"])
         if d > radius:
+            continue
+        name_key = norm_name(shop["name"])
+        if name_key in seen_places_names:
             continue
         place = DiscoveryPlace(
             id=shop["id"],
@@ -612,6 +676,7 @@ async def discover(
             sold_out=[p["name"] for p in shop["products"] if not p["available"]],
         )
         if matches(place, q, category, open_now_filter):
+            seen_places_names.add(name_key)
             places.append(place)
     unavailable = False
     try:
@@ -623,6 +688,9 @@ async def discover(
     owned_place_ids = {s.get("place_id") for s in shops if s["id"] in relevant_shop_ids}
     for row in google:
         if row["id"] in owned_place_ids:
+            continue
+        name_key = norm_name(row["displayName"]["text"])
+        if name_key in seen_places_names:
             continue
         point = row["location"]
         d = distance(lat, lng, point["latitude"], point["longitude"])
@@ -650,6 +718,7 @@ async def discover(
         )
         # Live Text Search already matches semantic queries; don't discard matches by name alone.
         if matches(place, q if maps.demo else "", category if maps.demo else "", open_now_filter):
+            seen_places_names.add(name_key)
             places.append(place)
     places.sort(key=lambda p: (p.source != "chalkboard", p.distance_m, p.id))
     return DiscoveryResponse(

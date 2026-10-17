@@ -19,7 +19,7 @@ from typing import Any, Literal
 import anyio
 import structlog
 from fastapi import APIRouter, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 from sse_starlette import EventSourceResponse, ServerSentEvent
 
 from .community import Community, Profile, stated_preferences
@@ -33,10 +33,28 @@ from .discover import (
 )
 from .gemini_schema import gemini_schema, parse_reply
 from .limits import client_ip, enforce_limits
+from .maps_grounding import AreaAnswer, AreaGrounding, is_area_question
 from .merchant import MerchantRepository
 from .money import exponent
+from .reply_language import written_language
 from .rescue_feed import live_rescues
+from .search_engine import (
+    ITEM_RECALL,
+    SHOP_RECALL,
+    TASTE_MIN,
+    Because,
+    Components,
+    Relevance,
+    SearchEngine,
+    Taste,
+    blend,
+    build_engine,
+    fresh_days,
+    item_recall,
+    popularity,
+)
 from .shop_time import shop_timezone, valid_timezone
+from .words import words as words_of
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/api/v1")
@@ -46,6 +64,10 @@ STOP = set(
     "a an the i im i'm me my we want need looking for find some any near nearby around here "
     "please today now open cheap cheapest budget good best place places shop shops store under "
     "below less than with without and or to of in at on get buy something".split()
+    # Hindi filler words (a keyword search, not a translation).
+    + "पास में मुझे हमें चाहिए है हैं की का के को से कम कहाँ कोई अभी यहाँ आसपास आस अच्छी "
+    "अच्छा अच्छे सस्ती सस्ता सस्ते दुकान दुकानें वाली वाला वाले कुछ और खुली खुला रुपये रुपए "
+    "अंदर तक".split()
 )
 
 
@@ -66,6 +88,9 @@ class Intent(BaseModel):
     sort: Literal["best", "price", "distance"] = "best"
     near: Literal["", "transit"] = ""
     deals: bool = False
+    # A question about the area itself ("parking near the market?", "what's open near the
+    # metro?", "best filter coffee near me"): answered with Google Maps grounding when on.
+    area: bool = False
 
 
 class AskRequest(BaseModel):
@@ -78,6 +103,9 @@ class AskRequest(BaseModel):
     context: Intent | None = None
     # A tapped follow-up chip says exactly what it refines, whatever the language of its label.
     refine: Literal["price", "distance", "transit", "open", "deals", "local"] | None = None
+    # Shops opened on this device (newest first): a personal signal that never leaves the
+    # customer's own request.
+    opened: list[str] = Field(default_factory=list, max_length=30)
 
 
 class PickDeal(BaseModel):
@@ -96,6 +124,11 @@ class Pick(DiscoveryPlace):
     # Why a signed-in customer sees this "For you": followed, vegetarian, halal, budget.
     reasons: list[str] = []
     deal: PickDeal | None = None
+    # The strongest of the customer's own signals behind a personal pick, and (top few, when
+    # Gemini runs) the same reason as one written line.
+    because: Because | None = None
+    why: str | None = None
+    _components: Components = PrivateAttr(default_factory=Components)
 
 
 class Anchor(BaseModel):
@@ -137,6 +170,10 @@ class AskResponse(BaseModel):
     personal: Personal | None = None
     anchor: Anchor | None = None
     command: Command | None = None
+    # Google's live local answer for an area question (None when the question is not one).
+    area: AreaAnswer | None = None
+    # Which embeddings ranked by meaning: Vertex AI, or the offline fixture.
+    engine: Literal["vertex", "fixture"] = "fixture"
 
 
 COMMANDS = (
@@ -253,10 +290,12 @@ Reply in JSON matching the schema. Rules:
 - max_price: a number only if the customer gave a budget ("under 100", "cheap" → null).
 - halal / vegetarian / open_now: true only if asked.
 - locally_made: true only if they want home-made, handmade, made in-house or local makers.
-- summary: one short friendly line, in language "{language}", restating what you will look for.
-- followups: up to 3 short refinements in language "{language}" (e.g. "Open now", "Under ₹100").
+- summary: one short friendly line, in {language}, restating what you will look for.
+- followups: up to 3 short refinements in {language} (e.g. "Open now", "Under ₹100").
 - sort: "price" if they want it cheaper, "distance" if closer; near: "transit" if they want it
   near a train/metro/MRT station; deals: true if they ask for deals or discounts.
+- area: true if they ask about the area itself (parking, toilets, what is open around, how to
+  get somewhere, the best places nearby), not only for a product.
 {context}Request: {q}"""
 
 CONTEXT = """This message continues a conversation. The earlier search was (JSON): {intent}
@@ -268,7 +307,7 @@ keep dietary needs (halal, vegetarian).
 # Follow-up refinements, in English and the common words of the supported languages.
 CHEAPER = re.compile(
     r"\b(cheaper|cheapest|less expensive|lower price|more affordable|budget|cheap)\b"
-    r"|सस्ता|सस्ते|更便宜|便宜|murah|より安い|安い|더 싼|ถูกกว่า|rẻ hơn|mas mura|மலிவ"
+    r"|सस्ता|सस्ते|सस्ती|更便宜|便宜|murah|より安い|安い|더 싼|ถูกกว่า|rẻ hơn|mas mura|மலிவ"
 )
 CLOSER = re.compile(
     r"\b(closer|nearer|nearest|walking distance|walkable)\b|पास में|更近|近く|더 가까"
@@ -392,6 +431,7 @@ LOCALLY_MADE = re.compile(
 DIET_AND_ORIGIN_WORDS = {
     *("halal", "vegetarian", "veg", "vegan", "locally", "local", "made", "homemade"),
     *("home", "handmade", "hand", "artisan", "makers", "maker", "house"),
+    *("हलाल", "शाकाहारी", "घर", "बना", "बनी", "हाथ"),
 }
 
 
@@ -399,7 +439,8 @@ def keyword_intent(q: str) -> Intent:
     """Offline and fallback parsing: deterministic, no model."""
     text = q.casefold()
     budget = re.search(r"(?:under|below|less than|max|<)\s*\D{0,3}(\d+(?:[.,]\d+)?)", text)
-    words = [w for w in re.findall(r"[^\W\d_]+", text) if w not in STOP and len(w) > 1]
+    budget = budget or re.search(r"(\d+(?:[.,]\d+)?)\s*(?:₹|रुपये|रुपए|रु)?\s*(?:से कम|के अंदर|तक)", text)
+    words = [w for w in words_of(text) if w not in STOP and len(w) > 1]
     if re.search(r"egg[ -]?free|without eggs?|बिना अंडे", text):
         words.insert(0, "eggless")
     category = next(
@@ -411,10 +452,11 @@ def keyword_intent(q: str) -> Intent:
         keywords=[w for w in words if w not in DIET_AND_ORIGIN_WORDS][:6],
         category=category,
         max_price=float(budget.group(1).replace(",", ".")) if budget else None,
-        halal="halal" in text,
-        vegetarian=bool(re.search(r"\b(veg|vegetarian|vegan)\b", text)),
+        halal="halal" in text or "हलाल" in text,
+        vegetarian=bool(re.search(r"\b(veg|vegetarian|vegan)\b|शाकाहारी", text)),
         locally_made=bool(LOCALLY_MADE.search(text)),
-        open_now=bool(re.search(r"\b(open now|right now|now)\b", text)),
+        open_now=bool(re.search(r"\b(open now|right now|now)\b|अभी खुल", text)),
+        sort="price" if CHEAPER.search(text) else "best",
     )
 
 
@@ -443,7 +485,7 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
                 model=settings.google_text_model,
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
-                    language=body.language,
+                    language=written_language(body.language),
                     context=(
                         CONTEXT.format(intent=body.context.model_dump_json(exclude={"followups"}))
                         if body.context
@@ -455,7 +497,9 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
                     response_mime_type="application/json",
                     response_json_schema=gemini_schema(Intent),
                     temperature=0,
-                    max_output_tokens=400,
+                    max_output_tokens=800,
+                    # Room for Hindi (Indic scripts cost more tokens); no thinking.
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
     except Exception:  # noqa: BLE001 - the keyword parser is always a correct fallback
@@ -470,8 +514,24 @@ def item_matches(item: dict[str, Any], words: list[str]) -> bool:
     return any(word.casefold() in text or text in word.casefold() for word in words if word)
 
 
-def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> Pick | None:
-    """Score a shared Chalkboard shop against the intent using only its own data."""
+def search_engine(request: Request) -> SearchEngine:
+    engine: SearchEngine | None = getattr(request.app.state, "search", None)
+    if engine is None:
+        engine = build_engine(request.app.state.v1_settings, None)
+        request.app.state.search = engine
+    return engine
+
+
+def shop_pick(
+    shop: dict[str, Any],
+    intent: Intent,
+    lat: float,
+    lng: float,
+    meaning: Relevance | None = None,
+    recall: float = ITEM_RECALL,
+) -> Pick | None:
+    """Match a shared Chalkboard shop against the intent using only its own data: its words
+    first, then (search engine) its meaning. Filters are never relaxed by meaning."""
     facts = shop.get("facts") or {}
     if intent.halal and facts.get("halal") not in {"yes", "muslim_owned"}:
         return None
@@ -493,8 +553,16 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
         else None
     )
     words = intent.keywords
+    meaning = meaning or Relevance()
     products = [p for p in shop["products"] if p["available"]]
     matched = [p for p in products if item_matches(p, words)] if words else []
+    by_words = bool(matched)
+    if words and not matched:
+        # "Something sweet" finds the pandan cake: items close in meaning, best first.
+        matched = sorted(
+            (p for p in products if meaning.items.get(p["name"], 0.0) >= recall),
+            key=lambda p: -meaning.items.get(p["name"], 0.0),
+        )
     if limit is not None:
         matched = (
             [p for p in matched if p["price"] <= limit]
@@ -506,14 +574,22 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
         term in shop_text for term in CATEGORIES.get(intent.category, ((), ()))[1]
     )
     name_hit = any(word.casefold() in shop_text for word in words)
-    if words and not (matched or name_hit or category_hit):
+    # A shop close in meaning counts only without a budget (a budget needs a priced item).
+    meaning_hit = limit is None and meaning.shop >= SHOP_RECALL
+    if words and not (matched or name_hit or category_hit or meaning_hit):
         return None
     if not words and intent.category and not category_hit:
         return None
     d = distance(lat, lng, shop["lat"], shop["lng"])
-    score = float(len(matched) * 3 + (2 if name_hit or category_hit else 0) + (1 if is_open else 0))
-    score -= d / 1500
-    return Pick(
+    components = Components(
+        semantic=meaning.best,
+        keyword=(1.0 if by_words else 0.6 if name_hit or category_hit else 0.0) if words else 0.5,
+        distance_m=d,
+        open_now=is_open,
+        price_fit=1.0 if limit is not None and matched else None,
+        fresh_days=fresh_days(shop.get("last_confirmed")),
+    )
+    pick = Pick(
         id=shop["id"],
         name=shop["name"],
         source="chalkboard",
@@ -535,8 +611,30 @@ def shop_pick(shop: dict[str, Any], intent: Intent, lat: float, lng: float) -> P
         halal=facts.get("halal") in {"yes", "muslim_owned"} if facts.get("halal") else None,
         locally_made=bool(facts.get("locally_made")),
         matched=[TopItem(**p) for p in (matched or [])[:3]],
-        score=score,
+        score=blend(components),
     )
+    pick._components = components
+    return pick
+
+
+async def customer_taste(request: Request, body: AskRequest, profile: Profile | None) -> Taste:
+    """This customer's own signals: follows (saved), searches, stamps, shops opened here."""
+    taste = Taste(opened=[i[:120] for i in body.opened][:30])
+    if profile is None:
+        return taste
+    taste.follows = profile.follows[:200]
+    # The current search is not a past one.
+    taste.asked = [s.q for s in profile.searches if s.q != body.q][:20]
+    try:
+        principal = await request.app.state.services.identity.customer(request)
+        if principal is not None:
+            from .passport_routes import passports
+
+            state = await anyio.to_thread.run_sync(passports(request).get, principal.uid)
+            taste.stamped = {bid: max(1, p.visits) for bid, p in state.shops.items()}
+    except Exception:  # noqa: BLE001 - stamps only refine ranking
+        log.warning("ask_stamps_unavailable")
+    return taste
 
 
 async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[str | Intent]:
@@ -566,7 +664,7 @@ async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[
                 model=settings.google_text_model,
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
-                    language=body.language,
+                    language=written_language(body.language),
                     context=(
                         CONTEXT.format(intent=body.context.model_dump_json(exclude={"followups"}))
                         if body.context
@@ -578,7 +676,9 @@ async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[
                     response_mime_type="application/json",
                     response_json_schema=gemini_schema(Intent),
                     temperature=0,
-                    max_output_tokens=400,
+                    max_output_tokens=800,
+                    # Room for Hindi (Indic scripts cost more tokens); no thinking.
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             async for chunk in stream:
@@ -625,6 +725,22 @@ def resolve_intent_refinements(body: AskRequest, raw_intent: Intent) -> Intent:
     return intent
 
 
+async def explain_picks(engine: SearchEngine, for_you: list[Pick], language: str) -> None:
+    """The top personal picks' reasons as one written line each (when Gemini runs)."""
+    if engine.explainer is None or not any(p.because for p in for_you):
+        return
+    lines = await engine.explainer.explain(
+        [(p.id, p.name, p.because) for p in for_you if p.because], language
+    )
+    for pick in for_you:
+        pick.why = lines.get(pick.id)
+
+
+def norm_name(name: str) -> str:
+    """One shop seeded as both "(Tour)" and "(Demo)" is still one shop."""
+    return re.sub(r"\s*\((Tour|Demo)\)$", "", name, flags=re.I).strip().casefold()
+
+
 async def match_local_shops(
     request: Request,
     body: AskRequest,
@@ -634,16 +750,49 @@ async def match_local_shops(
     lng: float,
     radius: int,
     repository: MerchantRepository | None,
+    explain: bool = True,
 ) -> tuple[list[Pick], list[Pick], Personal | None, list[dict[str, Any]]]:
+    """Our shops for this intent, ranked by the search engine. The instant answer skips the
+    written "why" lines (a Gemini call) so it is never held up by them."""
     shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
-    picks = [
-        pick
-        for shop in shops
-        if shop["lat"] is not None
-        and shop["lng"] is not None
-        and distance(lat, lng, shop["lat"], shop["lng"]) <= radius
-        and (pick := shop_pick(shop, intent, lat, lng)) is not None
-    ]
+    in_sg = 1.15 <= lat <= 1.48 and 103.6 <= lng <= 104.1
+    in_india = 6.5 <= lat <= 37.5 and 68.0 <= lng <= 97.5
+    reachable: list[dict[str, Any]] = []
+    for shop in shops:
+        if shop["lat"] is None or shop["lng"] is None:
+            continue
+        # Singapore demo shops only when browsing Singapore
+        is_sg_shop = shop.get("demo") and (
+            shop.get("city") == "singapore"
+            or (
+                shop.get("currency") == "SGD"
+                and 1.15 <= shop["lat"] <= 1.48
+                and 103.6 <= shop["lng"] <= 104.1
+            )
+        )
+        if is_sg_shop and not in_sg:
+            continue
+        # Results near an Indian location never show SGD
+        if in_india and shop.get("currency") == "SGD":
+            continue
+        if distance(lat, lng, shop["lat"], shop["lng"]) > radius:
+            continue
+        reachable.append(shop)
+    engine = search_engine(request)
+    wanted = " ".join(intent.keywords) or (body.q if not body.refine else "")
+    meaning = await anyio.to_thread.run_sync(engine.relevance, wanted, reachable) if wanted else {}
+    recall = item_recall(meaning)
+    picks: list[Pick] = []
+    seen_pick_names: set[str] = set()
+    for shop in reachable:
+        pick = shop_pick(shop, intent, lat, lng, meaning.get(shop["id"]), recall)
+        if pick is None:
+            continue
+        base_name = norm_name(pick.name)
+        if base_name in seen_pick_names:
+            continue
+        seen_pick_names.add(base_name)
+        picks.append(pick)
     try:
         rescues = await live_rescues(request, shops, lat, lng, time.time())
     except Exception:  # noqa: BLE001 - deals decorate results; they never block them
@@ -659,18 +808,35 @@ async def match_local_shops(
                 pickup_end=deal.pickup_end,
                 demo=deal.demo,
             )
-            pick.score += 1
+            pick._components.deal = True
     if intent.deals:
         picks = [p for p in picks if p.deal]
     profile, saved = await customer_profile(request, body.q)
     personal: Personal | None = None
     for_you: list[Pick] = []
-    if profile is not None:
-        by_id = {shop["id"]: shop for shop in shops}
-        for pick in picks:
+    by_id = {shop["id"]: shop for shop in shops}
+    taste = await customer_taste(request, body, profile)
+    affinity = (
+        await anyio.to_thread.run_sync(engine.personal, [by_id[p.id] for p in picks], taste, shops)
+        if picks and not taste.empty
+        else {}
+    )
+    for pick in picks:
+        if profile is not None:
             pick.reasons = personal_reasons(by_id[pick.id], pick, profile)
-            pick.score += 2 * len(pick.reasons)
-        for_you = sorted((p for p in picks if p.reasons), key=lambda p: (-p.score, p.distance_m))
+        value, because = affinity.get(pick.id, (0.0, None))
+        if because is not None and value >= TASTE_MIN:
+            pick.because = because
+            if because.shop_id and not because.shop:
+                because.shop = pick.name
+        pick._components.personal = max(value, min(1.0, 0.3 * len(pick.reasons)))
+        pick.score = blend(pick._components)
+    for_you = sorted(
+        (p for p in picks if p.reasons or p.because), key=lambda p: (-p.score, p.distance_m)
+    )
+    if explain:
+        await explain_picks(engine, for_you, body.language)
+    if profile is not None:
         prefs = profile.preferences
         personal = Personal(
             applied=[
@@ -697,6 +863,7 @@ async def query_google_places(
     lng: float,
     radius: int,
     query_text: str,
+    anchor: Anchor | None = None,
 ) -> list[Pick]:
     query = " ".join(intent.keywords) or query_text
     try:
@@ -713,6 +880,15 @@ async def query_google_places(
         if intent.open_now and is_open is False:
             continue
         photo_url, authors = maps.photos.describe(row)
+        # Google's rating and review count rank live results only; they are never stored.
+        google_score = blend(
+            Components(
+                keyword=0.5,
+                distance_m=d,
+                open_now=is_open,
+                popularity=popularity(row.get("rating"), row.get("userRatingCount")),
+            )
+        )
         others.append(
             Pick(
                 id=row["id"],
@@ -732,13 +908,16 @@ async def query_google_places(
                 google_maps_uri=row.get("googleMapsUri"),
                 photo_url=photo_url,
                 photo_authors=authors,
+                score=google_score,
             )
         )
     others.sort(
         key=lambda p: (
             (PRICE_LEVELS.get(p.price_level or "", 9), p.distance_m)
             if intent.sort == "price"
-            else (0, p.distance_m)
+            else (p.distance_m, 0)
+            if intent.sort == "distance" or anchor is not None
+            else (-p.score, p.distance_m)
         )
     )
     return others
@@ -772,14 +951,41 @@ async def localize_picks(
 
 
 def assemble_groups(for_you: list[Pick], picks: list[Pick], others: list[Pick]) -> list[Group]:
-    shown = {p.id for p in for_you[:6]}
+    shown_ids = {p.id for p in for_you[:6]}
+    shown_names = {norm_name(p.name) for p in for_you[:6]}
+    best: list[Pick] = []
+    for p in picks:
+        name_key = norm_name(p.name)
+        if p.id in shown_ids or name_key in shown_names:
+            continue
+        best.append(p)
+        shown_names.add(name_key)
+        if len(best) >= 8:
+            break
     groups = [
         Group(id="for_you", places=for_you[:6]),
-        Group(id="best", places=[p for p in picks if p.id not in shown][:8]),
+        Group(id="best", places=best),
         Group(id="open", places=[p for p in others if p.open_now][:10]),
         Group(id="more", places=[p for p in others if not p.open_now][:10]),
     ]
     return [g for g in groups if g.places]
+
+
+async def area_answer(
+    request: Request, body: AskRequest, intent: Intent, maps: MapsService
+) -> AreaAnswer | None:
+    """Area questions get Google's live local knowledge, once per question (refinements reuse
+    the earlier answer on screen). Our shops stay first for products they sell."""
+    refinement = body.refine is not None or (
+        body.context is not None and intent.keywords == body.context.keywords
+    )
+    if refinement or not (intent.area or is_area_question(body.q)):
+        return None
+    intent.area = True
+    grounding: AreaGrounding = getattr(request.app.state, "grounding", None) or AreaGrounding(
+        request.app.state.v1_settings
+    )
+    return await grounding.answer(body.q, body.lat, body.lng, body.language, maps)
 
 
 async def record_demand(
@@ -893,7 +1099,7 @@ async def ask(body: AskRequest, request: Request) -> Any:
             radius = min(body.radius, 1000) if anchor else body.radius
 
             picks, for_you, personal, shops = await match_local_shops(
-                request, body, kw_intent, anchor, lat, lng, radius, repository
+                request, body, kw_intent, anchor, lat, lng, radius, repository, explain=False
             )
             instant_groups = await localize_picks(
                 request, body.language, assemble_groups(for_you, picks, []), wait=False
@@ -904,6 +1110,7 @@ async def ask(body: AskRequest, request: Request) -> Any:
                 groups=instant_groups,
                 personal=personal,
                 anchor=anchor,
+                engine=search_engine(request).mode,
             )
             yield ServerSentEvent(data=instant_resp.model_dump_json(), event="instant")
 
@@ -928,9 +1135,12 @@ async def ask(body: AskRequest, request: Request) -> Any:
                 picks, for_you, personal, shops = await match_local_shops(
                     request, body, final_intent, anchor, lat, lng, radius, repository
                 )
+            else:
+                await explain_picks(search_engine(request), for_you, body.language)
 
-            others = await query_google_places(maps, final_intent, lat, lng, radius, body.q)
+            others = await query_google_places(maps, final_intent, lat, lng, radius, body.q, anchor)
             await record_demand(request, repository, maps, final_intent, body, shops, others)
+            area = await area_answer(request, body, final_intent, maps)
 
             final_groups = await localize_picks(
                 request, body.language, assemble_groups(for_you, picks, others), wait=True
@@ -941,6 +1151,8 @@ async def ask(body: AskRequest, request: Request) -> Any:
                 groups=final_groups,
                 personal=personal,
                 anchor=anchor,
+                area=area,
+                engine=search_engine(request).mode,
             )
             yield ServerSentEvent(data=final_resp.model_dump_json(), event="complete")
 
@@ -970,8 +1182,9 @@ async def ask(body: AskRequest, request: Request) -> Any:
     picks, for_you, personal, shops = await match_local_shops(
         request, body, intent, anchor, lat, lng, radius, repository
     )
-    others = await query_google_places(maps, intent, lat, lng, radius, body.q)
+    others = await query_google_places(maps, intent, lat, lng, radius, body.q, anchor)
     await record_demand(request, repository, maps, intent, body, shops, others)
+    area = await area_answer(request, body, intent, maps)
 
     groups = await localize_picks(
         request, body.language, assemble_groups(for_you, picks, others), wait=True
@@ -982,6 +1195,8 @@ async def ask(body: AskRequest, request: Request) -> Any:
         groups=groups,
         personal=personal,
         anchor=anchor,
+        area=area,
+        engine=search_engine(request).mode,
     )
 
 
@@ -1041,3 +1256,89 @@ async def suggest(
         locally_made=sum(1 for shop in near if (shop.get("facts") or {}).get("locally_made")),
         deals=len(rescues),
     )
+
+
+class SimilarPlace(BaseModel):
+    id: str
+    name: str
+    category: str
+    distance_m: int
+    open_now: bool | None
+    currency: str
+    demo_shop: bool = False
+    photo_url: str | None = None
+    # Their item closest to the one being viewed (when an item page asked).
+    item: TopItem | None = None
+    similarity: float
+
+
+class SimilarResponse(BaseModel):
+    places: list[SimilarPlace]
+    source: Literal["recommendations", "embeddings"]
+    engine: Literal["vertex", "fixture"]
+
+
+@router.get("/discover/similar", response_model=SimilarResponse)
+async def similar(
+    request: Request,
+    shop: str = Query(min_length=1, max_length=120),
+    item: str = Query(default="", max_length=80),
+    lat: float | None = Query(default=None, ge=-90, le=90, allow_inf_nan=False),
+    lng: float | None = Query(default=None, ge=-180, le=180, allow_inf_nan=False),
+    radius: int = Query(default=3000, ge=200, le=20000),
+) -> SimilarResponse:
+    """ "Similar nearby" on a shop or item page: other shared shops alike in meaning, close by."""
+    await enforce_limits(request, [("discover:similar", client_ip(request))], anonymous=True)
+    repository: MerchantRepository | None = request.app.state.merchant
+    shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
+    anchor = next((s for s in shops if s["id"] == shop), None)
+    if anchor is None:
+        raise HTTPException(404, "SHOP_NOT_FOUND")
+    if lat is None or lng is None:
+        if anchor.get("lat") is None or anchor.get("lng") is None:
+            return SimilarResponse(
+                places=[], source="embeddings", engine=search_engine(request).mode
+            )
+        lat, lng = float(anchor["lat"]), float(anchor["lng"])
+    near = [
+        s
+        for s in shops
+        if s.get("lat") is not None
+        and s.get("lng") is not None
+        and not s.get("supplier")
+        and distance(lat, lng, s["lat"], s["lng"]) <= radius
+    ]
+    engine = search_engine(request)
+    found, source = await anyio.to_thread.run_sync(
+        engine.similar, anchor, item.strip() or None, near
+    )
+    places = []
+    for other, likeness, name in found:
+        d = distance(lat, lng, other["lat"], other["lng"])
+        is_open = open_now(
+            other["hours"], other["timezone"], weekly_hours=other.get("weekly_hours")
+        )
+        product = next((p for p in other["products"] if p["name"] == name), None)
+        places.append(
+            (
+                blend(Components(semantic=likeness, distance_m=d), "similar"),
+                SimilarPlace(
+                    id=other["id"],
+                    name=other["name"],
+                    category=other["category"],
+                    distance_m=d,
+                    open_now=is_open,
+                    currency=other["currency"],
+                    demo_shop=bool(other.get("demo")),
+                    photo_url=(
+                        f"/api/v1/public/shops/{other['id']}/photos/{other['gallery'][0]}.jpg"
+                        if other.get("gallery")
+                        else None
+                    ),
+                    item=TopItem(**product) if product else None,
+                    similarity=round(likeness, 3),
+                ),
+            )
+        )
+    places.sort(key=lambda pair: -pair[0])
+    return SimilarResponse(places=[p for _, p in places], source=source, engine=engine.mode)

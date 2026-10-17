@@ -273,6 +273,9 @@ test('B5: no "What’s new at …" line; + (new shop) sits top-right; settings l
 test('B6: Today fits the phone without scrolling, items leave when done, and finished setup leaves no bar', async ({
   page,
 }) => {
+  // The shop closes at 15:00, so "Close the day" joins Today from 14:00 shop time; pin the
+  // browser to 10:00 in Singapore so the menu question leads whatever the runner's clock says.
+  await page.clock.setFixedTime(new Date('2026-10-17T02:00:00Z'))
   await enter(page)
   await saveShop(page)
   const fits = () =>
@@ -289,7 +292,7 @@ test('B6: Today fits the phone without scrolling, items leave when done, and fin
   await expect(page.getByTestId('today-progress')).toBeVisible()
   await axe(page)
 
-  // Finish setup through the API (menu, kind, hours, phone, then share): the bar goes away.
+  // Finish setup through the API (menu, kind, hours, phone): the bar goes away.
   const approve = async (data: object) => {
     const prepared = await page.request.post('/api/v1/proposals', { data })
     expect(prepared.ok(), await prepared.text()).toBe(true)
@@ -323,7 +326,7 @@ test('B6: Today fits the phone without scrolling, items leave when done, and fin
   await page.getByRole('button', { name: 'Continue local preview' }).tap()
   await page.getByRole('button', { name: 'Shop', exact: true }).tap()
   await page.getByRole('button', { name: /^Customer page/ }).tap()
-  await page.getByRole('switch', { name: 'Share customer page' }).tap()
+  // The new-shop flow put the shop live by itself (name + kind + place): already shared.
   await expect(page.getByRole('switch', { name: 'Share customer page' })).toBeChecked()
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Coach', exact: true }).tap()

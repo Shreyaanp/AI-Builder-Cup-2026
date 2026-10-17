@@ -58,6 +58,7 @@ from .passport import (
     QuestStop,
     Requirement,
     ScratchTicket,
+    ShopProgress,
     StampRecord,
     Streak,
     Visit,
@@ -186,6 +187,11 @@ class ShopStamp(BaseModel):
     needed: int = 8
     welcome: int = WELCOME_STAMPS
     reward: str = ""
+    # The one count every screen shows for this card (shop button, card, passport): the welcome
+    # stamps plus this customer's stamps, out of `slots` (needed + welcome). Both are 0 when the
+    # shop has no stamp card (no reward set).
+    stamps: int = 0
+    slots: int = 0
 
 
 class AreaView(BaseModel):
@@ -428,11 +434,14 @@ async def perk_views(
     for bid, shop in shops.items():
         progress = state.shops[bid]
         needed = int(shop.get("stamps_needed") or 8)
+        stamps_enabled = bool(
+            shop.get("stamps_enabled") if "stamps_enabled" in shop else shop.get("reward_text")
+        )
         for perk in await shop_perks(request, bid, shop):
             trigger = perk["trigger"]
             unlocked = (
                 (trigger == "regular" and regular and len(progress.days) >= 2)
-                or (trigger == "full_card" and progress.card >= needed)
+                or (trigger == "full_card" and stamps_enabled and progress.card >= needed)
                 or (trigger == "quest_finale" and bid in state.finale_shops)
                 or (trigger == "rescue_hero" and progress.rescues >= 3)
                 or (trigger == "third_visit" and len(progress.days) >= 3)
@@ -629,28 +638,61 @@ def next_reward(
     level: LevelView,
 ) -> NextReward | None:
     """The closest named reward: a shop card, then a collection set, else the next level."""
-    options: list[tuple[int, int, NextReward]] = []
+    cards: list[NextReward] = []
     for bid, shop in shops.items():
+        stamps_enabled = bool(
+            shop.get("stamps_enabled") if "stamps_enabled" in shop else shop.get("reward_text")
+        )
         reward = str(shop.get("reward_text") or "")
         progress = state.shops[bid]
-        if not reward or not progress.card:
+        if not stamps_enabled or not reward or not progress.card:
             continue
         left = max(0, int(shop.get("stamps_needed") or 8) - progress.card)
         card = NextReward(
             kind="card", left=left, reward=reward[:120], shop_id=bid, shop_name=progress.name
         )
-        options.append((left, 0, card))
-    for view in sets:
-        if not view.done and view.have and not view.festival:
-            left = view.need - view.have
-            options.append((left, 1, NextReward(kind="set", left=left, reward=view.id)))
+        cards.append(card)
+    if cards:
+        # A shop's stamp card always outranks a set: it is the reward the owner promised.
+        return min(cards, key=lambda card: card.left)
+    options = [
+        NextReward(kind="set", left=view.need - view.have, reward=view.id)
+        for view in sets
+        if not view.done and view.have and not view.festival
+    ]
     if options:
-        return min(options, key=lambda option: (option[0], option[1]))[2]
+        return min(options, key=lambda option: option.left)
     requirement = level.next_requirement
     if level.next and requirement:
         left = max(0, requirement.need - requirement.have)
         return NextReward(kind="level", left=left, reward=level.next)
     return None
+
+
+def shop_stamp(bid: str, p: ShopProgress, shop: dict[str, Any]) -> ShopStamp:
+    """One shop in the passport, with the card count every screen shows (welcome included)."""
+    needed = int(shop.get("stamps_needed") or 8)
+    enabled = bool(
+        shop.get("stamps_enabled") if "stamps_enabled" in shop else shop.get("reward_text")
+    )
+    return ShopStamp(
+        id=bid,
+        name=p.name,
+        area=p.area,
+        area_name=p.area_name,
+        category=p.category,
+        demo=p.demo,
+        visits=p.visits,
+        days=len(p.days),
+        card=p.card,
+        claimed=p.claimed,
+        rescues=p.rescues,
+        last_day=(p.days or [""])[-1],
+        needed=needed,
+        reward=str(shop.get("reward_text") or "")[:120] if enabled else "",
+        stamps=WELCOME_STAMPS + min(p.card, needed) if enabled else 0,
+        slots=WELCOME_STAMPS + needed if enabled else 0,
+    )
 
 
 async def build_view(
@@ -672,22 +714,7 @@ async def build_view(
     nearby = await nearby_shops(request, lat, lng)
     data = await recent_shops(request, state)
     shops = [
-        ShopStamp(
-            id=bid,
-            name=p.name,
-            area=p.area,
-            area_name=p.area_name,
-            category=p.category,
-            demo=p.demo,
-            visits=p.visits,
-            days=len(p.days),
-            card=p.card,
-            claimed=p.claimed,
-            rescues=p.rescues,
-            last_day=(p.days or [""])[-1],
-            needed=int((data.get(bid) or {}).get("stamps_needed") or 8),
-            reward=str((data.get(bid) or {}).get("reward_text") or "")[:120],
-        )
+        shop_stamp(bid, p, data.get(bid) or {})
         for bid, p in sorted(state.shops.items(), key=lambda kv: kv[1].days[-1:], reverse=True)
     ]
     areas: dict[str, AreaView] = {}
@@ -929,13 +956,21 @@ async def receipt_visits(request: Request, receipts: list[str]) -> list[tuple[st
     return found
 
 
-def apply_cards(state: PassportState, cards: dict[str, int], shops: dict[str, Any]) -> None:
+def apply_cards(
+    state: PassportState, cards: dict[str, int], shops: dict[str, Any], *, exact: bool = False
+) -> None:
+    """This phone's stamp cards. On merge they only ever raise the account's card; signed out
+    (`exact`) the phone's card is the card, so a reward claimed on the phone resets it here too
+    and every screen shows the same count."""
     for bid, count in cards.items():
         shop = shops.get(bid)
-        if shop is None or not isinstance(count, int) or count <= 0:
+        if shop is None or not isinstance(count, int) or count < 0:
+            continue
+        if count == 0 and not (exact and bid in state.shops):
             continue
         progress = shop_progress(state, bid, shop)
-        progress.card = max(progress.card, min(count, int(shop.get("stamps_needed") or 8)))
+        count = min(count, int(shop.get("stamps_needed") or 8))
+        progress.card = count if exact else max(progress.card, count)
 
 
 @router.post("/public/passport/preview", response_model=PassportView)
@@ -956,7 +991,7 @@ async def preview(
     for bid in list(body.cards)[:100]:
         if bid not in shops:
             shops[bid] = await anyio.to_thread.run_sync(store(request).public_shop, bid)
-    apply_cards(state, body.cards, {k: v for k, v in shops.items() if v})
+    apply_cards(state, body.cards, {k: v for k, v in shops.items() if v}, exact=True)
     return await build_view(
         request, state, signed_in=False, device_only=True, lat=lat, lng=lng, timezone=tz
     )
@@ -1168,9 +1203,13 @@ async def board(
         area = geohash(lat, lng)
     if not area:
         area = max(state.week_points, key=lambda a: sum(state.week_points[a].values()), default="")
-    if not area or len(area) > 12:
-        raise HTTPException(422, "Choose an area.")
+    if not area:
+        shop_areas = [p.area for p in state.shops.values() if p.area]
+        if shop_areas:
+            area = shop_areas[0]
     week = week_of(local_now("UTC", time.time()).date())
+    if not area or len(area) > 12:
+        return Board(area="", week=week, joined=state.leaderboard, rows=[], you=None)
     rows = await anyio.to_thread.run_sync(service.board, area, week)
     me = member_id(principal.uid)
     entries = [{**row, "you": key == me} for key, row in rows.items()]

@@ -87,3 +87,23 @@ def test_coach_line_prefers_festival_then_live_rain_then_busiest_day():
     assert line == shop_today.CoachLine(kind="busiest_day", weekday=5, item="Chai", count=60)
     # Not the busiest weekday: nothing to say.
     assert shop_today.coach_line({"currency": "SGD"}, day, rows(day, 2), None) is None
+
+
+def test_coach_line_follows_the_playbooks_topic_order():
+    live = Weather(temperature_c=28, rain_probability=80)
+    day = date(2026, 10, 17)  # a Saturday, also the busiest weekday below
+    shop = {"currency": "SGD"}
+    # Without a playbook rain leads; a playbook that watches the rush puts the busiest day first.
+    assert shop_today.coach_line(shop, day, rows(day, 5), live).kind == "rain"
+    line = shop_today.coach_line(shop, day, rows(day, 5), live, ["busiest_day", "rain"])
+    assert line is not None and line.kind == "busiest_day"
+    # Topics without a true line today fall back to the usual order.
+    assert shop_today.coach_line(shop, day, [], live, ["busiest_day", "regulars"]).kind == "rain"
+
+
+def test_today_carries_playbook_hints_only_when_the_shop_has_one(setup):  # noqa: F811
+    client, _, bid, _ = setup
+    assert client.get(f"/api/v1/businesses/{bid}/today").json().get("hints") is None
+    assert client.get(f"/api/v1/businesses/{bid}/playbook").status_code == 200
+    hints = client.get(f"/api/v1/businesses/{bid}/today").json()["hints"]
+    assert hints["needs_you"] and hints["pulse"] and hints["line_topics"]

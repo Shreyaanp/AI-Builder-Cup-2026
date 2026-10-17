@@ -52,6 +52,8 @@ export function WorkspaceProvider({
   })
   const [destination, setDestination] = useState<Destination>('coach')
   const [proposal, setProposal] = useState<Proposal | null>(null)
+  // Proposals confirmed in this session, so the coach can link a saved change back to the menu.
+  const [savedProposals, setSavedProposals] = useState<string[]>([])
   // The route belongs to this workspace, so entering registration preserves the current
   // shop's mounted coach and unsent draft. No merchant data is written to browser storage.
   // Each phase is a history entry, so Back goes review → conversation → leaves the flow.
@@ -147,7 +149,9 @@ export function WorkspaceProvider({
       .then((items) => {
         if (!abort.signal.aborted) setInventory({ bid: activeId, items })
       })
-      .catch(() => undefined)
+      .catch(() => {
+        if (!abort.signal.aborted) setInventory({ bid: activeId, items: [] })
+      })
     return () => abort.abort()
   }, [activeId, api])
 
@@ -249,6 +253,7 @@ export function WorkspaceProvider({
       },
       // Products shown always belong to the active shop.
       products: inventory.bid === activeId ? inventory.items : [],
+      productsLoaded: !activeId || inventory.bid === activeId,
       destination,
       speakReplies,
       setSpeakReplies: (next) => {
@@ -274,6 +279,7 @@ export function WorkspaceProvider({
       setShared,
       shareUrl: activeId && customerOrigin ? customerShopLink(activeId, customerOrigin) : null,
       review: setProposal,
+      savedProposals,
       confirm,
       notify: setToast,
       requestPhoto: () => {
@@ -315,6 +321,7 @@ export function WorkspaceProvider({
       reload,
       setAvailability,
       setShared,
+      savedProposals,
       confirm,
       photoPending,
       consumePhotoRequest,
@@ -335,6 +342,8 @@ export function WorkspaceProvider({
         onClose={() => setProposal(null)}
         onSaved={async (businessId) => {
           const isNew = !businesses.some((shop) => shop.id === businessId)
+          const saved = proposal?.id
+          if (saved) setSavedProposals((ids) => [...ids, saved].slice(-40))
           setProposal(null)
           await reload()
           setActiveId(businessId)

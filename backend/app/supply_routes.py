@@ -1,0 +1,242 @@
+"""Supply chain: supplier rules, purchase orders and the document flow (supply_chain.py)."""
+
+from typing import Any, Literal
+
+import anyio
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, ConfigDict, Field
+
+from . import coordinator, supply_chain
+from .forecast import ForecastService
+from .limits import enforce_limits
+from .merchant_routes import consented_owner, owner, store
+from .supply_rules import RuleSet
+
+router = APIRouter(prefix="/api/v1")
+
+
+class Version(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    version: int = Field(ge=1)
+
+
+class RulesBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    version: int = Field(ge=1)
+    rules: RuleSet
+
+
+class ConfirmRules(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    version: int = Field(ge=1)
+    apply: bool = True
+
+
+class ReorderBody(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    item: str = Field(default="", max_length=80)
+    quantity: float | None = Field(default=None, gt=0, le=100_000)
+    supplier_id: str = Field(default="", max_length=120)
+
+
+class Fix(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["quantity", "cash"]
+    line: int | None = Field(default=None, ge=1)
+    value: float | None = Field(default=None, gt=0, le=1_000_000)
+
+
+class FixBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    version: int = Field(ge=1)
+    fix: Fix
+
+
+class SimulateBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    version: int = Field(ge=1)
+    variant: Literal["full", "partial", "substitute", "match", "price_mismatch"] = "full"
+
+
+class InboundBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    version: int = Field(ge=1)
+    text: str = Field(min_length=10, max_length=20_000)
+
+
+class FlagBody(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    version: int = Field(ge=1)
+    value: str = Field(min_length=1, max_length=80)
+
+
+def forecaster(request: Request) -> ForecastService:
+    service = getattr(request.app.state, "forecaster", None)
+    if service is None:
+        raise HTTPException(503, "Forecasting is not available.")
+    return service
+
+
+@router.get("/businesses/{business_id}/supply")
+async def overview(business_id: str, request: Request) -> dict[str, Any]:
+    uid = await owner(request)
+    rows = await anyio.to_thread.run_sync(
+        supply_chain.relationships, store(request), uid, business_id
+    )
+    orders = await anyio.to_thread.run_sync(supply_chain.orders, store(request), uid, business_id)
+    return {"suppliers": rows, "orders": orders}
+
+
+@router.put("/businesses/{business_id}/supply/suppliers/{supplier_id}/rules")
+async def save_rules(
+    business_id: str, supplier_id: str, body: RulesBody, request: Request
+) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.save_rules,
+        store(request),
+        uid,
+        business_id,
+        supplier_id,
+        body.rules,
+        body.version,
+    )
+
+
+@router.post("/businesses/{business_id}/supply/suppliers/{supplier_id}/rules/confirm")
+async def confirm_rules(
+    business_id: str, supplier_id: str, body: ConfirmRules, request: Request
+) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.confirm_rules,
+        store(request),
+        uid,
+        business_id,
+        supplier_id,
+        body.version,
+        body.apply,
+    )
+
+
+@router.post("/businesses/{business_id}/supply/reorder")
+async def reorder(business_id: str, body: ReorderBody, request: Request) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    await enforce_limits(request, [("coach", uid)])
+    return await supply_chain.draft_reorder(
+        store(request),
+        uid,
+        business_id,
+        body.item,
+        body.quantity,
+        forecaster(request),
+        coordinator._generator(),
+        coordinator.DEMO_OWNER_UID,
+        body.supplier_id,
+    )
+
+
+@router.get("/businesses/{business_id}/supply/orders/{order_id}")
+async def read_order(business_id: str, order_id: str, request: Request) -> dict[str, Any]:
+    uid = await owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.get_po, store(request), uid, business_id, order_id
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/fix")
+async def fix_order(
+    business_id: str, order_id: str, body: FixBody, request: Request
+) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.apply_fix,
+        store(request),
+        uid,
+        business_id,
+        order_id,
+        body.version,
+        body.fix.model_dump(),
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/approve")
+async def approve_order(
+    business_id: str, order_id: str, body: Version, request: Request
+) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.approve, store(request), uid, business_id, order_id, body.version
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/cancel")
+async def cancel_order(
+    business_id: str, order_id: str, body: Version, request: Request
+) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.cancel, store(request), uid, business_id, order_id, body.version
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/simulate")
+async def simulate(
+    business_id: str, order_id: str, body: SimulateBody, request: Request
+) -> dict[str, Any]:
+    """Demo only: the simulated supplier sends its next document in its own format."""
+    uid = await consented_owner(request)
+    await enforce_limits(request, [("coach", uid)])
+    return await supply_chain.simulate(
+        store(request), uid, business_id, order_id, body.version, body.variant
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/inbound")
+async def inbound(
+    business_id: str, order_id: str, body: InboundBody, request: Request
+) -> dict[str, Any]:
+    """A document from the supplier in any format (IDoc XML, CSV, a message): translated."""
+    uid = await consented_owner(request)
+    await enforce_limits(request, [("coach", uid)])
+    return await supply_chain.inbound(
+        store(request), uid, business_id, order_id, body.version, body.text
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/flags/{flag_id}")
+async def resolve_flag(
+    business_id: str, order_id: str, flag_id: str, body: FlagBody, request: Request
+) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.resolve_flag,
+        store(request),
+        uid,
+        business_id,
+        order_id,
+        body.version,
+        flag_id,
+        body.value,
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/accept")
+async def accept(
+    business_id: str, order_id: str, body: Version, request: Request
+) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.accept, store(request), uid, business_id, order_id, body.version
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/received")
+async def received(
+    business_id: str, order_id: str, body: Version, request: Request
+) -> dict[str, Any]:
+    """Goods arrived; returns the order and, when menu items match, a stock review."""
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.receive, store(request), uid, business_id, order_id, body.version
+    )
