@@ -40,7 +40,8 @@ export function RadarTile() {
   const ws = useWorkspace()
   const [open, setOpen] = useState(false)
   const { radar } = useRadar(ws.active!.id, true)
-  const count = radar?.opportunities.length ?? 0
+  const opportunities = radar?.opportunities ?? []
+  const count = opportunities.length
   return (
     <>
       <Tile
@@ -51,7 +52,7 @@ export function RadarTile() {
       >
         {count > 0 && (
           <Supporting>
-            {radar!.opportunities
+            {opportunities
               .slice(0, 2)
               .map((o) => o.label)
               .join(' · ')}
@@ -74,6 +75,7 @@ export function RadarSheet({ open, onClose }: { open: boolean; onClose: () => vo
   const roles = theme.material
   const ws = useWorkspace()
   const { radar, failed, retry } = useRadar(ws.active!.id, open)
+  const opportunities = radar?.opportunities ?? []
   const km = radar ? new Intl.NumberFormat(formatLocale(locale)).format(radar.radius / 1000) : ''
   return (
     <Sheet open={open} onClose={onClose} titleId="radar-sheet-title" title={t.radar}>
@@ -88,11 +90,11 @@ export function RadarSheet({ open, onClose }: { open: boolean; onClose: () => vo
               ? fill(t.radarScopeApprox, { days: radar.days, km })
               : fill(t.radarScope, { days: radar.days, km, area: radar.area_label })}
           </Typography>
-          {radar.opportunities.length === 0 ? (
+          {opportunities.length === 0 ? (
             <Typography variant="bodyLarge">{t.radarEmpty}</Typography>
           ) : (
             <Stack component="ul" spacing={2} sx={{ listStyle: 'none', m: 0, p: 0 }}>
-              {radar.opportunities.map((o) => (
+              {opportunities.map((o) => (
                 <Box
                   component="li"
                   key={o.key}

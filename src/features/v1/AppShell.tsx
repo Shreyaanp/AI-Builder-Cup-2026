@@ -116,7 +116,14 @@ export function AppShell() {
   return (
     <>
       {inFlow && <NewShopFlow setGalleryPhoto={setGalleryPhoto} />}
-      <Box sx={{ display: inFlow ? 'none' : 'flex', minHeight: '100dvh', bgcolor: roles.surface }}>
+      <Box
+        sx={{
+          display: inFlow ? 'none' : 'flex',
+          minHeight: '100dvh',
+          height: destination === 'coach' && !feature ? '100dvh' : undefined,
+          bgcolor: roles.surface,
+        }}
+      >
         <a href="#main" className="skip-link">
           {tabs.skipToContent}
         </a>
@@ -157,6 +164,7 @@ export function AppShell() {
               sx={{
                 flex: 1,
                 minWidth: 0,
+                minHeight: 0,
                 px: { xs: 2, sm: 3, md: 4 },
                 // Clear the fixed bar by its measured height: labels wrap and fonts differ.
                 pb: rail ? 3 : `${navHeight + 16}px`,
@@ -367,7 +375,11 @@ function TopBar() {
         aria-label={t.chooseShop + (ws.active ? `: ${ws.active.fields.name}` : '')}
         sx={{ color: roles.onSurface, minWidth: 0, maxWidth: 'min(70vw, 420px)', px: 1.5 }}
       >
-        <Typography variant="titleLarge" noWrap component="span">
+        <Typography
+          variant="titleLarge"
+          component="span"
+          sx={{ overflowWrap: 'anywhere', minWidth: 0 }}
+        >
           {ws.active?.fields.name ?? t.appName}
         </Typography>
       </Button>
