@@ -313,7 +313,8 @@ async def gemini_voice(
         merchant.spoken = True
     budget = AudioBudget(runtime.settings, new_shop)
     max_text_turns = NEW_SHOP_TEXT_TURNS if new_shop else VOICE_TEXT_TURNS
-    # A typed turn the coach has not answered yet: a fresh Live connection gets it again.
+    # A typed turn (or the owner's spoken words) the coach has not answered yet: a fresh Live
+    # connection gets it again.
     unanswered: list[str] = []
     # The owner typed "bas" / "ho gaya": the conversation ends after the coach's goodbye.
     stop_asked = False
@@ -430,6 +431,12 @@ async def gemini_voice(
                 return "options_rejected"
             raise
         finally:
+            if owner_said.strip() and not unanswered:
+                # The owner spoke but the connection ended before the coach's turn completed:
+                # spoken words are saved to the conversation only at the end of a turn, so the
+                # next connection would never hear them (#108). It gets them as a typed turn.
+                unanswered[:] = [owner_said.strip()[:2000]]
+                log.info("voice_spoken_turn_carried", length=len(unanswered[0]))
             await events.aclose()
 
     async def downstream() -> None:
