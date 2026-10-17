@@ -49,7 +49,7 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await page.screenshot({ path: 'output/playwright/supply-io-change.png' })
   await cafe.getByRole('button', { name: 'Accept change', exact: true }).click()
   await expect(cafe.getByRole('button', { name: 'Send shipping notice' })).toBeVisible()
-  await expect(cafe).toContainText('15 l Milk')
+  await expect(cafe).toContainText(/15 l\s*Milk/)
   await cafe.getByRole('button', { name: 'Close', exact: true }).click()
 
   // OUTBOUND 1: goods arrive. Pre-filled from the order; the owner fixes only the difference.
