@@ -57,16 +57,23 @@ async def face_warmup(request: Request) -> dict[str, Any]:
     settings = request.app.state.v1_settings
     if settings.face_mode == "fixture" or not settings.face_worker_token.get_secret_value():
         return {"ready": True, "mode": settings.face_mode}
+    started = time.perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
+        # A cold worker takes about 12 s to load its models; this call is what absorbs it.
+        async with httpx.AsyncClient(timeout=30, trust_env=False) as client:
             resp = await client.get(
                 settings.face_worker_url + "/health",
                 headers=await worker_headers(settings, uid),
             )
-            return {"ready": resp.is_success, "status": resp.status_code}
     except Exception as error:
         log.warning("face_warmup_failed", error=type(error).__name__)
         return {"ready": False, "error": "unreachable"}
+    log.info(
+        "face_warmup",
+        http=resp.status_code,
+        latency_ms=round((time.perf_counter() - started) * 1000, 1),
+    )
+    return {"ready": resp.is_success, "status": resp.status_code}
 
 
 @router.post("/face/challenges")
