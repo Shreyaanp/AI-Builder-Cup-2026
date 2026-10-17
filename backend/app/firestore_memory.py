@@ -20,7 +20,7 @@ from google.adk.sessions.state import State
 from google.api_core.exceptions import GoogleAPIError
 from google.cloud import firestore
 
-from .limits import Lease
+from .limits import Lease, forget_lease, signal_lost, takes_over
 
 log = structlog.get_logger()
 
@@ -256,12 +256,14 @@ class FirestoreRunRegistry:
         self.maximum = maximum
         self.ttl = ttl
 
-    async def acquire_async(self, user_id: str, session_id: str) -> Lease:
-        lease = Lease((user_id, session_id), str(uuid4()))
+    async def acquire_async(self, user_id: str, session_id: str, kind: str = "text") -> Lease:
+        lease = Lease((user_id, session_id), str(uuid4()), kind)
         slot = key(json.dumps(lease.key))
+        replaced: list[str] = []
 
         @firestore.async_transactional
         async def acquire(transaction: Any) -> None:
+            replaced.clear()
             snapshot = await self.ref.get(transaction=transaction)
             now = time.time()
             active = {
@@ -269,17 +271,41 @@ class FirestoreRunRegistry:
                 for k, v in (snapshot.to_dict() or {}).get("active", {}).items()
                 if v["expires"] > now
             }
-            if slot in active:
+            held = active.get(slot)
+            if held and not takes_over(held.get("kind", "text"), kind):
                 raise HTTPException(409, "This conversation already has an active stream.")
-            if len(active) >= self.maximum:
+            if not held and len(active) >= self.maximum:
                 raise HTTPException(429, "The coach is busy. Try again shortly.")
-            active[slot] = {"token": lease.token, "expires": now + self.ttl}
+            if held:
+                replaced.append(held["token"])
+            active[slot] = {"token": lease.token, "expires": now + self.ttl, "kind": kind}
             transaction.set(self.ref, {"active": active})
 
         await acquire(self.client.transaction())
+        # The old stream ends at once when it runs here; elsewhere at its next renewal.
+        for token in replaced:
+            signal_lost(token)
         return lease
 
+    async def renew_async(self, lease: Lease) -> bool:
+        """Extend the lease; False once another stream took the conversation over."""
+        slot = key(json.dumps(lease.key))
+
+        @firestore.async_transactional
+        async def renew(transaction: Any) -> bool:
+            snapshot = await self.ref.get(transaction=transaction)
+            active = (snapshot.to_dict() or {}).get("active", {})
+            if active.get(slot, {}).get("token") != lease.token:
+                return False
+            active[slot]["expires"] = time.time() + self.ttl
+            transaction.set(self.ref, {"active": active})
+            return True
+
+        async with asyncio.timeout(5):
+            return bool(await renew(self.client.transaction()))
+
     async def release_async(self, lease: Lease) -> None:
+        forget_lease(lease.token)
         slot = key(json.dumps(lease.key))
 
         @firestore.async_transactional

@@ -292,7 +292,7 @@ test('B6: Today fits the phone without scrolling, items leave when done, and fin
   await expect(page.getByTestId('today-progress')).toBeVisible()
   await axe(page)
 
-  // Finish setup through the API (menu, kind, hours, phone, then share): the bar goes away.
+  // Finish setup through the API (menu, kind, hours, phone): the bar goes away.
   const approve = async (data: object) => {
     const prepared = await page.request.post('/api/v1/proposals', { data })
     expect(prepared.ok(), await prepared.text()).toBe(true)
@@ -326,7 +326,7 @@ test('B6: Today fits the phone without scrolling, items leave when done, and fin
   await page.getByRole('button', { name: 'Continue local preview' }).tap()
   await page.getByRole('button', { name: 'Shop', exact: true }).tap()
   await page.getByRole('button', { name: /^Customer page/ }).tap()
-  await page.getByRole('switch', { name: 'Share customer page' }).tap()
+  // The new-shop flow put the shop live by itself (name + kind + place): already shared.
   await expect(page.getByRole('switch', { name: 'Share customer page' })).toBeChecked()
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Coach', exact: true }).tap()

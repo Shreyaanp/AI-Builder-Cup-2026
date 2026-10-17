@@ -78,14 +78,20 @@ def reply_language(tag: str | None) -> ReplyLanguage:
 def language_rule(language: ReplyLanguage) -> str:
     """The instruction that keeps every reply in the owner's chosen language."""
     name, code = language.name, language.code
-    script = f" Write it in {SCRIPTS[language.locale]}." if language.locale in SCRIPTS else ""
+    script = SCRIPTS.get(language.locale)
+    written = f" Write it in {script}." if script else ""
+    # Live eval, 17 Oct: a Hindi onboarding asked "kya aap abhi apni dukan par hain?".
+    roman = f" Use {script}, never in Roman letters (no romanized {name})." if script else ""
     if note := NOT_INSTEAD.get(language.locale):
-        script += f" Use {note}."
+        written += f" Use {note}."
     return (
-        f"Reply language: Always speak and write in {name} ({code}).{script} If the owner mixes "
-        f"languages, still reply in {name}. Never switch to another language or dialect (e.g. "
+        f"Reply language: Always speak and write in {name} ({code}).{written} Reply COMPLETELY in"
+        f" {name}: every sentence and every word you can say in {name}, never a mix. If the owner"
+        f" mixes languages (e.g. Hinglish), understand it and still reply only in {name};"
+        " names of shops, places and"
+        " dishes stay as said. Never switch to another language or dialect (e.g. "
         "Bhojpuri, Maithili, Urdu) unless the owner explicitly asks to change language; then "
-        "call set_reply_language with that language and reply in it from then on."
+        "call set_reply_language with that language and reply in it from then on." + roman
     )
 
 

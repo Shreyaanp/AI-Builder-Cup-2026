@@ -36,6 +36,7 @@ import { chalkDust } from '../../design/chalkboard'
 import { chalkWrite } from '../../design/chalkMotion'
 import { ShopChat } from './ShopChat'
 import { recsEvent } from '../recs/events'
+import { useOnboardingCopy } from '../v1/onboardingCopy'
 import { FollowButton } from '../customer/FollowButton'
 import { Tips } from '../customer/Tips'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
@@ -411,6 +412,7 @@ const publicTranslations: Record<Locale, Omit<typeof en, keyof CustomerCopy>> = 
 export default function PublicShop({ id }: { id: string }) {
   const locale = useLocale()
   const shopCopy = useShopCopy()
+  const o = useOnboardingCopy()
   const discovery = discoverCopy(locale)
   const freshnessCopy = locale === 'en' ? ownerEnglish : ownerTranslations[locale]
   const t = {
@@ -881,7 +883,11 @@ export default function PublicShop({ id }: { id: string }) {
           sx={{ px: 2, minHeight: 48, color: 'text.secondary', fontWeight: 500 }}
         >
           {shopCopy.weeklyHours}
-          {shop.hours ? ` · ${shop.hours}` : ''}
+          {shop.hours
+            ? ` · ${shop.hours}`
+            : !shop.weekly_hours?.length
+              ? ` · ${o.hoursNotSet}`
+              : ''}
         </Button>
         <Typography variant="bodySmall" color="text.secondary">
           {shop.last_confirmed
@@ -958,7 +964,19 @@ export default function PublicShop({ id }: { id: string }) {
         </Alert>
       )}
       {shop.products.length === 0 ? (
-        <Alert severity="info">{t.empty}</Alert>
+        // A new shop goes live before its menu (owner decision, 17 Oct): customers can already
+        // talk to it.
+        <Alert
+          severity="info"
+          data-testid="menu-coming-soon"
+          action={
+            <Button color="inherit" size="small" onClick={() => setChatOpen(true)}>
+              {o.chatShop}
+            </Button>
+          }
+        >
+          {o.menuSoon}
+        </Alert>
       ) : (
         <CategoryGroups products={shop.products}>
           {(items) => (

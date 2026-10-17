@@ -80,6 +80,35 @@ Ensure the worker has no `allUsers`/`allAuthenticatedUsers` invoker binding and 
 other invoking principals. `--no-allow-unauthenticated` alone is not an audit of
 pre-existing IAM. The workflow intentionally does not create these bindings.
 
+## Releasing the worker and reading its logs
+
+`scripts/ship.ps1` runs `scripts/ship-face.ps1` before it dispatches the main release. That
+script hashes the committed worker inputs exactly as `deploy.yml` does (`inputs-<16 hex>`),
+builds the image on Cloud Build only when that tag is missing, deploys with deploy.yml's account,
+secret and limits, and routes traffic to the new revision. To try a worker without production
+traffic, run `scripts/ship-face.ps1 -RevisionTag test` and point a tagged main revision at
+`https://test---ogoogle-face-…` with `--update-env-vars FACE_WORKER_URL=…`.
+
+A no-traffic revision pins Cloud Run traffic to whatever revision served at that moment, so
+later deploys get 0% until traffic is moved. Both release paths now run
+`gcloud run services update-traffic ogoogle-face --to-latest`. Check what actually serves with
+`gcloud run services describe ogoogle-face --format='yaml(status.traffic)'`, not the template
+image.
+
+Every capture logs one structured line: `face_worker_verdict` in the worker, and
+`face_evaluated` (with the worker's trace) in the main app. Fields: container, codec, size,
+rotation, frames decoded and sampled, faces per sampled frame (`1` one face, `0` none,
+`2` several, `s` too small), yaw/pitch range, the stage reached, the threshold that failed,
+whether this was the first request after a cold start, and latency. They never include
+images, templates or owner data.
+
+```sh
+gcloud logging read 'resource.labels.service_name="ogoogle-face" AND jsonPayload.event="face_worker_verdict"' --project ichiropractic --limit 20
+```
+
+The real worker end to end in a browser (Chrome's fake camera plays a committed recording):
+`FACE_WORKER_TOKEN=local npx playwright test tests/stories/s12-face-real-worker.spec.ts --project=phone --workers=1`.
+
 ## Offline tests and local container check
 
 CI pytest substitutes inference and ID tokens; it never downloads models or contacts
