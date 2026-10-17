@@ -83,7 +83,7 @@ const copy: Record<Locale, InChatCopy> = {
     guideBoard: 'Fit the whole price board in the frame, prices readable',
     guideFront: 'Step back so the sign and the door are in the frame',
     cameraWhy:
-      'I’ll read the items and prices from it. Your browser will ask to use the camera; nothing is saved until you open your shop.',
+      'Customers see this photo on your shop page. Your browser will ask to use the camera.',
     openCamera: 'Open camera',
     startingCamera: 'Starting the camera…',
     uploadInstead: 'Upload instead',
@@ -173,7 +173,7 @@ const copy: Record<Locale, InChatCopy> = {
     cameraFront: '现在拍一下店面',
     guideBoard: '把整块价目牌放进框里，价格要看得清',
     guideFront: '往后退一点，让招牌和店门都在框里',
-    cameraWhy: '我会从照片里读出商品和价格。浏览器会请求使用相机；在你开店之前不会保存任何内容。',
+    cameraWhy: '顾客会在你的店铺页面看到这张照片。浏览器会请求使用相机。',
     openCamera: '打开相机',
     startingCamera: '正在打开相机…',
     uploadInstead: '改为上传',
@@ -262,7 +262,7 @@ const copy: Record<Locale, InChatCopy> = {
     guideBoard: 'Muatkan seluruh papan harga dalam bingkai, harga boleh dibaca',
     guideFront: 'Undur sedikit supaya papan tanda dan pintu masuk dalam bingkai',
     cameraWhy:
-      'Saya akan membaca barang dan harga daripadanya. Pelayar akan minta izin guna kamera; tiada apa disimpan sehingga anda buka kedai.',
+      'Pelanggan melihat gambar ini di halaman kedai anda. Pelayar akan minta izin guna kamera.',
     openCamera: 'Buka kamera',
     startingCamera: 'Memulakan kamera…',
     uploadInstead: 'Muat naik saja',
@@ -361,7 +361,7 @@ const copy: Record<Locale, InChatCopy> = {
     guideBoard: 'முழு விலைப் பலகையும் சட்டத்துக்குள் வரட்டும், விலைகள் தெளிவாகத் தெரியட்டும்',
     guideFront: 'பெயர்ப் பலகையும் வாசலும் சட்டத்துக்குள் வர சற்றுப் பின்னால் நில்லுங்கள்',
     cameraWhy:
-      'அதிலிருந்து பொருட்களையும் விலைகளையும் படிப்பேன். கேமராவுக்கு உலாவி அனுமதி கேட்கும்; கடையைத் திறக்கும் வரை எதுவும் சேமிக்கப்படாது.',
+      'இந்தப் புகைப்படத்தை வாடிக்கையாளர்கள் உங்கள் கடைப் பக்கத்தில் பார்ப்பார்கள். கேமராவுக்கு உலாவி அனுமதி கேட்கும்.',
     openCamera: 'கேமராவைத் திற',
     startingCamera: 'கேமரா தொடங்குகிறது…',
     uploadInstead: 'பதிலாகப் பதிவேற்று',
@@ -451,7 +451,7 @@ const copy: Record<Locale, InChatCopy> = {
     guideBoard: '価格表全体を枠に入れて、値段が読めるように',
     guideFront: '少し下がって、看板と入口が枠に入るように',
     cameraWhy:
-      '写真から商品と値段を読み取ります。ブラウザがカメラの使用を確認します。お店を開くまで何も保存されません。',
+      'この写真はお店のページでお客さまに表示されます。ブラウザがカメラの使用を確認します。',
     openCamera: 'カメラを開く',
     startingCamera: 'カメラを起動中…',
     uploadInstead: 'アップロードする',
@@ -541,7 +541,7 @@ const copy: Record<Locale, InChatCopy> = {
     guideBoard: '가격표 전체가 틀 안에 들어오게, 가격이 읽히도록',
     guideFront: '조금 물러서서 간판과 출입문이 틀 안에 들어오게',
     cameraWhy:
-      '사진에서 상품과 가격을 읽어 드릴게요. 브라우저가 카메라 사용을 물어볼 거예요. 가게를 열기 전까지는 아무것도 저장되지 않아요.',
+      '손님은 가게 페이지에서 이 사진을 보게 돼요. 브라우저가 카메라 사용을 물어볼 거예요.',
     openCamera: '카메라 열기',
     startingCamera: '카메라를 켜는 중…',
     uploadInstead: '대신 업로드',
@@ -630,8 +630,7 @@ const copy: Record<Locale, InChatCopy> = {
     cameraFront: 'Sekarang bagian depan toko',
     guideBoard: 'Masukkan seluruh papan harga ke bingkai, harga terbaca jelas',
     guideFront: 'Mundur sedikit agar papan nama dan pintu masuk bingkai',
-    cameraWhy:
-      'Saya akan membaca barang dan harganya. Browser akan meminta izin kamera; tidak ada yang disimpan sampai Anda membuka toko.',
+    cameraWhy: 'Pelanggan melihat foto ini di halaman toko Anda. Browser akan meminta izin kamera.',
     openCamera: 'Buka kamera',
     startingCamera: 'Menyalakan kamera…',
     uploadInstead: 'Unggah saja',
@@ -729,8 +728,7 @@ const copy: Record<Locale, InChatCopy> = {
     cameraFront: 'ต่อไปถ่ายหน้าร้าน',
     guideBoard: 'ให้ป้ายราคาทั้งหมดอยู่ในกรอบ อ่านราคาได้ชัด',
     guideFront: 'ถอยออกมาหน่อยให้ป้ายชื่อและประตูอยู่ในกรอบ',
-    cameraWhy:
-      'ฉันจะอ่านรายการสินค้าและราคาจากรูปนี้ เบราว์เซอร์จะขออนุญาตใช้กล้อง และจะไม่มีอะไรถูกบันทึกจนกว่าคุณจะเปิดร้าน',
+    cameraWhy: 'ลูกค้าจะเห็นรูปนี้ในหน้าร้านของคุณ เบราว์เซอร์จะขออนุญาตใช้กล้อง',
     openCamera: 'เปิดกล้อง',
     startingCamera: 'กำลังเปิดกล้อง…',
     uploadInstead: 'อัปโหลดแทน',
@@ -829,7 +827,7 @@ const copy: Record<Locale, InChatCopy> = {
     guideBoard: 'Đưa cả bảng giá vào khung, giá đọc được rõ',
     guideFront: 'Lùi lại một chút để biển hiệu và cửa vào khung',
     cameraWhy:
-      'Tôi sẽ đọc món hàng và giá từ ảnh. Trình duyệt sẽ xin quyền dùng camera; không có gì được lưu cho đến khi bạn mở cửa hàng.',
+      'Khách hàng sẽ thấy ảnh này trên trang cửa hàng của bạn. Trình duyệt sẽ xin quyền dùng camera.',
     openCamera: 'Mở camera',
     startingCamera: 'Đang mở camera…',
     uploadInstead: 'Tải ảnh lên',
@@ -928,7 +926,7 @@ const copy: Record<Locale, InChatCopy> = {
     guideBoard: 'Ipasok ang buong price board sa frame, malinaw ang presyo',
     guideFront: 'Umatras nang kaunti para kita ang karatula at pinto',
     cameraWhy:
-      'Babasahin ko rito ang mga item at presyo. Hihingi ng pahintulot ang browser para sa camera; walang ise-save hangga’t hindi mo binubuksan ang tindahan.',
+      'Makikita ng mga customer ang larawang ito sa page ng tindahan mo. Hihingi ng pahintulot ang browser para sa camera.',
     openCamera: 'Buksan ang camera',
     startingCamera: 'Binubuksan ang camera…',
     uploadInstead: 'Mag-upload na lang',
@@ -1026,8 +1024,7 @@ const copy: Record<Locale, InChatCopy> = {
     cameraFront: 'अब दुकान का सामने वाला हिस्सा',
     guideBoard: 'पूरा रेट बोर्ड फ़्रेम में लाइए, दाम साफ़ पढ़े जाएँ',
     guideFront: 'थोड़ा पीछे हटिए ताकि बोर्ड और दरवाज़ा फ़्रेम में आएँ',
-    cameraWhy:
-      'मैं इसमें से चीज़ें और दाम पढ़ लूँगी। ब्राउज़र कैमरे की अनुमति माँगेगा; दुकान खोलने तक कुछ भी सेव नहीं होगा।',
+    cameraWhy: 'ग्राहक यह फ़ोटो आपकी दुकान के पेज पर देखेंगे। ब्राउज़र कैमरे की अनुमति माँगेगा।',
     openCamera: 'कैमरा खोलें',
     startingCamera: 'कैमरा चालू हो रहा है…',
     uploadInstead: 'इसके बजाय अपलोड करें',
@@ -1125,8 +1122,7 @@ const copy: Record<Locale, InChatCopy> = {
     cameraFront: 'এবার দোকানের সামনের দিক',
     guideBoard: 'পুরো দামের বোর্ড ফ্রেমে আনুন, দাম যেন পড়া যায়',
     guideFront: 'একটু পিছিয়ে দাঁড়ান যাতে সাইনবোর্ড আর দরজা ফ্রেমে আসে',
-    cameraWhy:
-      'আমি এখান থেকে জিনিস আর দাম পড়ে নেব। ব্রাউজার ক্যামেরার অনুমতি চাইবে; দোকান খোলার আগে কিছুই সেভ হবে না।',
+    cameraWhy: 'ক্রেতারা এই ছবিটি আপনার দোকানের পেজে দেখবেন। ব্রাউজার ক্যামেরার অনুমতি চাইবে।',
     openCamera: 'ক্যামেরা খুলুন',
     startingCamera: 'ক্যামেরা চালু হচ্ছে…',
     uploadInstead: 'বরং আপলোড করুন',
@@ -1224,8 +1220,7 @@ const copy: Record<Locale, InChatCopy> = {
     cameraFront: 'ఇప్పుడు దుకాణం ముందు భాగం',
     guideBoard: 'ధరల బోర్డు మొత్తం ఫ్రేమ్‌లోకి రావాలి, ధరలు స్పష్టంగా చదవగలగాలి',
     guideFront: 'బోర్డు, తలుపు ఫ్రేమ్‌లోకి వచ్చేలా కొంచెం వెనక్కి జరగండి',
-    cameraWhy:
-      'దీని నుంచి వస్తువులు, ధరలు చదువుతాను. బ్రౌజర్ కెమెరా అనుమతి అడుగుతుంది; మీరు దుకాణం తెరిచే వరకు ఏదీ సేవ్ కాదు.',
+    cameraWhy: 'కస్టమర్లు ఈ ఫోటోను మీ దుకాణం పేజీలో చూస్తారు. బ్రౌజర్ కెమెరా అనుమతి అడుగుతుంది.',
     openCamera: 'కెమెరా తెరవండి',
     startingCamera: 'కెమెరా ప్రారంభమవుతోంది…',
     uploadInstead: 'బదులుగా అప్‌లోడ్ చేయండి',
@@ -1314,8 +1309,7 @@ const copy: Record<Locale, InChatCopy> = {
     cameraFront: 'आता दुकानाचा पुढचा भाग',
     guideBoard: 'संपूर्ण दरफलक चौकटीत आणा, किमती स्पष्ट वाचता याव्यात',
     guideFront: 'थोडे मागे सरका म्हणजे पाटी आणि दार चौकटीत येतील',
-    cameraWhy:
-      'मी यातून वस्तू आणि किमती वाचून घेईन. ब्राउझर कॅमेऱ्याची परवानगी मागेल; दुकान उघडेपर्यंत काहीही सेव्ह होणार नाही.',
+    cameraWhy: 'ग्राहक हा फोटो तुमच्या दुकानाच्या पेजवर पाहतील. ब्राउझर कॅमेऱ्याची परवानगी मागेल.',
     openCamera: 'कॅमेरा उघडा',
     startingCamera: 'कॅमेरा सुरू होत आहे…',
     uploadInstead: 'त्याऐवजी अपलोड करा',
@@ -1405,7 +1399,7 @@ const copy: Record<Locale, InChatCopy> = {
     guideBoard: 'ಪೂರ್ತಿ ದರ ಫಲಕ ಚೌಕಟ್ಟಿನೊಳಗೆ ಬರಲಿ, ಬೆಲೆಗಳು ಸ್ಪಷ್ಟವಾಗಿ ಓದುವಂತಿರಲಿ',
     guideFront: 'ಫಲಕ ಮತ್ತು ಬಾಗಿಲು ಚೌಕಟ್ಟಿನಲ್ಲಿ ಬರುವಂತೆ ಸ್ವಲ್ಪ ಹಿಂದೆ ಸರಿಯಿರಿ',
     cameraWhy:
-      'ಇದರಿಂದ ವಸ್ತುಗಳು ಮತ್ತು ಬೆಲೆಗಳನ್ನು ಓದುತ್ತೇನೆ. ಬ್ರೌಸರ್ ಕ್ಯಾಮೆರಾ ಅನುಮತಿ ಕೇಳುತ್ತದೆ; ನೀವು ಅಂಗಡಿ ತೆರೆಯುವವರೆಗೆ ಏನೂ ಉಳಿಸಲಾಗುವುದಿಲ್ಲ.',
+      'ಗ್ರಾಹಕರು ಈ ಫೋಟೋವನ್ನು ನಿಮ್ಮ ಅಂಗಡಿಯ ಪುಟದಲ್ಲಿ ನೋಡುತ್ತಾರೆ. ಬ್ರೌಸರ್ ಕ್ಯಾಮೆರಾ ಅನುಮತಿ ಕೇಳುತ್ತದೆ.',
     openCamera: 'ಕ್ಯಾಮೆರಾ ತೆರೆಯಿರಿ',
     startingCamera: 'ಕ್ಯಾಮೆರಾ ಆರಂಭವಾಗುತ್ತಿದೆ…',
     uploadInstead: 'ಬದಲಿಗೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ',

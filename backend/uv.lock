@@ -990,6 +990,7 @@ face = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "av" },
     { name = "httpx" },
     { name = "httpx2" },
     { name = "mypy" },
@@ -1032,6 +1033,7 @@ provides-extras = ["face"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "av", specifier = ">=15,<18" },
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "httpx2", specifier = ">=2.13.1" },
     { name = "mypy", specifier = ">=1.18,<2" },

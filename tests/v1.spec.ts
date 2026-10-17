@@ -29,7 +29,7 @@ async function open(page: Page) {
 
 async function addShop(page: Page, name: string) {
   await openNewShopReview(page, `name: ${name}`)
-  await expect(page.getByTestId('new-shop-review')).toContainText('Nothing is published to Google')
+  await expect(page.getByTestId('draft-summary')).toContainText(name)
   await createShopFromReview(page)
   await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
 }
@@ -170,7 +170,23 @@ test('customer facts: the card starts the chat, the owner confirms, customers se
   // Outside busy hours, so the facts card (not the sold-out sweep) is the pending item.
   await page.clock.setFixedTime(new Date('2026-10-14T09:00:00+08:00'))
   await open(page)
-  await addShop(page, 'Halal Corner')
+  // A shop of no stated type yet (a typed food profile takes halal only where it is relevant,
+  // see shopProgress.halalAsked), saved straight through the API: not shared yet.
+  const proposal = await (
+    await page.request.post('/api/v1/proposals', {
+      data: { kind: 'business', revision: 0, business: { name: 'Halal Corner' } },
+    })
+  ).json()
+  expect(
+    (
+      await page.request.post(`/api/v1/proposals/${proposal.id}/approve`, {
+        data: { digest: proposal.digest },
+      })
+    ).ok(),
+  ).toBe(true)
+  await page.reload()
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await expect(page.getByRole('button', { name: 'Choose shop: Halal Corner' })).toBeVisible()
   // Before the page is shared, what customers ask waits on Shop (Today shows setup first).
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
   const card = page.getByRole('region', { name: 'Customers ask: halal? payment?' })
