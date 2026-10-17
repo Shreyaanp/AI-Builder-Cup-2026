@@ -114,6 +114,40 @@ export function defaultCurrency(
   return 'USD'
 }
 
+/** Currency for a place / area, from its coordinates when known, otherwise the phone default. */
+export function areaCurrency(
+  place?: { lat?: number | null; lng?: number | null } | null,
+  languages?: readonly string[],
+  zone?: string,
+): string {
+  if (place && place.lat != null && place.lng != null) {
+    const { lat, lng } = place
+    // Singapore
+    if (lat > 1.15 && lat < 1.48 && lng > 103.6 && lng < 104.1) return 'SGD'
+    // India
+    if (lat >= 6.5 && lat <= 37.5 && lng >= 68.0 && lng <= 97.5) return 'INR'
+    // Malaysia
+    if (lat >= 1.0 && lat <= 7.5 && lng >= 99.5 && lng <= 120.0) return 'MYR'
+    // Japan
+    if (lat >= 24.0 && lat <= 46.0 && lng >= 122.0 && lng <= 154.0) return 'JPY'
+    // South Korea
+    if (lat >= 33.0 && lat <= 39.0 && lng >= 124.0 && lng <= 132.0) return 'KRW'
+    // Indonesia
+    if (lat >= -11.0 && lat <= 6.0 && lng >= 95.0 && lng <= 141.0) return 'IDR'
+    // Thailand
+    if (lat >= 5.5 && lat <= 20.5 && lng >= 97.0 && lng <= 106.0) return 'THB'
+    // Vietnam
+    if (lat >= 8.5 && lat <= 23.5 && lng >= 102.0 && lng <= 110.0) return 'VND'
+    // Philippines
+    if (lat >= 4.5 && lat <= 21.5 && lng >= 116.0 && lng <= 127.0) return 'PHP'
+    // UK
+    if (lat >= 49.0 && lat <= 61.0 && lng >= -8.0 && lng <= 2.0) return 'GBP'
+    // Australia
+    if (lat >= -44.0 && lat <= -10.0 && lng >= 112.0 && lng <= 154.0) return 'AUD'
+  }
+  return defaultCurrency(languages, zone)
+}
+
 /** A saved shop's currency; shops saved before currencies existed are SGD. */
 export function shopCurrency(shop: { fields: { currency?: string } } | null | undefined): string {
   return shop ? (shop.fields.currency ?? 'SGD') : defaultCurrency()

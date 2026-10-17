@@ -1,5 +1,7 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
 import { photoCopy } from '../../coach/photoCopy'
+import { PlainText, RichText } from '../../../design/RichText'
+import { stripMarkdown } from '../../../design/markdownUtils'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent, ReactElement } from 'react'
 import {
@@ -59,6 +61,7 @@ import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
 import { ConnectSheet } from '../../connect/ConnectSheet'
 import { useConnectCopy } from '../../connect/strings'
+import { CloseDay } from '../../closeday/CloseDay'
 import { SalesImportSheet } from '../ImportMenu'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
 import { StartCard } from '../ShopCard'
@@ -84,7 +87,9 @@ import { PurchaseOrderCard } from '../../supply/PurchaseOrderCard'
 import { RulesChangeCard } from '../../supply/Supply'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
 import { utter } from '../phoneVoice'
-import { ActionChip, ReplyCard } from '../CoachActions'
+import { useLanguageSwitch } from '../languageSwitch'
+import { ActionChip, MenuLinkChip, ReplyCard } from '../CoachActions'
+import { useNextStepsCopy } from '../nextStepsCopy'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
 import type { Destination } from '../workspaceContext'
 import { GuideChips } from '../../owner-tools/CoachGuide'
@@ -108,6 +113,8 @@ type Message =
   // An app action the coach prepared: a screen it opened, or a customer reply to send.
   | { role: 'action'; action: CoachAction; key: string }
   | { role: 'payment'; payment: PaymentLink; key: string }
+  // A menu item the coach changed; the link shows once the owner saved that proposal.
+  | { role: 'menuLink'; proposalId: string; item: string; key: string }
 /** Cards a spoken reply refers to: shown when the voice reaches them, not before. */
 const SPOKEN_CARDS = new Set<CoachEvent['kind']>([
   'proposal',
@@ -181,6 +188,7 @@ function CoachScreen({
   const roles = theme.material
   const identity = useIdentity()
   const language = useLocale()
+  const switchLanguage = useLanguageSwitch()
   const photoText = photoCopy(language)
   const ws = useWorkspace()
   // Hidden behind the full-screen new-shop flow: no voice, no pickers, no draft prompts.
@@ -206,6 +214,11 @@ function CoachScreen({
   const receiveOrder = useReceiveOrder()
   // My shop sheets opened from suggestion chips.
   const [shopSheet, setShopSheet] = useState<ShopSheetKind | null>(null)
+  const [closeDayOpen, setCloseDayOpen] = useState(false)
+  const menuLinks = useRef<Message[]>([])
+  // The menu item a "See … in your menu" link opened the menu at.
+  const [menuFocus, setMenuFocus] = useState<string | null>(null)
+  const next = useNextStepsCopy()
   const { unread, refresh: refreshUnread } = useUnread()
   const messageInput = useRef<HTMLTextAreaElement>(null)
   const session = useRef<string | null>(null)
@@ -261,6 +274,7 @@ function CoachScreen({
 
   const receive = useCallback(
     (event: CoachEvent) => {
+      switchLanguage(event)
       if (event.kind === 'ready') {
         session.current = event.session_id ?? session.current
         setMode(event.mode ?? 'offline')
@@ -273,7 +287,22 @@ function CoachScreen({
         setShowToday(false)
         setMessages((items) => [...items, { role: 'user', text: event.text ?? '' }])
       }
-      if (event.kind === 'proposal') review(event.data as unknown as Proposal)
+      if (event.kind === 'proposal') {
+        const proposal = event.data as unknown as Proposal
+        review(proposal)
+        // E.g. after "per cup or per pot?": once saved, one tap shows the item in the menu.
+        const items = proposal.snapshot?.kind === 'inventory' ? proposal.snapshot.products : []
+        // The links follow the coach's words, so they wait for the end of the turn.
+        if (items.length > 0 && items.length <= 3)
+          menuLinks.current.push(
+            ...items.map((product) => ({
+              role: 'menuLink' as const,
+              proposalId: proposal.id,
+              item: product.name,
+              key: crypto.randomUUID(),
+            })),
+          )
+      }
       if (event.kind === 'payment_link' && event.data) {
         const payment = event.data as unknown as PaymentLink
         setMessages((items) =>
@@ -345,11 +374,17 @@ function CoachScreen({
         setFaceOpen(true)
       }
     },
-    [review, go, setFaceOpen, t.conversationRolledOver],
+    [review, go, setFaceOpen, t.conversationRolledOver, switchLanguage],
   )
   const restored = useRef<Promise<unknown>>(Promise.resolve())
+  /** The coach's reply text (if any), then the menu links its proposals earned so far. */
   const addReply = useCallback((text: string) => {
-    if (text) setMessages((items) => [...items, { role: 'assistant' as const, text }].slice(-40))
+    const links = menuLinks.current
+    menuLinks.current = []
+    if (!text && !links.length) return
+    setMessages((items) =>
+      [...items, ...(text ? [{ role: 'assistant' as const, text }] : []), ...links].slice(-40),
+    )
   }, [])
   // The spoken reply appears word by word as it is said; its cards when the voice reaches them.
   const playback = useRef<() => number>(() => 0)
@@ -360,6 +395,8 @@ function CoachScreen({
     },
     reducedMotion,
     onDone: addReply,
+    // Menu links still waiting (the reply ended at the card) show at the end of the turn.
+    onEnd: () => addReply(''),
   })
   const voice = useVoice(activeId, (event) => {
     if (event.kind === 'output_transcript' || event.kind === 'reply' || event.kind === 'delta') {
@@ -511,10 +548,11 @@ function CoachScreen({
   async function speakReply(text: string) {
     speechSynthesis.cancel()
     speaking.current?.pause()
+    const cleanText = stripMarkdown(text)
     try {
       const response = await api<Response>('/tts', {
         method: 'POST',
-        body: JSON.stringify({ text, language }),
+        body: JSON.stringify({ text: cleanText, language }),
         raw: true,
       })
       if (response.status === 200) {
@@ -528,7 +566,7 @@ function CoachScreen({
     } catch {
       // Fall through to on-device speech.
     }
-    const utterance = utter(text, language)
+    const utterance = utter(cleanText, language)
     speechSynthesis.speak(utterance)
   }
 
@@ -568,10 +606,7 @@ function CoachScreen({
       // The model occasionally returns an empty turn; treat it like a failed reply so the
       // owner sees why and can resend, instead of an empty bubble.
       if (!finalReply.trim() && !proposed) throw new Error('EMPTY_REPLY')
-      if (finalReply.trim())
-        setMessages((items) =>
-          [...items, { role: 'assistant' as const, text: finalReply }].slice(-40),
-        )
+      addReply(finalReply.trim() ? finalReply : '')
       setReply('')
       if (speakReplies && finalReply) void speakReply(finalReply)
       // History is supplemental; a failed refresh must never roll back a completed turn.
@@ -694,7 +729,8 @@ function CoachScreen({
       const query = activeId
         ? `?business_id=${encodeURIComponent(activeId)}`
         : `?currency=${defaultCurrency()}`
-      const result = await api<PhotoResult>(`/photos${query}`, {
+      // The notes about anything unclear come back in the owner's language.
+      const result = await api<PhotoResult>(`/photos${query}&language=${language}`, {
         method: 'POST',
         body: file,
         headers: { 'Content-Type': file.type },
@@ -826,6 +862,7 @@ function CoachScreen({
     openMessages: () => setShopSheet('messages'),
     openSoldOut: () => setShopSheet('soldOut'),
     talk: () => void restored.current.then(() => voice.start(session.current)),
+    openCloseDay: () => setCloseDayOpen(true),
   }
   const lastIsReply =
     messages.at(-1)?.role === 'assistant' && !liveReply && !reveal.active() && busy === 'idle'
@@ -865,6 +902,7 @@ function CoachScreen({
         onClose={() => setActionsOpen(false)}
         titleId="coach-actions-title"
         title={t.newChat}
+        dismissInActions
         actions={<Button onClick={() => setActionsOpen(false)}>{t.cancel}</Button>}
       >
         <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
@@ -1063,7 +1101,18 @@ function CoachScreen({
             <Box role="log" aria-live="polite">
               <Stack component="ol" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0, pt: 2 }}>
                 {messages.map((message, index) =>
-                  message.role === 'action' ? (
+                  message.role === 'menuLink' ? (
+                    ws.savedProposals.includes(message.proposalId) && (
+                      <MenuLinkChip
+                        key={message.key}
+                        label={next.seeInMenu(message.item)}
+                        onOpen={() => {
+                          setMenuFocus(message.item)
+                          setShopSheet('menu')
+                        }}
+                      />
+                    )
+                  ) : message.role === 'action' ? (
                     message.action.target === 'reply' ? (
                       <ReplyCard key={message.key} action={message.action} onSend={sendReply} />
                     ) : (
@@ -1143,6 +1192,7 @@ function CoachScreen({
                     message={{ role: 'assistant', text: liveReply }}
                     you={t.you}
                     coach={t.coach}
+                    streaming
                   />
                 )}
                 {busy === 'reply' && !reply && searching === null && (
@@ -1162,11 +1212,21 @@ function CoachScreen({
       <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
       <ShopSheets
         kind={shopSheet}
+        menuFocus={menuFocus}
         onClose={() => {
           if (shopSheet === 'messages') refreshUnread()
           setShopSheet(null)
+          setMenuFocus(null)
         }}
       />
+      {closeDayOpen && (
+        <CloseDay
+          onClose={() => {
+            setCloseDayOpen(false)
+            void ws.reload()
+          }}
+        />
+      )}
 
       <Box
         sx={{
@@ -1225,7 +1285,11 @@ function CoachScreen({
           }}
         >
           {voice.state !== 'idle' ? (
-            <IconButton aria-label={voice.muted ? t.unmute : t.mute} onClick={voice.toggleMute}>
+            <IconButton
+              aria-label={voice.muted ? t.unmute : t.mute}
+              onClick={voice.toggleMute}
+              sx={{ minWidth: 48, minHeight: 48 }}
+            >
               {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </IconButton>
           ) : (
@@ -1237,6 +1301,7 @@ function CoachScreen({
                   ref={photoButton}
                   aria-haspopup={choices ? 'menu' : undefined}
                   onClick={(event) => choosePhoto(event.currentTarget)}
+                  sx={{ minWidth: 48, minHeight: 48 }}
                 >
                   {busy === 'photo' || importer.busy ? (
                     <CircularProgress size={20} aria-label={t.checkingPhoto} />
@@ -1483,10 +1548,12 @@ function Bubble({
   message,
   you,
   coach,
+  streaming = false,
 }: {
   message: { role: 'user' | 'assistant'; text: string }
   you: string
   coach: string
+  streaming?: boolean
 }) {
   const roles = useTheme().material
   if (message.role === 'user')
@@ -1496,9 +1563,7 @@ function Bubble({
           <Typography component="span" sx={visuallyHidden}>
             {you}:{' '}
           </Typography>
-          <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-            {message.text}
-          </Typography>
+          <PlainText text={message.text} />
         </Box>
       </Box>
     )
@@ -1515,13 +1580,11 @@ function Bubble({
       >
         <Leaf size={18} />
       </Avatar>
-      <Box sx={{ minWidth: 0, pt: 0.5 }}>
+      <Box sx={{ minWidth: 0, pt: 0.5, flex: 1 }}>
         <Typography component="span" sx={visuallyHidden}>
           {coach}:{' '}
         </Typography>
-        <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-          {message.text}
-        </Typography>
+        <RichText content={message.text} streaming={streaming} />
       </Box>
     </Stack>
   )

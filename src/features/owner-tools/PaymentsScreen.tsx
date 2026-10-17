@@ -38,6 +38,9 @@ export function PaymentCard({ payment }: { payment: PaymentLink }) {
   // QR, copy/share and app link all encode the same locally validated URI.
   const checked = paymentLink(payment.upi_id, payment.payee, payment.amount, payment.note)
   const url = checked?.url ?? ''
+  const amount = new Intl.NumberFormat(locale, { style: 'currency', currency: 'INR' }).format(
+    Number(payment.amount),
+  )
   useEffect(() => {
     if (!url) return
     let live = true
@@ -88,9 +91,7 @@ export function PaymentCard({ payment }: { payment: PaymentLink }) {
       }}
     >
       <Typography variant="headlineMedium" component="h2">
-        {new Intl.NumberFormat(locale, { style: 'currency', currency: 'INR' }).format(
-          Number(payment.amount),
-        )}
+        {amount}
       </Typography>
       <Typography variant="titleMedium">{payment.payee}</Typography>
       <Typography variant="bodyMedium">
@@ -116,7 +117,7 @@ export function PaymentCard({ payment }: { payment: PaymentLink }) {
             src={image}
             width={320}
             height={320}
-            alt={`QR · ${payment.payee} · INR ${payment.amount}`}
+            alt={`QR · ${payment.payee} · ${amount}`}
             sx={{ width: '100%', maxWidth: 240, height: 'auto', alignSelf: 'center' }}
           />
         ) : failed ? (

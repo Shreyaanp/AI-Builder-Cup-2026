@@ -7,16 +7,21 @@ import {
   Dialog,
   IconButton,
   Stack,
+  TextField,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material'
-import { Camera, Check, ClipboardList, Moon, Receipt, Truck, X } from 'lucide-react'
+import { Camera, Check, ClipboardList, Keyboard, Moon, Plus, Receipt, Truck, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useLocale } from '../../state/hooks'
-import { formatPrice, shopCurrency, toMinor } from '../v1/format'
+import { currencySymbol, formatPrice, shopCurrency, toMinor } from '../v1/format'
+import { useNextStepsCopy } from '../v1/nextStepsCopy'
+import { useOnline } from '../v1/useOnline'
 import { Tile, Supporting } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useIdentity } from '../../auth/useIdentity'
+import { dismissFreshness } from '../sales/freshnessDismissal'
 import { closeDayCopy } from './strings'
 
 type Kind = 'sales' | 'stock_count' | 'delivery'
@@ -81,6 +86,7 @@ export function CloseDayTile() {
 export function CloseDay({ onClose }: { onClose: () => void }) {
   const t = closeDayCopy(useLocale())
   const ws = useWorkspace()
+  const { scope } = useIdentity()
   const roles = useTheme().material
   const phone = useMediaQuery('(max-width:599px)')
   const shop = ws.active
@@ -95,6 +101,11 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
   const counter = useRef(0)
   const progress = useRef({ stock: 'notSaved', sales: 'notSaved', date: '' })
   const [saveStarted, setSaveStarted] = useState(false)
+  // Typed sales lines: the way forward when a photo can't be read (or there's no connection).
+  const [typed, setTyped] = useState<Line[]>([])
+  const [typing, setTyping] = useState(false)
+  const next = useNextStepsCopy()
+  const online = useOnline()
   if (!shop) return null
 
   async function read(kind: Kind, file: File) {
@@ -135,10 +146,12 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
 
   const done = shots.filter((s) => s.state === 'done')
   const key = (shot: Shot, index: number) => `${shot.id}:${index}`
-  const sales = done
-    .filter((s) => s.kind === 'sales')
-    .flatMap((s) => s.lines.map((line, i) => ({ line, key: key(s, i) })))
-    .filter(({ line, key: k }) => !dropped.has(k) && line.quantity !== null && line.amount !== null)
+  const sales = [
+    ...done
+      .filter((s) => s.kind === 'sales')
+      .flatMap((s) => s.lines.map((line, i) => ({ line, key: key(s, i) }))),
+    ...typed.map((line, i) => ({ line, key: `typed:${i}` })),
+  ].filter(({ line, key: k }) => !dropped.has(k) && line.quantity !== null && line.amount !== null)
   const stock = done
     .filter((s) => s.kind !== 'sales')
     .flatMap((s) =>
@@ -207,6 +220,7 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
       }
       setSaved({ revenue, stock: stockBody.length })
       await ws.reload()
+      dismissFreshness(`chalkboard.closeday.${scope}.${shop.id}`, progress.current.date || day)
       setPhase('done')
     } catch {
       const status = (value: string) =>
@@ -221,6 +235,18 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
       setPhase('review')
     }
   }
+
+  const lineCount = done.reduce((n, s) => n + s.lines.length, 0) + typed.length
+  const trouble = !online || shots.some((s) => s.state === 'failed')
+  const typeButton = (
+    <Button
+      startIcon={<Keyboard size={18} />}
+      onClick={() => setTyping(true)}
+      color={trouble ? 'inherit' : 'primary'}
+    >
+      {next.typeNumbers}
+    </Button>
+  )
 
   const kinds: { kind: Kind; icon: ReactNode; title: string; hint: string }[] = [
     { kind: 'sales', icon: <Receipt size={26} />, title: t.till, hint: t.tillHint },
@@ -250,9 +276,11 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
         <Typography id="close-day-title" component="h2" variant="titleLarge" sx={{ flex: 1 }}>
           {t.title}
         </Typography>
-        <IconButton aria-label={t.close} onClick={onClose} disabled={phase === 'saving'}>
-          <X size={22} />
-        </IconButton>
+        {!(phone && phase === 'capture') && (
+          <IconButton aria-label={t.close} onClick={onClose} disabled={phase === 'saving'}>
+            <X size={22} />
+          </IconButton>
+        )}
       </Stack>
 
       <Box sx={{ px: 4, pb: 4, flex: 1, overflowY: 'auto' }}>
@@ -388,6 +416,24 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
                 ))}
               </Box>
             )}
+            {!typing &&
+              (trouble ? (
+                <Alert severity="warning" sx={{ mt: 4 }} data-testid="close-day-trouble">
+                  {online ? next.readFailedHelp : next.offlineHelp}
+                  <Box sx={{ mt: 1, ml: -2 }}>{typeButton}</Box>
+                </Alert>
+              ) : (
+                <Box sx={{ mt: 3, ml: -2 }}>{typeButton}</Box>
+              ))}
+            {typing && (
+              <TypedSales
+                lines={typed}
+                // A name can repeat across units (Special Chai per cup and per pot).
+                products={[...new Set(ws.products.map((p) => p.name))]}
+                currency={currency}
+                onAdd={(line) => setTyped((all) => [...all, line])}
+              />
+            )}
           </>
         )}
 
@@ -520,15 +566,17 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
           justifyContent: 'flex-end',
         }}
       >
+        {/* On a phone the way out sits in the thumb zone; wider windows keep the corner X. */}
+        {phase === 'capture' && phone && <Button onClick={onClose}>{t.close}</Button>}
         {phase === 'capture' && (
           <Button
             variant="contained"
             size="large"
-            disabled={done.length === 0 || shots.some((s) => s.state === 'reading')}
+            disabled={lineCount === 0 || shots.some((s) => s.state === 'reading')}
             onClick={() => setPhase('review')}
             sx={{ flex: 1 }}
           >
-            {t.review.replace('{n}', String(done.reduce((n, s) => n + s.lines.length, 0)))}
+            {t.review.replace('{n}', String(lineCount))}
           </Button>
         )}
         {(phase === 'review' || phase === 'saving') && (
@@ -591,7 +639,8 @@ function ReviewList({
           key={row.key}
           sx={{
             display: 'grid',
-            gridTemplateColumns: '1fr auto 40px',
+            // minmax(0, 1fr) lets long names wrap; 48px fits the 48px remove target.
+            gridTemplateColumns: 'minmax(0, 1fr) auto 48px',
             alignItems: 'center',
             gap: 2,
             py: 1.5,
@@ -601,7 +650,7 @@ function ReviewList({
           }}
         >
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="bodyLarge" noWrap>
+            <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
               {row.label}
             </Typography>
             {row.sub && (
@@ -614,7 +663,6 @@ function ReviewList({
             {row.value}
           </Typography>
           <IconButton
-            size="small"
             aria-label={`${dropLabel}: ${row.label}`}
             onClick={() => onDrop(row.key)}
             disabled={disabled}
@@ -623,6 +671,123 @@ function ReviewList({
           </IconButton>
         </Box>
       ))}
+    </Box>
+  )
+}
+
+/** Sales typed by hand: item, quantity and line total; they join the same one review. */
+function TypedSales({
+  lines,
+  products,
+  currency,
+  onAdd,
+}: {
+  lines: Line[]
+  products: string[]
+  currency: string
+  onAdd: (line: Line) => void
+}) {
+  const next = useNextStepsCopy()
+  const [item, setItem] = useState('')
+  const [qty, setQty] = useState('')
+  const [amount, setAmount] = useState('')
+  const [invalid, setInvalid] = useState(false)
+  const number = (text: string) => {
+    const value = Number(text.trim().replace(',', '.'))
+    return text.trim() && Number.isFinite(value) && value >= 0 ? value : null
+  }
+  function add() {
+    const quantity = number(qty)
+    const total = number(amount)
+    if (!item.trim() || quantity === null || total === null) {
+      setInvalid(true)
+      return
+    }
+    const known = products.find((name) => name.toLowerCase() === item.trim().toLowerCase())
+    onAdd({
+      item: known ?? item.trim(),
+      read_as: known ?? item.trim(),
+      quantity,
+      amount: total,
+      matched: Boolean(known),
+    })
+    setItem('')
+    setQty('')
+    setAmount('')
+    setInvalid(false)
+  }
+  return (
+    <Box
+      component="form"
+      noValidate
+      aria-labelledby="close-day-typed-title"
+      data-testid="close-day-typed"
+      onSubmit={(event) => {
+        event.preventDefault()
+        add()
+      }}
+      sx={{ mt: 4, animation: `cdRise 320ms ${EASE} both` }}
+    >
+      <Typography id="close-day-typed-title" component="h3" variant="titleMedium" sx={{ mb: 2 }}>
+        {next.manualTitle}
+      </Typography>
+      <Stack spacing={2}>
+        <TextField
+          autoFocus
+          name="item"
+          label={next.manualItem}
+          value={item}
+          onChange={(event) => setItem(event.target.value.slice(0, 180))}
+          slotProps={{ htmlInput: { list: 'close-day-items', autoComplete: 'off' } }}
+        />
+        <datalist id="close-day-items">
+          {products.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+        <Stack direction="row" sx={{ gap: 2 }}>
+          <TextField
+            name="quantity"
+            label={next.manualQty}
+            value={qty}
+            onChange={(event) => setQty(event.target.value)}
+            slotProps={{ htmlInput: { inputMode: 'decimal', autoComplete: 'off' } }}
+            sx={{ flex: 1, minWidth: 0 }}
+          />
+          <TextField
+            name="amount"
+            label={`${next.manualAmount} (${currencySymbol(currency)})`}
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+            slotProps={{ htmlInput: { inputMode: 'decimal', autoComplete: 'off' } }}
+            sx={{ flex: 1, minWidth: 0 }}
+          />
+        </Stack>
+        {invalid && <Alert severity="error">{next.manualInvalid}</Alert>}
+        <Button
+          type="submit"
+          variant="outlined"
+          startIcon={<Plus size={18} />}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          {next.addLine}
+        </Button>
+        {lines.length > 0 && (
+          <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+            {lines.map((line, index) => (
+              <Typography
+                component="li"
+                key={index}
+                variant="bodyMedium"
+                sx={{ overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}
+              >
+                {line.item} · {line.quantity} ·{' '}
+                {formatPrice(toMinor(line.amount ?? 0, currency), currency)}
+              </Typography>
+            ))}
+          </Box>
+        )}
+      </Stack>
     </Box>
   )
 }

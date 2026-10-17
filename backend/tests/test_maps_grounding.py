@@ -107,7 +107,7 @@ def test_area_questions_are_recognised_and_products_are_not() -> None:
 def test_grounding_call_turns_on_the_maps_tool_centred_on_the_customer(tmp_path: Path) -> None:
     request = grounding_request(live_settings(tmp_path), "parking?", 1.28, 103.83, "hi")
     assert request["model"] == "gemini-maps-fixture"
-    assert "parking?" in request["contents"] and '"hi"' in request["contents"]
+    assert "parking?" in request["contents"] and "Hindi (hi-IN)" in request["contents"]
     config = request["config"]
     assert config.tools[0].google_maps is not None
     point = config.tool_config.retrieval_config.lat_lng

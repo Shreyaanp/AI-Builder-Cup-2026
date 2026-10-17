@@ -257,6 +257,7 @@ export interface paths {
         /**
          * Photo
          * @description ``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own.
+         *     ``language`` is the owner's app language for the notes about what was unclear.
          */
         post: operations["photo_api_v1_photos_post"];
         delete?: never;
@@ -1225,7 +1226,7 @@ export interface paths {
         };
         /**
          * Find Place
-         * @description A typed city or area anywhere in the world, as the centre for discovery.
+         * @description A typed city or area anywhere in the world, or coordinates reverse-geocoded to an area.
          */
         get: operations["find_place_api_v1_discover_place_get"];
         put?: never;
@@ -2426,6 +2427,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/face/warmup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Face Warmup
+         * @description Warm up the private face worker to prevent cold-start latency when the owner scans.
+         */
+        get: operations["face_warmup_api_v1_face_warmup_get"];
+        put?: never;
+        /**
+         * Face Warmup
+         * @description Warm up the private face worker to prevent cold-start latency when the owner scans.
+         */
+        post: operations["face_warmup_api_v1_face_warmup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/face/challenges": {
         parameters: {
             query?: never;
@@ -3152,6 +3177,8 @@ export interface components {
             business_id: string;
             /** Consent */
             consent: boolean;
+            /** Exclude Prompts */
+            exclude_prompts?: string[] | null;
         };
         /** ChatSummary */
         ChatSummary: {
@@ -5313,6 +5340,16 @@ export interface components {
              * @default
              */
             reward: string;
+            /**
+             * Stamps
+             * @default 0
+             */
+            stamps: number;
+            /**
+             * Slots
+             * @default 0
+             */
+            slots: number;
         };
         /** SimAction */
         SimAction: {
@@ -6723,6 +6760,7 @@ export interface operations {
             query?: {
                 business_id?: string | null;
                 currency?: string | null;
+                language?: string;
             };
             header?: never;
             path?: never;
@@ -8727,8 +8765,10 @@ export interface operations {
     };
     find_place_api_v1_discover_place_get: {
         parameters: {
-            query: {
-                q: string;
+            query?: {
+                q?: string | null;
+                lat?: number | null;
+                lng?: number | null;
             };
             header?: never;
             path?: never;
@@ -11180,6 +11220,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    face_warmup_api_v1_face_warmup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    face_warmup_api_v1_face_warmup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
