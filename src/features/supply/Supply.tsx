@@ -25,6 +25,7 @@ import { formatPrice, toMajor, toMinor } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useSupplyCopy } from './copy'
+import { orderTotal, poNumber } from './orderFormat'
 import { PurchaseOrderCard } from './PurchaseOrderCard'
 import { useDraftReorder, useRulesActions, useSupply } from './supplyData'
 import type { ItemRule, PurchaseOrder, Relationship, RuleSet, SystemFormat } from './types'
@@ -57,7 +58,7 @@ export function SupplyTile() {
         onClick={() => setOpen(true)}
       >
         <Supporting>
-          {latest ? `${s.po(latest.number)} · ${s.status[latest.status]}` : s.tileEmpty}
+          {latest ? `${s.po(poNumber(latest.number))} · ${s.status[latest.status]}` : s.tileEmpty}
         </Supporting>
       </Tile>
       <SupplySheet
@@ -77,6 +78,10 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
   const s = useSupplyCopy()
   const roles = useTheme().material
   const locale = useLocale()
+  const money = (order: PurchaseOrder) => {
+    const total = orderTotal(order)
+    return total == null ? '–' : formatPrice(total, order.currency, locale)
+  }
   const { data, refresh } = useSupply(open)
   const [view, setView] = useState<View>({ kind: 'list' })
   const [local, setLocal] = useState<Record<string, PurchaseOrder>>({})
@@ -116,7 +121,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
             {back}
             <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               {view.kind === 'order' && selected
-                ? s.po(selected.number)
+                ? s.po(poNumber(selected.number))
                 : supplier
                   ? s.rulesFor(supplier.supplier.name)
                   : s.title}
@@ -183,8 +188,8 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
                   >
                     <FileText size={20} color={roles.primary} aria-hidden="true" />
                     <ListItemText
-                      primary={`${s.po(order.number)} · ${order.supplier.name}`}
-                      secondary={`${s.status[order.status]} · ${formatPrice(order.total, order.currency, locale)}`}
+                      primary={`${s.po(poNumber(order.number))} · ${order.supplier.name}`}
+                      secondary={`${s.status[order.status]} · ${money(order)}`}
                     />
                     <ChevronRight size={18} aria-hidden="true" />
                   </ListItemButton>

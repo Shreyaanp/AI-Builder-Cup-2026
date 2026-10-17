@@ -288,6 +288,16 @@ def region(currency: str) -> Region:
     )
 
 
+def area_currency(lat: float, lng: float, fallback: str = "SGD") -> str:
+    """Choose a known area's currency from its region profile, not the visitor's device."""
+    nearest = min(
+        REGIONS.items(),
+        key=lambda entry: haversine(lat, lng, *entry[1].centre),
+    )
+    distance = haversine(lat, lng, *nearest[1].centre)
+    return nearest[0] if distance <= 500 else fallback
+
+
 def money_text(minor: int, currency: str) -> str:
     """₹1,240 / S$12.50 / ¥3,000 for messages written by the server."""
     digits = exponent(currency)

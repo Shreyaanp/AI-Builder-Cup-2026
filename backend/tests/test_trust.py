@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 import numpy as np
 import pytest
+import structlog.testing
 from cryptography.exceptions import InvalidTag
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
@@ -201,6 +202,40 @@ def test_a_capture_that_does_not_work_asks_to_retry_and_changes_nothing(
         bid = new_owner(client, "Courtyard Chai")
         assert check(client, bid) == expected
         assert client.get("/api/v1/trust").json()["face"] == "not_started"
+
+
+def test_a_rejected_capture_logs_why_and_the_trace_stays_on_the_server(tmp_path: Path, monkeypatch):
+    trace = {
+        "container": "webm",
+        "codec": "vp8",
+        "decoded": 96,
+        "sampled": 23,
+        "faces": "00000001000000000000000",
+        "face_frames": 1,
+        "stage": "thresholds",
+        "failed": "face_frames 1 < MIN_FRAMES 6",
+        "first_request": True,
+    }
+    reply = {"status": "retry", "reason": "no_face", "liveness": "not_evaluated", "trace": trace}
+    real = httpx.AsyncClient
+
+    def with_worker(*args, **kwargs):
+        transport = httpx.MockTransport(lambda request: httpx.Response(200, json=reply))
+        return real(*args, **{**kwargs, "transport": transport})
+
+    monkeypatch.setattr(trust.httpx, "AsyncClient", with_worker)
+    config = settings(tmp_path, face_mode="worker", face_worker_token="fixture-only")
+    with TestClient(create_app(config, InMemorySessionService())) as client:
+        bid = new_owner(client, "Courtyard Chai")
+        with structlog.testing.capture_logs() as logs:
+            answer = check(client, bid)
+    assert answer == {"result": "retry", "reason": "no_face"}
+    line = next(entry for entry in logs if entry["event"] == "face_evaluated")
+    assert line["stage"] == "worker_verdict" and line["worker_stage"] == "thresholds"
+    assert line["reason"] == "no_face" and line["failed"] == "face_frames 1 < MIN_FRAMES 6"
+    assert line["codec"] == "vp8" and line["sampled"] == 23 and line["first_request"] is True
+    assert line["capture_bytes"] == len(VIDEO) and line["content_type"] == "video/webm"
+    assert line["worker_trace"] is True
 
 
 def test_without_a_worker_the_check_says_unavailable(tmp_path: Path):

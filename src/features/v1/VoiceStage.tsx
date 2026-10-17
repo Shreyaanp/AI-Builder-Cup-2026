@@ -1,28 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert, AlertTitle, Box, Button, Stack, Typography, useTheme } from '@mui/material'
-import {
-  Bike,
-  Clock,
-  Keyboard,
-  MapPin,
-  MicOff,
-  RefreshCw,
-  ShoppingBasket,
-  Sparkles,
-  Store,
-  Wallet,
-} from 'lucide-react'
+import { Camera, Clock, Keyboard, MapPin, MicOff, RefreshCw, Store } from 'lucide-react'
 import { chalkWrite } from '../../design/chalkMotion'
 import { HAND_FONT, motion, scrollArea, shape } from '../../design/theme'
 import type { Business, Product } from './api'
-import { defaultCurrency, formatPrice } from './format'
 import { readablePlace } from './location'
 import { useNewShopCopy } from './newShopCopy'
-import { factEntries } from './shopProgress'
 import { useCopy } from './strings'
 import type { VoiceProblem } from './useVoice'
 import { useVoiceModeCopy } from './voiceModeCopy'
+import { useOnboardingCopy } from './onboardingCopy'
 
 export type OrbPhase =
   'connecting' | 'reconnecting' | 'listening' | 'thinking' | 'speaking' | 'paused' | 'off'
@@ -298,7 +286,13 @@ export function VoiceOrb({
   )
 }
 
-type Draft = { business: Business['fields'] | null; products: Product[] }
+type Draft = {
+  business: Business['fields'] | null
+  products: Product[]
+  skipped?: string[]
+  photo?: boolean
+  live_id?: string | null
+}
 
 /** Each piece arrives like chalk pressed onto the board: a small stamp, a short glow. */
 const fillIn = {
@@ -319,15 +313,7 @@ const fillIn = {
  * outlines (what is still to come); each answer lands in its place with a small stamp. Phone: a
  * compact card with one scrolling row; desktop: a tall column with every item and price.
  */
-export function ShopFill({
-  draft,
-  busy,
-  onReview,
-}: {
-  draft: Draft
-  busy: boolean
-  onReview: () => void
-}) {
+export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => void }) {
   const t = useCopy()
   const f = useNewShopCopy()
   const v = useVoiceModeCopy()
@@ -335,21 +321,10 @@ export function ShopFill({
   const roles = theme.material
   const glow = theme.chalk.sunflower.container
   const business = draft.business
-  const currency = business?.currency ?? defaultCurrency()
-  const facts = business ? factEntries(business, t) : []
-  const fact = (key: string) => facts.find((entry) => entry.key === key)?.value ?? ''
-  const items = draft.products.map((p) =>
-    p.price != null ? `${p.name} ${formatPrice(p.price, currency)}` : p.name,
-  )
+  const o = useOnboardingCopy()
+  const skipped = new Set(draft.skipped ?? [])
+  // Onboarding asks only these (owner decision, 17 Oct): no menu, payment or delivery here.
   const slots: { key: string; label: string; value: string; icon: ReactNode }[] = [
-    {
-      key: 'products',
-      label: t.products,
-      value: items.length
-        ? items.slice(0, 2).join(' · ') + (items.length > 2 ? ` ${v.more(items.length - 2)}` : '')
-        : '',
-      icon: <ShoppingBasket size={16} />,
-    },
     {
       key: 'location',
       label: t.fields.location,
@@ -363,29 +338,17 @@ export function ShopFill({
     {
       key: 'hours',
       label: t.fields.hours,
-      value: business?.hours || (business?.weekly_hours?.length ? '✓' : ''),
+      value:
+        business?.hours ||
+        (business?.weekly_hours?.length ? '✓' : skipped.has('hours') ? o.addLater : ''),
       icon: <Clock size={16} />,
     },
     {
-      key: 'payment',
-      label: t.factNames.payment_methods,
-      value: fact('payment_methods'),
-      icon: <Wallet size={16} />,
+      key: 'photo',
+      label: o.shopPhoto,
+      value: draft.photo ? o.photoAdded : skipped.has('photo') ? o.addLater : '',
+      icon: <Camera size={16} />,
     },
-    {
-      key: 'delivery',
-      label: t.factNames.delivery,
-      value: fact('delivery'),
-      icon: <Bike size={16} />,
-    },
-    ...facts
-      .filter((entry) => !['payment_methods', 'delivery'].includes(entry.key))
-      .map((entry) => ({
-        key: entry.key,
-        label: entry.label,
-        value: entry.value,
-        icon: <Sparkles size={16} />,
-      })),
   ]
   const done = slots.filter((slot) => slot.value).length + (business?.name ? 1 : 0)
   const total = slots.length + 1
@@ -403,18 +366,31 @@ export function ShopFill({
         borderRadius: `${shape.lg}px`,
         bgcolor: roles.surfaceContainer,
         border: `1.5px dashed ${roles.outlineVariant}`,
-        minHeight: 0,
-        overflow: { md: 'auto' },
+        minHeight: { md: 0 },
+        // A phone keeps the conversation and the composer on screen: a tall card scrolls (#83).
+        maxHeight: { xs: '38dvh', md: 'none' },
+        overflow: 'auto',
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
+      {/* Narrow: "Review my shop" moves under the name rather than squeezing it. */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          columnGap: 2,
+          rowGap: 1,
+          minWidth: 0,
+        }}
+      >
         <Box
           aria-hidden="true"
           sx={{
             width: 40,
             height: 40,
             flexShrink: 0,
-            display: 'grid',
+            // A phone gives the width to the name.
+            display: { xs: 'none', sm: 'grid' },
             placeItems: 'center',
             borderRadius: `${shape.md}px`,
             bgcolor: roles.primaryContainer,
@@ -424,7 +400,7 @@ export function ShopFill({
         >
           <Store size={22} />
         </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ flex: '1 1 9rem', minWidth: 0 }}>
           <Typography variant="labelMedium" color="text.secondary" component="p">
             {f.soFar}
           </Typography>
@@ -434,13 +410,9 @@ export function ShopFill({
             sx={{
               fontFamily: HAND_FONT,
               fontSize: { xs: '1.45rem', md: '2.1rem' },
-              lineHeight: 1.1,
+              // Room for the hand font's descenders.
+              lineHeight: 1.25,
               overflowWrap: 'anywhere',
-              // A long name stays two lines on a phone (the review shows it in full).
-              display: '-webkit-box',
-              WebkitBoxOrient: 'vertical',
-              WebkitLineClamp: { xs: 2, md: 'unset' },
-              overflow: 'hidden',
               color: business?.name ? 'text.primary' : 'text.secondary',
               ...(business?.name ? chalkWrite : {}),
             }}
@@ -477,16 +449,33 @@ export function ShopFill({
             />
           ))}
         </Box>
-        {business?.name && (
-          <Button
-            variant="contained"
-            disabled={busy}
-            onClick={onReview}
-            sx={{ flexShrink: 0, display: { xs: 'inline-flex', md: 'none' } }}
+        {draft.live_id && (
+          <Box
+            component="span"
+            data-testid="shop-live"
+            sx={{
+              flexShrink: 0,
+              px: 1.25,
+              py: 0.25,
+              borderRadius: `${shape.full}px`,
+              bgcolor: roles.primary,
+              color: roles.onPrimary,
+              typography: 'labelMedium',
+              ...fillIn,
+            }}
           >
-            {f.review}
-          </Button>
+            {o.live}
+          </Box>
         )}
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={onReview}
+          data-testid="review-my-shop"
+          sx={{ flexShrink: 0, ml: 'auto' }}
+        >
+          {o.review}
+        </Button>
       </Box>
       {!done && (
         <Typography variant="bodySmall" color="text.secondary">
@@ -507,6 +496,8 @@ export function ShopFill({
           flexDirection: { xs: 'row', md: 'column' },
           gap: { xs: 1, md: 1.5 },
           overflowX: { xs: 'auto', md: 'visible' },
+          // Holds the hidden "label:" spans (absolute) so they never widen the page.
+          position: 'relative',
           // The row scrolls sideways; its edge fades so it reads as "more this way".
           maskImage: {
             xs: 'linear-gradient(to right, #000 calc(100% - 28px), transparent)',
@@ -582,70 +573,13 @@ export function ShopFill({
                       {slot.label}:{' '}
                     </Box>
                   </Box>
-                  {slot.key === 'products' ? (
-                    <>
-                      <Box component="span" sx={{ display: { xs: 'inline', md: 'none' } }}>
-                        {slot.value}
-                      </Box>
-                      <Box
-                        component="span"
-                        sx={{ display: { xs: 'none', md: 'flex' }, flexDirection: 'column' }}
-                      >
-                        {draft.products.map((p, i) => (
-                          <Box
-                            component="span"
-                            key={`${p.name}|${p.unit}`}
-                            sx={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              gap: 2,
-                              ...chalkWrite,
-                              animationDelay: `${Math.min(i, 6) * 60}ms`,
-                            }}
-                          >
-                            <span>{p.name}</span>
-                            {p.price != null && (
-                              <Box
-                                component="span"
-                                sx={{
-                                  fontFamily: HAND_FONT,
-                                  fontSize: '1.15rem',
-                                  lineHeight: 1.2,
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {formatPrice(p.price, currency)}
-                              </Box>
-                            )}
-                          </Box>
-                        ))}
-                      </Box>
-                    </>
-                  ) : (
-                    slot.value
-                  )}
+                  {slot.value}
                 </Typography>
               )}
             </Box>
           </Box>
         ))}
       </Box>
-      {business?.name && (
-        <Button
-          variant="contained"
-          size="large"
-          disabled={busy}
-          onClick={onReview}
-          sx={{
-            display: { xs: 'none', md: 'inline-flex' },
-            mt: 'auto',
-            minHeight: 52,
-            borderRadius: `${shape.full}px`,
-          }}
-        >
-          {f.review}
-        </Button>
-      )}
     </Box>
   )
 }
@@ -666,6 +600,7 @@ export function VoiceAlert({
   onClose: () => void
 }) {
   const v = useVoiceModeCopy()
+  const o = useOnboardingCopy()
   const [wait, setWait] = useState(problem.kind === 'rate-limited' ? problem.seconds : 0)
   useEffect(() => {
     if (wait <= 0) return
@@ -681,20 +616,37 @@ export function VoiceAlert({
           ? [v.connectionTitle, v.connectionBody, v.reconnect]
           : problem.kind === 'rate-limited'
             ? [v.rateTitle, v.rateBody(Math.max(wait, 0)), v.tryAgain]
-            : [v.unavailableTitle, v.unavailableBody, v.tryAgain]
+            : problem.kind === 'session-cap'
+              ? [o.capTitle, o.capBody, o.talkAgain]
+              : problem.kind === 'slow'
+                ? [o.tooSlow, '', o.retry]
+                : [v.unavailableTitle, v.unavailableBody, v.tryAgain]
   return (
     <Alert
       data-testid="voice-alert"
       data-problem={problem.kind}
       severity={
-        problem.kind === 'unavailable' || problem.kind === 'rate-limited' ? 'info' : 'warning'
+        ['unavailable', 'rate-limited', 'session-cap', 'slow'].includes(problem.kind)
+          ? 'info'
+          : 'warning'
       }
       onClose={onClose}
       closeText={v.close}
       sx={{
         borderRadius: `${shape.lg}px`,
-        // On a phone the words and both buttons get the full width.
+        // On a phone the words and both buttons get the full width, and the close button sits
+        // in the corner, so a 360 px screen keeps both buttons on one row and the chat in view.
         '& .MuiAlert-icon': { display: { xs: 'none', sm: 'flex' } },
+        position: 'relative',
+        '& .MuiAlert-message': { minWidth: 0, flex: 1 },
+        '& .MuiAlert-action': {
+          position: { xs: 'absolute', sm: 'static' },
+          top: { xs: 4 },
+          right: { xs: 8 },
+          ml: { sm: 'auto' },
+          p: 0,
+        },
+        '& .MuiAlertTitle-root': { pr: { xs: 5, sm: 0 } },
         '@keyframes alertIn': {
           from: { opacity: 0, transform: 'translateY(8px)' },
           to: { opacity: 1, transform: 'none' },
@@ -703,7 +655,9 @@ export function VoiceAlert({
       }}
     >
       <AlertTitle>{title}</AlertTitle>
-      <Typography variant="bodyMedium">{body}</Typography>
+      {body && (
+        <Typography sx={{ typography: { xs: 'bodySmall', sm: 'bodyMedium' } }}>{body}</Typography>
+      )}
       <Stack direction="row" sx={{ gap: 1, mt: 1.5, flexWrap: 'wrap' }}>
         <Button
           variant="contained"

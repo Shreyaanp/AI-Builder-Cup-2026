@@ -8,6 +8,7 @@ from typing import Any
 from uuid import uuid4
 
 import anyio
+import structlog
 from fastapi import HTTPException
 from google.adk.errors import StaleSessionError
 from google.adk.errors.already_exists_error import AlreadyExistsError
@@ -16,9 +17,12 @@ from google.adk.events import Event
 from google.adk.sessions import BaseSessionService, Session
 from google.adk.sessions.base_session_service import GetSessionConfig, ListSessionsResponse
 from google.adk.sessions.state import State
+from google.api_core.exceptions import GoogleAPIError
 from google.cloud import firestore
 
-from .limits import Lease
+from .limits import Lease, forget_lease, signal_lost, takes_over
+
+log = structlog.get_logger()
 
 
 def key(value: str) -> str:
@@ -35,6 +39,16 @@ def scope_state(state: dict[str, Any]) -> tuple[dict, dict, dict]:
         elif not name.startswith(State.TEMP_PREFIX):
             local[name] = value
     return app, user, local
+
+
+def transient(error: BaseException) -> bool:
+    """Firestore unreachable or contended (also after its own retries), not a conversation rule."""
+    return isinstance(error, GoogleAPIError) or isinstance(error.__cause__, GoogleAPIError)
+
+
+def report_late_write(write: asyncio.Future) -> None:
+    if not write.cancelled() and write.exception():
+        log.warning("session_write_failed", reason=type(write.exception()).__name__, late=True)
 
 
 class FirestoreSessionService(BaseSessionService):
@@ -186,15 +200,51 @@ class FirestoreSessionService(BaseSessionService):
             transaction.set(session_ref, self.encode(stored))
             return stored
 
-        stored = await append(self.client.transaction())
-        # Only mutate the caller's session after durable commit succeeded.
+        stored = await self.commit_event(append, clean)
+        # The caller's session changes only once the write settled. A skipped write still joins
+        # this invocation's history so the turn stays coherent, but keeps the session's clock so
+        # the next write is not rejected as stale.
         self._apply_temp_state(session, event)
-        session.state.update(stored.state)
+        if stored:
+            session.state.update(stored.state)
         session.state.update(clean.actions.state_delta or {})
         if not any(previous == clean for previous in session.events if previous.id == clean.id):
             session.events.append(clean)
-        session.last_update_time = stored.last_update_time
+        if stored:
+            session.last_update_time = stored.last_update_time
         return clean
+
+    async def commit_event(self, append: Any, event: Event) -> Session | None:
+        """Write one event without letting the write end the conversation.
+
+        The live runner cancels its event pump when the socket closes, which can land mid-commit.
+        Firestore then rolls back, the rollback fails on the expired transaction, and its 409
+        replaces the cancellation, so ADK reports a failed root node instead of a clean stop. The
+        write is shielded so it commits or rolls back whole; the cancellation goes on afterwards.
+        A write that fails on its own is retried once (a commit that did land is recognised by
+        the event's id), then skipped and logged.
+        """
+        task = asyncio.current_task()
+        for attempt in (1, 2):
+            write = asyncio.ensure_future(append(self.client.transaction()))
+            try:
+                return await asyncio.shield(write)
+            except asyncio.CancelledError:
+                if not write.done():
+                    await asyncio.wait([write], timeout=3)
+                    write.add_done_callback(report_late_write)
+                    raise
+                if task and task.cancelling():
+                    raise
+                reason = "CancelledError"
+            except Exception as error:
+                if task and task.cancelling():
+                    raise asyncio.CancelledError from error
+                if not transient(error):
+                    raise
+                reason = type(error).__name__
+            log.warning("session_write_failed", event_id=event.id, attempt=attempt, reason=reason)
+        return None
 
 
 class FirestoreRunRegistry:
@@ -206,12 +256,14 @@ class FirestoreRunRegistry:
         self.maximum = maximum
         self.ttl = ttl
 
-    async def acquire_async(self, user_id: str, session_id: str) -> Lease:
-        lease = Lease((user_id, session_id), str(uuid4()))
+    async def acquire_async(self, user_id: str, session_id: str, kind: str = "text") -> Lease:
+        lease = Lease((user_id, session_id), str(uuid4()), kind)
         slot = key(json.dumps(lease.key))
+        replaced: list[str] = []
 
         @firestore.async_transactional
         async def acquire(transaction: Any) -> None:
+            replaced.clear()
             snapshot = await self.ref.get(transaction=transaction)
             now = time.time()
             active = {
@@ -219,17 +271,41 @@ class FirestoreRunRegistry:
                 for k, v in (snapshot.to_dict() or {}).get("active", {}).items()
                 if v["expires"] > now
             }
-            if slot in active:
+            held = active.get(slot)
+            if held and not takes_over(held.get("kind", "text"), kind):
                 raise HTTPException(409, "This conversation already has an active stream.")
-            if len(active) >= self.maximum:
+            if not held and len(active) >= self.maximum:
                 raise HTTPException(429, "The coach is busy. Try again shortly.")
-            active[slot] = {"token": lease.token, "expires": now + self.ttl}
+            if held:
+                replaced.append(held["token"])
+            active[slot] = {"token": lease.token, "expires": now + self.ttl, "kind": kind}
             transaction.set(self.ref, {"active": active})
 
         await acquire(self.client.transaction())
+        # The old stream ends at once when it runs here; elsewhere at its next renewal.
+        for token in replaced:
+            signal_lost(token)
         return lease
 
+    async def renew_async(self, lease: Lease) -> bool:
+        """Extend the lease; False once another stream took the conversation over."""
+        slot = key(json.dumps(lease.key))
+
+        @firestore.async_transactional
+        async def renew(transaction: Any) -> bool:
+            snapshot = await self.ref.get(transaction=transaction)
+            active = (snapshot.to_dict() or {}).get("active", {})
+            if active.get(slot, {}).get("token") != lease.token:
+                return False
+            active[slot]["expires"] = time.time() + self.ttl
+            transaction.set(self.ref, {"active": active})
+            return True
+
+        async with asyncio.timeout(5):
+            return bool(await renew(self.client.transaction()))
+
     async def release_async(self, lease: Lease) -> None:
+        forget_lease(lease.token)
         slot = key(json.dumps(lease.key))
 
         @firestore.async_transactional

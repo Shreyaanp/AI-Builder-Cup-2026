@@ -27,6 +27,7 @@ import { useLocale } from '../../state/hooks'
 import { enterRise, fieldFade, shape } from '../../design/theme'
 import { chalkWrite, stampThud } from '../../design/chalkMotion'
 import { formatPrice } from '../v1/format'
+import { orderTotal, poNumber } from './orderFormat'
 import { useSupplyCopy, type SupplyCopy } from './copy'
 import { dayLabel, usePoActions, type SimVariant } from './supplyData'
 import type { DocFlag, DocKind, PurchaseOrder, RuleCheck, SupplyDocument } from './types'
@@ -65,7 +66,7 @@ function headline(order: PurchaseOrder, s: SupplyCopy, f: ReturnType<typeof useF
   return [
     what + (rest.length ? ` +${rest.length}` : ''),
     order.delivery ? s.deliver(f.day(order.delivery)) : '',
-    f.money(order.total),
+    f.money(orderTotal(order)),
     s.terms(order.terms_days),
   ]
     .filter(Boolean)
@@ -151,7 +152,7 @@ export function PurchaseOrderCard({
   return (
     <Box
       component="article"
-      aria-label={s.po(order.number)}
+      aria-label={s.po(poNumber(order.number))}
       sx={{
         borderRadius: `${shape.xl}px`,
         bgcolor: draft ? roles.surfaceContainerLow : roles.surfaceContainer,
@@ -167,7 +168,7 @@ export function PurchaseOrderCard({
           <FileText size={20} />
         </Box>
         <Typography variant="labelLarge" color="text.secondary" sx={{ flex: 1, minWidth: 0 }}>
-          {s.po(order.number)}
+          {s.po(poNumber(order.number))}
         </Typography>
         {order.simulated && (
           <Chip
@@ -697,7 +698,7 @@ function NextStep({
     busy === key ? <CircularProgress size={16} color="inherit" /> : node
   return (
     <Stack spacing={3}>
-      {order.backorders.map((item, index) => (
+      {(order.backorders ?? []).map((item, index) => (
         <Typography key={index} variant="bodyMedium" color="text.secondary">
           {s.backorder(f.qty(item.quantity), item.unit, item.item, f.day(item.date))}
         </Typography>
@@ -750,7 +751,7 @@ function NextStep({
             startIcon={icon('accept', <Receipt size={18} />)}
             sx={{ minHeight: 48 }}
           >
-            {s.approveInvoice} · {f.money(order.invoice_total ?? order.total)}
+            {s.approveInvoice} · {f.money(order.invoice_total ?? orderTotal(order))}
           </Button>
         </Box>
       )}

@@ -49,7 +49,7 @@ import {
 } from 'lucide-react'
 import { visuallyHidden } from '@mui/utils'
 import { CoachChart, type CoachChartData } from '../CoachChart'
-import { RateLimitError, streamCoach } from '../../../api/stream'
+import { RateLimitError, streamCoach, TooSlowError, TURN_IDLE_MS } from '../../../api/stream'
 import type { CoachEvent } from '../../../api/stream'
 import { useIdentity } from '../../../auth/useIdentity'
 import { useLocale } from '../../../state/hooks'
@@ -71,6 +71,7 @@ import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
 import { useVoice } from '../useVoice'
+import { useOnboardingCopy } from '../onboardingCopy'
 import { useSpokenReveal } from '../useSpokenReveal'
 import { cardWords, mergeTranscript } from '../speechReveal'
 import { useOnline } from '../useOnline'
@@ -132,6 +133,8 @@ const SHEETS: Partial<Record<CoachAction['target'], ShopSheetKind>> = {
   sold_out: 'soldOut',
   menu: 'menu',
   details: 'details',
+  // The shop icon card sits at the top of the details sheet.
+  icon: 'details',
   stamps: 'details',
   plan: 'plan',
   games: 'customer',
@@ -184,6 +187,7 @@ function CoachScreen({
   setGalleryPhoto: (value: GalleryPhoto | null) => void
 }) {
   const t = useCopy()
+  const o = useOnboardingCopy()
   const theme = useTheme()
   const roles = theme.material
   const identity = useIdentity()
@@ -601,6 +605,8 @@ function CoachScreen({
         },
         identity.getToken,
         (state) => setReconnecting(state === 'reconnecting'),
+        // No word for this long: thinking stops with "took too long" and the message to resend.
+        TURN_IDLE_MS,
       )
       if (controller.current !== abort) return
       // The model occasionally returns an empty turn; treat it like a failed reply so the
@@ -614,7 +620,13 @@ function CoachScreen({
       if (items && controller.current === abort) setHistory(items)
     } catch (cause) {
       if (!abort.signal.aborted) {
-        setError(cause instanceof RateLimitError ? t.rateLimited : t.replyFailed)
+        setError(
+          cause instanceof TooSlowError
+            ? o.tooSlow
+            : cause instanceof RateLimitError
+              ? t.rateLimited
+              : t.replyFailed,
+        )
         // Keep the unsent message available for a retry.
         setMessages((items) => items.slice(0, -1))
         setNote(message)

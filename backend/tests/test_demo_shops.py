@@ -38,6 +38,9 @@ def test_demo_seed_is_idempotent_and_labelled(store: MerchantRepository) -> None
         assert shop["demo"] is True
         assert shop["name"].endswith("(Demo)")
         assert shop["currency"] == demo.fields.currency
+        assert shop["stamps_enabled"] is True
+        assert shop["stamps_needed"] == 8
+        assert shop["reward_text"] == "Free item after 8 visits"
         assert shop["timezone"] == demo.fields.timezone
         assert shop["lat"] is not None and shop["lng"] is not None
         assert shop["facts"]["payment_methods"]

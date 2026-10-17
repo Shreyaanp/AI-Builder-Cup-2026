@@ -103,37 +103,77 @@ def is_admin(settings: Settings, uid: str) -> bool:
 # --- Evaluation ---
 
 
+# What the worker reports about a capture, kept in the main app's log line. Counts, codecs,
+# timings and which check failed; never pixels, templates or anything naming the owner.
+TRACE_FIELDS = (
+    "container",
+    "demuxer",
+    "codec",
+    "width",
+    "height",
+    "rotation",
+    "duration_s",
+    "decoded",
+    "sampled",
+    "undecodable",
+    "decode_error",
+    "faces",
+    "face_frames",
+    "yaw_range",
+    "pitch_range",
+    "stage",
+    "failed",
+    "first_request",
+    "uptime_s",
+)
+
+
 async def evaluate(
     request: Request, uid: str, prompts: list[str], capture: bytes, content_type: str
 ) -> dict[str, Any]:
     """The worker's (or fixture's) answer: status live/retry/unavailable, a reason, and the
-    template only when the capture was live. The template never leaves the server."""
+    template only when the capture was live. The template never leaves the server.
+
+    Every path logs one `face_evaluated` line: stage, reason, what was sent and, from the
+    worker, how the capture decoded and which threshold failed."""
     start_time = time.perf_counter()
     settings: Settings = request.app.state.v1_settings
+    facts: dict[str, Any] = {
+        "capture_bytes": len(capture),
+        "content_type": content_type,
+        "prompts": prompts,
+        "mode": settings.face_mode,
+    }
+
+    def answer(stage: str, outcome: dict[str, Any], **extra: Any) -> dict[str, Any]:
+        level = log.info if outcome.get("status") != "unavailable" else log.warning
+        level(
+            "face_evaluated",
+            stage=stage,
+            status=outcome.get("status"),
+            reason=outcome.get("reason"),
+            latency_ms=round((time.perf_counter() - start_time) * 1000, 1),
+            **facts,
+            **extra,
+        )
+        return outcome
+
     if settings.face_mode == "fixture":
         if len(capture) < 1024:
-            log.info("face_evaluate_fixture_rejected", size=len(capture))
-            return {"status": "retry", "reason": "capture_not_usable"}
+            return answer("fixture", {"status": "retry", "reason": "capture_not_usable"})
         name = request.headers.get(FIXTURE_HEADER, "")[:80] or uid
-        duration_ms = round((time.perf_counter() - start_time) * 1000, 1)
-        log.info(
-            "face_worker_evaluated",
-            mode="fixture",
-            status="live",
-            reason="ok",
-            latency_ms=duration_ms,
-            capture_bytes=len(capture),
-            content_type=content_type,
+        return answer(
+            "fixture",
+            {
+                "status": "live",
+                "reason": "ok",
+                "liveness": "fixture",
+                "template": fixture_template(name).tolist(),
+                "passed_prompts": prompts,
+            },
         )
-        return {
-            "status": "live",
-            "reason": "ok",
-            "liveness": "fixture",
-            "template": fixture_template(name).tolist(),
-            "passed_prompts": prompts,
-        }
     if not settings.face_worker_token.get_secret_value():
-        return {"status": "unavailable", "reason": "worker_unavailable"}
+        return answer("config", {"status": "unavailable", "reason": "worker_unavailable"})
     try:
         async with httpx.AsyncClient(timeout=70, trust_env=False) as client:
             response = await client.post(
@@ -148,33 +188,25 @@ async def evaluate(
                 },
             )
     except httpx.HTTPError as error:
-        duration_ms = round((time.perf_counter() - start_time) * 1000, 1)
-        log.warning("face_worker_unreachable", error=type(error).__name__, latency_ms=duration_ms)
-        return {"status": "unavailable", "reason": "worker_unavailable"}
-    duration_ms = round((time.perf_counter() - start_time) * 1000, 1)
+        return answer(
+            "worker_request",
+            {"status": "unavailable", "reason": "worker_unavailable"},
+            error=type(error).__name__,
+        )
     if response.status_code == 429:
-        log.warning("face_worker_busy", status=429, latency_ms=duration_ms)
-        return {"status": "unavailable", "reason": "busy"}
+        return answer("worker_request", {"status": "unavailable", "reason": "busy"}, http=429)
     if not response.is_success:
-        log.warning("face_worker_failed", status=response.status_code, latency_ms=duration_ms)
-        return {"status": "unavailable", "reason": "worker_unavailable"}
+        return answer(
+            "worker_request",
+            {"status": "unavailable", "reason": "worker_unavailable"},
+            http=response.status_code,
+        )
     try:
         data = response.json()
     except ValueError:
-        return {"status": "unavailable", "reason": "worker_unavailable"}
-    log.info(
-        "face_worker_evaluated",
-        status=data.get("status"),
-        reason=data.get("reason"),
-        liveness=data.get("liveness"),
-        score=data.get("score"),
-        failed_prompt=data.get("failed_prompt"),
-        passed_prompts=data.get("passed_prompts"),
-        latency_ms=duration_ms,
-        capture_bytes=len(capture),
-        content_type=content_type,
-    )
-    return {
+        return answer("worker_response", {"status": "unavailable", "reason": "worker_unavailable"})
+    trace = data.get("trace") if isinstance(data.get("trace"), dict) else {}
+    outcome = {
         k: data[k]
         for k in (
             "status",
@@ -187,6 +219,18 @@ async def evaluate(
         )
         if k in data
     }
+    return answer(
+        "worker_verdict",
+        outcome,
+        liveness=data.get("liveness"),
+        score=data.get("score"),
+        failed_prompt=data.get("failed_prompt"),
+        passed_prompts=data.get("passed_prompts"),
+        # An older worker sends no trace: its verdict still logs, just without the details.
+        worker_trace=bool(trace),
+        # The worker's own stage (where a rejected capture stopped) sits beside ours.
+        **{("worker_" + k if k == "stage" else k): trace[k] for k in TRACE_FIELDS if k in trace},
+    )
 
 
 # --- Recording a result and the review queue ---
