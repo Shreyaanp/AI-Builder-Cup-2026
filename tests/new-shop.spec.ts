@@ -19,6 +19,17 @@ test.beforeEach(async ({ page }) => {
   await localOnly(page)
 })
 
+test('bundled fonts load from linked local dependencies', async ({ page }) => {
+  const fontResponses: number[] = []
+  page.on('response', (response) => {
+    if (response.url().includes('fontsource')) fontResponses.push(response.status())
+  })
+  await page.goto('/')
+  await page.evaluate(() => document.fonts.ready)
+  expect(fontResponses.length).toBeGreaterThan(0)
+  expect(fontResponses).toEqual(fontResponses.map(() => 200))
+})
+
 /** `sheet`: the flow's one sheet, "Review my shop", is open. */
 async function audit(page: Page, sheet = false) {
   expect(
