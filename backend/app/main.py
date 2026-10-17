@@ -81,6 +81,7 @@ from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
 from .playbook import PlaybookWriter
 from .playbook_routes import router as playbook_router
+from .public_demo import router as public_demo_router
 from .recap import RecapWriter
 from .recs_routes import router as recs_router
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
@@ -291,6 +292,7 @@ def create_app(
     app.include_router(discover_ask_router)
     app.include_router(day_close_router)
     app.include_router(demo_workspace_router)
+    app.include_router(public_demo_router)
     app.include_router(demo_world_router)
     app.include_router(recs_router)
     app.include_router(passport_router)

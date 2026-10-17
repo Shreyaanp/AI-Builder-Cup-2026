@@ -20,7 +20,7 @@ setupPwa(app)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AppProviders business={app === 'business'}>
+    <AppProviders business={app === 'business' && !/^\/demo\/?$/.test(location.pathname)}>
       <Root />
     </AppProviders>
   </StrictMode>,

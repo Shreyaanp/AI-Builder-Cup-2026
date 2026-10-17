@@ -6,8 +6,15 @@ const App = lazy(() => import('./App'))
 const V1App = lazy(() => import('../features/v1/V1App'))
 const CustomerApp = lazy(() => import('../features/frontdoors/CustomerApp'))
 const Marketing = lazy(() => import('../features/frontdoors/Marketing'))
+const DemoApp = lazy(() => import('../features/demo/DemoApp'))
 
 export default function Root() {
+  if (/^\/(?:demo\/?|explore\/demo(?:\/.*)?)$/.test(location.pathname))
+    return (
+      <Suspense fallback={<BrandSplash business />}>
+        <DemoApp />
+      </Suspense>
+    )
   const kind = resolveApp(new URL(location.href))
   if (kind === 'landing')
     return (

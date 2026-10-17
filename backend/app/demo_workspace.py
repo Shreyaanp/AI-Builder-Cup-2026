@@ -13,7 +13,7 @@ from fastapi import APIRouter, Query, Request
 
 from .demo_data import SHOPS, sales_history
 from .limits import enforce_limits
-from .merchant import ProposalRequest
+from .merchant import MerchantRepository, ProposalRequest
 from .merchant_routes import consented_owner, store
 from .sales import today_for
 
@@ -34,8 +34,14 @@ TOUR_SUFFIX = " (Tour)"
 
 @router.post("/workspace")
 async def demo_workspace(
-    request: Request, zone: str = Query(default="Asia/Singapore", max_length=64)
+    request: Request,
+    zone: str = Query(default="Asia/Singapore", max_length=64),
+    public: bool = False,
 ) -> dict[str, Any]:
+    if public:
+        from .public_demo import open_workspace
+
+        return await open_workspace(request, zone)
     uid = await consented_owner(request)
     await enforce_limits(request, [("proposal", uid)])
     service = store(request)
@@ -43,6 +49,12 @@ async def demo_workspace(
     for business in existing:
         if business["fields"].get("name", "").endswith(TOUR_SUFFIX):
             return {"business_id": business["id"], "created": False}
+    bid = await anyio.to_thread.run_sync(seed_workspace, service, uid, zone)
+    return {"business_id": bid, "created": True}
+
+
+def seed_workspace(service: MerchantRepository, uid: str, zone: str) -> str:
+    """Reuse the tour fixture in either the owner's store or an isolated public preview."""
     city = ZONE_CITY.get(zone, "singapore")
     demo = next(
         (s for s in SHOPS if s.city == city and s.fields.category.lower() != "hardware"),
@@ -68,5 +80,4 @@ async def demo_workspace(
         service.save_sales(uid, bid, pending["id"], pending["digest"])
         return bid
 
-    bid = await anyio.to_thread.run_sync(create)
-    return {"business_id": bid, "created": True}
+    return create()
