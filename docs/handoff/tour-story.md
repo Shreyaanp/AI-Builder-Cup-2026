@@ -42,7 +42,7 @@ These are observations, separate from the implementation list above.
 - Ruff lint/format and mypy passed; API contracts were regenerated offline. Changed frontend
   files passed Prettier and `git diff --check`.
 - Browser command: `npm run check -- -- tests/tour-story.spec.ts tests/customer-chat.spec.ts
-  tests/tour.spec.ts tests/stories --workers=1`. Lint, build and hook enforcement passed;
+tests/tour.spec.ts tests/stories --workers=1`. Lint, build and hook enforcement passed;
   walkthroughs are still running. The first cold customer walk reached Saved but exceeded its
   90-second total timeout; its isolated rerun passed in 20.1 seconds. The full backend/browser
   suites were not rerun for this handoff.
@@ -65,18 +65,18 @@ after the fresh browser run completes.
 
 Checklist observations (automated results do not replace a physical-phone or screen-reader review):
 
-| Check | Review |
-| --- | --- |
-| Three-second purpose | Today leads with stock/questions; the customer has local choices and a next reward. |
-| Primary action | The new story action is secondary in Profile; existing screen actions stay in place. |
-| Content | Short action/help/error copy in all 15 locales; Demo labels and badge explanation are explicit. |
-| Eye strain | Existing semantic surfaces and typography; public-shop contrast checked with axe in both themes. |
-| States | Loading and retry are implemented; success and production refusal are exercised. No new error-state screenshot. |
-| Personal context | Currency and menus follow the area; reruns keep edits, replies, rewards and unfollows. |
-| Motion | No new animation; existing reduced-motion customer walk passes. |
-| Reach and input | New action and badge have 48px targets, native button semantics and visible focus. Physical touch remains untested. |
-| Complete journey | Owner forecast/payment/supplier records and customer discovery/map/shop/rewards/chat are linked. |
-| Languages | Hindi and Simplified Chinese entry captures check label visibility and horizontal overflow; no native-speaker certification. |
+| Check                | Review                                                                                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Three-second purpose | Today leads with stock/questions; the customer has local choices and a next reward.                                          |
+| Primary action       | The new story action is secondary in Profile; existing screen actions stay in place.                                         |
+| Content              | Short action/help/error copy in all 15 locales; Demo labels and badge explanation are explicit.                              |
+| Eye strain           | Existing semantic surfaces and typography; public-shop contrast checked with axe in both themes.                             |
+| States               | Loading and retry are implemented; success and production refusal are exercised. No new error-state screenshot.              |
+| Personal context     | Currency and menus follow the area; reruns keep edits, replies, rewards and unfollows.                                       |
+| Motion               | No new animation; existing reduced-motion customer walk passes.                                                              |
+| Reach and input      | New action and badge have 48px targets, native button semantics and visible focus. Physical touch remains untested.          |
+| Complete journey     | Owner forecast/payment/supplier records and customer discovery/map/shop/rewards/chat are linked.                             |
+| Languages            | Hindi and Simplified Chinese entry captures check label visibility and horizontal overflow; no native-speaker certification. |
 
 ## Open limits
 

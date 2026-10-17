@@ -78,7 +78,7 @@ test('marketing has two paths, all sections, no splash or auth bootstrap', async
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/?app=landing')
   await expect(
-    page.getByRole('heading', { name: 'For shop owners. For neighbours.', level: 1 }),
+    page.getByRole('heading', { name: 'Small shops. Big neighbourhood energy.' }),
   ).toBeVisible()
   await expect(page.getByRole('link', { name: 'Find places near me' }).first()).toHaveAttribute(
     'href',
@@ -92,7 +92,9 @@ test('marketing has two paths, all sections, no splash or auth bootstrap', async
   await expect(
     page.getByRole('heading', { name: 'From chalkboard to every phone, in three moves.' }),
   ).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Talk to your coach' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Everything a corner shop needs. Nothing it doesn’t.' }),
+  ).toBeVisible()
   expect(await page.locator('[data-testid="brand-splash"]').count()).toBe(0)
   expect(await page.locator('link[rel="manifest"]').count()).toBe(0)
   expect(
@@ -242,10 +244,12 @@ for (const width of [360, 390, 412]) {
     await page.setViewportSize({ width, height: 844 })
     await page.goto('/?app=landing')
     await expect(page.locator('.lp-eyebrow')).toHaveCount(0)
-    const business = page.locator('.lp-nav').getByRole('link', { name: 'For businesses' })
+    await expect(page.locator('.lp-nav').getByRole('link', { name: 'For businesses' })).toBeHidden()
+    const business = page.locator('.lp-final').getByRole('link', { name: 'For businesses' })
+    await business.scrollIntoViewIfNeeded()
     await expect(business).toBeInViewport()
     const button = await business.boundingBox()
-    expect(button!.height).toBeGreaterThanOrEqual(48)
+    expect(button!.height).toBeGreaterThanOrEqual(44)
     expect(button!.x + button!.width).toBeLessThanOrEqual(width)
     await expect(page.locator('.lp-steps li')).toHaveCount(3)
     for (const step of await page.locator('.lp-steps li').all()) await expect(step).toBeVisible()

@@ -444,3 +444,14 @@ def test_customer_commands_answer_without_a_model(tmp_path: Path):
             "/api/v1/discover/ask", json={"q": "my stamps", "lat": 1.2847, "lng": 103.832}
         ).json()
         assert found["mode"] == "command" and found["command"]["kind"] == "my_stamps"
+
+
+def test_icon_tools_only_open_the_icon_page(shop):
+    from app.voice_tools import make_my_icon, use_photo_as_icon
+
+    for tool, mode in ((make_my_icon, "generate"), (use_photo_as_icon, "photo")):
+        result = tool()
+        assert result["status"] == "opened"
+        kind, card = shop.cards[result["card_id"]]
+        assert (kind, card["target"], card["mode"]) == ("action", "icon", mode)
+        assert card["business_id"] == shop.business_id

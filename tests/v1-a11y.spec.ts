@@ -33,7 +33,7 @@ async function open(page: Page) {
 
 async function addShop(page: Page, name: string) {
   await openNewShopReview(page, `name: ${name}`)
-  await expect(page.getByTestId('new-shop-review')).toContainText('Nothing is published to Google')
+  await expect(page.getByTestId('draft-summary')).toContainText(name)
   await createShopFromReview(page)
   await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
 }
@@ -61,8 +61,8 @@ async function sharedShop(page: Page) {
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: /^Customer page/ }).click()
+  // Onboarding put the shop live by itself (name + kind + place): the page is already shared.
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
-  await sharing.click()
   await expect(sharing).toBeChecked()
   const url = await page.getByRole('link', { name: 'Open page' }).getAttribute('href')
   await page.keyboard.press('Escape')

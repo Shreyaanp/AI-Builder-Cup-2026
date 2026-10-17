@@ -159,7 +159,7 @@ for (let repeat = 0; repeat < runs; repeat++) {
           'Add shop details',
         )
         await input.tap(page.getByRole('button', { name: 'Let’s begin' }), 'Let’s begin')
-        await expect(page.getByRole('log')).toContainText('What is your business called?')
+        await expect(page.getByRole('log')).toContainText('Can you tell me about your shop?')
         if (mode === 'voice') {
           for (const field of ['name', 'category', 'location', 'hours'] as const) {
             const utterance = `${field}: ${shop[field]}`

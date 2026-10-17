@@ -638,7 +638,7 @@ def next_reward(
     level: LevelView,
 ) -> NextReward | None:
     """The closest named reward: a shop card, then a collection set, else the next level."""
-    options: list[tuple[int, int, NextReward]] = []
+    cards: list[NextReward] = []
     for bid, shop in shops.items():
         stamps_enabled = bool(
             shop.get("stamps_enabled") if "stamps_enabled" in shop else shop.get("reward_text")
@@ -651,13 +651,17 @@ def next_reward(
         card = NextReward(
             kind="card", left=left, reward=reward[:120], shop_id=bid, shop_name=progress.name
         )
-        options.append((left, 0, card))
-    for view in sets:
-        if not view.done and view.have and not view.festival:
-            left = view.need - view.have
-            options.append((left, 1, NextReward(kind="set", left=left, reward=view.id)))
+        cards.append(card)
+    if cards:
+        # A shop's stamp card always outranks a set: it is the reward the owner promised.
+        return min(cards, key=lambda card: card.left)
+    options = [
+        NextReward(kind="set", left=view.need - view.have, reward=view.id)
+        for view in sets
+        if not view.done and view.have and not view.festival
+    ]
     if options:
-        return min(options, key=lambda option: (option[0], option[1]))[2]
+        return min(options, key=lambda option: option.left)
     requirement = level.next_requirement
     if level.next and requirement:
         left = max(0, requirement.need - requirement.have)

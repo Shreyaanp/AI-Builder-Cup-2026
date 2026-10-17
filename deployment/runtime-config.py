@@ -26,6 +26,8 @@ config = {
     "FEATURE_GOOGLE_GUIDE": os.environ.get("FEATURE_GOOGLE_GUIDE", "true"),
     "MERCHANT_BACKEND": "firestore",
     "MODERATION_MODE": "vision",
+    # Make my icon: Gemini image model, at most 3 AI icons per shop per day.
+    "SHOP_ICON_AI": "true",
     # Demand forecast with TimesFM in BigQuery (AI.FORECAST); owner approved, budget alert set.
     "FORECAST_BACKEND": "bigquery",
     # Till receipts (Expense parser) and supplier invoices (Invoice parser), Gemini as fallback.

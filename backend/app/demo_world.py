@@ -24,7 +24,7 @@ from .money import to_minor
 from .product_units import UNITS, normalize_unit
 from .rescue import seed_demo_deals
 from .settings import Settings
-from .sourcing import offset, region, seed_number
+from .sourcing import area_currency, offset, region, seed_number
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/demo")
@@ -387,9 +387,11 @@ def world_records(
             pin_label=f"Near {place or 'you'} (approximate) · Demo",
             pin_demo=True,
             demo=True,
-            reward_text="A small treat on the house",
             timezone=timezone,
             currency=currency,
+            stamps_enabled=True,
+            reward_text="Free item after 8 visits",
+            stamps_needed=8,
             hours=hours,
             weekly_hours=weekly,
             halal="yes" if shop.halal else "not_stated",
@@ -469,6 +471,7 @@ async def ensure_world(
                     created=not bool(existed),
                     source="existing" if existed else "fixture",
                 )
+    body = body.model_copy(update={"currency": area_currency(body.lat, body.lng, body.currency)})
     first = world_id(body.lat, body.lng, 0)
     stored = await anyio.to_thread.run_sync(store.public_shop, first)
     currency = resolve_currency(body.lat, body.lng, body.place, body.currency)
