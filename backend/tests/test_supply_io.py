@@ -327,6 +327,7 @@ def test_routes_run_inbound_and_outbound_and_stay_owner_scoped(app) -> None:  # 
         assert order["chip"] == "needs_you" and board["tasks"][0]["code"] == "accept_change"
         url = f"{base}/orders/{order['id']}"
         order = client.post(f"{url}/change", json={"version": order["version"]}).json()
+        assert order["chip"] == "sent" and order["timeline"][1]["step"] == "changed"
         asn = client.post(f"{url}/asn", json={"version": order["version"]}).json()
         assert asn["document"]["status"] == "pending"
         bought = next(o for o in board["orders"] if o["direction"] == "in")

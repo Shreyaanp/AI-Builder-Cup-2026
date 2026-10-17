@@ -491,6 +491,17 @@ def view(po: dict[str, Any], today: date) -> dict[str, Any]:
     }
 
 
+def present(
+    store: MerchantRepository, uid: str, bid: str, result: dict[str, Any]
+) -> dict[str, Any]:
+    """An action's result as the screens show it: the order (alone or under "order") as a view."""
+    po = result.get("order", result)
+    if not isinstance(po, dict) or "lines" not in po:
+        return result
+    shown = view(po, supply_chain.shop_today(store.context(uid, bid)))
+    return {**result, "order": shown} if "order" in result else shown
+
+
 def board(store: MerchantRepository, uid: str, bid: str) -> dict[str, Any]:
     """Everything the four supply screens need, in one read."""
     context = supply_chain._owned(store, uid, bid)

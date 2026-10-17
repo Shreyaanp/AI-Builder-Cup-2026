@@ -309,6 +309,15 @@ class SendBody(BaseModel):
     doc_id: str = Field(min_length=1, max_length=40)
 
 
+async def _shown(request: Request, uid: str, bid: str, action: Any, *args: Any) -> dict[str, Any]:
+    """Run an order action and return the order as the board shows it (status, timeline)."""
+
+    def run() -> dict[str, Any]:
+        return supply_outbound.present(store(request), uid, bid, action(*args))
+
+    return await anyio.to_thread.run_sync(run)
+
+
 @router.get("/businesses/{business_id}/supply/board")
 async def board(business_id: str, request: Request) -> dict[str, Any]:
     """What needs the owner, what came in, what was received and what must go out."""
@@ -343,7 +352,10 @@ async def answer_change(
     business_id: str, order_id: str, body: ChangeAnswer, request: Request
 ) -> dict[str, Any]:
     uid = await consented_owner(request)
-    return await anyio.to_thread.run_sync(
+    return await _shown(
+        request,
+        uid,
+        business_id,
         supply_io.accept_change,
         store(request),
         uid,
@@ -360,7 +372,10 @@ async def goods_receipt(
 ) -> dict[str, Any]:
     """Goods came in: lines left out arrived in full. The receipt waits until sent."""
     uid = await consented_owner(request)
-    return await anyio.to_thread.run_sync(
+    return await _shown(
+        request,
+        uid,
+        business_id,
         supply_outbound.record_receipt,
         store(request),
         uid,
@@ -377,7 +392,10 @@ async def shipping_notice(
     business_id: str, order_id: str, body: AsnBody, request: Request
 ) -> dict[str, Any]:
     uid = await consented_owner(request)
-    return await anyio.to_thread.run_sync(
+    return await _shown(
+        request,
+        uid,
+        business_id,
         supply_outbound.prepare_asn,
         store(request),
         uid,
@@ -393,8 +411,17 @@ async def send_document(
     business_id: str, order_id: str, body: SendBody, request: Request
 ) -> dict[str, Any]:
     uid = await consented_owner(request)
-    return await anyio.to_thread.run_sync(
-        supply_outbound.send, store(request), uid, business_id, order_id, body.version, body.doc_id
+    return await _shown(
+        request,
+        uid,
+        business_id,
+        supply_outbound.send,
+        store(request),
+        uid,
+        business_id,
+        order_id,
+        body.version,
+        body.doc_id,
     )
 
 

@@ -184,7 +184,12 @@ def _entry(
         "problem": problem,
         "changes": changes,
         "lines": [
-            {"line": x.line, "item": x.item, "quantity": x.quantity, "unit": x.unit}
+            {
+                "line": x.line,
+                "item": x.item,
+                "quantity": x.quantity,
+                "unit": unit_of(x.unit) or x.unit,
+            }
             for x in doc.lines
         ],
         "delivery": doc.delivery,
@@ -330,6 +335,13 @@ def process(
     return _order_create(store, bid, context, doc, fmt, raw, reader, partner, direction)
 
 
+def _shop_unit(unit: str | None, product: dict[str, Any] | None) -> str | None:
+    """The shop's own spelling of the same unit ("l" for litre), so quantities read alike."""
+    if unit and product and unit_of(str(product.get("unit") or "")) == unit:
+        return str(product["unit"])
+    return unit
+
+
 def _lines(doc: SupplyDoc, inventory: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], str]:
     """Order lines linked to the shop's items, and the first problem found (or '')."""
     lines: list[dict[str, Any]] = []
@@ -339,6 +351,7 @@ def _lines(doc: SupplyDoc, inventory: list[dict[str, Any]]) -> tuple[list[dict[s
         product = _product(got.item, inventory)
         if unit is None:
             problem = problem or "unit"
+        unit = _shop_unit(unit, product)
         if got.quantity <= 0:
             problem = problem or "quantity"
         lines.append(
@@ -554,6 +567,7 @@ def diff(
             if got.quantity <= 0:
                 continue
             product = _product(got.item, inventory)
+            unit = _shop_unit(unit, product) or unit
             line = {
                 "line": max([x["line"] for x in lines] or [0]) + 10,
                 "item": product["name"] if product else got.item,
