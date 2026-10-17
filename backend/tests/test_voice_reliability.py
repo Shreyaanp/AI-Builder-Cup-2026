@@ -473,6 +473,49 @@ def test_live_run_config_has_no_call_cap_and_the_tuned_voice() -> None:
     assert plain.speech_config and plain.speech_config.language_code == "hi-IN"
 
 
+async def test_a_tool_turn_is_not_the_reply_press_to_talk_waits_for_the_words(
+    tmp_path: Path,
+) -> None:
+    """#137: after a tool ran, ADK completes a turn before the coach says anything (seen live,
+    17 Oct). The shop chat's press-to-talk took that turn_complete as the reply's end and hung up,
+    so the owner's turn showed nothing. Only the spoken reply's turn_complete reaches the app."""
+    socket = FakeSocket()
+
+    async def tool_then_reply(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        yield Event(author="user", input_transcription=types.Transcription(text="Add masala chai"))
+        yield Event(
+            author="business_coach",
+            content=types.Content(
+                role="model",
+                parts=[types.Part(function_call=types.FunctionCall(name="propose_products"))],
+            ),
+        )
+        yield Event(
+            author="business_coach",
+            content=types.Content(
+                role="user",
+                parts=[
+                    types.Part(
+                        function_response=types.FunctionResponse(
+                            name="propose_products", response={"status": "proposed"}
+                        )
+                    )
+                ],
+            ),
+        )
+        yield Event(author="business_coach", turn_complete=True)
+        for event in turn("Added masala chai at 15 rupees. Anything else?", tools=0):
+            yield event
+
+    shop = MerchantContext(MerchantStore(str(tmp_path / "shops.sqlite")), "alice", None, [])
+    stats = await run_voice(FakeLive([tool_then_reply]), socket, shop)
+    kinds = [e.get("kind") for e in socket.sent if isinstance(e, dict)]
+    assert kinds.count("turn_complete") == 1
+    assert kinds.index("input_transcript") < kinds.index("output_transcript")
+    assert kinds.index("output_transcript") < kinds.index("turn_complete")
+    assert stats.turns == 1 and stats.tool_calls == 1
+
+
 async def test_many_tool_calls_never_end_or_rotate_the_live_connection(tmp_path: Path) -> None:
     """A long onboarding (20 turns, two tool calls each) stays on one Live connection."""
     socket = FakeSocket()
