@@ -112,11 +112,12 @@ export function ReviewQueue({ queue, onChange }: { queue: Review[]; onChange: ()
                 </Stack>
               ) : (
                 <Box component="ul" sx={{ m: 0, pl: 2.5, display: 'grid', gap: 0.5 }}>
-                  {(item.reasons ?? []).map((reason) => (
+                  {(item.reasons ?? []).map((reason, index) => (
                     <Typography
                       component="li"
                       variant="bodyMedium"
-                      key={reason.rule + reason.detail}
+                      // Two different shops can share a name, so rule and detail are not unique.
+                      key={`${index}-${reason.rule}`}
                       sx={{ overflowWrap: 'anywhere' }}
                     >
                       {reason.detail}{' '}

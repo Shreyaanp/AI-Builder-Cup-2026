@@ -1,3 +1,5 @@
+import { viewTransition } from '../frontdoors/navigation'
+
 export const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export function chatPath(shop: string, thread: string) {
@@ -11,6 +13,5 @@ export function go(path: string) {
     dispatchEvent(new PopStateEvent('popstate'))
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
-  if (document.startViewTransition && !reduceMotion()) document.startViewTransition(update)
-  else update()
+  viewTransition(update)
 }
