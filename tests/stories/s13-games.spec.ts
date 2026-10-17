@@ -211,7 +211,8 @@ async function walk(customer: Page, qr: string, name: string, mode: Mode) {
     // 50 for the first try + 25 from the scratch card.
     await expect(customer.getByText('225 more points to Regular')).toBeVisible()
     await expect(customer.getByText('Next reward')).toBeVisible()
-    await expect(customer.getByText('2 more stops → Locally made badge')).toBeVisible()
+    // The shop's stamp card outranks a badge (welcome stamps count: 8 needed, 1 scanned → 7 more).
+    await expect(customer.getByText('7 more stamps → Free bun maska')).toBeVisible()
     const sets = customer.getByRole('region', { name: 'Collection sets' })
     const made = sets.getByRole('listitem').filter({ hasText: 'Locally made' })
     await expect(made.getByRole('img', { name: '1 of 3' })).toBeVisible()

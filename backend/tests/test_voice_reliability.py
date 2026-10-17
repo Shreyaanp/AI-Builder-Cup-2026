@@ -703,3 +703,58 @@ def test_the_voice_socket_takes_a_pin_before_the_name(tmp_path: Path) -> None:
         drafts = [event["data"] for event in seen if event["kind"] == "draft"]
         assert drafts and drafts[-1]["business"]["lat"] == 12.9352
         assert drafts[-1]["business"]["name"] == "Kaveri Tiffin"
+
+
+async def test_words_spoken_before_a_drop_reach_the_next_connection(tmp_path: Path) -> None:
+    """#108: the owner said "my tea shop", the connection dropped before the coach's turn
+    completed (so the words were never saved), and the reconnected coach asked again. The next
+    connection now hears them first."""
+    spoken = "मेरी चाय की दुकान है"
+
+    async def drops_mid_turn(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        yield Event(author="user", input_transcription=types.Transcription(text=spoken))
+        # The provider ended the connection before the coach's turn completed.
+
+    heard: list[str] = []
+
+    async def hears(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        request = await queue.get()
+        assert request.content and request.content.parts
+        heard.append(request.content.parts[0].text or "")
+        for event in turn("आपकी दुकान का नाम क्या है?", tools=0):
+            yield event
+        socket.push({"kind": "close"})
+        await asyncio.Event().wait()
+
+    socket = FakeSocket()
+    live = FakeLive([drops_mid_turn, hears])
+    with capture_logs() as logs:
+        stats = await run_voice(live, socket, new_shop_context(tmp_path))
+    assert stats.reason == "client_close" and stats.rotations == 1
+    assert heard == [spoken]
+    assert any(entry["event"] == "voice_spoken_turn_carried" for entry in logs)
+    # The reconnected coach is told it resumed, with the saved draft as the source of truth.
+    assert "connection dropped" in live.instructions[1]
+
+
+async def test_a_completed_spoken_turn_is_not_replayed_after_a_drop(tmp_path: Path) -> None:
+    """Words the coach already answered are saved with the turn; a later drop replays nothing."""
+
+    async def answers_then_drops(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        yield Event(author="user", input_transcription=types.Transcription(text="चाय की दुकान"))
+        for event in turn("आपकी दुकान का नाम क्या है?", tools=0):
+            yield event
+
+    replayed: list[Any] = []
+
+    async def listens(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        replayed.append(queue._queue.qsize())
+        socket.push({"kind": "close"})
+        await asyncio.Event().wait()
+        yield Event(author="business_coach")  # pragma: no cover
+
+    socket = FakeSocket()
+    stats = await run_voice(
+        FakeLive([answers_then_drops, listens]), socket, new_shop_context(tmp_path)
+    )
+    assert stats.rotations == 1 and replayed == [0]
