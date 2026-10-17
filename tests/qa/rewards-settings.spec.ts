@@ -6,10 +6,10 @@ test('QR stamps are daily, reload-persistent and honestly device-only', async ({
   await publish(page, id)
   await page.goto(`/s/${id}?source=qr`)
   const card = page.getByRole('region', { name: 'Stamp card' })
-  await expect(card.getByRole('status')).toContainText('1 stamp')
+  await expect(card.getByRole('status')).toContainText('3 stamps')
   await expect(card).toContainText('This card is stored on this phone.')
   await page.reload()
-  await expect(card.getByRole('status')).toContainText('1 stamp')
+  await expect(card.getByRole('status')).toContainText('3 stamps')
   await audit(page)
 })
 

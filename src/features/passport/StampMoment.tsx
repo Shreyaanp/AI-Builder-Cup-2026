@@ -9,6 +9,7 @@ import { useCustomer } from '../customer/account'
 import { SignInSheet } from '../customer/SignIn'
 import { useRescueCopy } from '../rescue/copy'
 import { dropHold } from '../rescue/holds'
+import { visit } from '../rewards/storage'
 import { Sticker } from './art'
 import { fill, requirementText, usePassportCopy } from './copy'
 import { keepReceipt, receipts, setPassport } from './store'
@@ -48,7 +49,14 @@ export function StampMoment({
   onClose,
   rescue = null,
 }: {
-  shop: { id: string; name: string; category?: string; demo?: boolean }
+  shop: {
+    id: string
+    name: string
+    category?: string
+    demo?: boolean
+    timezone?: string
+    needed?: number
+  }
   qrKey: string
   open: boolean
   onClose: () => void
@@ -103,6 +111,10 @@ export function StampMoment({
         if (!response.ok) throw new Error(String(response.status))
         const result = (await response.json()) as StampResult
         if (result.passport) setPassport(result.passport)
+        // Signed out, the phone's card is the card: a verified stamp lands on it too (once a
+        // day, so a QR scan the shop page already counted is not counted twice).
+        if (!signedIn && result.outcome.verdict === 'stamped')
+          visit(shop.id, true, shop.timezone ?? 'Asia/Singapore', shop.needed)
         if (result.receipt) keepReceipt(result.receipt)
         if (result.outcome.verdict === 'stamped') navigator.vibrate?.(30)
         const rescued = collected && result.outcome.verdict === 'stamped'

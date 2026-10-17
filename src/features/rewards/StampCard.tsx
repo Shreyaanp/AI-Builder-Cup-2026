@@ -27,16 +27,24 @@ import { HowItWorks } from '../passport/games/HowItWorks'
 /** Endowed progress: 2 welcome stamps printed on every card, on top of the owner's target. */
 const WELCOME = 2
 
-/** This customer's stamps on a shop's card: the server's (signed in) or this phone's. */
+/**
+ * The stamps on a shop's card, welcome stamps included: the passport view's `stamps`, the one
+ * count the button, the card and the passport all show. Before that view has this card (a
+ * first visit, or a phone still loading), the same sum from this phone's card.
+ */
 function useCardCount(shop: string, target: number) {
   const { data } = useRewards()
   const account = useCustomer()
   const { view } = usePassport(null)
   const signedIn = account.status === 'signed-in'
-  const server = signedIn ? view?.shops.find((card) => card.id === shop) : undefined
+  const server = view?.shops.find((card) => card.id === shop && card.slots > 0)
+  const local = signedIn ? 0 : (data.shops[shop]?.stamps ?? 0)
+  const stamps = Math.min(server?.stamps ?? WELCOME + local, target + WELCOME)
   return {
     signedIn,
-    count: Math.min(signedIn ? (server?.card ?? 0) : (data.shops[shop]?.stamps ?? 0), target),
+    stamps,
+    /** The customer's own stamps: the slots after the welcome ones. */
+    count: stamps - WELCOME,
     claimed: signedIn ? (server?.claimed ?? 0) : (data.shops[shop]?.claimed ?? 0),
   }
 }
@@ -54,7 +62,7 @@ export function StampPeek({ shop, needed = 8 }: { shop: string; needed?: number 
   const locale = useLocale()
   const gold = useTheme().chalk.sunflower
   const target = validTarget(needed)
-  const { count } = useCardCount(shop, target)
+  const { stamps } = useCardCount(shop, target)
   const number = (value: number) => new Intl.NumberFormat(locale).format(value)
   return (
     <Button
@@ -76,9 +84,7 @@ export function StampPeek({ shop, needed = 8 }: { shop: string; needed?: number 
       }}
     >
       {t.stampCard} ·{' '}
-      {t.progress
-        .replace('{count}', number(count + WELCOME))
-        .replace('{total}', number(target + WELCOME))}
+      {t.progress.replace('{count}', number(stamps)).replace('{total}', number(target + WELCOME))}
     </Button>
   )
 }
@@ -118,7 +124,7 @@ export function StampCard({
   }, [redeeming])
   // Signed in: the server's card (verified visits); signed out: this phone's card.
   const account = useCustomer()
-  const { signedIn, count, claimed } = useCardCount(shop, target)
+  const { signedIn, stamps, count, claimed } = useCardCount(shop, target)
   const full = count >= target
   const number = (value: number) => new Intl.NumberFormat(locale).format(value)
   const close = () => {
@@ -163,15 +169,17 @@ export function StampCard({
           '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
         }}
       >
-        {celebrations.has(shop) && [5, 10].includes(count)
-          ? t.milestone.replace('{count}', number(count))
-          : (count === 1 ? t.stamp : t.stamps).replace('{count}', number(count))}
+        {/* Welcome stamps included, so never fewer than 2: no singular form is needed. */}
+        {(celebrations.has(shop) && [5, 10].includes(count) ? t.milestone : t.stamps).replace(
+          '{count}',
+          number(stamps),
+        )}
       </Typography>
       <Stack
         direction="row"
         role="img"
         aria-label={t.progress
-          .replace('{count}', number(count + WELCOME))
+          .replace('{count}', number(stamps))
           .replace('{total}', number(target + WELCOME))}
         sx={{ flexWrap: 'wrap', gap: 1.5, my: 3 }}
       >
