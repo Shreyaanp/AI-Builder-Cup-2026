@@ -47,6 +47,8 @@ export default defineConfig({
       command: 'node scripts/backend-dev.mjs',
       url: `http://127.0.0.1:${api}/api/v1/health`,
       reuseExistingServer: !process.env.CI,
+      // A throwaway database per run: reruns never inherit earlier runs' seeded shops.
+      env: { FRESH_TEST_DATA: '1' },
       timeout: 60_000,
     },
     {
