@@ -7,6 +7,16 @@ export const ta: Copy = {
   shareWhatsApp: 'WhatsApp-இல் பகிர்',
   scanStamps: 'முத்திரைகளுக்கு ஸ்கேன் செய்யவும்',
   paperSize: 'காகித அளவு',
+  trustFree: 'இலவசமாகத் தொடங்குங்கள்',
+  trustLanguage: 'உங்கள் மொழி',
+  trustData: 'தரவு உங்களுடையதே',
+  trustHuman: 'ஒருவரிடம் பேசுங்கள்',
+  trustFreeBody: 'இலவசமாகத் தொடங்குங்கள்; பணம் செலுத்தத் தேவையில்லை.',
+  trustLanguageBody: 'அமைப்புகளில் இந்தி, ஆங்கிலம் அல்லது வேறு மொழியைத் தேர்ந்தெடுங்கள்.',
+  trustDataBody:
+    'தரவை எப்போது வேண்டுமானாலும் நீக்கலாம்; சேமித்த முகத் தரவு குறியாக்கம் செய்யப்படுகிறது.',
+  trustHumanBody: 'WhatsApp வழியாக எங்கள் உதவிக் குழுவிடம் பேசுங்கள்.',
+  trustWhatsapp: 'WhatsApp திறக்கவும்',
   newShopMode: 'புதிய கடை',
   newShopReady: 'உங்கள் புதிய கடை தயார்',
   newShopReadyBody:

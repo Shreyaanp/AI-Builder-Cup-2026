@@ -1,5 +1,5 @@
-import { useLocale } from '../../state/hooks'
-import { translations } from './locales'
+import { lazyCopy } from '../../i18n/lazyCopy'
+import { loaders } from './locales'
 
 export const en = {
   firstCustomers: 'Get your first customers',
@@ -8,6 +8,15 @@ export const en = {
   shareWhatsApp: 'Share on WhatsApp',
   scanStamps: 'Scan for stamps',
   paperSize: 'Paper size',
+  trustFree: 'Free to start',
+  trustLanguage: 'Your language',
+  trustData: 'Your data stays yours',
+  trustHuman: 'Talk to a human',
+  trustFreeBody: 'Start for free; no payment needed.',
+  trustLanguageBody: 'Use Hindi, English or another language from settings.',
+  trustDataBody: 'Delete your data anytime; saved face data is encrypted.',
+  trustHumanBody: 'Talk to our support team on WhatsApp.',
+  trustWhatsapp: 'Open WhatsApp',
   newShopMode: 'New shop',
   newShopReady: 'Your new shop is ready',
   newShopReadyBody:
@@ -438,9 +447,6 @@ export const en = {
 
 type Copy = typeof en
 
-/** English is the source; each registered locale supplies the complete copy. */
-export function useCopy(): Copy {
-  const locale = useLocale()
-  return locale === 'en' ? en : translations[locale]
-}
+/** English is the source; each other locale is its own chunk, loaded when the phone needs it. */
+export const useCopy = lazyCopy<Copy>(en, loaders)
 export type { Copy }
