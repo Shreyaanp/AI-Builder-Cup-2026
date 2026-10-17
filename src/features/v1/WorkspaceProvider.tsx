@@ -13,7 +13,7 @@ import { FaceDialog } from './FaceDialog'
 import { customerShopLink, safeCustomerOrigin } from '../../app/router'
 import { overlayHandled } from './backStack'
 import { tabFromUrl } from './workspaceContext'
-import { entryState, pushEntry, replaceEntry, restoreScroll } from '../../app/history'
+import { carried, entryState, pushEntry, replaceEntry, restoreScroll } from '../../app/history'
 
 function readSpeak() {
   try {
@@ -73,7 +73,8 @@ export function WorkspaceProvider({
     if (url.href === location.href) return
     const newTab = !inFlow && tabFromUrl(location.search) !== destination
     if (creatingShop || newTab) {
-      pushEntry(url)
+      // A tab keeps the open draft's marker, so Back from a page above it is not that draft's Back.
+      pushEntry(url, newTab && !creatingShop ? carried() : {})
       if (newTab) window.scrollTo({ top: 0, behavior: 'instant' })
     } else replaceEntry(url)
   }, [creatingShop, shopReady, newShopPhase, destination])
