@@ -88,16 +88,26 @@ export function MorningBrief({
   )
   if (hidden || !brief) return null
 
-  const action = brief.best_action
+  // Treat optional server collections as empty; the rest of the shop remains usable.
+  const prepPlan = Array.isArray(brief.prep_plan)
+    ? brief.prep_plan.filter((row) => row && typeof row.name === 'string')
+    : []
+  const lowStock = Array.isArray(brief.low_stock)
+    ? brief.low_stock.filter((row) => row && typeof row.name === 'string')
+    : []
+  const action =
+    brief.best_action && typeof brief.best_action === 'object'
+      ? brief.best_action
+      : { kind: 'none' as const, title: '', demo: false }
   const number = (n: number) => new Intl.NumberFormat(locale).format(n)
   const slides: { key: string; icon: ReactNode; title: string; body: ReactNode }[] = [
     {
       key: 'prep',
       icon: <UtensilsCrossed size={18} />,
       title: t.prep,
-      body: brief.prep_plan.length ? (
+      body: prepPlan.length ? (
         <Stack spacing={1}>
-          {brief.prep_plan.map((row) => (
+          {prepPlan.map((row) => (
             <Stack
               key={row.name}
               className="brief-line"
@@ -170,9 +180,9 @@ export function MorningBrief({
       key: 'stock',
       icon: <PackageMinus size={18} />,
       title: t.lowStock,
-      body: brief.low_stock.length ? (
+      body: lowStock.length ? (
         <Stack spacing={1}>
-          {brief.low_stock.slice(0, 3).map((row) => (
+          {lowStock.slice(0, 3).map((row) => (
             <Stack key={row.name} direction="row" sx={{ gap: 2, alignItems: 'baseline' }}>
               <Typography variant="bodyLarge" sx={{ flex: 1, minWidth: 0 }} noWrap>
                 {row.name}
