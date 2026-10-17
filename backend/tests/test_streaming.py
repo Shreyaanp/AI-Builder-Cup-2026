@@ -198,3 +198,20 @@ def test_live_adk_bridge_forwards_pcm_and_cleans_up_without_provider(
         assert received == [audio]
         assert queues[0].closed
         assert not app.state.services.registry.active
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [("ta", "முன்பே எழுதிய பதில்"), ("zh-Hans", "预先写好的回复"), ("ms", "Ini balasan")],
+)
+def test_offline_reply_follows_the_singapore_languages(language: str, expected: str) -> None:
+    app = create_app(Settings(app_env="test", _env_file=None), InMemorySessionService())
+    with TestClient(app) as client:
+        client.get("/api/v1/bootstrap")
+        response = client.post("/api/v1/coach/stream", json={"message": "x", "language": language})
+        events = [
+            json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")
+        ]
+        reply = next(event["text"] for event in events if event["kind"] == "reply")
+        assert expected in reply
+        assert "scripted reply" not in reply
