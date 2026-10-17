@@ -20,6 +20,8 @@ from .contracts import StreamEvent
 from .coordinator import current, ui_currency
 from .instant import InstantResult, IntentIndex, route
 from .latency import FirstOutput
+from .merchant import NewShopDraft
+from .new_shop_resume import adoptable, last_question, saved_draft
 from .settings import Settings
 from .supply_tools import SUPPLY_CARD_TOOLS
 
@@ -29,9 +31,10 @@ APP_NAME = "ogoogle_ai"
 # Tools whose results reach the chat as supplier or order cards.
 SOURCING_TOOLS = {"find_suppliers", "prepare_order", "message_supplier", "cancel_order"}
 # Tools whose result is an app action card: open a screen, or a prepared customer reply.
-ACTION_TOOLS = {"open_screen", "prepare_customer_reply"}
+ACTION_TOOLS = {"open_screen", "prepare_customer_reply", "show_step", "end_conversation"}
 # Tools that prepare a sealed proposal for the review dialog.
 PROPOSAL_TOOLS = {
+    "update_shop",
     "propose_business",
     "propose_customer_facts",
     "propose_products",
@@ -147,6 +150,13 @@ def public_events(event: Event) -> list[StreamEvent]:
                 )
                 if proposal:
                     output.append(StreamEvent(kind="proposal", data=proposal))
+                if response.name == "update_shop" and merchant and merchant.new_shop_draft:
+                    # The whole draft, with what the owner skipped: the shop card follows it.
+                    output.append(
+                        StreamEvent(
+                            kind="draft", data=merchant.new_shop_draft.model_dump(mode="json")
+                        )
+                    )
                 if payload.get("status") in {"verification_required", "save_business_first"}:
                     output.append(StreamEvent(kind="workflow", data={"status": payload["status"]}))
     return output
@@ -258,6 +268,31 @@ class CoachRuntime:
         )
         return session_id
 
+    async def new_shop_progress(
+        self, principal: Principal, session_id: str
+    ) -> tuple[NewShopDraft | None, str, bool]:
+        """A new-shop conversation's saved draft, the coach's last question and whether it has
+        turns already (a socket that comes back to it continues, never starts over)."""
+        session = await self.sessions.get_session(
+            app_name=APP_NAME, user_id=principal.uid, session_id=session_id
+        )
+        if not session:
+            return None, "", False
+        return saved_draft(session.state), last_question(session.events), bool(session.events)
+
+    async def unfinished_new_shop(self, principal: Principal, finished: set[str]) -> str | None:
+        """The owner's most recent new-shop conversation whose shop was never opened: a fresh
+        start after the app lost its own draft (reload, a crash) continues it."""
+        listing = await self.sessions.list_sessions(app_name=APP_NAME, user_id=principal.uid)
+        for session in sorted(
+            listing.sessions, key=lambda item: item.last_update_time or 0, reverse=True
+        ):
+            if not session.state.get("business_id") and adoptable(
+                session.state, session.last_update_time or 0, finished
+            ):
+                return session.id
+        return None
+
     async def text_events(
         self,
         principal: Principal,
@@ -313,6 +348,7 @@ class CoachRuntime:
                 ui_currency.reset(currency_token)
 
         task = asyncio.create_task(produce(), name="adk-text-producer")
+        sent_draft = merchant.new_shop_draft if merchant else None
         try:
             while True:
                 item = await queue.get()
@@ -322,6 +358,8 @@ class CoachRuntime:
                     raise item
                 if item.kind in {"delta", "reply", "proposal", "chart", "action", "suppliers"}:
                     timer.mark()
+                if item.kind == "draft" and merchant:
+                    sent_draft = merchant.new_shop_draft
                 yield item
                 if item.kind == "error":
                     return
@@ -331,6 +369,11 @@ class CoachRuntime:
             with anyio.CancelScope(shield=True):
                 async with asyncio.timeout(5):
                     await asyncio.gather(task, return_exceptions=True)
+        draft = merchant.new_shop_draft if merchant and merchant.new_shop else None
+        if draft and draft != sent_draft:
+            # Changed after the last draft event (a business profile that arrived late, "bas"):
+            # the phone gets it now, not only with the next turn.
+            yield StreamEvent(kind="draft", data=draft.model_dump(mode="json"))
         yield StreamEvent(kind="turn_complete", session_id=session_id)
 
     async def instant(

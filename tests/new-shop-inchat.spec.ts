@@ -1,4 +1,5 @@
 import { AxeBuilder } from '@axe-core/playwright'
+import { FIRST_QUESTION } from './newShopTopics.js'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, inChatFixtures, localOnly } from './stories/support.js'
 
@@ -23,7 +24,7 @@ async function open(page: Page, scheme: 'light' | 'dark') {
   await enter(page)
   await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
   await page.getByRole('button', { name: 'Let’s begin' }).click()
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 }
 
 const name = (state: string, scheme: string, isMobile: boolean) =>
@@ -43,10 +44,10 @@ for (const scheme of ['light', 'dark'] as const) {
     await context.setGeolocation({ latitude: 12.9718234, longitude: 77.6412345, accuracy: 20 })
     await open(page, scheme)
 
-    await page.getByRole('button', { name: 'Menu photo' }).click()
+    await page.getByRole('button', { name: 'Shop photo' }).click()
     const camera = page.getByTestId('camera-card')
     await expect(camera).toHaveAttribute('data-phase', 'ask')
-    await expect(camera).toContainText('nothing is saved until you open your shop')
+    await expect(camera).toContainText('Customers see this photo on your shop page')
     await audit(page)
     await page.screenshot({ path: name('camera-1-ask', scheme, isMobile) })
     await camera.getByRole('button', { name: 'Open camera' }).click()
@@ -83,7 +84,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.screenshot({ path: name('manual-3-items', scheme, isMobile) })
     // Back returns to the same conversation.
     await page.goBack()
-    await expect(page.getByRole('log')).toContainText('What is your business called?')
+    await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   })
 }
 
@@ -91,7 +92,7 @@ test('camera blocked: the alert explains, Try again and Upload instead work', as
   await localOnly(page)
   await inChatFixtures(page, 'denied')
   await open(page, 'light')
-  await page.getByRole('button', { name: 'Menu photo' }).click()
+  await page.getByRole('button', { name: 'Shop photo' }).click()
   const camera = page.getByTestId('camera-card')
   await camera.getByRole('button', { name: 'Open camera' }).click()
   const alert = page.getByTestId('camera-alert')
@@ -101,7 +102,7 @@ test('camera blocked: the alert explains, Try again and Upload instead work', as
   await alert.getByRole('button', { name: 'Try again' }).click()
   await expect(page.getByTestId('camera-alert')).toBeVisible()
   // The conversation is untouched and the voice controls are still there.
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   const chooser = page.waitForEvent('filechooser')
   await page.getByTestId('camera-alert').getByRole('button', { name: 'Upload instead' }).click()
   await chooser
@@ -140,9 +141,8 @@ test('a pin moved by hand is saved as the owner’s pin, not as GPS accuracy', a
       sent = request.postDataJSON().owner_location
   })
   await map.getByRole('button', { name: 'This is my shop' }).click()
-  await expect(
-    page.getByTestId('agent-action').filter({ hasText: 'Saved your location' }),
-  ).toBeVisible()
+  // Saved silently: the card shows the pin (no action card in the chat).
+  await expect(map).toHaveAttribute('data-state', 'done')
   expect(sent?.source).toBe('pin')
 })
 
@@ -161,9 +161,8 @@ test('map pictures offline: the chalk grid stays and the pin still works', async
   await expect(map).toContainText('The map pictures are not available right now')
   await expect(map).toContainText('Near Indiranagar')
   await map.getByRole('button', { name: 'This is my shop' }).click()
-  await expect(
-    page.getByTestId('agent-action').filter({ hasText: 'Saved your location: Near Indiranagar' }),
-  ).toBeVisible()
+  await expect(map).toHaveAttribute('data-state', 'done')
+  await expect(map).toContainText('Near Indiranagar')
 })
 
 for (const scheme of ['light', 'dark'] as const) {

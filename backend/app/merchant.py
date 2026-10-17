@@ -24,6 +24,7 @@ from pydantic import (
     model_validator,
 )
 
+from .business_understanding import BusinessUnderstanding
 from .community import Documents, SqliteDocuments
 from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .money import exponent
@@ -345,10 +346,25 @@ class OwnerLocation(BaseModel):
     source: Literal["device", "pin"] = "device"
 
 
+NewShopStep = Literal["hours", "photo", "face"]
+
+
 class NewShopDraft(BaseModel):
     model_config = ConfigDict(extra="forbid")
     business: BusinessFields | None = None
     products: list[ProductFields] = Field(default_factory=list, max_length=200)
+    # Onboarding progress beyond the shop's fields (new_shop_resume): steps the owner skipped
+    # ("pata nahi", "baad mein"), whether the shop photo was taken, and the shop once it is live
+    # (it goes live by itself as soon as name, kind and place are known).
+    skipped: list[NewShopStep] = Field(default_factory=list, max_length=3)
+    photo: bool = False
+    live_id: str | None = Field(default=None, max_length=64)
+    # What the coach understood about the business (business_understanding), and the keys of
+    # its extra questions already asked (answered or not known): each is asked at most once.
+    understanding: BusinessUnderstanding | None = None
+    asked_extra: list[Annotated[str, Field(pattern=r"^[a-z0-9_]{1,40}$")]] = Field(
+        default_factory=list, max_length=4
+    )
 
 
 class ProposalRequest(BaseModel):
