@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -7,6 +7,15 @@ import { fileURLToPath } from 'node:url'
 const backend = fileURLToPath(new URL('../backend/', import.meta.url))
 const portable = join(homedir(), 'AppData', 'Local', 'AIBuilderCupTools', 'uv', 'uv.exe')
 const uv = process.env.UV_PATH || (existsSync(portable) ? portable : 'uv')
+// Real Google places locally, opt-in only (PLACES_LIVE=true): keys come from the gitignored
+// backend/.env.places.local, and the demo-only answer cache is on. Every other run stays offline.
+const placesFile = join(backend, '.env.places.local')
+const places = {}
+if (process.env.PLACES_LIVE === 'true' && existsSync(placesFile))
+  for (const line of readFileSync(placesFile, 'utf8').split(/\r?\n/)) {
+    const match = /^(MAPS_SERVER_KEY|MAPS_BROWSER_KEY)=(.+)$/.exec(line.trim())
+    if (match) places[match[1]] = match[2]
+  }
 const child = spawn(uv, ['run', '--locked', 'python', 'run.py'], {
   cwd: backend,
   stdio: 'inherit',
@@ -25,8 +34,9 @@ const child = spawn(uv, ['run', '--locked', 'python', 'run.py'], {
     TRUST_ADMINS: process.env.TRUST_ADMINS ?? '["*"]',
     RATE_LIMITS_ENABLED: 'false',
     MEDIA_BUCKET: '',
-    MAPS_SERVER_KEY: '',
-    MAPS_BROWSER_KEY: '',
+    MAPS_SERVER_KEY: places.MAPS_SERVER_KEY ?? '',
+    MAPS_BROWSER_KEY: places.MAPS_BROWSER_KEY ?? '',
+    PLACES_DEMO_CACHE: places.MAPS_SERVER_KEY ? 'true' : 'false',
     // Labelled sample area answers offline; MAPS_GROUNDING=off shows the honest fallback.
     MAPS_GROUNDING: process.env.MAPS_GROUNDING ?? 'demo',
     // The dev web server's own origin (per-worktree WEB_PORT, default 3200).

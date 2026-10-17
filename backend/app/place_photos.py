@@ -9,15 +9,26 @@ from urllib.parse import quote, urlencode, urlsplit
 import httpx
 from fastapi import HTTPException
 
+from .places_demo_cache import DailyCap, PlacesDemoCache
+
 RESOURCE = re.compile(r"^places/[A-Za-z0-9_-]{1,256}/photos/[A-Za-z0-9_=-]{1,3500}$")
 MAX_BYTES = 2_000_000
 
 
 class PlacesPhotos:
-    def __init__(self, client: httpx.AsyncClient, key: str, enabled: bool):
+    def __init__(
+        self,
+        client: httpx.AsyncClient,
+        key: str,
+        enabled: bool,
+        store: PlacesDemoCache | None = None,
+        cap: DailyCap | None = None,
+    ):
         self.client = client
         self.key = key
         self.enabled = enabled
+        self.store = store
+        self.cap = cap
         self.allowed: dict[str, float] = {}
         self.cache: dict[tuple[str, int], tuple[float, bytes, str]] = {}
         self.lock = asyncio.Lock()
@@ -51,6 +62,12 @@ class PlacesPhotos:
             cached = self.cache.get((name, width))
             if cached:
                 return cached[1], cached[2]
+            # DEMO PURPOSE ONLY: a photo fetched once is served from disk (places_demo_cache.py).
+            stored = self.store.get_photo(name, width) if self.store else None
+            if stored:
+                return stored
+            if self.cap and not self.cap.take():
+                raise HTTPException(503, "MAPS_DAILY_CAP")
             try:
                 async with asyncio.timeout(10):
                     response = await self.client.get(
@@ -97,4 +114,6 @@ class PlacesPhotos:
             if len(self.cache) >= 32:
                 self.cache.pop(next(iter(self.cache)))
             self.cache[(name, width)] = (time.monotonic() + 60, bytes(buffer), media_type)
+            if self.store:
+                self.store.put_photo(name, width, bytes(buffer), media_type)
             return bytes(buffer), media_type
