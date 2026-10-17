@@ -245,8 +245,12 @@ for (const width of [360, 390, 412]) {
     await page.goto('/?app=landing')
     await expect(page.locator('.lp-eyebrow')).toHaveCount(0)
     await expect(page.locator('.lp-nav').getByRole('link', { name: 'For businesses' })).toBeHidden()
-    const heroBusiness = page.locator('.lp-cta').getByRole('link', { name: 'For businesses' })
-    const heroFind = page.locator('.lp-cta').getByRole('link', { name: 'Find places near me' })
+    const heroBusiness = page
+      .locator('.lp-hero .lp-cta')
+      .getByRole('link', { name: 'For businesses' })
+    const heroFind = page
+      .locator('.lp-hero .lp-cta')
+      .getByRole('link', { name: 'Find places near me' })
     await expect(heroBusiness).toBeVisible()
     await expect(heroBusiness).toHaveAttribute('href', 'https://business.chalkboard.shreyaan.work')
     const heroFindBox = (await heroFind.boundingBox())!
@@ -306,7 +310,9 @@ test('B35 desktop keeps its hero columns, bento and pinned story', async ({ page
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/?app=landing')
-  await expect(page.locator('.lp-cta').getByRole('link', { name: 'For businesses' })).toBeHidden()
+  await expect(
+    page.locator('.lp-hero .lp-cta').getByRole('link', { name: 'For businesses' }),
+  ).toBeHidden()
   expect(
     await page
       .locator('.lp-hero')
