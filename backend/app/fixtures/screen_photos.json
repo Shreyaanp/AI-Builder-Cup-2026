@@ -1,0 +1,235 @@
+{
+  "ade972b479627251a2290937793c042406778eecea75a244558b00f369a99fcc": {
+    "source_app": "Tally",
+    "currency": "INR",
+    "page_kind": "screen",
+    "tables": [
+      {
+        "header_row": ["name", "sku", "category", "price", "qty", "date", "total"],
+        "rows": [
+          {
+            "name": {
+              "value": "Filter Coffee",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "sku": {
+              "value": "FC01",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "category": {
+              "value": "Drinks",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "price": {
+              "value": "30",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "qty": {
+              "value": "2",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "date": {
+              "value": "2026-10-17",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "total": {
+              "value": "60",
+              "confidence": 0.98,
+              "unreadable": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "984878ce3718955ac9e9b08a260f1104db27bd893251049980202ea73df1d5e1": {
+    "source_app": "Excel",
+    "currency": "INR",
+    "page_kind": "screen",
+    "tables": [
+      {
+        "header_row": ["name", "sku", "category", "price", "qty", "date", "total"],
+        "rows": [
+          {
+            "name": {
+              "value": "Masala Dosa",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "sku": {
+              "value": "MD01",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "category": {
+              "value": "Food",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "price": {
+              "value": "80",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "qty": {
+              "value": null,
+              "confidence": 0,
+              "unreadable": false
+            },
+            "date": {
+              "value": null,
+              "confidence": 0,
+              "unreadable": false
+            },
+            "total": {
+              "value": null,
+              "confidence": 0,
+              "unreadable": false
+            }
+          },
+          {
+            "name": {
+              "value": "Cut-off item",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "sku": {
+              "value": null,
+              "confidence": 0,
+              "unreadable": false
+            },
+            "category": {
+              "value": null,
+              "confidence": 0,
+              "unreadable": false
+            },
+            "price": {
+              "value": null,
+              "confidence": 0.2,
+              "unreadable": true
+            },
+            "qty": {
+              "value": null,
+              "confidence": 0,
+              "unreadable": false
+            },
+            "date": {
+              "value": null,
+              "confidence": 0,
+              "unreadable": false
+            },
+            "total": {
+              "value": null,
+              "confidence": 0,
+              "unreadable": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "afa7f8d2680b94891b6026ad7ccf1cfd4c980c5790de30a94810d12158e52c7e": {
+    "source_app": "Petpooja",
+    "currency": "INR",
+    "page_kind": "screen",
+    "tables": [
+      {
+        "header_row": ["name", "sku", "category", "price", "qty", "date", "total"],
+        "rows": [
+          {
+            "name": {
+              "value": "Mango Lassi",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "sku": {
+              "value": "ML01",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "category": {
+              "value": "Drinks",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "price": {
+              "value": "65",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "qty": {
+              "value": null,
+              "confidence": 0,
+              "unreadable": false
+            },
+            "date": {
+              "value": null,
+              "confidence": 0,
+              "unreadable": false
+            },
+            "total": {
+              "value": null,
+              "confidence": 0,
+              "unreadable": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "c4577fd166032611ce52ad589a152aa69497ca70f16a8f57e21d8e3c81e76819": {
+    "source_app": null,
+    "currency": "INR",
+    "page_kind": "clean_print",
+    "tables": [
+      {
+        "header_row": ["name", "sku", "category", "price", "qty", "date", "total"],
+        "rows": [
+          {
+            "name": {
+              "value": "Idli",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "sku": {
+              "value": "ID01",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "category": {
+              "value": "Food",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "price": {
+              "value": "40",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "qty": {
+              "value": "3",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "date": {
+              "value": "2026-10-17",
+              "confidence": 0.98,
+              "unreadable": false
+            },
+            "total": {
+              "value": "120",
+              "confidence": 0.98,
+              "unreadable": false
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
