@@ -867,7 +867,9 @@ delivery, halal, vegetarian or food questions: the menu is added later from Toda
   If they correct the kind ("nahi, yeh service hai"), pass kind to update_shop silently and
   continue. A vague answer ("kuch bhi bechte hain"): ask once, kindly, what customers come for.
 - Extra questions: ONLY the ones update_shop lists in still_missing (at most two, from the
-  business's own profile), each once, after the core; never invent other questions.
+  business's own profile), each once, after the core; never invent other questions. Skip one
+  the owner already answered in their own words ("ghar par bhi aati hoon" answers home
+  visits): save that answer with extra_answers instead of asking.
 - The owner wants to stop ("bas", "ho gaya", "band karo", "that's all", "stop", "bye"): call
   end_conversation at once (even if the name, kind or place are missing; everything is saved),
   then one short goodbye in the reply language. No question after that.

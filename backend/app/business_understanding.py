@@ -99,6 +99,20 @@ class BusinessUnderstanding(BaseModel):
     owner_kind: bool = False
 
 
+# Extras the owner's own words already answer (live eval, mehendi: "ghar par bhi aati hoon",
+# then "do you come to customers' homes?"): (what the question is about, what answers it).
+ANSWERED_BY_OWNER = [
+    (
+        re.compile(r"home|house|visit|venue|doorstep|घर|ghar", re.I),
+        re.compile(r"घर|ghar|home|house ?call|doorstep|visit|आती|aati|आता|aata|jaate|जाते", re.I),
+    ),
+]
+
+
+def already_said(question: str, said: str) -> bool:
+    return any(about.search(question) and told.search(said) for about, told in ANSWERED_BY_OWNER)
+
+
 def safe(understanding: BusinessUnderstanding) -> BusinessUnderstanding:
     """The policy, whatever the model returned: at most two confident, relevant extras, never a
     forbidden topic, never for an unsure profile, a real search group or none."""
@@ -106,12 +120,14 @@ def safe(understanding: BusinessUnderstanding) -> BusinessUnderstanding:
         understanding.owner_kind or understanding.confidence >= PROFILE_CONFIDENCE
     )
     extras: list[ExtraQuestion] = []
+    said = " ".join([understanding.what, *understanding.offerings])
     for extra in understanding.extra_questions:
         text = f"{extra.key} {extra.question} {extra.label}"
         if (
             not confident
             or extra.confidence < EXTRA_CONFIDENCE
             or NEVER_IN_ONBOARDING.search(text)
+            or already_said(text, said)
             or not extra.question.strip()
             or any(extra.key == e.key for e in extras)
         ):
@@ -305,7 +321,9 @@ and write a structured profile of it. Understand the business; never force it in
 - extra_questions: AT MOST 2 questions to ask the owner now, only when you are confident they
   apply to THIS business and change a customer's decision; usually zero. Never about the name,
   what they sell, the place, hours, photos, phone, menu, prices, fees, payment, delivery, halal,
-  vegetarian, meat or anything food-related: those are handled elsewhere. confidence 0-1 each.
+  vegetarian, meat or anything food-related: those are handled elsewhere. Never ask what the
+  owner's words already answer (they said "ghar par bhi aati hoon": no question about home
+  visits). confidence 0-1 each.
 - never_ask: questions that are NEVER relevant for this business (e.g. a helmet cleaning
   station: halal, vegetarian, menu).
 - search_group: one of coffee, food, bakery, grocery, pharmacy, hardware, fashion, beauty,

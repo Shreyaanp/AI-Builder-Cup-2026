@@ -473,3 +473,35 @@ def test_the_fixture_follows_no_fixed_script() -> None:
     topics = {key for key, _, _ in NEW_SHOP_TOPICS}
     assert all(sorted(order) == sorted(topics) for order in orders)
     assert len({order[0] for order in orders}) == 3
+
+
+def test_an_extra_the_owner_already_answered_is_never_asked() -> None:
+    """Live eval (mehendi): "ghar par bhi aati hoon", then "do you come to customers' homes?"."""
+    understood = safe(
+        BusinessUnderstanding(
+            kind="service",
+            what="शादी और त्योहार के लिए मेहंदी लगाती हूँ, घर पर भी आती हूँ",
+            confidence=0.95,
+            extra_questions=[
+                ExtraQuestion(
+                    key="home_visits",
+                    question="Do you also go to customers' homes or venues?",
+                    confidence=0.9,
+                ),
+                ExtraQuestion(key="bridal", question="Do you do bridal designs?", confidence=0.9),
+            ],
+        )
+    )
+    assert [q.key for q in understood.extra_questions] == ["bridal"]
+    # Someone who did not say it is still asked.
+    shop = safe(
+        BusinessUnderstanding(
+            kind="service",
+            what="mehendi artist",
+            confidence=0.95,
+            extra_questions=[
+                ExtraQuestion(key="home_visits", question="Do you visit homes?", confidence=0.9)
+            ],
+        )
+    )
+    assert [q.key for q in shop.extra_questions] == ["home_visits"]
