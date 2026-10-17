@@ -33,7 +33,7 @@ interface SapAnswer {
   orders: SapOrder[]
 }
 
-const copy = {
+const english = {
   title: 'Live from SAP sandbox',
   live: 'Read now from SAP’s sandbox',
   recorded: 'Recorded sample of SAP’s sandbox, not live',
@@ -49,9 +49,26 @@ const copy = {
   idoc: 'As an SAP IDoc',
 }
 
+const hindi: typeof english = {
+  title: 'SAP सैंडबॉक्स से सीधे',
+  live: 'अभी SAP के सैंडबॉक्स से पढ़ा गया',
+  recorded: 'SAP के सैंडबॉक्स का रिकॉर्ड किया नमूना, सीधा नहीं',
+  recordedWhy: {
+    off: 'सीधा कनेक्शन बंद है।',
+    no_key: 'अभी SAP API कुंजी नहीं लगी है।',
+    rejected: 'SAP ने API कुंजी नहीं मानी।',
+    error: 'SAP ने अभी जवाब नहीं दिया।',
+  },
+  readOnly: 'सिर्फ़ पढ़ने के लिए: SAP को कुछ भी नहीं भेजा जाता।',
+  po: (number) => `ऑर्डर ${number}`,
+  deliver: (day) => `डिलीवरी ${day}`,
+  idoc: 'SAP IDoc के रूप में',
+}
+
 export function SapSandboxOrders({ open }: { open: boolean }) {
   const { api, activeId } = useWorkspace()
   const locale = useLocale()
+  const copy = locale.startsWith('hi') ? hindi : english
   const roles = useTheme().material
   const [data, setData] = useState<SapAnswer | null>(null)
   const [shown, setShown] = useState<string | null>(null)

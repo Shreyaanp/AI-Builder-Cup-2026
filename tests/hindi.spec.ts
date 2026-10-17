@@ -27,6 +27,8 @@ const BRANDS = [
   'UPI',
   'POS',
   'ERP',
+  'SAP',
+  'IDoc',
   'QR',
   'AI',
   'Swiggy',
@@ -203,7 +205,7 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
 
   await test.step('purchase order', async () => {
     await growCard(page, /^खरीद ऑर्डर/)
-    await readsInHindi(page, '09-purchase-order')
+    await readsInHindi(page, '09-purchase-order', ['supplier'])
     await closeSheet(page)
   })
 

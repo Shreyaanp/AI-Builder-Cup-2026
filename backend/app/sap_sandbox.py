@@ -39,7 +39,7 @@ CACHE_SECONDS = 300
 RETRY_SECONDS = 60
 Source = Literal["live", "recorded"]
 Reason = Literal["", "off", "no_key", "rejected", "error"]
-QUERY = {
+QUERY: dict[str, dict[str, Any]] = {
     "v2": {
         "path": "A_PurchaseOrder",
         "params": {

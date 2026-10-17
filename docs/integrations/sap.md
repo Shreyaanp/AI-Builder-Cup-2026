@@ -20,6 +20,7 @@ Code: `backend/app/sap_sandbox.py`. Route: `GET /api/v1/businesses/{id}/supply/s
    gcloud secrets create SAP_SANDBOX_API_KEY --replication-policy=automatic
    printf '%s' 'PASTE_KEY' | gcloud secrets versions add SAP_SANDBOX_API_KEY --data-file=-
    ```
+
 5. Give the Cloud Run service the secret and the switch:
 
    ```
@@ -27,18 +28,19 @@ Code: `backend/app/sap_sandbox.py`. Route: `GET /api/v1/businesses/{id}/supply/s
      --update-secrets=SAP_SANDBOX_API_KEY=SAP_SANDBOX_API_KEY:latest \
      --update-env-vars=SUPPLY_SAP_LIVE=true
    ```
+
 6. Open My shop > Purchase orders. The label should read "Read now from SAP's sandbox".
 
 To turn it off again, set `SUPPLY_SAP_LIVE=false`; the recorded sample takes over.
 
 ## Settings
 
-| Env var | Default | Meaning |
-| --- | --- | --- |
-| `SUPPLY_SAP_LIVE` | `false` | Switch for the live read |
-| `SAP_SANDBOX_API_KEY` | empty | API key, from Secret Manager only |
-| `SAP_SANDBOX_URL` | the sandbox's `API_PURCHASEORDER_PROCESS_SRV` | Must be `https` |
-| `SAP_SANDBOX_ODATA` | `v2` | `v2` (`A_PurchaseOrder`) or `v4` (`PurchaseOrder`) |
+| Env var               | Default                                       | Meaning                                            |
+| --------------------- | --------------------------------------------- | -------------------------------------------------- |
+| `SUPPLY_SAP_LIVE`     | `false`                                       | Switch for the live read                           |
+| `SAP_SANDBOX_API_KEY` | empty                                         | API key, from Secret Manager only                  |
+| `SAP_SANDBOX_URL`     | the sandbox's `API_PURCHASEORDER_PROCESS_SRV` | Must be `https`                                    |
+| `SAP_SANDBOX_ODATA`   | `v2`                                          | `v2` (`A_PurchaseOrder`) or `v4` (`PurchaseOrder`) |
 
 ## Limits
 
