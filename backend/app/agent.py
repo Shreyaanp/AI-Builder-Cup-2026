@@ -507,6 +507,60 @@ FOOD_WORDS = ("food", "tea", "chai", "kopi", "cafe", "bakery", "restaurant", "sn
 
 
 GOODBYE = "Okay, see you soon. Everything is saved."
+# The offline new-shop coach in Hindi (#100: a Hindi owner was greeted in English). Each English
+# sentence the coach says, and its Hindi; a reply is translated sentence by sentence.
+OFFLINE_HI = {
+    "Offline template: ": "ऑफ़लाइन नमूना: ",
+    "Hi, I am your shop coach. Let us put your shop online together. ": (
+        "नमस्ते, मैं आपका दुकान कोच हूँ। चलिए, मिलकर आपकी दुकान ऑनलाइन करते हैं। "
+    ),
+    "What is your business called?": "आपके कारोबार का नाम क्या है?",
+    "What do you sell?": "आप क्या बेचते हैं?",
+    "Are you at the shop right now? Tap Use my location, or tell me the area.": (
+        "क्या आप अभी दुकान पर हैं? मेरी जगह पर टैप करें, या इलाका बताएँ।"
+    ),
+    "What are your opening hours?": "आपकी दुकान कब से कब तक खुलती है?",
+    "Can you take a photo of your shop? You can skip it.": (
+        "क्या आप अपनी दुकान की फ़ोटो ले सकते हैं? चाहें तो इसे छोड़ दें।"
+    ),
+    FACE_QUESTION: "क्या आप वैकल्पिक चेहरा जाँच करना चाहेंगे? चाहें तो इसे छोड़ दें।",
+    GOODBYE: "ठीक है, जल्द मिलते हैं। सब कुछ सहेज लिया गया है।",
+    "No problem. Just say something like: I sell tea and snacks. ": (
+        "कोई बात नहीं। बस ऐसे बताइए: मैं चाय और नाश्ता बेचता हूँ। "
+    ),
+    "No problem. You can add your menu from Today. All the best!": (
+        "कोई बात नहीं। आप अपना मेन्यू आज वाले पेज से जोड़ सकते हैं। शुभकामनाएँ!"
+    ),
+    "Your shop is live now. ": "आपकी दुकान अब लाइव है। ",
+    "All set. You can add your menu from Today.": ("सब तैयार है। आप अपना मेन्यू आज वाले पेज से जोड़ सकते हैं।"),
+    "Your shop is set up. ": "आपकी दुकान तैयार है। ",
+    **{
+        f"No problem, I will leave {label} out for now. You can add it later. ": (
+            f"कोई बात नहीं, {hindi} अभी छोड़ देते हैं। आप इसे बाद में जोड़ सकते हैं। "
+        )
+        for label, hindi in (
+            ("the name", "नाम"),
+            ("what you sell", "आप क्या बेचते हैं, यह"),
+            ("the location", "जगह"),
+            ("opening hours", "खुलने का समय"),
+            ("the shop photo", "दुकान की फ़ोटो"),
+        )
+    },
+}
+
+
+def offline_said(reply: str) -> str:
+    """The offline coach's reply in the owner's language (Hindi; others stay English)."""
+    if ui_language.get().split("-")[0] != "hi":
+        return reply
+    for english, hindi in OFFLINE_HI.items():
+        reply = reply.replace(english, hindi)
+    return reply
+
+
+def _says(text: str, english: str) -> bool:
+    """Whether a coach line says this sentence, in English or in its Hindi."""
+    return english in text or OFFLINE_HI.get(english, english) in text
 
 
 def _extras() -> list[Any]:
@@ -516,12 +570,12 @@ def _extras() -> list[Any]:
 
 
 def _asked(text: str) -> str | None:
-    if FACE_QUESTION in text:
+    if _says(text, FACE_QUESTION):
         return "face"
     extra = next((q.key for q in _extras() if q.question in text), None)
     if extra:
         return f"extra:{extra}"
-    return next((key for key, question, _ in NEW_SHOP_TOPICS if question in text), None)
+    return next((key for key, question, _ in NEW_SHOP_TOPICS if _says(text, question)), None)
 
 
 def topic_order(ctx: Any) -> list[str]:
@@ -574,6 +628,13 @@ def skipped_topics(contents: list[types.Content]) -> set[str]:
 def new_shop_reply(
     ctx: Any, contents: list[types.Content] | None = None, vague: bool = False
 ) -> str:
+    """The offline new-shop coach's next line, in the owner's language."""
+    return offline_said(_new_shop_reply(ctx, contents, vague))
+
+
+def _new_shop_reply(
+    ctx: Any, contents: list[types.Content] | None = None, vague: bool = False
+) -> str:
     """Deterministic offline coach for a new shop: greets first, asks only what is still
     missing (one thing at a time), and when the owner gives nothing usable (silence or "not
     sure") makes it easier or skips the optional step and moves on. Never reads answers back."""
@@ -612,7 +673,7 @@ def new_shop_reply(
     done["sell"] = done.pop("category")
     done["location"] = done.pop("place")
     announced = any(
-        "live now" in (part.text or "")
+        _says(part.text or "", "Your shop is live now. ")
         for content in earlier
         if content.role == "model"
         for part in content.parts or []
@@ -870,7 +931,7 @@ class OfflineCoachModel(BaseLlm):
                     return
             if responses:
                 if ctx and any(r.name == "end_conversation" for r in responses):
-                    reply = "Offline template: " + GOODBYE
+                    reply = offline_said("Offline template: " + GOODBYE)
                 elif ctx and ctx.new_shop:
                     reply = new_shop_reply(ctx, llm_request.contents)
                 yield LlmResponse(

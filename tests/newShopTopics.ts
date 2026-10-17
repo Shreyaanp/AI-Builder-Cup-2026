@@ -18,8 +18,25 @@ export type Topic = keyof typeof ASKED
 export const FIRST_QUESTION =
   /What is your business called\?|What do you sell\?|Are you at the shop right now\?/
 
+/** The same questions from the offline coach in Hindi (#100: a Hindi owner is asked in Hindi). */
+export const ASKED_HI: Record<Topic, string> = {
+  name: 'आपके कारोबार का नाम क्या है?',
+  kind: 'आप क्या बेचते हैं?',
+  place: 'क्या आप अभी दुकान पर हैं?',
+  hours: 'आपकी दुकान कब से कब तक खुलती है?',
+  photo: 'क्या आप अपनी दुकान की फ़ोटो ले सकते हैं?',
+}
+
+export const FIRST_QUESTION_HI = new RegExp(
+  [ASKED_HI.name, ASKED_HI.kind, ASKED_HI.place].map((q) => q.replace('?', '\\?')).join('|'),
+)
+
 export function topicOf(text: string): Topic | null {
-  return (Object.keys(ASKED) as Topic[]).find((key) => text.includes(ASKED[key])) ?? null
+  return (
+    (Object.keys(ASKED) as Topic[]).find(
+      (key) => text.includes(ASKED[key]) || text.includes(ASKED_HI[key]),
+    ) ?? null
+  )
 }
 
 /** Every question the coach asked so far, in order (its chat lines). */

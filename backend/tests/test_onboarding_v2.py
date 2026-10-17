@@ -5,6 +5,7 @@ skipped (never invented); "review my shop" never changes anything."""
 
 import asyncio
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -12,8 +13,10 @@ from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
 from app.agent import (
+    FACE_QUESTION,
     NEW_SHOP_INSTRUCTION,
     NEW_SHOP_TOPICS,
+    OFFLINE_HI,
     make_agent,
     turn_instruction,
     ui_language,
@@ -29,7 +32,14 @@ ORIGIN = {"origin": "http://127.0.0.1:3200"}
 
 
 def topic_of(reply: str) -> str | None:
-    return next((key for key, question, _ in NEW_SHOP_TOPICS if question in reply), None)
+    return next(
+        (
+            key
+            for key, question, _ in NEW_SHOP_TOPICS
+            if question in reply or OFFLINE_HI[question] in reply
+        ),
+        None,
+    )
 
 
 def context(tmp_path: Path, draft: NewShopDraft | None = None) -> MerchantContext:
@@ -238,19 +248,24 @@ def test_hindi_onboarding_offline_end_to_end_never_repeats_and_never_asks_the_me
                 if event["kind"] == "draft":
                     draft = event["data"]
             reply = next(e["text"] for e in reversed(events) if e["kind"] == "reply")
-            question = reply.split(". ")[-1]
+            if index == 0:
+                # #100: a Hindi owner is greeted in Hindi, never in English.
+                assert reply.startswith("ऑफ़लाइन नमूना: नमस्ते"), reply
+            assert not re.search(r"[A-Za-z]{3,}", reply.replace("Lakshmi Tea Stall", "")), reply
+            question = re.split(r"[.।] ", reply)[-1]
             assert question not in asked, f"repeated: {question}"
             asked.append(question)
             if draft.get("live_id") and live_after is None:
                 live_after = index
         assert live_after == 1
         assert not any(
-            word in " ".join(asked).casefold() for word in ("menu", "pay", "delivery", "halal")
+            word in " ".join(asked).casefold()
+            for word in ("menu", "pay", "delivery", "halal", "मेन्यू", "भुगतान", "डिलीवरी")
         )
         # No fixed order after the core: hours and the photo come in this conversation's own
         # order, each once, then the face check.
         assert {topic_of(asked[1]), topic_of(asked[2])} == {"hours", "photo"}
-        assert "face check" in asked[3]
+        assert OFFLINE_HI[FACE_QUESTION] in asked[3]
         assert sorted(draft["skipped"]) == ["hours", "photo"]
         shops = client.get("/api/v1/businesses").json()
         assert len(shops) == 1 and shops[0]["id"] == draft["live_id"]

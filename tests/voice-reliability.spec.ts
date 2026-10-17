@@ -1,5 +1,11 @@
 import { expect, test, type Page, type WebSocketRoute } from '@playwright/test'
-import { ASKED, askedTopics, FIRST_QUESTION, nextQuestion, topicOf } from './newShopTopics.js'
+import {
+  ASKED_HI as ASKED,
+  askedTopics,
+  FIRST_QUESTION_HI as FIRST_QUESTION,
+  nextQuestion,
+  topicOf,
+} from './newShopTopics.js'
 import { enter, localOnly } from './stories/support.js'
 
 // Owner report (17 Oct, Hindi): "connection lost", the same question asked again, the flow stuck,
