@@ -687,7 +687,11 @@ export default function PublicShop({ id }: { id: string }) {
           {shop.name}
         </Typography>
 
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1.5 }}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1.5 }}
+        >
           {openLabel && (
             <Typography
               variant="labelLarge"

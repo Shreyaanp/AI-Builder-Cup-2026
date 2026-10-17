@@ -148,7 +148,11 @@ const sampleShopDetails: Record<string, object> = {
       vegetarian_options: true,
       payment_methods: ['cash', 'paynow'],
       custom_facts: [
-        { key: 'story', label: 'Story', value: 'Freshly roasted every Tuesday morning in Tiong Bahru' },
+        {
+          key: 'story',
+          label: 'Story',
+          value: 'Freshly roasted every Tuesday morning in Tiong Bahru',
+        },
       ],
     },
   },
@@ -165,7 +169,13 @@ const sampleShopDetails: Record<string, object> = {
     open_now: true,
     demo: true,
     products: [
-      { name: 'Kaya croissant with salted butter', price: 500, unit: '', available: true, category: 'Bakery' },
+      {
+        name: 'Kaya croissant with salted butter',
+        price: 500,
+        unit: '',
+        available: true,
+        category: 'Bakery',
+      },
       { name: 'Sourdough loaf', price: 800, unit: '', available: false, category: 'Bakery' },
     ],
     facts: {
@@ -285,7 +295,13 @@ async function setupCustomerRoutes(page: Page) {
   )
   await page.route('**/api/v1/discover/suggest?**', (route) =>
     route.fulfill({
-      json: { items: ['Flat white', 'Croissant'], shops: 6, open_now: 4, locally_made: 2, deals: 1 },
+      json: {
+        items: ['Flat white', 'Croissant'],
+        shops: 6,
+        open_now: 4,
+        locally_made: 2,
+        deals: 1,
+      },
     }),
   )
   await page.route('**/api/v1/discover/ask', (route) => route.fulfill({ json: answer }))
@@ -320,14 +336,32 @@ async function setupCustomerRoutes(page: Page) {
     }
     return route.fulfill({
       json: {
-        shop: { id: 'demo-shop-1', name: 'Corner Cup', category: 'cafe', photo_url: null, demo: true },
+        shop: {
+          id: 'demo-shop-1',
+          name: 'Corner Cup',
+          category: 'cafe',
+          photo_url: null,
+          demo: true,
+        },
         thread: {
           id: '00000000-0000-0000-0000-000000000001',
           created_at: 1729000000,
           updated_at: 1729000000,
           messages: [
-            { id: 'm1', author: 'customer', text: 'Hi, do you have flat whites?', created: 1729000000, kind: '' },
-            { id: 'm2', author: 'owner', text: 'Yes, freshly roasted!', created: 1729000060, kind: '' },
+            {
+              id: 'm1',
+              author: 'customer',
+              text: 'Hi, do you have flat whites?',
+              created: 1729000000,
+              kind: '',
+            },
+            {
+              id: 'm2',
+              author: 'owner',
+              text: 'Yes, freshly roasted!',
+              created: 1729000060,
+              kind: '',
+            },
           ],
           done: false,
           blocked: false,
@@ -349,14 +383,20 @@ test.beforeAll(() => {
 
 for (const width of [360, 390, 412]) {
   for (const scheme of ['light', 'dark'] as const) {
-    test(`captures and verifies customer screens at ${width}px (${scheme})`, async ({ page, isMobile }) => {
+    test(`captures and verifies customer screens at ${width}px (${scheme})`, async ({
+      page,
+      isMobile,
+    }) => {
       test.skip(!isMobile, 'phone widths')
       await page.setViewportSize({ width, height: 800 })
       await setupCustomerRoutes(page)
       await page.addInitScript(
         ([area, s]) => {
           localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place: area }))
-          localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance: s, language: 'en' }))
+          localStorage.setItem(
+            'niva.starter.preferences',
+            JSON.stringify({ appearance: s, language: 'en' }),
+          )
         },
         [AREA, scheme] as const,
       )
@@ -432,8 +472,12 @@ for (const width of [360, 390, 412]) {
       await page.screenshot({ path: `${screenshotDir}/stamps-${width}-${scheme}.png` })
 
       // 5. Chat
-      await page.goto('/explore/chats/demo-shop-1/00000000-0000-0000-0000-000000000001', { timeout: 80_000 })
-      await expect(page.getByRole('heading', { name: 'Corner Cup' })).toBeVisible({ timeout: 20_000 })
+      await page.goto('/explore/chats/demo-shop-1/00000000-0000-0000-0000-000000000001', {
+        timeout: 80_000,
+      })
+      await expect(page.getByRole('heading', { name: 'Corner Cup' })).toBeVisible({
+        timeout: 20_000,
+      })
       await assertNoHorizontalScroll('chat')
       await page.waitForTimeout(400)
       await page.screenshot({ path: `${screenshotDir}/chat-${width}-${scheme}.png` })
@@ -479,7 +523,10 @@ test('captures shop header in Hindi and Tamil at 360px', async ({ page, isMobile
   await page.addInitScript(
     ([area]) => {
       localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place: area }))
-      localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance: 'light', language: 'hi' }))
+      localStorage.setItem(
+        'niva.starter.preferences',
+        JSON.stringify({ appearance: 'light', language: 'hi' }),
+      )
     },
     [AREA] as const,
   )
@@ -493,7 +540,10 @@ test('captures shop header in Hindi and Tamil at 360px', async ({ page, isMobile
 
   // Tamil
   await page.addInitScript(() => {
-    localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance: 'light', language: 'ta' }))
+    localStorage.setItem(
+      'niva.starter.preferences',
+      JSON.stringify({ appearance: 'light', language: 'ta' }),
+    )
   })
   await page.goto('/explore/s/demo-shop-2', { timeout: 80_000 })
   const headingTa = page.getByRole('heading', { level: 1 })
@@ -514,7 +564,10 @@ test('verifies context and scroll survive Ask -> results -> shop page -> back', 
   await page.addInitScript(
     ([area]) => {
       localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place: area }))
-      localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance: 'light', language: 'en' }))
+      localStorage.setItem(
+        'niva.starter.preferences',
+        JSON.stringify({ appearance: 'light', language: 'en' }),
+      )
     },
     [AREA] as const,
   )
