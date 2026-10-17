@@ -380,5 +380,9 @@ test('B7: every photo entry offers Take photo (rear camera) and Upload', async (
     mimeType: 'image/png',
     buffer: Buffer.from(png, 'base64'),
   })
+  await page
+    .getByRole('group', { name: 'What is this photo?' })
+    .getByRole('button', { name: 'Menu', exact: true })
+    .tap()
   await expect(page.getByRole('dialog', { name: 'Check before saving' })).toBeVisible()
 })
