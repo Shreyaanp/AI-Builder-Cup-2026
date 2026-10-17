@@ -815,7 +815,7 @@ function CoachScreen({
       const businessId = activeId ?? result?.proposal?.snapshot?.business_id
       if (
         businessId &&
-        ['storefront', 'signboard', 'menu', 'price_list'].includes(result.photo_kind)
+        ['storefront', 'signboard', 'menu', 'price_list'].includes(result?.photo_kind ?? '')
       )
         setGalleryPhoto({ file, businessId })
       setMessages((items) =>
