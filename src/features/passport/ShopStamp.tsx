@@ -14,7 +14,14 @@ import { demoKey } from './store'
 export function ShopStamp({
   shop,
 }: {
-  shop: { id: string; name: string; category?: string; demo?: boolean }
+  shop: {
+    id: string
+    name: string
+    category?: string
+    demo?: boolean
+    timezone?: string
+    needed?: number
+  }
 }) {
   const t = usePassportCopy()
   const [scan] = useState(() => {
