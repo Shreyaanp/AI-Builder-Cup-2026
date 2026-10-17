@@ -752,6 +752,11 @@ class OfflineCoachModel(BaseLlm):
             "mr": "ऑफलाइन नमुना: तुमचा संदेश मिळाला. तुमच्या व्यवसायाचे नाव काय? "
             "हे आधी लिहिलेले उत्तर आहे; काहीही प्रसिद्ध झाले नाही.",
             "kn": "ಆಫ್‌ಲೈನ್ ಮಾದರಿ: ನಿಮ್ಮ ಸಂದೇಶ ಬಂದಿದೆ. ನಿಮ್ಮ ವ್ಯಾಪಾರದ ಹೆಸರು ಏನು? ಇದು ಮೊದಲೇ ಬರೆದ ಉತ್ತರ; ಏನೂ ಪ್ರಕಟಿಸಿಲ್ಲ.",
+            "zh": "离线示例：已收到您的留言。您的店铺叫什么名字？这是预设回复，没有发布任何内容。",
+            "ms": "Demo luar talian: mesej anda diterima. Apakah nama perniagaan anda? "
+            "Ini jawapan sedia ada; tiada apa yang diterbitkan.",
+            "ta": "இணையமில்லா மாதிரி: உங்கள் செய்தி கிடைத்தது. உங்கள் வணிகத்தின் பெயர் என்ன? "
+            "இது முன்பே எழுதிய பதில்; எதுவும் வெளியிடப்படவில்லை.",
         }.get(
             ui_language.get().split("-")[0],
             "Offline demo: I received your note. What is your business called? "
