@@ -94,6 +94,11 @@ class BusinessUnderstanding(BaseModel):
     extra_questions: list[ExtraQuestion] = Field(default_factory=list, max_length=12)
     never_ask: list[Short] = Field(default_factory=list, max_length=14)
     search_group: str = Field(default="", max_length=20)
+    hours_matter: bool = Field(
+        default=True,
+        description="False only when fixed opening hours mean nothing for this business (it "
+        "works on call or by appointment and has no counter to visit)",
+    )
     confidence: float = Field(default=0.0, ge=0, le=1)
     # The owner said what kind it is ("nahi, yeh service hai"): a later guess never overrides it.
     owner_kind: bool = False
@@ -215,21 +220,40 @@ VAGUE = re.compile(
 # Words that say a thing is food only when no service or product reading is stronger.
 FOOD_ONLY_AS_SHOP = re.compile(r"\bstall\b|ठेला", re.I)
 
-OFFLINE_EXTRAS: list[tuple[str, str, str, str]] = [
-    # (pattern, key, label, question): asked only for a confident, matching business.
+OFFLINE_EXTRAS: list[tuple[str, str, str, str, str, str]] = [
+    # (kind, pattern, already answered by, key, label, question): asked only for a confident,
+    # matching business whose owner has not said it yet (#112: a tea shop gets tea-shop
+    # questions, a tutor gets tutor questions).
     (
+        "service",
         r"tuition|coaching|classes|ट्यूशन|कोचिंग",
+        r"\d|math|science|english|गणित|विज्ञान|अंग्रेज़ी",
         "classes_taught",
         "Classes taught",
         "Which classes or subjects do you teach?",
     ),
     (
+        "service",
         r"tailor|darzi|silai|stitch|सिलाई|दर्जी",
+        r"ladies|gents|\bmen\b|women|both|महिला|पुरुष|दोनों",
         "stitching_for",
         "Stitching for",
         "Do you stitch for men, women or both?",
     ),
+    (
+        "food",
+        r"chai|\btea\b|kopi|coffee|cafe|चाय|कॉफ़ी|कैफ़े",
+        r"seat|\bsit\b|baith|बैठ|take.?away|parcel|पार्सल|standing|खड़े",
+        "seating",
+        "Seating",
+        "Can customers sit and have their tea there, or is it take-away?",
+    ),
 ]
+# Fixed opening hours mean nothing for a business that works on call or by appointment.
+NO_FIXED_HOURS = re.compile(
+    r"(?i)on.?call|appointment|by booking|home visits?|visits? (?:homes|customers)|"
+    r"(?:ghar|घर) (?:par|pe|पर|पे) (?:aat|jaat|आत|जात)|call karne par"
+)
 
 
 def offline_understanding(text: str) -> BusinessUnderstanding:
