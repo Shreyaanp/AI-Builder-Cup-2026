@@ -32,6 +32,7 @@ import type { ShopFacts } from '../v1/api'
 import { en as ownerEnglish } from '../v1/strings'
 import { translations as ownerTranslations } from '../v1/locales'
 import { HAND_FONT, shape } from '../../design/theme'
+import { chalkDust } from '../../design/chalkboard'
 import { chalkWrite } from '../../design/chalkMotion'
 import { ShopChat } from './ShopChat'
 import { recsEvent } from '../recs/events'
@@ -706,6 +707,8 @@ export default function PublicShop({ id }: { id: string }) {
           pt: { xs: 3, sm: 0 },
           borderRadius: { xs: '28px 28px 0 0', sm: 0 },
           bgcolor: 'background.default',
+          // The page's dark chalk grain, so the sheet reads as the page itself.
+          backgroundImage: theme.palette.mode === 'dark' ? chalkDust : 'none',
         }}
       >
         <Typography
