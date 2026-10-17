@@ -48,8 +48,8 @@ On 17 October 2026 at 05:50 UTC, a real business owner attempting the "Verify it
 
 ### Structured Privacy-Preserving Logging
 
-- Log output: `face_worker_verdict status=... reason=... liveness=... score=... failed_prompt=... latency_ms=... bytes=...`
-- Main app output: `face_worker_evaluated status=... reason=... latency_ms=... capture_bytes=... content_type=... failed_prompt=... passed_prompts=...`
+- Worker output: one JSON line per capture, `face_worker_verdict` (status, reason, container, codec, size, rotation, frames decoded/sampled, faces per frame, yaw/pitch range, stage, failed threshold, first request after a cold start, latency). See `deployment/FACE_WORKER.md`.
+- Main app output: `face_evaluated` on every path (stage, status, reason, capture bytes, content type, latency) plus the worker's trace.
 - **Zero biometrics or raw images in logs**: Only anonymized status codes, timings, and prompt keys.
 
 ---

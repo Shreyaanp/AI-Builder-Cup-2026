@@ -4,12 +4,12 @@ Three-second browser recordings used by `tests/test_face_worker.py` to check tha
 worker decodes what phones actually upload, and (when the models are fetched) that it finds one
 live person in them.
 
-| File                        | Container          | Codec | How it was made                                                     |
-| --------------------------- | ------------------ | ----- | ------------------------------------------------------------------- |
-| `chrome-vp8.webm`           | WebM               | VP8   | Chrome `MediaRecorder`, `video/webm;codecs=vp8` (Android Chrome's)  |
-| `chrome-vp9.webm`           | WebM               | VP9   | Chrome `MediaRecorder`, `video/webm;codecs=vp9`                     |
-| `chrome-h264.mp4`           | fragmented MP4     | H.264 | Chrome `MediaRecorder`, `video/mp4;codecs=avc1` (Safari's container) |
-| `h264-portrait-rotated.mp4` | fragmented MP4     | H.264 | `chrome-h264.mp4` re-encoded sideways with a 90° display matrix      |
+| File                        | Container      | Codec | How it was made                                                      |
+| --------------------------- | -------------- | ----- | -------------------------------------------------------------------- |
+| `chrome-vp8.webm`           | WebM           | VP8   | Chrome `MediaRecorder`, `video/webm;codecs=vp8` (Android Chrome's)   |
+| `chrome-vp9.webm`           | WebM           | VP9   | Chrome `MediaRecorder`, `video/webm;codecs=vp9`                      |
+| `chrome-h264.mp4`           | fragmented MP4 | H.264 | Chrome `MediaRecorder`, `video/mp4;codecs=avc1` (Safari's container) |
+| `h264-portrait-rotated.mp4` | fragmented MP4 | H.264 | `chrome-h264.mp4` re-encoded sideways with a 90° display matrix      |
 
 The recordings use FaceDialog's settings: `getUserMedia` front camera with an ideal 640x480,
 `videoBitsPerSecond: 500000`, `start(250)`. Chrome's fake camera played frames 60-180 of the
