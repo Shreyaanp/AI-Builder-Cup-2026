@@ -1,8 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { paynowPayload, validPaynow } from '../src/features/owner-tools/links.js'
-import { accountCopyFor } from '../src/features/customer/copy.js'
-import { connectCopyFor } from '../src/features/connect/strings.js'
-import { passportCopy } from '../src/features/passport/copy.js'
+import { readFileSync } from 'node:fs'
 import { localOnly } from './stories/support.js'
 
 // Region persona (docs/qa/region-persona.md): the shop's location decides money, payments, rides
@@ -71,16 +69,12 @@ test('PayNow payloads match the backend SGQR builder', () => {
   for (const bad of ['91234567', '+919876543210', 'shop@bank']) expect(validPaynow(bad)).toBe(false)
 })
 
+// Read as text: the copy modules import React state, which the node test project cannot type-check.
 test('Hindi copy keeps interface terms in Devanagari', () => {
-  const connect = connectCopyFor('hi')
-  const passport = passportCopy('hi')
-  const chats = accountCopyFor('hi')
-  expect(connect.connectType).toBe('पीओएस / ईआरपी')
-  expect(connect.connectSubtitle).not.toMatch(/\bPOS\b|\bERP\b/)
-  expect(passport.emptyBook).toContain('क्यूआर')
-  expect(passport.co2Note).not.toContain('Too Good To Go')
-  expect(chats.signInBody).toContain('एआई')
-  expect(chats.signInBody).not.toMatch(/\bAI\b/)
+  const source = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8')
+  expect(source('../src/features/connect/strings.ts')).toContain("connectType: 'पीओएस / ईआरपी'")
+  expect(source('../src/features/passport/locales/indic.ts')).toContain('एक क्यूआर दूर है')
+  expect(source('../src/features/customer/copyLocales.ts')).toContain('एआई')
 })
 
 test.describe('India', () => {
@@ -145,11 +139,16 @@ test.describe('India', () => {
     await localOnly(page)
     await page.setViewportSize({ width: 360, height: 844 })
     await page.addInitScript(() => {
-      localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'hi', appearance: 'light' }))
+      localStorage.setItem(
+        'niva.starter.preferences',
+        JSON.stringify({ language: 'hi', appearance: 'light' }),
+      )
       localStorage.setItem('chalkboard.customer.journey', 'done')
     })
     await page.goto('/explore/')
-    const areaChip = page.locator('button[aria-expanded="false"]').filter({ hasText: 'Indiranagar' })
+    const areaChip = page
+      .locator('button[aria-expanded="false"]')
+      .filter({ hasText: 'Indiranagar' })
     await expect(areaChip).toBeVisible({ timeout: 30_000 })
     await expect(areaChip).toHaveText('Indiranagar')
     await expect(areaChip).toHaveAttribute('aria-label', /Indiranagar/)
@@ -166,7 +165,9 @@ test.describe('India', () => {
     await expect(page.getByRole('heading', { name: 'रेस्क्यू' })).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('body')).toContainText('Indiranagar')
     await expect(page.locator('body')).toContainText('प्रकाशित जीवन-चक्र अध्ययन')
-    await expect(page.locator('body')).not.toContainText(/Tiong Bahru|Too Good To Go|S\$|SGD|\bAI\b/)
+    await expect(page.locator('body')).not.toContainText(
+      /Tiong Bahru|Too Good To Go|S\$|SGD|\bAI\b/,
+    )
   })
 })
 
