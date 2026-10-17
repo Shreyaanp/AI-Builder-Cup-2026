@@ -228,13 +228,6 @@ export default function AskHome({
 
   useEffect(() => saveTurns(turns), [turns])
 
-  // Ensure history.state.ask is set when turns exist so back navigation from child pages keeps turns
-  useEffect(() => {
-    if (turns.length > 0 && !(history.state as { ask?: boolean } | null)?.ask) {
-      history.replaceState({ ...(history.state as object | null), ask: true }, '')
-    }
-  }, [turns.length])
-
   // Back from a shop or a chat lands where you were in the conversation.
   useEffect(() => {
     const y = (history.state as { scrollY?: number } | null)?.scrollY

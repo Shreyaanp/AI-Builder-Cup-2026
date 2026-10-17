@@ -626,7 +626,9 @@ export default function Discover({
                 variant="outlined"
                 disabled={gpsBusy}
                 onClick={() => locate()}
-                startIcon={gpsBusy ? <CircularProgress size={18} /> : <MapPin aria-hidden size={18} />}
+                startIcon={
+                  gpsBusy ? <CircularProgress size={18} /> : <MapPin aria-hidden size={18} />
+                }
                 sx={{ flexShrink: 0, minHeight: 48 }}
               >
                 {t.gps}

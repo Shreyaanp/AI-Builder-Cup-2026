@@ -98,6 +98,7 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
         // Typed loosely, found and named properly: the offline map knows every demo city.
         await place.fill(city.toLowerCase())
         await place.press('Enter')
+        await discovery.getByRole('button', { name: 'Change area' }).click()
         await expect(place).toHaveValue(city)
         await expect(
           discovery.getByText('Couldn’t find that place. Try a city or neighbourhood name.', {
