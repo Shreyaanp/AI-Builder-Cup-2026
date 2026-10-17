@@ -424,7 +424,8 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
             {typing && (
               <TypedSales
                 lines={typed}
-                products={ws.products.map((p) => p.name)}
+                // A name can repeat across units (Special Chai per cup and per pot).
+                products={[...new Set(ws.products.map((p) => p.name))]}
                 currency={currency}
                 onAdd={(line) => setTyped((all) => [...all, line])}
               />

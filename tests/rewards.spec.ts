@@ -53,11 +53,11 @@ test('QR stamps are once per shop per calendar day and celebrate 5 and 10', asyn
   await page.goto(`/explore/s/${id}`)
   await expect(card(page).getByRole('status')).toHaveText('0 stamps')
   await page.goto(`/explore/s/${id}?source=qr`)
-  await expect(card(page).getByRole('status')).toHaveText('1 stamps')
+  await expect(card(page).getByRole('status')).toHaveText('1 stamp')
   await expect(page.getByText('This card is stored on this phone.')).toBeVisible()
   await expect(page.getByText('10th kopi free')).toBeVisible()
   await page.reload()
-  await expect(card(page).getByRole('status')).toHaveText('1 stamps')
+  await expect(card(page).getByRole('status')).toHaveText('1 stamp')
   for (let day = 2; day <= 10; day++) {
     await setDay(page, day)
     await page.reload()
@@ -88,7 +88,7 @@ test('badges appear in Your usuals, shops have independent cards, and reduced mo
   for (let n = 0; n < 5; n++) {
     const shop = `${n}aaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa`
     await page.goto(`/explore/s/${shop}?source=qr`)
-    await expect(card(page).getByRole('status')).toHaveText('1 stamps')
+    await expect(card(page).getByRole('status')).toHaveText('1 stamp')
   }
   await expect(page.getByText('Tried 5 shops')).toBeVisible()
   // Force the fifth daily visit for one shop using genuine calendar progression.
