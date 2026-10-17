@@ -33,6 +33,7 @@ from .coordinator import (
     request_registration,
     shop_currency,
 )
+from .reply_language import language_rule, reply_language
 from .settings import Settings
 from .sourcing_offline import sourcing_call, sourcing_reply
 from .vendor_profile import allowed_facts, profile_for, vocabulary
@@ -43,6 +44,7 @@ from .voice_tools import (
     prepare_customer_reply,
     propose_stamp_card,
     set_open_today,
+    set_reply_language,
     suggest_starter_items,
 )
 
@@ -56,9 +58,9 @@ For closing-time leftovers use propose_rescue_deal. It prepares a review only; n
 rescue deal was sent before the owner approves it. until is today's shop-local HH:MM.
 
 Language
-- Reply in the language and script the owner last wrote or spoke in (English, Singlish, Mandarin,
-  Malay, Tamil, Japanese, Korean, Thai, Vietnamese, Bahasa Indonesia, Filipino…). The app
-  language below is only a fallback when the message itself gives no clear language.
+- Reply in the owner's chosen app language ("Reply language" at the end of these instructions),
+  in its usual script, even when the owner mixes in other languages. Switch only when the owner
+  explicitly asks for another language: call set_reply_language, then reply in that language.
 - Prices are in the shop's currency (see get_business_context). For a new shop, pass currency
   only if the owner names it or the location makes it obvious (Tokyo → JPY, Kuala Lumpur → MYR).
 - Every turn ends with a short reply to the owner, even right after a tool call. When the owner
@@ -787,7 +789,7 @@ Messages from the app (these are not the owner speaking)
 
 
 def turn_instruction(_: ReadonlyContext | None = None) -> str:
-    """The per-turn part of the instruction: app-language fallback, a short snapshot of the
+    """The per-turn part of the instruction: the pinned reply language, a short snapshot of the
     saved shop and, for a new shop, its guided mode and draft."""
     ctx = current.get()
     guided = ""
@@ -798,7 +800,8 @@ def turn_instruction(_: ReadonlyContext | None = None) -> str:
             + "\nUnverified new shop draft: "
             + json.dumps(draft, ensure_ascii=False)
         )
-    return f"App language (fallback only): {ui_language.get()}{shop_snapshot()}{guided}"
+    rule = language_rule(reply_language(ui_language.get()))
+    return f"{rule}{shop_snapshot()}{guided}"
 
 
 def instruction(context: ReadonlyContext) -> str:
@@ -895,6 +898,7 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
             message_supplier,
             cancel_order,
             set_open_today,
+            set_reply_language,
             propose_stamp_card,
             get_customer_messages,
             prepare_customer_reply,
