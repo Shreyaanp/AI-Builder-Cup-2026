@@ -90,6 +90,35 @@ interface PublicShopData {
   verified_owner?: { checked?: number | null }
 }
 
+function safePublicShop(value: unknown): PublicShopData {
+  const data = value && typeof value === 'object' ? (value as Partial<PublicShopData>) : {}
+  const products = Array.isArray(data.products)
+    ? data.products.filter(
+        (item): item is PublicShopData['products'][number] =>
+          !!item &&
+          typeof item.name === 'string' &&
+          typeof item.unit === 'string' &&
+          typeof item.price === 'number' &&
+          typeof item.available === 'boolean',
+      )
+    : []
+  return {
+    ...data,
+    id: typeof data.id === 'string' ? data.id : '',
+    name: typeof data.name === 'string' ? data.name : '',
+    category: typeof data.category === 'string' ? data.category : '',
+    location: typeof data.location === 'string' ? data.location : '',
+    hours: typeof data.hours === 'string' ? data.hours : '',
+    phone: typeof data.phone === 'string' ? data.phone : '',
+    products,
+    gallery: Array.isArray(data.gallery)
+      ? data.gallery.filter((item): item is string => typeof item === 'string')
+      : [],
+    weekly_hours: Array.isArray(data.weekly_hours) ? data.weekly_hours : [],
+    facts: data.facts && typeof data.facts === 'object' ? data.facts : {},
+  }
+}
+
 const PAYMENT_BRANDS = { paynow: 'PayNow', grabpay: 'GrabPay', nets: 'NETS' } as const
 const DELIVERY_BRANDS = { grab: 'GrabFood', foodpanda: 'foodpanda' } as const
 
@@ -454,7 +483,7 @@ export default function PublicShop({ id }: { id: string }) {
         // 404 = owner stopped sharing; anything else is a transient failure.
         if (response.status === 404) throw new Error('missing')
         if (!response.ok) throw new Error('error')
-        return (await response.json()) as PublicShopData
+        return safePublicShop(await response.json())
       }),
     [id, locale],
   )
@@ -578,10 +607,19 @@ export default function PublicShop({ id }: { id: string }) {
 
   const currency = shop.currency ?? shopRegion(shop).currency
   // The public API names owner-written facts `custom` (owner records use `custom_facts`).
-  const custom =
+  const customValue =
     (shop.facts as (ShopFacts & { custom?: ShopFacts['custom_facts'] }) | undefined)?.custom ??
     shop.facts?.custom_facts ??
     []
+  const custom = Array.isArray(customValue)
+    ? customValue.filter(
+        (fact) =>
+          fact &&
+          typeof fact.key === 'string' &&
+          typeof fact.label === 'string' &&
+          typeof fact.value === 'string',
+      )
+    : []
   const chips = [
     ...factChips(shop.facts ?? {}, t),
     // Type-specific facts the owner confirmed (e.g. a salon's walk-ins), label: value.
