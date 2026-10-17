@@ -4,6 +4,43 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('chalkboard.customer.journey', 'done'))
 })
 
+test('a failed customer screen chunk shows a retry instead of a blank screen', async ({ page }) => {
+  await page.route('**/src/features/frontdoors/CustomerApp.tsx*', (route) => route.abort())
+  await page.goto('/explore/')
+  await expect(page.getByRole('alert')).toContainText('Could not load this screen.')
+  await page.unroute('**/src/features/frontdoors/CustomerApp.tsx*')
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'What are you looking for nearby?' })).toBeVisible(
+    {
+      timeout: 30_000,
+    },
+  )
+})
+
+test('a slow app shell stops loading and offers Retry', async ({ page }) => {
+  await page.clock.install()
+  let releaseRequest!: () => void
+  const held = new Promise<void>((resolve) => {
+    releaseRequest = resolve
+  })
+  await page.route('**/src/features/frontdoors/CustomerApp.tsx*', async (route) => {
+    await held
+    await route.abort()
+  })
+  await page.goto('/explore/')
+  await expect(page.getByTestId('brand-splash')).toBeVisible()
+  await page.clock.fastForward(15_000)
+  await expect(page.getByRole('alert')).toContainText('Could not load this screen.')
+  releaseRequest()
+  await page.unroute('**/src/features/frontdoors/CustomerApp.tsx*')
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'What are you looking for nearby?' })).toBeVisible(
+    {
+      timeout: 30_000,
+    },
+  )
+})
+
 test('Ask blank input, empty results, loading and failed request recovery', async ({ page }) => {
   await page.goto('/explore/')
   const send = page.getByRole('button', { name: 'Send', exact: true })
