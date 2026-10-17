@@ -13,6 +13,7 @@ from app.games import (
     ODDS_NO_PERK,
     ODDS_WITH_PERK,
     SET_POINTS,
+    WELCOME_STAMPS,
     CoopStore,
     claim_coop,
     complete_sets,
@@ -25,8 +26,9 @@ from app.games import (
     set_progress,
     use_perk,
 )
-from app.passport import PassportState, apply_visit, streak, week_of
+from app.passport import PassportState, ShopProgress, apply_visit, streak, week_of
 from app.passport import Visit as PassportVisit
+from app.passport_routes import shop_stamp
 from tests.test_passport import (  # noqa: F401  (pytest fixtures app and client)
     DEMO,
     app,
@@ -298,3 +300,33 @@ def test_flagged_accounts_get_no_scratch_card() -> None:
     from app.passport import flagged
 
     assert flagged(state, at(0))
+
+
+def test_card_count_includes_welcome_stamps_everywhere(client: TestClient) -> None:
+    """One count for "stamps on this card": the welcome stamps plus the customer's own."""
+    # Signed out, from this phone's receipt; then signed in, from the account.
+    body = {"shop_id": DEMO, "key": demo_key(client), **at_shop(client)}
+    receipt = client.post("/api/v1/public/passport/check", json=body).json()["receipt"]
+    preview = client.post(
+        "/api/v1/public/passport/preview", json={"receipts": [receipt], "cards": {}}
+    ).json()
+    sign_in(client)
+    signed_in = stamp_demo(client)["passport"]
+    for view in (preview, signed_in):
+        shop = next(s for s in view["shops"] if s["id"] == DEMO)
+        assert shop["reward"] and shop["card"] == 1
+        assert shop["stamps"] == shop["welcome"] + 1 == 3
+        assert shop["slots"] == shop["needed"] + shop["welcome"]
+    # Signed out, the phone's card is the card: a reward claimed there resets it here too.
+    claimed = client.post(
+        "/api/v1/public/passport/preview", json={"receipts": [receipt], "cards": {DEMO: 0}}
+    ).json()
+    assert next(s for s in claimed["shops"] if s["id"] == DEMO)["stamps"] == 2
+
+
+def test_card_count_is_zero_without_a_card_and_never_overflows() -> None:
+    progress = ShopProgress(name="Kopi", card=12, days=["2026-10-17"])
+    full = shop_stamp("kopi", progress, {"reward_text": "A free kopi", "stamps_needed": 10})
+    assert (full.stamps, full.slots) == (WELCOME_STAMPS + 10, WELCOME_STAMPS + 10)
+    off = shop_stamp("kopi", progress, {"reward_text": "", "stamps_enabled": False})
+    assert (off.stamps, off.slots, off.reward) == (0, 0, "")
