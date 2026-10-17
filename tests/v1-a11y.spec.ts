@@ -57,7 +57,7 @@ async function sharedShop(page: Page) {
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: /^Menu/ }).click()
   // B28: the price is its own button on the item card.
-  await expect(page.getByRole('button', { name: 'Edit price: Chai, $15.00' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Edit price: Chai, S$15.00' })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: /^Customer page/ }).click()

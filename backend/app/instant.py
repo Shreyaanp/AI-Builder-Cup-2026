@@ -20,6 +20,7 @@ from .app_guide import guide_reply
 from .contracts import StreamEvent
 from .coordinator import MerchantContext, propose_products
 from .discover import open_now
+from .region import shop_zone
 from .voice_tools import SCREENS, get_customer_messages, open_screen, set_open_today
 
 Embedder = Callable[[str], list[float]]
@@ -180,7 +181,7 @@ def _read_intent(ctx: MerchantContext, intent: str) -> InstantResult | None:
     if intent == "am_i_open":
         state = open_now(
             fields.get("hours", ""),
-            fields.get("timezone") or "Asia/Singapore",
+            shop_zone(fields),
             weekly_hours=fields.get("weekly_hours"),
             closed_on=fields.get("closed_on"),
         )

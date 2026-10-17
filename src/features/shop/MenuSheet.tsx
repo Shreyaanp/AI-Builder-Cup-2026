@@ -239,11 +239,13 @@ function ItemCard({ product, onEdit }: { product: Product; onEdit: () => void })
         <Chip
           size="small"
           label={t.soldOut}
+          variant="outlined"
+          // Quiet on purpose: Add product stays the one saturated action on the sheet.
           sx={{
             alignSelf: 'flex-start',
             ml: 1,
-            bgcolor: roles.errorContainer,
-            color: roles.onErrorContainer,
+            borderColor: roles.outline,
+            color: roles.onSurfaceVariant,
           }}
         />
       )}

@@ -24,7 +24,7 @@ from .imports import (
     ImportRejected,
     parse_table,
 )
-from .money import DEFAULT_CURRENCY, to_minor
+from .money import to_minor
 from .settings import Settings  # noqa: F401 – re-exported for convenience
 
 log = structlog.get_logger()
@@ -507,7 +507,7 @@ def preview_mapped(
 def compute_diff(
     current_items: list[dict[str, Any]],
     new_items: list[dict[str, Any]],
-    currency: str = DEFAULT_CURRENCY,
+    currency: str,
 ) -> dict[str, list[dict[str, Any]]]:
     """Compare current inventory with newly mapped items; return added, updated, removed lists."""
     current_by_name: dict[str, dict[str, Any]] = {

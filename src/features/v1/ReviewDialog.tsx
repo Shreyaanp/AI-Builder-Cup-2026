@@ -172,13 +172,32 @@ export function ReviewDialog({
                   <Typography component="dt" variant="labelMedium" color="text.secondary">
                     {t.fields[key]}
                   </Typography>
-                  <Typography
+                  <Stack
                     component="dd"
-                    variant="bodyLarge"
-                    sx={{ m: 0, overflowWrap: 'anywhere' }}
+                    direction="row"
+                    sx={{ m: 0, gap: 1, alignItems: 'flex-start' }}
                   >
-                    {snapshot.business?.[key]}
-                  </Typography>
+                    <Typography
+                      variant="bodyLarge"
+                      sx={{ m: 0, flex: 1, overflowWrap: 'anywhere' }}
+                    >
+                      {snapshot.business?.[key]}
+                    </Typography>
+                    {key === 'name' && target && (
+                      <Button
+                        size="small"
+                        disabled={busy}
+                        aria-label={`${t.editProduct}: ${snapshot.business?.name}`}
+                        onClick={() => {
+                          const fields = snapshot.business
+                          close()
+                          if (fields) openEditor({ kind: 'business', fields, step: 'name' })
+                        }}
+                      >
+                        {t.editProduct}
+                      </Button>
+                    )}
+                  </Stack>
                 </Box>
               ))}
           </Stack>

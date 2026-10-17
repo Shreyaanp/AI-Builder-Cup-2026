@@ -1,6 +1,6 @@
 # oGoogle AI template instructions
 
-Read `rules.md` and `PROJECT_MEMORY.md` before changes. Keep implementation evidence separate from intentions.
+Read `rules.md`, `docs/RULES.md` (product rules enforced in CI; run `npm run rules`) and `PROJECT_MEMORY.md` before changes. Keep implementation evidence separate from intentions.
 
 For every design or UI change, read `.agents/skills/material-design-3-ui/SKILL.md`, then only the relevant references. Typography, spacing, accessibility and component semantics are required for UI review. Use `docs/REACT_RULES.md` and the official hook lint rules for React code. The vendored skill is community-authored; Google's official specifications remain authoritative.
 
