@@ -108,16 +108,29 @@ async def evaluate(
 ) -> dict[str, Any]:
     """The worker's (or fixture's) answer: status live/retry/unavailable, a reason, and the
     template only when the capture was live. The template never leaves the server."""
+    start_time = time.perf_counter()
     settings: Settings = request.app.state.v1_settings
     if settings.face_mode == "fixture":
         if len(capture) < 1024:
+            log.info("face_evaluate_fixture_rejected", size=len(capture))
             return {"status": "retry", "reason": "capture_not_usable"}
         name = request.headers.get(FIXTURE_HEADER, "")[:80] or uid
+        duration_ms = round((time.perf_counter() - start_time) * 1000, 1)
+        log.info(
+            "face_worker_evaluated",
+            mode="fixture",
+            status="live",
+            reason="ok",
+            latency_ms=duration_ms,
+            capture_bytes=len(capture),
+            content_type=content_type,
+        )
         return {
             "status": "live",
             "reason": "ok",
             "liveness": "fixture",
             "template": fixture_template(name).tolist(),
+            "passed_prompts": prompts,
         }
     if not settings.face_worker_token.get_secret_value():
         return {"status": "unavailable", "reason": "worker_unavailable"}
@@ -135,18 +148,45 @@ async def evaluate(
                 },
             )
     except httpx.HTTPError as error:
-        log.warning("face_worker_unreachable", error=type(error).__name__)
+        duration_ms = round((time.perf_counter() - start_time) * 1000, 1)
+        log.warning("face_worker_unreachable", error=type(error).__name__, latency_ms=duration_ms)
         return {"status": "unavailable", "reason": "worker_unavailable"}
+    duration_ms = round((time.perf_counter() - start_time) * 1000, 1)
     if response.status_code == 429:
+        log.warning("face_worker_busy", status=429, latency_ms=duration_ms)
         return {"status": "unavailable", "reason": "busy"}
     if not response.is_success:
-        log.warning("face_worker_failed", status=response.status_code)
+        log.warning("face_worker_failed", status=response.status_code, latency_ms=duration_ms)
         return {"status": "unavailable", "reason": "worker_unavailable"}
     try:
         data = response.json()
     except ValueError:
         return {"status": "unavailable", "reason": "worker_unavailable"}
-    return {k: data[k] for k in ("status", "reason", "liveness", "template") if k in data}
+    log.info(
+        "face_worker_evaluated",
+        status=data.get("status"),
+        reason=data.get("reason"),
+        liveness=data.get("liveness"),
+        score=data.get("score"),
+        failed_prompt=data.get("failed_prompt"),
+        passed_prompts=data.get("passed_prompts"),
+        latency_ms=duration_ms,
+        capture_bytes=len(capture),
+        content_type=content_type,
+    )
+    return {
+        k: data[k]
+        for k in (
+            "status",
+            "reason",
+            "liveness",
+            "template",
+            "passed_prompts",
+            "failed_prompt",
+            "score",
+        )
+        if k in data
+    }
 
 
 # --- Recording a result and the review queue ---
@@ -171,10 +211,15 @@ def record(
     """
     now = time.time()
     if outcome.get("status") != "live" or "template" not in outcome:
-        return {
+        res: dict[str, Any] = {
             "result": "unavailable" if outcome.get("status") == "unavailable" else "retry",
             "reason": outcome.get("reason", "capture_not_usable"),
         }
+        if "passed_prompts" in outcome:
+            res["passed_prompts"] = outcome["passed_prompts"]
+        if "failed_prompt" in outcome:
+            res["failed_prompt"] = outcome["failed_prompt"]
+        return res
     try:
         vector = unit(outcome["template"])
     except ValueError:
@@ -223,8 +268,16 @@ def record(
                 },
             )
     store.put(STATUS_KIND, uid, uid, now, {"face": face, "checked": now})
-    log.info("face_check_recorded", result=face)
-    return {"result": face, "reason": "ok", "checked": now}
+    log.info(
+        "face_check_recorded",
+        result=face,
+        duplicate_match=bool(best_uid and best >= DUPLICATE_SIMILARITY),
+        similarity=round(best, 3) if best_uid else None,
+    )
+    ans: dict[str, Any] = {"result": face, "reason": "ok", "checked": now}
+    if "passed_prompts" in outcome:
+        ans["passed_prompts"] = outcome["passed_prompts"]
+    return ans
 
 
 def add_flag(

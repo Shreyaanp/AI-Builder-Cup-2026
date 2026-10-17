@@ -5,11 +5,13 @@ import time
 from typing import Any, Literal
 
 import anyio
+import httpx
 import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
 from . import fraud, trust
+from .face_transport import worker_headers
 from .merchant_routes import consented_owner, owner, store
 
 log = structlog.get_logger()
@@ -26,6 +28,7 @@ class ChallengeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     business_id: str
     consent: bool
+    exclude_prompts: list[str] | None = None
 
 
 class Decision(BaseModel):
@@ -46,12 +49,34 @@ def require_docs(request: Request) -> Any:
     return docs
 
 
+@router.post("/face/warmup")
+@router.get("/face/warmup")
+async def face_warmup(request: Request) -> dict[str, Any]:
+    """Warm up the private face worker to prevent cold-start latency when the owner scans."""
+    uid = await owner(request)
+    settings = request.app.state.v1_settings
+    if settings.face_mode == "fixture" or not settings.face_worker_token.get_secret_value():
+        return {"ready": True, "mode": settings.face_mode}
+    try:
+        async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
+            resp = await client.get(
+                settings.face_worker_url + "/health",
+                headers=await worker_headers(settings, uid),
+            )
+            return {"ready": resp.is_success, "status": resp.status_code}
+    except Exception as error:
+        log.warning("face_warmup_failed", error=type(error).__name__)
+        return {"ready": False, "error": "unreachable"}
+
+
 @router.post("/face/challenges")
 async def challenge(body: ChallengeRequest, request: Request) -> dict[str, Any]:
     uid = await consented_owner(request)
     if not body.consent:
         raise HTTPException(422, "Camera consent is required for the check. Nothing changed.")
-    return await anyio.to_thread.run_sync(store(request).challenge, uid, body.business_id)
+    return await anyio.to_thread.run_sync(
+        store(request).challenge, uid, body.business_id, body.exclude_prompts
+    )
 
 
 @router.get("/face/challenges/{challenge_id}")
@@ -69,8 +94,8 @@ async def capture(challenge_id: str, request: Request) -> dict[str, Any]:
     docs = require_docs(request)
     metadata = await anyio.to_thread.run_sync(service.consume, uid, challenge_id)
     content_type = request.headers.get("content-type", "").split(";")[0]
-    if content_type not in {"video/webm", "video/mp4"}:
-        raise HTTPException(415, "Capture must be a browser-recorded video.")
+    if content_type not in {"video/webm", "video/mp4", "application/json", "image/jpeg"}:
+        raise HTTPException(415, "Capture must be a browser-recorded video or frame sequence.")
     buffer = bytearray()
     try:
         async with asyncio.timeout(10):
