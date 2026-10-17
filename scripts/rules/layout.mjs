@@ -7,7 +7,13 @@ export function run() {
   const failures = []
   if (!/name:\s*'phone'/.test(read('playwright.config.ts')))
     failures.push('  playwright.config.ts has no "phone" project')
-  if (!/project:\s*\[phone/.test(read('.github/workflows/checks.yml')))
+  // Either a literal list, or the dynamic matrix where every fromJSON branch lists phone.
+  const projectLine =
+    (read('.github/workflows/checks.yml').match(/^\s*project:\s*(.+)$/m) ?? [])[1] ?? ''
+  const literal = /^\[\s*"?phone/.test(projectLine)
+  const branches = [...projectLine.matchAll(/fromJSON\('(\[[^']*\])'\)/g)].map((m) => m[1])
+  const dynamic = branches.length >= 2 && branches.every((b) => /"phone"/.test(b))
+  if (!literal && !dynamic)
     failures.push(
       '  .github/workflows/checks.yml: the browser job no longer runs the phone project',
     )
