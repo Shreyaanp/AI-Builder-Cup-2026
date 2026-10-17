@@ -7,6 +7,9 @@ Base: `origin/release/stable-2-main` (d507392, PR #50). Twelve PRs merged in the
 branch's head is in this branch. `fix/voice-reliability` (onboarding v2) is **not** merged. It goes
 into this branch when it lands.
 
+Part 2 (see [Part 2](#part-2-main-and-five-more-prs) below) brought in origin/main and #61, #62,
+#63, #64 and #67 on top of that.
+
 ## What is in
 
 | Order | PR  | Branch                        | What it brings                                                                                        |
@@ -102,8 +105,112 @@ with `--workers=1` (its config defaults to 2).
 - The shared local SQLite DB keeps growing with test shops. This is what made S3's "Kopi"
   ambiguous (see #53's note about `customer-ask`).
 
+## Part 2: main and five more PRs
+
+Same rules: `git merge --no-ff origin/<branch>` in the brief's order, one merge commit each. A
+fetch right before the push confirmed every branch below was still at the merged head.
+
+| Order | PR  | Branch                   | Head    | What it brings                                                                                         |
+| ----- | --- | ------------------------ | ------- | ------------------------------------------------------------------------------------------------------ |
+| 1     | —   | `main`                   | 8073239 | No file changes: #55 came in with release 2, and #53 #57 #42 #49 #51 #48 were merged from their branch |
+| 2     | #61 | `fix/hindi-e2e`          | b251c03 | Hindi end to end: prompts, offline playbook, localised skip link and tab bar, dates, units, 360px spec |
+| 3     | #62 | `fix/code-quality-audit` | f43fa57 | Code quality audit doc (docs only)                                                                     |
+| 4     | #63 | `fix/welcome-stamps`     | 6c07cfb | One stamp count, welcome stamps included, on the shop button, stamp card and passport                  |
+| 5     | #64 | `feat/customer-story`    | 8933f06 | Customer answers as compact 88px rows under a map strip, our shops then Google places                  |
+| 6     | #67 | `fix/face-check-v2`      | ca7d1b0 | Face check calibration, sampled JPEG frames, live guidance, warmup route, incident doc                 |
+
+**Skipped:**
+
+- `fix/customer-layout` (PR #78): it was not on origin when the merges started. It was pushed
+  during the run, but it isn't green: its only check is GitGuardian. It conflicts with main, so
+  CI never ran on it. Merge it here once it's rebased and green.
+- `wip/customer-places-cache` and `fix/voice-reliability`: not merged, as the brief says.
+
+### For the owner: #67 lowers the face check's liveness thresholds
+
+`backend/face_worker.py`, calibrated in #67 for real front cameras (low light, glasses, darker
+skin tones). `docs/qa/face-check.md` has #67's before/after pass rates. All of these make the
+check easier to pass, so please confirm them before release:
+
+| Setting                         | Before | After                                 |
+| ------------------------------- | ------ | ------------------------------------- |
+| `REAL_MIN` (mean liveness)      | 0.5    | 0.30 (screens and prints score <0.15) |
+| `MIN_FACE_SHARE`                | 0.6    | 0.40                                  |
+| Face detection confidence       | 0.8    | 0.60                                  |
+| Smallest face crop              | 60 px  | 45 px                                 |
+| Look-up pitch (`PITCH_MIN`)     | 10°    | 7°                                    |
+| Head-turn yaw (`YAW_MIN`)       | 10°    | 10° (unchanged)                       |
+| Gap between frames used (video) | 0.45 s | 0.30 s (JSON frames), 0.35 s (video)  |
+
+### Conflicts and how they were resolved
+
+- **main**: conflicts in 16 files, all copies of the same PRs. The backend files (`agent.py`,
+  `main.py`, `streaming.py`, `voice_tools.py`) kept release 3's extra imports and handlers. #55's
+  own changes were already identical here. The other files kept release 3's version, since it
+  already holds those PRs' branch heads plus the release 2 and 3 resolutions.
+- **#63, `StampCard.tsx`**: took #63's count, welcome stamps included. That count is never below
+  2, so #53's singular "1 stamp" can't show on the card any more. The singular `t.stamp` string
+  stays in the copy, now unused. In the five specs, only the conflicting hunks took #63's counts ("1 stamp" becomes
+  "3 stamps"). Release 3's other test fixes in those files (S3's `/^Kopi/` anchors) were kept.
+  `tests/stories/director/walk.mjs` got the same "3 stamps".
+- **#64, `AskHome.tsx`**: #64's vertical `PickList` replaces the old horizontal card row. The row
+  used #56's `scrollArea`, which a vertical list doesn't need, so its import was dropped.
+
+### Fixes for breakages from the combination
+
+- **Answer order (#64 + release 2's maps story)**: #64 put the map first and moved our rows under
+  it. That left Google's area answer card above our shops, and `stories/maps.spec.ts` ("our shop
+  first") failed. The area answer now sits under our rows and above Google's rows: map, our shops,
+  Google. This matches #64's own comment.
+- **Contract**: #67 added `/api/v1/face/warmup` and `exclude_prompts` without regenerating.
+  `docs/openapi.json` and `src/api/generated.d.ts` are now regenerated.
+- **#61 Hindi spec on release 3's front door (#60)**: the customer front door opens on the Ask,
+  with no welcome step, so the test now checks the Ask heading. It fills the Ask box through its
+  `search` role, because the first textbox is now #60's inline "where" field. `Indiranagar`, #54's
+  area fallback for a rupee phone, joins the allowed place names. Its customer screenshots 20–24
+  were refreshed to show release 3's screens.
+- **#61 localised the tab bar label**, so the QA `tamil()` helper couldn't find the
+  `navigation "Main"` after switching. That broke six Tamil QA tests. It now returns to the tab
+  through the Tamil label.
+- **S9 story**: it tapped the stamp moment before the check had finished, so the tap skipped
+  nothing. Axe then read lines that were still fading in: a contrast failure in both themes,
+  exposed by #64's timing. It reproduced alone. S9 now waits for the progress indicator to go and
+  for the lines to reach opacity 1, as S8 already does.
+- `ruff format` on #67's `test_face_worker.py`. Prettier on #64's brief and on #67's
+  `FaceDialog.tsx` and `face-check.md`.
+
+### Part 2 test results (same machine and env as above, `--workers=1`)
+
+| Check                                                | Result                                                                                |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `uv run ruff check` / `ruff format --check` (CI set) | clean (after the format fix above)                                                    |
+| `uv run mypy`                                        | clean (101 files)                                                                     |
+| `uv run pytest -q`                                   | 1019 passed, 246 skipped                                                              |
+| `npx tsc -b`, `npm run lint`, `npm run format:check` | clean                                                                                 |
+| `npm run test:hooks`, `npm run build`                | passed                                                                                |
+| OpenAPI / generated types                            | regenerated (#67's warmup route), no diff after                                       |
+| Browser suite, phone (405)                           | all pass, 6 skipped, after the fixes above. Ask-related specs rerun after the reorder |
+| Browser suite, desktop (408)                         | 296 passed, 112 skipped (phone-only), no failures                                     |
+| `npm run test:qa`, phone + desktop (186)             | all pass. Tamil coach is the expected failure (`test.fail`, bug Q1)                   |
+
+**Load, not bugs (each passed when rerun alone):**
+
+- QA phone "Close the day honours reduced motion": the dialog didn't open within 60 s, late in a
+  long batch. The whole file passed twice alone.
+- QA desktop close-day, first two tests: `page.goto('/')` timed out on a cold dev server (the
+  cold-start flake above). All six passed alone.
+
+**Test data**: S3 failed once because the local SQLite DB had grown to dozens of "Courtyard Chai"
+test shops, and the ask answer shows only 8. That's the DB growth noted under Flakes. The
+worktree's `backend/data/*.sqlite3` (gitignored, test data only) was moved aside, not deleted,
+and the suites ran on a fresh DB, as on CI. S3 then passed.
+
+The full `npm run test:qa` runs over 10 minutes per project on this machine, so it ran as two
+file batches per project.
+
 ## Not done / for later
 
+- `fix/customer-layout` (#78): merge once it is rebased on main and green.
 - `fix/voice-reliability` (onboarding v2) goes in when it lands. #54's description lists the
   `NewShopFlow.tsx` / `MapCard.tsx` changes that onboarding v2 has to carry over.
 - No physical phone, live Gemini, or hosted Google sign-in in this run.
