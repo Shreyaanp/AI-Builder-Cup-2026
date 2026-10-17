@@ -54,6 +54,7 @@ import { HoursList } from '../shop/Hours'
 import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { ApiError } from './api'
+import { photoHeaders, preparePhoto } from './photoPrep'
 import type { Business, PhotoResult, Product, Proposal } from './api'
 import { CameraCard, type Shot } from './CameraCard'
 import { LocationPin } from './CurrentLocation'
@@ -903,10 +904,11 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     setBusy('photo')
     add({ role: 'owner', text: f.photo, photo: URL.createObjectURL(file) })
     try {
+      const photo = await preparePhoto(file)
       const result = await api<PhotoResult>(`/photos?currency=${defaultCurrency()}`, {
         method: 'POST',
-        body: file,
-        headers: { 'Content-Type': file.type },
+        body: photo.file,
+        headers: photoHeaders(photo),
         signal: AbortSignal.timeout(60_000),
       })
       const before = draftRef.current
