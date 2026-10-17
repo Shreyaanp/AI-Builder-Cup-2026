@@ -5,15 +5,7 @@
     "page_kind": "screen",
     "tables": [
       {
-        "header_row": [
-          "name",
-          "sku",
-          "category",
-          "price",
-          "qty",
-          "date",
-          "total"
-        ],
+        "header_row": ["name", "sku", "category", "price", "qty", "date", "total"],
         "rows": [
           {
             "name": {
@@ -62,15 +54,7 @@
     "page_kind": "screen",
     "tables": [
       {
-        "header_row": [
-          "name",
-          "sku",
-          "category",
-          "price",
-          "qty",
-          "date",
-          "total"
-        ],
+        "header_row": ["name", "sku", "category", "price", "qty", "date", "total"],
         "rows": [
           {
             "name": {
@@ -156,15 +140,7 @@
     "page_kind": "screen",
     "tables": [
       {
-        "header_row": [
-          "name",
-          "sku",
-          "category",
-          "price",
-          "qty",
-          "date",
-          "total"
-        ],
+        "header_row": ["name", "sku", "category", "price", "qty", "date", "total"],
         "rows": [
           {
             "name": {
@@ -213,15 +189,7 @@
     "page_kind": "clean_print",
     "tables": [
       {
-        "header_row": [
-          "name",
-          "sku",
-          "category",
-          "price",
-          "qty",
-          "date",
-          "total"
-        ],
+        "header_row": ["name", "sku", "category", "price", "qty", "date", "total"],
         "rows": [
           {
             "name": {

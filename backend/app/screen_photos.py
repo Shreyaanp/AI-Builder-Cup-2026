@@ -17,6 +17,7 @@ from .document_ai import DocumentAIReader
 from .gemini_schema import gemini_schema, parse_reply
 from .imports import MAX_MEDIA_BYTES, MAX_ROWS, ColumnMapper, ImportRejected
 from .photos import PhotoRejected, sanitize
+from .reply_language import language_rule, reply_language
 
 PHOTO_TYPE = "application/vnd.chalkboard.screen-photos+json"
 FIELDS = ("name", "sku", "category", "price", "qty", "date", "total")
@@ -127,7 +128,9 @@ calculate missing numbers, complete cut-off names, or repair digits hidden by gl
 perspective or blur. Give per-cell confidence. Numeric values have no currency symbol or grouping.
 Dates use YYYY-MM-DD only if unambiguous. Return currency ISO code only when visible and unambiguous
 (a bare $ is unknown), source app only if visible. clean_print means a clear printed page.
-reply_language: preserve source labels; return JSON only matching the schema."""
+Preserve source labels exactly as printed; any note you add (not cell text) follows the rule below.
+Return JSON only matching the schema.
+""" + language_rule(reply_language(None))
 
 
 async def read_photo(
