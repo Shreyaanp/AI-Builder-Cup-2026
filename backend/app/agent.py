@@ -32,9 +32,12 @@ from .coordinator import (
     remember_note,
     request_registration,
     shop_currency,
+    ui_currency,
 )
 from .payments import prepare_payment_link
 from .playbook import coach_summary, migrate_stored
+from .region import region_rule, shop_region
+from .region import shop_currency as shop_currency_of
 from .reply_language import language_rule, reply_language
 from .settings import Settings
 from .sourcing_offline import sourcing_call, sourcing_reply
@@ -99,10 +102,11 @@ How you work
 - The profile drives get_question_plan and the catalogue vocabulary. Ask from that plan;
   use services for a tailor/salon/service provider, items for retail, menu for food, and the
   owner's actual units (per piece/kg/hour/service). Suggested units never override stated units.
-- For a payment link request call prepare_payment_link with the INR amount and optional note.
-  The owner shares the card; you never send it, process money or confirm receipt.
-  If add_upi_id, ask them to add their UPI ID in Payments & rides settings.
-  The inr_only status means UPI is INR only.
+- For a payment link request call prepare_payment_link with the amount in the shop's currency
+  and an optional note: a UPI link in India, a PayNow QR in Singapore. The owner shares the card;
+  you never send it, process money or confirm receipt. If add_upi_id or add_paynow_id, ask them
+  to add their UPI ID / PayNow number or UEN in Payments & rides settings. no_payment_link
+  means the app has no payment link for the shop's country yet.
 - Use the "Current shop" snapshot at the end of these instructions when it is there; otherwise
   call get_business_context before changing an existing shop so you compare with what is saved.
 - Use propose_business for shop details and propose_products for items, prices, units, stock
@@ -546,13 +550,13 @@ class OfflineCoachModel(BaseLlm):
                         "Nothing has been sent or paid.",
                         "add_upi_id": "Add your UPI ID in Payments & rides settings, "
                         "then ask again.",
-                        "inr_only": "UPI links are for INR shops. "
-                        "Check your shop currency in shop details.",
+                        "add_paynow_id": "Add your PayNow number or UEN in Payments & rides "
+                        "settings, then ask again.",
+                        "no_payment_link": "Payment links are for shops in India (UPI) and "
+                        "Singapore (PayNow).",
                         "needs_business": "Add your shop first, "
                         "then set its UPI ID in Payments & rides.",
-                    }.get(
-                        status, "Use a positive INR amount with up to two decimals, then ask again."
-                    )
+                    }.get(status, "Use a positive amount with up to two decimals, then ask again.")
                 elif sourced:
                     reply = sourced
                 elif prediction is not None:
@@ -596,7 +600,7 @@ class OfflineCoachModel(BaseLlm):
                     )
                     return
                 payment = re.search(
-                    r"(?:payment|pay|upi)\s+link[^\d+-]*([+-]?\d[\d,]*(?:\.\d+)?)(?![\w.])",
+                    r"(?:payment|pay|upi|paynow)\s+(?:link|qr)[^\d+-]*([+-]?\d[\d,]*(?:\.\d+)?)(?![\w.])",
                     question,
                     re.I,
                 )
@@ -893,6 +897,24 @@ Messages from the app (these are not the owner speaking)
 """
 
 
+def coach_region() -> str:
+    """The region rule for this turn: the saved shop's (its pin), a new shop's draft, else the
+    owner's phone, so money, payments, rides and examples fit where the shop is."""
+    ctx = current.get()
+    fields: dict[str, Any] = {}
+    try:
+        if ctx and ctx.business_id:
+            fields = (ctx.store.context(ctx.uid, ctx.business_id)["business"] or {})["fields"]
+        elif ctx and ctx.new_shop_draft and ctx.new_shop_draft.business:
+            draft = ctx.new_shop_draft.business
+            fields = {"lat": draft.lat, "lng": draft.lng, "currency": ui_currency.get() or ""}
+        else:
+            fields = {"currency": ui_currency.get() or ""}
+    except Exception:
+        fields = {}
+    return " " + region_rule(shop_region(fields), shop_currency_of(fields))
+
+
 def turn_instruction(_: ReadonlyContext | None = None) -> str:
     """The per-turn part of the instruction: the pinned reply language, a short snapshot of the
     saved shop and, for a new shop, its guided mode and draft."""
@@ -906,7 +928,7 @@ def turn_instruction(_: ReadonlyContext | None = None) -> str:
             + json.dumps(draft, ensure_ascii=False)
         )
     rule = language_rule(reply_language(ui_language.get()))
-    return f"{rule}{shop_snapshot()}{guided}"
+    return f"{rule}{coach_region()}{shop_snapshot()}{guided}"
 
 
 def instruction(context: ReadonlyContext) -> str:

@@ -79,6 +79,8 @@ def language_rule(language: ReplyLanguage) -> str:
     """The instruction that keeps every reply in the owner's chosen language."""
     name, code = language.name, language.code
     script = f" Write it in {SCRIPTS[language.locale]}." if language.locale in SCRIPTS else ""
+    if note := NOT_INSTEAD.get(language.locale):
+        script += f" Use {note}."
     return (
         f"Reply language: Always speak and write in {name} ({code}).{script} If the owner mixes "
         f"languages, still reply in {name}. Never switch to another language or dialect (e.g. "
@@ -105,6 +107,11 @@ SCRIPTS = {
 NOT_INSTEAD = {
     "hi": "standard Hindi, not Urdu, Bhojpuri, Maithili or romanised Hinglish",
     "mr": "standard Marathi, not Hindi",
+    # Singapore's official languages (task-SG-LANGUAGES-E2E).
+    "zh-Hans": "Mandarin in Simplified Chinese, not Cantonese, Hokkien or Traditional characters",
+    "ms": "standard Malay (Bahasa Melayu, as written in Singapore and Malaysia), not Indonesian "
+    "or English",
+    "ta": "standard Tamil, not romanised Tamil, Malayalam or English",
 }
 
 

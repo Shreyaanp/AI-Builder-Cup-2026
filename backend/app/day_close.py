@@ -27,6 +27,7 @@ from .merchant import ProductFields, ProposalRequest
 from .merchant_routes import consented_owner, store
 from .money import exponent
 from .photos import PhotoRejected, sanitize
+from .region import shop_currency
 from .sales import today_for
 
 log = structlog.get_logger()
@@ -114,7 +115,7 @@ async def read_photo(
             DayLine(
                 item=p["name"],
                 quantity=float(q),
-                amount=(p["price"] / 10 ** exponent(p.get("currency") or "SGD")) * q
+                amount=(p["price"] / 10 ** exponent(shop_currency(p))) * q
                 if hint == "sales"
                 else None,
             )
@@ -231,7 +232,7 @@ async def read_day_photo(
     names = [p["name"] for p in context["inventory"]]
     lines = []
     prices = {p["name"]: p for p in context["inventory"]}
-    currency = context["business"]["fields"].get("currency") or "SGD"
+    currency = shop_currency(context["business"]["fields"])
     for line in reading.lines:
         name, fuzzy = alias(line.item, names) if names else (line.item, False)
         # A till slip with counts but no money column: price it from the saved menu, so the
@@ -290,7 +291,7 @@ async def prepare_day(business_id: str, body: DayClose, request: Request) -> dic
     if not business:
         raise HTTPException(404, "Business not found.")
     fields = business["fields"]
-    currency = fields.get("currency") or "SGD"
+    currency = shop_currency(fields)
     try:
         day = (
             date.fromisoformat(body.date).isoformat()

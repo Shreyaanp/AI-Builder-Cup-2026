@@ -36,6 +36,7 @@ from .limits import client_ip, enforce_limits
 from .maps_grounding import AreaAnswer, AreaGrounding, is_area_question
 from .merchant import MerchantRepository
 from .money import exponent
+from .region import money_text, region_at, region_rule
 from .reply_language import written_language
 from .rescue_feed import live_rescues
 from .search_engine import (
@@ -291,12 +292,21 @@ Reply in JSON matching the schema. Rules:
 - halal / vegetarian / open_now: true only if asked.
 - locally_made: true only if they want home-made, handmade, made in-house or local makers.
 - summary: one short friendly line, in {language}, restating what you will look for.
-- followups: up to 3 short refinements in {language} (e.g. "Open now", "Under ₹100").
+- followups: up to 3 short refinements in {language} (e.g. "Open now", "Under {under}").
 - sort: "price" if they want it cheaper, "distance" if closer; near: "transit" if they want it
   near a train/metro/MRT station; deals: true if they ask for deals or discounts.
 - area: true if they ask about the area itself (parking, toilets, what is open around, how to
   get somewhere, the best places nearby), not only for a product.
+{region}
 {context}Request: {q}"""
+
+
+def ask_region(lat: float, lng: float) -> dict[str, str]:
+    """The customer's region for the Ask prompt: its money and examples (never S$ in India)."""
+    region = region_at(lat, lng)
+    budget = round(region.ask_budget * 10 ** exponent(region.currency))
+    return {"region": region_rule(region), "under": money_text(budget, region.currency)}
+
 
 CONTEXT = """This message continues a conversation. The earlier search was (JSON): {intent}
 If the new request only refines it ("cheaper?", "open now?", "near the MRT?"), keep its keywords,
@@ -486,6 +496,7 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
                     language=written_language(body.language),
+                    **ask_region(body.lat, body.lng),
                     context=(
                         CONTEXT.format(intent=body.context.model_dump_json(exclude={"followups"}))
                         if body.context
@@ -665,6 +676,7 @@ async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
                     language=written_language(body.language),
+                    **ask_region(body.lat, body.lng),
                     context=(
                         CONTEXT.format(intent=body.context.model_dump_json(exclude={"followups"}))
                         if body.context

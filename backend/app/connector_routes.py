@@ -38,8 +38,9 @@ from .imports import (
 from .limits import enforce_limits
 from .merchant import ProductFields, ProposalRequest
 from .merchant_routes import consented_owner, owner, store
-from .money import DEFAULT_CURRENCY, to_minor
+from .money import to_minor
 from .product_categories import suggest_category
+from .region import shop_currency
 from .sales import daily_sales
 
 router = APIRouter(prefix="/api/v1/businesses/{business_id}/connect")
@@ -169,7 +170,7 @@ async def analyze_export(
     # Compute diff for menu exports
     diff = None
     if mapping.kind == "menu":
-        currency = business["fields"].get("currency") or DEFAULT_CURRENCY
+        currency = shop_currency(business["fields"])
         _, _, col_map = apply_mapping(mapping, headers, rows)
         mapped_items, _ = menu_items(rows, col_map)
         diff = compute_diff(context["inventory"], mapped_items, currency=currency)
@@ -255,7 +256,7 @@ async def sync_export(
     now = time.time()
     await anyio.to_thread.run_sync(service.record_connector_sync, uid, business_id, resolved_source)
 
-    currency = business["fields"].get("currency") or DEFAULT_CURRENCY
+    currency = shop_currency(business["fields"])
 
     # Sales export path
     if mapping.kind == "sales":

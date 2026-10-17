@@ -52,7 +52,7 @@ def test_written_language_names_hindi_its_script_and_what_it_is_not() -> None:
         hindi_pinned(written_language(tag))
     marathi = written_language("mr")
     assert "Marathi (mr-IN)" in marathi and "Devanagari" in marathi and "not Hindi" in marathi
-    assert written_language("ta") == "Tamil (ta-IN), in Tamil script"
+    assert written_language("ta").startswith("Tamil (ta-IN), in Tamil script; standard Tamil")
     assert written_language("en") == "English (en-US)"
     assert written_language("bho") == "English (en-US)"  # never a reply language
 

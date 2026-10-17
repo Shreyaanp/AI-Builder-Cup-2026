@@ -3042,7 +3042,7 @@ export interface components {
             min_order: string;
             /**
              * Timezone
-             * @default Asia/Singapore
+             * @default
              */
             timezone: string;
             /**
@@ -3074,7 +3074,7 @@ export interface components {
             stamps_needed: number;
             /**
              * Currency
-             * @default SGD
+             * @default
              */
             currency: string;
             /** Halal */
@@ -3104,8 +3104,13 @@ export interface components {
              * @default
              */
             upi_id: string;
+            /**
+             * Paynow Id
+             * @default
+             */
+            paynow_id: string;
             /** Rider Providers */
-            rider_providers?: ("rapido" | "uber" | "porter")[];
+            rider_providers?: ("rapido" | "uber" | "porter" | "grab" | "gojek" | "lalamove")[] | null;
             /**
              * Busy Hours
              * @default
