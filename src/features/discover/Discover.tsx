@@ -3,13 +3,9 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardActionArea,
   Chip,
   CircularProgress,
-  FormControlLabel,
   Stack,
-  Switch,
   TextField,
   Typography,
   useTheme,
@@ -17,19 +13,20 @@ import {
 import { ArrowLeft, MapPin, Search } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { loadScriptFont } from '../../i18n/fonts'
-import { enterRise, motion, shape } from '../../design/theme'
+import { motion } from '../../design/theme'
 import { BrandSplash } from '../frontdoors/Splash'
-import { PlaceImage } from '../frontdoors/PlaceImage'
 import { useFrontCopy } from '../frontdoors/strings'
 import { BadgeRow } from '../rewards/Rewards'
 import { useRewards } from '../rewards/storage'
 import { customerNavigate } from '../frontdoors/navigation'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { Sheet } from '../v1/Sheet'
-import { formatPrice } from '../v1/format'
+import { PickCard, PickList } from './AnswerCards'
+import { useConversationCopy } from './conversationCopy'
+import { useRewardCopy } from '../rewards/strings'
+import type { AskPick } from './askThread'
 import { discoverCopy } from './strings'
 import { areaCurrency, ensureDemoWorld } from './demoWorld'
-import { locallyMadeLabel } from '../public/locallyMade'
 import { PlaceSearch } from './PlaceSearch'
 import type { FoundPlace } from './PlaceSearch'
 import { mapsLink } from './types'
@@ -150,8 +147,10 @@ export default function Discover({
   const [selected, setSelected] = useState<Usual | null>(null)
   const [usuals, setUsuals] = useState(readUsuals)
   const [interestsActive, setInterestsActive] = useState(interests.length > 0)
-  const [scarcityNote, setScarcityNote] = useState(false)
   const [lat, lng] = filters.place ? [filters.place.lat, filters.place.lng] : areas[filters.area]
+  const currency = areaCurrency(lat, lng, filters.place?.label ?? filters.area)
+  const conversation = useConversationCopy(currency)
+  const rewardCopy = useRewardCopy()
   useEffect(() => {
     if (filters.place) onLocationChange?.({ gps: null, place: filters.place })
   }, [filters.place, onLocationChange])
@@ -331,6 +330,25 @@ export default function Discover({
     const key = categories.find((category) => matchesInterest(value, category))
     return key ? t[key] : value.replaceAll('_', ' ')
   }
+  /** A discovery place as the Ask home's shop row takes it. */
+  function asPick(place: Place): AskPick {
+    return { ...place, currency: place.currency ?? currency, matched: [], score: 0, reasons: [] }
+  }
+  function detailsText(place: Place) {
+    const stamps = rewards.data.shops[place.id]?.stamps ?? 0
+    return [
+      categoryText(place.category),
+      place.source === 'google' ? t.google : null,
+      stamps > 0
+        ? rewardCopy.stamps.replace('{count}', new Intl.NumberFormat(locale).format(stamps))
+        : null,
+      place.source === 'google' && place.rating != null
+        ? `★ ${new Intl.NumberFormat(locale).format(place.rating)}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  }
   const controlSx = {
     minHeight: 48,
     maxWidth: '100%',
@@ -343,157 +361,30 @@ export default function Discover({
     <Box
       component="main"
       sx={{
-        maxWidth: 1100,
+        maxWidth: 720,
         mx: 'auto',
-        px: { xs: 4, md: 8 },
-        pt: 6,
+        px: 4,
+        pt: 3,
         pb: 'max(24px, env(safe-area-inset-bottom))',
         color: roles.onSurface,
         '--customer-spring': motion.easing.spring,
       }}
     >
-      <Stack spacing={5}>
-        <Button
-          component="a"
-          href="/explore/"
-          onClick={customerNavigate}
-          startIcon={<ArrowLeft size={18} />}
-          sx={{ alignSelf: 'flex-start' }}
-        >
-          {front.back}
-        </Button>
-        <Typography variant="headlineLarge" component="h1">
+      <Stack spacing={3}>
+        <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 48, pr: 14 }}>
+          <Button
+            component="a"
+            href="/explore/"
+            onClick={customerNavigate}
+            startIcon={<ArrowLeft size={18} />}
+            sx={{ minHeight: 48, ml: -2 }}
+          >
+            {front.back}
+          </Button>
+        </Box>
+        <Typography variant="headlineMedium" component="h1">
           {t.title}
         </Typography>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: {
-              xs: 'repeat(2, minmax(0, 1fr))',
-              md: 'repeat(4, minmax(0, 1fr))',
-            },
-            gap: 3,
-          }}
-        >
-          {[
-            {
-              label: front.openNear,
-              action: () => setFilters({ ...filters, open: !filters.open }),
-              active: filters.open,
-              image: 'kopi',
-            },
-            {
-              label: front.today,
-              action: () =>
-                document.getElementById('trending-row')?.scrollIntoView({
-                  block: 'center',
-                  behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
-                    ? 'instant'
-                    : 'smooth',
-                }),
-              active: false,
-              image: 'hawker',
-            },
-            {
-              label: front.soon,
-              action: () => setScarcityNote(!scarcityNote),
-              active: scarcityNote,
-              image: 'grocery',
-            },
-            {
-              label: `${t.bakery} · ${front.all}`,
-              action: () =>
-                setFilters({ ...filters, category: filters.category === 'bakery' ? '' : 'bakery' }),
-              active: filters.category === 'bakery',
-              image: 'bakery',
-            },
-          ].map((tile, i) => (
-            <Button
-              className="customer-tile"
-              key={tile.label}
-              aria-pressed={tile.active}
-              onClick={tile.action}
-              sx={{
-                '--tile-index': i,
-                aspectRatio: '1',
-                minWidth: 0,
-                p: 4,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                borderRadius: `${i === 0 ? shape.xl : shape.lg}px`,
-                bgcolor: tile.active ? roles.primaryContainer : roles.surfaceContainerHigh,
-                color: tile.active ? roles.onPrimaryContainer : roles.onSurface,
-                textAlign: 'start',
-              }}
-            >
-              <Box
-                component="img"
-                src={`/art/category-${tile.image}.svg`}
-                alt=""
-                width={56}
-                height={56}
-                sx={{ width: '40%', height: 'auto', maxWidth: 80, borderRadius: `${shape.md}px` }}
-              />
-              <Typography component="span" variant="titleMedium" sx={{ mt: 2 }}>
-                {tile.label}
-              </Typography>
-            </Button>
-          ))}
-        </Box>
-        {scarcityNote && <Alert severity="info">{front.soonNote}</Alert>}
-        <Box id="trending-row" sx={{ scrollMarginTop: 90 }}>
-          <Typography component="h2" variant="titleLarge">
-            {front.trending}
-          </Typography>
-          <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 3 }}>
-            {front.trendingNote}
-          </Typography>
-          <Box
-            role="region"
-            aria-label={front.trending}
-            tabIndex={0}
-            sx={{
-              display: 'flex',
-              gap: 3,
-              overflowX: 'auto',
-              scrollSnapType: 'x proximity',
-              pb: 3,
-            }}
-          >
-            {places.slice(0, 6).map((place) => (
-              <Card
-                key={place.id}
-                variant="outlined"
-                sx={{ flex: '0 0 240px', borderRadius: `${shape.lg}px`, scrollSnapAlign: 'start' }}
-              >
-                <CardActionArea
-                  {...(place.source === 'chalkboard'
-                    ? { component: 'a', href: `/explore/s/${encodeURIComponent(place.id)}` }
-                    : {})}
-                  onClick={(event: React.MouseEvent<HTMLElement>) => {
-                    if (place.source === 'chalkboard') {
-                      remember(place)
-                      customerNavigate(event)
-                    } else openPlace(place)
-                  }}
-                  aria-label={`${front.trending} · ${place.name}`}
-                >
-                  <PlaceImage
-                    id={place.id}
-                    category={place.category}
-                    photo={place.photo_url}
-                    authors={place.photo_authors}
-                  />
-                  <Typography component="p" variant="titleMedium" sx={{ p: 3 }}>
-                    {place.name}
-                  </Typography>
-                </CardActionArea>
-              </Card>
-            ))}
-          </Box>
-        </Box>
         <Stack
           component="form"
           direction="row"
@@ -518,7 +409,7 @@ export default function Discover({
             type="submit"
             variant="contained"
             aria-label={t.submit}
-            sx={{ minWidth: 48, px: 3 }}
+            sx={{ minWidth: 56, px: 3, flexShrink: 0 }}
           >
             <Search aria-hidden size={22} />
           </Button>
@@ -533,12 +424,32 @@ export default function Discover({
             top: 'env(safe-area-inset-top)',
             zIndex: 2,
             bgcolor: roles.surface,
+            scrollbarWidth: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
           }}
         >
+          {[
+            { label: t.open, on: filters.open, set: (open: boolean) => ({ open }) },
+            { label: t.halal, on: filters.halal, set: (halal: boolean) => ({ halal }) },
+            { label: t.budget, on: filters.budget, set: (budget: boolean) => ({ budget }) },
+          ].map((toggle) => (
+            <Chip
+              key={toggle.label}
+              role="switch"
+              aria-checked={toggle.on}
+              label={toggle.label}
+              clickable
+              variant={toggle.on ? 'filled' : 'outlined'}
+              color={toggle.on ? 'primary' : 'default'}
+              sx={{ ...controlSx, flexShrink: 0 }}
+              onClick={() => setFilters({ ...filters, ...toggle.set(!toggle.on) })}
+            />
+          ))}
           <Chip
             label={front.all}
             clickable
             aria-pressed={!filters.category && !interestsActive}
+            color={!filters.category && !interestsActive ? 'primary' : 'default'}
             sx={{ ...controlSx, flexShrink: 0 }}
             onClick={() => {
               setInterestsActive(false)
@@ -559,35 +470,6 @@ export default function Discover({
               }}
             />
           ))}
-        </Stack>
-        <Stack direction="row" sx={{ flexWrap: 'wrap', columnGap: 4 }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={filters.open}
-                onChange={(_, open) => setFilters({ ...filters, open })}
-              />
-            }
-            label={t.open}
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={filters.halal}
-                onChange={(_, halal) => setFilters({ ...filters, halal })}
-              />
-            }
-            label={t.halal}
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={filters.budget}
-                onChange={(_, budget) => setFilters({ ...filters, budget })}
-              />
-            }
-            label={t.budget}
-          />
         </Stack>
         {filters.place && !changingArea ? (
           <Stack direction="row" sx={{ alignItems: 'center', gap: 2, flexWrap: 'wrap', py: 1 }}>
@@ -749,170 +631,25 @@ export default function Discover({
             )}
           </Stack>
         </Sheet>
-        {status === 'ready' && (
-          <Box
-            component="ul"
-            sx={{
-              p: 0,
-              m: 0,
-              listStyle: 'none',
-              display: 'grid',
-              gap: 4,
-              gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
-            }}
-          >
-            {places.map((place) => (
-              <Card
-                component="li"
-                variant="outlined"
+        {status === 'ready' && places.length > 0 && (
+          <PickList label={t.title}>
+            {places.map((place, index) => (
+              <PickCard
                 key={place.id}
-                sx={{
-                  borderRadius: `${shape.lg}px`,
-                  bgcolor: roles.surfaceContainerLow,
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  ...enterRise,
+                pick={asPick(place)}
+                index={index}
+                anchor={null}
+                copy={conversation}
+                locale={locale}
+                numbered={false}
+                details={detailsText(place)}
+                onOpen={() => {
+                  if (place.source === 'chalkboard') remember(place)
+                  else openPlace(place)
                 }}
-              >
-                <CardActionArea
-                  {...(place.source === 'chalkboard'
-                    ? { component: 'a', href: `/explore/s/${encodeURIComponent(place.id)}` }
-                    : {})}
-                  onClick={(event: React.MouseEvent<HTMLElement>) => {
-                    if (place.source === 'chalkboard') {
-                      remember(place)
-                      customerNavigate(event)
-                    } else openPlace(place)
-                  }}
-                  sx={{
-                    height: '100%',
-                    minHeight: 48,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'stretch',
-                    textAlign: 'start',
-                    justifyContent: 'flex-start',
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: '100%',
-                      aspectRatio: '16/9',
-                      maxHeight: 160,
-                      overflow: 'hidden',
-                      position: 'relative',
-                      bgcolor: roles.surfaceContainerHigh,
-                    }}
-                  >
-                    <PlaceImage
-                      id={place.id}
-                      category={place.category}
-                      photo={place.photo_url}
-                      authors={place.photo_authors}
-                      transition
-                      compact
-                    />
-                  </Box>
-                  <Stack spacing={1} sx={{ p: 2.5, flex: 1, minWidth: 0, width: '100%' }}>
-                    <Typography
-                      component="h2"
-                      variant="titleMedium"
-                      sx={{
-                        fontWeight: 700,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {place.name}
-                    </Typography>
-                    <Typography
-                      variant="bodyMedium"
-                      color="text.secondary"
-                      sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                    >
-                      {categoryText(place.category)} · {distanceText(place)}
-                    </Typography>
-                    <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-                      <Chip
-                        label={statusText(place)}
-                        size="small"
-                        sx={{
-                          height: 24,
-                          fontWeight: 600,
-                          bgcolor: place.open_now
-                            ? roles.secondaryContainer
-                            : roles.surfaceContainerHigh,
-                          color: place.open_now
-                            ? roles.onSecondaryContainer
-                            : roles.onSurfaceVariant,
-                        }}
-                      />
-                      <Chip
-                        label={place.source === 'google' ? t.google : t.chalkboard}
-                        size="small"
-                        variant="outlined"
-                        sx={{ height: 24 }}
-                      />
-                      {place.demo_shop && (
-                        <Chip
-                          label={t.demoShop}
-                          size="small"
-                          sx={{
-                            height: 24,
-                            bgcolor: roles.tertiaryContainer,
-                            color: roles.onTertiaryContainer,
-                            fontWeight: 600,
-                          }}
-                        />
-                      )}
-                      {place.locally_made && (
-                        <Chip
-                          label={locallyMadeLabel(locale)}
-                          size="small"
-                          sx={{
-                            height: 24,
-                            bgcolor: roles.secondaryContainer,
-                            color: roles.onSecondaryContainer,
-                            fontWeight: 600,
-                          }}
-                        />
-                      )}
-                    </Stack>
-                    {place.items[0] ? (
-                      <Typography
-                        variant="bodySmall"
-                        color="text.secondary"
-                        sx={{
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {place.items[0].name} ·{' '}
-                        {formatPrice(
-                          place.items[0].price,
-                          place.currency ??
-                            areaCurrency(lat, lng, filters.place?.label ?? filters.area),
-                          locale,
-                        )}
-                      </Typography>
-                    ) : place.source === 'google' && place.rating != null ? (
-                      <Typography
-                        variant="bodySmall"
-                        color="text.secondary"
-                        sx={{ fontVariantNumeric: 'tabular-nums' }}
-                      >
-                        ★ {new Intl.NumberFormat(locale).format(place.rating)} (
-                        {new Intl.NumberFormat(locale).format(place.user_rating_count ?? 0)})
-                      </Typography>
-                    ) : null}
-                  </Stack>
-                </CardActionArea>
-              </Card>
+              />
             ))}
-          </Box>
+          </PickList>
         )}
       </Stack>
       <Sheet

@@ -77,7 +77,7 @@ test('search, category, open-now, sold-out and anonymous customer page', async (
   await expect(card).toBeVisible()
   // Cards show the first dish only; sold-out detail lives on the shop page.
   await expect(card).toContainText('Teh tarik')
-  await expect(card).toContainText('S$2.20')
+  await expect(card).toContainText(/\$2\.20/)
   await expect(card).toContainText('Open now')
   expect(await card.getAttribute('href')).toBe(`/explore/s/${id}`)
   await card.click()
