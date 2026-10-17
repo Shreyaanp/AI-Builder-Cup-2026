@@ -269,7 +269,7 @@ async def update_shop(
     went_live = await anyio.to_thread.run_sync(go_live, ctx)
     if went_live:
         result["went_live"] = True
-    return {**result, **progress(ctx.new_shop_draft)}
+    return {**result, **progress(ctx.new_shop_draft), "speak": NO_REPEAT}
 
 
 # Owner words that end the conversation ("bas", "ho gaya", "that's all", "bye").
@@ -362,6 +362,12 @@ def _sync_live(ctx: MerchantContext, bid: str, fields: BusinessFields) -> None:
     ctx.store.commit(ctx.uid, proposal["id"], proposal["digest"])
 
 
+# Live check (17 Oct): the voice model asked its question, opened the camera, and asked it again
+# when the tool answered; the owner heard the same question twice.
+NO_REPEAT = (
+    "If you already said your question in this turn, say nothing more: never repeat it."
+    " Otherwise ask the next missing thing once."
+)
 STEP_NOTES: dict[str, str] = {
     "location": "The map card opens and asks the phone for its location; wait for the pin.",
     "camera": "The camera card opens with a big Skip; wait for the photo or the skip.",
@@ -382,4 +388,8 @@ def show_step(step: Step) -> dict[str, Any]:
     if step not in STEP_NOTES:
         return {"status": "invalid", "instruction": f"step: one of {', '.join(STEP_NOTES)}"}
     card_id = _card(ctx, "action", {"target": "new_shop_step", "step": step})
-    return {"status": "opened", "card_id": card_id, "instruction": STEP_NOTES[step]}
+    return {
+        "status": "opened",
+        "card_id": card_id,
+        "instruction": f"{STEP_NOTES[step]} {NO_REPEAT}",
+    }

@@ -291,3 +291,18 @@ def test_voice_resume_after_a_drop_is_silent_and_continues_the_conversation(
             assert live["kind"] == "draft" and live["data"]["live_id"]
             ws.send_json({"kind": "close"})
         assert len(client.get("/api/v1/businesses").json()) == 1
+
+
+def test_tools_tell_the_voice_model_never_to_repeat_its_question(tmp_path: Path) -> None:
+    """Live check (17 Oct): "क्या आप दुकान की फोटो खींच सकते हैं?", show_step camera, then
+    "आप दुकान की फोटो खींच सकते हैं?" again."""
+    from app.new_shop_tools import NO_REPEAT, show_step
+
+    ctx = context(tmp_path)
+    token = current.set(ctx)
+    try:
+        opened = show_step("camera")
+    finally:
+        current.reset(token)
+    assert NO_REPEAT in opened["instruction"] and "never repeat" in NO_REPEAT
+    assert "call update_shop / show_step FIRST" in NEW_SHOP_INSTRUCTION
