@@ -135,6 +135,12 @@ top bar replaces the floating pickers) main's side won. The release's own change
 `S$2.20`, which is stricter than main's `$2.20` check. While #104 conflicted, GitHub ran no CI on
 it.
 
+Main's own CI was red on c441078a for two things, both fixed here: the Today specs (the clock pin
+above), and `front-door-layout.spec.ts` "thumb-zone dock". #105 moved the suggestion chips into
+the page under the cards on purpose, but that spec still expected them above the composer. It now
+checks what the design needs: each chip is a 48px target, in the lower half of the screen, wholly
+on screen when scrolled to, and not covered by the dock or nav.
+
 ## Not done / for later
 
 - The five Gemini modules in the voice baseline need `language_rule(reply_language(tag))`.
