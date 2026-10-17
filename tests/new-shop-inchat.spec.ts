@@ -51,14 +51,18 @@ for (const scheme of ['light', 'dark'] as const) {
     await audit(page)
     await page.screenshot({ path: name('camera-1-ask', scheme, isMobile) })
     await camera.getByRole('button', { name: 'Open camera' }).click()
-    await expect(camera).toHaveAttribute('data-phase', 'live')
-    // The camera opens next to the voice session: the mic controls stay and keep working.
-    await expect(page.getByRole('button', { name: 'Pause the mic' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
+    // The camera takes the whole screen; the card stays behind as the entry point.
+    const modal = page.getByTestId('camera-modal')
+    await expect(modal).toHaveAttribute('data-phase', 'live')
+    // The camera opens next to the voice session: the mic controls keep working behind it.
+    await expect(
+      page.getByRole('button', { name: 'Pause the mic', includeHidden: true }),
+    ).toHaveAttribute('aria-pressed', 'false')
     await audit(page)
     await page.screenshot({ path: name('camera-2-viewfinder', scheme, isMobile) })
+    await modal.getByRole('button', { name: 'Close camera' }).click()
+    await expect(modal).toHaveCount(0)
+    await expect(camera).toHaveAttribute('data-phase', 'ask')
     await camera.getByRole('button', { name: 'Close camera' }).click()
     await expect(camera).toHaveCount(0)
 
