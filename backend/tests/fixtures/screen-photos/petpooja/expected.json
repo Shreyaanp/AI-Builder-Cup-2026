@@ -1,0 +1,57 @@
+{
+  "source_app": "Petpooja",
+  "currency": "INR",
+  "page_kind": "screen",
+  "tables": [
+    {
+      "header_row": [
+        "name",
+        "sku",
+        "category",
+        "price",
+        "qty",
+        "date",
+        "total"
+      ],
+      "rows": [
+        {
+          "name": {
+            "value": "Mango Lassi",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "sku": {
+            "value": "ML01",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "category": {
+            "value": "Drinks",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "price": {
+            "value": "65",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "qty": {
+            "value": null,
+            "confidence": 0,
+            "unreadable": false
+          },
+          "date": {
+            "value": null,
+            "confidence": 0,
+            "unreadable": false
+          },
+          "total": {
+            "value": null,
+            "confidence": 0,
+            "unreadable": false
+          }
+        }
+      ]
+    }
+  ]
+}

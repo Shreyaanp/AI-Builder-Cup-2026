@@ -3496,6 +3496,18 @@ export interface components {
             } | null;
             /** Warnings */
             warnings?: string[];
+            /** Photo Content */
+            photo_content?: string | null;
+            /** Photo Readings */
+            photo_readings?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Cell Flags */
+            cell_flags?: {
+                [key: string]: unknown;
+            }[];
+            /** Detected Currency */
+            detected_currency?: string | null;
         };
         /** ConsentRequest */
         ConsentRequest: {
