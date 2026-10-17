@@ -281,6 +281,7 @@ for (const mode of ['light', 'dark'] as const) {
       await customer.getByRole('textbox', { name: 'Ask about anything nearby' }).fill('tea')
       await customer.getByRole('button', { name: 'Send', exact: true }).click()
       await customer.getByRole('link', { name: 'Browse everything nearby' }).click()
+      await customer.getByRole('button', { name: 'Change area' }).click()
       await expect(customer.getByRole('textbox', { name: 'City or area' })).toHaveValue('Delhi')
       await customer.getByRole('link', { name: 'Back', exact: true }).click()
       await expect(customer.getByRole('button', { name: /^Area: Delhi/ })).toBeVisible()

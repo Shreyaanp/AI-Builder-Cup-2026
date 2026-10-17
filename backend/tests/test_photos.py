@@ -189,3 +189,24 @@ async def test_moderation_and_extraction_run_together_and_a_block_wins() -> None
     with pytest.raises(PhotoRejected) as blocked:
         await pipeline.process("u", None, jpeg())
     assert blocked.value.code == "PHOTO_BLOCKED"
+
+
+def test_classify_names_the_kind_and_saves_nothing(app) -> None:
+    with TestClient(app) as client:
+        join(client)
+        kinds = {21: "shop_photo", 22: "product", 23: "receipt", 24: "till", 25: "other"}
+        kinds[64] = "menu"
+        for width, kind in kinds.items():
+            sent = client.post(
+                "/api/v1/photos/classify",
+                content=jpeg(width),
+                headers={"content-type": "image/jpeg"},
+            )
+            assert sent.json() == {"kind": kind}
+        blocked = client.post(
+            "/api/v1/photos/classify",
+            content=jpeg(FIXTURE_BLOCK_WIDTH),
+            headers={"content-type": "image/jpeg"},
+        )
+        assert blocked.status_code == 422
+        assert client.get("/api/v1/businesses").json() == []

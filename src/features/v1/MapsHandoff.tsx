@@ -10,6 +10,7 @@ import { formatPrice } from './format'
 import { useInChatCopy } from './inChatCopy'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
+import { shopRegion } from '../../region/region'
 
 /**
  * Google's own "search" Maps URL (developers.google.com/maps/documentation/urls). With
@@ -55,7 +56,10 @@ function placeDetails(
       `${t.products}: ` +
         products
           .slice(0, 12)
-          .map((p) => `${p.name} ${formatPrice(p.price, fields.currency ?? 'SGD')}`)
+          .map(
+            (p) =>
+              `${p.name} ${formatPrice(p.price, fields.currency || shopRegion(fields).currency)}`,
+          )
           .join(', '),
   ]
     .filter(Boolean)

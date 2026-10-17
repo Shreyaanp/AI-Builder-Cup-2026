@@ -77,7 +77,7 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
         maxWidth: 720,
         mx: 'auto',
         px: 4,
-        pt: 'max(20px, env(safe-area-inset-top))',
+        pt: 1,
         pb: 'calc(120px + env(safe-area-inset-bottom))',
         minHeight: '100dvh',
       }}
@@ -89,7 +89,6 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
           gap: 2,
           flexWrap: 'wrap',
           minHeight: 56,
-          pr: { xs: 0, sm: '104px' },
         }}
       >
         <Typography
