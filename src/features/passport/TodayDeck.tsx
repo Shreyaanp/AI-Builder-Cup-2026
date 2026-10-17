@@ -27,6 +27,7 @@ import type { PassportStrings } from './copy'
 import { usePassport } from './store'
 import { openedShops } from '../discover/opened'
 import { countdown as left } from '../customer/countdown'
+import { distanceText } from '../customer/distanceText'
 
 type Feed = components['schemas']['TodayFeed']
 type Find = components['schemas']['Find']
@@ -94,14 +95,6 @@ function useNow(active: boolean) {
     return () => clearInterval(timer)
   }, [active])
   return now
-}
-
-function distanceText(m: number, locale: string) {
-  return new Intl.NumberFormat(locale, {
-    style: 'unit',
-    unit: m < 1000 ? 'meter' : 'kilometer',
-    maximumFractionDigits: 1,
-  }).format(m < 1000 ? Math.round(m / 10) * 10 : m / 1000)
 }
 
 function when(daysAgo: number, locale: string) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { components } from '../../api/generated'
 
 export { countdown } from '../customer/countdown'
+export { distanceText } from '../customer/distanceText'
 
 export type Deal = components['schemas']['Deal']
 export type PublicRescue = components['schemas']['PublicRescue']
@@ -95,12 +96,4 @@ export function clock(seconds: number, locale: string, timeZone?: string) {
   return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone }).format(
     seconds * 1000,
   )
-}
-
-export function distanceText(m: number, locale: string) {
-  return new Intl.NumberFormat(locale, {
-    style: 'unit',
-    unit: m < 1000 ? 'meter' : 'kilometer',
-    maximumFractionDigits: 1,
-  }).format(m < 1000 ? Math.round(m / 10) * 10 : m / 1000)
 }
