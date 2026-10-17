@@ -289,7 +289,7 @@ def region(currency: str) -> Region:
     )
 
 
-def area_currency(lat: float, lng: float, fallback: str = "SGD") -> str:
+def area_currency(lat: float, lng: float, fallback: str) -> str:
     """Choose a known area's currency from its region profile, not the visitor's device."""
     nearest = min(
         REGIONS.items(),
