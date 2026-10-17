@@ -82,6 +82,8 @@ def nearby(
     for shop in shops:
         if shop.get("lat") is None or shop.get("lng") is None:
             continue
+        if not rescue.is_food_or_perishable(shop.get("category", "")):
+            continue
         d = distance(lat, lng, shop["lat"], shop["lng"])
         if d > radius:
             continue
