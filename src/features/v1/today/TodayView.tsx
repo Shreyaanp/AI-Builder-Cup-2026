@@ -519,6 +519,7 @@ function NeedRow({
       component="li"
       data-need={need.kind}
       aria-hidden={leaving || undefined}
+      inert={leaving || undefined}
       sx={{
         display: 'flex',
         flexWrap: 'wrap',

@@ -948,8 +948,7 @@ function CoachScreen({
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height:
-          'calc(100dvh - 64px - var(--nav-offset, 0px) - 12px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+        height: '100%',
         minHeight: 0,
         maxWidth: 760,
         mx: 'auto',
@@ -1054,14 +1053,22 @@ function CoachScreen({
                   color={kind === sorting.guess ? 'primary' : 'default'}
                   variant={kind === sorting.guess ? 'filled' : 'outlined'}
                   onClick={() => routePhoto(kind)}
-                  sx={{ height: 40 }}
+                  sx={{
+                    minHeight: 48,
+                    height: 'auto',
+                    '& .MuiChip-label': { whiteSpace: 'normal', py: 2 },
+                  }}
                 />
               ))}
               <Chip
                 label={routeText.notNow}
                 variant="outlined"
                 onClick={() => setSorting(null)}
-                sx={{ height: 40 }}
+                sx={{
+                  minHeight: 48,
+                  height: 'auto',
+                  '& .MuiChip-label': { whiteSpace: 'normal', py: 2 },
+                }}
               />
             </Stack>
           </Alert>
