@@ -173,6 +173,29 @@ test('B10: empty recap is compact, has no empty headings and uses a date range',
   await proof(page, 'B10')
 })
 
+test('#149: radar with omitted opportunities shows an empty sheet', async ({ page }) => {
+  await enter(page)
+  await page.route('**/api/v1/businesses/*/radar', (route) =>
+    route.fulfill({
+      json: { area_label: null, approximate: true, radius: 2000, days: 14, demo: false },
+    }),
+  )
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  const tile = page.getByRole('button', { name: /^Asked nearby/ })
+  await expect(tile).toBeVisible()
+  await tile.click()
+  await expect(page.getByRole('dialog', { name: 'Asked nearby' })).toBeVisible()
+})
+
+test('#150: recap with omitted recap_week stays hidden', async ({ page }) => {
+  await enter(page)
+  await page.route('**/api/v1/businesses/*/freshness', (route) =>
+    route.fulfill({ json: { today: '2026-10-14', last_confirmed: null, monday: false } }),
+  )
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  await expect(page.getByRole('button', { name: /^Weekly recap/ })).toHaveCount(0)
+})
+
 for (const mode of ['offline', 'gemini']) {
   test(`B10: ${mode} recap has exactly one truthful source label`, async ({ page }) => {
     await enter(page)
