@@ -120,7 +120,7 @@ export function ChatList() {
       <Typography
         component="h1"
         variant="headlineMedium"
-        sx={{ pt: 'calc(env(safe-area-inset-top) + 16px)', pb: 2, px: 1, fontWeight: 600 }}
+        sx={{ pt: 1, pb: 2, px: 1, fontWeight: 600 }}
       >
         {t.chatsTitle}
       </Typography>
@@ -464,7 +464,6 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
           zIndex: 3,
           alignItems: 'center',
           px: 1,
-          pr: '60px',
           pt: 'calc(env(safe-area-inset-top) + 8px)',
           pb: 1,
           bgcolor: roles.surfaceContainer,

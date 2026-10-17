@@ -170,6 +170,47 @@
   animation-timing-function: var(--c-ease);
 }
 
+/* Page motion, like a native stack: forward pushes the new page in from the end edge while
+   the old one drifts back; back reverses it; a tab switch keeps the default cross-fade. The
+   bars keep their own names, so they hold still while the page moves under them. */
+.c-nav {
+  view-transition-name: customer-nav;
+}
+html[data-nav='forward']::view-transition-old(root) {
+  animation: c-page-out 220ms var(--c-ease) both;
+}
+html[data-nav='forward']::view-transition-new(root) {
+  animation: c-page-in 320ms var(--c-ease) both;
+}
+html[data-nav='back']::view-transition-old(root) {
+  /* The page being left slides back out to the end edge. */
+  animation: c-page-in 220ms var(--c-ease) both reverse;
+}
+html[data-nav='back']::view-transition-new(root) {
+  animation: c-page-back-in 320ms var(--c-ease) both;
+}
+@keyframes c-page-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--c-push, 48px));
+  }
+}
+@keyframes c-page-out {
+  to {
+    opacity: 0;
+    transform: translateX(calc(var(--c-push, 48px) * -0.4));
+  }
+}
+@keyframes c-page-back-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--c-push, 48px) * -0.4));
+  }
+}
+html[dir='rtl'] {
+  --c-push: -48px;
+}
+
 /* Typing on a phone: the composer takes the navigation bar's place on the keyboard. */
 html[data-typing] .c-nav {
   visibility: hidden;

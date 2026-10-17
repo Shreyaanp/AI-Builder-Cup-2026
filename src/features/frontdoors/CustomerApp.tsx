@@ -1,8 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { Box, CssBaseline, Dialog, ThemeProvider, useTheme } from '@mui/material'
 import { customerTheme } from '../../design/customerTheme'
-import { AppearanceToggle } from './AppearanceToggle'
-import { LanguagePicker } from './LanguagePicker'
 import type { FoundPlace } from '../discover/PlaceSearch'
 import { useFrontCopy } from './strings'
 import { BrandSplash } from './Splash'
@@ -13,7 +11,7 @@ import { LanguageStep } from '../language/LanguageStep'
 import { useNeedsLanguage } from '../language/needsLanguage'
 import { CustomerNav } from '../customer/CustomerNav'
 import type { CustomerTab } from '../customer/CustomerNav'
-import { ProfileButton } from '../customer/Profile'
+import { CustomerTopBar } from '../customer/TopBar'
 
 const Discover = lazy(() => import('../discover/Discover'))
 const AskHome = lazy(() => import('../discover/AskHome'))
@@ -112,13 +110,8 @@ function CustomerPages() {
       <a href="#customer-content" className="skip-link">
         {t.skip}
       </a>
-      {/* The Ask front door carries these in its own header row; shop page has them inline; other pages float them. */}
-      {tab !== 'ask' && !id && (
-        <>
-          <LanguagePicker />
-          <AppearanceToggle />
-        </>
-      )}
+      {/* The Ask front door, a shop and a chat thread carry these in their own header rows. */}
+      {tab !== 'ask' && !id && !thread && <CustomerTopBar back={browse && !tab} />}
       <div id="customer-content" tabIndex={-1}>
         <Suspense fallback={<BrandSplash />}>
           {thread ? (
@@ -142,12 +135,7 @@ function CustomerPages() {
           )}
         </Suspense>
       </div>
-      {tab && (
-        <>
-          {tab !== 'ask' && <ProfileButton />}
-          <CustomerNav active={tab} />
-        </>
-      )}
+      {tab && <CustomerNav active={tab} />}
       {languageStep}
     </>
   )
