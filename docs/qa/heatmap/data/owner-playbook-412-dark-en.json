@@ -1,0 +1,30 @@
+{
+ "label": "owner",
+ "screen": "playbook",
+ "viewport": "412",
+ "theme": "dark",
+ "lang": "en",
+ "marks": 75,
+ "words": 214,
+ "busiest": 3,
+ "busyCells": 0,
+ "accentFamilies": 2,
+ "filledActions": 1,
+ "typeSizes": 8,
+ "weights": 4,
+ "spacingValues": 234,
+ "offGrid": 48,
+ "offValues": [
+  "6px×20",
+  "2px×16",
+  "5px×12"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "horizontalOverflow": false,
+ "clippedCount": 0,
+ "clippedNames": [],
+ "pageHeight": 1056,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

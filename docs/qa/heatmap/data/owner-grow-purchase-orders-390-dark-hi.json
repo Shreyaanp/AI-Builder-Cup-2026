@@ -1,0 +1,34 @@
+{
+ "label": "owner",
+ "screen": "grow-purchase-orders",
+ "viewport": "390",
+ "theme": "dark",
+ "lang": "hi",
+ "marks": 44,
+ "words": 109,
+ "busiest": 2,
+ "busyCells": 0,
+ "accentFamilies": 1,
+ "filledActions": 0,
+ "typeSizes": 6,
+ "weights": 4,
+ "spacingValues": 119,
+ "offGrid": 24,
+ "offValues": [
+  "2px×16",
+  "6px×8"
+ ],
+ "smallTargets": 4,
+ "smallNames": [
+  "button “स्लाइड 1 / 4” 32×32",
+  "button “स्लाइड 2 / 4” 32×32",
+  "button “स्लाइड 3 / 4” 32×32",
+  "button “स्लाइड 4 / 4” 32×32"
+ ],
+ "horizontalOverflow": false,
+ "clippedCount": 0,
+ "clippedNames": [],
+ "pageHeight": 1704,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

@@ -1,0 +1,29 @@
+{
+ "label": "owner",
+ "screen": "grow",
+ "viewport": "412",
+ "theme": "light",
+ "lang": "en",
+ "marks": 56,
+ "words": 83,
+ "busiest": 3,
+ "busyCells": 0,
+ "accentFamilies": 1,
+ "filledActions": 0,
+ "typeSizes": 3,
+ "weights": 3,
+ "spacingValues": 117,
+ "offGrid": 21,
+ "offValues": [
+  "2px×16",
+  "6px×5"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "horizontalOverflow": false,
+ "clippedCount": 0,
+ "clippedNames": [],
+ "pageHeight": 1668,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

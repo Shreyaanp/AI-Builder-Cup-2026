@@ -1,0 +1,41 @@
+{
+ "label": "owner",
+ "screen": "shop-connect",
+ "viewport": "390",
+ "theme": "dark",
+ "lang": "en",
+ "marks": 62,
+ "words": 116,
+ "busiest": 2,
+ "busyCells": 0,
+ "accentFamilies": 3,
+ "filledActions": 2,
+ "typeSizes": 5,
+ "weights": 4,
+ "spacingValues": 190,
+ "offGrid": 36,
+ "offValues": [
+  "2px×21",
+  "6px×13",
+  "5px×2"
+ ],
+ "smallTargets": 9,
+ "smallNames": [
+  "button “Petpooja” 74×44",
+  "button “Tally” 45×44",
+  "button “Zoho” 48×44",
+  "button “Square” 61×44",
+  "button “Shopify” 62×44",
+  "button “SAP” 45×44",
+  "button “Other POS” 83×44",
+  "button “Upload file (.csv, .xlsx, .j” 246×40"
+ ],
+ "horizontalOverflow": false,
+ "clippedCount": 1,
+ "clippedNames": [
+  "div “Upload file (.csv, .xlsx” (+56px)"
+ ],
+ "pageHeight": 1406,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

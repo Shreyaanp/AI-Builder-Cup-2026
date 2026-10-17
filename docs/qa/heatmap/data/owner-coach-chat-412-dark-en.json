@@ -1,0 +1,36 @@
+{
+ "label": "owner",
+ "screen": "coach-chat",
+ "viewport": "412",
+ "theme": "dark",
+ "lang": "en",
+ "marks": 28,
+ "words": 47,
+ "busiest": 1,
+ "busyCells": 0,
+ "accentFamilies": 2,
+ "filledActions": 1,
+ "typeSizes": 5,
+ "weights": 3,
+ "spacingValues": 91,
+ "offGrid": 34,
+ "offValues": [
+  "2px×19",
+  "6px×7",
+  "11px×6",
+  "10px×2"
+ ],
+ "smallTargets": 4,
+ "smallNames": [
+  "button “3 things need you” 177×40",
+  "div “Something sold out?” 181×40",
+  "div “Change a price” 146×40",
+  "div “Share my customer page” 209×40"
+ ],
+ "horizontalOverflow": false,
+ "clippedCount": 0,
+ "clippedNames": [],
+ "pageHeight": 915,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

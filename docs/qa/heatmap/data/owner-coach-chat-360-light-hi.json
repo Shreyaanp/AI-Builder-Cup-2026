@@ -1,0 +1,36 @@
+{
+ "label": "owner",
+ "screen": "coach-chat",
+ "viewport": "360",
+ "theme": "light",
+ "lang": "hi",
+ "marks": 28,
+ "words": 51,
+ "busiest": 1,
+ "busyCells": 0,
+ "accentFamilies": 1,
+ "filledActions": 1,
+ "typeSizes": 5,
+ "weights": 3,
+ "spacingValues": 91,
+ "offGrid": 34,
+ "offValues": [
+  "2px×19",
+  "6px×7",
+  "11px×6",
+  "10px×2"
+ ],
+ "smallTargets": 4,
+ "smallNames": [
+  "button “3 काम आपका इंतज़ार कर रहे है” 243×40",
+  "div “कुछ खत्म हुआ है?” 138×40",
+  "div “दाम बदलें” 95×40",
+  "div “मेरा ग्राहक पेज शेयर करें” 166×40"
+ ],
+ "horizontalOverflow": false,
+ "clippedCount": 0,
+ "clippedNames": [],
+ "pageHeight": 800,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

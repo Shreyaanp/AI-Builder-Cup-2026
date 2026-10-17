@@ -1,0 +1,30 @@
+{
+ "label": "owner",
+ "screen": "grow-your-week",
+ "viewport": "412",
+ "theme": "light",
+ "lang": "en",
+ "marks": 81,
+ "words": 124,
+ "busiest": 4,
+ "busyCells": 1,
+ "accentFamilies": 2,
+ "filledActions": 0,
+ "typeSizes": 9,
+ "weights": 5,
+ "spacingValues": 193,
+ "offGrid": 76,
+ "offValues": [
+  "1px×48",
+  "2px×17",
+  "6px×11"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "horizontalOverflow": false,
+ "clippedCount": 0,
+ "clippedNames": [],
+ "pageHeight": 1668,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

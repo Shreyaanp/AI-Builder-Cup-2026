@@ -1,0 +1,36 @@
+{
+ "label": "owner",
+ "screen": "grow-rescue",
+ "viewport": "412",
+ "theme": "dark",
+ "lang": "en",
+ "marks": 68,
+ "words": 142,
+ "busiest": 3,
+ "busyCells": 0,
+ "accentFamilies": 2,
+ "filledActions": 1,
+ "typeSizes": 6,
+ "weights": 5,
+ "spacingValues": 175,
+ "offGrid": 40,
+ "offValues": [
+  "2px×16",
+  "6px×11",
+  "16.5px×6",
+  "14px×5",
+  "7px×2"
+ ],
+ "smallTargets": 3,
+ "smallNames": [
+  "div “20% off” 82×40",
+  "div “30% off” 84×40",
+  "div “50% off” 83×40"
+ ],
+ "horizontalOverflow": false,
+ "clippedCount": 0,
+ "clippedNames": [],
+ "pageHeight": 1668,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

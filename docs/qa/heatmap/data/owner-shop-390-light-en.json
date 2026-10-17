@@ -1,0 +1,29 @@
+{
+ "label": "owner",
+ "screen": "shop",
+ "viewport": "390",
+ "theme": "light",
+ "lang": "en",
+ "marks": 51,
+ "words": 77,
+ "busiest": 2,
+ "busyCells": 0,
+ "accentFamilies": 2,
+ "filledActions": 2,
+ "typeSizes": 4,
+ "weights": 3,
+ "spacingValues": 137,
+ "offGrid": 29,
+ "offValues": [
+  "2px×18",
+  "6px×11"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "horizontalOverflow": false,
+ "clippedCount": 0,
+ "clippedNames": [],
+ "pageHeight": 1406,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

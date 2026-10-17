@@ -1,0 +1,41 @@
+{
+ "label": "owner",
+ "screen": "shop-connect",
+ "viewport": "360",
+ "theme": "dark",
+ "lang": "hi",
+ "marks": 50,
+ "words": 108,
+ "busiest": 3,
+ "busyCells": 0,
+ "accentFamilies": 3,
+ "filledActions": 2,
+ "typeSizes": 5,
+ "weights": 4,
+ "spacingValues": 163,
+ "offGrid": 36,
+ "offValues": [
+  "2px×21",
+  "6px×13",
+  "5px×2"
+ ],
+ "smallTargets": 9,
+ "smallNames": [
+  "button “Petpooja” 74×44",
+  "button “Tally” 45×44",
+  "button “Zoho” 48×44",
+  "button “Square” 61×44",
+  "button “Shopify” 62×44",
+  "button “SAP” 45×44",
+  "button “Other POS” 83×44",
+  "button “फ़ाइल अपलोड करें (.csv, .xls” 270×40"
+ ],
+ "horizontalOverflow": false,
+ "clippedCount": 1,
+ "clippedNames": [
+  "div “फ़ाइल अपलोड करें (.csv, ” (+86px)"
+ ],
+ "pageHeight": 1610,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

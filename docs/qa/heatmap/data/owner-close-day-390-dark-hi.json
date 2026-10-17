@@ -1,0 +1,29 @@
+{
+ "label": "owner",
+ "screen": "close-day",
+ "viewport": "390",
+ "theme": "dark",
+ "lang": "hi",
+ "marks": 67,
+ "words": 169,
+ "busiest": 3,
+ "busyCells": 0,
+ "accentFamilies": 2,
+ "filledActions": 0,
+ "typeSizes": 5,
+ "weights": 3,
+ "spacingValues": 147,
+ "offGrid": 25,
+ "offValues": [
+  "2px×16",
+  "6px×9"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "horizontalOverflow": false,
+ "clippedCount": 0,
+ "clippedNames": [],
+ "pageHeight": 1704,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

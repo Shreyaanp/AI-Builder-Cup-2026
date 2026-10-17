@@ -1,0 +1,29 @@
+{
+ "label": "owner",
+ "screen": "grow-purchase-orders",
+ "viewport": "360",
+ "theme": "light",
+ "lang": "hi",
+ "marks": 41,
+ "words": 87,
+ "busiest": 3,
+ "busyCells": 0,
+ "accentFamilies": 1,
+ "filledActions": 0,
+ "typeSizes": 5,
+ "weights": 4,
+ "spacingValues": 110,
+ "offGrid": 23,
+ "offValues": [
+  "2px×16",
+  "6px×7"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "horizontalOverflow": false,
+ "clippedCount": 0,
+ "clippedNames": [],
+ "pageHeight": 2008,
+ "contrastIssues": 0,
+ "axeViolations": []
+}

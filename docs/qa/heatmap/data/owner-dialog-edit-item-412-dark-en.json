@@ -1,0 +1,31 @@
+{
+ "label": "owner",
+ "screen": "dialog-edit-item",
+ "viewport": "412",
+ "theme": "dark",
+ "lang": "en",
+ "marks": 76,
+ "words": 99,
+ "busiest": 3,
+ "busyCells": 0,
+ "accentFamilies": 3,
+ "filledActions": 3,
+ "typeSizes": 6,
+ "weights": 4,
+ "spacingValues": 207,
+ "offGrid": 52,
+ "offValues": [
+  "2px×18",
+  "6px×15",
+  "16.5px×10",
+  "14px×9"
+ ],
+ "smallTargets": 0,
+ "smallNames": [],
+ "horizontalOverflow": false,
+ "clippedCount": 0,
+ "clippedNames": [],
+ "pageHeight": 1382,
+ "contrastIssues": 0,
+ "axeViolations": []
+}
