@@ -85,7 +85,11 @@ function GrowTiles() {
   const prep: [string, ReactNode] = ['prep', <PrepPlanTile key="prep" />]
   const close: [string, ReactNode] = ['close_day', <CloseDayTile key="close" />]
   // The shop's playbook decides which tool comes first; without one, the usual order.
-  const cards = byGrowOrder(playbook.kind === 'ready' ? playbook.view.grow : [], [
+  const growOrder =
+    playbook.kind === 'ready' && Array.isArray(playbook.view.grow)
+      ? playbook.view.grow.filter((id): id is string => typeof id === 'string')
+      : []
+  const cards = byGrowOrder(growOrder, [
     ...(evening ? [close, prep] : [prep, close]),
     ['orders', <OrdersTile key="orders" />],
     ['supply', <SupplyTile key="supply" />],
