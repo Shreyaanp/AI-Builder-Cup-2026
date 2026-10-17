@@ -1,5 +1,5 @@
 import { expect, test, type Page, type WebSocketRoute } from '@playwright/test'
-import { ASKED, askedTopics, FIRST_QUESTION, nextQuestion } from './newShopTopics.js'
+import { ASKED, askedTopics, FIRST_QUESTION, nextQuestion, topicOf } from './newShopTopics.js'
 import { enter, localOnly } from './stories/support.js'
 
 // Owner report (17 Oct, Hindi): "connection lost", the same question asked again, the flow stuck,
@@ -167,8 +167,11 @@ test('Hindi: the socket dies right after an answer is saved; voice resumes silen
   for (const done of [ASKED.name, ASKED.kind, ASKED.place, ASKED[firstRest]])
     expect(next).not.toContain(done)
   const said = await log.innerText()
-  for (const question of Object.values(ASKED))
-    expect(said.split(question).length - 1, question).toBeLessThanOrEqual(1)
+  // A question can come twice only when the greeting asked it and the owner answered something
+  // else first (it was still missing); an answered field is never asked again.
+  const greeted = topicOf(said.match(FIRST_QUESTION)![0])
+  for (const [key, question] of Object.entries(ASKED))
+    expect(said.split(question).length - 1, question).toBeLessThanOrEqual(key === greeted ? 2 : 1)
   expect(said).not.toMatch(/menu|pay|delivery|halal/i)
   // One shop, live for customers.
   expect(await (await page.request.get('/api/v1/businesses')).json()).toHaveLength(1)
