@@ -70,7 +70,7 @@ def seed(
         results.append((demo.id, changed))
     from app.demo_supply_seed import seed as seed_supply_chain
 
-    seed_supply_chain(store, seed_owner_uid)
+    seed_supply_chain(store, seed_owner_uid, city)
     return results
 
 

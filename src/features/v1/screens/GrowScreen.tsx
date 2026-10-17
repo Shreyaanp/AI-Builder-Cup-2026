@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, LinearProgress, Stack, Typography, useTheme } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
@@ -7,11 +7,9 @@ import { useIdentity } from '../../../auth/useIdentity'
 import { CloseDayTile } from '../../closeday/CloseDay'
 import { openOwnerFeature } from '../../owner-tools/entry'
 import { useToolCopy } from '../../owner-tools/copy'
-import { PrepPlanTile } from '../../forecast/PrepPlan'
 import { useCopy as usePlanCopy } from '../../planning/strings'
 import { RecapTile } from '../../sales/ShopInsights'
 import { OrdersTile } from '../../sourcing/Orders'
-import { SupplyTile } from '../../supply/Supply'
 import { SupplyHubTile } from '../../supply/SupplyHub'
 import { WeekPulseTile } from '../../analytics/WeekPulse'
 import { growOrderOf } from '../playbook/growOrder'
@@ -31,6 +29,14 @@ import { RescueTile } from '../../owner/RescueTile'
  * Grow: every owner tool as a card with its live one-line status. Cards open the existing
  * screens and flows; the shop playbook decides which tool leads.
  */
+// The prep plan and supply tiles pull in the forecast chart and purchase orders; load them after first paint.
+const PrepPlanTile = lazy(() =>
+  import('../../forecast/PrepPlan').then((m) => ({ default: m.PrepPlanTile })),
+)
+const SupplyTile = lazy(() =>
+  import('../../supply/Supply').then((m) => ({ default: m.SupplyTile })),
+)
+
 export function GrowScreen() {
   const tabs = useTabsCopy()
   const ws = useWorkspace()
@@ -85,13 +91,23 @@ function GrowTiles() {
   const stamps = shop.fields.stamps_needed ?? 8
   // Evenings lead with closing the day; the rest of the day with what to prepare.
   const evening = new Date().getHours() >= 17
-  const prep: [string, ReactNode] = ['prep', <PrepPlanTile key="prep" />]
+  const prep: [string, ReactNode] = [
+    'prep',
+    <Suspense key="prep" fallback={null}>
+      <PrepPlanTile />
+    </Suspense>,
+  ]
   const close: [string, ReactNode] = ['close_day', <CloseDayTile key="close" />]
   // The shop's playbook decides which tool comes first; without one, the usual order.
   const cards = byGrowOrder(growOrderOf(playbook), [
     ...(evening ? [close, prep] : [prep, close]),
     ['orders', <OrdersTile key="orders" />],
-    ['supply', <SupplyTile key="supply" />],
+    [
+      'supply',
+      <Suspense key="supply" fallback={null}>
+        <SupplyTile />
+      </Suspense>,
+    ],
     ['supply_io', <SupplyHubTile key="supply_io" />],
     [
       'plan',

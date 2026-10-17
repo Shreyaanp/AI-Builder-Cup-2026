@@ -172,10 +172,12 @@ def seed_shop(store: MerchantRepository, uid: str, bid: str) -> None:
         supply_outbound.prepare_asn(store, uid, bid, sold["id"], sold["version"])
 
 
-def seed(store: MerchantRepository, uid: str = "demo-world-owner") -> None:
+def seed(store: MerchantRepository, uid: str = "demo-world-owner", city: str | None = None) -> None:
     """The first demo shop of each area currency (owned by the seed owner)."""
     seen: set[str] = set()
     for demo in SHOPS:
+        if city and demo.city != city:
+            continue
         if demo.fields.currency not in seen:
             seen.add(demo.fields.currency)
             seed_shop(store, uid, demo.id)
