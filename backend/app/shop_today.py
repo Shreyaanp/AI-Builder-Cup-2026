@@ -21,6 +21,7 @@ from .limits import enforce_limits
 from .merchant import MerchantRepository
 from .merchant_routes import owner, store
 from .playbook import LineTopic, TodayHints, migrate_stored, today_hints
+from .region import shop_currency, shop_zone
 from .rescue import buffer_for, local_now
 from .shop_time import shop_timezone
 
@@ -100,7 +101,7 @@ class Today(BaseModel):
 
 
 def _day(fields: dict[str, Any], at: float | None = None) -> str:
-    zone = shop_timezone(str(fields.get("timezone") or "Asia/Singapore"))
+    zone = shop_timezone(shop_zone(fields))
     return datetime.fromtimestamp(time.time() if at is None else at, zone).date().isoformat()
 
 
@@ -252,7 +253,7 @@ async def today_page(business_id: str, request: Request) -> Today:
     top = prep[0] if prep else None
     return Today(
         date=today,
-        currency=str(fields.get("currency") or "SGD"),
+        currency=(shop_currency(fields)),
         yesterday=pulse(
             sales,
             signals["questions"],

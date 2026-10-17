@@ -59,6 +59,7 @@ import { hasHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
 
 import { MapsHandoff } from './MapsHandoff'
+import { shopZone } from '../../region/region'
 import { ShopIcon } from '../google/ShopIcon'
 
 export type ShopSheetKind =
@@ -234,9 +235,21 @@ function YourPage({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
           sx={{ bgcolor: roles.surfaceContainerLowest, color: roles.onSurface }}
         />
       </Stack>
-      <Typography variant="titleLarge" component="p" sx={{ mt: 2, overflowWrap: 'anywhere' }}>
-        {shop.fields.name}
-      </Typography>
+      <Stack direction="row" sx={{ mt: 2, gap: 1, alignItems: 'flex-start' }}>
+        <Typography variant="titleLarge" component="p" sx={{ flex: 1, overflowWrap: 'anywhere' }}>
+          {shop.fields.name}
+        </Typography>
+        <Button
+          size="small"
+          color="inherit"
+          startIcon={<Pencil size={16} />}
+          aria-label={`${t.editProduct}: ${shop.fields.name}`}
+          onClick={() => ws.openEditor({ kind: 'business', fields: shop.fields, step: 'name' })}
+          sx={{ flexShrink: 0 }}
+        >
+          {t.editProduct}
+        </Button>
+      </Stack>
       {summary && (
         <Typography variant="bodyMedium" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
           {summary}
@@ -293,7 +306,7 @@ export function ShopTiles({
     shop.fields.hours,
     new Date(),
     shop.fields.weekly_hours,
-    shop.fields.timezone ?? 'Asia/Singapore',
+    shopZone(shop.fields),
   )
   const soldOutNames = ws.products
     .filter((product) => product.available === false)

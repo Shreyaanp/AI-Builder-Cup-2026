@@ -10,7 +10,7 @@ export async function startDemoTour(
   setBusy(true)
   setFailed(false)
   try {
-    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'Asia/Singapore'
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC'
     const made = await ws.api<{ business_id: string }>(
       `/demo/workspace?zone=${encodeURIComponent(zone)}`,
       { method: 'POST', signal: AbortSignal.timeout(60_000) },

@@ -122,7 +122,8 @@ for (const scheme of ['light', 'dark'] as const)
     await open(page, { scheme })
     expect(await horizontalScroll(page)).toBe(false)
     expect(await smallTargets(page)).toEqual([])
-    // Big suggestion chips sit just above the composer, in the bottom of the screen.
+    // Big suggestion chips: above the composer on desktop; on a phone they sit in the page below
+    // the cards (#105), so they must be reachable by scrolling, not hidden behind the dock.
     const chips = page.getByRole('list', { name: 'Ask about anything nearby' }).getByRole('button')
     expect(await chips.count()).toBeGreaterThanOrEqual(3)
     expect(await chips.count()).toBeLessThanOrEqual(4)
@@ -136,7 +137,19 @@ for (const scheme of ['light', 'dark'] as const)
     for (const chip of await chips.all()) {
       const box = (await chip.boundingBox())!
       expect(box.height).toBeGreaterThanOrEqual(48)
-      expect(box.y + box.height).toBeLessThanOrEqual(field.y)
+      if (!isMobile) expect(box.y + box.height).toBeLessThanOrEqual(field.y)
+    }
+    if (isMobile) {
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+      for (const chip of await chips.all()) {
+        await expect(chip).toBeInViewport({ ratio: 1 })
+        const covered = await chip.evaluate((el) => {
+          const r = el.getBoundingClientRect()
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+          return hit !== null && !el.contains(hit)
+        })
+        expect(covered).toBe(false)
+      }
     }
     await page.waitForTimeout(800)
     expect(await page.evaluate(() => (window as unknown as { cls: number }).cls)).toBeLessThan(0.01)
@@ -222,6 +235,19 @@ for (const language of ['ta', 'hi', 'ja'])
         .map((el) => el.textContent),
     )
     expect(overflowing).toEqual([])
+    // The chips sit in the page, below the cards: scrolled to, none is hidden behind the dock or nav (#123).
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    const covered = await page.evaluate(() => {
+      const chips = Array.from(document.querySelectorAll<HTMLElement>('[data-chips] button'))
+      return chips
+        .filter((chip) => {
+          const r = chip.getBoundingClientRect()
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+          return hit !== null && !chip.contains(hit)
+        })
+        .map((chip) => chip.textContent)
+    })
+    expect(covered).toEqual([])
     // Nav labels never run into each other.
     const labels = await page
       .getByRole('navigation')

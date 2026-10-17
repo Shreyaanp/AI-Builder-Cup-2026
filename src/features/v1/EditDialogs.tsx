@@ -223,9 +223,30 @@ function ProductForm({ product }: { product: Product | null }) {
           <button type="submit" hidden />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={close}>{t.cancel}</Button>
-        <Button variant="contained" disabled={busy} onClick={() => void submit()}>
+      {/* Docked: Save and Cancel stay in the thumb zone while the fields scroll. */}
+      <DialogActions
+        data-testid="product-actions"
+        sx={{
+          position: 'sticky',
+          bottom: 0,
+          flexShrink: 0,
+          px: 3,
+          py: 2,
+          gap: 2,
+          bgcolor: 'background.paper',
+          borderTop: 1,
+          borderColor: 'divider',
+        }}
+      >
+        <Button onClick={close} sx={{ minHeight: 48 }}>
+          {t.cancel}
+        </Button>
+        <Button
+          variant="contained"
+          disabled={busy}
+          onClick={() => void submit()}
+          sx={{ minHeight: 48 }}
+        >
           {t.reviewFirst}
         </Button>
       </DialogActions>
