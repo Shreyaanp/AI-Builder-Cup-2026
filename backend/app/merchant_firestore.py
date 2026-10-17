@@ -297,10 +297,12 @@ class FirestoreMerchantStore:
 
         return run(self.client.transaction())
 
-    def challenge(self, uid: str, bid: str) -> dict[str, Any]:
+    def challenge(
+        self, uid: str, bid: str, exclude_prompts: list[str] | None = None
+    ) -> dict[str, Any]:
         business_ref = self.businesses.document(document_id(bid, "Business not found."))
         cid = str(uuid4())
-        prompts = challenge_prompts()
+        prompts = challenge_prompts(exclude=exclude_prompts)
         expires = time.time() + CHALLENGE_SECONDS
 
         @firestore.transactional

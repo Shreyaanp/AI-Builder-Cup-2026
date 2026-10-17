@@ -186,14 +186,21 @@ function ListingNotice({ notice }: { notice: Notice }) {
             {fill(c.listingTitle, { shop: notice.shop ?? '' })}
           </Typography>
           <Box component="ul" sx={{ m: 0, mt: 1, pl: 2.5, display: 'grid', gap: 0.5 }}>
-            {(notice.reasons ?? []).map((reason) => (
+            {/* Several other shops can trip the same rule; the owner reads each line once. */}
+            {[
+              ...new Set(
+                (notice.reasons ?? []).map((reason) =>
+                  fill(c.rules[reason.rule] ?? c.rules.other!, { detail: reason.detail }),
+                ),
+              ),
+            ].map((line) => (
               <Typography
                 component="li"
                 variant="bodyMedium"
-                key={reason.rule + reason.detail}
+                key={line}
                 sx={{ overflowWrap: 'anywhere' }}
               >
-                {fill(c.rules[reason.rule] ?? c.rules.other!, { detail: reason.detail })}
+                {line}
               </Typography>
             ))}
           </Box>

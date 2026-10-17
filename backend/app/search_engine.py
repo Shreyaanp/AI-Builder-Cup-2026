@@ -16,7 +16,6 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import re
 import time
 from collections import OrderedDict
 from collections.abc import Callable, Iterable, Sequence
@@ -29,6 +28,9 @@ import anyio
 import numpy as np
 import structlog
 from pydantic import BaseModel, Field
+
+from .reply_language import written_language
+from .words import words
 
 log = structlog.get_logger()
 
@@ -254,7 +256,7 @@ def _stem(word: str) -> str:
 def fixture_vector(text: str) -> list[float]:
     """Deterministic offline stand-in for an embedding: words plus their concept groups."""
     vector = np.zeros(DIMENSIONS, dtype=np.float32)
-    for word in re.findall(r"[^\W\d_]+", text.casefold())[:400]:
+    for word in words(text.casefold())[:400]:
         stem = _stem(word)
         vector[_slot("w:" + stem)] += 1.0
         for concept in _CONCEPT_OF.get(word, set()) | _CONCEPT_OF.get(stem, set()):
@@ -743,9 +745,11 @@ class Explainer:
         from google.genai import types
 
         prompt = (
-            "Write one short line (max 12 words) per pick, in language "
-            f'"{language}", telling a customer why this nearby shop suits them, from the '
-            'reason given only. Start like "Because you ...". Never invent facts. JSON list of '
+            "Write one short line (max 12 words) per pick, in "
+            f"{written_language(language)}, telling a customer why this nearby shop suits them, "
+            "from the "
+            'reason given only. Start like "Because you ...", said in that language. Never invent '
+            "facts. JSON list of "
             "strings, same order.\n"
             + "\n".join(
                 f"- Pick: {name}. Reason: {because.model_dump_json(exclude_none=True)}"
@@ -763,7 +767,9 @@ class Explainer:
                         response_mime_type="application/json",
                         response_json_schema={"type": "array", "items": {"type": "string"}},
                         temperature=0.3,
-                        max_output_tokens=300,
+                        max_output_tokens=600,
+                        # Room for Hindi (Indic scripts cost more tokens); no thinking.
+                        thinking_config=types.ThinkingConfig(thinking_budget=0),
                     ),
                 )
             self.calls += 1

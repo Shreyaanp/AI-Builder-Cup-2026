@@ -36,6 +36,7 @@ from .limits import client_ip, enforce_limits
 from .maps_grounding import AreaAnswer, AreaGrounding, is_area_question
 from .merchant import MerchantRepository
 from .money import exponent
+from .reply_language import written_language
 from .rescue_feed import live_rescues
 from .search_engine import (
     ITEM_RECALL,
@@ -53,6 +54,7 @@ from .search_engine import (
     popularity,
 )
 from .shop_time import shop_timezone, valid_timezone
+from .words import words as words_of
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/api/v1")
@@ -62,6 +64,10 @@ STOP = set(
     "a an the i im i'm me my we want need looking for find some any near nearby around here "
     "please today now open cheap cheapest budget good best place places shop shops store under "
     "below less than with without and or to of in at on get buy something".split()
+    # Hindi filler words (a keyword search, not a translation).
+    + "पास में मुझे हमें चाहिए है हैं की का के को से कम कहाँ कोई अभी यहाँ आसपास आस अच्छी "
+    "अच्छा अच्छे सस्ती सस्ता सस्ते दुकान दुकानें वाली वाला वाले कुछ और खुली खुला रुपये रुपए "
+    "अंदर तक".split()
 )
 
 
@@ -284,8 +290,8 @@ Reply in JSON matching the schema. Rules:
 - max_price: a number only if the customer gave a budget ("under 100", "cheap" → null).
 - halal / vegetarian / open_now: true only if asked.
 - locally_made: true only if they want home-made, handmade, made in-house or local makers.
-- summary: one short friendly line, in language "{language}", restating what you will look for.
-- followups: up to 3 short refinements in language "{language}" (e.g. "Open now", "Under ₹100").
+- summary: one short friendly line, in {language}, restating what you will look for.
+- followups: up to 3 short refinements in {language} (e.g. "Open now", "Under ₹100").
 - sort: "price" if they want it cheaper, "distance" if closer; near: "transit" if they want it
   near a train/metro/MRT station; deals: true if they ask for deals or discounts.
 - area: true if they ask about the area itself (parking, toilets, what is open around, how to
@@ -301,7 +307,7 @@ keep dietary needs (halal, vegetarian).
 # Follow-up refinements, in English and the common words of the supported languages.
 CHEAPER = re.compile(
     r"\b(cheaper|cheapest|less expensive|lower price|more affordable|budget|cheap)\b"
-    r"|सस्ता|सस्ते|更便宜|便宜|murah|より安い|安い|더 싼|ถูกกว่า|rẻ hơn|mas mura|மலிவ"
+    r"|सस्ता|सस्ते|सस्ती|更便宜|便宜|murah|より安い|安い|더 싼|ถูกกว่า|rẻ hơn|mas mura|மலிவ"
 )
 CLOSER = re.compile(
     r"\b(closer|nearer|nearest|walking distance|walkable)\b|पास में|更近|近く|더 가까"
@@ -425,6 +431,7 @@ LOCALLY_MADE = re.compile(
 DIET_AND_ORIGIN_WORDS = {
     *("halal", "vegetarian", "veg", "vegan", "locally", "local", "made", "homemade"),
     *("home", "handmade", "hand", "artisan", "makers", "maker", "house"),
+    *("हलाल", "शाकाहारी", "घर", "बना", "बनी", "हाथ"),
 }
 
 
@@ -432,7 +439,8 @@ def keyword_intent(q: str) -> Intent:
     """Offline and fallback parsing: deterministic, no model."""
     text = q.casefold()
     budget = re.search(r"(?:under|below|less than|max|<)\s*\D{0,3}(\d+(?:[.,]\d+)?)", text)
-    words = [w for w in re.findall(r"[^\W\d_]+", text) if w not in STOP and len(w) > 1]
+    budget = budget or re.search(r"(\d+(?:[.,]\d+)?)\s*(?:₹|रुपये|रुपए|रु)?\s*(?:से कम|के अंदर|तक)", text)
+    words = [w for w in words_of(text) if w not in STOP and len(w) > 1]
     if re.search(r"egg[ -]?free|without eggs?|बिना अंडे", text):
         words.insert(0, "eggless")
     category = next(
@@ -444,10 +452,11 @@ def keyword_intent(q: str) -> Intent:
         keywords=[w for w in words if w not in DIET_AND_ORIGIN_WORDS][:6],
         category=category,
         max_price=float(budget.group(1).replace(",", ".")) if budget else None,
-        halal="halal" in text,
-        vegetarian=bool(re.search(r"\b(veg|vegetarian|vegan)\b", text)),
+        halal="halal" in text or "हलाल" in text,
+        vegetarian=bool(re.search(r"\b(veg|vegetarian|vegan)\b|शाकाहारी", text)),
         locally_made=bool(LOCALLY_MADE.search(text)),
-        open_now=bool(re.search(r"\b(open now|right now|now)\b", text)),
+        open_now=bool(re.search(r"\b(open now|right now|now)\b|अभी खुल", text)),
+        sort="price" if CHEAPER.search(text) else "best",
     )
 
 
@@ -476,7 +485,7 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
                 model=settings.google_text_model,
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
-                    language=body.language,
+                    language=written_language(body.language),
                     context=(
                         CONTEXT.format(intent=body.context.model_dump_json(exclude={"followups"}))
                         if body.context
@@ -488,7 +497,9 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
                     response_mime_type="application/json",
                     response_json_schema=gemini_schema(Intent),
                     temperature=0,
-                    max_output_tokens=400,
+                    max_output_tokens=800,
+                    # Room for Hindi (Indic scripts cost more tokens); no thinking.
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
     except Exception:  # noqa: BLE001 - the keyword parser is always a correct fallback
@@ -653,7 +664,7 @@ async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[
                 model=settings.google_text_model,
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
-                    language=body.language,
+                    language=written_language(body.language),
                     context=(
                         CONTEXT.format(intent=body.context.model_dump_json(exclude={"followups"}))
                         if body.context
@@ -665,7 +676,9 @@ async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[
                     response_mime_type="application/json",
                     response_json_schema=gemini_schema(Intent),
                     temperature=0,
-                    max_output_tokens=400,
+                    max_output_tokens=800,
+                    # Room for Hindi (Indic scripts cost more tokens); no thinking.
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             async for chunk in stream:
@@ -723,6 +736,11 @@ async def explain_picks(engine: SearchEngine, for_you: list[Pick], language: str
         pick.why = lines.get(pick.id)
 
 
+def norm_name(name: str) -> str:
+    """One shop seeded as both "(Tour)" and "(Demo)" is still one shop."""
+    return re.sub(r"\s*\((Tour|Demo)\)$", "", name, flags=re.I).strip().casefold()
+
+
 async def match_local_shops(
     request: Request,
     body: AskRequest,
@@ -737,22 +755,44 @@ async def match_local_shops(
     """Our shops for this intent, ranked by the search engine. The instant answer skips the
     written "why" lines (a Gemini call) so it is never held up by them."""
     shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
-    reachable = [
-        shop
-        for shop in shops
-        if shop["lat"] is not None
-        and shop["lng"] is not None
-        and distance(lat, lng, shop["lat"], shop["lng"]) <= radius
-    ]
+    in_sg = 1.15 <= lat <= 1.48 and 103.6 <= lng <= 104.1
+    in_india = 6.5 <= lat <= 37.5 and 68.0 <= lng <= 97.5
+    reachable: list[dict[str, Any]] = []
+    for shop in shops:
+        if shop["lat"] is None or shop["lng"] is None:
+            continue
+        # Singapore demo shops only when browsing Singapore
+        is_sg_shop = shop.get("demo") and (
+            shop.get("city") == "singapore"
+            or (
+                shop.get("currency") == "SGD"
+                and 1.15 <= shop["lat"] <= 1.48
+                and 103.6 <= shop["lng"] <= 104.1
+            )
+        )
+        if is_sg_shop and not in_sg:
+            continue
+        # Results near an Indian location never show SGD
+        if in_india and shop.get("currency") == "SGD":
+            continue
+        if distance(lat, lng, shop["lat"], shop["lng"]) > radius:
+            continue
+        reachable.append(shop)
     engine = search_engine(request)
     wanted = " ".join(intent.keywords) or (body.q if not body.refine else "")
     meaning = await anyio.to_thread.run_sync(engine.relevance, wanted, reachable) if wanted else {}
     recall = item_recall(meaning)
-    picks = [
-        pick
-        for shop in reachable
-        if (pick := shop_pick(shop, intent, lat, lng, meaning.get(shop["id"]), recall)) is not None
-    ]
+    picks: list[Pick] = []
+    seen_pick_names: set[str] = set()
+    for shop in reachable:
+        pick = shop_pick(shop, intent, lat, lng, meaning.get(shop["id"]), recall)
+        if pick is None:
+            continue
+        base_name = norm_name(pick.name)
+        if base_name in seen_pick_names:
+            continue
+        seen_pick_names.add(base_name)
+        picks.append(pick)
     try:
         rescues = await live_rescues(request, shops, lat, lng, time.time())
     except Exception:  # noqa: BLE001 - deals decorate results; they never block them
@@ -911,10 +951,20 @@ async def localize_picks(
 
 
 def assemble_groups(for_you: list[Pick], picks: list[Pick], others: list[Pick]) -> list[Group]:
-    shown = {p.id for p in for_you[:6]}
+    shown_ids = {p.id for p in for_you[:6]}
+    shown_names = {norm_name(p.name) for p in for_you[:6]}
+    best: list[Pick] = []
+    for p in picks:
+        name_key = norm_name(p.name)
+        if p.id in shown_ids or name_key in shown_names:
+            continue
+        best.append(p)
+        shown_names.add(name_key)
+        if len(best) >= 8:
+            break
     groups = [
         Group(id="for_you", places=for_you[:6]),
-        Group(id="best", places=[p for p in picks if p.id not in shown][:8]),
+        Group(id="best", places=best),
         Group(id="open", places=[p for p in others if p.open_now][:10]),
         Group(id="more", places=[p for p in others if not p.open_now][:10]),
     ]

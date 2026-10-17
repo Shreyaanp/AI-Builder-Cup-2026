@@ -135,14 +135,18 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     const fix = card.getByRole('button', { name: /^(Make it|Pay cash)/ })
     if (await fix.count()) await fix.first().click()
     await card.getByRole('button', { name: 'Approve and send' }).click()
-    await status(card, 'Sent')
-    await card.getByRole('button', { name: 'View as SAP IDoc / JSON' }).click()
+    await expect(card).not.toContainText('<MESTYP>')
+    await expect(card).not.toContainText('"kind": "ORDERS"')
+    await card
+      .getByRole('button', { name: /For your supplier’s system|For your supplier's system/i })
+      .click()
     await expect(card.getByLabel('They receive · SAP IDoc')).toContainText(
       '<MESTYP>ORDERS</MESTYP>',
     )
     await expect(card.getByLabel('You sent · JSON')).toContainText('"kind": "ORDERS"')
     await snap(page, '2-sent-as-idoc', project, card.getByLabel('They receive · SAP IDoc'))
     await card.getByRole('button', { name: 'Hide' }).click()
+    await expect(card).not.toContainText('<MESTYP>')
   })
 
   const card = page.getByRole('article', { name: 'PO 4500012346' })
@@ -183,7 +187,7 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
       .click()
     await expect(card).toContainText('Corrected to the agreed price')
     const invoice = card.getByRole('listitem').filter({ hasText: /^Invoice/ })
-    await invoice.getByRole('button', { name: 'View as SAP IDoc / JSON' }).click()
+    await invoice.getByRole('button', { name: 'For your supplier’s system' }).click()
     await expect(invoice.getByLabel('Supplier’s system · SAP IDoc')).toContainText(
       '<IDOCTYP>INVOIC02</IDOCTYP>',
     )

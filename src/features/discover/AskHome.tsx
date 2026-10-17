@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  Alert,
   Box,
   Button,
   IconButton,
@@ -13,6 +14,7 @@ import {
   ArrowRight,
   ArrowUp,
   ChevronDown,
+  LocateFixed,
   MapPin,
   Mic,
   RotateCcw,
@@ -23,17 +25,22 @@ import {
 import { useLocale } from '../../state/hooks'
 import type { Locale } from '../../i18n/locales'
 import { chalkWrite, dealIn } from '../../design/chalkMotion'
-import { HAND_FONT } from '../../design/theme'
+import { RichText } from '../../design/RichText'
+import { HAND_FONT, motion } from '../../design/theme'
 import { customerNavigate, goTo } from '../frontdoors/navigation'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { useCustomer } from '../customer/account'
 import { accountCopyFor } from '../customer/copy'
 import { preferenceChips } from '../customer/preferences'
 import { openedShops } from './opened'
-import { ProfileSheet } from '../customer/Profile'
+import { ProfileButton, ProfileSheet } from '../customer/Profile'
+import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
+import { LanguagePicker } from '../frontdoors/LanguagePicker'
+import { useFrontCopy } from '../frontdoors/strings'
 import { usePassportCopy } from '../passport/copy'
 import { TodayDeck } from '../passport/TodayDeck'
-import { AreaAnswerCard, GoogleRows, PickCard } from './AnswerCards'
+import { AreaAnswerCard, GoogleRows, PickCard, PickList, PickSkeleton } from './AnswerCards'
+import type { AskPick } from './askThread'
 import { AnswerMap, type MapSelection } from './AnswerMap'
 import { askCopy } from './askStrings'
 import {
@@ -49,22 +56,44 @@ import {
 } from './askThread'
 import { discoverCopy } from './strings'
 import { fillIn, useConversationCopy, type ConversationCopy } from './conversationCopy'
-import { ensureDemoWorld } from './demoWorld'
+import { ensureDemoWorld, isIndianArea } from './demoWorld'
 import { localRankShops, prefetchAreaShops } from './shopCache'
 import { recsEvent } from '../recs/events'
 import { PlaceSearch, type FoundPlace } from './PlaceSearch'
+import { areaCurrency, defaultCurrency } from '../v1/format'
 import '../customer/customer.css'
 
 const FILTERS = 'chalkboard.discover.filters'
-const FALLBACK: FoundPlace = { lat: 1.2847, lng: 103.832, label: 'Tiong Bahru' }
-/** Nav bar (80) + composer (56) + breathing room. */
-const COMPOSER_CLEARANCE = 'calc(176px + env(safe-area-inset-bottom))'
+
+function fallbackPlace(): FoundPlace {
+  const currency = defaultCurrency()
+  if (currency === 'INR') return { lat: 12.9716, lng: 77.5946, label: 'Indiranagar' }
+  if (currency === 'MYR') return { lat: 3.1319, lng: 101.6841, label: 'Bangsar' }
+  if (currency === 'JPY') return { lat: 35.658, lng: 139.7016, label: 'Shibuya' }
+  if (currency === 'KRW') return { lat: 37.5665, lng: 126.978, label: 'Hongdae' }
+  if (currency === 'IDR') return { lat: -6.2088, lng: 106.8456, label: 'Senopati' }
+  if (currency === 'THB') return { lat: 13.7563, lng: 100.5018, label: 'Thonglor' }
+  if (currency === 'VND') return { lat: 10.7769, lng: 106.7009, label: 'District 1' }
+  if (currency === 'PHP') return { lat: 14.5547, lng: 121.0244, label: 'BGC' }
+  if (currency === 'GBP') return { lat: 51.5074, lng: -0.1278, label: 'Soho' }
+  if (currency === 'EUR') return { lat: 48.8566, lng: 2.3522, label: 'Le Marais' }
+  if (currency === 'AUD') return { lat: -33.8688, lng: 151.2093, label: 'Surry Hills' }
+  return { lat: 1.2847, lng: 103.832, label: 'Tiong Bahru' }
+}
+/** The bottom dock before it is measured: composer (56) and chips (2 x 52); no layout shift. */
+const DOCK_ESTIMATE = 200
+/** The navigation bar under the dock (hidden while typing on a phone). */
+const NAV = 80
 
 function savedPlace(): FoundPlace | null {
   try {
     const place = (JSON.parse(localStorage.getItem(FILTERS) || '{}') as { place?: FoundPlace })
       .place
-    return place && Number.isFinite(place.lat) && Number.isFinite(place.lng) ? place : null
+    if (!place || !Number.isFinite(place.lat) || !Number.isFinite(place.lng)) return null
+    if (place.label?.toLowerCase() === 'you') {
+      return { ...place, label: 'Nearby' }
+    }
+    return place
   } catch {
     return null
   }
@@ -121,23 +150,67 @@ export default function AskHome({
 }) {
   const locale = useLocale()
   const t = askCopy(locale)
-  const c = useConversationCopy()
+  const front = useFrontCopy()
   const discover = discoverCopy(locale)
   const passport = usePassportCopy()
   const roles = useTheme().material
   const account = useCustomer()
-  const [place, setPlace] = useState<FoundPlace>(
-    () =>
+  const [place, setPlace] = useState<FoundPlace>(() => {
+    const initial =
       (initialLocation?.gps
         ? { lat: initialLocation.gps[0], lng: initialLocation.gps[1], label: t.here }
         : initialLocation?.place) ??
       savedPlace() ??
-      FALLBACK,
-  )
+      fallbackPlace()
+    if (initial.label?.toLowerCase() === 'you') {
+      return { ...initial, label: t.here }
+    }
+    return initial
+  })
+
+  useEffect(() => {
+    if (initialLocation?.gps) {
+      const [lat, lng] = initialLocation.gps
+      fetch(`/api/v1/discover/place?lat=${lat}&lng=${lng}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { label?: string; lat: number; lng: number } | null) => {
+          if (data?.label && data.label.toLowerCase() !== 'you') {
+            setPlace((current) => ({ ...current, lat, lng, label: data.label! }))
+          }
+        })
+        .catch(() => undefined)
+    }
+  }, [initialLocation?.gps])
+
+  const currency = areaCurrency(place)
+  const c = useConversationCopy(currency)
+  // A first visit has not said where yet: the page asks inline, never a wizard before it.
+  const [located, setLocated] = useState(() => !!initialLocation || savedPlace() !== null)
+  const [locating, setLocating] = useState(false)
+  const [denied, setDenied] = useState(false)
+  const [nearby, setNearby] = useState<{ key: string; shops: AskPick[] } | null>(null)
   const [turns, setTurns] = useState<Turn[]>(loadTurns)
   const [draft, setDraft] = useState('')
   const [changing, setChanging] = useState(false)
   const [listening, setListening] = useState(false)
+  // The example on the opening page; in a conversation the composer is narrower, so plain words.
+  const placeholderText = useMemo(() => {
+    if (listening) return t.listening
+    if (turns.length) return c.composer
+    if (isIndianArea(place.lat, place.lng, place.label)) {
+      return c.placeholder.replace('$3', '₹50')
+    }
+    return c.placeholder
+  }, [
+    listening,
+    t.listening,
+    turns.length,
+    c.composer,
+    c.placeholder,
+    place.lat,
+    place.lng,
+    place.label,
+  ])
   const [suggested, setSuggested] = useState<{ key: string; data: Suggestions } | null>(null)
   const placeKey = `${place.lat},${place.lng}`
   const suggestions = suggested?.key === placeKey ? suggested.data : null
@@ -186,19 +259,29 @@ export default function AskHome({
   }, [])
 
   // Suggestion chips and shop data come from this area's own shops (labelled demo shops included).
+  // The area's shops load after its demo world exists, so the first cards and the instant answers
+  // see the whole neighbourhood.
   useEffect(() => {
     let live = true
     const key = `${place.lat},${place.lng}`
     void ensureDemoWorld(place.lat, place.lng, place.label)
-    void prefetchAreaShops(place.lat, place.lng)
+      .catch(() => undefined)
+      .then(() => prefetchAreaShops(place.lat, place.lng))
+      .then((shops) => {
+        if (live) setNearby({ key, shops: nearbyFirst(shops, place.lat, place.lng) })
+      })
     fetch(
       `/api/v1/discover/suggest?${new URLSearchParams({ lat: String(place.lat), lng: String(place.lng) })}`,
     )
       .then((response) => (response.ok ? (response.json() as Promise<Suggestions>) : null))
+      .catch(() => null)
       .then((data) => {
-        if (live && data) setSuggested({ key, data })
+        if (live)
+          setSuggested({
+            key,
+            data: data ?? { items: [], shops: 0, open_now: 0, locally_made: 0, deals: 0 },
+          })
       })
-      .catch(() => undefined)
     return () => {
       live = false
     }
@@ -418,6 +501,9 @@ export default function AskHome({
       status: 'thinking',
       place,
     }
+    // The first question gets its own history entry: back returns to the opening page.
+    if (turns.length === 0 && !(history.state as { ask?: boolean } | null)?.ask)
+      history.pushState({ ...(history.state as object | null), ask: true }, '')
     setTurns((all) => [...all, turn])
     setDraft('')
     setLine(0)
@@ -437,13 +523,71 @@ export default function AskHome({
     requests.current.clear()
   }
 
-  function restart() {
+  function reset() {
     stop()
     clearTurns()
     setTurns([])
     setChanging(false)
     window.scrollTo({ top: 0, behavior: 'instant' })
+  }
+
+  // A fresh start is the history entry before the first question, so the back button and
+  // "New conversation" both land on the opening page (and a further back leaves as usual).
+  function restart() {
+    if ((history.state as { ask?: boolean } | null)?.ask) history.back()
+    else reset()
     requestAnimationFrame(() => input.current?.focus())
+  }
+
+  function choosePlace(found: FoundPlace, gps: [number, number] | null = null) {
+    setPlace(found)
+    onLocationChange?.({ gps, place: gps ? null : found })
+    rememberPlace(found)
+    setLocated(true)
+    setChanging(false)
+    setDenied(false)
+    // An open question is asked again for the new area.
+    const previous = [...turns].reverse().find((turn) => turn.kind === 'ask')
+    if (previous && !busy) {
+      const turn: Turn = {
+        ...previous,
+        id: turnId(),
+        place: found,
+        status: 'thinking',
+        answer: undefined,
+      }
+      setTurns((all) => [...all, turn])
+      void run(turn)
+    }
+  }
+
+  function locate() {
+    setDenied(false)
+    if (!navigator.geolocation) {
+      setDenied(true)
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false)
+        const { latitude: lat, longitude: lng } = position.coords
+        choosePlace({ lat, lng, label: t.here }, [lat, lng])
+        void placeLabel(lat, lng).then((label) => {
+          if (!label) return
+          setPlace((current) =>
+            current.lat === lat && current.lng === lng ? { ...current, label } : current,
+          )
+          rememberPlace({ lat, lng, label })
+        })
+      },
+      () => {
+        setLocating(false)
+        setDenied(true)
+      },
+      // Precise: "around me" should mean this street, not this district.
+      { timeout: 15_000, maximumAge: 30_000, enableHighAccuracy: true },
+    )
   }
 
   function listen() {
@@ -472,11 +616,98 @@ export default function AskHome({
     recognition.start()
   }
 
-  const chips = startChips(suggestions, interests, c, t, discover)
+  // Back from an answer returns to the opening page (the entry before the first question).
+  useEffect(() => {
+    const toOpening = () => {
+      if (!/^\/explore\/?$/.test(location.pathname)) return
+      if ((history.state as { ask?: boolean } | null)?.ask) return
+      for (const controller of requests.current.values()) controller.abort()
+      requests.current.clear()
+      clearTurns()
+      setTurns([])
+      setChanging(false)
+    }
+    window.addEventListener('popstate', toOpening)
+    return () => window.removeEventListener('popstate', toOpening)
+  }, [])
+
+  // The dock (chips + composer) is measured, so the page always ends just above it.
+  const dock = useRef<HTMLDivElement>(null)
+  const [dockHeight, setDockHeight] = useState(DOCK_ESTIMATE)
+  useEffect(() => {
+    const node = dock.current
+    if (!node) return
+    // The chips sit above the composer (absolutely, so arriving never moves it): both count.
+    const measure = () =>
+      setDockHeight(
+        Math.round(
+          node.getBoundingClientRect().height +
+            (node.querySelector<HTMLElement>('[data-chips]')?.getBoundingClientRect().height ?? 0),
+        ),
+      )
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    const chips = new MutationObserver(() => {
+      const list = node.querySelector<HTMLElement>('[data-chips]')
+      if (list) observer.observe(list)
+      measure()
+    })
+    chips.observe(node, { childList: true, subtree: true })
+    return () => {
+      observer.disconnect()
+      chips.disconnect()
+    }
+  }, [])
+
+  // Typing on a phone: the navigation bar steps aside so the composer sits on the keyboard.
+  // Browsers that cover the page with the keyboard (iOS) report it through visualViewport.
+  const [typing, setTyping] = useState(false)
+  useEffect(() => {
+    const root = document.documentElement
+    root.toggleAttribute('data-typing', typing)
+    return () => root.removeAttribute('data-typing')
+  }, [typing])
+  useEffect(() => {
+    const view = window.visualViewport
+    if (!view) return
+    const root = document.documentElement
+    const sync = () => {
+      const covered = view.scale > 1.01 ? 0 : innerHeight - view.height - view.offsetTop
+      root.style.setProperty('--c-keyboard', `${Math.max(0, Math.round(covered))}px`)
+    }
+    sync()
+    view.addEventListener('resize', sync)
+    view.addEventListener('scroll', sync)
+    return () => {
+      view.removeEventListener('resize', sync)
+      view.removeEventListener('scroll', sync)
+      root.style.removeProperty('--c-keyboard')
+    }
+  }, [])
+
+  const chips = startChips(suggestions, interests, c, t, discover, new Date().getHours())
   const last = turns.at(-1)
   const anyDemo = turns.some((turn) =>
     turn.answer?.groups.some((g) => g.places.some((p) => p.demo_shop || p.demo)),
   )
+  const nearbyShops = nearby?.key === placeKey ? nearby.shops : null
+  const opening = turns.length === 0
+  // Chips appear once this area's suggestions are in (they grow up from the dock: no shift).
+  const showChips = opening && suggestions !== null && !draft.trim() && !busy
+  // Browsing the page below: the chips step aside (the composer stays); back at the top they return.
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const sync = () => setScrolled(window.scrollY > 24)
+    sync()
+    window.addEventListener('scroll', sync, { passive: true })
+    return () => window.removeEventListener('scroll', sync)
+  }, [])
+
+  function submit() {
+    send(draft)
+    // A phone shows the answer full screen: the keyboard closes once the question is sent.
+    if (matchMedia('(pointer: coarse)').matches) input.current?.blur()
+  }
 
   return (
     <Box
@@ -486,12 +717,13 @@ export default function AskHome({
         minHeight: '100dvh',
         overflowX: 'clip',
         bgcolor: roles.surface,
-        pb: COMPOSER_CLEARANCE,
+        // The page ends just above the dock and the navigation bar, never under them.
+        pb: `calc(${dockHeight + NAV + 16}px + env(safe-area-inset-bottom))`,
       }}
     >
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
       <Box sx={{ maxWidth: 720, mx: 'auto', px: 4 }}>
-        {/* Where we are looking, and a fresh start; the profile and theme buttons float right. */}
+        {/* Where we are looking, then the person's own controls: one light row. */}
         <Stack
           direction="row"
           sx={{
@@ -501,10 +733,9 @@ export default function AskHome({
             mx: -4,
             px: 4,
             alignItems: 'center',
-            gap: 2,
+            gap: 1,
             pt: 'max(8px, env(safe-area-inset-top))',
-            pb: 2,
-            pr: { xs: '128px', md: 0 },
+            pb: 1,
             minHeight: 64,
             bgcolor: roles.surface,
           }}
@@ -519,10 +750,13 @@ export default function AskHome({
               minHeight: 48,
               minWidth: 0,
               px: 3,
-              ml: -3,
+              ml: -2,
+              borderRadius: 999,
               color: roles.onSurface,
+              bgcolor: roles.surfaceContainerLow,
               typography: 'titleSmall',
               '& .MuiButton-startIcon': { color: roles.primary },
+              '&:hover': { bgcolor: roles.surfaceContainer },
             }}
           >
             <Box
@@ -532,103 +766,98 @@ export default function AskHome({
               {place.label}
             </Box>
           </Button>
-          {turns.length > 0 && (
-            <Tooltip title={c.newChat}>
-              <IconButton
-                aria-label={c.newChat}
-                onClick={restart}
-                sx={{ ml: 'auto', width: 48, height: 48 }}
-              >
-                <RotateCcw size={20} />
-              </IconButton>
-            </Tooltip>
-          )}
+          <Stack direction="row" sx={{ ml: 'auto', flexShrink: 0, alignItems: 'center' }}>
+            <ProfileButton inline />
+            <LanguagePicker variant="inline" />
+            <AppearanceToggle inline />
+          </Stack>
         </Stack>
         {changing && (
           <Box className="c-rise" sx={{ mb: 4 }}>
-            <PlaceSearch
-              value={place.label}
-              onFound={(found) => {
-                setPlace(found)
-                onLocationChange?.({ gps: null, place: found })
-                rememberPlace(found)
-                setChanging(false)
-                // An open question is asked again for the new area.
-                const previous = [...turns].reverse().find((turn) => turn.kind === 'ask')
-                if (previous && !busy) {
-                  const turn: Turn = {
-                    ...previous,
-                    id: turnId(),
-                    place: found,
-                    status: 'thinking',
-                    answer: undefined,
-                  }
-                  setTurns((all) => [...all, turn])
-                  void run(turn)
-                }
-              }}
-            />
+            <PlaceSearch value={place.label} onFound={(found) => choosePlace(found)} />
           </Box>
         )}
 
-        {/* The assistant opens the conversation. */}
-        <Box component="section" aria-labelledby="ask-hello" sx={{ pt: turns.length ? 2 : 10 }}>
+        {/* One purpose: ask for what you want nearby. */}
+        <Box component="section" aria-labelledby="ask-hello" sx={{ pt: opening ? 4 : 0 }}>
           <Typography
             id="ask-hello"
             component="h1"
-            variant={turns.length ? 'headlineSmall' : 'displaySmall'}
-            sx={{ fontWeight: 500, letterSpacing: '-0.02em', maxWidth: '16ch', ...chalkWrite }}
+            variant="headlineMedium"
+            // In a conversation the answers need the room; the heading stays for screen readers.
+            sx={
+              opening
+                ? {
+                    fontWeight: 500,
+                    letterSpacing: '-0.01em',
+                    overflowWrap: 'break-word',
+                    ...chalkWrite,
+                  }
+                : visuallyHidden
+            }
           >
             {c.hello}
           </Typography>
-          {turns.length === 0 && (
+          {opening && (
             <>
               <Typography
-                variant="bodyLarge"
+                variant="bodyMedium"
                 color="text.secondary"
-                sx={{ mt: 3, maxWidth: '42ch' }}
+                // Two lines kept for the shop count, so it never pushes the page when it arrives.
+                sx={{ mt: 2, minHeight: '2lh' }}
               >
                 {suggestions?.shops
                   ? fillIn(c.helloBody, { count: suggestions.shops, place: place.label })
                   : fillIn(c.helloBodyEmpty, { place: place.label })}
               </Typography>
-              <Box
-                component="ul"
-                aria-label={c.composer}
-                sx={{
-                  listStyle: 'none',
-                  p: 0,
-                  m: 0,
-                  mt: 6,
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: 2,
-                }}
-              >
-                {chips.map((chip, index) => (
-                  <Box component="li" key={chip.label} sx={{ ...dealIn, '--deal-index': index }}>
-                    <Button
-                      variant="outlined"
-                      onClick={() => send(chip.q, chip)}
-                      disabled={busy}
-                      sx={{ minHeight: 48, borderRadius: 999, px: 4, py: 2 }}
-                    >
-                      {chip.label}
-                    </Button>
+              {!located && (
+                <Box
+                  component="section"
+                  aria-labelledby="ask-where"
+                  className="c-rise"
+                  sx={{
+                    mt: 5,
+                    p: 4,
+                    borderRadius: '20px',
+                    bgcolor: roles.secondaryContainer,
+                    color: roles.onSecondaryContainer,
+                  }}
+                >
+                  <Typography id="ask-where" component="h2" variant="titleMedium">
+                    {front.location}
+                  </Typography>
+                  {denied && (
+                    <Alert severity="info" sx={{ mt: 3 }}>
+                      {discover.gpsError}
+                    </Alert>
+                  )}
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    disabled={locating}
+                    onClick={locate}
+                    startIcon={<LocateFixed size={18} aria-hidden="true" />}
+                    sx={{ mt: 3, minHeight: 48 }}
+                  >
+                    {discover.gps}
+                  </Button>
+                  <Box sx={{ mt: 3 }}>
+                    <PlaceSearch onFound={(found) => choosePlace(found)} />
                   </Box>
-                ))}
-              </Box>
+                </Box>
+              )}
               <TodayEntry
                 copy={c}
                 onOpen={() => send(c.today, { kind: 'today' })}
                 disabled={busy}
               />
+              <NearbyShops shops={nearbyShops} copy={c} locale={locale} browse={t.browse} />
             </>
           )}
         </Box>
 
         {/* The conversation so far. */}
-        <Box sx={{ mt: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <Box sx={{ mt: opening ? 0 : 4, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {turns.map((turn) => (
             <Box
               key={turn.id}
@@ -671,106 +900,306 @@ export default function AskHome({
         </Typography>
       </Box>
 
-      {/* The composer sits above the navigation bar, always within thumb reach. */}
+      {/* The dock: big suggestion chips and the composer, in the thumb zone above the
+          navigation bar, on the keyboard while typing, clear of the safe areas. */}
       <Box
+        ref={dock}
         sx={{
           position: 'fixed',
           left: 0,
           right: 0,
-          bottom: 'calc(80px + env(safe-area-inset-bottom))',
+          bottom: typing ? 0 : `calc(${NAV}px + env(safe-area-inset-bottom))`,
+          transform: 'translateY(calc(-1 * var(--c-keyboard, 0px)))',
           zIndex: 1050,
-          px: 4,
-          pt: 4,
-          pb: 3,
-          background: `linear-gradient(to bottom, transparent, ${roles.surface} 40%)`,
+          pl: 'max(16px, env(safe-area-inset-left))',
+          pr: 'max(16px, env(safe-area-inset-right))',
+          pt: 6,
+          pb: typing ? 'max(12px, env(safe-area-inset-bottom))' : 3,
+          background: `linear-gradient(to bottom, transparent, ${roles.surface} 28px)`,
           viewTransitionName: 'customer-composer',
         }}
       >
-        <Box
-          component="form"
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault()
-            send(draft)
-          }}
-          sx={{
-            maxWidth: 720,
-            mx: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            pl: 5,
-            pr: 1,
-            minHeight: 56,
-            borderRadius: 999,
-            bgcolor: roles.surfaceContainerHigh,
-            border: `1px solid ${listening ? roles.primary : roles.outlineVariant}`,
-            boxShadow: listening ? `0 0 0 2px ${roles.primary}` : '0 4px 16px rgba(0,0,0,0.08)',
-            transition: 'box-shadow 200ms ease, border-color 200ms ease',
-          }}
-        >
-          <InputBase
-            inputRef={input}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder={listening ? t.listening : c.placeholder}
-            inputProps={{ 'aria-label': c.composer, enterKeyHint: 'send', maxLength: 300 }}
-            sx={{ flex: 1, minWidth: 0, minHeight: 48, fontSize: 16 }}
-          />
-          {Speech && !busy && (
-            <IconButton
-              aria-label={t.speak}
-              aria-pressed={listening}
-              onClick={listen}
-              sx={{ width: 48, height: 48, color: listening ? roles.primary : undefined }}
-            >
-              <Mic size={22} />
-            </IconButton>
-          )}
-          {busy ? (
-            <IconButton
-              aria-label={c.stop}
-              onClick={stop}
+        <Box sx={{ maxWidth: 720, mx: 'auto', position: 'relative' }}>
+          {showChips && (
+            <Box
+              component="ul"
+              aria-label={c.composer}
+              data-chips
+              aria-hidden={scrolled || undefined}
+              inert={scrolled || undefined}
               sx={{
-                width: 48,
-                height: 48,
-                bgcolor: roles.surfaceContainerHighest,
-                color: roles.onSurface,
-                '&:hover': { bgcolor: roles.surfaceContainerHighest },
+                transition: `opacity ${motion.duration.short}ms ${motion.easing.standard}, transform ${motion.duration.medium}ms ${motion.easing.emphasized}`,
+                ...(scrolled && {
+                  opacity: 0,
+                  transform: 'translateY(16px)',
+                  pointerEvents: 'none',
+                }),
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: '100%',
+                listStyle: 'none',
+                p: 0,
+                m: 0,
+                pt: 6,
+                pb: 3,
+                // The page scrolls under the chips: they fade in over it like the composer.
+                background: `linear-gradient(to bottom, transparent, ${roles.surface} 24px)`,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: 2,
               }}
             >
-              <Square size={16} fill="currentColor" />
-            </IconButton>
-          ) : (
-            <IconButton
-              type="submit"
-              aria-label={c.send}
-              disabled={!draft.trim()}
+              {chips.map((chip, index) => (
+                <Box
+                  component="li"
+                  key={chip.label}
+                  sx={{ display: 'flex', ...dealIn, '--deal-index': index }}
+                >
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    onClick={() => send(chip.q, chip)}
+                    sx={{
+                      minHeight: 52,
+                      borderRadius: '16px',
+                      px: 3,
+                      py: 2,
+                      lineHeight: 1.25,
+                      whiteSpace: 'normal',
+                      overflowWrap: 'anywhere',
+                      bgcolor: roles.surfaceContainerLow,
+                      '&:hover': { bgcolor: roles.surfaceContainer },
+                    }}
+                  >
+                    {chip.label}
+                  </Button>
+                </Box>
+              ))}
+            </Box>
+          )}
+          <Stack direction="row" sx={{ alignItems: 'flex-end', gap: 2 }}>
+            {!opening && (
+              <Tooltip title={c.newChat}>
+                <IconButton
+                  aria-label={c.newChat}
+                  onClick={restart}
+                  sx={{
+                    width: 56,
+                    height: 56,
+                    flexShrink: 0,
+                    bgcolor: roles.surfaceContainerHigh,
+                    border: `1px solid ${roles.outlineVariant}`,
+                    '&:hover': { bgcolor: roles.surfaceContainerHighest },
+                  }}
+                >
+                  <RotateCcw size={20} />
+                </IconButton>
+              </Tooltip>
+            )}
+            <Box
+              component="form"
+              role="search"
+              onSubmit={(event) => {
+                event.preventDefault()
+                submit()
+              }}
               sx={{
-                width: 48,
-                height: 48,
-                bgcolor: roles.primary,
-                color: roles.onPrimary,
-                '&:hover': { bgcolor: roles.primary },
-                '&.Mui-disabled': {
-                  bgcolor: roles.surfaceContainerHighest,
-                  color: roles.onSurfaceVariant,
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: 1,
+                pl: 5,
+                pr: 1,
+                py: 1,
+                minHeight: 56,
+                borderRadius: '28px',
+                bgcolor: roles.surfaceContainerHigh,
+                border: `1px solid ${listening ? roles.primary : roles.outlineVariant}`,
+                boxShadow: listening ? `0 0 0 2px ${roles.primary}` : '0 4px 16px rgba(0,0,0,0.08)',
+                transition: `box-shadow ${motion.duration.short}ms ${motion.easing.standard}, border-color ${motion.duration.short}ms ${motion.easing.standard}`,
+                '&:focus-within': {
+                  borderColor: roles.primary,
+                  boxShadow: `0 0 0 1px ${roles.primary}, 0 8px 24px rgba(0,0,0,0.12)`,
                 },
               }}
             >
-              <ArrowUp size={20} />
-            </IconButton>
-          )}
+              <InputBase
+                inputRef={input}
+                multiline
+                maxRows={3}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value.replace(/\n/g, ' '))}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                    event.preventDefault()
+                    submit()
+                  }
+                }}
+                onFocus={() => setTyping(matchMedia('(pointer: coarse)').matches)}
+                onBlur={() => setTyping(false)}
+                placeholder={placeholderText}
+                inputProps={{ 'aria-label': c.composer, enterKeyHint: 'send', maxLength: 300 }}
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  minHeight: 48,
+                  py: '12px',
+                  fontSize: 16,
+                  lineHeight: 1.5,
+                  '& textarea::placeholder': { opacity: 1, color: roles.onSurfaceVariant },
+                }}
+              />
+              {Speech && !busy && (
+                <IconButton
+                  aria-label={t.speak}
+                  aria-pressed={listening}
+                  onClick={listen}
+                  onMouseDown={(event) => event.preventDefault()}
+                  sx={{ width: 48, height: 48, color: listening ? roles.primary : undefined }}
+                >
+                  <Mic size={22} />
+                </IconButton>
+              )}
+              {busy ? (
+                <IconButton
+                  aria-label={c.stop}
+                  onClick={stop}
+                  onMouseDown={(event) => event.preventDefault()}
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    bgcolor: roles.surfaceContainerHighest,
+                    color: roles.onSurface,
+                    '&:hover': { bgcolor: roles.surfaceContainerHighest },
+                  }}
+                >
+                  <Square size={16} fill="currentColor" />
+                </IconButton>
+              ) : (
+                <IconButton
+                  type="submit"
+                  aria-label={c.send}
+                  disabled={!draft.trim()}
+                  onMouseDown={(event) => event.preventDefault()}
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    bgcolor: roles.primary,
+                    color: roles.onPrimary,
+                    '&:hover': { bgcolor: roles.primary },
+                    '&.Mui-disabled': {
+                      bgcolor: roles.surfaceContainerHighest,
+                      color: roles.onSurfaceVariant,
+                    },
+                  }}
+                >
+                  <ArrowUp size={20} />
+                </IconButton>
+              )}
+            </Box>
+          </Stack>
         </Box>
       </Box>
     </Box>
   )
 }
 
+/** The reverse-geocoded name of a point, or null. */
+async function placeLabel(lat: number, lng: number): Promise<string | null> {
+  try {
+    const response = await fetch(`/api/v1/discover/place?lat=${lat}&lng=${lng}`)
+    const data = response.ok ? ((await response.json()) as { label?: string }) : null
+    return data?.label && data.label.toLowerCase() !== 'you' ? data.label : null
+  } catch {
+    return null
+  }
+}
+
+/** The opening cards: deals and open shops first, then the closest; one card per shop and the
+ * area's own currency (the server's rules for answers). */
+function nearbyFirst(shops: AskPick[], lat: number, lng: number): AskPick[] {
+  const inIndia = isIndianArea(lat, lng)
+  const seen = new Set<string>()
+  return shops
+    .filter((shop) => {
+      // Our own shops only: each card opens its Chalkboard page.
+      if (shop.source !== 'chalkboard') return false
+      if (inIndia && shop.currency === 'SGD') return false
+      const key = shop.name
+        .replace(/\s*\((Tour|Demo)\)$/i, '')
+        .trim()
+        .toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .sort(
+      (a, b) =>
+        Number(!!b.deal) - Number(!!a.deal) ||
+        Number(!!b.open_now) - Number(!!a.open_now) ||
+        (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity),
+    )
+    .slice(0, 8)
+}
+
+/** This area's shops as large swipeable cards; a same-size skeleton while they load. */
+function NearbyShops({
+  shops,
+  copy,
+  locale,
+  browse,
+}: {
+  shops: AskPick[] | null
+  copy: ConversationCopy
+  locale: Locale
+  browse: string
+}) {
+  const all = (
+    <Button
+      component="a"
+      href="/explore/browse"
+      onClick={customerNavigate}
+      endIcon={<ArrowRight size={18} />}
+      sx={{ minHeight: 48, ml: -3 }}
+    >
+      {browse}
+    </Button>
+  )
+  // The last thing on the page: when it loads or turns out empty, nothing below it moves.
+  if (shops && shops.length === 0) return <Box sx={{ mt: 3 }}>{all}</Box>
+  return (
+    <Box component="section" aria-labelledby="ask-nearby" sx={{ mt: 6 }}>
+      <Typography id="ask-nearby" component="h2" variant="titleMedium">
+        {copy.nearbyNow}
+      </Typography>
+      <PickList label={copy.nearbyNow} busy={shops === null}>
+        {shops
+          ? shops.map((pick, index) => (
+              <PickCard
+                key={pick.id}
+                pick={pick}
+                index={index}
+                anchor={null}
+                copy={copy}
+                locale={locale}
+              />
+            ))
+          : [0, 1, 2].map((n) => <PickSkeleton key={n} />)}
+      </PickList>
+      {all}
+    </Box>
+  )
+}
+
+// Pixel strings: in sx a bare 1 means 100%, which made this "hidden" line a full screen tall
+// and gave the opening page an empty scroll.
 const visuallyHidden = {
   position: 'absolute',
-  width: 1,
-  height: 1,
+  width: '1px',
+  height: '1px',
+  margin: '-1px',
   overflow: 'hidden',
   clip: 'rect(0 0 0 0)',
   whiteSpace: 'nowrap',
@@ -780,18 +1209,23 @@ function count(answer: AskAnswer) {
   return answer.groups.reduce((n, g) => n + g.places.length, 0)
 }
 
-/** First-message chips: this area's real items and states first, then the person's interests. */
+/** First-message chips: this area's real items and states first, then the person's interests.
+ * They follow the time: in the evening rescue deals and what is still open lead. */
 function startChips(
   s: Suggestions | null,
   interests: string[],
   c: ConversationCopy,
   t: ReturnType<typeof askCopy>,
   discover: ReturnType<typeof discoverCopy>,
+  hour: number,
 ): Chip[] {
   const chips: Chip[] = []
+  const evening = hour >= 17 || hour < 4
+  const deals = s?.deals ? [{ label: c.chipDeals, q: c.chipDeals, refine: 'deals' as const }] : []
+  const open = s?.open_now ? [{ label: c.chipOpen, q: c.chipOpen, refine: 'open' as const }] : []
+  if (evening) chips.push(...deals, ...open)
   for (const item of s?.items.slice(0, 2) ?? []) chips.push({ label: item, q: item })
-  if (s?.deals) chips.push({ label: c.chipDeals, q: c.chipDeals, refine: 'deals' })
-  if (s?.open_now) chips.push({ label: c.chipOpen, q: c.chipOpen, refine: 'open' })
+  if (!evening) chips.push(...open, ...deals)
   if (s?.locally_made) chips.push({ label: c.chipLocal, q: c.chipLocal, refine: 'local' })
   for (const interest of interests) {
     const key = (interest === 'café' ? 'cafe' : interest) as keyof typeof discover
@@ -821,12 +1255,13 @@ function TodayEntry({
       onClick={onOpen}
       disabled={disabled}
       sx={{
-        mt: 8,
+        mt: 5,
         width: '100%',
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
-        p: 4,
+        gap: 3,
+        px: 4,
+        py: 3,
         borderRadius: '20px',
         cursor: 'pointer',
         textAlign: 'start',
@@ -859,7 +1294,13 @@ function TodayEntry({
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography
-          sx={{ fontFamily: HAND_FONT, fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.1 }}
+          sx={{
+            fontFamily: HAND_FONT,
+            fontSize: 'clamp(1.125rem, 5vw, 1.5rem)',
+            fontWeight: 700,
+            lineHeight: 1.15,
+            overflowWrap: 'break-word',
+          }}
         >
           {copy.today}
         </Typography>
@@ -869,6 +1310,59 @@ function TodayEntry({
       </Box>
       <ArrowRight size={20} aria-hidden="true" />
     </Box>
+  )
+}
+
+/** The AI paragraph stays before the cards (owner decision), but a long one is four lines
+ * with "More", so the cards are never a long scroll away. */
+function Summary({
+  text,
+  streaming,
+  markdown,
+  copy,
+}: {
+  text: string
+  streaming: boolean
+  markdown: boolean
+  copy: ConversationCopy
+}) {
+  const [open, setOpen] = useState(false)
+  const long = !streaming && text.length > 220
+  const clamp =
+    long && !open
+      ? {
+          display: '-webkit-box',
+          WebkitLineClamp: 4,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }
+      : {}
+  return (
+    <>
+      {markdown ? (
+        <RichText
+          content={text}
+          streaming={streaming}
+          sx={{
+            ...chalkWrite,
+            ...(long && !open ? { maxHeight: '6.5em', overflow: 'hidden' } : {}),
+          }}
+        />
+      ) : (
+        <Typography variant="bodyLarge" sx={{ ...chalkWrite, ...clamp }}>
+          {text}
+        </Typography>
+      )}
+      {long && (
+        <Button
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          sx={{ minHeight: 48, ml: -3 }}
+        >
+          {open ? copy.less : copy.more}
+        </Button>
+      )}
+    </>
   )
 }
 
@@ -1085,13 +1579,18 @@ function AssistantTurn({
   const nothing = ours.length === 0 && google.length === 0 && !(area?.status === 'ok')
   return (
     <Box sx={{ mt: 4 }}>
-      <Typography variant="bodyLarge" sx={chalkWrite}>
-        {nothing
-          ? fillIn(copy.nothing, { q: intent.keywords?.join(' ') || turn.q })
-          : answer.mode === 'ai' && intent.summary
-            ? intent.summary
-            : fillIn(copy.found, { place: turn.place.label })}
-      </Typography>
+      <Summary
+        text={
+          nothing
+            ? fillIn(copy.nothing, { q: intent.keywords?.join(' ') || turn.q })
+            : answer.mode === 'ai' && intent.summary
+              ? intent.summary
+              : fillIn(copy.found, { place: turn.place.label })
+        }
+        streaming={!!turn.streaming}
+        markdown={!nothing && answer.mode === 'ai' && !!intent.summary}
+        copy={copy}
+      />
       {applied.length > 0 && (
         <Typography variant="labelLarge" color="text.secondary" sx={{ mt: 1 }}>
           {applied.join(' · ')}
@@ -1122,47 +1621,8 @@ function AssistantTurn({
           </Button>
         </Stack>
       )}
-      {ours.length > 0 && (
-        <>
-          <Box
-            component="ul"
-            aria-label={fillIn(copy.found, { place: turn.place.label })}
-            // A scrolling row must be reachable by keyboard (axe scrollable-region-focusable).
-            tabIndex={0}
-            sx={{
-              m: 0,
-              mt: 4,
-              mx: { xs: -4, md: 0 },
-              px: { xs: 4, md: 0 },
-              display: 'grid',
-              gridAutoFlow: { xs: 'column', md: 'row' },
-              gridAutoColumns: 'min(78vw, 272px)',
-              gridTemplateColumns: { md: 'repeat(auto-fill, minmax(208px, 1fr))' },
-              gap: 3,
-              overflowX: { xs: 'auto', md: 'visible' },
-              scrollSnapType: 'x mandatory',
-              scrollPaddingInline: '16px',
-              pb: 2,
-              scrollbarWidth: 'none',
-              '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: 2 },
-            }}
-          >
-            {ours.slice(0, 8).map((pick, index) => (
-              <PickCard
-                key={pick.id}
-                pick={pick}
-                index={index}
-                anchor={answer.anchor}
-                copy={copy}
-                locale={locale}
-                selected={selected?.id === pick.id && selected.from === 'pin'}
-                onFocusPin={() => setSelected({ id: pick.id, from: 'card' })}
-              />
-            ))}
-          </Box>
-        </>
-      )}
-      {area && <AreaAnswerCard area={area} locale={locale} />}
+      {/* Where first (a short map strip, pins numbered like the rows), then the list: our
+          shops, then Google's, in one row shape that fits a 360px phone five to a screen. */}
       <AnswerMap
         answer={answer}
         ours={ours.slice(0, 8)}
@@ -1171,6 +1631,24 @@ function AssistantTurn({
         selected={selected}
         onSelect={setSelected}
       />
+      {ours.length > 0 && (
+        <PickList label={fillIn(copy.found, { place: turn.place.label })}>
+          {ours.slice(0, 8).map((pick, index) => (
+            <PickCard
+              key={pick.id}
+              pick={pick}
+              index={index}
+              anchor={answer.anchor}
+              copy={copy}
+              locale={locale}
+              selected={selected?.id === pick.id && selected.from === 'pin'}
+              onFocusPin={() => setSelected({ id: pick.id, from: 'card' })}
+            />
+          ))}
+        </PickList>
+      )}
+      {/* Google's area answer follows our shops, never above them. */}
+      {area && <AreaAnswerCard area={area} locale={locale} />}
       {google.length > 0 && <GoogleRows places={google} copy={copy} locale={locale} />}
       {latest && (
         <>

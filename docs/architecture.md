@@ -1,4 +1,111 @@
-# Architecture: Google services
+# Chalkboard architecture
+
+Source review: 16 October 2026, checkout `fb483b2`. The diagram shows implemented paths;
+configuration and live evidence are recorded separately in [Google AI used](google-ai.md).
+No cloud service was contacted for this review.
+
+```mermaid
+flowchart TD
+    Phone["Phone / browser PWA<br/>React + TypeScript: owner and customer"]
+    App["Cloud Run: ogoogle-ai<br/>FastAPI + compiled static frontend<br/>Google ADK coach and reviewed tools"]
+    Auth["Firebase Authentication<br/>Google sign-in"]
+    Text["Gemini on Vertex AI<br/>Text, structured output and photo reading"]
+    Live["Gemini Live on Vertex AI<br/>WebSocket audio and tools<br/>Achernar voice"]
+    TTS["Cloud Text-to-Speech<br/>Read-aloud MP3; prefer Achernar"]
+    DB["Firestore<br/>Conversations, shops, sales, community<br/>Run leases and vector recall"]
+    Emb["Vertex AI embeddings<br/>gemini-embedding-2; 768 dimensions"]
+    BQ["BigQuery AI.FORECAST<br/>TimesFM demand forecasting"]
+    Vision["Cloud Vision SafeSearch<br/>Photo moderation"]
+    Media["Cloud Storage<br/>Accepted shop photos"]
+    Maps["Google Maps Platform<br/>Places, Geocoding and photos"]
+    Face["Private Cloud Run face worker<br/>OpenVINO + ONNX liveness/template inference"]
+
+    Phone -->|HTTPS: static files, REST, SSE, WebSocket| App
+    Phone -->|Google login| Auth
+    App -->|Verify identity| Auth
+    App --> Text
+    App --> Live
+    App --> TTS
+    App --> DB
+    App -->|Owner and business scoped recall| Emb
+    Emb -->|Embeddings stored and searched in Firestore| DB
+    App -->|Approved sales; switch selects provider| BQ
+    App --> Vision
+    App --> Media
+    App -->|When Maps configuration is supplied| Maps
+    App -->|Optional consented capture; authenticated request| Face
+```
+
+## Request and data flow
+
+The [Dockerfile](../Dockerfile) builds React and serves its output through
+[frontend.py](../backend/app/frontend.py) in the same service as
+[FastAPI](../backend/app/main.py). The two public domains share this application;
+[router.ts](../src/app/router.ts) selects the owner or customer experience by host/path.
+[PWA registration](../src/app/pwa.ts) and [service worker](../public/sw.js) exist;
+installation and physical-phone offline behaviour still need device verification.
+
+[ADK](../backend/app/agent.py) runs one `business_coach` agent with tools from
+[coordinator.py](../backend/app/coordinator.py), rather than a deployed specialist-agent network.
+[streaming.py](../backend/app/streaming.py) streams text over SSE;
+[voice.py](../backend/app/voice.py) relays microphone audio, transcriptions, responses and tool
+events through Gemini Live. [tts.py](../backend/app/tts.py) separately calls Cloud TTS for
+read-aloud; the browser can fall back to its own speech voice. TTS is not a Gemini inference call.
+
+Firebase establishes account identity. Server-side ownership checks scope conversations and
+business records; owners review proposed changes before committing them. Firestore adapters
+persist [sessions and leases](../backend/app/firestore_memory.py),
+[merchant records](../backend/app/merchant_firestore.py) and
+[customer/community data](../backend/app/community.py) under `ogoogle_ai_v1` in `ichiropractic`.
+
+[memory_vectors.py](../backend/app/memory_vectors.py) calls Vertex embeddings, then Firestore
+`find_nearest` for owner/business conversation recall. This is **Firestore vector search**;
+there is no Vertex AI Vector Search endpoint or shared semantic product-search engine in this
+checkout. Customer intent uses [Gemini plus catalogue matching](../backend/app/discover_ask.py);
+[supplier search](../backend/app/sourcing.py) has its own implementation.
+
+[forecast.py](../backend/app/forecast.py) sends approved sales as parameterized inline data to
+BigQuery `AI.FORECAST` using dataset context `ichiropractic.chalkboard_analytics`. It requires
+28 recent recorded days per item, returns seven days and falls back to a labelled weekday
+average on provider failure. This adapter writes no merchant analytics tables. Sales summaries,
+page counts and customer insights are calculated in the app from stored records. Release 2 adds
+a nightly BigQuery analytics export and a Looker Studio dashboard on it; see
+[Google services added in release 2](#google-services-added-in-release-2).
+
+[photos.py](../backend/app/photos.py) sanitizes images, calls Vision SafeSearch and Gemini,
+and stores accepted media in Cloud Storage. Menus, receipts and day-closing photos are read
+by Gemini; see [day_close.py](../backend/app/day_close.py) and [ingestion.py](../backend/app/ingestion.py).
+The optional [face worker](../backend/face_worker.py) returns a template after its liveness
+checks; [trust.py](../backend/app/trust.py) encrypts it in the shared document store and flags
+possible duplicate accounts for review. This uses non-Google inference models and does not
+establish business ownership or calibrated fraud-detection accuracy.
+
+## Configuration and boundaries
+
+[settings.py](../backend/app/settings.py) defaults to offline coach, local identity, SQLite,
+fixture photo moderation and weekday forecasting. The [local launcher](../scripts/backend-dev.mjs)
+enables the product routes with offline fixtures. [runtime-config.py](../deployment/runtime-config.py)
+selects Vertex Gemini, Firebase, Firestore, Vision and BigQuery for releases;
+[deploy.yml](../.github/workflows/deploy.yml) supplies the private face worker and Maps settings.
+These files describe intended release settings, not a fresh inspection of the running revision.
+
+The diagram above was drawn from `fb483b2`, before release 2. Release 2 adds code for Document
+AI receipts and invoices ([document_ai.py](../backend/app/document_ai.py), `DOCUMENT_AI_ENABLED`),
+Gemini grounding with Google Maps ([maps_grounding.py](../backend/app/maps_grounding.py),
+`MAPS_GROUNDING` off/demo/live) and Recommendations AI ([retail_recs.py](../backend/app/retail_recs.py),
+`RECS_ENABLED`, off by default). The release settings in
+[runtime-config.py](../deployment/runtime-config.py) turn on Document AI and BigQuery analytics.
+Recommendations AI has its catalog imported, and the "Similar items" model is still pending
+console creation ([status](impact/recommendations-ai.md)). Until it serves, similar items come from
+embeddings. See the [pending-services note](google-ai.md#pending-services--not-counted-as-used).
+
+Chalkboard pages and QR sharing do not publish to Google Business Profile. The Google guide
+hands off to Google's own pages. Cloud Run storage durability comes from Firestore and Cloud
+Storage, not local SQLite or the container filesystem.
+
+<!-- Release 2 sections follow (Google services added in release 2, deployment evidence). -->
+
+## Google services added in release 2
 
 One line per Google service the app calls, its switch and what happens without it. Streaming and
 the coach runtime are described in [AI_ARCHITECTURE.md](AI_ARCHITECTURE.md).
@@ -16,7 +123,7 @@ customer messages, contacts, IPs or user agents. Erasing an account deletes its 
 (erasure step `analytics`). Exported days are loaded with WRITE_TRUNCATE per partition (free load
 jobs; a re-run replaces the day).
 
-# Deployment and scaling evidence
+## Deployment and scaling evidence
 
 Source inspection: 16 October 2026. Solid edges below are implemented adapters in this
 checkout, not proof of live calls. Dashed edges are proposed CDN delivery. Production was
@@ -65,7 +172,7 @@ check owner/sharing rights before bytes are served. New approved intake objects 
 `private, no-store`; gallery objects use `private, max-age=3600` metadata. Existing public
 gallery responses have a one-day public cache, so hiding/deleting cannot revoke cached bytes.
 
-## Capacity and cost
+### Capacity and cost
 
 There are three conflicting **source records**, none a current cloud measurement:
 
@@ -107,7 +214,7 @@ spend rises. Do not reset to an assumed historical configuration. Max instances 
 resources, not money; warm instances, provider calls, Firestore and bandwidth still cost.
 Preserve the ₹500 total cash ceiling and paused budget setup; alerts cannot enforce it.
 
-## Quotas, bottlenecks and graceful degradation
+### Quotas, bottlenecks and graceful degradation
 
 | Service / boundary         | Implemented behavior / limit                                                                           | Claude must verify before raising traffic                                                                          |
 | -------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
@@ -144,7 +251,7 @@ guarantee a shared hit rate. Customer factual answers can use confirmed shop dat
 private cross-owner answers or silently call an offline fixture a live Gemini answer. A shared
 answer cache and queue are future work, requiring privacy/expiry/backpressure design.
 
-## Evidence boundary
+### Evidence boundary
 
 The [local load report](impact/load-test.md) exercises public shop reads, discovery and the
 offline SSE coach on one loopback process with ten shops. It measures neither Firestore nor

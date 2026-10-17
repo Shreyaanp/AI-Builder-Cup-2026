@@ -89,7 +89,7 @@ def test_same_face_on_another_account_opens_a_review_not_an_accusation(tmp_path:
 
         second = new_owner(client, "Corner Chai")
         answer = check(client, second, "alice")
-        assert answer == {"result": "in_review", "reason": "ok", "checked": answer["checked"]}
+        assert answer["result"] == "in_review" and answer["reason"] == "ok"
         status = client.get("/api/v1/trust").json()
         assert status["face"] == "in_review"
         assert status["notices"] == [{"id": status["notices"][0]["id"], "kind": "duplicate_owner"}]

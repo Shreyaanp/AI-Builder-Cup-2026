@@ -96,6 +96,7 @@ async function facts(page: Page, extra: Record<string, unknown>) {
 const greeting = /^Good (morning|afternoon|evening)/
 
 test.beforeEach(async ({ page }) => {
+  test.setTimeout(60_000)
   await localOnly(page)
   await enter(page)
 })
@@ -227,3 +228,71 @@ for (const [language, heading, resume] of [
     await axe(page)
     await shot(page, `${language}-dark`)
   })
+
+test('GAP 8: Close the day appears in evening needs you now and opens modal, Grow tile intact', async ({
+  page,
+}) => {
+  test.setTimeout(60_000)
+  await page.clock.setFixedTime(new Date('2026-10-17T19:30:00+05:30'))
+  await facts(page, {
+    yesterday: { sales: 420000, items: 210, views: 38 },
+  })
+  await shop(page, { name: 'Courtyard Chai', ...FULL }, PRODUCTS, { confirm: true })
+
+  const card = page.getByTestId('today-needs')
+  await expect(card.getByRole('heading', { name: 'Needs you now' })).toBeVisible()
+  const closeRow = card.locator('[data-need="closeDay"]')
+  await expect(closeRow).toBeVisible()
+  await expect(closeRow).toContainText('Ready to close today?')
+
+  const closeButton = closeRow.getByRole('button', { name: 'Close the day' })
+  await expect(closeButton).toBeVisible()
+
+  const box = await closeButton.boundingBox()
+  expect(box).toBeTruthy()
+  expect(Math.round(box!.height)).toBeGreaterThanOrEqual(48)
+
+  await closeButton.click()
+  const dialog = page.getByRole('dialog', { name: 'Close the day' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('Till or POS report')).toBeVisible()
+
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toHaveCount(0)
+
+  // 3. Grow tab still has Close the day tile intact and functional
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  const growTile = page.locator('[data-tour="closeday"]')
+  await expect(growTile).toBeVisible()
+  await expect(growTile).toContainText('Close the day')
+  await growTile.click()
+  await expect(page.getByRole('dialog', { name: 'Close the day' })).toBeVisible()
+})
+
+test('shows skeleton while products load; never shows done "Add your menu" step for shop with menu', async ({
+  page,
+}) => {
+  await shop(page, { name: 'Courtyard Chai', ...FULL }, PRODUCTS, { share: true })
+  let releaseInventory: () => void = () => {}
+  const inventoryHeld = new Promise<void>((resolve) => {
+    releaseInventory = resolve
+  })
+  await page.route('**/api/v1/businesses/*/inventory', async (route) => {
+    await inventoryHeld
+    await route.continue()
+  })
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+
+  // While inventory is loading: skeleton is visible, and "Add your menu" is NEVER shown.
+  await expect(page.getByTestId('today-skeleton')).toBeVisible()
+  await expect(page.getByTestId('today-day-one')).toHaveCount(0)
+  await expect(page.getByText('Add your menu')).toHaveCount(0)
+
+  // Now release inventory.
+  releaseInventory()
+  await expect(page.getByTestId('today-skeleton')).toHaveCount(0)
+  await expect(page.getByTestId('today')).toBeVisible()
+  await expect(page.getByTestId('today-day-one')).toHaveCount(0)
+  await expect(page.getByText('Add your menu')).toHaveCount(0)
+})

@@ -5,7 +5,7 @@ import { gsap } from 'gsap'
 import { CloudSun, PackageMinus, Sparkles, Sunrise, UtensilsCrossed, X } from 'lucide-react'
 import type { components } from '../../api/generated'
 import { useChalkTimeline } from '../../design/chalkMotion'
-import { shape } from '../../design/theme'
+import { scrollArea, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { CloseDay } from '../closeday/CloseDay'
 import { closeDayCopy } from '../closeday/strings'
@@ -155,7 +155,9 @@ export function MorningBrief({
                 {/* Open-Meteo is CC BY 4.0: the attribution always shows with the data. */}
                 <Typography variant="bodySmall" color="text.secondary">
                   <Link href={brief.weather.url} target="_blank" rel="noopener" color="inherit">
-                    {brief.weather.attribution}
+                    {fill(brief.weather.demo ? t.weatherDemoCredit : t.weatherCredit, {
+                      source: 'Open-Meteo (CC BY 4.0)',
+                    })}
                   </Link>
                 </Typography>
               </Stack>
@@ -271,8 +273,7 @@ export function MorningBrief({
           display: 'flex',
           overflowX: 'auto',
           scrollSnapType: 'x mandatory',
-          scrollbarWidth: 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
+          ...scrollArea,
         }}
       >
         {slides.map((slide, i) => (

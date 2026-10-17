@@ -25,7 +25,8 @@ import { forgetOpened } from '../discover/opened'
 import type { PreferenceKey } from './preferences'
 
 /** Fixed beside the appearance switch on Ask, Chats and Saved. */
-export function ProfileButton() {
+/** `inline` sits in a page's own header row instead of floating top-right. */
+export function ProfileButton({ inline = false }: { inline?: boolean }) {
   const roles = useTheme().material
   const account = useCustomer()
   const t = useAccountCopy()
@@ -36,19 +37,23 @@ export function ProfileButton() {
         <IconButton
           aria-label={t.profileButton}
           onClick={() => setOpen(true)}
-          sx={{
-            position: 'fixed',
-            top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
-            right: 'calc(env(safe-area-inset-right, 0px) + 64px)',
-            zIndex: 1200,
-            width: 48,
-            height: 48,
-            p: 0,
-            bgcolor: 'background.paper',
-            border: 1,
-            borderColor: 'divider',
-            '&:hover': { bgcolor: 'background.paper' },
-          }}
+          sx={
+            inline
+              ? { width: 48, height: 48, p: 0 }
+              : {
+                  position: 'fixed',
+                  top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
+                  right: 'calc(env(safe-area-inset-right, 0px) + 120px)',
+                  zIndex: 1200,
+                  width: 48,
+                  height: 48,
+                  p: 0,
+                  bgcolor: 'background.paper',
+                  border: 1,
+                  borderColor: 'divider',
+                  '&:hover': { bgcolor: 'background.paper' },
+                }
+          }
         >
           {account.status === 'signed-in' ? (
             <Avatar

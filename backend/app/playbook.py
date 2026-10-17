@@ -26,8 +26,10 @@ from typing import Annotated, Any, Literal
 import structlog
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from . import playbook_hi
 from .gemini_schema import gemini_schema, parse_reply
 from .imports import ColumnMapper
+from .reply_language import written_language
 from .vendor_profile import BusinessTypeProfile, food_segment, profile_for, vocabulary
 
 log = structlog.get_logger()
@@ -608,12 +610,25 @@ def offline_draft(inputs: dict[str, Any]) -> PlaybookDraft:
     if inputs["customer_questions"]["count"]:
         priorities.append("Reply to customer questions quickly")
     vocab_terms = [p["name"] for p in inputs["menu"][:8]]
+    summary = (
+        f"A {inputs['category'] or key} shop"
+        + (f" in {inputs['location']}" if inputs["location"] else "")
+        + "."
+    )
+    if inputs.get("language") == "hi":
+        # A Hindi owner reads the offline playbook in Hindi; their own words stay as written.
+        say = playbook_hi.hindi
+        summary = playbook_hi.summary(inputs["category"], inputs["location"])
+        goals, priorities, segments = (
+            [say(t) for t in goals],
+            [say(t) for t in priorities],
+            [say(t) for t in segments],
+        )
+        metrics = [(m, say(t)) for m, t in metrics]
+        watch = [(k, say(t)) for k, t in watch]
+        features = [(f, say(t)) for f, t in features]
     return PlaybookDraft(
-        summary=(
-            f"A {inputs['category'] or key} shop"
-            + (f" in {inputs['location']}" if inputs["location"] else "")
-            + "."
-        )[:240],
+        summary=summary[:240],
         goals=[g[:120] for g in goals[:3]],
         priorities=[p[:120] for p in priorities[:5]],
         key_metrics=[DraftMetric(metric=m, text=t) for m, t in metrics[:4]],
@@ -748,11 +763,15 @@ class PlaybookWriter(ColumnMapper):
                     model=self.settings.google_text_model,
                     contents=json.dumps(inputs, ensure_ascii=False, default=str),
                     config=types.GenerateContentConfig(
-                        system_instruction=PROMPT.format(language=inputs.get("language", "en")),
+                        system_instruction=PROMPT.format(
+                            language=written_language(inputs.get("language", "en"))
+                        ),
                         response_mime_type="application/json",
                         response_json_schema=gemini_schema(PlaybookDraft),
                         temperature=0.3,
-                        max_output_tokens=1500,
+                        max_output_tokens=4000,
+                        # Room for Hindi (Indic scripts cost more tokens); no thinking.
+                        thinking_config=types.ThinkingConfig(thinking_budget=0),
                     ),
                 )
             draft = parse_reply(PlaybookDraft, response)

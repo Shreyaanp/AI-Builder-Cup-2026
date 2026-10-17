@@ -178,8 +178,8 @@ function ZoomButtons({ onZoom }: { onZoom: (delta: number) => void }) {
   const c = useInChatCopy()
   const roles = useTheme().material
   const button = {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     bgcolor: roles.surfaceContainerHighest,
     color: roles.onSurface,
     '&:hover': { bgcolor: roles.surfaceContainerHighest, filter: 'brightness(0.96)' },

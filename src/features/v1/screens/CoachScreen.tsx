@@ -1,5 +1,7 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
 import { photoCopy } from '../../coach/photoCopy'
+import { PlainText, RichText } from '../../../design/RichText'
+import { stripMarkdown } from '../../../design/markdownUtils'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent, ReactElement } from 'react'
 import {
@@ -59,6 +61,7 @@ import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
 import { ConnectSheet } from '../../connect/ConnectSheet'
 import { useConnectCopy } from '../../connect/strings'
+import { CloseDay } from '../../closeday/CloseDay'
 import { SalesImportSheet } from '../ImportMenu'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
 import { StartCard } from '../ShopCard'
@@ -211,6 +214,7 @@ function CoachScreen({
   const receiveOrder = useReceiveOrder()
   // My shop sheets opened from suggestion chips.
   const [shopSheet, setShopSheet] = useState<ShopSheetKind | null>(null)
+  const [closeDayOpen, setCloseDayOpen] = useState(false)
   const menuLinks = useRef<Message[]>([])
   // The menu item a "See … in your menu" link opened the menu at.
   const [menuFocus, setMenuFocus] = useState<string | null>(null)
@@ -544,10 +548,11 @@ function CoachScreen({
   async function speakReply(text: string) {
     speechSynthesis.cancel()
     speaking.current?.pause()
+    const cleanText = stripMarkdown(text)
     try {
       const response = await api<Response>('/tts', {
         method: 'POST',
-        body: JSON.stringify({ text, language }),
+        body: JSON.stringify({ text: cleanText, language }),
         raw: true,
       })
       if (response.status === 200) {
@@ -561,7 +566,7 @@ function CoachScreen({
     } catch {
       // Fall through to on-device speech.
     }
-    const utterance = utter(text, language)
+    const utterance = utter(cleanText, language)
     speechSynthesis.speak(utterance)
   }
 
@@ -724,7 +729,8 @@ function CoachScreen({
       const query = activeId
         ? `?business_id=${encodeURIComponent(activeId)}`
         : `?currency=${defaultCurrency()}`
-      const result = await api<PhotoResult>(`/photos${query}`, {
+      // The notes about anything unclear come back in the owner's language.
+      const result = await api<PhotoResult>(`/photos${query}&language=${language}`, {
         method: 'POST',
         body: file,
         headers: { 'Content-Type': file.type },
@@ -856,6 +862,7 @@ function CoachScreen({
     openMessages: () => setShopSheet('messages'),
     openSoldOut: () => setShopSheet('soldOut'),
     talk: () => void restored.current.then(() => voice.start(session.current)),
+    openCloseDay: () => setCloseDayOpen(true),
   }
   const lastIsReply =
     messages.at(-1)?.role === 'assistant' && !liveReply && !reveal.active() && busy === 'idle'
@@ -1185,6 +1192,7 @@ function CoachScreen({
                     message={{ role: 'assistant', text: liveReply }}
                     you={t.you}
                     coach={t.coach}
+                    streaming
                   />
                 )}
                 {busy === 'reply' && !reply && searching === null && (
@@ -1211,6 +1219,14 @@ function CoachScreen({
           setMenuFocus(null)
         }}
       />
+      {closeDayOpen && (
+        <CloseDay
+          onClose={() => {
+            setCloseDayOpen(false)
+            void ws.reload()
+          }}
+        />
+      )}
 
       <Box
         sx={{
@@ -1269,7 +1285,11 @@ function CoachScreen({
           }}
         >
           {voice.state !== 'idle' ? (
-            <IconButton aria-label={voice.muted ? t.unmute : t.mute} onClick={voice.toggleMute}>
+            <IconButton
+              aria-label={voice.muted ? t.unmute : t.mute}
+              onClick={voice.toggleMute}
+              sx={{ minWidth: 48, minHeight: 48 }}
+            >
               {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </IconButton>
           ) : (
@@ -1281,6 +1301,7 @@ function CoachScreen({
                   ref={photoButton}
                   aria-haspopup={choices ? 'menu' : undefined}
                   onClick={(event) => choosePhoto(event.currentTarget)}
+                  sx={{ minWidth: 48, minHeight: 48 }}
                 >
                   {busy === 'photo' || importer.busy ? (
                     <CircularProgress size={20} aria-label={t.checkingPhoto} />
@@ -1527,10 +1548,12 @@ function Bubble({
   message,
   you,
   coach,
+  streaming = false,
 }: {
   message: { role: 'user' | 'assistant'; text: string }
   you: string
   coach: string
+  streaming?: boolean
 }) {
   const roles = useTheme().material
   if (message.role === 'user')
@@ -1540,9 +1563,7 @@ function Bubble({
           <Typography component="span" sx={visuallyHidden}>
             {you}:{' '}
           </Typography>
-          <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-            {message.text}
-          </Typography>
+          <PlainText text={message.text} />
         </Box>
       </Box>
     )
@@ -1559,13 +1580,11 @@ function Bubble({
       >
         <Leaf size={18} />
       </Avatar>
-      <Box sx={{ minWidth: 0, pt: 0.5 }}>
+      <Box sx={{ minWidth: 0, pt: 0.5, flex: 1 }}>
         <Typography component="span" sx={visuallyHidden}>
           {coach}:{' '}
         </Typography>
-        <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-          {message.text}
-        </Typography>
+        <RichText content={message.text} streaming={streaming} />
       </Box>
     </Stack>
   )
