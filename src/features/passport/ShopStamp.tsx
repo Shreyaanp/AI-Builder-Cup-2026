@@ -5,6 +5,7 @@ import { usePassportCopy } from './copy'
 import { holdAt } from '../rescue/holds'
 import { StampMoment } from './StampMoment'
 import { demoKey } from './store'
+import { landStamp } from '../rewards/storage'
 
 /**
  * The passport on a shop page. A scan of the shop's QR (`?source=qr&k=…`) opens the stamp
@@ -78,7 +79,10 @@ export function ShopStamp({
           shop={shop}
           qrKey={key}
           open={open}
-          onClose={() => setOpen(false)}
+          onClose={(stamped) => {
+            setOpen(false)
+            if (stamped) landStamp(shop.id)
+          }}
           // A scan where this phone holds a rescue collects it (checked against the shop chat).
           rescue={holdAt(shop.id)?.rescue ?? null}
         />

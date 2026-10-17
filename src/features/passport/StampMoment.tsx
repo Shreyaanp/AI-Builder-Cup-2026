@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Button, CircularProgress, Dialog, Stack, Typography, useTheme } from '@mui/material'
+import { Box, Button, Stack, Typography, useTheme } from '@mui/material'
 import { gsap } from 'gsap'
 import { Clock, MapPinOff, QrCode, Store, TriangleAlert } from 'lucide-react'
 import { useChalkTimeline } from '../../design/chalkMotion'
@@ -7,6 +7,7 @@ import { HAND_FONT } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { useCustomer } from '../customer/account'
 import { SignInSheet } from '../customer/SignIn'
+import { Sheet } from '../v1/Sheet'
 import { useRescueCopy } from '../rescue/copy'
 import { dropHold } from '../rescue/holds'
 import { visit } from '../rewards/storage'
@@ -59,7 +60,8 @@ export function StampMoment({
   }
   qrKey: string
   open: boolean
-  onClose: () => void
+  /** `stamped`: a verified stamp landed, so the page can show it pressing onto the card. */
+  onClose: (stamped: boolean) => void
   rescue?: string | null
 }) {
   const t = usePassportCopy()
@@ -132,28 +134,30 @@ export function StampMoment({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, attempt, account.status, shop.id, qrKey, signedIn, rescue])
 
+  const finish = () =>
+    onClose(phase.step === 'result' && phase.outcome.verdict === 'stamped')
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="xs"
-      aria-labelledby="stamp-moment-title"
-      aria-describedby="stamp-moment-body"
-      sx={{
-        '& .MuiDialog-paper': {
-          borderRadius: '28px',
-          bgcolor: roles.surfaceContainerLow,
-          m: 2,
-          width: 'calc(100% - 32px)',
-          overflowY: 'auto',
-        },
-      }}
-    >
-      <Box sx={{ p: 5, pt: 6, textAlign: 'center' }} aria-live="polite">
+    // A bottom sheet on phones (slides up into the thumb zone), a dialog on wide screens.
+    <Sheet open={open} onClose={finish} titleId="stamp-moment-title" dismissInActions>
+      <Box sx={{ pt: 1, pb: 2, textAlign: 'center' }} aria-live="polite">
         {phase.step === 'locating' || phase.step === 'sending' ? (
           <Stack spacing={3} sx={{ alignItems: 'center', py: 4 }}>
-            <CircularProgress aria-hidden="true" />
+            {/* The stamp's place, waiting to be pressed (still under reduced motion). */}
+            <Box
+              aria-hidden="true"
+              className="c-shimmer"
+              sx={{
+                width: 128,
+                height: 128,
+                borderRadius: '50%',
+                display: 'grid',
+                placeItems: 'center',
+                border: `3px dashed ${roles.outline}`,
+                color: roles.onSurfaceVariant,
+              }}
+            >
+              <QrCode size={40} />
+            </Box>
             <Typography id="stamp-moment-title" variant="titleMedium">
               {t.checking}
             </Typography>
@@ -193,7 +197,7 @@ export function StampMoment({
           )}
           <Button
             variant={phase.step === 'result' ? 'contained' : 'text'}
-            onClick={onClose}
+            onClick={finish}
             autoFocus
           >
             {t.done}
@@ -206,7 +210,7 @@ export function StampMoment({
         onSignedIn={() => setSignIn(false)}
         body={t.signInKeep}
       />
-    </Dialog>
+    </Sheet>
   )
 }
 

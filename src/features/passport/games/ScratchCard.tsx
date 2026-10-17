@@ -320,6 +320,10 @@ export function ScratchCard({
                 scratch(event)
               }
             }}
+            // The stamp sheet around the card must not take a downward scratch for a swipe-close.
+            onTouchStart={(event) => {
+              ;(event.nativeEvent as TouchEvent & { defaultMuiPrevented?: boolean }).defaultMuiPrevented = true
+            }}
             onPointerUp={stopScratching}
             onPointerCancel={stopScratching}
             onLostPointerCapture={stopScratching}
