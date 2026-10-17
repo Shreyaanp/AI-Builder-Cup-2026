@@ -38,7 +38,7 @@ import { LanguagePicker } from '../frontdoors/LanguagePicker'
 import { useFrontCopy } from '../frontdoors/strings'
 import { usePassportCopy } from '../passport/copy'
 import { TodayDeck } from '../passport/TodayDeck'
-import { AreaAnswerCard, GoogleRows, PickCard } from './AnswerCards'
+import { AreaAnswerCard, GoogleRows, PickCard, PickList, PickSkeleton } from './AnswerCards'
 import type { AskPick } from './askThread'
 import { AnswerMap, type MapSelection } from './AnswerMap'
 import { askCopy } from './askStrings'
@@ -1138,7 +1138,6 @@ function NearbyShops({
   locale: Locale
   browse: string
 }) {
-  const roles = useTheme().material
   const all = (
     <Button
       component="a"
@@ -1157,31 +1156,7 @@ function NearbyShops({
       <Typography id="ask-nearby" component="h2" variant="titleMedium">
         {copy.nearbyNow}
       </Typography>
-      <Box
-        component="ul"
-        aria-label={copy.nearbyNow}
-        aria-busy={shops === null}
-        // A scrolling row must be reachable by keyboard (axe scrollable-region-focusable).
-        tabIndex={shops ? 0 : -1}
-        sx={{
-          m: 0,
-          mt: 3,
-          mx: { xs: -4, md: 0 },
-          px: { xs: 4, md: 0 },
-          display: 'grid',
-          gridAutoFlow: { xs: 'column', md: 'row' },
-          gridAutoColumns: 'min(78vw, 272px)',
-          gridTemplateColumns: { md: 'repeat(auto-fill, minmax(208px, 1fr))' },
-          gap: 3,
-          overflowX: { xs: 'auto', md: 'visible' },
-          scrollSnapType: 'x mandatory',
-          scrollPaddingInline: '16px',
-          overscrollBehaviorX: 'contain',
-          pb: 2,
-          scrollbarWidth: 'none',
-          '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: 2 },
-        }}
-      >
+      <PickList label={copy.nearbyNow} busy={shops === null}>
         {shops
           ? shops.map((pick, index) => (
               <PickCard
@@ -1193,43 +1168,9 @@ function NearbyShops({
                 locale={locale}
               />
             ))
-          : [0, 1, 2].map((n) => <CardSkeleton key={n} />)}
-      </Box>
+          : [0, 1, 2].map((n) => <PickSkeleton key={n} />)}
+      </PickList>
       {all}
-    </Box>
-  )
-}
-
-function CardSkeleton() {
-  const roles = useTheme().material
-  return (
-    <Box
-      component="li"
-      aria-hidden="true"
-      sx={{
-        listStyle: 'none',
-        height: 248,
-        borderRadius: '20px',
-        bgcolor: roles.surfaceContainerLow,
-        border: `1px solid ${roles.outlineVariant}`,
-        p: 2,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-      }}
-    >
-      <Box
-        className="c-shimmer"
-        sx={{ height: 120, borderRadius: '14px', bgcolor: roles.surfaceContainer }}
-      />
-      <Box
-        className="c-shimmer"
-        sx={{ height: 20, width: '70%', borderRadius: '6px', bgcolor: roles.surfaceContainer }}
-      />
-      <Box
-        className="c-shimmer"
-        sx={{ height: 16, width: '45%', borderRadius: '6px', bgcolor: roles.surfaceContainer }}
-      />
     </Box>
   )
 }
@@ -1652,47 +1593,9 @@ function AssistantTurn({
           </Button>
         </Stack>
       )}
-      {ours.length > 0 && (
-        <>
-          <Box
-            component="ul"
-            aria-label={fillIn(copy.found, { place: turn.place.label })}
-            // A scrolling row must be reachable by keyboard (axe scrollable-region-focusable).
-            tabIndex={0}
-            sx={{
-              m: 0,
-              mt: 4,
-              mx: { xs: -4, md: 0 },
-              px: { xs: 4, md: 0 },
-              display: 'grid',
-              gridAutoFlow: { xs: 'column', md: 'row' },
-              gridAutoColumns: 'min(78vw, 272px)',
-              gridTemplateColumns: { md: 'repeat(auto-fill, minmax(208px, 1fr))' },
-              gap: 3,
-              overflowX: { xs: 'auto', md: 'visible' },
-              scrollSnapType: 'x mandatory',
-              scrollPaddingInline: '16px',
-              pb: 2,
-              scrollbarWidth: 'none',
-              '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: 2 },
-            }}
-          >
-            {ours.slice(0, 8).map((pick, index) => (
-              <PickCard
-                key={pick.id}
-                pick={pick}
-                index={index}
-                anchor={answer.anchor}
-                copy={copy}
-                locale={locale}
-                selected={selected?.id === pick.id && selected.from === 'pin'}
-                onFocusPin={() => setSelected({ id: pick.id, from: 'card' })}
-              />
-            ))}
-          </Box>
-        </>
-      )}
       {area && <AreaAnswerCard area={area} locale={locale} />}
+      {/* Where first (a short map strip, pins numbered like the rows), then the list: our
+          shops, then Google's, in one row shape that fits a 360px phone five to a screen. */}
       <AnswerMap
         answer={answer}
         ours={ours.slice(0, 8)}
@@ -1701,6 +1604,22 @@ function AssistantTurn({
         selected={selected}
         onSelect={setSelected}
       />
+      {ours.length > 0 && (
+        <PickList label={fillIn(copy.found, { place: turn.place.label })}>
+          {ours.slice(0, 8).map((pick, index) => (
+            <PickCard
+              key={pick.id}
+              pick={pick}
+              index={index}
+              anchor={answer.anchor}
+              copy={copy}
+              locale={locale}
+              selected={selected?.id === pick.id && selected.from === 'pin'}
+              onFocusPin={() => setSelected({ id: pick.id, from: 'card' })}
+            />
+          ))}
+        </PickList>
+      )}
       {google.length > 0 && <GoogleRows places={google} copy={copy} locale={locale} />}
       {latest && (
         <>
