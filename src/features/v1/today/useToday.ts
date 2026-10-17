@@ -15,8 +15,35 @@ function safeToday(value: unknown): TodayFacts | null {
     typeof row.today !== 'object'
   )
     return null
+  const rawHints = row.hints && typeof row.hints === 'object' ? row.hints : null
+  const hints = rawHints
+    ? {
+        ...rawHints,
+        pulse: Array.isArray(rawHints.pulse)
+          ? rawHints.pulse.filter((item) => typeof item === 'string')
+          : [],
+        needs_you: Array.isArray(rawHints.needs_you)
+          ? rawHints.needs_you.filter((item) => typeof item === 'string')
+          : [],
+        metrics: Array.isArray(rawHints.metrics)
+          ? rawHints.metrics.filter((item) => typeof item === 'string')
+          : [],
+        units: Array.isArray(rawHints.units)
+          ? rawHints.units.filter((item) => typeof item === 'string')
+          : [],
+      }
+    : null
+  const forecast =
+    row.forecast &&
+    typeof row.forecast === 'object' &&
+    typeof row.forecast.item === 'string' &&
+    typeof row.forecast.quantity === 'number'
+      ? row.forecast
+      : null
   return {
     ...row,
+    hints,
+    forecast,
     low_stock: Array.isArray(row.low_stock)
       ? row.low_stock.filter(
           (item) => item && typeof item.name === 'string' && typeof item.stock === 'number',
