@@ -12,15 +12,27 @@ export function currentPath() {
  * Run a DOM update inside a view transition when the browser has them and motion is on. A
  * transition that is skipped (a second tap starts another, or the update is slow) rejects its
  * promises; that is expected, so it must not surface as an unhandled rejection.
+ *
+ * `direction` picks the page motion (customer.css): forward pushes the new page in from the
+ * end edge, back slides it in from the start edge, a tab switch only cross-fades.
  */
-export function viewTransition(update: () => void | Promise<void>) {
+export function viewTransition(
+  update: () => void | Promise<void>,
+  direction: 'forward' | 'back' | 'tab' = 'forward',
+) {
   if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) {
     void update()
     return
   }
+  const root = document.documentElement
+  root.dataset.nav = direction
   const transition = document.startViewTransition(update)
   transition.ready.catch(() => undefined)
-  transition.finished.catch(() => undefined)
+  transition.finished
+    .catch(() => undefined)
+    .finally(() => {
+      if (root.dataset.nav === direction) delete root.dataset.nav
+    })
 }
 
 /** Keep native modified clicks; ordinary links support back/forward and shared hero snapshots. */
@@ -50,7 +62,8 @@ export function customerNavigate(event: MouseEvent<HTMLElement>) {
         document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView(),
       )
   }
-  viewTransition(update)
+  // The navigation bar switches tabs: a cross-fade, no push.
+  viewTransition(update, event.currentTarget.closest('.c-nav') ? 'tab' : 'forward')
 }
 
 /**
@@ -70,6 +83,7 @@ export function customerBack(event: MouseEvent<HTMLElement>) {
           })
           history.back()
         }),
+      'back',
     )
     return
   }
