@@ -17,6 +17,7 @@ from .merchant import MerchantRepository, ProposalRequest
 from .place_photos import PlacesPhotos
 from .settings import Settings
 from .shop_time import shop_timezone
+from .words import words
 
 log = structlog.get_logger()
 
@@ -532,7 +533,8 @@ async def prepare_pin(
 def matches(place: DiscoveryPlace, q: str, category: str, only_open: bool) -> bool:
     text = " ".join([place.name, place.category, *(item.name for item in place.items)]).casefold()
     query = re.sub(r"\b(near me|open now|nearby)\b", "", q, flags=re.I).strip()
-    if query and not all(word in text for word in re.findall(r"\w+", query.casefold())):
+    terms = [*words(query.casefold()), *re.findall(r"\d+", query)]
+    if query and not all(word in text for word in terms):
         return False
     if category and not any(term in place.category.casefold() for term in CATEGORIES[category][1]):
         return False

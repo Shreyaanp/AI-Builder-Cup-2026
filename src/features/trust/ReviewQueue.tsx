@@ -121,7 +121,7 @@ export function ReviewQueue({ queue, onChange }: { queue: Review[]; onChange: ()
                       key={`${index}-${reason.rule}`}
                       sx={{ overflowWrap: 'anywhere' }}
                     >
-                      {reason.detail}{' '}
+                      {reviewSentence(c.review, reason)}{' '}
                       <Box component="span" sx={{ color: 'text.secondary' }}>
                         · {c.source[reason.source] ?? reason.source}
                       </Box>
@@ -154,4 +154,18 @@ export function ReviewQueue({ queue, onChange }: { queue: Review[]; onChange: ()
       )}
     </Box>
   )
+}
+
+/**
+ * A rule's reason in the reviewer's language, from the other shop and the item, brand or count.
+ * Flags saved before those were stored (and Gemini's own sentences) keep their English detail.
+ */
+function reviewSentence(
+  review: Record<string, string>,
+  reason: NonNullable<Review['reasons']>[number],
+): string {
+  const template = review[reason.rule]
+  const needed = template?.includes('{shop}') ? reason.other : reason.owner_detail
+  if (!template || !needed) return reason.detail
+  return fill(template, { shop: reason.other ?? '', detail: reason.owner_detail ?? '' })
 }

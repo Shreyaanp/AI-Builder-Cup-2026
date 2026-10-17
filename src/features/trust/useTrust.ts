@@ -21,7 +21,14 @@ export interface Review {
   shops?: string[][]
   shop?: string
   business_id?: string
-  reasons?: { rule: string; detail: string; source: string }[]
+  /** `detail` is English; `other` and `owner_detail` fill a sentence in the reviewer's language. */
+  reasons?: {
+    rule: string
+    detail: string
+    source: string
+    other?: string
+    owner_detail?: string
+  }[]
 }
 
 export interface Trust {
