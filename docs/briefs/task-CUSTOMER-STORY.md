@@ -12,6 +12,7 @@ location, language step after sign-in), tour demo data (Codex feat/tour-story), 
 their work when it lands; don't duplicate it.
 
 Owner feedback (17 Oct 05:30), all on the customer side:
+
 - CSS is broken in many places. The shop card is too big for the screen; information is cramped; the shop
   name + image on the shop page look bad. "Did you not run the heatmap for UI/UX?" → run the repo's UX
   tooling: docs/qa/customer-heatmap.md + docs/qa/heatmap (previous method), .agents/skills
@@ -28,5 +29,5 @@ Owner feedback (17 Oct 05:30), all on the customer side:
   asked, where, which shop) and never reset or mix sessions.
 - The customer story is incomplete: decide with the owner the 2-minute customer journey (front door ask
   → results + map → shop page → chat/stamp/rescue → passport) and make every step great.
-Start by: (1) a 5-line summary of what you see is broken (after screenshots), (2) the proposed customer
-journey, (3) ask the owner 2-3 questions, then build in small, tested, pushed steps.
+  Start by: (1) a 5-line summary of what you see is broken (after screenshots), (2) the proposed customer
+  journey, (3) ask the owner 2-3 questions, then build in small, tested, pushed steps.
