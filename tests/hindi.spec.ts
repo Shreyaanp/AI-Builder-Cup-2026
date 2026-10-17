@@ -50,6 +50,8 @@ const OWNER_WORDS = [
   'Tiong Bahru Bakery',
   'Chinatown Hawker Centre',
   'Tiong Bahru',
+  // Release 3's area fallback (#54) for a rupee phone with no location yet.
+  'Indiranagar',
 ]
 
 /** Visible text, labels, placeholders and alt text that still contain English words. */
@@ -269,12 +271,14 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
   await localOnly(customer)
   try {
     await customer.goto('/explore/')
-    await expect(customer.getByRole('button', { name: 'जारी रखें' })).toBeVisible()
+    // Release 3's front door (#60) opens on the Ask, with no welcome step to continue past.
+    await expect(customer.getByRole('heading', { name: 'आस-पास क्या खोज रहे हैं?' })).toBeVisible()
     await readsInHindi(customer, '20-front-door')
 
     await customer.evaluate(() => localStorage.setItem('chalkboard.customer.journey', 'done'))
     await customer.goto('/explore/')
-    await customer.getByRole('textbox').first().fill('पास में चाय')
+    // The Ask box, not #60's inline "where" field above it.
+    await customer.getByRole('search').getByRole('textbox').fill('पास में चाय')
     await customer.keyboard.press('Enter')
     await expect(customer.getByText(/^नमूना जवाब/).first()).toBeVisible({ timeout: 20_000 })
     await readsInHindi(customer, '21-ask-results')
