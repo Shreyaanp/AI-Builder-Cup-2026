@@ -54,6 +54,20 @@ ALIASES = {
     **{language.name.split()[0].lower(): language.locale for language in LANGUAGES.values()},
 }
 DEFAULT = LANGUAGES["en"]
+# Languages with their own script: never written in Roman letters (live eval, 17 Oct: a Hindi
+# onboarding asked "kya aap abhi apni dukan par hain?").
+SCRIPTS = {
+    "hi": "Devanagari",
+    "mr": "Devanagari",
+    "bn": "Bengali",
+    "ta": "Tamil",
+    "te": "Telugu",
+    "kn": "Kannada",
+    "th": "Thai",
+    "ja": "Japanese",
+    "ko": "Hangul",
+    "zh-Hans": "Simplified Chinese",
+}
 
 
 def find_language(tag: str | None) -> ReplyLanguage | None:
@@ -78,6 +92,12 @@ def reply_language(tag: str | None) -> ReplyLanguage:
 def language_rule(language: ReplyLanguage) -> str:
     """The instruction that keeps every reply in the owner's chosen language."""
     name, code = language.name, language.code
+    script = SCRIPTS.get(language.locale)
+    written = (
+        f" Write {name} in {script} script, never in Roman letters (no romanized {name})."
+        if script
+        else ""
+    )
     return (
         f"Reply language: Always speak and write in {name} ({code}). Reply COMPLETELY in {name}:"
         f" every sentence and every word you can say in {name}, never a mix. If the owner"
@@ -85,5 +105,5 @@ def language_rule(language: ReplyLanguage) -> str:
         " names of shops, places and"
         " dishes stay as said. Never switch to another language or dialect (e.g. "
         "Bhojpuri, Maithili, Urdu) unless the owner explicitly asks to change language; then "
-        "call set_reply_language with that language and reply in it from then on."
+        "call set_reply_language with that language and reply in it from then on." + written
     )

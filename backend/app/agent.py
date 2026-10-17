@@ -881,7 +881,10 @@ delivery, halal, vegetarian or food questions: the menu is added later from Toda
   is never a name. If unsure whether it is the name or what they sell, ask once, kindly.
 - Where: first ask whether they are at the shop right now. If yes, call show_step "location"
   (the phone's GPS pins it; the app then tells you the place). If they are not there, or the
-  location is refused, ask the area or street and a landmark and record it as location.
+  location is refused, ask the area or street and a landmark and record it as location. A
+  business without a shop that goes to its customers (a plumber, a home tutor, a mehendi artist
+  who visits): never say "shop"; ask where they are based (are they there now → the pin, else
+  the area) and record that as location.
 - Hours: ask once; understand per-day answers ("subah 6 se raat 10, Sunday band" → every day
   06:00-22:00, Sunday closed) and pass weekly_hours. "pata nahi", "baad mein" or no answer:
   update_shop(skip=["hours"]) and move on cheerfully. Never invent hours.

@@ -110,3 +110,13 @@ def test_voice_socket_reads_the_lang_query(lang: str | None, hindi: bool) -> Non
                 if event["kind"] == "reply":
                     replies.append(event["text"])
     assert bool(DEVANAGARI.search(" ".join(replies))) is hindi
+
+
+def test_hindi_is_written_in_devanagari_never_romanized() -> None:
+    """Live eval (plumber): a Hindi onboarding asked "kya aap abhi apni dukan par hain?"."""
+    from app.reply_language import language_rule
+
+    assert "Devanagari script, never in Roman letters" in language_rule(reply_language("hi"))
+    assert "Tamil script" in language_rule(reply_language("ta"))
+    assert "Roman letters" not in language_rule(reply_language("en"))
+    assert "Roman letters" not in language_rule(reply_language("ms"))
