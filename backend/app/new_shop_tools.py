@@ -82,6 +82,21 @@ def owner_words(draft: NewShopDraft | None) -> str:
     return words(fields.category, fields.description) if fields else ""
 
 
+def attach_ready_profile(ctx: MerchantContext) -> None:
+    """A business profile that finished after the answer that asked for it joins the draft now
+    (end of the turn, "bas"): no wait, no model call."""
+    draft = ctx.new_shop_draft
+    said = owner_words(draft)
+    if not draft or draft.understanding is not None or not said:
+        return
+    ready = get_understander().cached(said)
+    if ready is not None:
+        ctx.new_shop_draft = draft.model_copy(
+            update={"understanding": keep_owner_kind(ready, draft.understanding)}
+        )
+        log.info("business_understood", kind=ready.kind, late=True)
+
+
 async def understand(ctx: MerchantContext, said: str, wait: float = UNDERSTAND_SECONDS) -> None:
     """Bring the draft's business profile up to date with what the owner said (the owner's own
     word on the kind always wins). Never blocks a reply for long, never fails a save."""
@@ -276,6 +291,7 @@ def end_conversation() -> dict[str, Any]:
         # Already ended (the app caught the stop word first): a second call changes nothing.
         return {"status": "ended", "instruction": END_NOTE}
     ctx.ended = True
+    attach_ready_profile(ctx)
     card_id = _card(ctx, "action", {"target": "end_conversation"})
     log.info("conversation_end_requested", new_shop=ctx.new_shop)
     return {"status": "ended", "card_id": card_id, "instruction": END_NOTE}

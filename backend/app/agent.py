@@ -35,7 +35,7 @@ from .coordinator import (
     shop_currency,
 )
 from .new_shop_resume import done_steps, keep_draft, keep_draft_after_model, progress_note
-from .new_shop_tools import end_conversation, show_step, update_shop
+from .new_shop_tools import attach_ready_profile, end_conversation, show_step, update_shop
 from .reply_language import language_rule, reply_language
 from .settings import Settings
 from .sourcing_offline import sourcing_call, sourcing_reply
@@ -351,6 +351,15 @@ def end_on_request(callback_context: Any, llm_request: LlmRequest) -> LlmRespons
         thought_signature=APP_CALL_SIGNATURE,
     )
     return LlmResponse(content=types.Content(role="model", parts=[part]))
+
+
+def after_model(callback_context: Any, llm_response: LlmResponse) -> None:
+    """ADK after-model callback: a business profile that finished meanwhile joins the draft,
+    and the draft is saved with the coach's words (resume = continue)."""
+    ctx = current.get()
+    if ctx and ctx.new_shop:
+        attach_ready_profile(ctx)
+    return keep_draft_after_model(callback_context, llm_response)
 
 
 # "nahi, yeh service hai" / "no, it is a service": the kind, corrected silently.
@@ -1054,7 +1063,7 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
         tools=list(tools),
         # Each recorded new-shop answer is saved in the conversation at once (resume = continue).
         after_tool_callback=keep_draft,
-        after_model_callback=keep_draft_after_model,
+        after_model_callback=after_model,
         before_model_callback=end_on_request,
         # Thinking shares the output budget: a small cap left some turns completely empty.
         # Low temperature keeps tool calls for reported changes consistent.

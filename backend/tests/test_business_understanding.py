@@ -335,6 +335,31 @@ def test_a_slow_profile_is_picked_up_with_the_next_answer(tmp_path: Path) -> Non
         business_understanding.understander = previous
 
 
+def test_a_profile_ready_by_bas_joins_the_draft(tmp_path: Path) -> None:
+    """Live eval (tailor): the profile finished after the last answer; "bas" still saves it."""
+    reader, _ = gemini_reader({"kind": "service", "confidence": 0.9}, delay=3)
+    previous = business_understanding.understander
+    business_understanding.understander = reader
+    try:
+        ctx = context(tmp_path)
+
+        async def flow() -> None:
+            token = current.set(ctx)
+            try:
+                await update_shop(name="Raju Tailors", category="silai, alteration")
+                assert ctx.new_shop_draft and ctx.new_shop_draft.understanding is None
+                await asyncio.sleep(1)
+                end_conversation()
+            finally:
+                current.reset(token)
+
+        asyncio.run(flow())
+        assert ctx.new_shop_draft and ctx.new_shop_draft.understanding
+        assert ctx.new_shop_draft.understanding.kind == "service"
+    finally:
+        business_understanding.understander = previous
+
+
 def test_end_conversation_marks_the_turn_and_opens_no_question(tmp_path: Path) -> None:
     ctx = context(tmp_path)
     token = current.set(ctx)
