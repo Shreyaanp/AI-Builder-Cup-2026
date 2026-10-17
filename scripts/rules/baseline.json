@@ -1,6 +1,5 @@
 {
   "duplicates-maps": {
-    "src/features/discover/DiscoverMap.tsx": 1,
     "src/features/v1/PinMap.tsx": 1
   },
   "duplicates-voice": {
@@ -24,58 +23,48 @@
   },
   "i18n-literals": {
     "src/features/coach/InputDock.tsx": 1,
-    "src/features/frontdoors/Marketing.tsx": 3,
-    "src/features/v1/AppShell.tsx": 1
+    "src/features/connect/ConnectSheet.tsx": 1,
+    "src/features/discover/AnswerCards.tsx": 3
   },
   "money": {
     "src/features/v1/today/TodayView.tsx": 1
   },
   "region": {
     "backend/app/agent.py": 1,
+    "backend/app/analytics.py": 1,
     "backend/app/community_routes.py": 1,
     "backend/app/coordinator.py": 1,
-    "backend/app/day_close.py": 3,
     "backend/app/demo_catalogue.py": 1,
     "backend/app/demo_workspace.py": 2,
     "backend/app/demo_world.py": 2,
     "backend/app/discover_ask.py": 3,
     "backend/app/discover.py": 3,
-    "backend/app/instant.py": 1,
-    "backend/app/merchant_routes.py": 2,
-    "backend/app/merchant.py": 5,
-    "backend/app/money.py": 2,
-    "backend/app/passport_routes.py": 1,
+    "backend/app/fraud.py": 1,
+    "backend/app/merchant.py": 2,
+    "backend/app/money.py": 1,
     "backend/app/passport.py": 1,
-    "backend/app/recap.py": 2,
-    "backend/app/rescue.py": 2,
-    "backend/app/sales.py": 2,
     "backend/app/shop_time.py": 1,
-    "backend/app/shop_today.py": 3,
+    "backend/app/shop_today.py": 1,
     "backend/app/sourcing_offline.py": 2,
-    "backend/app/sourcing.py": 6,
+    "backend/app/sourcing.py": 4,
+    "backend/app/supply_offline.py": 1,
     "backend/scripts/coach_eval.py": 9,
     "backend/scripts/eval_matrix.py": 8,
-    "src/features/customer/Saved.tsx": 1,
+    "backend/scripts/make_document_fixtures.py": 7,
+    "src/features/discover/AskHome.tsx": 1,
     "src/features/discover/budget.ts": 1,
+    "src/features/discover/conversationCopy.ts": 1,
     "src/features/discover/demoWorld.ts": 1,
     "src/features/discover/shopCache.ts": 1,
-    "src/features/owner/MorningBrief.tsx": 1,
-    "src/features/owner/RescueTile.tsx": 2,
-    "src/features/public/PublicShop.tsx": 3,
-    "src/features/tour/tourActions.ts": 1,
-    "src/features/v1/api.ts": 1,
-    "src/features/v1/factNames.ts": 1,
-    "src/features/v1/format.ts": 5,
-    "src/features/v1/GuidedDetails.tsx": 1,
-    "src/features/v1/Landing.tsx": 1,
-    "src/features/v1/MapsHandoff.tsx": 1,
-    "src/features/v1/ShopTiles.tsx": 1,
-    "src/features/v1/today/TodayView.tsx": 1
+    "src/features/passport/StampMoment.tsx": 1,
+    "src/features/v1/format.ts": 2,
+    "src/features/v1/today/todayPlan.ts": 1
   },
   "voice": {
     "backend/app/brief.py": 1,
     "backend/app/business_profile.py": 1,
     "backend/app/community_routes.py": 1,
+    "backend/app/connector.py": 1,
     "backend/app/customer.py": 1,
     "backend/app/day_close.py": 1,
     "backend/app/demo_world.py": 1,
@@ -83,10 +72,13 @@
     "backend/app/fraud.py": 1,
     "backend/app/imports.py": 1,
     "backend/app/ingestion.py": 1,
+    "backend/app/maps_grounding.py": 1,
     "backend/app/memory_vectors.py": 1,
-    "backend/app/photos.py": 1,
+    "backend/app/playbook.py": 1,
     "backend/app/recap.py": 1,
+    "backend/app/search_engine.py": 1,
     "backend/app/shop_language.py": 1,
-    "backend/app/sourcing.py": 1
+    "backend/app/sourcing.py": 1,
+    "backend/app/supply_docs.py": 1
   }
 }
