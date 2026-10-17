@@ -34,6 +34,7 @@ from .gemini_schema import gemini_schema, parse_reply
 from .merchant import BusinessFields, CustomFact, MerchantRepository, ProductFields
 from .money import exponent, to_major, to_minor
 from .product_units import UNITS, normalize_unit
+from .region import shop_currency
 from .search_engine import (
     SOURCING_ITEM_RECALL,
     Components,
@@ -616,7 +617,7 @@ class ShopPin:
 
 
 def shop_pin(fields: dict[str, Any]) -> ShopPin:
-    currency = fields.get("currency") or "SGD"
+    currency = shop_currency(fields)
     place = region(currency)
     has_pin = fields.get("lat") is not None and fields.get("lng") is not None
     lat, lng = (fields["lat"], fields["lng"]) if has_pin else place.centre
@@ -652,7 +653,7 @@ def candidates(
     for shop in shops:
         if shop["id"] == own_id or shop.get("lat") is None or shop.get("lng") is None:
             continue
-        if (shop.get("currency") or "SGD") != pin.currency:
+        if (shop_currency(shop)) != pin.currency:
             continue
         km = haversine(pin.lat, pin.lng, shop["lat"], shop["lng"])
         if km > SEARCH_KM:

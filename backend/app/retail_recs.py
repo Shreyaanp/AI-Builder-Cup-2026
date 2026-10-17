@@ -24,6 +24,7 @@ import httpx
 import structlog
 
 from .money import to_major
+from .region import shop_currency
 
 log = structlog.get_logger()
 
@@ -63,7 +64,7 @@ def _category(text: str) -> str:
 
 def shape_product(shop: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
     """One public shop item as a Retail product. Only customer-visible fields are sent."""
-    currency = (shop.get("currency") or "SGD").upper()
+    currency = (shop_currency(shop)).upper()
     shop_category = _category(shop.get("category") or "") or "Shop"
     item_category = _category(item.get("category") or "")
     categories = [f"{shop_category} > {item_category}" if item_category else shop_category]

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { Box, CssBaseline, ThemeProvider, useTheme } from '@mui/material'
+import { Box, CssBaseline, Dialog, ThemeProvider, useTheme } from '@mui/material'
 import { customerTheme } from '../../design/customerTheme'
 import { AppearanceToggle } from './AppearanceToggle'
 import { LanguagePicker } from './LanguagePicker'
@@ -8,7 +8,9 @@ import { useFrontCopy } from './strings'
 import { BrandSplash } from './Splash'
 import { currentPath, subscribePath } from './navigation'
 import './frontdoors.css'
-import { CustomerAccountProvider } from '../customer/account'
+import { CustomerAccountProvider, useCustomer } from '../customer/account'
+import { LanguageStep } from '../language/LanguageStep'
+import { useNeedsLanguage } from '../language/needsLanguage'
 import { CustomerNav } from '../customer/CustomerNav'
 import type { CustomerTab } from '../customer/CustomerNav'
 import { ProfileButton } from '../customer/Profile'
@@ -55,6 +57,8 @@ function CustomerPages() {
   const path = useSyncExternalStore(subscribePath, currentPath)
   const [locationChoice, setLocationChoice] = useState<CustomerLocation | null>(null)
   const t = useFrontCopy()
+  const account = useCustomer()
+  const needsLanguage = useNeedsLanguage()
   // Shop IDs are server UUIDs, or the fixed `demo-…` IDs of seeded demo shops.
   const id = /^\/explore\/s\/([0-9a-f-]{36}|demo-[a-z0-9-]{1,40})\/?$/i.exec(path)?.[1]
   // Chats tab, one thread (shop ID / thread UUID), and Saved.
@@ -81,6 +85,16 @@ function CustomerPages() {
     window.addEventListener('popstate', restore)
     return () => window.removeEventListener('popstate', restore)
   }, [])
+  // Right after sign-in: one tap to confirm the language guessed from the customer's area. Over
+  // the page, so a message being written when they signed in carries on afterwards.
+  const area = locationChoice?.gps
+    ? { lat: locationChoice.gps[0], lng: locationChoice.gps[1] }
+    : locationChoice?.place
+  const languageStep = account.status === 'signed-in' && needsLanguage && (
+    <Dialog fullScreen open aria-labelledby="language-step-title">
+      <LanguageStep place={area ?? null} inDialog />
+    </Dialog>
+  )
   // Top-level destinations get the navigation bar; a shop or a thread is a full-screen detail.
   const tab: CustomerTab | null = chats
     ? 'chats'
@@ -134,6 +148,7 @@ function CustomerPages() {
           <CustomerNav active={tab} />
         </>
       )}
+      {languageStep}
     </>
   )
 }

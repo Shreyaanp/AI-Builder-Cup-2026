@@ -17,6 +17,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError, field_validator
 
+from . import region
 from .business_profile import QuestionPlanner
 from .forecast import ForecastService
 from .merchant import (
@@ -28,7 +29,7 @@ from .merchant import (
     ProductFields,
     ProposalRequest,
 )
-from .money import DEFAULT_CURRENCY, to_major, to_minor
+from .money import to_major, to_minor
 from .product_categories import suggest_category
 from .product_units import UNITS, normalize_unit
 from .recap import recap_facts
@@ -288,7 +289,7 @@ def _invalid(
 
 
 def shop_currency(business: dict[str, Any] | None) -> str:
-    return (business or {}).get("fields", {}).get("currency") or DEFAULT_CURRENCY
+    return region.shop_currency((business or {}).get("fields"))
 
 
 def get_business_context() -> dict[str, Any]:
@@ -570,7 +571,10 @@ def _propose_shop(
         if ctx.new_shop and draft:
             given = {**draft.model_dump(), **{k: v for k, v in given.items() if v}}
         if not re.fullmatch(r"[A-Z]{3}", given["currency"]):
-            given["currency"] = ui_currency.get() or DEFAULT_CURRENCY
+            # The phone's currency, unless the pin says the shop is elsewhere (region.py).
+            given["currency"] = ui_currency.get() or region.new_shop_currency(
+                given.get("lat"), given.get("lng")
+            )
         given["demo"] = False
     given.update({key: value for key, value in facts.items() if value is not None})
     if profile is not None:

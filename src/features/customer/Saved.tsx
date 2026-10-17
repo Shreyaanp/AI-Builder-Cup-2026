@@ -29,7 +29,7 @@ function describe(
   title: string
   body: string
 } {
-  const currency = update.currency || shop?.currency || 'SGD'
+  const currency = update.currency || shop?.currency || shopRegion(shop).currency
   const price = update.price != null ? formatPrice(update.price, currency) : ''
   const unit = update.unit ? ` / ${update.unit}` : ''
   switch (update.kind) {
@@ -66,6 +66,7 @@ function describe(
 const EMPTY: Feed = { shops: [], updates: [] }
 
 /** Saved: followed shops plus their updates, generated from real changes to their pages. */
+import { shopRegion } from '../../region/region'
 export function Saved() {
   const roles = useTheme().material
   const account = useCustomer()
