@@ -10,18 +10,17 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { ArrowLeft, MapPin, Search } from 'lucide-react'
+import { MapPin, Search } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { loadScriptFont } from '../../i18n/fonts'
 import { motion } from '../../design/theme'
-import { BrandSplash } from '../frontdoors/Splash'
 import { useFrontCopy } from '../frontdoors/strings'
 import { BadgeRow } from '../rewards/Rewards'
 import { useRewards } from '../rewards/storage'
 import { customerNavigate } from '../frontdoors/navigation'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { Sheet } from '../v1/Sheet'
-import { PickCard, PickList } from './AnswerCards'
+import { PickCard, PickList, PickSkeleton } from './AnswerCards'
 import { useConversationCopy } from './conversationCopy'
 import { useRewardCopy } from '../rewards/strings'
 import type { AskPick } from './askThread'
@@ -356,7 +355,26 @@ export default function Discover({
     '& .MuiChip-label': { py: 2, whiteSpace: 'normal' },
   }
 
-  if (status === 'loading' && !result) return <BrandSplash />
+  // First load: the page's own shape with placeholder rows, never a full-screen spinner.
+  if (status === 'loading' && !result)
+    return (
+      <Box
+        component="main"
+        role="status"
+        aria-label={front.loading}
+        aria-busy="true"
+        sx={{ maxWidth: 720, mx: 'auto', px: 4, pt: 1 }}
+      >
+        <Typography variant="headlineMedium" component="h1" sx={{ mb: 3 }}>
+          {t.title}
+        </Typography>
+        <Box component="ul" sx={{ m: 0, p: 0, display: 'grid', gap: 2 }}>
+          {[0, 1, 2, 3, 4].map((n) => (
+            <PickSkeleton key={n} />
+          ))}
+        </Box>
+      </Box>
+    )
   return (
     <Box
       component="main"
@@ -364,24 +382,13 @@ export default function Discover({
         maxWidth: 720,
         mx: 'auto',
         px: 4,
-        pt: 3,
+        pt: 1,
         pb: 'max(24px, env(safe-area-inset-bottom))',
         color: roles.onSurface,
         '--customer-spring': motion.easing.spring,
       }}
     >
       <Stack spacing={3}>
-        <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 48, pr: 14 }}>
-          <Button
-            component="a"
-            href="/explore/"
-            onClick={customerNavigate}
-            startIcon={<ArrowLeft size={18} />}
-            sx={{ minHeight: 48, ml: -2 }}
-          >
-            {front.back}
-          </Button>
-        </Box>
         <Typography variant="headlineMedium" component="h1">
           {t.title}
         </Typography>

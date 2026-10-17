@@ -178,12 +178,12 @@ export function RescueScreen() {
         maxWidth: 720,
         mx: 'auto',
         px: 4,
-        pt: 'max(20px, env(safe-area-inset-top))',
+        pt: 1,
         pb: 'calc(120px + env(safe-area-inset-bottom))',
         minHeight: '100dvh',
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, mr: '104px', minHeight: 56 }}>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, minHeight: 56 }}>
         <Typography
           component="h1"
           sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: 38, lineHeight: 1.1 }}
