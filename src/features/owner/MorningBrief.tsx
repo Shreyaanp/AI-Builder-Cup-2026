@@ -304,8 +304,8 @@ export function MorningBrief({
             aria-current={i === index ? 'true' : undefined}
             onClick={() => goTo(i)}
             sx={{
-              width: 32,
-              height: 32,
+              width: 48,
+              height: 48,
               p: 0,
               border: 0,
               bgcolor: 'transparent',

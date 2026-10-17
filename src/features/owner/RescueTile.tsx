@@ -437,7 +437,8 @@ function NewRescue({ used, onSent }: { used: Set<string>; onSent: () => void }) 
             aria-pressed={discount === pct}
             onClick={() => setDiscount(pct)}
             sx={{
-              minHeight: 40,
+              minHeight: 48,
+              minWidth: 48,
               px: 1,
               ...(discount === pct
                 ? { bgcolor: coral.container, color: coral.onContainer, fontWeight: 700 }
