@@ -39,9 +39,7 @@
         "name": "phone",
         "testDir": "C:/Users/pshre/work/codex-flow-offline/tests/qa",
         "testIgnore": [],
-        "testMatch": [
-          "**/*.spec.ts"
-        ],
+        "testMatch": ["**/*.spec.ts"],
         "timeout": 60000
       },
       {
@@ -55,9 +53,7 @@
         "name": "desktop",
         "testDir": "C:/Users/pshre/work/codex-flow-offline/tests/qa",
         "testIgnore": [],
-        "testMatch": [
-          "**/*.spec.ts"
-        ],
+        "testMatch": ["**/*.spec.ts"],
         "timeout": 60000
       }
     ],
@@ -97,9 +93,7 @@
           },
           "screenshot": "only-on-failure",
           "launchOptions": {
-            "args": [
-              "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost, EXCLUDE 127.0.0.1"
-            ],
+            "args": ["--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost, EXCLUDE 127.0.0.1"],
             "executablePath": "C:/Program Files/Google/Chrome/Application/chrome.exe"
           },
           "reducedMotion": "reduce",
@@ -118,10 +112,7 @@
     ],
     "quiet": false,
     "reporter": [
-      [
-        "list",
-        null
-      ],
+      ["list", null],
       [
         "json",
         {
