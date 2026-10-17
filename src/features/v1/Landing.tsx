@@ -55,14 +55,14 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
           sx={{
             ...section,
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: '1.1fr 0.9fr' },
+            gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: '1.1fr 0.9fr' },
             gap: { xs: 5, md: 8 },
             alignItems: 'center',
             pt: { xs: 4, md: 8 },
             pb: { xs: 6, md: 10 },
           }}
         >
-          <Stack spacing={3}>
+          <Stack spacing={3} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
             <JourneyProgress step={1} />
             <Typography variant="labelLarge" sx={{ color: roles.primary }}>
               {t.landingEyebrow}
@@ -70,14 +70,7 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
             <Typography
               component="h1"
               variant="displaySmall"
-              sx={{
-                fontSize: { xs: 'clamp(1.25rem, 5.8vw, 2.25rem)', md: '3.25rem' },
-                lineHeight: { xs: 1.2, md: 1.1 },
-                overflowWrap: 'anywhere',
-                wordBreak: 'break-word',
-                hyphens: 'auto',
-                maxWidth: '100%',
-              }}
+              sx={{ fontSize: { md: '3.25rem' }, lineHeight: { md: 1.1 }, textWrap: 'balance' }}
             >
               {t.welcomeTitle}
             </Typography>
@@ -274,8 +267,8 @@ function Step({
 function Feature({ title, items }: { title: string; items: { icon: ReactNode; text: string }[] }) {
   const roles = useTheme().material
   return (
-    <Box sx={{ minWidth: 0 }}>
-      <Typography component="h2" variant="headlineSmall" sx={{ mb: 2.5, overflowWrap: 'anywhere' }}>
+    <Box>
+      <Typography component="h2" variant="headlineSmall" sx={{ mb: 2.5 }}>
         {title}
       </Typography>
       <Stack component="ul" spacing={2} sx={{ m: 0, p: 0, listStyle: 'none' }}>
@@ -285,17 +278,12 @@ function Feature({ title, items }: { title: string; items: { icon: ReactNode; te
             key={item.text}
             direction="row"
             spacing={2}
-            sx={{ alignItems: 'flex-start' }}
+            sx={{ alignItems: 'center' }}
           >
-            <Box
-              aria-hidden="true"
-              sx={{ color: roles.primary, display: 'flex', flexShrink: 0, pt: 0.5 }}
-            >
+            <Box aria-hidden="true" sx={{ color: roles.primary, display: 'flex' }}>
               {item.icon}
             </Box>
-            <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere', minWidth: 0 }}>
-              {item.text}
-            </Typography>
+            <Typography variant="bodyLarge">{item.text}</Typography>
           </Stack>
         ))}
       </Stack>
