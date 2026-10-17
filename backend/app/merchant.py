@@ -122,6 +122,7 @@ class BusinessFields(BaseModel):
     phone: str = Field(default="", max_length=40)
     reward_text: str = Field(default="", max_length=80)
     stamps_needed: int = Field(default=8, ge=3, le=20, strict=True)
+    stamps_enabled: bool = False
     # ISO 4217; prices of this shop are stored in this currency's minor unit (see money.py).
     currency: str = Field(default="SGD", pattern=r"^[A-Z]{3}$")
     halal: Halal | None = None
@@ -184,6 +185,7 @@ class BusinessFields(BaseModel):
             and not (key == "custom_facts" and value == [])
             and not (key == "reward_text" and value == "")
             and not (key == "stamps_needed" and value == 8)
+            and not (key == "stamps_enabled" and value is False)
             and not (key == "weekly_hours" and value == [])
             and not (key == "closed_on" and value == "")
             and not (key == "description" and value == "")
@@ -442,6 +444,7 @@ def public_projection(
         "currency": fields.get("currency") or "SGD",
         **({"reward_text": fields["reward_text"]} if fields.get("reward_text") else {}),
         "stamps_needed": fields.get("stamps_needed", 8),
+        "stamps_enabled": fields.get("stamps_enabled", False),
         # Only facts the owner confirmed; customer Q&A grounds on these too.
         "facts": customer_facts(fields),
         "products": [
