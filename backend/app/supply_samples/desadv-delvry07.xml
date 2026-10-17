@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DELVRY07>
+  <IDOC BEGIN="1">
+    <EDI_DC40 SEGMENT="1">
+      <TABNAM>EDI_DC40</TABNAM>
+      <MANDT>100</MANDT>
+      <DOCNUM>0000007100004501</DOCNUM>
+      <DIRECT>1</DIRECT>
+      <IDOCTYP>DELVRY07</IDOCTYP>
+      <MESTYP>DESADV</MESTYP>
+      <SNDPOR>SAPS4H</SNDPOR>
+      <SNDPRT>LS</SNDPRT>
+      <SNDPRN>SUP1</SNDPRN>
+      <RCVPOR>CHALKBRD</RCVPOR>
+      <RCVPRT>LS</RCVPRT>
+      <RCVPRN>SHOP1</RCVPRN>
+      <CREDAT>20261016</CREDAT>
+      <CRETIM>090000</CRETIM>
+    </EDI_DC40>
+    <E1EDL20 SEGMENT="1">
+      <VBELN>7100004501</VBELN>
+      <LIFEX>7100004501</LIFEX>
+      <BTGEW>30</BTGEW>
+      <GEWEI>KGM</GEWEI>
+      <E1EDT13 SEGMENT="1">
+        <QUALF>007</QUALF>
+        <NTANF>20261018</NTANF>
+      </E1EDT13>
+      <E1ADRM1 SEGMENT="1">
+        <PARTNER_Q>WE</PARTNER_Q>
+        <NAME1>Lakshmi Kirana</NAME1>
+      </E1ADRM1>
+      <E1ADRM1 SEGMENT="1">
+        <PARTNER_Q>LF</PARTNER_Q>
+        <NAME1>Shree Ganesh Wholesale</NAME1>
+      </E1ADRM1>
+      <E1EDL24 SEGMENT="1">
+        <POSNR>000010</POSNR>
+        <MATNR>MAT-100234</MATNR>
+        <ARKTX>Wheat flour</ARKTX>
+        <LFIMG>20</LFIMG>
+        <VRKME>KGM</VRKME>
+        <E1EDL41 SEGMENT="1">
+          <QUALI>001</QUALI>
+          <BSTNR>4500012345</BSTNR>
+          <POSEX>00010</POSEX>
+          <IDTNR>CB-ATT-01</IDTNR>
+        </E1EDL41>
+      </E1EDL24>
+      <E1EDL24 SEGMENT="1">
+        <POSNR>000020</POSNR>
+        <MATNR>MAT-100877</MATNR>
+        <ARKTX>Sugar</ARKTX>
+        <LFIMG>10</LFIMG>
+        <VRKME>KGM</VRKME>
+        <E1EDL41 SEGMENT="1">
+          <QUALI>001</QUALI>
+          <BSTNR>4500012345</BSTNR>
+          <POSEX>00020</POSEX>
+        </E1EDL41>
+      </E1EDL24>
+    </E1EDL20>
+  </IDOC>
+</DELVRY07>

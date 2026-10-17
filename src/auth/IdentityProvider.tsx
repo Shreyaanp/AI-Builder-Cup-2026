@@ -4,10 +4,12 @@ import type { Auth } from 'firebase/auth'
 import { IdentityContext } from './context'
 import { SignInOverlay } from './SignInOverlay'
 import type { Identity } from './context'
+import { hiddenFeatures, readFeatures } from './features'
 
 type Operations = { auth: Auth; signIn: () => Promise<void>; signOut: () => Promise<void> }
 
 export function IdentityProvider({ children }: { children: ReactNode }) {
+  const [features, setFeatures] = useState(hiddenFeatures)
   const [state, setState] = useState<
     Pick<Identity, 'mode' | 'status' | 'scope' | 'error' | 'name'>
   >({
@@ -33,6 +35,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
         if (!value || typeof value !== 'object' || !('auth_mode' in value))
           throw new Error('Invalid identity configuration.')
         if (controller.signal.aborted) return
+        setFeatures(readFeatures('features' in value ? value.features : undefined))
         if (value.auth_mode === 'local') {
           setState({ mode: 'local', status: 'ready', scope: 'local-preview', error: '' })
           return
@@ -150,7 +153,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     return user.getIdToken()
   }, [state.mode, state.status])
   return (
-    <IdentityContext value={{ ...state, getToken, signIn, signOut }}>
+    <IdentityContext value={{ ...state, features, getToken, signIn, signOut }}>
       {children}
       {(signing === 'waiting' || (signing === 'finishing' && state.status !== 'ready')) && (
         <SignInOverlay phase={signing} />

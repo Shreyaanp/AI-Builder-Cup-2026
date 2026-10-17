@@ -20,6 +20,7 @@ import { PlaceImage } from '../frontdoors/PlaceImage'
 import { useCustomer } from './account'
 import { clockTime, useAccountCopy } from './copy'
 import type { AccountCopy } from './copy'
+import { PlainText, RichText } from '../../design/RichText'
 import { SignInButton } from './SignIn'
 import { fill } from '../passport/copy'
 import { useRescueCopy } from '../rescue/copy'
@@ -770,22 +771,24 @@ function Bubble({
           px: 2,
           py: 1.25,
           borderRadius: mine ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
-          bgcolor: mine ? roles.primary : ai ? roles.tertiaryContainer : roles.surfaceContainerHigh,
-          color: mine ? roles.onPrimary : ai ? roles.onTertiaryContainer : roles.onSurface,
-          border: ai ? `1px dashed ${roles.tertiary}` : undefined,
+          bgcolor: mine
+            ? roles.primary
+            : ai
+              ? roles.secondaryContainer
+              : roles.surfaceContainerHigh,
+          color: mine ? roles.onPrimary : ai ? roles.onSecondaryContainer : roles.onSurface,
+          border: ai ? `1px dashed ${roles.secondary}` : undefined,
         }}
       >
         {/* Screen readers hear who said it, not only the bubble side. */}
         <Typography component="span" sx={visuallyHidden}>
           {mine ? t.you : ai ? t.aiLabel : demo ? t.demoReply : t.owner}:{' '}
         </Typography>
-        <Typography
-          variant="bodyLarge"
-          component="span"
-          sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}
-        >
-          {shown(ai || demo ? formatMoneyText(message.text, locale) : message.text, r)}
-        </Typography>
+        {ai || demo ? (
+          <RichText content={shown(formatMoneyText(message.text, locale), r)} />
+        ) : (
+          <PlainText text={shown(message.text, r)} />
+        )}
       </Box>
       <Stack
         direction="row"

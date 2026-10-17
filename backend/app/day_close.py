@@ -19,6 +19,7 @@ import structlog
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from .document_ai import DocumentAIReader, Processor
 from .gemini_schema import to_number
 from .ingestion import IMAGE_TYPES, alias
 from .limits import enforce_limits
@@ -77,11 +78,36 @@ HINTS = {
 }
 
 
+# Till receipts go to the Expense parser, supplier receipts to the Invoice parser. A stock count
+# sheet is not a receipt or an invoice: Gemini reads it.
+DOCUMENT_AI: dict[Kind, Processor] = {"sales": "receipt", "delivery": "invoice"}
+Reader = Literal["fixture", "document_ai", "gemini"]
+
+
 async def read_photo(
     request: Request, data: bytes, hint: Kind, inventory: list[dict[str, Any]]
-) -> tuple[DayRead, bool]:
-    """Returns the reading and whether it came from the offline fixture."""
+) -> tuple[DayRead, Reader]:
+    """Returns the reading and what read it: Document AI, Gemini vision or the offline fixture."""
     settings = request.app.state.v1_settings
+    document_ai: DocumentAIReader | None = getattr(request.app.state, "document_ai", None)
+    if document_ai is not None and hint in DOCUMENT_AI:
+        parsed = await document_ai.read(data, DOCUMENT_AI[hint])
+        if parsed is not None and parsed.complete():
+            return (
+                DayRead(
+                    kind=hint,
+                    date=parsed.date,
+                    lines=[
+                        DayLine(
+                            item=line.item,
+                            quantity=line.quantity,
+                            amount=line.amount if hint == "sales" else None,
+                        )
+                        for line in parsed.lines
+                    ],
+                ),
+                "document_ai",
+            )
     if settings.coach_mode != "gemini":
         # Offline/test fixture: plausible lines from the shop's own items, clearly labelled.
         lines = [
@@ -94,7 +120,7 @@ async def read_photo(
             )
             for p, q in zip(inventory[:4], (12, 8, 5, 3), strict=False)
         ] or [DayLine(item="Sample item", quantity=4, amount=10 if hint == "sales" else None)]
-        return DayRead(kind=hint, lines=lines), True
+        return DayRead(kind=hint, lines=lines), "fixture"
     from google import genai
     from google.genai import types
 
@@ -138,7 +164,7 @@ async def read_photo(
     if read is None or not read.lines:
         log.warning("day_read_unusable", kind=hint, reply=(response.text or "")[:400])
         raise HTTPException(422, "UNREADABLE_PHOTO")
-    return read, False
+    return read, "gemini"
 
 
 def lenient_read(text: str, hint: Kind) -> DayRead | None:
@@ -201,7 +227,7 @@ async def read_day_photo(
         {**p, "currency": context["business"]["fields"].get("currency")}
         for p in context["inventory"]
     ]
-    reading, fixture = await read_photo(request, image, kind, inventory)
+    reading, reader = await read_photo(request, image, kind, inventory)
     names = [p["name"] for p in context["inventory"]]
     lines = []
     prices = {p["name"]: p for p in context["inventory"]}
@@ -227,7 +253,13 @@ async def read_day_photo(
                 "fuzzy": fuzzy,
             }
         )
-    return {"kind": reading.kind, "date": reading.date, "lines": lines, "fixture": fixture}
+    return {
+        "kind": reading.kind,
+        "date": reading.date,
+        "lines": lines,
+        "fixture": reader == "fixture",
+        "reader": reader,
+    }
 
 
 class SaleLine(BaseModel):

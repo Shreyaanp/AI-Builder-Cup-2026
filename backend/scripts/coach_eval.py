@@ -248,6 +248,51 @@ def with_order(status: str) -> Callable[[MerchantStore, str], str]:
     return seed
 
 
+def tea_stall(understanding: dict[str, Any] | None = None, playbook: bool = False):
+    """A Mumbai tea stall (beverage segment) with a menu; optionally goals and a playbook."""
+
+    def seed(store: MerchantStore, uid: str) -> str:
+        from datetime import date
+
+        from app.playbook import offline_stored
+
+        proposal = store.propose(
+            uid,
+            ProposalRequest(
+                kind="business",
+                business=BusinessFields(
+                    name="Shree Chai Corner",
+                    category="Tea stall",
+                    location="Andheri East, Mumbai",
+                    currency="INR",
+                    timezone="Asia/Kolkata",
+                    busy_hours="7-10 am and 5-7 pm" if understanding else "",
+                    profile={
+                        "kind": "food",
+                        "subtype": "Tea stall",
+                        "food": {"segment": "beverage", "halal_relevant": True},
+                    },
+                    understanding=understanding,
+                ),
+                products=[
+                    ProductFields(name="Cutting chai", price=1500, unit="cup"),
+                    ProductFields(name="Masala chai", price=2000, unit="cup"),
+                    ProductFields(name="Bun maska", price=3000, unit="piece"),
+                ],
+            ),
+        )
+        bid = str(store.commit(uid, proposal["id"], proposal["digest"])["business_id"])
+        if playbook:
+            context = store.context(uid, bid)
+            stored = offline_stored(context["business"], context["inventory"], date(2026, 10, 16))
+            store.set_playbook(uid, bid, stored.model_dump())
+        return bid
+
+    return seed
+
+
+NO_DIET_TALK = r"\b(halal|vegetarian|non-veg|veg\b|meat)"
+
 SCENARIOS = [
     Scenario(
         "bulk_menu_photo",
@@ -417,7 +462,10 @@ SCENARIOS = [
         checks=[
             ("no record changes", not_called("propose_products", "propose_business")),
             ("reads the shop first", called("get_business_context")),
-            ("asks about halal first", reply_matches(r"halal")),
+            (
+                "asks the owner's goals first",
+                reply_matches(r"matters most|more customers|waste|save time|busiest|regulars"),
+            ),
             ("one question only", lambda t: t.reply.count("?") == 1),
         ],
     ),
@@ -601,6 +649,39 @@ SCENARIOS = [
         checks=[
             ("suggests starter items", called("suggest_starter_items")),
             ("proposes nothing unasked", not_called("propose_products")),
+        ],
+    ),
+    # Shop playbook and segments: understand the business, then personalise.
+    Scenario(
+        "playbook_records_owner_goals",
+        "Mostly I want less waste, the milk keeps going sour. My regulars are auto drivers "
+        "and office people.",
+        seed=tea_stall(),
+        checks=[
+            ("records with review", called("propose_customer_facts")),
+            ("focus less waste", proposed_fact("focus", "less_waste")),
+            ("regulars in their words", lambda t: "auto" in str(fact(t, "regulars")).lower()),
+            ("never asks diet or halal", lambda t: not re.search(NO_DIET_TALK, t.reply, re.I)),
+        ],
+    ),
+    Scenario(
+        "playbook_tea_stall_never_asked_halal",
+        "Menu is done. What else should I tell you?",
+        seed=tea_stall({"focus": "less_waste", "regulars": "Auto drivers"}),
+        checks=[
+            ("no record changes", not_called("propose_products", "propose_business")),
+            ("never asks diet or halal", lambda t: not re.search(NO_DIET_TALK, t.reply, re.I)),
+            ("one question only", lambda t: t.reply.count("?") <= 1),
+        ],
+    ),
+    Scenario(
+        "playbook_personal_advice",
+        "What should I focus on this week?",
+        seed=tea_stall({"focus": "less_waste", "regulars": "Auto drivers"}, playbook=True),
+        checks=[
+            ("uses their goal", reply_matches(r"waste|sour|leftover|milk")),
+            ("uses their rush or regulars", reply_matches(r"rush|7|morning|auto|regular")),
+            ("never asks diet or halal", lambda t: not re.search(NO_DIET_TALK, t.reply, re.I)),
         ],
     ),
 ]

@@ -34,7 +34,7 @@ import { nextStep, readiness } from './shopProgress'
 import type { AskFact } from './shopProgress'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
-import { enterRise, fieldFade, shape } from '../../design/theme'
+import { enterRise, fieldFade, scrollArea, shape } from '../../design/theme'
 import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { ShopLocation } from './CurrentLocation'
@@ -317,7 +317,7 @@ export function ShopCard({
             gap: 2,
             flexWrap: { xs: 'nowrap', sm: 'wrap' },
             overflowX: { xs: 'auto', sm: 'visible' },
-            scrollbarWidth: 'none',
+            ...scrollArea,
           }}
         >
           {shown.map((product, index) => (

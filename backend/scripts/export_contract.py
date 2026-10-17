@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from app.contracts import StreamEvent, VoiceControl
+from app.features import FeatureFlags
 from app.main import create_app
 from app.settings import Settings
 
@@ -12,6 +13,7 @@ schema.setdefault("components", {}).setdefault("schemas", {}).update(
     {
         "StreamEvent": StreamEvent.model_json_schema(),
         "VoiceControl": VoiceControl.model_json_schema(),
+        "FeatureFlags": FeatureFlags.model_json_schema(),
     }
 )
 target = Path("../docs/openapi.json")

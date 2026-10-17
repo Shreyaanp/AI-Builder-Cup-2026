@@ -388,6 +388,7 @@ export const zhHans: Copy = {
     gallery: '店铺相册照片',
     community: '店铺公开副本',
     memory: '助手记忆',
+    analytics: '店铺分析数据',
     conversations: '对话',
   } as Record<string, string>,
 }

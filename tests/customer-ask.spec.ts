@@ -1,5 +1,5 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, type Request } from '@playwright/test'
 import { publish } from './qa/support.js'
 import { enter, seedShop } from './stories/support.js'
 
@@ -18,6 +18,34 @@ test.beforeEach(async ({ page }) => {
       : route.abort(),
   )
 })
+
+/** Pin the owner's shop at a point of its own within ~500 m of Indiranagar (the owner's map
+ * pin), which keeps it more than 4 km from central Bengaluru, where other stories ask. */
+async function pinShop(page: Page, id: string) {
+  const point = {
+    lat: Number((INDIRANAGAR.lat + (Math.random() - 0.5) * 0.01).toFixed(6)),
+    lng: Number((INDIRANAGAR.lng + (Math.random() - 0.5) * 0.01).toFixed(6)),
+  }
+  const shop = (await (await page.request.get('/api/v1/businesses')).json()).find(
+    (business: { id: string }) => business.id === id,
+  )
+  const prepared = await page.request.post('/api/v1/proposals', {
+    data: {
+      kind: 'business',
+      business_id: id,
+      revision: shop.revision,
+      owner_location: { ...point, accuracy_m: 0, source: 'pin' },
+      business: shop.fields,
+    },
+  })
+  expect(prepared.ok(), await prepared.text()).toBe(true)
+  const proposal = await prepared.json()
+  const approved = await page.request.post(`/api/v1/proposals/${proposal.id}/approve`, {
+    data: { digest: proposal.digest },
+  })
+  expect(approved.ok()).toBe(true)
+  return { ...point, label: INDIRANAGAR.label }
+}
 
 const composer = (page: Page) => page.getByRole('textbox', { name: 'Ask about anything nearby' })
 
@@ -96,18 +124,73 @@ test('front door: the conversation opens with real local suggestions and Today�
   await expect(page.getByRole('button', { name: 'New conversation' })).toBeVisible()
 })
 
+// The opening page (owner, 16 Oct): one purpose, this area's shops as large cards, big chips and
+// the composer in the thumb zone; the same in light and dark, on a phone and a desktop.
+for (const mode of ['light', 'dark'] as const)
+  test(`front door opens on this area's shops with the composer in reach (${mode})`, async ({
+    page,
+    isMobile,
+  }) => {
+    const shop = answer().groups[0]!.places[0]!
+    await page.route('**/api/v1/discover?**', (route) =>
+      route.fulfill({ json: { mode: 'demo', places: [shop], google_unavailable: false } }),
+    )
+    await page.addInitScript(
+      (appearance) =>
+        localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance })),
+      mode,
+    )
+    await page.goto('/explore/')
+    const nearby = page.getByRole('list', { name: 'Near you now' })
+    await expect(nearby.locator('a[href="/explore/s/demo-fixture-kopi"]')).toBeVisible({
+      timeout: 30_000,
+    })
+    const viewport = page.viewportSize()!
+    const field = (await page.getByRole('search').boundingBox())!
+    expect(field.y).toBeGreaterThan(viewport.height / 2)
+    const chips = page.getByRole('list', { name: 'Ask about anything nearby' }).getByRole('button')
+    await expect(chips.first()).toBeVisible()
+    await page.waitForTimeout(700)
+    await page.screenshot({
+      path: `docs/stories/customer-ai-0-opening-${isMobile ? 'phone' : 'desktop'}-${mode}.png`,
+    })
+    expect(
+      (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
+    ).toEqual([])
+    // A tap on a chip asks it; the chips give way to the answer.
+    await page.route('**/api/v1/discover/ask', (route) => route.fulfill({ json: answer() }))
+    await chips.first().click()
+    await expect(page.getByRole('article').first()).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Ask about anything nearby' })).toHaveCount(0)
+  })
+
 test('ask: a real shop answers with its exact item and price; back returns to the same place', async ({
   page,
   isMobile,
 }) => {
   test.setTimeout(90_000)
-  // A pinned shop (photo GPS in Indiranagar) is what discovery can place on the map.
+  // A pinned shop is what discovery can place on the map. Each run pins its own shop at its own
+  // point in Indiranagar and asks from there, so shops left by earlier runs (same menu, same
+  // photo GPS) never tie with it or push it out of the capped answer.
   await enter(page)
   const name = `Courtyard Chai ${Date.now().toString().slice(-6)}`
-  await seedShop(page, true, name)
+  await seedShop(page, false, name)
   const id = (await (await page.request.get('/api/v1/businesses')).json())[0].id as string
+  const here = await pinShop(page, id)
+  await page.addInitScript((area) => {
+    localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place: area }))
+  }, here)
   await publish(page, id)
   await page.goto('/explore/')
+  // The answer streams: instant cards first, then the complete answer deals them in again.
+  // The app closes the stream once it has the complete answer, so either event ends it.
+  const streamed = new Promise<void>((resolve) => {
+    const ended = (request: Request) => {
+      if (request.url().endsWith('/api/v1/discover/ask')) resolve()
+    }
+    page.on('requestfinished', ended)
+    page.on('requestfailed', ended)
+  })
   await ask(page, 'kopi')
   await expect(page.getByText('Understanding what you need…')).toBeVisible()
   if (isMobile) await page.screenshot({ path: 'docs/stories/customer-ai-2-thinking.png' })
@@ -115,8 +198,17 @@ test('ask: a real shop answers with its exact item and price; back returns to th
   await expect(card).toContainText('Kopi', { timeout: 15_000 })
   await expect(card).toContainText('₹18.00')
   await expect(card).toContainText(/\d+ (m|km)/)
-  await expect(page.getByRole('img', { name: 'Map of these places' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Map of these places' })).toBeVisible()
+  await streamed
   await page.waitForTimeout(900)
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => undefined)),
+    ),
+  )
   if (isMobile) await page.screenshot({ path: 'docs/stories/customer-ai-3-answer.png' })
   expect(
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,

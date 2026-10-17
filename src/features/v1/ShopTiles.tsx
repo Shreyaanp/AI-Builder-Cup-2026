@@ -38,6 +38,7 @@ import { FactList } from './FactList'
 import { PendingCard } from './PendingCard'
 import { MenuSheet } from '../shop/MenuSheet'
 import { FreshnessCard } from '../sales/ShopInsights'
+import { ConnectTile } from '../connect/ConnectTile'
 import { Sheet } from './Sheet'
 import { ShopQr } from './ShopQr'
 import { OwnerPerks } from '../passport/games/OwnerPerks'
@@ -388,6 +389,7 @@ export function ShopTiles({
         value={unread === null ? '–' : t.unread(unread)}
         onClick={() => onSheet('messages')}
       />
+      <ConnectTile />
     </Box>
   )
 }

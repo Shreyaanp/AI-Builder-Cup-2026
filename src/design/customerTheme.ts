@@ -8,9 +8,12 @@ import { materialRoles, nivaTheme, type Appearance } from './theme'
 export function customerTheme(mode: Appearance) {
   const theme = nivaTheme(mode, materialRoles(mode), 'customer')
   const tones = chalkTones[mode]
+  const baseOverrides =
+    (theme.components?.MuiCssBaseline?.styleOverrides as Record<string, unknown>) ?? {}
+  const existingRoot = (baseOverrides[':root'] as Record<string, string>) ?? {}
   theme.components!.MuiCssBaseline!.styleOverrides = {
-    ...(theme.components!.MuiCssBaseline!.styleOverrides as object),
-    ':root': { '--customer-open': tones.mint.main },
+    ...baseOverrides,
+    ':root': { ...existingRoot, '--customer-open': tones.mint.main },
   }
   theme.palette.success = { ...theme.palette.success, main: tones.mint.main }
   theme.palette.warning = { ...theme.palette.warning, main: tones.sunflower.main }

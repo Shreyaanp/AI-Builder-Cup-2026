@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from .gemini_schema import gemini_schema, parse_reply
 from .settings import Settings
-from .vendor_profile import BusinessTypeProfile
+from .vendor_profile import BusinessTypeProfile, food_segment, menu_non_veg
 
 log = structlog.get_logger()
 
@@ -141,6 +141,7 @@ PROFILE_QUESTIONS = {
     "grocer": [
         ("categories", "Categories", "Which grocery categories do you carry?"),
         ("selling_units", "Selling units", "Do you sell by piece, pack or weight?"),
+        ("delivery_radius", "Home delivery area", "How far do you deliver to homes?"),
         ("special_orders", "Special orders", "Can customers order items you don't stock?"),
     ],
     "service": [
@@ -151,7 +152,91 @@ PROFILE_QUESTIONS = {
 }
 
 
-def typed_plan(profile: BusinessTypeProfile) -> QuestionPlan:
+Question = tuple[str, str, str]
+DIET: Question = (
+    "diet",
+    "Food choices",
+    "Is your menu vegetarian only, non-vegetarian, or both?",
+)
+MEAT: Question = ("serves_meat", "Meat", "Do you serve any meat?")
+# Per food sub-segment (vendor_profile.SEGMENTS). Diet, meat and halal questions appear only where
+# they fit: never for drinks or bakes unless the owner said they sell meat, never "vegetarian?"
+# at a meat counter. Halal itself stays a common fact gated by vendor_profile.halal_allowed.
+SEGMENT_QUESTIONS: dict[str, list[Question]] = {
+    "unknown": [
+        # One natural question instead of every diet question; the answer sets the segment.
+        ("food_style", "What you serve", "Do you serve meals, or mostly tea and snacks?"),
+        ("signature_dish", "Signature dish", "What is your signature dish or drink?"),
+        ("seating", "Seating", "Is there seating, or takeaway only?"),
+    ],
+    "beverage": [
+        ("signature_dish", "Signature drink", "What is your most popular drink?"),
+        ("milk_options", "Milk options", "Do you have dairy and plant milk, like oat or soy?"),
+        ("sugar_free", "Sugar-free", "Can customers ask for sugar-free or less sugar?"),
+        ("takeaway_cups", "Takeaway", "Do you do takeaway cups or parcels?"),
+    ],
+    "bakery": [
+        ("bakes", "Bakes", "Which cakes or bakes do you make?"),
+        ("eggless", "Eggless options", "Do you have eggless cakes or bakes?"),
+        ("custom_orders", "Custom orders", "Can customers request custom designs or sizes?"),
+    ],
+    "snack": [
+        ("signature_dish", "Signature snack", "What do people come back for most?"),
+        ("seating", "Seating", "Is there seating, or takeaway only?"),
+        ("price_range", "Price range", "What does a typical snack cost?"),
+    ],
+    "restaurant": [
+        ("cuisine", "Cuisine", "What cuisine or style of food do you serve?"),
+        DIET,
+        (
+            "jain_allergens",
+            "Jain and allergens",
+            "Do you have Jain options, or allergens customers should know about?",
+        ),
+        (
+            "dine_in_delivery",
+            "Dine-in or delivery",
+            "Do customers eat in, take away, or order delivery?",
+        ),
+        ("seating", "Seating", "How many people can you seat?"),
+        ("signature_dish", "Signature dish", "What is your signature dish?"),
+    ],
+    "butcher": [
+        ("cuts", "Meat and cuts", "Which meats and cuts do you sell?"),
+        ("selling_units", "Selling units", "Do you price cuts per piece or by weight?"),
+        ("sourcing", "Sourcing", "Where do you source your meat?"),
+    ],
+}
+
+
+def food_questions(profile: BusinessTypeProfile, menu: list[str] | None = None) -> list[Question]:
+    segment = food_segment(profile, menu)
+    questions = list(SEGMENT_QUESTIONS[segment])
+    food = profile.food
+    meat = bool(food and food.serves_meat)
+    if segment == "restaurant" and not (food and food.serves_meat is not None):
+        questions.insert(2, MEAT)
+    elif segment == "snack" and (meat or menu_non_veg(menu or [])):
+        # Veg/non-veg is worth asking only when the menu (or owner) suggests meat or eggs.
+        questions.insert(0, DIET)
+    return questions
+
+
+def plan_keys(profile: BusinessTypeProfile) -> set[str]:
+    """Every key this profile's plan can ever ask (answered and conditional ones included)."""
+    if profile.kind != "food":
+        empty = BusinessTypeProfile(kind=profile.kind, subtype=profile.subtype)
+        return {q.key for q in typed_plan(empty).questions}
+    # Diet and meat are never *asked* of a tea stall, but an owner may still volunteer them
+    # ("we sell keema samosa too"), which is how meat-dependent questions become relevant.
+    return {q[0] for q in food_questions(profile, ["chicken"])} | {
+        "diet",
+        "serves_meat",
+        "food_style",
+    }
+
+
+def typed_plan(profile: BusinessTypeProfile, menu: list[str] | None = None) -> QuestionPlan:
     kind = profile.kind
     questions = PROFILE_QUESTIONS.get(kind, GENERIC[1])
     label = profile.subtype or {
@@ -163,33 +248,7 @@ def typed_plan(profile: BusinessTypeProfile) -> QuestionPlan:
         "service": "service business",
     }.get(kind, "local business")
     if kind == "food":
-        questions = [
-            ("cuisine", "Cuisine", "What cuisine or style of food do you serve?"),
-            ("diet", "Food choices", "Is your menu vegetarian only, non-vegetarian, or both?"),
-            *FOOD[2],
-        ]
-        if not profile.food or profile.food.serves_meat is None:
-            questions.insert(2, ("serves_meat", "Meat", "Do you serve any meat?"))
-        subtype = profile.subtype.casefold()
-        if re.search(r"butcher|meat shop", subtype):
-            questions = [
-                ("cuts", "Meat and cuts", "Which meats and cuts do you sell?"),
-                ("selling_units", "Selling units", "Do you price cuts per piece or by weight?"),
-                ("sourcing", "Sourcing", "Where do you source your meat?"),
-            ]
-        elif re.search(r"home.?bak|bakery|baker", subtype):
-            questions = [
-                q for q in questions if q[0] not in {"seating", "price_range", "signature_dish"}
-            ] + [
-                ("bakes", "Bakes", "Which cakes or bakes do you make?"),
-                (
-                    "custom_orders",
-                    "Custom orders",
-                    "Can customers request custom designs or sizes?",
-                ),
-            ]
-        elif re.search(r"tea|chai|coffee|drink", subtype):
-            questions = [q for q in questions if q[0] != "price_range"]
+        questions = food_questions(profile, menu)
     block = getattr(profile, "retail" if kind == "grocer" else kind, None)
     return QuestionPlan(
         business_type=label[:60],
@@ -238,9 +297,10 @@ class QuestionPlanner:
         name: str = "",
         location: str = "",
         profile: BusinessTypeProfile | None = None,
+        menu: list[str] | None = None,
     ) -> QuestionPlan:
         if profile and profile.kind != "generic":
-            return typed_plan(profile)
+            return typed_plan(profile, menu)
         # Name/location can change relevance. Never share a cached answer across those inputs.
         key = repr((category, name, location))
         if key in self._cache:

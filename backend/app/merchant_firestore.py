@@ -25,6 +25,7 @@ from .merchant import (
     CHALLENGE_SECONDS,
     DEMO_ID,
     PROPOSAL_SECONDS,
+    SUPPLY_KINDS,
     BusinessFields,
     ProductFields,
     ProposalRequest,
@@ -36,6 +37,7 @@ from .merchant import (
     seal_proposal,
     validate_proposal,
 )
+from .playbook import migrate_stored
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
 from .stock_alerts import (
     ALERT_SECONDS,
@@ -294,10 +296,12 @@ class FirestoreMerchantStore:
 
         return run(self.client.transaction())
 
-    def challenge(self, uid: str, bid: str) -> dict[str, Any]:
+    def challenge(
+        self, uid: str, bid: str, exclude_prompts: list[str] | None = None
+    ) -> dict[str, Any]:
         business_ref = self.businesses.document(document_id(bid, "Business not found."))
         cid = str(uuid4())
-        prompts = challenge_prompts()
+        prompts = challenge_prompts(exclude=exclude_prompts)
         expires = time.time() + CHALLENGE_SECONDS
 
         @firestore.transactional
@@ -384,7 +388,7 @@ class FirestoreMerchantStore:
             # Seal the parent before enumerating children: racing transactions either commit
             # before this update (and are enumerated) or retry against the deletion marker.
             snapshot.reference.update({"deleting": True, "public": False})
-            for kind in ("rescue", "brief", "brief_wording", "shop_daily"):
+            for kind in ("rescue", "brief", "brief_wording", "shop_daily", *SUPPLY_KINDS):
                 self.feature_docs.delete_scope(kind, snapshot.id)
             owned.append(snapshot.id)
             refs += [item.reference for item in snapshot.reference.collection("inventory").stream()]
@@ -402,6 +406,7 @@ class FirestoreMerchantStore:
                 "sold_out_days",
                 "stock_alerts",
                 "supplier_orders",
+                "connector_mappings",
             ):
                 refs += [
                     item.reference for item in snapshot.reference.collection(collection).stream()
@@ -741,6 +746,21 @@ class FirestoreMerchantStore:
 
         return cast(list[dict[str, Any]], run(self.client.transaction()))
 
+    def playbook(self, uid: str, bid: str) -> dict[str, Any] | None:
+        # Businesses saved before playbooks simply have no field (lazy migration on first use).
+        stored = migrate_stored(self.owned_business(uid, bid).get("playbook"))
+        return stored.model_dump() if stored else None
+
+    def set_playbook(self, uid: str, bid: str, value: dict[str, Any] | None) -> None:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        snapshot = ref.get()
+        self.owned(snapshot, uid)
+        # Precondition on the read version: an ownership change in between fails the write.
+        ref.update(
+            {"playbook": value if value else firestore.DELETE_FIELD},
+            option=self.client.write_option(last_update_time=snapshot.update_time),
+        )
+
     def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
 
@@ -751,6 +771,13 @@ class FirestoreMerchantStore:
             return photos
 
         return cast(list[str], run(self.client.transaction()))
+
+    def analytics_shops(self, limit: int) -> list[tuple[str, str]]:
+        return [
+            (str(data["owners"][0]), snapshot.id)
+            for snapshot in self.businesses.select(["owners", "deleting"]).limit(limit).stream()
+            if (data := snapshot.to_dict() or {}).get("owners") and not data.get("deleting")
+        ]
 
     def recap_signals(self, uid: str, bid: str) -> dict[str, Any]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
@@ -925,3 +952,39 @@ class FirestoreMerchantStore:
             return dict(state)
 
         return run(self.client.transaction())
+
+    def get_connector_mapping(self, uid: str, bid: str, source_label: str) -> dict[str, Any] | None:
+        self.owned_business(uid, bid)
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        doc = ref.collection("connector_mappings").document(source_label.lower().strip()).get()
+        return doc.to_dict() if doc.exists else None
+
+    def list_connector_mappings(self, uid: str, bid: str) -> list[dict[str, Any]]:
+        self.owned_business(uid, bid)
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        docs = ref.collection("connector_mappings").stream()
+        return [doc.to_dict() for doc in docs]
+
+    def save_connector_mapping(self, uid: str, bid: str, mapping: dict[str, Any]) -> dict[str, Any]:
+        self.owned_business(uid, bid)
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        now = time.time()
+        source_label = mapping["source_label"]
+        doc_ref = ref.collection("connector_mappings").document(source_label.lower().strip())
+        record = {
+            "source_label": source_label,
+            "fields": mapping,
+            "last_synced": None,
+            "updated": now,
+        }
+        doc_ref.set(record)
+        return record
+
+    def record_connector_sync(self, uid: str, bid: str, source_label: str) -> None:
+        self.owned_business(uid, bid)
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+        now = time.time()
+        doc_ref = ref.collection("connector_mappings").document(source_label.lower().strip())
+        doc = doc_ref.get()
+        if doc.exists:
+            doc_ref.update({"last_synced": now})

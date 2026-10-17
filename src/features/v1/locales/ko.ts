@@ -397,6 +397,7 @@ export const ko: Copy = {
     gallery: '가게 갤러리 사진',
     community: '가게 공개 사본',
     memory: '어시스턴트 메모리',
+    analytics: '가게 분석 데이터',
     conversations: '대화',
   } as Record<string, string>,
 }

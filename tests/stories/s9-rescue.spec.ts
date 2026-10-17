@@ -218,7 +218,12 @@ async function customerHolds(customer: Page, shopName: string, qr: string, mode:
     await customer.goto(qr)
     const moment = customer.getByRole('dialog')
     await expect(moment.getByRole('button', { name: 'Done' })).toBeVisible()
+    // Tap only once the check is done: a tap during it has no celebration to skip, and axe
+    // would then read lines still fading in (as S8 does).
+    await expect(moment.getByRole('progressbar')).toHaveCount(0)
     await moment.getByRole('heading').first().click()
+    for (const line of await moment.locator('.stamp-line').all())
+      await expect(line).toHaveCSS('opacity', '1', { timeout: 500 })
     await expect(moment.getByRole('heading', { name: 'Rescued!' })).toBeVisible()
     await expect(moment.getByText('Meals you kept out of the bin: 1')).toBeVisible()
     await expect(moment.getByText('+40 points')).toBeVisible()

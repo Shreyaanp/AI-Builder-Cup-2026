@@ -70,10 +70,8 @@ test('Tamil coach responds in the selected language', async ({ page }) => {
   await page.getByRole('textbox').fill('வணக்கம்')
   await page.getByRole('button', { name: 'அனுப்புங்கள்', exact: true }).click()
   const log = page.getByRole('log')
-  await expect(log).toContainText('scripted reply')
+  await expect(log).toContainText('முன்பே எழுதிய பதில்')
   await evidence(page, 'Q1-tamil-coach')
-  // BUG Q1: Tamil coach returns an English offline response.
-  test.fail()
   await expect(log).not.toContainText('This is a scripted reply')
 })
 

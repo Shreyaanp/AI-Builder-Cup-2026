@@ -23,7 +23,10 @@ export function nextRewardText(
 ) {
   if (next.kind === 'card')
     return next.left > 0
-      ? fill(t.nextCard, { n: number(next.left), reward: next.reward })
+      ? fill(next.left === 1 ? t.nextCardOne : t.nextCard, {
+          n: number(next.left),
+          reward: next.reward,
+        })
       : fill(t.nextCardReady, { reward: next.reward })
   if (next.kind === 'set')
     return fill(t.nextSet, { n: number(next.left), set: setName(next.reward, t, p) })

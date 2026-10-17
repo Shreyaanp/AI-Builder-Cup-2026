@@ -32,6 +32,7 @@ import { translations as ownerTranslations } from '../v1/locales'
 import { HAND_FONT, shape } from '../../design/theme'
 import { chalkWrite } from '../../design/chalkMotion'
 import { ShopChat } from './ShopChat'
+import { recsEvent } from '../recs/events'
 import { FollowButton } from '../customer/FollowButton'
 import { Tips } from '../customer/Tips'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
@@ -46,6 +47,8 @@ import { CategoryGroups } from '../shop/CategoryGroups'
 import { useShopCopy } from '../shop/strings'
 import { VerifiedBadge } from '../trust/VerifiedBadge'
 import { unitLabel } from '../shop/units'
+import { rememberOpened } from '../discover/opened'
+import { SimilarNearby } from '../discover/SimilarNearby'
 
 interface PublicShopData {
   id: string
@@ -60,6 +63,7 @@ interface PublicShopData {
   phone: string
   reward_text?: string
   stamps_needed?: number
+  stamps_enabled?: boolean
   /** ISO 4217 code the shop's prices are stored in. */
   currency?: string
   products: {
@@ -455,6 +459,8 @@ export default function PublicShop({ id }: { id: string }) {
     )
     if (changed.length) setChangedPrices(changed.map((product) => product.name + product.unit))
     previous.current = data
+    // A personal signal for this person's own search and Today's 7, kept on this device.
+    rememberOpened(data.id)
     setShop(data)
     setStale(false)
     setState('ready')
@@ -472,6 +478,7 @@ export default function PublicShop({ id }: { id: string }) {
         if (abort.signal.aborted) return
         apply(data)
         document.title = `${data.name} · ${t.menu}`
+        recsEvent({ kind: 'shop_open', shop_id: data.id })
       })
       .catch((error: unknown) => {
         if (!abort.signal.aborted)
@@ -574,6 +581,7 @@ export default function PublicShop({ id }: { id: string }) {
   const story = custom.find((fact) => fact.key === 'story')?.value
   const menu = [...shop.products].sort((a, b) => Number(b.available) - Number(a.available))
   const openLabel = shop.open_now == null ? null : shop.open_now ? discovery.open : discovery.closed
+  const stampsEnabled = shop.stamps_enabled ?? Boolean(shop.reward_text?.trim())
   // Demo shops' numbers are fictional; never offer to call or message them.
   const phone = shop.demo ? '' : shop.phone
   const actions = [
@@ -718,7 +726,7 @@ export default function PublicShop({ id }: { id: string }) {
       {/* Follow and how to get there, side by side; wraps on narrow phones. */}
       <Stack direction="row" sx={{ mt: 4, gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <FollowButton id={id} name={shop.name} />
-        <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />
+        {stampsEnabled && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
         {actions.map((action) => (
           <Button
             key={action.label}
@@ -973,18 +981,36 @@ export default function PublicShop({ id }: { id: string }) {
         </CategoryGroups>
       )}
       {/* Rewards after the menu: earned, not in the way. */}
-      <StampCard
-        shop={id}
-        name={shop.name}
-        timezone={shop.timezone ?? 'Asia/Singapore'}
-        reward={shop.reward_text}
-        needed={shop.stamps_needed ?? 8}
-      />
-      <ShopStamp shop={{ id, name: shop.name, category: shop.category, demo: shop.demo }} />
-      <ShopGames shop={id} />
+      {stampsEnabled && (
+        <StampCard
+          shop={id}
+          name={shop.name}
+          timezone={shop.timezone ?? 'Asia/Singapore'}
+          reward={shop.reward_text}
+          needed={shop.stamps_needed ?? 8}
+        />
+      )}
+      {stampsEnabled && (
+        <ShopStamp
+          shop={{
+            id,
+            name: shop.name,
+            category: shop.category,
+            demo: shop.demo,
+            timezone: shop.timezone ?? 'Asia/Singapore',
+            needed: shop.stamps_needed ?? 8,
+          }}
+        />
+      )}
+      {stampsEnabled && <ShopGames shop={id} />}
       {!stale && <BackInStock shop={id} products={shop.products} />}
-      <BadgeRow shop={id} />
+      {stampsEnabled && <BadgeRow shop={id} />}
       <Tips shop={id} />
+      <SimilarNearby
+        key={id}
+        shop={id}
+        items={menu.filter((product) => product.available).map((product) => product.name)}
+      />
       <Stack
         direction="row"
         spacing={1}
