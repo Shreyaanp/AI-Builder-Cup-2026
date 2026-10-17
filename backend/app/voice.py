@@ -400,6 +400,10 @@ async def gemini_voice(
         received = False
         # When each tool call was seen (by call id), for the time its result took.
         called: dict[str, float] = {}
+        # This turn so far: the coach spoke (audio or words) / a tool ran. After a tool, ADK
+        # completes a turn at once, before the coach says anything (live, 17 Oct): that turn is
+        # not the reply, so it is not passed on (press-to-talk hung up on it, #137).
+        spoke = tools_ran = False
         try:
             async for event in events:
                 received = True
@@ -417,13 +421,18 @@ async def gemini_voice(
                         return "provider_error"
                 if event.output_transcription and event.output_transcription.text:
                     said += event.output_transcription.text
+                    spoke = True
                 calls = event.get_function_calls()
                 stats.tool_calls += len(calls)
                 for call in calls:
                     called[call.id or call.name or ""] = time.perf_counter()
                 for response in event.get_function_responses():
                     tool_result(response, called.pop(response.id or response.name or "", None))
+                tools_ran = tools_ran or bool(calls or event.get_function_responses())
+                silent_tool_turn = bool(event.turn_complete) and tools_ran and not spoke
                 for visible in public_events(event):
+                    if silent_tool_turn and visible.kind == "turn_complete":
+                        continue
                     await websocket.send_json(visible.payload())
                     if visible.kind == "error":
                         return "provider_error"
@@ -432,6 +441,7 @@ async def gemini_voice(
                         blob = part.inline_data
                         if blob and blob.data and (blob.mime_type or "").startswith("audio/pcm"):
                             heard.mark()
+                            spoke = True
                             await websocket.send_json(
                                 StreamEvent(
                                     kind="audio_format",
@@ -439,7 +449,8 @@ async def gemini_voice(
                                 ).payload()
                             )
                             await websocket.send_bytes(blob.data)
-                if event.turn_complete:
+                if event.turn_complete and not silent_tool_turn:
+                    spoke = tools_ran = False
                     stats.turns += 1
                     unanswered.clear()
                     stats.last_question = question_in(said) or stats.last_question
