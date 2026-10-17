@@ -153,6 +153,11 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
       .locator('input[type=file][accept*="image"]')
       .first()
       .setInputFiles(await image(page))
+    // #87: a chat photo is confirmed in one line first ("यह फ़ोटो क्या है?"), then routed.
+    await page
+      .getByRole('group', { name: 'यह फ़ोटो क्या है?' })
+      .getByRole('button', { name: 'मेन्यू' })
+      .click({ timeout: 20_000 })
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 20_000 })
     await readsInHindi(page, '03-menu-photo')
     await closeSheet(page)
