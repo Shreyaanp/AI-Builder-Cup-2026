@@ -78,6 +78,7 @@ import { useReceiveOrder } from '../../sourcing/orderData'
 import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
 import { utter } from '../phoneVoice'
+import { useLanguageSwitch } from '../languageSwitch'
 import { ActionChip, MenuLinkChip, ReplyCard } from '../CoachActions'
 import { useNextStepsCopy } from '../nextStepsCopy'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
@@ -164,6 +165,7 @@ function CoachScreen({
   const roles = theme.material
   const identity = useIdentity()
   const language = useLocale()
+  const switchLanguage = useLanguageSwitch()
   const photoText = photoCopy(language)
   const ws = useWorkspace()
   // Hidden behind the full-screen new-shop flow: no voice, no pickers, no draft prompts.
@@ -245,6 +247,7 @@ function CoachScreen({
 
   const receive = useCallback(
     (event: CoachEvent) => {
+      switchLanguage(event)
       if (event.kind === 'ready') {
         session.current = event.session_id ?? session.current
         setMode(event.mode ?? 'offline')
@@ -320,7 +323,7 @@ function CoachScreen({
         setFaceOpen(true)
       }
     },
-    [review, go, setFaceOpen, t.conversationRolledOver],
+    [review, go, setFaceOpen, t.conversationRolledOver, switchLanguage],
   )
   const restored = useRef<Promise<unknown>>(Promise.resolve())
   /** The coach's reply text (if any), then the menu links its proposals earned so far. */
