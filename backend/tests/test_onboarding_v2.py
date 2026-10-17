@@ -17,6 +17,7 @@ from app.agent import (
     NEW_SHOP_INSTRUCTION,
     NEW_SHOP_TOPICS,
     OFFLINE_HI,
+    OPEN_QUESTION,
     make_agent,
     turn_instruction,
     ui_language,
@@ -29,6 +30,7 @@ from tests.test_discover import settings
 from tests.test_photos import join
 
 ORIGIN = {"origin": "http://127.0.0.1:3200"}
+SEATING = "Can customers sit and have their tea, or is it takeaway only?"
 
 
 def topic_of(reply: str) -> str | None:
@@ -75,8 +77,10 @@ def test_one_sentence_fills_name_kind_and_place_and_the_shop_goes_live(tmp_path:
         location="Indiranagar metro ke paas",
     )
     assert result["status"] == "saved" and result["went_live"] is True
-    assert result["still_missing"][0].startswith("opening hours")
-    assert len(result["still_missing"]) == 2  # hours and the photo
+    # #112: the tea stall's own follow-up, the hours (room for a second), then the photo.
+    assert SEATING in result["still_missing"][0]
+    assert result["still_missing"][1].startswith("opening hours")
+    assert len(result["still_missing"]) == 3
     assert ctx.new_shop_draft and ctx.new_shop_draft.live_id
     bid = ctx.new_shop_draft.live_id
     shops = ctx.store.list_businesses("alice")
@@ -228,6 +232,7 @@ def test_hindi_onboarding_offline_end_to_end_never_repeats_and_never_asks_the_me
             "नमस्ते",
             "name: Lakshmi Tea Stall; category: chai aur samosa; location: Indiranagar metro",
             "pata nahi",
+            "pata nahi",
             "baad mein",
             "nahi, skip",
         ]
@@ -262,10 +267,12 @@ def test_hindi_onboarding_offline_end_to_end_never_repeats_and_never_asks_the_me
             word in " ".join(asked).casefold()
             for word in ("menu", "pay", "delivery", "halal", "मेन्यू", "भुगतान", "डिलीवरी")
         )
-        # No fixed order after the core: hours and the photo come in this conversation's own
-        # order, each once, then the face check.
-        assert {topic_of(asked[1]), topic_of(asked[2])} == {"hours", "photo"}
-        assert OFFLINE_HI[FACE_QUESTION] in asked[3]
+        # #112: the open question first; after the basics, the tea stall's own follow-up (in
+        # Hindi), the hours (room for a second), then the photo, each once, then the face check.
+        assert OFFLINE_HI[OPEN_QUESTION] in asked[0]
+        assert OFFLINE_HI[SEATING] in asked[1]
+        assert [topic_of(asked[2]), topic_of(asked[3])] == ["hours", "photo"]
+        assert OFFLINE_HI[FACE_QUESTION] in asked[4]
         assert sorted(draft["skipped"]) == ["hours", "photo"]
         shops = client.get("/api/v1/businesses").json()
         assert len(shops) == 1 and shops[0]["id"] == draft["live_id"]
