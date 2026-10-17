@@ -90,10 +90,18 @@ export function MorningBrief({
 
   // Treat optional server collections as empty; the rest of the shop remains usable.
   const prepPlan = Array.isArray(brief.prep_plan)
-    ? brief.prep_plan.filter((row) => row && typeof row.name === 'string')
+    ? brief.prep_plan.filter(
+        (row) =>
+          row &&
+          typeof row.name === 'string' &&
+          typeof row.quantity === 'number' &&
+          typeof row.unit === 'string',
+      )
     : []
   const lowStock = Array.isArray(brief.low_stock)
-    ? brief.low_stock.filter((row) => row && typeof row.name === 'string')
+    ? brief.low_stock.filter(
+        (row) => row && typeof row.name === 'string' && typeof row.stock === 'number',
+      )
     : []
   const rawAction = brief.best_action
   const actionKinds = [
@@ -137,7 +145,7 @@ export function MorningBrief({
               >
                 {number(row.quantity)} {row.unit}
               </Typography>
-              {row.lower != null && row.upper != null && (
+              {typeof row.lower === 'number' && typeof row.upper === 'number' && (
                 <Typography variant="bodySmall" color="text.secondary">
                   {fill(t.prepRange, { lower: number(row.lower), upper: number(row.upper) })}
                 </Typography>
@@ -203,7 +211,7 @@ export function MorningBrief({
               <Typography variant="bodyMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                 {fill(t.stockLeft, { n: number(row.stock) })}
               </Typography>
-              {row.runs_out && (
+              {typeof row.runs_out === 'string' && (
                 <Typography variant="bodySmall" color="text.secondary">
                   {fill(t.runsOut, {
                     date: new Intl.DateTimeFormat(locale, {
