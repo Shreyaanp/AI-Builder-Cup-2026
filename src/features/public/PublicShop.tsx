@@ -29,8 +29,7 @@ import { formatPrice } from '../v1/format'
 import { factName } from '../v1/factNames'
 import { Sheet } from '../v1/Sheet'
 import type { ShopFacts } from '../v1/api'
-import { en as ownerEnglish } from '../v1/strings'
-import { translations as ownerTranslations } from '../v1/locales'
+import { useCopy as useOwnerCopy } from '../v1/strings'
 import { HAND_FONT, shape } from '../../design/theme'
 import { chalkDust } from '../../design/chalkboard'
 import { chalkWrite } from '../../design/chalkMotion'
@@ -415,7 +414,7 @@ export default function PublicShop({ id }: { id: string }) {
   const shopCopy = useShopCopy()
   const o = useOnboardingCopy()
   const discovery = discoverCopy(locale)
-  const freshnessCopy = locale === 'en' ? ownerEnglish : ownerTranslations[locale]
+  const freshnessCopy = useOwnerCopy()
   const t = {
     ...en,
     ...publicTranslations[locale],
