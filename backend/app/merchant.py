@@ -401,7 +401,9 @@ class MerchantRepository(Protocol):
         self, uid: str, request: ProposalRequest, idempotency_key: str | None = None
     ) -> dict[str, Any]: ...
     def commit(self, uid: str, pid: str, digest: str) -> dict[str, Any]: ...
-    def challenge(self, uid: str, bid: str) -> dict[str, Any]: ...
+    def challenge(
+        self, uid: str, bid: str, exclude_prompts: list[str] | None = None
+    ) -> dict[str, Any]: ...
     def consume(self, uid: str, cid: str) -> dict[str, Any]: ...
     def face_result(self, uid: str, cid: str, result: dict[str, Any]) -> None: ...
     def result(self, uid: str, cid: str) -> dict[str, Any]: ...
@@ -571,8 +573,13 @@ def seal_proposal(request: ProposalRequest) -> tuple[dict[str, Any], str, str]:
     return payload, text, hashlib.sha256(text.encode()).hexdigest()
 
 
-def challenge_prompts() -> list[str]:
-    return secrets.SystemRandom().sample(["turn_left", "turn_right", "look_up"], 2)
+def challenge_prompts(exclude: list[str] | None = None) -> list[str]:
+    pool = [p for p in ["turn_left", "turn_right", "look_up"] if not exclude or p not in exclude]
+    if not pool:
+        pool = ["turn_left", "turn_right", "look_up"]
+    count = 1 if exclude and len(exclude) >= 1 else 2
+    count = min(count, len(pool))
+    return secrets.SystemRandom().sample(pool, count)
 
 
 class MerchantStore:
@@ -845,8 +852,10 @@ class MerchantStore:
             db.execute("UPDATE proposals SET receipt=? WHERE id=?", (json.dumps(receipt), pid))
             return receipt
 
-    def challenge(self, uid: str, bid: str) -> dict[str, Any]:
-        prompts = challenge_prompts()
+    def challenge(
+        self, uid: str, bid: str, exclude_prompts: list[str] | None = None
+    ) -> dict[str, Any]:
+        prompts = challenge_prompts(exclude=exclude_prompts)
         cid = str(uuid4())
         expires = time.time() + CHALLENGE_SECONDS
         with self.connect() as db:

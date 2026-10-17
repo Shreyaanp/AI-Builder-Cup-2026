@@ -122,3 +122,43 @@ def test_required_models_fail_startup(monkeypatch, tmp_path):
     with pytest.raises(RuntimeError, match="Required face models"):
         with TestClient(face_worker.app):
             pass
+
+
+def test_realistic_phone_angles_and_prompt_tracking():
+    # 12 degrees yaw and 8 degrees pitch are accepted (relaxed phone angles)
+    ok, passed, failed = face_worker.movement_evaluation(
+        ["turn_left", "turn_right"], [(12.0, 0.0), (0.0, 0.0), (-11.0, 0.0)]
+    )
+    assert ok is True
+    assert passed == ["turn_left", "turn_right"]
+    assert failed is None
+
+    # Partial pass: turn_left passed, look_up not reached
+    ok, passed, failed = face_worker.movement_evaluation(
+        ["turn_left", "look_up"], [(12.0, 0.0), (0.0, 0.0)]
+    )
+    assert ok is False
+    assert passed == ["turn_left"]
+    assert failed == "look_up"
+
+    # Head turned up past 7 degrees
+    ok, passed, failed = face_worker.movement_evaluation(
+        ["look_up"], [(0.0, -8.0)]
+    )
+    assert ok is True
+    assert passed == ["look_up"]
+
+
+def test_evaluate_handles_json_sampled_frames(client):
+    import json
+    payload = json.dumps({
+        "frames": [
+            {"timestamp": 0.0, "data": "base64mock"},
+            {"timestamp": 0.5, "data": "base64mock"},
+        ]
+    }).encode()
+    # Offline fixture returns rejected several_faces for unknown capture
+    res = client.post("/evaluate", headers=headers(), content=payload).json()
+    assert res["status"] == "retry"
+    assert res["reason"] == "several_faces"
+
