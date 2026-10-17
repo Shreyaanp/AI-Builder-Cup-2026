@@ -14,6 +14,7 @@ import type { CustomerTab } from '../customer/CustomerNav'
 import { BackHistory, overlayHandled } from '../v1/backStack'
 import { lastDirection, restoreScroll } from '../../app/history'
 import { CustomerTopBar } from '../customer/TopBar'
+import { track } from '../../app/analytics'
 
 const Discover = lazy(() => import('../discover/Discover'))
 const AskHome = lazy(() => import('../discover/AskHome'))
@@ -30,6 +31,7 @@ export type CustomerLocation = { gps: [number, number] | null; place: FoundPlace
 export default function CustomerApp() {
   const mode = useTheme().palette.mode
   const theme = useMemo(() => customerTheme(mode), [mode])
+  useEffect(() => track('customer_first_open'), [])
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]')
     const previous = meta?.getAttribute('content')

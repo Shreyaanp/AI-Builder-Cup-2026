@@ -98,6 +98,7 @@ import { LoadError } from '../LoadError'
 import { enterRise, shape } from '../../../design/theme'
 import { useSourcingCopy } from '../../sourcing/copy'
 import { OrdersSheet } from '../../sourcing/Orders'
+import { track } from '../../../app/analytics'
 import { useReceiveOrder } from '../../sourcing/orderData'
 import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
@@ -463,6 +464,7 @@ function CoachScreen({
   })
   /** Stop: the voice and its words stop together; only what was said stays. */
   function stopTalking() {
+    track('stop_said')
     addReply(reveal.cut())
     voice.stop()
   }
@@ -955,7 +957,11 @@ function CoachScreen({
     },
     openMessages: () => setShopSheet('messages'),
     openSoldOut: () => setShopSheet('soldOut'),
-    talk: () => void restored.current.then(() => voice.start(session.current)),
+    talk: () =>
+      void restored.current.then(() => {
+        track('voice_used')
+        return voice.start(session.current)
+      }),
     openCloseDay: () => setCloseDayOpen(true),
   }
   const lastIsReply =
@@ -1611,7 +1617,10 @@ function CoachScreen({
                 onClick={() => {
                   if (voice.state === 'recording') voice.finishRecording()
                   else if (voice.state === 'idle')
-                    void restored.current.then(() => voice.start(session.current))
+                    void restored.current.then(() => {
+                      track('voice_used')
+                      return voice.start(session.current)
+                    })
                   else stopTalking()
                 }}
                 sx={
