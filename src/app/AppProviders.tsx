@@ -64,7 +64,7 @@ function Providers({
   analyticsApp,
 }: {
   children: ReactNode
-  analyticsApp: 'owner' | 'customer'
+  analyticsApp?: 'owner' | 'customer'
 }) {
   const [preferences, preferencesDispatch] = useReducer(
     preferencesReducer,
@@ -96,6 +96,8 @@ function Providers({
     }
   }, [preferences.language, preferences.appearance, preferences.languageChosen])
   useEffect(() => {
+    // The marketing page loads no app configuration.
+    if (!analyticsApp) return
     const stopWatching = watchRouteChanges()
     const abort = new AbortController()
     void fetch('/api/v1/bootstrap', { signal: abort.signal })
@@ -129,7 +131,7 @@ function Providers({
 export function AppProviders({
   children,
   business = true,
-  analyticsApp = 'owner',
+  analyticsApp,
 }: {
   children: ReactNode
   business?: boolean
