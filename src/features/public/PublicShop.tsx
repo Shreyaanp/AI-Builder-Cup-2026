@@ -53,6 +53,7 @@ import { unitLabel } from '../shop/units'
 import { rememberOpened } from '../discover/opened'
 import { SimilarNearby } from '../discover/SimilarNearby'
 import { shopRegion, shopZone } from '../../region/region'
+import { track } from '../../app/analytics'
 
 interface PublicShopData {
   id: string
@@ -489,6 +490,8 @@ export default function PublicShop({ id }: { id: string }) {
       .then((data) => {
         if (abort.signal.aborted) return
         apply(data)
+        const country = shopRegion(data).country
+        track('shop_opened', { region: country === 'SG' ? 'SG' : 'IN' })
         document.title = `${data.name} · ${t.menu}`
         recsEvent({ kind: 'shop_open', shop_id: data.id })
       })

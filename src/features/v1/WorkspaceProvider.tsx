@@ -11,6 +11,7 @@ import { ReviewDialog } from './ReviewDialog'
 import { BusinessDialog, ProductDialog } from './EditDialogs'
 import { customerShopLink, safeCustomerOrigin } from '../../app/router'
 import { overlayHandled } from './backStack'
+import { track } from '../../app/analytics'
 import { tabFromUrl } from './workspaceContext'
 import { carried, entryState, pushEntry, replaceEntry, restoreScroll } from '../../app/history'
 
@@ -249,6 +250,7 @@ export function WorkspaceProvider({
       newShopReady: shopReady,
       dismissNewShopReady: () => setShopReady(false),
       startNewShop: () => {
+        track('onboarding_started')
         setCoachActions(false)
         setShopReady(false)
         setNewShopPhase('hero')
