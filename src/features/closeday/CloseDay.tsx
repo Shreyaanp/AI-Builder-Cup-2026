@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -22,7 +22,7 @@ import { Tile, Supporting } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
 import { closeDayCopy } from './strings'
 
-type Kind = 'sales' | 'stock_count' | 'delivery'
+export type Kind = 'sales' | 'stock_count' | 'delivery'
 type Line = {
   item: string
   read_as: string
@@ -81,7 +81,14 @@ export function CloseDayTile() {
   )
 }
 
-export function CloseDay({ onClose }: { onClose: () => void }) {
+/** `initial`: a photo already chosen elsewhere (the coach chat); it is read as soon as this opens. */
+export function CloseDay({
+  onClose,
+  initial,
+}: {
+  onClose: () => void
+  initial?: { kind: Kind; file: File }
+}) {
   const t = closeDayCopy(useLocale())
   const ws = useWorkspace()
   const roles = useTheme().material
@@ -103,6 +110,14 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
   const [typing, setTyping] = useState(false)
   const next = useNextStepsCopy()
   const online = useOnline()
+  const started = useRef(false)
+  useEffect(() => {
+    if (!initial || !shop || started.current) return
+    started.current = true
+    void read(initial.kind, initial.file)
+    // Read once, on open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   if (!shop) return null
 
   async function read(kind: Kind, file: File) {
