@@ -82,6 +82,8 @@ def language_rule(language: ReplyLanguage) -> str:
     written = f" Write it in {script}." if script else ""
     # Live eval, 17 Oct: a Hindi onboarding asked "kya aap abhi apni dukan par hain?".
     roman = f" Use {script}, never in Roman letters (no romanized {name})." if script else ""
+    if note := NOT_INSTEAD.get(language.locale):
+        written += f" Use {note}."
     return (
         f"Reply language: Always speak and write in {name} ({code}).{written} Reply COMPLETELY in"
         f" {name}: every sentence and every word you can say in {name}, never a mix. If the owner"
@@ -111,6 +113,11 @@ SCRIPTS = {
 NOT_INSTEAD = {
     "hi": "standard Hindi, not Urdu, Bhojpuri, Maithili or romanised Hinglish",
     "mr": "standard Marathi, not Hindi",
+    # Singapore's official languages (task-SG-LANGUAGES-E2E).
+    "zh-Hans": "Mandarin in Simplified Chinese, not Cantonese, Hokkien or Traditional characters",
+    "ms": "standard Malay (Bahasa Melayu, as written in Singapore and Malaysia), not Indonesian "
+    "or English",
+    "ta": "standard Tamil, not romanised Tamil, Malayalam or English",
 }
 
 

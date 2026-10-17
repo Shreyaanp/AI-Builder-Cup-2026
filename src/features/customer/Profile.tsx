@@ -179,7 +179,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
               </Stack>
             )}
           </Box>
-          {(profile?.searches.length ?? 0) > 0 && (
+          {(profile?.searches?.length ?? 0) > 0 && (
             <Box>
               <Typography variant="titleSmall" component="h3">
                 {t.recent}

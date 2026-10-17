@@ -15,17 +15,24 @@ import { useIdentity } from '../auth/useIdentity'
 import { isLanguagePref, resolveLocale } from '../i18n/locales'
 import { loadScriptFont } from '../i18n/fonts'
 
+/** Kept apart from the preferences object, which older code and tests overwrite whole. */
+const LANGUAGE_CHOSEN = 'niva.language.chosen'
+
 function readPreferences(): Preferences {
   let saved: Partial<Preferences> = {}
+  let chosen = false
   try {
+    chosen = localStorage.getItem(LANGUAGE_CHOSEN) === '1'
     saved = JSON.parse(
       localStorage.getItem('niva.starter.preferences') || '{}',
     ) as Partial<Preferences>
   } catch {
     /* Storage may be disabled. */
   }
+  const language = isLanguagePref(saved?.language) ? saved.language : 'system'
   return {
-    language: isLanguagePref(saved?.language) ? saved.language : 'system',
+    language,
+    languageChosen: chosen || language !== 'system',
     appearance:
       saved?.appearance === 'dark' || saved?.appearance === 'light' ? saved.appearance : 'light',
     destination: 'coach',
@@ -76,10 +83,11 @@ function Providers({ children }: { children: ReactNode }) {
         'niva.starter.preferences',
         JSON.stringify({ language: preferences.language, appearance: preferences.appearance }),
       )
+      if (preferences.languageChosen) localStorage.setItem(LANGUAGE_CHOSEN, '1')
     } catch {
       /* App remains usable without storage. */
     }
-  }, [preferences.language, preferences.appearance])
+  }, [preferences.language, preferences.appearance, preferences.languageChosen])
   return (
     <PreferencesContext value={preferences}>
       <PreferencesDispatchContext value={preferencesDispatch}>

@@ -1,4 +1,5 @@
 import { toMajor } from '../v1/format'
+import type { RegionProfile } from '../../region/region'
 import type { Place } from './types'
 
 // Rough cost of a coffee or simple meal, in each currency's major units.
@@ -24,4 +25,11 @@ export function isBudget(place: Place): boolean {
     threshold !== undefined &&
     place.items.some((item) => item.available && toMajor(item.price, currency) <= threshold)
   )
+}
+
+/** A budget for example searches ("coffee under S$3"), in major units of the region's money. */
+export function askBudget(region: RegionProfile): number {
+  if (region.country) return region.askBudget
+  const cheap = cheapThreshold[region.currency]
+  return cheap ? cheap / 2 : region.askBudget
 }

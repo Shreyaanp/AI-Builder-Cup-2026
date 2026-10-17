@@ -1,6 +1,8 @@
 import type { Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
-import { areaCurrency, currencySymbol } from '../v1/format'
+import { areaCurrency, currencySymbol, formatAmount } from '../v1/format'
+import { shopRegion } from '../../region/region'
+import { askBudget } from './budget'
 
 /**
  * The AI-first front door (owner decision, 16 Oct): a conversation. Every supported language has
@@ -9,7 +11,8 @@ import { areaCurrency, currencySymbol } from '../v1/format'
 const en = {
   hello: 'What are you looking for nearby?',
   helloBody:
-    'Ask me anything. I check the menus, prices and hours of {count} shops around {place}.',
+    // Count last, so one shop never reads "1 shops".
+    'Ask me anything. I check the menus, prices and hours of the shops around {place} ({count} so far).',
   helloBodyEmpty: 'Ask me anything near {place}.',
   area: 'Area: {place}. Change',
   composer: 'Ask about anything nearby',
@@ -713,11 +716,13 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
 
 export function samplePrice(currency: string, locale: Locale): string {
   const code = currency.toUpperCase()
-  if (code === 'INR') {
-    return locale === 'bn' ? '₹৫০' : '₹50'
+  // India and Singapore: the region profile's budget in its own money ("₹30", "S$3").
+  const region = shopRegion({ currency: code })
+  if (region.country && region.currency === code) {
+    return formatAmount(askBudget(region), code, locale)
   }
-  if (code === 'SGD' || code === 'USD') {
-    return locale === 'zh-Hans' ? '3 元' : '$3'
+  if (code === 'USD') {
+    return '$3'
   }
   if (code === 'MYR') {
     return 'RM5'

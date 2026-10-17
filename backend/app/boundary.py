@@ -7,6 +7,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .limits import JSON_BODY_BYTES
+from .region import client_country
 from .shop_time import client_timezone, valid_timezone
 
 # Browsers ignore HSTS over plain http, so local dev is unaffected. The popup sign-in needs
@@ -18,6 +19,16 @@ SECURITY_HEADERS = {
     "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
     "Permissions-Policy": "camera=(self), microphone=(self), geolocation=(self), payment=()",
 }
+
+
+def language_country(header: str | None) -> str | None:
+    """The region of the phone's first language that names one ("en-IN,en;q=0.9" → IN)."""
+    for part in (header or "")[:200].split(","):
+        tag = part.split(";", 1)[0].strip()
+        region = next((bit for bit in tag.split("-")[1:] if len(bit) == 2 and bit.isalpha()), None)
+        if region:
+            return region.upper()
+    return None
 
 
 class RequestBoundary:
@@ -48,6 +59,7 @@ class RequestBoundary:
 
         headers = Headers(scope=scope)
         client_timezone.set(valid_timezone(headers.get("x-client-timezone")))
+        client_country.set(language_country(headers.get("accept-language")))
         origin = headers.get("origin")
         if origin and origin not in self.allowed_origins:
             await reject("ORIGIN_BLOCKED", 403)
