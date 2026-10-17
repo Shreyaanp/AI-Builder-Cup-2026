@@ -224,6 +224,7 @@ export function YouScreen() {
               </Typography>
             </Box>
             <Switch
+              sx={{ height: 48, py: '17px', '& .MuiSwitch-switchBase': { p: '14px' } }}
               checked={ws.speakReplies}
               onChange={(_, checked) => ws.setSpeakReplies(checked)}
               slotProps={{ input: { 'aria-label': t.readAloud } }}

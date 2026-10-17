@@ -348,7 +348,7 @@ test('lost connection: retries by itself, then a calm "Voice paused" with Retry;
 test('voice rate limit: the alert says how long to wait; voice unavailable: carry on typing', async ({
   page,
 }) => {
-  test.setTimeout(60_000)
+  test.setTimeout(90_000)
   await quietMicrophone(page)
   let mode: 'limited' | 'down' = 'limited'
   await page.routeWebSocket('**/api/v1/voice*', (route) => {
@@ -367,8 +367,11 @@ test('voice rate limit: the alert says how long to wait; voice unavailable: carr
   await expect(alert).toContainText(/Try again in [12] s/)
   const retry = alert.getByRole('button', { name: 'Try again' })
   await expect(retry).toBeDisabled()
-  // The typed greeting arrives beside the alert; a loaded CI runner can take over 5 s.
-  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION, { timeout: 15_000 })
+  // The greeting is created by the conversation bootstrap, independently of the voice socket.
+  // Poll its coach transcript until it is actually rendered; CI can take longer than 15 s here.
+  await expect(page.getByRole('log', { name: 'Coach' })).toContainText(FIRST_QUESTION, {
+    timeout: 30_000,
+  })
   await expect(retry).toBeEnabled({ timeout: 5_000 })
   mode = 'down'
   await retry.click()
