@@ -55,7 +55,7 @@ import {
   type Turn,
 } from './askThread'
 import { discoverCopy } from './strings'
-import { fillIn, useConversationCopy, type ConversationCopy } from './conversationCopy'
+import { fillIn, samplePrice, useConversationCopy, type ConversationCopy } from './conversationCopy'
 import { ensureDemoWorld, isIndianArea } from './demoWorld'
 import { localRankShops, prefetchAreaShops } from './shopCache'
 import { recsEvent } from '../recs/events'
@@ -198,7 +198,7 @@ export default function AskHome({
     if (listening) return t.listening
     if (turns.length) return c.composer
     if (isIndianArea(place.lat, place.lng, place.label)) {
-      return c.placeholder.replace('$3', '₹50')
+      return c.placeholder.replace(samplePrice(currency, locale), samplePrice('INR', locale))
     }
     return c.placeholder
   }, [
@@ -210,6 +210,8 @@ export default function AskHome({
     place.lat,
     place.lng,
     place.label,
+    currency,
+    locale,
   ])
   const [suggested, setSuggested] = useState<{ key: string; data: Suggestions } | null>(null)
   const placeKey = `${place.lat},${place.lng}`
@@ -231,8 +233,18 @@ export default function AskHome({
   // Back from a shop or a chat lands where you were in the conversation.
   useEffect(() => {
     const y = (history.state as { scrollY?: number } | null)?.scrollY
-    if (y) requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' }))
-  }, [])
+    if (!y) return
+    let count = 0
+    const attempt = () => {
+      window.scrollTo({ top: y, behavior: 'instant' })
+      if (Math.abs(window.scrollY - y) > 5 && count++ < 12) {
+        requestAnimationFrame(attempt)
+      }
+    }
+    requestAnimationFrame(attempt)
+    const timer = setTimeout(attempt, 60)
+    return () => clearTimeout(timer)
+  }, [turns])
 
   useEffect(() => {
     if (!busy) return
@@ -631,32 +643,16 @@ export default function AskHome({
     return () => window.removeEventListener('popstate', toOpening)
   }, [])
 
-  // The dock (chips + composer) is measured, so the page always ends just above it.
+  // The dock (composer) is measured, so the page always ends just above it.
   const dock = useRef<HTMLDivElement>(null)
   const [dockHeight, setDockHeight] = useState(DOCK_ESTIMATE)
   useEffect(() => {
     const node = dock.current
     if (!node) return
-    // The chips sit above the composer (absolutely, so arriving never moves it): both count.
-    const measure = () =>
-      setDockHeight(
-        Math.round(
-          node.getBoundingClientRect().height +
-            (node.querySelector<HTMLElement>('[data-chips]')?.getBoundingClientRect().height ?? 0),
-        ),
-      )
+    const measure = () => setDockHeight(Math.round(node.getBoundingClientRect().height))
     const observer = new ResizeObserver(measure)
     observer.observe(node)
-    const chips = new MutationObserver(() => {
-      const list = node.querySelector<HTMLElement>('[data-chips]')
-      if (list) observer.observe(list)
-      measure()
-    })
-    chips.observe(node, { childList: true, subtree: true })
-    return () => {
-      observer.disconnect()
-      chips.disconnect()
-    }
+    return () => observer.disconnect()
   }, [])
 
   // Typing on a phone: the navigation bar steps aside so the composer sits on the keyboard.
@@ -694,14 +690,6 @@ export default function AskHome({
   const opening = turns.length === 0
   // Chips appear once this area's suggestions are in (they grow up from the dock: no shift).
   const showChips = opening && suggestions !== null && !draft.trim() && !busy
-  // Browsing the page below: the chips step aside (the composer stays); back at the top they return.
-  const [scrolled, setScrolled] = useState(false)
-  useEffect(() => {
-    const sync = () => setScrolled(window.scrollY > 24)
-    sync()
-    window.addEventListener('scroll', sync, { passive: true })
-    return () => window.removeEventListener('scroll', sync)
-  }, [])
 
   function submit() {
     send(draft)
@@ -846,12 +834,56 @@ export default function AskHome({
                   </Box>
                 </Box>
               )}
+              <NearbyShops shops={nearbyShops} copy={c} locale={locale} browse={t.browse} />
               <TodayEntry
                 copy={c}
                 onOpen={() => send(c.today, { kind: 'today' })}
                 disabled={busy}
               />
-              <NearbyShops shops={nearbyShops} copy={c} locale={locale} browse={t.browse} />
+              {showChips && (
+                <Box
+                  component="ul"
+                  aria-label={c.composer}
+                  data-chips
+                  sx={{
+                    listStyle: 'none',
+                    p: 0,
+                    m: 0,
+                    mt: 5,
+                    // In the page, not over it: they never cover the cards above them.
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                    gap: 2,
+                  }}
+                >
+                  {chips.map((chip, index) => (
+                    <Box
+                      component="li"
+                      key={chip.label}
+                      sx={{ display: 'flex', ...dealIn, '--deal-index': index }}
+                    >
+                      <Button
+                        variant="outlined"
+                        fullWidth
+                        onClick={() => send(chip.q, chip)}
+                        sx={{
+                          minHeight: 52,
+                          borderRadius: '16px',
+                          px: 3,
+                          py: 2,
+                          lineHeight: 1.25,
+                          whiteSpace: 'normal',
+                          overflowWrap: 'anywhere',
+                          bgcolor: roles.surfaceContainerLow,
+                          '&:hover': { bgcolor: roles.surfaceContainer },
+                        }}
+                      >
+                        {chip.label}
+                      </Button>
+                    </Box>
+                  ))}
+                </Box>
+              )}
             </>
           )}
         </Box>
@@ -920,64 +952,6 @@ export default function AskHome({
         }}
       >
         <Box sx={{ maxWidth: 720, mx: 'auto', position: 'relative' }}>
-          {showChips && (
-            <Box
-              component="ul"
-              aria-label={c.composer}
-              data-chips
-              aria-hidden={scrolled || undefined}
-              inert={scrolled || undefined}
-              sx={{
-                transition: `opacity ${motion.duration.short}ms ${motion.easing.standard}, transform ${motion.duration.medium}ms ${motion.easing.emphasized}`,
-                ...(scrolled && {
-                  opacity: 0,
-                  transform: 'translateY(16px)',
-                  pointerEvents: 'none',
-                }),
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: '100%',
-                listStyle: 'none',
-                p: 0,
-                m: 0,
-                pt: 6,
-                pb: 3,
-                // The page scrolls under the chips: they fade in over it like the composer.
-                background: `linear-gradient(to bottom, transparent, ${roles.surface} 24px)`,
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                gap: 2,
-              }}
-            >
-              {chips.map((chip, index) => (
-                <Box
-                  component="li"
-                  key={chip.label}
-                  sx={{ display: 'flex', ...dealIn, '--deal-index': index }}
-                >
-                  <Button
-                    variant="outlined"
-                    fullWidth
-                    onClick={() => send(chip.q, chip)}
-                    sx={{
-                      minHeight: 52,
-                      borderRadius: '16px',
-                      px: 3,
-                      py: 2,
-                      lineHeight: 1.25,
-                      whiteSpace: 'normal',
-                      overflowWrap: 'anywhere',
-                      bgcolor: roles.surfaceContainerLow,
-                      '&:hover': { bgcolor: roles.surfaceContainer },
-                    }}
-                  >
-                    {chip.label}
-                  </Button>
-                </Box>
-              ))}
-            </Box>
-          )}
           <Stack direction="row" sx={{ alignItems: 'flex-end', gap: 2 }}>
             {!opening && (
               <Tooltip title={c.newChat}>
@@ -1167,14 +1141,15 @@ function NearbyShops({
       {browse}
     </Button>
   )
-  // The last thing on the page: when it loads or turns out empty, nothing below it moves.
+  // Skeleton cards hold the carousel's height while it loads, so the Today card below never jumps.
   if (shops && shops.length === 0) return <Box sx={{ mt: 3 }}>{all}</Box>
   return (
     <Box component="section" aria-labelledby="ask-nearby" sx={{ mt: 6 }}>
       <Typography id="ask-nearby" component="h2" variant="titleMedium">
         {copy.nearbyNow}
       </Typography>
-      <PickList label={copy.nearbyNow} busy={shops === null}>
+      {/* Big photos first: the neighbourhood's shops as cards the thumb swipes through. */}
+      <PickList label={copy.nearbyNow} busy={shops === null} carousel>
         {shops
           ? shops.map((pick, index) => (
               <PickCard
@@ -1184,9 +1159,11 @@ function NearbyShops({
                 anchor={null}
                 copy={copy}
                 locale={locale}
+                numbered={false}
+                tile
               />
             ))
-          : [0, 1, 2].map((n) => <PickSkeleton key={n} />)}
+          : [0, 1, 2].map((n) => <PickSkeleton key={n} tile />)}
       </PickList>
       {all}
     </Box>

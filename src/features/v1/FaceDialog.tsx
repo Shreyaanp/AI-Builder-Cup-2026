@@ -26,6 +26,7 @@ import {
   UserSearch,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useConversationCopy } from '../discover/conversationCopy'
 import type { Api } from './api'
 import { useBackClose } from './backStack'
 import { motion, shape } from '../../design/theme'
@@ -94,6 +95,8 @@ export function FaceDialog({
   const roles = theme.material
   const phone = useMediaQuery(theme.breakpoints.down('sm'))
   const [consent, setConsent] = useState(false)
+  const [showHow, setShowHow] = useState(false)
+  const more = useConversationCopy()
   const [phase, setPhase] = useState<Phase>('intro')
   const [prompt, setPrompt] = useState<string | null>(null)
   const [promptIndex, setPromptIndex] = useState(-1)
@@ -398,30 +401,45 @@ export function FaceDialog({
         {phase === 'intro' && (
           <Stack spacing={2.5}>
             <Typography variant="bodyLarge">{c.pitch}</Typography>
-            <Box
-              component="ol"
-              sx={{
-                m: 0,
-                p: 2.5,
-                pl: 5,
-                borderRadius: `${shape.lg}px`,
-                bgcolor: roles.surfaceContainerLow,
-                display: 'grid',
-                gap: 1,
-              }}
+            <Button
+              onClick={() => setShowHow((value) => !value)}
+              aria-expanded={showHow}
+              aria-controls="face-how"
+              sx={{ alignSelf: 'flex-start', minHeight: 48 }}
             >
-              {c.how.map((line) => (
-                <Typography component="li" variant="bodyMedium" key={line}>
-                  {line}
-                </Typography>
-              ))}
-            </Box>
+              {showHow ? more.less : more.more}
+            </Button>
+            {showHow && (
+              <Box
+                id="face-how"
+                component="ol"
+                sx={{
+                  m: 0,
+                  p: 2,
+                  pl: 5,
+                  borderRadius: `${shape.lg}px`,
+                  bgcolor: roles.surfaceContainerLow,
+                  display: 'grid',
+                  gap: 1,
+                }}
+              >
+                {c.how.map((line) => (
+                  <Typography component="li" variant="bodyMedium" key={line}>
+                    {line}
+                  </Typography>
+                ))}
+              </Box>
+            )}
             <FormControlLabel
               control={
-                <Checkbox checked={consent} onChange={(_, checked) => setConsent(checked)} />
+                <Checkbox
+                  checked={consent}
+                  onChange={(_, checked) => setConsent(checked)}
+                  sx={{ p: 1.5 }}
+                />
               }
               label={c.consent}
-              sx={{ alignItems: 'flex-start', '& .MuiCheckbox-root': { mt: -0.5 } }}
+              sx={{ alignItems: 'center', minHeight: 48 }}
             />
           </Stack>
         )}

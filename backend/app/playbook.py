@@ -29,6 +29,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from . import playbook_hi
 from .gemini_schema import gemini_schema, parse_reply
 from .imports import ColumnMapper
+from .region import region_rule, shop_currency, shop_region
 from .reply_language import written_language
 from .vendor_profile import BusinessTypeProfile, food_segment, profile_for, vocabulary
 
@@ -276,7 +277,7 @@ def gather_inputs(
         "profile": profile.model_dump(exclude_none=True),
         "segment": food_segment(profile, [p["name"] for p in menu]),
         "location": fields.get("location", ""),
-        "currency": fields.get("currency") or "SGD",
+        "currency": shop_currency(fields),
         "hours": fields.get("hours", ""),
         "weekly_hours": fields.get("weekly_hours") or [],
         "busy_hours": fields.get("busy_hours", ""),
@@ -765,7 +766,9 @@ class PlaybookWriter(ColumnMapper):
                     config=types.GenerateContentConfig(
                         system_instruction=PROMPT.format(
                             language=written_language(inputs.get("language", "en"))
-                        ),
+                        )
+                        + "\n"
+                        + region_rule(shop_region({"currency": inputs.get("currency")})),
                         response_mime_type="application/json",
                         response_json_schema=gemini_schema(PlaybookDraft),
                         temperature=0.3,

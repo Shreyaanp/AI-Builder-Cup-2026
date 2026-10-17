@@ -26,10 +26,11 @@ from .merchant import (
     ProposalRequest,
     ShareRequest,
 )
-from .money import DEFAULT_CURRENCY, to_minor
+from .money import to_minor
 from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected
 from .product_categories import suggest_category
 from .product_units import normalize_unit
+from .region import new_shop_currency, shop_currency, shop_zone
 from .sales import daily_sales
 from .stock_alerts import StockAlertInput, StockAlertReceipt
 
@@ -119,7 +120,7 @@ async def propose(body: ProposalRequest, request: Request) -> dict[str, Any]:
         # Saved prices are minor units of the saved currency, so edits keep it.
         context = await anyio.to_thread.run_sync(store(request).context, uid, body.business_id)
         saved = (context["business"] or {}).get("fields", {}).get("currency")
-        body.business.currency = saved or DEFAULT_CURRENCY
+        body.business.currency = saved or shop_currency((context["business"] or {}).get("fields"))
     await prepare_pin(body, store(request), uid, request.app.state.maps)
     # Every item gets a category; the owner sees the suggestion in the review before saving.
     for product in body.products:
@@ -244,12 +245,10 @@ async def public_shop(
 
     # A daily total for the owner's Today page; counting never blocks the customer page.
     with contextlib.suppress(Exception):
-        await anyio.to_thread.run_sync(
-            count, store(request), business_id, "views", shop.get("timezone") or "Asia/Singapore"
-        )
+        await anyio.to_thread.run_sync(count, store(request), business_id, "views", shop_zone(shop))
     shop["open_now"] = open_now(
         shop["hours"],
-        shop.get("timezone", "Asia/Singapore"),
+        shop_zone(shop),
         weekly_hours=shop.get("weekly_hours"),
         closed_on=shop.get("closed_on"),
     )
@@ -279,6 +278,30 @@ async def subscribe_stock(
 async def stock_alerts(business_id: str, device_id: UUID, request: Request) -> list[dict[str, Any]]:
     await enforce_limits(request, [("stock:read", client_ip(request))], anonymous=True)
     return await anyio.to_thread.run_sync(store(request).stock_alerts, business_id, str(device_id))
+
+
+@router.post("/photos/classify")
+async def classify_photo(request: Request) -> dict[str, str]:
+    """What a chat photo shows; nothing is stored or saved. The app confirms with the owner."""
+    uid = await consented_owner(request)
+    await enforce_limits(request, [("photo", uid)])
+    if request.headers.get("content-type", "").split(";")[0] not in PHOTO_TYPES:
+        raise HTTPException(415, "Send a JPEG, PNG or WebP photo.")
+    limit = request.app.state.v1_settings.max_photo_bytes
+    buffer = bytearray()
+    try:
+        async with asyncio.timeout(120):
+            async for chunk in request.stream():
+                if len(buffer) + len(chunk) > limit:
+                    raise HTTPException(413, "Photo is too large.")
+                buffer.extend(chunk)
+        try:
+            kind = await request.app.state.photos.classify_upload(bytes(buffer))
+        except PhotoRejected as rejected:
+            raise HTTPException(rejected.status, rejected.code) from None
+    finally:
+        buffer.clear()
+    return {"kind": kind}
 
 
 @router.post("/photos")
@@ -315,11 +338,11 @@ async def photo(
     found = extraction.business
     business = context["business"]
     currency = (
-        business["fields"].get("currency", DEFAULT_CURRENCY)
+        shop_currency(business["fields"])
         if business
         else (currency or "").upper()
         if re.fullmatch(r"[A-Za-z]{3}", currency or "")
-        else DEFAULT_CURRENCY
+        else new_shop_currency(None, None)
     )
     products = [
         ProductFields(
@@ -477,7 +500,7 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
     if mapping.name is None:
         raise HTTPException(422, "NO_ITEM_COLUMN")
     if mapping.kind == "sales":
-        currency = business["fields"].get("currency") or DEFAULT_CURRENCY
+        currency = shop_currency(business["fields"])
         aggregates = daily_sales(rows, mapping, currency)
         proposal = await anyio.to_thread.run_sync(
             service.prepare_sales, uid, business_id, aggregates
@@ -499,7 +522,7 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
     items, skipped = menu_items(rows, mapping)
     if not items:
         raise HTTPException(422, "NO_PRICED_ITEMS")
-    currency = business["fields"].get("currency") or DEFAULT_CURRENCY
+    currency = shop_currency(business["fields"])
     saved = {(p["name"].casefold(), p["unit"].casefold()): p for p in context["inventory"]}
     by_name: dict[str, list[dict[str, Any]]] = {}
     for saved_item in context["inventory"]:
