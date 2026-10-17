@@ -73,6 +73,7 @@
     "backend/app/discover_ask.py": 1,
     "backend/app/fraud.py": 1,
     "backend/app/imports.py": 1,
+    "backend/app/icons.py": 1,
     "backend/app/ingestion.py": 1,
     "backend/app/maps_grounding.py": 1,
     "backend/app/memory_vectors.py": 1,
