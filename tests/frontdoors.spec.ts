@@ -78,7 +78,7 @@ test('marketing has two paths, all sections, no splash or auth bootstrap', async
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/?app=landing')
   await expect(
-    page.getByRole('heading', { name: 'For shop owners. For neighbours.', level: 1 }),
+    page.getByRole('heading', { name: 'Small shops. Big neighbourhood energy.' }),
   ).toBeVisible()
   await expect(page.getByRole('link', { name: 'Find places near me' }).first()).toHaveAttribute(
     'href',
@@ -92,7 +92,9 @@ test('marketing has two paths, all sections, no splash or auth bootstrap', async
   await expect(
     page.getByRole('heading', { name: 'From chalkboard to every phone, in three moves.' }),
   ).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Talk to your coach' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Everything a corner shop needs. Nothing it doesn’t.' }),
+  ).toBeVisible()
   expect(await page.locator('[data-testid="brand-splash"]').count()).toBe(0)
   expect(await page.locator('link[rel="manifest"]').count()).toBe(0)
   expect(
