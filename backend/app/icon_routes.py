@@ -22,7 +22,7 @@ def generator(request: Request) -> IconGenerator:
         found = request.app.state.icon_generator = GeminiIconGenerator(
             request.app.state.v1_settings
         )
-    return found  # type: ignore[no-any-return]
+    return found
 
 
 def ai_available(request: Request) -> bool:

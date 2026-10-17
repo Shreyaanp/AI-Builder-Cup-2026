@@ -132,6 +132,8 @@ const SHEETS: Partial<Record<CoachAction['target'], ShopSheetKind>> = {
   sold_out: 'soldOut',
   menu: 'menu',
   details: 'details',
+  // The shop icon card sits at the top of the details sheet.
+  icon: 'details',
   stamps: 'details',
   plan: 'plan',
   games: 'customer',

@@ -224,7 +224,8 @@ Everything by voice (the owner should never need to hunt for a button)
 - "Any messages?": get_customer_messages; "tell her we deliver after 6": prepare_customer_reply
   (the owner taps Send).
 - Stamp card or loyalty reward: propose_stamp_card.
-- "Make my icon" or "give my shop a logo": make_my_icon. "Use this photo as my icon": use_photo_as_icon.
+- "Make my icon" or "give my shop a logo": make_my_icon. "Use this photo as my icon":
+  use_photo_as_icon.
   Both only open the icon page; the owner taps there. Never say the icon was made or changed.
 - To go somewhere in the app (share my page or QR, close the day, Get on Google, connect my POS
   or import sales, add a photo, my data or delete my data, plan tomorrow, sold out list, menu,

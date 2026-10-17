@@ -23,7 +23,7 @@ const copy = {
 }
 
 /** Centre-crop to a square in the browser so the upload is small; null when it cannot decode. */
-export async function squareFile(file: File, side = 512): Promise<Blob | null> {
+async function squareFile(file: File, side = 512): Promise<Blob | null> {
   try {
     const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
     const size = Math.min(bitmap.width, bitmap.height)
@@ -83,10 +83,7 @@ export function ShopIcon() {
   const base = shop ? `/businesses/${encodeURIComponent(shop.id)}/icon` : ''
 
   useEffect(() => {
-    if (!shop || !icon) {
-      setUrl(null)
-      return
-    }
+    if (!shop || !icon) return
     const abort = new AbortController()
     let made: string | null = null
     void ws
@@ -175,7 +172,7 @@ export function ShopIcon() {
             <Box sx={{ height: '100%', display: 'grid', placeItems: 'center' }}>
               <CircularProgress size={24} />
             </Box>
-          ) : url ? (
+          ) : icon && url ? (
             <Box
               component="img"
               src={url}

@@ -39,7 +39,6 @@ import { useLocale } from '../../../state/hooks'
 import { categoryArt } from '../../frontdoors/photos'
 import { fill, useGoogleCopy } from '../../google/strings'
 import { GALLERY_LIMIT, useGallery } from '../../google/useGallery'
-import { ShopIcon } from '../../google/ShopIcon'
 import { TrustCard } from '../../trust/TrustCard'
 
 const PHOTO_TYPES = 'image/jpeg,image/png,image/webp'
@@ -477,7 +476,6 @@ function PhotosStep({ gallery }: { gallery: ReturnType<typeof useGallery> }) {
   }
   return (
     <Stack spacing={3} sx={{ mt: 2 }}>
-      <ShopIcon />
       <Tip>{g.photosTip}</Tip>
       <Box
         sx={{
