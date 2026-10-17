@@ -142,23 +142,23 @@ def test_realistic_phone_angles_and_prompt_tracking():
     assert failed == "look_up"
 
     # Head turned up past 7 degrees
-    ok, passed, failed = face_worker.movement_evaluation(
-        ["look_up"], [(0.0, -8.0)]
-    )
+    ok, passed, failed = face_worker.movement_evaluation(["look_up"], [(0.0, -8.0)])
     assert ok is True
     assert passed == ["look_up"]
 
 
 def test_evaluate_handles_json_sampled_frames(client):
     import json
-    payload = json.dumps({
-        "frames": [
-            {"timestamp": 0.0, "data": "base64mock"},
-            {"timestamp": 0.5, "data": "base64mock"},
-        ]
-    }).encode()
+
+    payload = json.dumps(
+        {
+            "frames": [
+                {"timestamp": 0.0, "data": "base64mock"},
+                {"timestamp": 0.5, "data": "base64mock"},
+            ]
+        }
+    ).encode()
     # Offline fixture returns rejected several_faces for unknown capture
     res = client.post("/evaluate", headers=headers(), content=payload).json()
     assert res["status"] == "retry"
     assert res["reason"] == "several_faces"
-
