@@ -26,15 +26,19 @@ function gcloud {
   $global:gcloudCalls += ,($args -join ' ')
   $global:LASTEXITCODE = 0
   $line = $args -join ' '
-  if ($line -like 'run services describe*--format=value*') {
-    "asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/face:$global:runningTag"
-  } elseif ($line -like 'run services describe*--format=json*') {
-    '{"status":{"url":"https://ogoogle-face-fixture.a.run.app","traffic":[' +
-      '{"percent":100,"revisionName":"ogoogle-face-00001"},' +
+  if ($line -like 'run services describe*--format=json*') {
+    # $global:pinned: traffic stuck on an older revision (left by a no-traffic release).
+    $first = '"latestRevision":true'
+    if ($global:pinned) { $first = '"revisionName":"ogoogle-face-00001"' }
+    $running = 'asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/face:' + $global:runningTag
+    '{"spec":{"template":{"spec":{"containers":[{"image":"' + $running + '"}]}}},' +
+      '"status":{"url":"https://ogoogle-face-fixture.a.run.app","traffic":[' +
+      '{"percent":100,' + $first + '},' +
       '{"revisionName":"ogoogle-face-00002","tag":"test","url":"https://test---ogoogle-face-fixture.a.run.app"}]}}'
   } elseif ($line -like 'artifacts docker images list*') {
     if ($global:imageBuilt) { 'sha256:fixture' }
-  } elseif ($line -like 'run deploy*' -or $line -like 'builds submit*') {
+  } elseif ($line -like 'run deploy*' -or $line -like 'builds submit*' -or
+    $line -like 'run services update-traffic*') {
   } else { throw "Unexpected gcloud operation: $line" }
 }
 """
@@ -137,6 +141,7 @@ def test_face_worker_is_built_and_released_like_deploy_yml(revision_tag, built):
         + r"""
     $global:runningTag = 'inputs-0000000000000000'
     $global:imageBuilt = BUILT
+    $global:pinned = $true
     $realGit = Get-Command git -CommandType Application | Select-Object -First 1
     function git {
       $global:LASTEXITCODE = 0
@@ -172,6 +177,43 @@ def test_face_worker_is_built_and_released_like_deploy_yml(revision_tag, built):
     if revision_tag:
         assert "--no-traffic --tag=test" in deploy
         assert "https://test---ogoogle-face-fixture.a.run.app" in result.stdout
+        # A staged revision leaves production traffic where it is.
+        assert not [call for call in calls if "update-traffic" in call]
     else:
         assert "--no-traffic" not in deploy and "--tag=" not in deploy
         assert "https://ogoogle-face-fixture.a.run.app" in result.stdout
+        # Traffic follows the release even when an earlier staged revision pinned it.
+        assert calls.index(deploy) < calls.index(
+            "run services update-traffic ogoogle-face --project=ichiropractic "
+            "--region=asia-south1 --to-latest --quiet"
+        )
+
+
+@pytest.mark.skipif(not SHELL, reason="PowerShell is unavailable")
+@pytest.mark.parametrize("pinned", [False, True])
+def test_a_current_worker_is_not_rebuilt_but_pinned_traffic_is_moved_to_it(pinned):
+    """Regression: a no-traffic test release pinned traffic to the old worker, so the next
+    release deployed the new image with no traffic and production kept the old one."""
+    code = (
+        GCLOUD
+        + r"""
+    $global:runningTag = 'TAG'
+    $global:pinned = PINNED
+    $realGit = Get-Command git -CommandType Application | Select-Object -First 1
+    function git {
+      $global:LASTEXITCODE = 0
+      if ($args[0] -eq 'diff') { return }
+      & $realGit @args; $global:LASTEXITCODE = $LASTEXITCODE
+    }
+    try { & 'SCRIPT' } catch { Write-Output $_; exit 4 }
+    $global:gcloudCalls | ForEach-Object { "CALL $_" }
+    """.replace("SCRIPT", quoted(FACE_SCRIPT))
+        .replace("TAG", face_tag())
+        .replace("PINNED", "$true" if pinned else "$false")
+    )
+    result = run(code)
+    assert result.returncode == 0, result.stdout + result.stderr
+    calls = [line[5:] for line in result.stdout.splitlines() if line.startswith("CALL ")]
+    assert not [call for call in calls if call.startswith(("builds", "run deploy"))]
+    moved = [call for call in calls if "update-traffic" in call and "--to-latest" in call]
+    assert len(moved) == (1 if pinned else 0)

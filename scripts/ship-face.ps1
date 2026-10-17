@@ -39,11 +39,30 @@ try {
   $tag = 'inputs-' + (-join ($digest | ForEach-Object { $_.ToString('x2') })).Substring(0, 16)
   $image = "${repository}:$tag"
 
-  $current = gcloud run services describe ogoogle-face "--project=$project" "--region=$region" `
-    '--format=value(spec.template.spec.containers[0].image)'
-  if ($LASTEXITCODE) { throw 'Cannot read the running face worker.' }
+  function Get-FaceService {
+    $json = gcloud run services describe ogoogle-face "--project=$project" "--region=$region" `
+      '--format=json'
+    if ($LASTEXITCODE) { throw 'Cannot read the running face worker.' }
+    ($json -join "`n") | ConvertFrom-Json
+  }
+  # After a -RevisionTag (no traffic) release, Cloud Run keeps traffic pinned to the revision
+  # that served then, and later releases get none. Production always moves it back to latest.
+  function Set-LatestTraffic {
+    gcloud run services update-traffic ogoogle-face "--project=$project" "--region=$region" `
+      --to-latest --quiet
+    if ($LASTEXITCODE) { throw 'Cannot route face worker traffic to the latest revision.' }
+  }
+
+  $service = Get-FaceService
+  $current = $service.spec.template.spec.containers[0].image
+  $latest = @($service.status.traffic | Where-Object { $_.latestRevision -and $_.percent -eq 100 })
   if (-not $RevisionTag -and "$current".EndsWith(":$tag")) {
-    Write-Host "Face worker already runs $tag; nothing to release."
+    if ($latest.Count) {
+      Write-Host "Face worker already runs $tag; nothing to release."
+    } else {
+      Write-Host "Face worker $tag is deployed but not serving; routing traffic to it."
+      Set-LatestTraffic
+    }
     return
   }
 
@@ -72,9 +91,9 @@ try {
   if ($RevisionTag) { $deploy += @('--no-traffic', "--tag=$RevisionTag") }
   gcloud @deploy
   if ($LASTEXITCODE) { throw 'Face worker release failed.' }
+  if (-not $RevisionTag) { Set-LatestTraffic }
 
-  $service = gcloud run services describe ogoogle-face "--project=$project" "--region=$region" `
-    '--format=json' | ConvertFrom-Json
+  $service = Get-FaceService
   $url = if ($RevisionTag) {
     ($service.status.traffic | Where-Object { $_.tag -eq $RevisionTag }).url
   } else { $service.status.url }
