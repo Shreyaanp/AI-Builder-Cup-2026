@@ -199,8 +199,8 @@ export function GuidedDetails({
       else go(index + 1)
     }
   }
-  const textInput = (enterKeyHint: 'next' | 'done' = last ? 'done' : 'next') => ({
-    htmlInput: { enterKeyHint, maxLength: 180 },
+  const textInput = (enterKeyHint: 'next' | 'done' = last ? 'done' : 'next', maxLength = 180) => ({
+    htmlInput: { enterKeyHint, maxLength },
   })
   const set = (patch: Partial<Business['fields']>) =>
     setFields((current) => ({ ...current, ...patch }))
@@ -225,7 +225,7 @@ export function GuidedDetails({
           helperText={problem === t.enterName && !fields.name.trim() ? t.enterName : undefined}
           onChange={(event) => set({ name: event.target.value })}
           onKeyDown={onEnter}
-          slotProps={textInput()}
+          slotProps={textInput(undefined, 80)}
           fullWidth
         />
       )
