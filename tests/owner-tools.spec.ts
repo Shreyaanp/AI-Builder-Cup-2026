@@ -118,7 +118,7 @@ for (const appearance of ['light', 'dark']) {
     ).toHaveAttribute('href', /am=240.00/)
     await page.goto('/?app=landing')
     await expect(
-      page.getByRole('heading', { name: 'For shop owners. For neighbours.', level: 1 }),
+      page.getByRole('heading', { name: 'Small shops. Big neighbourhood energy.', level: 1 }),
     ).toBeVisible()
     expect(
       (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
