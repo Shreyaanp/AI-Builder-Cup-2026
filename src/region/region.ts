@@ -160,6 +160,12 @@ export function phoneArea(): { lat: number; lng: number; label: string } {
   return { lat: raw.area.point[0] ?? 0, lng: raw.area.point[1] ?? 0, label: raw.area.label }
 }
 
+/** The currency a payment rail takes (UPI and PayNow each have their region's), or ''. */
+export function railCurrency(rail: RegionProfile['paymentRail']): string {
+  if (!rail) return ''
+  return Object.values(regions).find((raw) => raw.payment_rail === rail)?.currency ?? ''
+}
+
 /** The symbol people read for a currency (S$, ₹, RM…), or undefined to use Intl's. */
 export function currencyMark(currency: string): string | undefined {
   return SYMBOLS[currency.toUpperCase()]

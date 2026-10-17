@@ -1,3 +1,4 @@
+import { railCurrency } from '../../region/region.ts'
 /** Every ride and parcel app; a shop is offered its region's (India: Rapido, Uber, Porter;
  * Singapore: Grab, Gojek, Lalamove). */
 export const PROVIDERS = ['rapido', 'uber', 'porter', 'grab', 'gojek', 'lalamove'] as const
@@ -50,7 +51,8 @@ export type UpiLink = {
 }
 export type PaynowLink = {
   rail: 'paynow'
-  currency: 'SGD'
+  /** The PayNow region's currency (from the region profile). */
+  currency: string
   amount: string
   note: string
   payee: string
@@ -119,7 +121,7 @@ export function paynowLink(
     return null
   return {
     rail: 'paynow',
-    currency: 'SGD',
+    currency: railCurrency('paynow'),
     amount: normalized,
     note: note.trim(),
     payee: name.trim(),
