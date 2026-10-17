@@ -149,7 +149,9 @@ export function WorkspaceProvider({
       .then((items) => {
         if (!abort.signal.aborted) setInventory({ bid: activeId, items })
       })
-      .catch(() => undefined)
+      .catch(() => {
+        if (!abort.signal.aborted) setInventory({ bid: activeId, items: [] })
+      })
     return () => abort.abort()
   }, [activeId, api])
 
@@ -251,6 +253,7 @@ export function WorkspaceProvider({
       },
       // Products shown always belong to the active shop.
       products: inventory.bid === activeId ? inventory.items : [],
+      productsLoaded: !activeId || inventory.bid === activeId,
       destination,
       speakReplies,
       setSpeakReplies: (next) => {

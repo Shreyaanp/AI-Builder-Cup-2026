@@ -17,6 +17,8 @@ import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
 import { formatPrice } from '../v1/format'
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 import { CustomerConversation } from './CustomerConversation'
 import { accessKey, readAccess, type ThreadAccess } from './threadAccess'
 import { useCustomer } from '../customer/account'
@@ -72,6 +74,7 @@ export function ShopChat({
   copy: CustomerCopy
 }) {
   const locale = useLocale()
+  const shopCopy = useShopCopy()
   const roles = useTheme().material
   const [access, setAccess] = useState<ThreadAccess | null>(() => readAccess(id))
   const [entries, setEntries] = useState<{ list: Entry[]; facts: string }>({ list: [], facts })
@@ -235,7 +238,8 @@ export function ShopChat({
                 </Typography>
                 {entry.answer.price != null && (
                   <Typography variant="titleMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {formatPrice(entry.answer.price, currency)} / {entry.answer.unit}
+                    {formatPrice(entry.answer.price, currency)} /{' '}
+                    {unitLabel(entry.answer.unit ?? '', shopCopy)}
                   </Typography>
                 )}
                 <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 0.5 }}>

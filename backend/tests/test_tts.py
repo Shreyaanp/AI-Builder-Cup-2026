@@ -54,6 +54,13 @@ def test_best_voice_is_the_chosen_female_voice_at_the_best_tier() -> None:
 
 def test_speakable_strips_formatting() -> None:
     assert speakable("**Kopi** is `S$1.80`\n\n> sold out") == "Kopi is S$1.80 sold out"
+    assert (
+        speakable("### Daily Specials\n- Chai: ₹20\n- Samosa: ₹15")
+        == "Daily Specials Chai: ₹20 Samosa: ₹15"
+    )
+    assert speakable("Visit [our shop](https://chalkboard.app) today!") == "Visit our shop today!"
+    assert speakable("| Item | Price |\n|---|---|\n| Chai | ₹20 |") == "Item Price Chai ₹20"
+    assert speakable("Special #1 with *spices* and **aroma**") == "Special 1 with spices and aroma"
 
 
 def test_offline_mode_tells_the_app_to_use_the_phone_voice(app) -> None:  # noqa: F811

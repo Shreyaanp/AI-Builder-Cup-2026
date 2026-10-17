@@ -135,11 +135,27 @@ test('customer fixes: passport board errors offer retry and failed opt-in stays 
   await expect(join).not.toBeChecked()
 })
 
+test('customer fixes: signed-in customer with location off sees calm empty leaderboard without error', async ({
+  page,
+}) => {
+  await page.request.post('/api/v1/customer/session', { data: { name: 'Kavita' } })
+  // Location off: no filters in localStorage, no gps
+  await page.goto('/explore/passport', { waitUntil: 'domcontentloaded' })
+  const board = page.getByRole('region', { name: 'Regulars this week' })
+  await expect(board).toBeVisible()
+  await expect(board.getByRole('alert')).toHaveCount(0)
+  await expect(board.getByText('Nobody on the board yet this week.')).toBeVisible()
+})
+
 test('customer fixes: Today refresh failure is visible with cached finds', async ({ page }) => {
   await page.goto('/explore/')
+  const loaded = page.waitForResponse((r) => r.url().includes('/public/today?') && r.ok())
   await page.getByRole('button', { name: /Today’s 7 near you/ }).click()
   const today = page.getByRole('region', { name: /^Today/ })
-  await expect(today.getByText('Quiet here so far. Try a nearby area.')).toBeVisible()
+  // Quiet or not depends on what earlier runs left in the shared local DB; it only has to load.
+  await loaded
+  await expect(today).toBeVisible()
+  await expect(today.getByRole('alert')).toHaveCount(0)
   await page.route('**/public/today?*', (route) => route.fulfill({ status: 503, json: {} }))
   await page.getByRole('button', { name: 'Profile and preferences' }).click()
   await page.getByRole('button', { name: /Continue with Google/ }).click()
@@ -226,6 +242,12 @@ for (const mode of ['light', 'dark'] as const) {
       )
       const customer = await context.newPage()
       await localOnly(customer)
+      // Ranking is a UI fixture here (see the Ask step), including the on-device instant ranking
+      // from the area prefetch; Browse (which always sends `q`) still uses the real offline API.
+      await customer.route(
+        (url) => url.pathname === '/api/v1/discover' && !url.searchParams.has('q'),
+        (route) => route.fulfill({ json: { places: [] } }),
+      )
       const capture = async (step: string) => {
         await audit(customer)
         await customer.screenshot({
@@ -240,9 +262,11 @@ for (const mode of ['light', 'dark'] as const) {
         .toBe(mode === 'dark' ? 'rgb(23, 39, 31)' : 'rgb(251, 247, 236)')
       await capture('landing')
       await customer.getByRole('link', { name: 'Find places near me', exact: true }).first().click()
-      await customer.getByRole('textbox', { name: 'City or area' }).fill('Bengaluru')
-      await customer.getByRole('textbox', { name: 'City or area' }).press('Enter')
-      await customer.getByRole('button', { name: 'Explore my neighbourhood' }).click()
+      // No setup wizard: the Ask page itself asks where, then gets out of the way.
+      const where = customer.getByRole('region', { name: 'Start with your neighbourhood' })
+      await where.getByRole('textbox', { name: 'City or area' }).fill('Bengaluru')
+      await where.getByRole('textbox', { name: 'City or area' }).press('Enter')
+      await expect(where).toHaveCount(0)
       await expect(
         customer.getByRole('heading', { name: 'What are you looking for nearby?' }),
       ).toBeVisible()

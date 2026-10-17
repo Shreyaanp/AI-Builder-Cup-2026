@@ -257,6 +257,7 @@ export interface paths {
         /**
          * Photo
          * @description ``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own.
+         *     ``language`` is the owner's app language for the notes about what was unclear.
          */
         post: operations["photo_api_v1_photos_post"];
         delete?: never;
@@ -396,6 +397,93 @@ export interface paths {
         get: operations["public_gallery_photo_api_v1_public_shops__business_id__photos__photo_id__jpg_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/connect/mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Mappings
+         * @description List all saved connector mappings for this business.
+         */
+        get: operations["list_mappings_api_v1_businesses__business_id__connect_mappings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/connect/mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Mapping
+         * @description Save or update a confirmed column mapping for this business and source system.
+         */
+        post: operations["save_mapping_api_v1_businesses__business_id__connect_mapping_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/connect/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Export
+         * @description Analyze an uploaded export or pasted sample.
+         *
+         *     If a confirmed mapping already exists for this source system, it is reused.
+         *     Otherwise, Gemini (or heuristic fallback) generates a proposed mapping.
+         *     Shows preview rows and diff against existing inventory.
+         */
+        post: operations["analyze_export_api_v1_businesses__business_id__connect_analyze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/connect/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Export
+         * @description Sync data using a saved or provided mapping.
+         *
+         *     Produces a standard review proposal (menu or sales). NEVER writes silently.
+         *     Updates the last_synced timestamp for this source.
+         */
+        post: operations["sync_export_api_v1_businesses__business_id__connect_sync_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1237,6 +1325,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/discover/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Similar
+         * @description "Similar nearby" on a shop or item page: other shared shops alike in meaning, close by.
+         */
+        get: operations["similar_api_v1_discover_similar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/day/read": {
         parameters: {
             query?: never;
@@ -1305,6 +1413,23 @@ export interface paths {
          * @description Make sure the visitor's ~2 km area has labelled demo shops (anonymous; rate limited).
          */
         post: operations["demo_world_api_v1_demo_world_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/recs/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Event */
+        post: operations["record_event_api_v1_public_recs_events_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1700,6 +1825,119 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shop Analytics */
+        get: operations["shop_analytics_api_v1_businesses__business_id__analytics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internal/analytics/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Export
+         * @description Nightly: yesterday (UTC) and the day before, so late sales entries are picked up.
+         */
+        post: operations["run_export_api_v1_internal_analytics_export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/playbook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Playbook */
+        get: operations["get_playbook_api_v1_businesses__business_id__playbook_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit Playbook
+         * @description The summary, the owner's words and the tone; all optional, all the owner's to change.
+         */
+        patch: operations["edit_playbook_api_v1_businesses__business_id__playbook_patch"];
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/playbook/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Playbook Today
+         * @description For the Today page: which numbers, line topics and "needs you now" kinds lead.
+         */
+        get: operations["playbook_today_api_v1_businesses__business_id__playbook_today_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/playbook/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerate */
+        post: operations["regenerate_api_v1_businesses__business_id__playbook_regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/playbook/items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove */
+        delete: operations["remove_api_v1_businesses__business_id__playbook_items__item_id__delete"];
+        options?: never;
+        head?: never;
+        /** Edit */
+        patch: operations["edit_api_v1_businesses__business_id__playbook_items__item_id__patch"];
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/orders": {
         parameters: {
             query?: never;
@@ -1816,6 +2054,236 @@ export interface paths {
          * @description Returns the received order and, when menu items match, a stock proposal to review.
          */
         post: operations["order_received_api_v1_businesses__business_id__orders__order_id__received_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Overview */
+        get: operations["overview_api_v1_businesses__business_id__supply_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/suppliers/{supplier_id}/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Rules */
+        put: operations["save_rules_api_v1_businesses__business_id__supply_suppliers__supplier_id__rules_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/suppliers/{supplier_id}/rules/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm Rules */
+        post: operations["confirm_rules_api_v1_businesses__business_id__supply_suppliers__supplier_id__rules_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reorder */
+        post: operations["reorder_api_v1_businesses__business_id__supply_reorder_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Order */
+        get: operations["read_order_api_v1_businesses__business_id__supply_orders__order_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/fix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fix Order */
+        post: operations["fix_order_api_v1_businesses__business_id__supply_orders__order_id__fix_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Order */
+        post: operations["approve_order_api_v1_businesses__business_id__supply_orders__order_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Order */
+        post: operations["cancel_order_api_v1_businesses__business_id__supply_orders__order_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Simulate
+         * @description Demo only: the simulated supplier sends its next document in its own format.
+         */
+        post: operations["simulate_api_v1_businesses__business_id__supply_orders__order_id__simulate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/inbound": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Inbound
+         * @description A document from the supplier in any format (IDoc XML, CSV, a message): translated.
+         */
+        post: operations["inbound_api_v1_businesses__business_id__supply_orders__order_id__inbound_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/flags/{flag_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve Flag */
+        post: operations["resolve_flag_api_v1_businesses__business_id__supply_orders__order_id__flags__flag_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept */
+        post: operations["accept_api_v1_businesses__business_id__supply_orders__order_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Received
+         * @description Goods arrived; returns the order and, when menu items match, a stock review.
+         */
+        post: operations["received_api_v1_businesses__business_id__supply_orders__order_id__received_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1953,6 +2421,30 @@ export interface paths {
         get: operations["morning_brief_api_v1_businesses__business_id__brief_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/face/warmup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Face Warmup
+         * @description Warm up the private face worker to prevent cold-start latency when the owner scans.
+         */
+        get: operations["face_warmup_api_v1_face_warmup_get"];
+        put?: never;
+        /**
+         * Face Warmup
+         * @description Warm up the private face worker to prevent cold-start latency when the owner scans.
+         */
+        post: operations["face_warmup_api_v1_face_warmup_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2200,6 +2692,25 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Analytics */
+        Analytics: {
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "bigquery" | "live";
+            /** Currency */
+            currency: string;
+            /** Days */
+            days: components["schemas"]["Day"][];
+            yesterday: components["schemas"]["Day"];
+            week: components["schemas"]["Totals"];
+            last_week: components["schemas"]["Totals"];
+            /** Forecast Error */
+            forecast_error?: number | null;
+            /** Demo */
+            demo: boolean;
+        };
         /**
          * Anchor
          * @description The station a "near the MRT" follow-up measured from (demo map data offline).
@@ -2237,6 +2748,75 @@ export interface components {
             /** Digest */
             digest: string;
         };
+        /** AreaAnswer */
+        AreaAnswer: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "off" | "unavailable";
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /**
+             * Sources
+             * @default []
+             */
+            sources: components["schemas"]["AreaSource"][];
+            /**
+             * Places
+             * @default []
+             */
+            places: components["schemas"]["AreaPlace"][];
+            /** Widget Token */
+            widget_token?: string | null;
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
+            /**
+             * Cached
+             * @default false
+             */
+            cached: boolean;
+        };
+        /**
+         * AreaPlace
+         * @description A grounded Google place with coordinates, so the results map can pin it.
+         */
+        AreaPlace: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /** Distance M */
+            distance_m: number;
+            /** Open Now */
+            open_now?: boolean | null;
+            /** Rating */
+            rating?: number | null;
+            /** Google Maps Uri */
+            google_maps_uri?: string | null;
+        };
+        /**
+         * AreaSource
+         * @description A Google Maps place the answer used: shown with a link, as Google requires.
+         */
+        AreaSource: {
+            /** Title */
+            title: string;
+            /** Uri */
+            uri: string;
+            /** Place Id */
+            place_id?: string | null;
+        };
         /** AreaView */
         AreaView: {
             /** Id */
@@ -2271,6 +2851,8 @@ export interface components {
             context?: components["schemas"]["Intent"] | null;
             /** Refine */
             refine?: ("price" | "distance" | "transit" | "open" | "deals" | "local") | null;
+            /** Opened */
+            opened?: string[];
         };
         /** AskResponse */
         AskResponse: {
@@ -2285,6 +2867,13 @@ export interface components {
             personal?: components["schemas"]["Personal"] | null;
             anchor?: components["schemas"]["Anchor"] | null;
             command?: components["schemas"]["Command"] | null;
+            area?: components["schemas"]["AreaAnswer"] | null;
+            /**
+             * Engine
+             * @default fixture
+             * @enum {string}
+             */
+            engine: "vertex" | "fixture";
         };
         /**
          * AskSuggestions
@@ -2306,6 +2895,25 @@ export interface components {
         AvailabilityRequest: {
             /** Available */
             available: boolean;
+        };
+        /**
+         * Because
+         * @description Why a pick is personal, as facts the app words in each language.
+         */
+        Because: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "followed" | "stamped" | "opened" | "asked" | "like_stamped" | "like_followed";
+            /** Shop Id */
+            shop_id?: string | null;
+            /** Shop */
+            shop?: string | null;
+            /** Item */
+            item?: string | null;
+            /** Query */
+            query?: string | null;
         };
         /** BestAction */
         BestAction: {
@@ -2516,6 +3124,13 @@ export interface components {
             /** Payment Methods */
             payment_methods?: string[];
             /**
+             * Upi Id
+             * @default
+             */
+            upi_id: string;
+            /** Rider Providers */
+            rider_providers?: ("rapido" | "uber" | "porter")[];
+            /**
              * Busy Hours
              * @default
              */
@@ -2523,6 +3138,7 @@ export interface components {
             /** Custom Facts */
             custom_facts?: components["schemas"]["CustomFact"][];
             profile?: components["schemas"]["BusinessTypeProfile"];
+            understanding?: components["schemas"]["Understanding"] | null;
         };
         /**
          * BusinessTypeProfile
@@ -2561,6 +3177,8 @@ export interface components {
             business_id: string;
             /** Consent */
             consent: boolean;
+            /** Exclude Prompts */
+            exclude_prompts?: string[] | null;
         };
         /** ChatSummary */
         ChatSummary: {
@@ -2633,6 +3251,70 @@ export interface components {
             maps_url?: string | null;
             /** Question */
             question?: string | null;
+        };
+        /** ConfirmRules */
+        ConfirmRules: {
+            /** Version */
+            version: number;
+            /**
+             * Apply
+             * @default true
+             */
+            apply: boolean;
+        };
+        /**
+         * ConnectorMapping
+         * @description Complete mapping from an external system export to the Chalkboard schema.
+         */
+        ConnectorMapping: {
+            /**
+             * Source Label
+             * @description E.g. Petpooja, Tally, Square, Shopify, SAP, Other
+             */
+            source_label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "menu" | "sales";
+            /** Fields */
+            fields: components["schemas"]["FieldMapping"][];
+            /**
+             * Confirmed
+             * @default false
+             */
+            confirmed: boolean;
+        };
+        /**
+         * ConnectorResult
+         * @description What we return to the frontend after parsing + AI mapping.
+         */
+        ConnectorResult: {
+            mapping: components["schemas"]["ConnectorMapping"];
+            /**
+             * Preview Rows
+             * @description First 5 rows mapped to our schema
+             */
+            preview_rows: {
+                [key: string]: unknown;
+            }[];
+            /** Total Rows */
+            total_rows: number;
+            /**
+             * Reused
+             * @default false
+             */
+            reused: boolean;
+            /** Last Synced */
+            last_synced?: number | null;
+            /** Diff */
+            diff?: {
+                [key: string]: {
+                    [key: string]: unknown;
+                }[];
+            } | null;
+            /** Warnings */
+            warnings?: string[];
         };
         /** ConsentRequest */
         ConsentRequest: {
@@ -2722,6 +3404,33 @@ export interface components {
              * @default false
              */
             blocked: boolean;
+        };
+        /**
+         * Day
+         * @description One shop day. ``None`` means "no record", never zero.
+         */
+        Day: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Sales */
+            sales?: number | null;
+            /** Items */
+            items?: number | null;
+            /** Questions */
+            questions?: number | null;
+            /** Views */
+            views?: number | null;
+            /** Stamps */
+            stamps?: number | null;
+            /** Returning */
+            returning?: number | null;
+            /** Forecast */
+            forecast?: number | null;
+            /** Actual */
+            actual?: number | null;
         };
         /** DayClose */
         DayClose: {
@@ -2853,12 +3562,91 @@ export interface components {
             /** Places */
             places: components["schemas"]["DiscoveryPlace"][];
         };
+        /** EventInput */
+        EventInput: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "shop_open" | "item_open" | "ask" | "remind" | "follow" | "ask_owner";
+            /** Visitor */
+            visitor: string;
+            /**
+             * Shop Id
+             * @default
+             */
+            shop_id: string;
+            item?: components["schemas"]["EventItem"] | null;
+            /**
+             * Query
+             * @default
+             */
+            query: string;
+        };
+        /** EventItem */
+        EventItem: {
+            /** Name */
+            name: string;
+            /** Unit */
+            unit: string;
+        };
+        /** EventReceipt */
+        EventReceipt: {
+            /** Accepted */
+            accepted: boolean;
+            /** Enabled */
+            enabled: boolean;
+        };
+        /** Feature */
+        Feature: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /**
+             * Source
+             * @default ai
+             * @enum {string}
+             */
+            source: "ai" | "owner";
+            /**
+             * Feature
+             * @enum {string}
+             */
+            feature: "prep" | "close_day" | "orders" | "plan" | "rescue" | "google" | "perks" | "recap" | "import_sales" | "menu_photo" | "share_page";
+        };
         /** Feed */
         Feed: {
             /** Shops */
             shops: components["schemas"]["ShopCard"][];
             /** Updates */
             updates: components["schemas"]["Update"][];
+        };
+        /**
+         * FieldMapping
+         * @description One source → target column mapping produced by Gemini or confirmed by the owner.
+         */
+        FieldMapping: {
+            /**
+             * Source Field
+             * @description Original column/field name from the export
+             */
+            source_field: string;
+            /**
+             * Target Field
+             * @description Our schema field: name, price, unit, stock, quantity, date, total, category
+             */
+            target_field: string;
+            /**
+             * Confidence
+             * @description Mapping confidence 0–1
+             */
+            confidence: number;
+            /**
+             * Sample Values
+             * @description Sample values from that column
+             */
+            sample_values?: string[];
         };
         /** Find */
         Find: {
@@ -2916,6 +3704,31 @@ export interface components {
             /** Photo Url */
             photo_url?: string | null;
         };
+        /** Fix */
+        Fix: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "quantity" | "cash";
+            /** Line */
+            line?: number | null;
+            /** Value */
+            value?: number | null;
+        };
+        /** FixBody */
+        FixBody: {
+            /** Version */
+            version: number;
+            fix: components["schemas"]["Fix"];
+        };
+        /** FlagBody */
+        FlagBody: {
+            /** Version */
+            version: number;
+            /** Value */
+            value: string;
+        };
         /** FoodAttributes */
         FoodAttributes: {
             /** Cuisine */
@@ -2933,6 +3746,12 @@ export interface components {
              * @default false
              */
             halal_relevant: boolean;
+            /**
+             * Segment
+             * @default unknown
+             * @enum {string}
+             */
+            segment: "unknown" | "beverage" | "bakery" | "snack" | "restaurant" | "butcher";
         };
         /** Forecast */
         Forecast: {
@@ -3039,6 +3858,13 @@ export interface components {
             saved: {
                 [key: string]: number;
             };
+        };
+        /** InboundBody */
+        InboundBody: {
+            /** Version */
+            version: number;
+            /** Text */
+            text: string;
         };
         /** Inquiry */
         Inquiry: {
@@ -3153,6 +3979,74 @@ export interface components {
              * @default false
              */
             deals: boolean;
+            /**
+             * Area
+             * @default false
+             */
+            area: boolean;
+        };
+        /** Item */
+        Item: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /**
+             * Source
+             * @default ai
+             * @enum {string}
+             */
+            source: "ai" | "owner";
+        };
+        /** ItemEdit */
+        ItemEdit: {
+            /** Text */
+            text: string;
+        };
+        /** ItemRule */
+        ItemRule: {
+            /** Item */
+            item: string;
+            /**
+             * Unit
+             * @default kg
+             */
+            unit: string;
+            /**
+             * Supplier Code
+             * @default
+             */
+            supplier_code: string;
+            /**
+             * Moq
+             * @default 0
+             */
+            moq: number;
+            /**
+             * Pack
+             * @description Sold in multiples of this
+             * @default 0
+             */
+            pack: number;
+            /**
+             * Lead Days
+             * @default 1
+             */
+            lead_days: number;
+            /** Tiers */
+            tiers?: components["schemas"]["PriceTier"][];
+            /** Substitutes */
+            substitutes?: string[];
+            /**
+             * Partial Ok
+             * @default true
+             */
+            partial_ok: boolean;
+            /**
+             * Backorder Ok
+             * @default true
+             */
+            backorder_ok: boolean;
         };
         /** LevelView */
         LevelView: {
@@ -3236,6 +4130,24 @@ export interface components {
         MessageInput: {
             /** Text */
             text: string;
+        };
+        /** Metric */
+        Metric: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /**
+             * Source
+             * @default ai
+             * @enum {string}
+             */
+            source: "ai" | "owner";
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "items_sold" | "sales" | "busy_hours" | "orders_due" | "fittings" | "bookings" | "questions" | "views" | "stamps" | "returning" | "low_stock" | "leftovers";
         };
         /** NewShopDraft */
         NewShopDraft: {
@@ -3576,6 +4488,9 @@ export interface components {
              */
             reasons: string[];
             deal?: components["schemas"]["PickDeal"] | null;
+            because?: components["schemas"]["Because"] | null;
+            /** Why */
+            why?: string | null;
         };
         /**
          * PickDeal
@@ -3630,6 +4545,60 @@ export interface components {
              * @default 0
              */
             capacity: number;
+        };
+        /**
+         * Playbook
+         * @description Bounded on purpose: a playbook is a short page the owner can read in a minute.
+         */
+        Playbook: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+            /** Goals */
+            goals?: components["schemas"]["Item"][];
+            /** Priorities */
+            priorities?: components["schemas"]["Item"][];
+            /** Key Metrics */
+            key_metrics?: components["schemas"]["Metric"][];
+            /** Watch List */
+            watch_list?: components["schemas"]["Watch"][];
+            /** Segments */
+            segments?: components["schemas"]["Item"][];
+            vocabulary?: components["schemas"]["Vocabulary"];
+            tone?: components["schemas"]["Tone"];
+            /** Next Features */
+            next_features?: components["schemas"]["Feature"][];
+        };
+        /** PlaybookEdit */
+        PlaybookEdit: {
+            /** Summary */
+            summary?: string | null;
+            /** Terms */
+            terms?: string[] | null;
+            tone?: components["schemas"]["Tone"] | null;
+        };
+        /** PlaybookView */
+        PlaybookView: {
+            playbook: components["schemas"]["Playbook"];
+            /** Generated At */
+            generated_at: string;
+            /** Edited At */
+            edited_at: string | null;
+            /** Mode */
+            mode: string;
+            /** Refreshed */
+            refreshed: string | null;
+            today: components["schemas"]["TodayHints"];
+            /** Grow */
+            grow: string[];
         };
         /** Prediction */
         Prediction: {
@@ -3686,6 +4655,16 @@ export interface components {
             upper?: number | null;
             /** Unit */
             unit: string;
+        };
+        /** PriceTier */
+        PriceTier: {
+            /** Min Quantity */
+            min_quantity: number;
+            /**
+             * Price
+             * @description Minor units per unit
+             */
+            price: number;
         };
         /** ProductFields */
         ProductFields: {
@@ -3939,6 +4918,21 @@ export interface components {
             /** Revenue */
             revenue: number;
         };
+        /** ReorderBody */
+        ReorderBody: {
+            /**
+             * Item
+             * @default
+             */
+            item: string;
+            /** Quantity */
+            quantity?: number | null;
+            /**
+             * Supplier Id
+             * @default
+             */
+            supplier_id: string;
+        };
         /** Requirement */
         Requirement: {
             /**
@@ -4073,6 +5067,54 @@ export interface components {
         RevealResult: {
             card: components["schemas"]["ScratchView"];
             passport: components["schemas"]["PassportView"];
+        };
+        /**
+         * RuleSet
+         * @description What the owner edits (screen or coach). Money is in minor units of the shop currency.
+         */
+        RuleSet: {
+            /**
+             * Terms Days
+             * @default 7
+             * @enum {integer}
+             */
+            terms_days: 0 | 7 | 30;
+            /**
+             * Credit Limit
+             * @description 0 = no credit limit
+             * @default 0
+             */
+            credit_limit: number;
+            /**
+             * Approval Over
+             * @description 0 = approve every order
+             * @default 0
+             */
+            approval_over: number;
+            /**
+             * New Supplier Approval
+             * @default true
+             */
+            new_supplier_approval: boolean;
+            /**
+             * Auto Send
+             * @default false
+             */
+            auto_send: boolean;
+            /**
+             * System Format
+             * @default json
+             * @enum {string}
+             */
+            system_format: "idoc" | "csv" | "text" | "json";
+            /** Items */
+            items?: components["schemas"]["ItemRule"][];
+        };
+        /** RulesBody */
+        RulesBody: {
+            /** Version */
+            version: number;
+            rules: components["schemas"]["RuleSet"];
         };
         /** SaleLine */
         SaleLine: {
@@ -4298,6 +5340,16 @@ export interface components {
              * @default
              */
             reward: string;
+            /**
+             * Stamps
+             * @default 0
+             */
+            stamps: number;
+            /**
+             * Slots
+             * @default 0
+             */
+            slots: number;
         };
         /** SimAction */
         SimAction: {
@@ -4501,6 +5553,57 @@ export interface components {
              * @default false
              */
             rehearsal_complete: boolean;
+        };
+        /** SimilarPlace */
+        SimilarPlace: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Category */
+            category: string;
+            /** Distance M */
+            distance_m: number;
+            /** Open Now */
+            open_now: boolean | null;
+            /** Currency */
+            currency: string;
+            /**
+             * Demo Shop
+             * @default false
+             */
+            demo_shop: boolean;
+            /** Photo Url */
+            photo_url?: string | null;
+            item?: components["schemas"]["TopItem"] | null;
+            /** Similarity */
+            similarity: number;
+        };
+        /** SimilarResponse */
+        SimilarResponse: {
+            /** Places */
+            places: components["schemas"]["SimilarPlace"][];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "recommendations" | "embeddings";
+            /**
+             * Engine
+             * @enum {string}
+             */
+            engine: "vertex" | "fixture";
+        };
+        /** SimulateBody */
+        SimulateBody: {
+            /** Version */
+            version: number;
+            /**
+             * Variant
+             * @default full
+             * @enum {string}
+             */
+            variant: "full" | "partial" | "substitute" | "match" | "price_mismatch";
         };
         /** SpeakRequest */
         SpeakRequest: {
@@ -4763,6 +5866,7 @@ export interface components {
             line: components["schemas"]["CoachLine"] | null;
             /** Demo */
             demo: boolean;
+            hints?: components["schemas"]["TodayHints"] | null;
         };
         /** TodayArea */
         TodayArea: {
@@ -4798,6 +5902,46 @@ export interface components {
             /** Unit */
             unit: string;
         };
+        /**
+         * TodayHints
+         * @description What the Today page personalises. It only shows what exists; these only set the order.
+         */
+        TodayHints: {
+            /** Focus */
+            focus: string | null;
+            /**
+             * Pulse
+             * @description Pulse numbers to show first (Today.Pulse keys)
+             */
+            pulse: string[];
+            /** Line Topics */
+            line_topics: ("festival" | "rain" | "busiest_day" | "regulars" | "stock")[];
+            /** Needs You */
+            needs_you: ("low_stock" | "questions" | "menu_check" | "orders" | "leftovers" | "missing_info")[];
+            /** Metrics */
+            metrics: ("items_sold" | "sales" | "busy_hours" | "orders_due" | "fittings" | "bookings" | "questions" | "views" | "stamps" | "returning" | "low_stock" | "leftovers")[];
+            /** Units */
+            units: string[];
+        };
+        /** Tone */
+        Tone: {
+            /**
+             * Language
+             * @default en
+             */
+            language: string;
+            /**
+             * Style
+             * @default warm
+             * @enum {string}
+             */
+            style: "warm" | "brief" | "formal";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
         /** TopItem */
         TopItem: {
             /** Name */
@@ -4808,6 +5952,19 @@ export interface components {
             unit: string;
             /** Available */
             available: boolean;
+        };
+        /** Totals */
+        Totals: {
+            /** Sales */
+            sales?: number | null;
+            /** Items */
+            items?: number | null;
+            /** Questions */
+            questions?: number | null;
+            /** Views */
+            views?: number | null;
+            /** Stamps */
+            stamps?: number | null;
         };
         /** Translation */
         Translation: {
@@ -4823,6 +5980,28 @@ export interface components {
         TranslationInput: {
             /** Language */
             language: string;
+        };
+        /**
+         * Understanding
+         * @description The owner's own answers to "what matters most now" and "who are your regulars". Private:
+         *     it shapes the shop playbook and never appears in any customer projection. Busiest times are
+         *     the existing busy_hours fact (customers benefit from it too).
+         */
+        Understanding: {
+            /** Focus */
+            focus?: ("more_customers" | "less_waste" | "save_time" | "other") | null;
+            /**
+             * Focus Note
+             * @default
+             */
+            focus_note: string;
+            /**
+             * Regulars
+             * @default
+             */
+            regulars: string;
+            /** Skipped */
+            skipped?: ("focus" | "busy_hours" | "regulars")[];
         };
         /** Update */
         Update: {
@@ -4878,6 +6057,47 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** Version */
+        Version: {
+            /** Version */
+            version: number;
+        };
+        /** Vocabulary */
+        Vocabulary: {
+            /**
+             * Catalogue
+             * @default menu
+             */
+            catalogue: string;
+            /**
+             * Entry
+             * @default item
+             */
+            entry: string;
+            /** Units */
+            units?: string[];
+            /** Terms */
+            terms?: string[];
+        };
+        /** Watch */
+        Watch: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /**
+             * Source
+             * @default ai
+             * @enum {string}
+             */
+            source: "ai" | "owner";
+            /**
+             * Kind
+             * @default other
+             * @enum {string}
+             */
+            kind: "stock" | "rush_hour" | "festival" | "weather" | "other";
         };
         /** Weather */
         Weather: {
@@ -5012,7 +6232,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "chart" | "action";
+            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "purchase_order" | "supply_rules" | "chart" | "action" | "payment_link";
             /**
              * Session Id
              * @default null
@@ -5058,6 +6278,14 @@ export interface components {
              * @default
              */
             text: string;
+        };
+        /** FeatureFlags */
+        FeatureFlags: {
+            /**
+             * Google Guide
+             * @default false
+             */
+            google_guide: boolean;
         };
     };
     responses: never;
@@ -5532,6 +6760,7 @@ export interface operations {
             query?: {
                 business_id?: string | null;
                 currency?: string | null;
+                language?: string;
             };
             header?: never;
             path?: never;
@@ -5779,6 +7008,144 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_mappings_api_v1_businesses__business_id__connect_mappings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_mapping_api_v1_businesses__business_id__connect_mapping_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorMapping"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_export_api_v1_businesses__business_id__connect_analyze_post: {
+        parameters: {
+            query?: {
+                source_label?: string;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_export_api_v1_businesses__business_id__connect_sync_post: {
+        parameters: {
+            query?: {
+                source_label?: string;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -7592,6 +8959,41 @@ export interface operations {
             };
         };
     };
+    similar_api_v1_discover_similar_get: {
+        parameters: {
+            query: {
+                shop: string;
+                item?: string;
+                lat?: number | null;
+                lng?: number | null;
+                radius?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_day_photo_api_v1_businesses__business_id__day_read_post: {
         parameters: {
             query?: {
@@ -7717,6 +9119,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorldReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_event_api_v1_public_recs_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventReceipt"];
                 };
             };
             /** @description Validation Error */
@@ -8429,6 +9864,8 @@ export interface operations {
                 seen?: string;
                 /** @description Today's finds, to keep them */
                 keep?: string;
+                /** @description Shops opened on this device */
+                opened?: string;
             };
             header?: never;
             path?: never;
@@ -8474,6 +9911,272 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Today"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shop_analytics_api_v1_businesses__business_id__analytics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Analytics"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_export_api_v1_internal_analytics_export_post: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_playbook_api_v1_businesses__business_id__playbook_get: {
+        parameters: {
+            query?: {
+                language?: string;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_playbook_api_v1_businesses__business_id__playbook_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaybookEdit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    playbook_today_api_v1_businesses__business_id__playbook_today_get: {
+        parameters: {
+            query?: {
+                language?: string;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayHints"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_api_v1_businesses__business_id__playbook_regenerate_post: {
+        parameters: {
+            query?: {
+                language?: string;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_api_v1_businesses__business_id__playbook_items__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_api_v1_businesses__business_id__playbook_items__item_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemEdit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookView"];
                 };
             };
             /** @description Validation Error */
@@ -8715,6 +10418,491 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["OrderVersion"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    overview_api_v1_businesses__business_id__supply_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_rules_api_v1_businesses__business_id__supply_suppliers__supplier_id__rules_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                supplier_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RulesBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_rules_api_v1_businesses__business_id__supply_suppliers__supplier_id__rules_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                supplier_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmRules"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reorder_api_v1_businesses__business_id__supply_reorder_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_order_api_v1_businesses__business_id__supply_orders__order_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fix_order_api_v1_businesses__business_id__supply_orders__order_id__fix_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FixBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_order_api_v1_businesses__business_id__supply_orders__order_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Version"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_order_api_v1_businesses__business_id__supply_orders__order_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Version"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    simulate_api_v1_businesses__business_id__supply_orders__order_id__simulate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inbound_api_v1_businesses__business_id__supply_orders__order_id__inbound_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InboundBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_flag_api_v1_businesses__business_id__supply_orders__order_id__flags__flag_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+                flag_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FlagBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_api_v1_businesses__business_id__supply_orders__order_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Version"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    received_api_v1_businesses__business_id__supply_orders__order_id__received_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Version"];
             };
         };
         responses: {
@@ -9032,6 +11220,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    face_warmup_api_v1_face_warmup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    face_warmup_api_v1_face_warmup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
