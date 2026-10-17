@@ -100,6 +100,25 @@ export function useRewards() {
   return { data: read(raw), unavailable: failed }
 }
 
+// A verified stamp's sheet closed: the card on the page shows the stamp pressing on. Counts up,
+// so each landing replays the animation once.
+const landed = new Map<string, number>()
+const landEvent = 'chalkboard-stamp-landed'
+export function landStamp(shop: string) {
+  landed.set(shop, (landed.get(shop) ?? 0) + 1)
+  window.dispatchEvent(new Event(landEvent))
+}
+export function useLanded(shop: string) {
+  return useSyncExternalStore(
+    (callback) => {
+      window.addEventListener(landEvent, callback)
+      return () => window.removeEventListener(landEvent, callback)
+    },
+    () => landed.get(shop) ?? 0,
+    () => 0,
+  )
+}
+
 /** Calendar days avoid DST/elapsed-hour drift. This is an honest on-device visit record. */
 export function visit(shop: string, qr: boolean, timeZone: string, needed = 8) {
   const now = new Date()

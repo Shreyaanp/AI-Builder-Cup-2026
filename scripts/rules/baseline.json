@@ -24,7 +24,8 @@
   "i18n-literals": {
     "src/features/coach/InputDock.tsx": 1,
     "src/features/connect/ConnectSheet.tsx": 1,
-    "src/features/discover/AnswerCards.tsx": 3
+    "src/features/discover/AnswerCards.tsx": 3,
+    "src/features/frontdoors/Marketing.tsx": 3
   },
   "money": {
     "src/features/v1/today/TodayView.tsx": 1
@@ -63,6 +64,7 @@
   "voice": {
     "backend/app/brief.py": 1,
     "backend/app/business_profile.py": 1,
+    "backend/app/business_understanding.py": 1,
     "backend/app/community_routes.py": 1,
     "backend/app/connector.py": 1,
     "backend/app/customer.py": 1,
