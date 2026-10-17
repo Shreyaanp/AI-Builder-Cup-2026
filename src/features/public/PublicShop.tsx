@@ -53,6 +53,7 @@ import { SimilarNearby } from '../discover/SimilarNearby'
 interface PublicShopData {
   id: string
   gallery?: string[]
+  icon?: string | null
   last_confirmed?: string | null
   timezone?: string
   name: string
@@ -641,9 +642,11 @@ export default function PublicShop({ id }: { id: string }) {
             id={id}
             category={shop.category}
             photo={
-              shop.gallery?.[0]
-                ? `/api/v1/public/shops/${id}/photos/${shop.gallery[0]}.jpg`
-                : undefined
+              shop.icon
+                ? `/api/v1/public/shops/${id}/icon/${shop.icon}.jpg`
+                : shop.gallery?.[0]
+                  ? `/api/v1/public/shops/${id}/photos/${shop.gallery[0]}.jpg`
+                  : undefined
             }
             eager
             transition
