@@ -18,10 +18,22 @@ import { shape } from '../../design/theme'
 import { LegalDialog } from './LegalDialog'
 import type { LegalDocument } from './LegalDialog'
 import { useCopy } from './strings'
-import { formatPrice } from './format'
+import { formatPrice, toMinor } from './format'
+import { regionAt } from '../../region/region'
 import { JourneyProgress } from '../frontdoors/OwnerJourney'
 
 /** Public landing page (signed-out). Phone-first; two-column hero with a live-preview mock on wide screens. */
+/** The sample item fits where the phone is: kopi in Singapore, chai in India. */
+function previewItem(kopi: string): string {
+  const region = regionAt()
+  if (region.country === 'SG' || !region.country) return kopi
+  return region.askItem.charAt(0).toUpperCase() + region.askItem.slice(1)
+}
+function previewPrice(): number {
+  const region = regionAt()
+  return toMinor(region.askBudget / 2, region.currency)
+}
+
 export function Landing({ onPreview }: { onPreview: () => void }) {
   const t = useCopy()
   const roles = useTheme().material
@@ -55,14 +67,14 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
           sx={{
             ...section,
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: '1.1fr 0.9fr' },
+            gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: '1.1fr 0.9fr' },
             gap: { xs: 5, md: 8 },
             alignItems: 'center',
             pt: { xs: 4, md: 8 },
             pb: { xs: 6, md: 10 },
           }}
         >
-          <Stack spacing={3}>
+          <Stack spacing={3} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
             <JourneyProgress step={1} />
             <Typography variant="labelLarge" sx={{ color: roles.primary }}>
               {t.landingEyebrow}
@@ -340,7 +352,8 @@ function PhonePreview() {
             {t.reviewTitle}
           </Typography>
           <Typography variant="bodyLarge" sx={{ mt: 0.5 }}>
-            {t.previewItem} · {formatPrice(180, 'SGD')} / {t.previewUnit}
+            {previewItem(t.previewItem)} · {formatPrice(previewPrice(), regionAt().currency)} /{' '}
+            {t.previewUnit}
           </Typography>
           <Typography variant="bodyMedium" color="error">
             {t.previewSoldOutItem} · {t.soldOut}

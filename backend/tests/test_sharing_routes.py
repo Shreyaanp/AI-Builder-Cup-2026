@@ -74,9 +74,11 @@ def test_public_shop_requires_sharing_but_no_workspace(app) -> None:
                 "phone": "",
                 "currency": "SGD",
                 "stamps_needed": 8,
+                "stamps_enabled": False,
                 "open_now": None,
                 "last_confirmed": None,
                 "gallery": [],
+                "icon": None,
                 "facts": {},
                 # New items get a category automatically (B28), which customers see.
                 "products": [

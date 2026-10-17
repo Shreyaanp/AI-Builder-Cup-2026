@@ -18,7 +18,7 @@ import {
   useTheme,
 } from '@mui/material'
 import { ArrowLeft, ArrowRight, Check, Plus, Trash2, X } from 'lucide-react'
-import { fieldFade, HAND_FONT, shape } from '../../design/theme'
+import { fieldFade, HAND_FONT, scrollArea, shape } from '../../design/theme'
 import { useRewardCopy } from '../rewards/strings'
 import { HoursEditor } from '../shop/Hours'
 import { useShopCopy } from '../shop/strings'
@@ -30,6 +30,7 @@ import { useInChatCopy, type DetailStep } from './inChatCopy'
 import { MapCard, type PinChoice } from './MapCard'
 import { useNewShopCopy } from './newShopCopy'
 import { useCopy } from './strings'
+import { shopRegion } from '../../region/region'
 
 type Row = { key: string; name: string; price: string; unit: string }
 export type GuidedResult = {
@@ -100,7 +101,7 @@ export function GuidedDetails({
   const [index, setIndex] = useState(Math.max(0, steps.indexOf(startStep ?? steps[0]!)))
   const step = steps[index]!
   const [fields, setFields] = useState(initial)
-  const currency = fields.currency ?? 'SGD'
+  const currency = fields.currency || shopRegion(fields).currency
   const [rows, setRows] = useState<Row[]>(() =>
     initialProducts.length
       ? initialProducts.map((p) => ({
@@ -118,7 +119,7 @@ export function GuidedDetails({
   const page = useRef<HTMLDivElement>(null)
   // Where the focus goes after a move: the new question, or the answer that needs fixing.
   const [focus, setFocus] = useState({ tick: 0, invalid: false })
-  const suggestions = factSuggestions()
+  const suggestions = factSuggestions(shopRegion(fields))
 
   const dirty =
     JSON.stringify(fields) !== JSON.stringify(initial) ||
@@ -199,8 +200,8 @@ export function GuidedDetails({
       else go(index + 1)
     }
   }
-  const textInput = (enterKeyHint: 'next' | 'done' = last ? 'done' : 'next') => ({
-    htmlInput: { enterKeyHint, maxLength: 180 },
+  const textInput = (enterKeyHint: 'next' | 'done' = last ? 'done' : 'next', maxLength = 180) => ({
+    htmlInput: { enterKeyHint, maxLength },
   })
   const set = (patch: Partial<Business['fields']>) =>
     setFields((current) => ({ ...current, ...patch }))
@@ -225,7 +226,7 @@ export function GuidedDetails({
           helperText={problem === t.enterName && !fields.name.trim() ? t.enterName : undefined}
           onChange={(event) => set({ name: event.target.value })}
           onKeyDown={onEnter}
-          slotProps={textInput()}
+          slotProps={textInput(undefined, 80)}
           fullWidth
         />
       )
@@ -631,7 +632,7 @@ export function GuidedDetails({
           py: 2,
           mx: { xs: -4, sm: 0 },
           px: { xs: 4, sm: 0 },
-          scrollbarWidth: 'none',
+          ...scrollArea,
         }}
       >
         {steps.map((name, at) => (

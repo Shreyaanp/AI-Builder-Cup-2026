@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .community import Update, update_key
 from .forecast import Forecast, Prediction
 from .merchant import MerchantRepository
+from .region import shop_currency, shop_zone
 from .shop_time import shop_timezone
 
 
@@ -100,7 +101,7 @@ class Suggestions(BaseModel):
 def local_now(fields: dict[str, Any], now: float | None = None) -> datetime:
     return datetime.fromtimestamp(
         time.time() if now is None else now,
-        shop_timezone(fields.get("timezone") or "Asia/Singapore"),
+        shop_timezone(shop_zone(fields)),
     )
 
 
@@ -275,7 +276,7 @@ def prepare(
         "id": rid,
         "shop_id": bid,
         "items": items,
-        "currency": fields.get("currency") or "SGD",
+        "currency": shop_currency(fields),
         "starts": now,
         "ends": until.timestamp(),
         "pickup_note": body.pickup_note,
@@ -455,6 +456,70 @@ def release_hold(store: MerchantRepository, bid: str, rid: str, body: HoldInput)
     store.feature_docs.update("rescue", bid, bid, change)
 
 
+def is_food_or_perishable(category: str) -> bool:
+    cat = category.strip().casefold()
+    if not cat:
+        return False
+    non_perishable = (
+        "bicycle",
+        "repair",
+        "tailor",
+        "hardware",
+        "salon",
+        "barber",
+        "service",
+        "clothing",
+        "shoe",
+        "fashion",
+        "laundry",
+        "dry clean",
+        "electronic",
+        "appliance",
+        "plumb",
+        "electric",
+        "auto",
+        "mechanic",
+    )
+    if any(term in cat for term in non_perishable):
+        return False
+    perishable = (
+        "food",
+        "beverage",
+        "bakery",
+        "bake",
+        "bread",
+        "cafe",
+        "café",
+        "coffee",
+        "kopi",
+        "tea",
+        "teh",
+        "chai",
+        "restaurant",
+        "hawker",
+        "eatery",
+        "cater",
+        "dhaba",
+        "tiffin",
+        "grocer",
+        "grocery",
+        "minimart",
+        "supermarket",
+        "convenience",
+        "fruit",
+        "vegetable",
+        "florist",
+        "flower",
+        "meal",
+        "snack",
+        "sweet",
+        "mithai",
+        "juice",
+        "perishable",
+    )
+    return any(term in cat for term in perishable)
+
+
 def seed_demo_deals(
     store: MerchantRepository, uid: str, bids: list[str], now: float | None = None
 ) -> None:
@@ -463,6 +528,9 @@ def seed_demo_deals(
     for bid in bids:
         context = store.context(uid, bid)
         if not context["business"]["fields"].get("demo"):
+            continue
+        category = str(context["business"]["fields"].get("category", ""))
+        if not is_food_or_perishable(category):
             continue
         if any(d.status == "live" for d in deals(store, bid, now)):
             made += 1

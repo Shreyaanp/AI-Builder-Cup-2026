@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Box, Button, Stack } from '@mui/material'
+import { Box, Button } from '@mui/material'
 import { Maximize2 } from 'lucide-react'
 import type { Locale } from '../../i18n/locales'
 import type { AskAnswer, AskPick } from './askThread'
@@ -93,7 +93,7 @@ export function AnswerMap({
   })
   if (places.length === 0) return null
   return (
-    <Box sx={{ mt: 4 }}>
+    <Box sx={{ mt: 4, position: 'relative' }}>
       <ResultsMap
         pins={places}
         center={center}
@@ -110,21 +110,32 @@ export function AnswerMap({
         }}
         copy={{ ...copy, title: conversationCopy(locale).map }}
         variant="inline"
+        // A strip on phones, so the rows below start in the first screen.
+        height={{ xs: 160, md: 220 }}
       />
-      <Stack
-        direction="row"
-        sx={{ mt: 2, gap: 2, alignItems: 'center', justifyContent: 'space-between' }}
+      {/* On the map's corner, so the legend keeps one line and the rows start sooner. */}
+      <Button
+        variant="contained"
+        color="inherit"
+        onClick={() => setExplorer({ open: true, initial: selected?.id ?? null })}
+        startIcon={<Maximize2 size={16} aria-hidden="true" />}
+        sx={(theme) => ({
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          minHeight: 48,
+          borderRadius: 999,
+          bgcolor: theme.material.surfaceContainerHighest,
+          color: theme.material.onSurface,
+          boxShadow: 'none',
+          '&:hover': { bgcolor: theme.material.surfaceContainerHigh, boxShadow: 'none' },
+        })}
       >
+        {copy.openMap}
+      </Button>
+      <Box sx={{ mt: 2 }}>
         <MapLegend copy={copy} />
-        <Button
-          variant="outlined"
-          onClick={() => setExplorer({ open: true, initial: selected?.id ?? null })}
-          startIcon={<Maximize2 size={16} aria-hidden="true" />}
-          sx={{ minHeight: 48, borderRadius: 999, flexShrink: 0 }}
-        >
-          {copy.openMap}
-        </Button>
-      </Stack>
+      </Box>
       {explorer.open && (
         <MapExplorer
           open

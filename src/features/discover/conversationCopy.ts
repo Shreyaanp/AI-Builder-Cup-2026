@@ -1,5 +1,8 @@
 import type { Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
+import { areaCurrency, currencySymbol, formatAmount } from '../v1/format'
+import { shopRegion } from '../../region/region'
+import { askBudget } from './budget'
 
 /**
  * The AI-first front door (owner decision, 16 Oct): a conversation. Every supported language has
@@ -8,11 +11,12 @@ import { useLocale } from '../../state/hooks'
 const en = {
   hello: 'What are you looking for nearby?',
   helloBody:
-    'Ask me anything. I check the menus, prices and hours of {count} shops around {place}.',
+    // Count last, so one shop never reads "1 shops".
+    'Ask me anything. I check the menus, prices and hours of the shops around {place} ({count} so far).',
   helloBodyEmpty: 'Ask me anything near {place}.',
   area: 'Area: {place}. Change',
   composer: 'Ask about anything nearby',
-  placeholder: 'Try “coffee under $3” or “bread open now”',
+  placeholder: 'Try “coffee under {price}” or “bread open now”',
   send: 'Send',
   stop: 'Stop',
   you: 'You asked',
@@ -48,6 +52,9 @@ const en = {
   chipOpen: 'Open now nearby',
   chipDeals: 'Deals tonight',
   chipLocal: 'Locally made',
+  nearbyNow: 'Near you now',
+  more: 'More',
+  less: 'Less',
 }
 
 export type ConversationCopy = typeof en
@@ -59,7 +66,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: '随便问我{place}附近的事。',
     area: '区域：{place}。更改',
     composer: '询问附近的任何东西',
-    placeholder: '试试“3 元以下的咖啡”或“现在营业的面包店”',
+    placeholder: '试试“{price}以下的咖啡”或“现在营业的面包店”',
     send: '发送',
     stop: '停止',
     you: '你问了',
@@ -95,6 +102,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: '附近营业中',
     chipDeals: '今晚优惠',
     chipLocal: '本地制作',
+    nearbyNow: '附近推荐',
+    more: '展开',
+    less: '收起',
   },
   ms: {
     hello: 'Anda cari apa berdekatan?',
@@ -102,7 +112,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: 'Tanya apa sahaja berdekatan {place}.',
     area: 'Kawasan: {place}. Tukar',
     composer: 'Tanya tentang apa sahaja berdekatan',
-    placeholder: 'Cuba “kopi bawah RM5” atau “roti yang buka sekarang”',
+    placeholder: 'Cuba “kopi bawah {price}” atau “roti yang buka sekarang”',
     send: 'Hantar',
     stop: 'Henti',
     you: 'Anda bertanya',
@@ -138,6 +148,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'Buka sekarang berdekatan',
     chipDeals: 'Tawaran malam ini',
     chipLocal: 'Buatan tempatan',
+    nearbyNow: 'Berdekatan sekarang',
+    more: 'Lagi',
+    less: 'Kurang',
   },
   ta: {
     hello: 'அருகில் என்ன தேடுகிறீர்கள்?',
@@ -146,7 +159,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: '{place} அருகில் எதையும் கேளுங்கள்.',
     area: 'பகுதி: {place}. மாற்று',
     composer: 'அருகில் உள்ள எதைப் பற்றியும் கேளுங்கள்',
-    placeholder: '“₹50க்குள் காபி” அல்லது “இப்போது திறந்த பேக்கரி” என முயலுங்கள்',
+    placeholder: '“{price}க்குள் காபி” அல்லது “இப்போது திறந்த பேக்கரி” என முயலுங்கள்',
     send: 'அனுப்பு',
     stop: 'நிறுத்து',
     you: 'நீங்கள் கேட்டது',
@@ -182,6 +195,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'அருகில் இப்போது திறந்தவை',
     chipDeals: 'இன்றிரவு சலுகைகள்',
     chipLocal: 'உள்ளூர் தயாரிப்பு',
+    nearbyNow: 'இப்போது அருகில்',
+    more: 'மேலும்',
+    less: 'குறைவாக',
   },
   ja: {
     hello: '近くで何をお探しですか？',
@@ -190,7 +206,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: '{place}周辺のことを何でも聞いてください。',
     area: 'エリア：{place}。変更',
     composer: '近くの何でも質問',
-    placeholder: '「500円以下のコーヒー」「今開いているパン屋」など',
+    placeholder: '「{price}以下のコーヒー」「今開いているパン屋」など',
     send: '送信',
     stop: '停止',
     you: 'あなたの質問',
@@ -226,6 +242,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: '近くで営業中',
     chipDeals: '今夜のお得',
     chipLocal: '地元産',
+    nearbyNow: '近くのお店',
+    more: 'もっと見る',
+    less: '閉じる',
   },
   ko: {
     hello: '근처에서 무엇을 찾으세요?',
@@ -234,7 +253,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: '{place} 근처의 무엇이든 물어보세요.',
     area: '지역: {place}. 변경',
     composer: '근처의 무엇이든 물어보기',
-    placeholder: '“5천원 이하 커피”나 “지금 여는 빵집”을 입력해 보세요',
+    placeholder: '“{price} 이하 커피”나 “지금 여는 빵집”을 입력해 보세요',
     send: '보내기',
     stop: '중지',
     you: '내 질문',
@@ -270,6 +289,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: '근처 영업 중',
     chipDeals: '오늘 밤 할인',
     chipLocal: '로컬 제작',
+    nearbyNow: '지금 가까운 곳',
+    more: '더 보기',
+    less: '접기',
   },
   id: {
     hello: 'Cari apa di dekat sini?',
@@ -278,7 +300,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: 'Tanya apa saja di dekat {place}.',
     area: 'Area: {place}. Ubah',
     composer: 'Tanya apa saja di sekitar',
-    placeholder: 'Coba “kopi di bawah Rp20 rb” atau “roti yang buka sekarang”',
+    placeholder: 'Coba “kopi di bawah {price}” atau “roti yang buka sekarang”',
     send: 'Kirim',
     stop: 'Berhenti',
     you: 'Anda bertanya',
@@ -314,6 +336,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'Buka sekarang di dekat sini',
     chipDeals: 'Promo malam ini',
     chipLocal: 'Buatan lokal',
+    nearbyNow: 'Di dekat Anda',
+    more: 'Selengkapnya',
+    less: 'Lebih sedikit',
   },
   th: {
     hello: 'กำลังหาอะไรใกล้ๆ อยู่?',
@@ -321,7 +346,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: 'ถามอะไรก็ได้แถว {place}',
     area: 'พื้นที่: {place} เปลี่ยน',
     composer: 'ถามเรื่องอะไรก็ได้แถวนี้',
-    placeholder: 'ลอง “กาแฟไม่เกิน 60 บาท” หรือ “ขนมปังที่เปิดอยู่”',
+    placeholder: 'ลอง “กาแฟไม่เกิน {price}” หรือ “ขนมปังที่เปิดอยู่”',
     send: 'ส่ง',
     stop: 'หยุด',
     you: 'คุณถาม',
@@ -357,6 +382,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'เปิดอยู่ใกล้ๆ',
     chipDeals: 'ส่วนลดคืนนี้',
     chipLocal: 'ผลิตในท้องถิ่น',
+    nearbyNow: 'ใกล้คุณตอนนี้',
+    more: 'เพิ่มเติม',
+    less: 'ย่อ',
   },
   vi: {
     hello: 'Bạn đang tìm gì gần đây?',
@@ -365,7 +393,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: 'Hỏi tôi bất cứ điều gì gần {place}.',
     area: 'Khu vực: {place}. Đổi',
     composer: 'Hỏi về bất cứ thứ gì gần đây',
-    placeholder: 'Thử “cà phê dưới 40k” hoặc “bánh mì đang mở cửa”',
+    placeholder: 'Thử “cà phê dưới {price}” hoặc “bánh mì đang mở cửa”',
     send: 'Gửi',
     stop: 'Dừng',
     you: 'Bạn đã hỏi',
@@ -401,6 +429,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'Đang mở gần đây',
     chipDeals: 'Ưu đãi tối nay',
     chipLocal: 'Làm tại địa phương',
+    nearbyNow: 'Gần bạn lúc này',
+    more: 'Xem thêm',
+    less: 'Thu gọn',
   },
   fil: {
     hello: 'Ano ang hinahanap mo sa malapit?',
@@ -409,7 +440,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: 'Magtanong ka kahit ano malapit sa {place}.',
     area: 'Lugar: {place}. Palitan',
     composer: 'Magtanong tungkol sa kahit ano sa malapit',
-    placeholder: 'Subukan ang “kape na wala pang ₱100” o “tinapay na bukas ngayon”',
+    placeholder: 'Subukan ang “kape na wala pang {price}” o “tinapay na bukas ngayon”',
     send: 'Ipadala',
     stop: 'Itigil',
     you: 'Tanong mo',
@@ -445,6 +476,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'Bukas ngayon sa malapit',
     chipDeals: 'Deal ngayong gabi',
     chipLocal: 'Gawang lokal',
+    nearbyNow: 'Malapit sa iyo ngayon',
+    more: 'Higit pa',
+    less: 'Mas kaunti',
   },
   hi: {
     hello: 'आस-पास क्या खोज रहे हैं?',
@@ -453,7 +487,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: '{place} के आस-पास कुछ भी पूछें।',
     area: 'इलाका: {place}। बदलें',
     composer: 'आस-पास किसी भी चीज़ के बारे में पूछें',
-    placeholder: '“₹50 से कम में चाय” या “अभी खुली बेकरी” लिखकर देखें',
+    placeholder: '“{price} से कम में चाय” या “अभी खुली बेकरी” लिखकर देखें',
     send: 'भेजें',
     stop: 'रोकें',
     you: 'आपने पूछा',
@@ -489,6 +523,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'आस-पास अभी खुला',
     chipDeals: 'आज रात के ऑफ़र',
     chipLocal: 'स्थानीय रूप से बना',
+    nearbyNow: 'अभी आपके पास',
+    more: 'और देखें',
+    less: 'कम देखें',
   },
   bn: {
     hello: 'কাছাকাছি কী খুঁজছেন?',
@@ -497,7 +534,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: '{place}-এর কাছে যা খুশি জিজ্ঞেস করুন।',
     area: 'এলাকা: {place}। বদলান',
     composer: 'কাছাকাছি যেকোনো কিছু জিজ্ঞেস করুন',
-    placeholder: '“₹৫০-এর কমে চা” বা “এখন খোলা বেকারি” লিখে দেখুন',
+    placeholder: '“{price}-এর কমে চা” বা “এখন খোলা বেকারি” লিখে দেখুন',
     send: 'পাঠান',
     stop: 'থামান',
     you: 'আপনি জিজ্ঞেস করেছেন',
@@ -533,6 +570,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'কাছাকাছি এখন খোলা',
     chipDeals: 'আজ রাতের অফার',
     chipLocal: 'স্থানীয়ভাবে তৈরি',
+    nearbyNow: 'এখন আপনার কাছে',
+    more: 'আরও দেখুন',
+    less: 'কম দেখুন',
   },
   te: {
     hello: 'దగ్గరలో ఏమి వెతుకుతున్నారు?',
@@ -540,7 +580,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: '{place} దగ్గర ఏదైనా అడగండి.',
     area: 'ప్రాంతం: {place}. మార్చండి',
     composer: 'దగ్గరలో ఏదైనా అడగండి',
-    placeholder: '“₹50 లోపు టీ” లేదా “ఇప్పుడు తెరిచిన బేకరీ” అని ప్రయత్నించండి',
+    placeholder: '“{price} లోపు టీ” లేదా “ఇప్పుడు తెరిచిన బేకరీ” అని ప్రయత్నించండి',
     send: 'పంపండి',
     stop: 'ఆపండి',
     you: 'మీరు అడిగింది',
@@ -576,6 +616,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'దగ్గరలో ఇప్పుడు తెరిచినవి',
     chipDeals: 'ఈ రాత్రి ఆఫర్లు',
     chipLocal: 'స్థానికంగా తయారైనవి',
+    nearbyNow: 'ఇప్పుడు మీ దగ్గర',
+    more: 'మరింత',
+    less: 'తక్కువ',
   },
   mr: {
     hello: 'जवळपास काय शोधताय?',
@@ -583,7 +626,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: '{place} जवळ काहीही विचारा.',
     area: 'भाग: {place}. बदला',
     composer: 'जवळपास कशाबद्दलही विचारा',
-    placeholder: '“₹50 पेक्षा कमी चहा” किंवा “आत्ता उघडी बेकरी” लिहून पाहा',
+    placeholder: '“{price} पेक्षा कमी चहा” किंवा “आत्ता उघडी बेकरी” लिहून पाहा',
     send: 'पाठवा',
     stop: 'थांबवा',
     you: 'तुम्ही विचारले',
@@ -619,6 +662,9 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'जवळपास आत्ता उघडे',
     chipDeals: 'आज रात्रीच्या ऑफर',
     chipLocal: 'स्थानिक बनावटीचे',
+    nearbyNow: 'आत्ता तुमच्या जवळ',
+    more: 'अधिक पहा',
+    less: 'कमी पहा',
   },
   kn: {
     hello: 'ಹತ್ತಿರದಲ್ಲಿ ಏನು ಹುಡುಕುತ್ತಿದ್ದೀರಿ?',
@@ -626,7 +672,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: '{place} ಹತ್ತಿರ ಏನಾದರೂ ಕೇಳಿ.',
     area: 'ಪ್ರದೇಶ: {place}. ಬದಲಿಸಿ',
     composer: 'ಹತ್ತಿರದ ಯಾವುದರ ಬಗ್ಗೆಯೂ ಕೇಳಿ',
-    placeholder: '“₹50 ಒಳಗಿನ ಚಹಾ” ಅಥವಾ “ಈಗ ತೆರೆದ ಬೇಕರಿ” ಎಂದು ಪ್ರಯತ್ನಿಸಿ',
+    placeholder: '“{price} ಒಳಗಿನ ಚಹಾ” ಅಥವಾ “ಈಗ ತೆರೆದ ಬೇಕರಿ” ಎಂದು ಪ್ರಯತ್ನಿಸಿ',
     send: 'ಕಳುಹಿಸಿ',
     stop: 'ನಿಲ್ಲಿಸಿ',
     you: 'ನೀವು ಕೇಳಿದ್ದು',
@@ -662,15 +708,67 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     chipOpen: 'ಹತ್ತಿರ ಈಗ ತೆರೆದಿರುವವು',
     chipDeals: 'ಇಂದು ರಾತ್ರಿಯ ಆಫರ್‌ಗಳು',
     chipLocal: 'ಸ್ಥಳೀಯವಾಗಿ ತಯಾರಿಸಿದ್ದು',
+    nearbyNow: 'ಈಗ ನಿಮ್ಮ ಹತ್ತಿರ',
+    more: 'ಇನ್ನಷ್ಟು',
+    less: 'ಕಡಿಮೆ',
   },
 }
 
-export function conversationCopy(locale: Locale): ConversationCopy {
-  return locale === 'en' ? en : translations[locale]
+export function samplePrice(currency: string, locale: Locale): string {
+  const code = currency.toUpperCase()
+  // India and Singapore: the region profile's budget in its own money ("₹30", "S$3").
+  const region = shopRegion({ currency: code })
+  if (region.country && region.currency === code) {
+    return formatAmount(askBudget(region), code, locale)
+  }
+  if (code === 'USD') {
+    return '$3'
+  }
+  if (code === 'MYR') {
+    return 'RM5'
+  }
+  if (code === 'JPY') {
+    return locale === 'ja' ? '500円' : '¥500'
+  }
+  if (code === 'KRW') {
+    return locale === 'ko' ? '5천원' : '₩5,000'
+  }
+  if (code === 'THB') {
+    return locale === 'th' ? '60 บาท' : '฿60'
+  }
+  if (code === 'IDR') {
+    return locale === 'id' ? 'Rp20 rb' : 'Rp20.000'
+  }
+  if (code === 'VND') {
+    return locale === 'vi' ? '40k' : '40.000 ₫'
+  }
+  if (code === 'PHP') {
+    return '₱100'
+  }
+  if (code === 'EUR') {
+    return '€3'
+  }
+  if (code === 'GBP') {
+    return '£3'
+  }
+  const symbol = currencySymbol(code, locale)
+  return `${symbol}3`
 }
 
-export function useConversationCopy() {
-  return conversationCopy(useLocale())
+export function conversationCopy(
+  locale: Locale,
+  currency: string = areaCurrency(),
+): ConversationCopy {
+  const base = locale === 'en' ? en : translations[locale]
+  const price = samplePrice(currency, locale)
+  return {
+    ...base,
+    placeholder: fillIn(base.placeholder, { price }),
+  }
+}
+
+export function useConversationCopy(currency?: string) {
+  return conversationCopy(useLocale(), currency)
 }
 
 /** Fill {name} placeholders. */

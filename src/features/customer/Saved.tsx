@@ -3,6 +3,7 @@ import type { MouseEvent, ReactNode } from 'react'
 import { Alert, Box, Button, Chip, Skeleton, Stack, Typography, useTheme } from '@mui/material'
 import { BadgeCheck, Bookmark, PackageCheck, Sparkle, TrendingDown, TrendingUp } from 'lucide-react'
 import type { Feed, ShopCard, Update } from './types'
+import { scrollArea } from '../../design/theme'
 import { customerNavigate } from '../frontdoors/navigation'
 import { formatPrice } from '../v1/format'
 import { useCustomer } from './account'
@@ -28,7 +29,7 @@ function describe(
   title: string
   body: string
 } {
-  const currency = update.currency || shop?.currency || 'SGD'
+  const currency = update.currency || shop?.currency || shopRegion(shop).currency
   const price = update.price != null ? formatPrice(update.price, currency) : ''
   const unit = update.unit ? ` / ${update.unit}` : ''
   switch (update.kind) {
@@ -65,6 +66,7 @@ function describe(
 const EMPTY: Feed = { shops: [], updates: [] }
 
 /** Saved: followed shops plus their updates, generated from real changes to their pages. */
+import { shopRegion } from '../../region/region'
 export function Saved() {
   const roles = useTheme().material
   const account = useCustomer()
@@ -101,7 +103,7 @@ export function Saved() {
       <Typography
         component="h1"
         variant="headlineMedium"
-        sx={{ pt: 'calc(env(safe-area-inset-top) + 16px)', pb: 2, px: 1, fontWeight: 600 }}
+        sx={{ pt: 1, pb: 2, px: 1, fontWeight: 600 }}
       >
         {t.savedTitle}
       </Typography>
@@ -183,7 +185,7 @@ export function Saved() {
                 display: 'flex',
                 gap: 2,
                 overflowX: 'auto',
-                '&::-webkit-scrollbar': { display: 'none' },
+                ...scrollArea,
               }}
             >
               {feed.shops.map((shop, index) => (

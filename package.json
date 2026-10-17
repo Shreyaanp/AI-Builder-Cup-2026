@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "test:ui": "playwright test",
     "test:hooks": "node scripts/check-hook-rules.mjs",
+    "rules": "node scripts/rules/index.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "npm run lint && npm run build && npm run test:hooks && npm run test:ui",
@@ -39,7 +40,9 @@
     "lucide-react": "^1.56.0",
     "qrcode": "1.5.4",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     release_commit: str = "local"
     customer_origin: str = ""
     v1_enabled: bool = False
+    guest_customer: bool = False
     feature_google_guide: bool = True
     merchant_backend: Literal["sqlite", "firestore"] = "sqlite"
     embedding_model: str = "gemini-embedding-2"
@@ -98,6 +99,13 @@ class Settings(BaseSettings):
     # labelled sample answers for offline previews and browser tests; "live" calls Gemini.
     maps_grounding: Literal["off", "demo", "live"] = "off"
     maps_grounding_model: str = ""
+    # Shop icon: "Make my icon" asks Gemini's image model for a square icon (about one small
+    # image charge each). Off, or in offline modes, the owner uploads a photo or the app draws a
+    # themed monogram. Each shop may generate this many icons per UTC day.
+    shop_icon_ai: bool = False
+    shop_icon_model: str = "gemini-3.1-flash-lite-image"
+    shop_icon_location: str = "global"
+    shop_icon_daily_limit: int = Field(default=3, ge=1, le=20)
     # GCP credit is limited: one grounded call per question per ~1 km area for this long.
     maps_grounding_cache_seconds: int = Field(default=3600, ge=60, le=86_400)
     max_turn_seconds: int = Field(default=30, ge=1, le=120)

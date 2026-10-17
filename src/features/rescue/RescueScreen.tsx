@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -35,10 +35,18 @@ const RADIUS = 3000
 // The pin pulse doubles its speed in the last 30 minutes (1.6 s â†’ 0.8 s).
 const URGENT = 30 * 60
 
+const NON_FOOD_RESCUE_PATTERNS =
+  /\b(repair|tyre|tire|patch|bicycle|bike|tailor|hem|haircut|salon|barber|plumb|electric)\b/i
+
 function savedPlace(): Place {
   try {
     const place = (JSON.parse(localStorage.getItem(FILTERS) || '{}') as { place?: Place }).place
-    if (place && Number.isFinite(place.lat) && Number.isFinite(place.lng)) return place
+    if (place && Number.isFinite(place.lat) && Number.isFinite(place.lng)) {
+      if (place.label?.toLowerCase() === 'you') {
+        return { ...place, label: 'Nearby' }
+      }
+      return place
+    }
   } catch {
     /* Optional storage. */
   }
@@ -119,7 +127,12 @@ export function RescueScreen() {
   const live = useMemo(
     () =>
       (rows ?? [])
-        .filter((row) => row.deal.ends > minute * 60)
+        .filter((row) => {
+          if (row.deal.ends <= minute * 60) return false
+          const text = `${row.shop_name} ${row.deal.items.map((i) => i.name).join(' ')}`
+          if (NON_FOOD_RESCUE_PATTERNS.test(text)) return false
+          return true
+        })
         .sort((a, b) => rank(a, minute * 60_000) - rank(b, minute * 60_000)),
     [rows, minute],
   )
@@ -130,13 +143,21 @@ export function RescueScreen() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocating(false)
-        const here = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          label: t.here,
-        }
-        rememberPlace(here)
-        setPlace(here)
+        const lat = position.coords.latitude
+        const lng = position.coords.longitude
+        fetch(`/api/v1/discover/place?lat=${lat}&lng=${lng}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data: { label?: string } | null) => {
+            const label = data?.label && data.label.toLowerCase() !== 'you' ? data.label : t.here
+            const here = { lat, lng, label }
+            rememberPlace(here)
+            setPlace(here)
+          })
+          .catch(() => {
+            const here = { lat, lng, label: t.here }
+            rememberPlace(here)
+            setPlace(here)
+          })
       },
       () => setLocating(false),
       { timeout: 15_000, maximumAge: 30_000, enableHighAccuracy: true },
@@ -157,12 +178,12 @@ export function RescueScreen() {
         maxWidth: 720,
         mx: 'auto',
         px: 4,
-        pt: 'max(20px, env(safe-area-inset-top))',
+        pt: 1,
         pb: 'calc(120px + env(safe-area-inset-bottom))',
         minHeight: '100dvh',
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, mr: '104px', minHeight: 56 }}>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, minHeight: 56 }}>
         <Typography
           component="h1"
           sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: 38, lineHeight: 1.1 }}

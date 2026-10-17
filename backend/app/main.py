@@ -19,13 +19,14 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 from sse_starlette import EventSourceResponse, ServerSentEvent
 
-from . import coordinator, supply_chain
+from . import business_understanding, coordinator, supply_chain
 from .analytics import AnalyticsReader
 from .analytics import router as analytics_router
-from .auth import IdentityService
+from .auth import IdentityService, Principal
 from .boundary import RequestBoundary
 from .brief import BriefWriter, WeatherService
 from .business_profile import QuestionPlanner
+from .business_understanding import BusinessUnderstander
 from .community import community_service
 from .community_routes import router as community_router
 from .connector_routes import router as connector_router
@@ -50,8 +51,17 @@ from .frontend import serve_frontend
 from .games_routes import router as games_router
 from .google_profile import BusinessProfileAdapter, SimulatedBusinessProfile
 from .google_sim_routes import router as google_sim_router
+from .icon_routes import router as icon_router
 from .imports import ColumnMapper
-from .limits import Lease, RunRegistry, client_ip, enforce_limits, rate_limiter
+from .limits import (
+    LEASE_TTL_SECONDS,
+    Lease,
+    RunRegistry,
+    client_ip,
+    enforce_limits,
+    lease_lost,
+    rate_limiter,
+)
 from .maps_grounding import AreaGrounding
 from .memory_vectors import (
     ConversationRecall,
@@ -60,9 +70,11 @@ from .memory_vectors import (
     gemini_embedder,
     padded_lexical,
 )
-from .merchant import MerchantRepository, MerchantStore
+from .merchant import MerchantRepository, MerchantStore, NewShopDraft
 from .merchant_firestore import FirestoreMerchantStore
 from .merchant_routes import router as merchant_router
+from .new_shop_resume import is_empty, merge_drafts
+from .new_shop_tools import go_live
 from .owner_routes import router as owner_router
 from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
@@ -93,7 +105,7 @@ from .supply_routes import router as supply_router
 from .today import router as today_router
 from .trust_routes import router as trust_router
 from .tts import Speech
-from .voice import VOICE_SESSION_CAP_SECONDS, serve_voice
+from .voice import serve_voice
 
 log = structlog.get_logger()
 SSE_HEARTBEAT_SECONDS = 15
@@ -178,6 +190,7 @@ def create_app(
             else None
         )
         coordinator.question_planner = QuestionPlanner(settings)
+        business_understanding.understander = BusinessUnderstander(settings)
         coordinator.supplier_generator = SupplierGenerator(settings)
         supply_chain.translator = DocumentTranslator(settings)
         app.state.search = build_engine(
@@ -218,7 +231,8 @@ def create_app(
                 client,
                 settings.firestore_namespace,
                 settings.max_active_runs,
-                max(VOICE_SESSION_CAP_SECONDS, settings.max_turn_seconds) + 10,
+                # Text turns end within their deadline; voice sockets renew on each heartbeat.
+                max(LEASE_TTL_SECONDS, settings.max_turn_seconds + 30),
             )
             if client
             else RunRegistry(settings.max_active_runs),
@@ -247,6 +261,8 @@ def create_app(
         await app.state.world_generator.close()
         if coordinator.question_planner is not None:
             await coordinator.question_planner.close()
+        if business_understanding.understander is not None:
+            await business_understanding.understander.close()
             await app.state.maps.close()
             await anyio.to_thread.run_sync(app.state.rate_limiter.close)
             identity.close()
@@ -263,6 +279,7 @@ def create_app(
     app = FastAPI(title="oGoogle AI streaming API", version="0.1.0", lifespan=lifespan)
     app.state.google_profile = google_profile or SimulatedBusinessProfile()
     app.include_router(merchant_router)
+    app.include_router(icon_router)
     app.include_router(connector_router)
     app.include_router(google_sim_router)
     app.include_router(planning_router)
@@ -336,7 +353,9 @@ def create_app(
         return {
             **get_services(request).identity.bootstrap(request, response),
             "v1_enabled": settings.v1_enabled,
-            "features": FeatureFlags(google_guide=settings.feature_google_guide).model_dump(),
+            "features": FeatureFlags(
+                google_guide=settings.feature_google_guide, guest_customer=settings.guest_customer
+            ).model_dump(),
             "customer_origin": settings.customer_origin
             or (
                 "https://chalkboard.shreyaan.work"
@@ -378,30 +397,39 @@ def create_app(
             )
             return stream_response(turn, after)
         await enforce_limits(request, [("coach", principal.uid)])
-        sid = await services.runtime.session(
-            principal, str(body.session_id) if body.session_id else None, bid, body.new_shop
+        sid, adopted = await new_shop_session(
+            principal,
+            str(body.session_id) if body.session_id else None,
+            bid,
+            body.new_shop,
+            body.new_shop_draft,
         )
         lease = await services.registry.acquire_async(principal.uid, sid)
 
         async def produce(turn: TurnReplay) -> None:
             token = None
+            merchant: MerchantContext | None = None
+            continues = False
             try:
                 async with asyncio.timeout(settings.max_turn_seconds):
                     if app.state.merchant:
                         recall = await anyio.to_thread.run_sync(
                             app.state.recall.search, principal.uid, bid, body.message
                         )
-                        token = current.set(
-                            MerchantContext(
-                                app.state.merchant,
-                                principal.uid,
-                                bid,
-                                recall,
-                                body.message,
-                                new_shop=body.new_shop,
-                                new_shop_draft=body.new_shop_draft,
-                            )
+                        merchant = MerchantContext(
+                            app.state.merchant,
+                            principal.uid,
+                            bid,
+                            recall,
+                            body.message,
+                            new_shop=body.new_shop,
+                            new_shop_draft=body.new_shop_draft,
                         )
+                        token = current.set(merchant)
+                        if body.new_shop:
+                            continues = await resume_new_shop(
+                                merchant, principal, sid, adopted, voice=False
+                            )
                     turn.append(
                         StreamEvent(
                             kind="ready",
@@ -410,8 +438,15 @@ def create_app(
                             code="CONVERSATION_ROLLED_OVER"
                             if body.session_id and str(body.session_id) != sid
                             else None,
+                            data={"continues": True} if continues else None,
                         )
                     )
+                    resumed_draft = merchant.new_shop_draft if merchant else None
+                    if body.new_shop and resumed_draft and resumed_draft != body.new_shop_draft:
+                        # The saved draft knows more than the app (answers saved before a drop).
+                        turn.append(
+                            StreamEvent(kind="draft", data=resumed_draft.model_dump(mode="json"))
+                        )
                     async for event in services.runtime.text_events(
                         principal, sid, body.message, body.language, body.currency
                     ):
@@ -503,6 +538,46 @@ def create_app(
                     )
         return {"session_id": session.id, "messages": messages}
 
+    async def new_shop_session(
+        principal: Principal,
+        requested: str | None,
+        bid: str | None,
+        new_shop: bool,
+        draft: NewShopDraft | None,
+    ) -> tuple[str, bool]:
+        """The conversation for this turn or socket. A new-shop flow that starts empty (the app
+        lost its draft: a reload, a crash) continues the owner's unfinished one."""
+        services = app.state.services
+        adopted = None
+        if new_shop and not requested and is_empty(draft) and app.state.merchant:
+            shops = await anyio.to_thread.run_sync(
+                app.state.merchant.list_businesses, principal.uid
+            )
+            finished = {
+                str(shop.get("fields", {}).get("name", "")).strip().casefold() for shop in shops
+            }
+            adopted = await services.runtime.unfinished_new_shop(principal, finished)
+        sid = await services.runtime.session(principal, requested or adopted, bid, new_shop)
+        return sid, bool(adopted and adopted == sid)
+
+    async def resume_new_shop(
+        merchant: MerchantContext, principal: Principal, sid: str, adopted: bool, *, voice: bool
+    ) -> bool:
+        """The saved draft fills what the app's copy is missing (answers saved just before the
+        socket dropped never reached it); what the app holds (a moved pin, a photo's items)
+        stays. The coach learns where the conversation stood, and a shop whose name, kind and
+        place are all known goes live now (the app's pin can complete it).
+
+        Returns whether the conversation already has turns: the app then resumes SILENTLY (the
+        shop card and the next step's card, no second greeting)."""
+        saved, asked, has_turns = await app.state.services.runtime.new_shop_progress(principal, sid)
+        merchant.new_shop_draft = merge_drafts(saved, merchant.new_shop_draft)
+        merchant.last_question = asked
+        # Only a socket that comes back is "resumed"; text turns read the whole history anyway.
+        merchant.resumed = voice and has_turns
+        await anyio.to_thread.run_sync(go_live, merchant)
+        return has_turns or adopted
+
     @app.websocket("/api/v1/voice")
     async def voice(websocket: WebSocket) -> None:
         if websocket.headers.get("origin") not in settings.allowed_origins:
@@ -535,37 +610,57 @@ def create_app(
                 if not app.state.merchant:
                     raise HTTPException(503, "Local V1 is not enabled.")
                 await anyio.to_thread.run_sync(app.state.merchant.context, principal.uid, bid)
+            merchant = None
             if app.state.merchant:
-                context_token = current.set(
-                    MerchantContext(
-                        app.state.merchant,
-                        principal.uid,
-                        bid,
-                        [],
-                        new_shop=new_shop,
-                        new_shop_draft=draft,
-                    )
+                merchant = MerchantContext(
+                    app.state.merchant,
+                    principal.uid,
+                    bid,
+                    [],
+                    new_shop=new_shop,
+                    new_shop_draft=draft,
                 )
-            sid = await services.runtime.session(principal, requested, bid, new_shop)
-            lease = await services.registry.acquire_async(principal.uid, sid)
+                context_token = current.set(merchant)
+            sid, adopted = await new_shop_session(principal, requested, bid, new_shop, draft)
+            continues = False
+            if merchant and new_shop:
+                continues = await resume_new_shop(merchant, principal, sid, adopted, voice=True)
+            # A reconnect takes the conversation over from its previous socket (never a 409).
+            lease = await services.registry.acquire_async(principal.uid, sid, "voice")
             await websocket.send_json(
                 StreamEvent(
                     kind="ready",
                     session_id=sid,
                     mode=settings.coach_mode,
                     code="CONVERSATION_ROLLED_OVER" if requested and requested != sid else None,
+                    data={"continues": True} if continues else None,
                 ).payload()
             )
+            resumed_draft = merchant.new_shop_draft if merchant and new_shop else None
+            if resumed_draft and resumed_draft != draft:
+                # The saved draft knows more than the app (answers saved before the drop).
+                await websocket.send_json(
+                    StreamEvent(kind="draft", data=resumed_draft.model_dump(mode="json")).payload()
+                )
             log.info(
                 "voice_ready",
                 business=bool(bid),
                 resumed=bool(requested),
+                adopted=adopted,
+                continues=bool(merchant and merchant.resumed),
                 language=reply_language(websocket.query_params.get("lang")).locale,
             )
-            await serve_voice(
-                websocket, services.runtime, principal, sid, websocket.query_params.get("lang")
+            held = lease
+            stats = await serve_voice(
+                websocket,
+                services.runtime,
+                principal,
+                sid,
+                websocket.query_params.get("lang"),
+                keep=lambda: services.registry.renew_async(held),
+                lost=lease_lost(lease),
             )
-            log.info("voice_closed")
+            log.info("voice_closed", **stats.fields())
         except (HTTPException, ValueError, TimeoutError) as error:
             code = (
                 "RATE_LIMITED"

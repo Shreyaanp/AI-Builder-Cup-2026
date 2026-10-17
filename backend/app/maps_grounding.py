@@ -23,6 +23,7 @@ import structlog
 from pydantic import BaseModel
 
 from .discover import MapsService, distance
+from .reply_language import written_language
 from .settings import Settings
 
 log = structlog.get_logger()
@@ -36,7 +37,7 @@ AREA = re.compile(
 )
 
 PROMPT = """You help a customer with a question about the area around them.
-Answer in language "{language}" in at most 3 short sentences, like a helpful local friend.
+Answer in {language} in at most 3 short sentences, like a helpful local friend.
 Use Google Maps for real places, opening hours and parking; name only places Google Maps knows.
 Never invent prices, menus or places. If Google Maps has nothing useful, say so in one sentence.
 Question: {q}"""
@@ -86,7 +87,7 @@ def grounding_request(
 
     return {
         "model": settings.maps_grounding_model or settings.google_text_model,
-        "contents": PROMPT.format(language=language, q=q),
+        "contents": PROMPT.format(language=written_language(language), q=q),
         "config": types.GenerateContentConfig(
             tools=[types.Tool(google_maps=types.GoogleMaps())],
             tool_config=types.ToolConfig(
@@ -144,13 +145,15 @@ def parse_grounded(response: Any) -> AreaAnswer:
 # Offline sample answers (labelled demo): what the area answer looks like without a live call.
 DEMO_TOPICS: list[tuple[re.Pattern[str], str, list[tuple[str, int, int, bool]]]] = [
     (
-        re.compile(r"park|car|駐車|停车|पार्किंग|주차|จอด"),
+        re.compile(r"park|car|駐車|停车|पार्किंग|주차|จอด|letak kereta|பார்க்கிங்|நிறுத்த"),
         "Sample answer: there is a public car park about two minutes' walk away, and street "
         "parking on the next road fills up after 6 pm.",
         [("Sample public car park", 140, 60, True), ("Sample street parking", -90, 160, True)],
     ),
     (
-        re.compile(r"coffee|kopi|cafe|café|filter|tea|chai|कॉफ़ी|咖啡|コーヒー|커피|กาแฟ"),
+        re.compile(
+            r"coffee|kopi|cafe|café|filter|tea|chai|कॉफ़ी|咖啡|コーヒー|커피|กาแฟ|காபி|தேநீர்|teh"
+        ),
         "Sample answer: two cafés nearby are known for filter coffee; the closer one is open "
         "now and busy in the morning.",
         [
@@ -165,9 +168,87 @@ DEMO_DEFAULT = (
 )
 
 
-def demo_answer(q: str, lat: float, lng: float) -> AreaAnswer:
+# The same samples for a customer in Hindi or a Singapore language (the labelled demo still
+# reads in their language). Keys are the English samples above.
+_SAMPLES = [
+    "Sample answer: there is a public car park about two minutes' walk away, and street "
+    "parking on the next road fills up after 6 pm.",
+    "Sample answer: two cafés nearby are known for filter coffee; the closer one is open "
+    "now and busy in the morning.",
+    "Sample answer: a few places nearby match; the nearest is a short walk away and open now.",
+    "Sample public car park",
+    "Sample street parking",
+    "Sample filter coffee house",
+    "Sample roastery café",
+    "Sample local place",
+    "Sample corner store",
+]
+DEMO_LANGUAGES: dict[str, dict[str, str]] = {
+    language: dict(zip(_SAMPLES, rows, strict=True))
+    for language, rows in {
+        "hi": [
+            "नमूना जवाब: लगभग दो मिनट की पैदल दूरी पर एक सार्वजनिक पार्किंग है, और अगली सड़क की "
+            "पार्किंग शाम 6 बजे के बाद भर जाती है।",
+            "नमूना जवाब: पास के दो कैफ़े फ़िल्टर कॉफ़ी के लिए जाने जाते हैं; नज़दीक वाला अभी खुला है "
+            "और सुबह भीड़ रहती है।",
+            "नमूना जवाब: पास की कुछ जगहें मेल खाती हैं; सबसे नज़दीक वाली थोड़ी पैदल दूरी पर है और अभी खुली है।",
+            "नमूना सार्वजनिक पार्किंग",
+            "नमूना सड़क पार्किंग",
+            "नमूना फ़िल्टर कॉफ़ी हाउस",
+            "नमूना रोस्टरी कैफ़े",
+            "नमूना स्थानीय जगह",
+            "नमूना नुक्कड़ की दुकान",
+        ],
+        "zh": [
+            "示例回答：步行约两分钟有一个公共停车场，下一条路的路边停车位晚上 6 点后就会停满。",
+            "示例回答：附近有两家咖啡店以滴滤咖啡出名；较近的一家现在营业，早上人多。",
+            "示例回答：附近有几处地方符合；最近的一处步行不远，现在营业。",
+            "示例公共停车场",
+            "示例路边停车",
+            "示例滴滤咖啡店",
+            "示例烘焙咖啡馆",
+            "示例本地店铺",
+            "示例街角小店",
+        ],
+        "ms": [
+            "Jawapan contoh: ada tempat letak kereta awam kira-kira dua minit berjalan kaki, dan "
+            "tempat letak di jalan sebelah penuh selepas 6 petang.",
+            "Jawapan contoh: dua kafe berdekatan terkenal dengan kopi tapis; yang lebih dekat "
+            "dibuka sekarang dan sibuk pada waktu pagi.",
+            "Jawapan contoh: beberapa tempat berdekatan sepadan; yang terdekat hanya sedikit "
+            "berjalan kaki dan dibuka sekarang.",
+            "Contoh tempat letak kereta awam",
+            "Contoh tempat letak tepi jalan",
+            "Contoh kedai kopi tapis",
+            "Contoh kafe pemanggang kopi",
+            "Contoh tempat setempat",
+            "Contoh kedai runcit",
+        ],
+        "ta": [
+            "மாதிரி பதில்: இரண்டு நிமிட நடை தூரத்தில் ஒரு பொது வாகன நிறுத்தம் உள்ளது; அடுத்த "
+            "சாலையின் ஓர நிறுத்தம் மாலை 6 மணிக்குப் பின் நிரம்பிவிடும்.",
+            "மாதிரி பதில்: அருகிலுள்ள இரண்டு கஃபேக்கள் ஃபில்டர் காபிக்குப் பெயர் பெற்றவை; அருகில் "
+            "உள்ளது இப்போது திறந்திருக்கிறது, காலையில் கூட்டமாக இருக்கும்.",
+            "மாதிரி பதில்: அருகில் சில இடங்கள் பொருந்துகின்றன; மிக அருகிலுள்ளது சிறிது நடை "
+            "தூரத்தில், இப்போது திறந்திருக்கிறது.",
+            "மாதிரி பொது வாகன நிறுத்தம்",
+            "மாதிரி சாலையோர நிறுத்தம்",
+            "மாதிரி ஃபில்டர் காபி கடை",
+            "மாதிரி காபி வறுப்புக் கஃபே",
+            "மாதிரி உள்ளூர் இடம்",
+            "மாதிரி மூலைக் கடை",
+        ],
+    }.items()
+}
+
+
+def demo_answer(q: str, lat: float, lng: float, language: str = "en") -> AreaAnswer:
     text = q.casefold()
     found = next(((t, p) for pattern, t, p in DEMO_TOPICS if pattern.search(text)), DEMO_DEFAULT)
+
+    def say(words: str) -> str:
+        return DEMO_LANGUAGES.get(language.split("-")[0], {}).get(words, words)
+
     places: list[AreaPlace] = []
     sources: list[AreaSource] = []
     for index, (name, north, east, is_open) in enumerate(found[1]):
@@ -175,6 +256,7 @@ def demo_answer(q: str, lat: float, lng: float) -> AreaAnswer:
         p_lng = lng + east / (111_320 * max(math.cos(math.radians(lat)), 0.01))
         uri = f"https://www.google.com/maps/search/?api=1&query={p_lat:.5f},{p_lng:.5f}"
         pid = f"demo-area-{index}"
+        name = say(name)
         sources.append(AreaSource(title=name, uri=uri, place_id=pid))
         places.append(
             AreaPlace(
@@ -187,7 +269,7 @@ def demo_answer(q: str, lat: float, lng: float) -> AreaAnswer:
                 google_maps_uri=uri,
             )
         )
-    return AreaAnswer(status="ok", text=found[0], sources=sources, places=places, demo=True)
+    return AreaAnswer(status="ok", text=say(found[0]), sources=sources, places=places, demo=True)
 
 
 class AreaGrounding:
@@ -228,7 +310,7 @@ class AreaGrounding:
         if self.mode == "off":
             return AreaAnswer(status="off")
         if self.mode == "demo":
-            return demo_answer(q, lat, lng)
+            return demo_answer(q, lat, lng, language)
         key = self.key(q, lat, lng, language)
         lock = self.locks.setdefault(key, asyncio.Lock())
         async with lock:

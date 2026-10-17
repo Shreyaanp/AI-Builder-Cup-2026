@@ -135,6 +135,18 @@ test('customer fixes: passport board errors offer retry and failed opt-in stays 
   await expect(join).not.toBeChecked()
 })
 
+test('customer fixes: signed-in customer with location off sees calm empty leaderboard without error', async ({
+  page,
+}) => {
+  await page.request.post('/api/v1/customer/session', { data: { name: 'Kavita' } })
+  // Location off: no filters in localStorage, no gps
+  await page.goto('/explore/passport', { waitUntil: 'domcontentloaded' })
+  const board = page.getByRole('region', { name: 'Regulars this week' })
+  await expect(board).toBeVisible()
+  await expect(board.getByRole('alert')).toHaveCount(0)
+  await expect(board.getByText('Nobody on the board yet this week.')).toBeVisible()
+})
+
 test('customer fixes: Today refresh failure is visible with cached finds', async ({ page }) => {
   await page.goto('/explore/')
   const loaded = page.waitForResponse((r) => r.url().includes('/public/today?') && r.ok())
@@ -250,9 +262,11 @@ for (const mode of ['light', 'dark'] as const) {
         .toBe(mode === 'dark' ? 'rgb(23, 39, 31)' : 'rgb(251, 247, 236)')
       await capture('landing')
       await customer.getByRole('link', { name: 'Find places near me', exact: true }).first().click()
-      await customer.getByRole('textbox', { name: 'City or area' }).fill('Bengaluru')
-      await customer.getByRole('textbox', { name: 'City or area' }).press('Enter')
-      await customer.getByRole('button', { name: 'Explore my neighbourhood' }).click()
+      // No setup wizard: the Ask page itself asks where, then gets out of the way.
+      const where = customer.getByRole('region', { name: 'Start with your neighbourhood' })
+      await where.getByRole('textbox', { name: 'City or area' }).fill('Bengaluru')
+      await where.getByRole('textbox', { name: 'City or area' }).press('Enter')
+      await expect(where).toHaveCount(0)
       await expect(
         customer.getByRole('heading', { name: 'What are you looking for nearby?' }),
       ).toBeVisible()
@@ -267,6 +281,7 @@ for (const mode of ['light', 'dark'] as const) {
       await customer.getByRole('textbox', { name: 'Ask about anything nearby' }).fill('tea')
       await customer.getByRole('button', { name: 'Send', exact: true }).click()
       await customer.getByRole('link', { name: 'Browse everything nearby' }).click()
+      await customer.getByRole('button', { name: 'Change area' }).click()
       await expect(customer.getByRole('textbox', { name: 'City or area' })).toHaveValue('Delhi')
       await customer.getByRole('link', { name: 'Back', exact: true }).click()
       await expect(customer.getByRole('button', { name: /^Area: Delhi/ })).toBeVisible()

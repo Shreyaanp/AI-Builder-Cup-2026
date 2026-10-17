@@ -17,6 +17,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError, field_validator
 
+from . import region
 from .business_profile import QuestionPlanner
 from .forecast import ForecastService
 from .merchant import (
@@ -28,7 +29,7 @@ from .merchant import (
     ProductFields,
     ProposalRequest,
 )
-from .money import DEFAULT_CURRENCY, to_major, to_minor
+from .money import to_major, to_minor
 from .product_categories import suggest_category
 from .product_units import UNITS, normalize_unit
 from .recap import recap_facts
@@ -75,6 +76,17 @@ class MerchantContext:
     cards: dict[str, tuple[str, dict[str, Any]]] = field(default_factory=dict)
     new_shop: bool = False
     new_shop_draft: NewShopDraft | None = None
+    # A new-shop conversation that came back after its socket ended: the coach's last question
+    # (see new_shop_resume.progress_note).
+    resumed: bool = False
+    last_question: str = ""
+    # The last new-shop proposal: a replayed or repeated answer returns it unchanged.
+    last_proposal: str | None = None
+    # The owner asked to end the conversation (end_conversation): the socket closes after the
+    # coach's goodbye.
+    ended: bool = False
+    # A Live voice conversation: tools never hold up the spoken reply (first audio).
+    spoken: bool = False
 
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)
@@ -131,6 +143,13 @@ async def get_question_plan() -> dict[str, Any]:
     if record_with is a fact name, pass that argument; if it is custom_facts, pass
     custom_facts=[{key, label, value}]. The owner may skip any."""
     ctx = current.get()
+    if ctx and ctx.new_shop:
+        # Onboarding asks only the core five (and at most two extras from the business's own
+        # profile, listed in update_shop's result); type-specific questions come later.
+        return {
+            "status": "not_in_onboarding",
+            "instruction": "Ask only what update_shop lists as still missing.",
+        }
     if not ctx or (
         not ctx.business_id and not (ctx.new_shop_draft and ctx.new_shop_draft.business)
     ):
@@ -288,7 +307,7 @@ def _invalid(
 
 
 def shop_currency(business: dict[str, Any] | None) -> str:
-    return (business or {}).get("fields", {}).get("currency") or DEFAULT_CURRENCY
+    return region.shop_currency((business or {}).get("fields"))
 
 
 def get_business_context() -> dict[str, Any]:
@@ -482,6 +501,30 @@ def get_insights() -> dict[str, Any]:
     }
 
 
+def _same_new_shop_answer(
+    ctx: MerchantContext, business: BusinessFields | None, products: list[ProductFields] | None
+) -> dict[str, Any] | None:
+    """A new-shop answer already in the draft (said twice, or a tool call replayed after a
+    reconnect) changes nothing: the last proposal stands and no new one is sealed."""
+    draft = ctx.new_shop_draft
+    if not (ctx.new_shop and draft and ctx.last_proposal in ctx.proposals):
+        return None
+
+    def key(items: list[ProductFields]) -> list[str]:
+        return sorted(item.model_dump_json() for item in items)
+
+    if business != draft.business or (
+        products is not None and key(products) != key(draft.products)
+    ):
+        return None
+    return {
+        "status": "needs_review",
+        "proposal_id": ctx.last_proposal,
+        "changes": [],
+        "note": "Already recorded; nothing changed. Continue with the next missing detail.",
+    }
+
+
 def _start_new_shop_draft() -> None:
     """A new shop's items and answers can be recorded before the owner has said its name: start
     an unnamed draft (the name is required only when the owner opens the shop)."""
@@ -521,6 +564,8 @@ def _propose_shop(
     if not ctx:
         return {"status": "unavailable"}
     existing = ctx.store.context(ctx.uid, ctx.business_id)["business"]
+    if len(name.strip()) > 80:
+        return _invalid(ValueError("A shop name is 1-80 characters."), ctx)
     draft_fields = ctx.new_shop_draft.business if ctx.new_shop_draft else None
     previous_category = (
         existing["fields"].get("category", "")
@@ -568,7 +613,10 @@ def _propose_shop(
         if ctx.new_shop and draft:
             given = {**draft.model_dump(), **{k: v for k, v in given.items() if v}}
         if not re.fullmatch(r"[A-Z]{3}", given["currency"]):
-            given["currency"] = ui_currency.get() or DEFAULT_CURRENCY
+            # The phone's currency, unless the pin says the shop is elsewhere (region.py).
+            given["currency"] = ui_currency.get() or region.new_shop_currency(
+                given.get("lat"), given.get("lng")
+            )
         given["demo"] = False
     given.update({key: value for key, value in facts.items() if value is not None})
     if profile is not None:
@@ -650,6 +698,8 @@ def _propose_shop(
                 if key not in allowed:
                     given.pop(key, None)
         fields = BusinessFields.model_validate(given)
+        if unchanged := _same_new_shop_answer(ctx, fields, None):
+            return unchanged
         proposal = ctx.store.propose(
             ctx.uid,
             ProposalRequest(
@@ -664,8 +714,15 @@ def _propose_shop(
         return _invalid(error, ctx)
     ctx.proposals[proposal["id"]] = proposal
     if ctx.new_shop:
-        ctx.new_shop_draft = NewShopDraft(
-            business=fields, products=proposal["snapshot"]["products"]
+        ctx.last_proposal = proposal["id"]
+        # Skipped steps, the photo and the live shop stay (only the shop's fields change).
+        ctx.new_shop_draft = (ctx.new_shop_draft or NewShopDraft()).model_copy(
+            update={
+                "business": fields,
+                "products": TypeAdapter(list[ProductFields]).validate_python(
+                    proposal["snapshot"]["products"]
+                ),
+            }
         )
     changes = (
         [
@@ -737,7 +794,8 @@ def propose_business(
 ) -> dict[str, Any]:
     """Prepare the shop's basic details (new shop, or edits to the active shop) for the owner to
     review. Nothing is saved until the owner confirms. Leave a field empty if the owner did not
-    say it; for an existing shop pass name="" and only what changed. currency is the ISO 4217
+    say it; for an existing shop pass name="" and only what changed. To rename the shop pass the
+    new name (1-80 characters, "rename my shop to X"). currency is the ISO 4217
     code (SGD, JPY, MYR…) for a new shop, only when the owner states or clearly implies it.
     weekly_hours: one record per stated weekday (day: mon/tue/wed/thu/fri/sat/sun,
     closed: boolean, open/close: HH:MM). Overnight closing belongs to the opening day.
@@ -902,6 +960,8 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
             merged = {(p.name.casefold(), p.unit.casefold()): p for p in draft.products}
             merged.update({(p.name.casefold(), p.unit.casefold()): p for p in products})
             products = list(merged.values())
+            if unchanged := _same_new_shop_answer(ctx, draft.business, products):
+                return unchanged
         proposal = ctx.store.propose(
             ctx.uid,
             ProposalRequest(
@@ -916,7 +976,8 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
         return _invalid(error, ctx)
     ctx.proposals[proposal["id"]] = proposal
     if draft:
-        ctx.new_shop_draft = NewShopDraft(business=draft.business, products=products)
+        ctx.last_proposal = proposal["id"]
+        ctx.new_shop_draft = draft.model_copy(update={"products": products})
     changes, warnings = [], []
 
     def money(minor: int) -> float:

@@ -34,6 +34,7 @@ from .gemini_schema import gemini_schema, parse_reply
 from .merchant import BusinessFields, CustomFact, MerchantRepository, ProductFields
 from .money import exponent, to_major, to_minor
 from .product_units import UNITS, normalize_unit
+from .region import shop_currency
 from .search_engine import (
     SOURCING_ITEM_RECALL,
     Components,
@@ -44,6 +45,7 @@ from .search_engine import (
 )
 from .settings import Settings
 from .shop_time import shop_timezone
+from .words import words as words_of
 
 log = structlog.get_logger()
 
@@ -115,7 +117,7 @@ SYNONYMS: dict[str, tuple[str, ...]] = {
 
 
 def words(text: str) -> set[str]:
-    return set(re.findall(r"[^\W\d_]+", text.casefold()))
+    return set(words_of(text.casefold()))
 
 
 def canonical(item: str) -> str | None:
@@ -285,6 +287,16 @@ def region(currency: str) -> Region:
         DEFAULT_REGION.timezone,
         DEFAULT_REGION.names,
     )
+
+
+def area_currency(lat: float, lng: float, fallback: str = "SGD") -> str:
+    """Choose a known area's currency from its region profile, not the visitor's device."""
+    nearest = min(
+        REGIONS.items(),
+        key=lambda entry: haversine(lat, lng, *entry[1].centre),
+    )
+    distance = haversine(lat, lng, *nearest[1].centre)
+    return nearest[0] if distance <= 500 else fallback
 
 
 def money_text(minor: int, currency: str) -> str:
@@ -615,7 +627,7 @@ class ShopPin:
 
 
 def shop_pin(fields: dict[str, Any]) -> ShopPin:
-    currency = fields.get("currency") or "SGD"
+    currency = shop_currency(fields)
     place = region(currency)
     has_pin = fields.get("lat") is not None and fields.get("lng") is not None
     lat, lng = (fields["lat"], fields["lng"]) if has_pin else place.centre
@@ -651,7 +663,7 @@ def candidates(
     for shop in shops:
         if shop["id"] == own_id or shop.get("lat") is None or shop.get("lng") is None:
             continue
-        if (shop.get("currency") or "SGD") != pin.currency:
+        if (shop_currency(shop)) != pin.currency:
             continue
         km = haversine(pin.lat, pin.lng, shop["lat"], shop["lng"])
         if km > SEARCH_KM:

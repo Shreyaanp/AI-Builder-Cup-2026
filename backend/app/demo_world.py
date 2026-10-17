@@ -23,7 +23,7 @@ from .money import to_minor
 from .product_units import UNITS, normalize_unit
 from .rescue import seed_demo_deals
 from .settings import Settings
-from .sourcing import offset, region, seed_number
+from .sourcing import area_currency, offset, region, seed_number
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/demo")
@@ -388,6 +388,9 @@ def world_records(
             demo=True,
             timezone=timezone,
             currency=currency,
+            stamps_enabled=True,
+            reward_text="Free item after 8 visits",
+            stamps_needed=8,
             hours=hours,
             weekly_hours=weekly,
             halal="yes" if shop.halal else "not_stated",
@@ -407,29 +410,66 @@ def world_records(
     return records
 
 
+def is_india(lat: float, lng: float) -> bool:
+    return 6.5 <= lat <= 37.5 and 68.0 <= lng <= 97.5
+
+
+def is_singapore(lat: float, lng: float) -> bool:
+    return 1.15 <= lat <= 1.48 and 103.6 <= lng <= 104.1
+
+
+def resolve_currency(lat: float, lng: float, place: str, requested: str) -> str:
+    p = place.lower()
+    if is_india(lat, lng) or any(
+        k in p
+        for k in (
+            "india",
+            "bengaluru",
+            "bangalore",
+            "delhi",
+            "mumbai",
+            "pune",
+            "koramangala",
+            "indiranagar",
+            "chennai",
+            "kolkata",
+            "hyderabad",
+        )
+    ):
+        return "INR"
+    if is_singapore(lat, lng) or "singapore" in p:
+        return "SGD"
+    return requested or "USD"
+
+
 async def ensure_world(
     store: MerchantRepository, generator: WorldGenerator, body: WorldRequest
 ) -> WorldReceipt:
+    body = body.model_copy(update={"currency": area_currency(body.lat, body.lng, body.currency)})
     first = world_id(body.lat, body.lng, 0)
     stored = await anyio.to_thread.run_sync(store.public_shop, first)
-    # An area filled from the offline set is regenerated once the model is available.
+    currency = resolve_currency(body.lat, body.lng, body.place, body.currency)
+    # An area filled from the offline set is regenerated once the model is available,
+    # or if the stored shop had the wrong currency for this country (e.g. SGD in India).
     offline_names = {f"{spec['name']} (Demo)" for spec in FIXTURE}
+    wrong_currency = stored is not None and stored.get("currency") != currency
     upgrade = (
         stored is not None
         and stored.get("name") in offline_names
         and generator.settings.coach_mode == "gemini"
-    )
+    ) or wrong_currency
     if stored and not upgrade:
         ids = [world_id(body.lat, body.lng, i) for i in range(len(SPREAD))]
         existing = [bid for bid in ids if await anyio.to_thread.run_sync(store.public_shop, bid)]
         await anyio.to_thread.run_sync(seed_demo_signals, store, body.lat, body.lng)
         await anyio.to_thread.run_sync(seed_demo_deals, store, WORLD_OWNER_UID, existing)
         return WorldReceipt(shop_ids=existing, created=False, source="existing")
-    world, source = await generator.generate(body.place, body.currency)
-    if upgrade and source != "gemini":
+    world, source = await generator.generate(body.place, currency)
+    if upgrade and source != "gemini" and not wrong_currency:
         ids = [world_id(body.lat, body.lng, i) for i in range(len(SPREAD))]
         return WorldReceipt(shop_ids=ids, created=False, source="existing")
-    records = world_records(world, body.lat, body.lng, body.currency, body.timezone, body.place)
+    timezone = "Asia/Kolkata" if currency == "INR" else body.timezone
+    records = world_records(world, body.lat, body.lng, currency, timezone, body.place)
     for bid, fields, products in records:
         await anyio.to_thread.run_sync(store.seed_demo_shop, WORLD_OWNER_UID, bid, fields, products)
     await anyio.to_thread.run_sync(seed_demo_signals, store, body.lat, body.lng)

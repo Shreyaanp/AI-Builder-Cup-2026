@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -20,9 +20,11 @@ import { useNextStepsCopy } from '../v1/nextStepsCopy'
 import { useOnline } from '../v1/useOnline'
 import { Tile, Supporting } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useIdentity } from '../../auth/useIdentity'
+import { dismissFreshness } from '../sales/freshnessDismissal'
 import { closeDayCopy } from './strings'
 
-type Kind = 'sales' | 'stock_count' | 'delivery'
+export type Kind = 'sales' | 'stock_count' | 'delivery'
 type Line = {
   item: string
   read_as: string
@@ -81,9 +83,17 @@ export function CloseDayTile() {
   )
 }
 
-export function CloseDay({ onClose }: { onClose: () => void }) {
+/** `initial`: a photo already chosen elsewhere (the coach chat); it is read as soon as this opens. */
+export function CloseDay({
+  onClose,
+  initial,
+}: {
+  onClose: () => void
+  initial?: { kind: Kind; file: File }
+}) {
   const t = closeDayCopy(useLocale())
   const ws = useWorkspace()
+  const { scope } = useIdentity()
   const roles = useTheme().material
   const phone = useMediaQuery('(max-width:599px)')
   const shop = ws.active
@@ -103,6 +113,14 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
   const [typing, setTyping] = useState(false)
   const next = useNextStepsCopy()
   const online = useOnline()
+  const started = useRef(false)
+  useEffect(() => {
+    if (!initial || !shop || started.current) return
+    started.current = true
+    void read(initial.kind, initial.file)
+    // Read once, on open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   if (!shop) return null
 
   async function read(kind: Kind, file: File) {
@@ -217,6 +235,7 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
       }
       setSaved({ revenue, stock: stockBody.length })
       await ws.reload()
+      dismissFreshness(`chalkboard.closeday.${scope}.${shop.id}`, progress.current.date || day)
       setPhase('done')
     } catch {
       const status = (value: string) =>
@@ -424,7 +443,8 @@ export function CloseDay({ onClose }: { onClose: () => void }) {
             {typing && (
               <TypedSales
                 lines={typed}
-                products={ws.products.map((p) => p.name)}
+                // A name can repeat across units (Special Chai per cup and per pot).
+                products={[...new Set(ws.products.map((p) => p.name))]}
                 currency={currency}
                 onAdd={(line) => setTyped((all) => [...all, line])}
               />

@@ -28,6 +28,7 @@ export function CustomerNav({ active }: { active: CustomerTab }) {
     <Box
       component="nav"
       aria-label={t.nav}
+      className="c-nav"
       sx={{
         position: 'fixed',
         left: 0,
@@ -59,7 +60,7 @@ export function CustomerNav({ active }: { active: CustomerTab }) {
           const current = id === active
           const badge = id === 'chats' && unread > 0
           return (
-            <li key={id} style={{ display: 'flex' }}>
+            <li key={id} style={{ display: 'flex', minWidth: 0 }}>
               <Box
                 component="a"
                 href={href}
@@ -68,6 +69,7 @@ export function CustomerNav({ active }: { active: CustomerTab }) {
                 aria-label={badge ? `${label}, ${t.unread(unread)}` : undefined}
                 sx={{
                   flex: 1,
+                  minWidth: 0,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
@@ -125,9 +127,22 @@ export function CustomerNav({ active }: { active: CustomerTab }) {
                     </Box>
                   )}
                 </Box>
+                {/* Long labels (Tamil, Malay…) wrap to two lines rather than run together. */}
                 <Typography
                   variant="labelMedium"
-                  sx={{ fontWeight: current ? 700 : 500, lineHeight: 1.2 }}
+                  sx={{
+                    maxWidth: '100%',
+                    fontWeight: current ? 700 : 500,
+                    lineHeight: 1.15,
+                    // Shrinks before it breaks: a word never splits mid-syllable (Tamil, Hindi).
+                    // The theme sets the phone size in a media query, so this has to be one too.
+                    '@media (max-width: 599px)': { fontSize: 'min(12px, 2.7vw)' },
+                    letterSpacing: 0,
+                    textAlign: 'center',
+                    overflowWrap: 'normal',
+                    wordBreak: 'keep-all',
+                    hyphens: 'none',
+                  }}
                 >
                   {label}
                 </Typography>

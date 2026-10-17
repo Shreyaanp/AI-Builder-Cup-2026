@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -15,9 +15,11 @@ import { HAND_FONT, shape } from '../../design/theme'
 import { stampThud } from '../../design/chalkMotion'
 import { useLocale } from '../../state/hooks'
 import { useRewardCopy } from './strings'
-import { celebrations, claimReward, useRewards, visit } from './storage'
+import { celebrations, claimReward, useLanded, useRewards, visit } from './storage'
 import { useCopy } from '../v1/strings'
 import { useCustomer } from '../customer/account'
+import { SignInSheet } from '../customer/SignIn'
+import { useGuestCopy } from '../customer/guestCopy'
 import { setPassport, usePassport } from '../passport/store'
 import type { PassportView } from '../passport/store'
 import { fill } from '../passport/copy'
@@ -27,17 +29,26 @@ import { HowItWorks } from '../passport/games/HowItWorks'
 /** Endowed progress: 2 welcome stamps printed on every card, on top of the owner's target. */
 const WELCOME = 2
 
-/** This customer's stamps on a shop's card: the server's (signed in) or this phone's. */
+/**
+ * The stamps on a shop's card, welcome stamps included: the passport view's `stamps`, the one
+ * count the button, the card and the passport all show. Before that view has this card (a
+ * first visit, or a phone still loading), the same sum from this phone's card.
+ */
 function useCardCount(shop: string, target: number) {
   const { data } = useRewards()
   const account = useCustomer()
   const { view } = usePassport(null)
   const signedIn = account.status === 'signed-in'
-  const server = signedIn ? view?.shops.find((card) => card.id === shop) : undefined
+  const server = view?.shops.find((card) => card.id === shop && card.slots > 0)
+  const identified = signedIn || account.status === 'guest'
+  const local = identified ? 0 : (data.shops[shop]?.stamps ?? 0)
+  const stamps = Math.min(server?.stamps ?? WELCOME + local, target + WELCOME)
   return {
     signedIn,
-    count: Math.min(signedIn ? (server?.card ?? 0) : (data.shops[shop]?.stamps ?? 0), target),
-    claimed: signedIn ? (server?.claimed ?? 0) : (data.shops[shop]?.claimed ?? 0),
+    stamps,
+    /** The customer's own stamps: the slots after the welcome ones. */
+    count: stamps - WELCOME,
+    claimed: identified ? (server?.claimed ?? 0) : (data.shops[shop]?.claimed ?? 0),
   }
 }
 
@@ -54,7 +65,7 @@ export function StampPeek({ shop, needed = 8 }: { shop: string; needed?: number 
   const locale = useLocale()
   const gold = useTheme().chalk.sunflower
   const target = validTarget(needed)
-  const { count } = useCardCount(shop, target)
+  const { stamps } = useCardCount(shop, target)
   const number = (value: number) => new Intl.NumberFormat(locale).format(value)
   return (
     <Button
@@ -76,9 +87,7 @@ export function StampPeek({ shop, needed = 8 }: { shop: string; needed?: number 
       }}
     >
       {t.stampCard} ·{' '}
-      {t.progress
-        .replace('{count}', number(count + WELCOME))
-        .replace('{total}', number(target + WELCOME))}
+      {t.progress.replace('{count}', number(stamps)).replace('{total}', number(target + WELCOME))}
     </Button>
   )
 }
@@ -118,15 +127,28 @@ export function StampCard({
   }, [redeeming])
   // Signed in: the server's card (verified visits); signed out: this phone's card.
   const account = useCustomer()
-  const { signedIn, count, claimed } = useCardCount(shop, target)
+  const guestCopy = useGuestCopy()
+  const [signIn, setSignIn] = useState(false)
+  const { signedIn, stamps, count, claimed } = useCardCount(shop, target)
   const full = count >= target
   const number = (value: number) => new Intl.NumberFormat(locale).format(value)
+  // After the stamp sheet closes: bring the card into view, then press the new stamp on.
+  const landed = useLanded(shop)
+  const cardRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!landed) return
+    cardRef.current?.scrollIntoView({
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'center',
+    })
+  }, [landed])
   const close = () => {
     setRedeeming(false)
     if ((history.state as { rewardRedeem?: string } | null)?.rewardRedeem === shop) history.back()
   }
   return (
     <Box
+      ref={cardRef}
       component="section"
       id="stamp-card"
       aria-label={t.stampCard}
@@ -163,15 +185,17 @@ export function StampCard({
           '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
         }}
       >
-        {celebrations.has(shop) && [5, 10].includes(count)
-          ? t.milestone.replace('{count}', number(count))
-          : t.stamps.replace('{count}', number(count))}
+        {/* Welcome stamps included, so never fewer than 2: no singular form is needed. */}
+        {(celebrations.has(shop) && [5, 10].includes(count) ? t.milestone : t.stamps).replace(
+          '{count}',
+          number(stamps),
+        )}
       </Typography>
       <Stack
         direction="row"
         role="img"
         aria-label={t.progress
-          .replace('{count}', number(count + WELCOME))
+          .replace('{count}', number(stamps))
           .replace('{total}', number(target + WELCOME))}
         sx={{ flexWrap: 'wrap', gap: 1.5, my: 3 }}
       >
@@ -201,7 +225,8 @@ export function StampCard({
         ))}
         {Array.from({ length: target }, (_, index) => (
           <Box
-            key={index}
+            // A new key on the newest stamp restarts its press each time one lands.
+            key={index === count - 1 ? `${index}-${landed}` : index}
             component="span"
             aria-hidden="true"
             data-filled={index < count}
@@ -216,7 +241,10 @@ export function StampCard({
               bgcolor: index < count ? theme.chalk.mint.main : roles.surface,
               color: index < count ? theme.chalk.mint.onMain : roles.onSurface,
               typography: 'labelMedium',
-              ...(index === count - 1 && celebrations.has(shop) ? stampThud : {}),
+              ...(index === count - 1 && (celebrations.has(shop) || landed > 0)
+                ? { ...stampThud, animationDelay: landed ? '280ms' : undefined }
+                : {}),
+              '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
             }}
           >
             {index < count ? <Check size={18} /> : number(index + WELCOME + 1)}
@@ -253,6 +281,10 @@ export function StampCard({
           sx={{ mt: 3 }}
           disabled={unavailable}
           onClick={() => {
+            if (account.status === 'guest') {
+              setSignIn(true)
+              return
+            }
             history.pushState({ ...(history.state as object | null), rewardRedeem: shop }, '')
             setFailedClaim(false)
             setRedeeming(true)
@@ -266,6 +298,13 @@ export function StampCard({
           {t.storage}
         </Alert>
       )}
+      <SignInSheet
+        open={signIn}
+        onClose={() => setSignIn(false)}
+        onSignedIn={() => setSignIn(false)}
+        title={guestCopy.title}
+        body={guestCopy.claim}
+      />
       <Dialog
         open={redeeming && full}
         fullScreen

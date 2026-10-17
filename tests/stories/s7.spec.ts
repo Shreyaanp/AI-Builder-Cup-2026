@@ -47,7 +47,7 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
     await page.locator('[data-tour="nav-coach"]').click()
     await page.getByRole('textbox').fill('வணக்கம்')
     await page.getByRole('button', { name: 'அனுப்புங்கள்', exact: true }).click()
-    await expect(page.getByRole('log')).toContainText('This is a scripted reply')
+    await expect(page.getByRole('log')).toContainText('முன்பே எழுதிய பதில்')
     await expect
       .poll(() =>
         page.evaluate(
@@ -98,6 +98,7 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
         // Typed loosely, found and named properly: the offline map knows every demo city.
         await place.fill(city.toLowerCase())
         await place.press('Enter')
+        await discovery.getByRole('button', { name: 'Change area' }).click()
         await expect(place).toHaveValue(city)
         await expect(
           discovery.getByText('Couldn’t find that place. Try a city or neighbourhood name.', {

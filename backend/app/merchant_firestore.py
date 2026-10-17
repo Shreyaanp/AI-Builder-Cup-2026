@@ -125,6 +125,7 @@ class FirestoreMerchantStore:
             "last_confirmed": data.get("last_confirmed"),
             "coach_notes": data.get("coach_notes") or [],
             "gallery": data.get("gallery") or [],
+            "icon": data.get("icon"),
             "registration": data["status"],
             "public": bool(data.get("public")),
             "google_publication": "not_connected",
@@ -296,10 +297,12 @@ class FirestoreMerchantStore:
 
         return run(self.client.transaction())
 
-    def challenge(self, uid: str, bid: str) -> dict[str, Any]:
+    def challenge(
+        self, uid: str, bid: str, exclude_prompts: list[str] | None = None
+    ) -> dict[str, Any]:
         business_ref = self.businesses.document(document_id(bid, "Business not found."))
         cid = str(uuid4())
-        prompts = challenge_prompts()
+        prompts = challenge_prompts(exclude=exclude_prompts)
         expires = time.time() + CHALLENGE_SECONDS
 
         @firestore.transactional
@@ -582,6 +585,7 @@ class FirestoreMerchantStore:
             **public_projection(ref.id, data["fields"], [row["fields"] for row in rows]),
             "last_confirmed": data.get("last_confirmed"),
             "gallery": data.get("gallery") or [],
+            "icon": data.get("icon"),
         }
 
     def subscribe_stock(self, bid: str, body: StockAlertInput) -> StockAlertReceipt:
@@ -759,6 +763,17 @@ class FirestoreMerchantStore:
             option=self.client.write_option(last_update_time=snapshot.update_time),
         )
 
+    def set_icon(self, uid: str, bid: str, icon: str | None) -> str | None:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> str | None:
+            self.owned(ref.get(transaction=transaction), uid)
+            transaction.update(ref, {"icon": icon})
+            return icon
+
+        return cast(str | None, run(self.client.transaction()))
+
     def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
 
@@ -900,6 +915,12 @@ class FirestoreMerchantStore:
                 transaction.delete(ref)
             elif action != "get":
                 transaction.set(ref, {**data, **record.model_dump()})
+                if action == "unblock":
+                    transaction.delete(block)
+                    if data.get("token_hash"):
+                        transaction.delete(
+                            business.collection("inquiry_blocks").document(data["token_hash"])
+                        )
                 if action == "block":
                     transaction.set(block, {"blocked": True})
                     if data.get("token_hash"):

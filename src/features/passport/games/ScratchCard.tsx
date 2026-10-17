@@ -73,6 +73,7 @@ export function ScratchCard({
   const moves = useRef(0)
   const request = useRef<Promise<void> | null>(null)
   const wantsOpen = useRef(false)
+  const scratching = useRef(false)
   const [opened, setOpened] = useState<Opened | null>(
     card.revealed ? { card, passport: null } : null,
   )
@@ -82,6 +83,20 @@ export function ScratchCard({
   const oddsId = useId()
   const hintId = useId()
   const shop = card.shop_name.replace(/\s*\(Demo\)$/, '')
+
+  const stopScratching = useCallback(() => {
+    last.current = null
+    if (scratching.current) {
+      scratching.current = false
+      document.body.style.overscrollBehavior = ''
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    return () => {
+      document.body.style.overscrollBehavior = ''
+    }
+  }, [])
 
   // The foil: sunflower gold with chalk hatching and a hand-written "Scratch here".
   const paint = useCallback(() => {
@@ -214,6 +229,7 @@ export function ScratchCard({
         <HowItWorks game="scratch" />
       </Stack>
       <Box
+        data-testid="scratch-card-foil-container"
         sx={{
           position: 'relative',
           height: HEIGHT,
@@ -222,6 +238,10 @@ export function ScratchCard({
           bgcolor: gold.container,
           color: gold.onContainer,
           boxShadow: `0 0 0 3px ${gold.main} inset`,
+          touchAction: 'none',
+          overscrollBehavior: 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
         }}
       >
         {/* The prize under the foil; announced once the card is open. */}
@@ -286,23 +306,38 @@ export function ScratchCard({
             aria-hidden="true"
             data-testid="scratch-foil"
             onPointerDown={(event: PointerEvent<HTMLCanvasElement>) => {
+              if (event.cancelable) event.preventDefault()
+              scratching.current = true
+              document.body.style.overscrollBehavior = 'none'
               event.currentTarget.setPointerCapture?.(event.pointerId)
               last.current = null
               void open()
               scratch(event)
             }}
             onPointerMove={(event: PointerEvent<HTMLCanvasElement>) => {
-              if (event.buttons || event.pointerType === 'touch') scratch(event)
+              if (event.buttons || event.pointerType === 'touch') {
+                if (event.cancelable) event.preventDefault()
+                scratch(event)
+              }
             }}
-            onPointerUp={() => {
-              last.current = null
+            // The stamp sheet around the card must not take a downward scratch for a swipe-close.
+            onTouchStart={(event) => {
+              ;(
+                event.nativeEvent as TouchEvent & { defaultMuiPrevented?: boolean }
+              ).defaultMuiPrevented = true
             }}
+            onPointerUp={stopScratching}
+            onPointerCancel={stopScratching}
+            onLostPointerCapture={stopScratching}
             sx={{
               position: 'absolute',
               inset: 0,
               width: '100%',
               height: '100%',
               touchAction: 'none',
+              overscrollBehavior: 'none',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
               cursor: 'grab',
               transformOrigin: 'center',
             }}
@@ -333,6 +368,7 @@ export function ScratchCard({
               onClick={openNow}
               aria-describedby={hintId}
               aria-label={fill(t.scratchArea, { shop })}
+              sx={{ minHeight: 48 }}
             >
               {t.scratchReveal}
             </Button>
@@ -343,7 +379,7 @@ export function ScratchCard({
           onClick={() => setShowOdds((value) => !value)}
           aria-expanded={showOdds}
           aria-controls={oddsId}
-          sx={{ minHeight: 40 }}
+          sx={{ minHeight: 48 }}
         >
           {t.odds}
         </Button>

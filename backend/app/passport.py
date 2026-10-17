@@ -783,7 +783,7 @@ def apply_visit(state: PassportState, visit: Visit) -> Outcome:
     level_before = earned_level(state)
     outcome = Outcome(verdict="stamped", level_before=level_before, level_after=level_before)
     progress = state.shops.get(visit.shop_id)
-    if progress and progress.days and progress.days[-1] == day:
+    if progress and (progress.card_day == day or day in progress.days):
         outcome.verdict = "already_today"
         outcome.card = progress.card
         return outcome
@@ -795,13 +795,21 @@ def apply_visit(state: PassportState, visit: Visit) -> Outcome:
     # Demo shops are fictional and shown on screen in the demo, so their QR stamps without a
     # location fix. They only ever earn demo points; the day and daily-cap rules still apply.
     demo_shop = bool(shop.get("demo"))
+    stamps_enabled = bool(
+        shop.get("stamps_enabled")
+        if "stamps_enabled" in shop
+        else (shop.get("reward_text") or demo_shop)
+    )
     if demo_shop:
         if located and slat is not None and slng is not None:
             assert visit.lat is not None and visit.lng is not None
             outcome.distance_m = distance(visit.lat, visit.lng, float(slat), float(slng))
     elif not located or slat is None or slng is None:
-        # Location refused (or the shop has no pin): the shop card still counts, the passport
-        # does not.
+        # Location refused (or the shop has no pin): the shop card still counts if stamps are
+        # enabled, the passport does not.
+        if not stamps_enabled:
+            outcome.verdict = "low_accuracy"
+            return _reject(state, day, outcome)
         progress = shop_progress(state, visit.shop_id, shop)
         if progress.card_day != day:
             progress.card += 1
@@ -842,7 +850,7 @@ def apply_visit(state: PassportState, visit: Visit) -> Outcome:
     progress = shop_progress(state, visit.shop_id, shop)
     progress.days = [*progress.days, day][-60:]
     progress.visits += 1
-    if progress.card_day != day:
+    if stamps_enabled and progress.card_day != day:
         progress.card += 1
         progress.card_day = day
     if not demo_shop and visit.lat is not None and visit.lng is not None:

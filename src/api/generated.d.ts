@@ -245,6 +245,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/photos/classify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Classify Photo
+         * @description What a chat photo shows; nothing is stored or saved. The app confirms with the owner.
+         */
+        post: operations["classify_photo_api_v1_photos_classify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/photos": {
         parameters: {
             query?: never;
@@ -257,6 +277,7 @@ export interface paths {
         /**
          * Photo
          * @description ``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own.
+         *     ``language`` is the owner's app language for the notes about what was unclear.
          */
         post: operations["photo_api_v1_photos_post"];
         delete?: never;
@@ -394,6 +415,106 @@ export interface paths {
          * @description Only photos in a shared shop's gallery. IDs are never reused, so caching is safe.
          */
         get: operations["public_gallery_photo_api_v1_public_shops__business_id__photos__photo_id__jpg_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/icon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Icon Status */
+        get: operations["icon_status_api_v1_businesses__business_id__icon_get"];
+        /**
+         * Upload Icon
+         * @description Use a photo as the icon. The app crops to a square first; the server crops again.
+         */
+        put: operations["upload_icon_api_v1_businesses__business_id__icon_put"];
+        post?: never;
+        /** Remove Icon */
+        delete: operations["remove_icon_api_v1_businesses__business_id__icon_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/icon/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Icon
+         * @description Make my icon: name + kind + region in, a square icon out. A failure keeps the old icon
+         *     and tells the app to show the monogram (ICON_UNAVAILABLE); it still counts as one try.
+         */
+        post: operations["generate_icon_api_v1_businesses__business_id__icon_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/icon/from-gallery/{photo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Icon From Gallery
+         * @description Use this photo as my icon, for a photo already in the shop's gallery.
+         */
+        post: operations["icon_from_gallery_api_v1_businesses__business_id__icon_from_gallery__photo_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/icon/{icon_id}.jpg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Owner Icon */
+        get: operations["owner_icon_api_v1_businesses__business_id__icon__icon_id__jpg_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/shops/{business_id}/icon/{icon_id}.jpg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public Icon
+         * @description Only the current icon of a shared shop. IDs are never reused, so caching is safe.
+         */
+        get: operations["public_icon_api_v1_public_shops__business_id__icon__icon_id__jpg_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -882,6 +1003,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/inquiries/{inquiry_id}/unblock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unblock Conversation */
+        post: operations["unblock_conversation_api_v1_businesses__business_id__inquiries__inquiry_id__unblock_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/shops/{business_id}/inquiries/{inquiry_id}/messages/{message_id}/translation": {
         parameters: {
             query?: never;
@@ -983,6 +1121,23 @@ export interface paths {
         post: operations["local_sign_in_api_v1_customer_session_post"];
         /** Local Sign Out */
         delete: operations["local_sign_out_api_v1_customer_session_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/guest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Local Guest */
+        post: operations["local_guest_api_v1_customer_guest_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1225,7 +1380,7 @@ export interface paths {
         };
         /**
          * Find Place
-         * @description A typed city or area anywhere in the world, as the centre for discovery.
+         * @description A typed city or area anywhere in the world, or coordinates reverse-geocoded to an area.
          */
         get: operations["find_place_api_v1_discover_place_get"];
         put?: never;
@@ -2426,6 +2581,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/face/warmup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Face Warmup
+         * @description Warm up the private face worker to prevent cold-start latency when the owner scans.
+         */
+        get: operations["face_warmup_api_v1_face_warmup_get"];
+        put?: never;
+        /**
+         * Face Warmup
+         * @description Warm up the private face worker to prevent cold-start latency when the owner scans.
+         */
+        post: operations["face_warmup_api_v1_face_warmup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/face/challenges": {
         parameters: {
             query?: never;
@@ -3041,7 +3220,7 @@ export interface components {
             min_order: string;
             /**
              * Timezone
-             * @default Asia/Singapore
+             * @default
              */
             timezone: string;
             /**
@@ -3072,8 +3251,13 @@ export interface components {
              */
             stamps_needed: number;
             /**
+             * Stamps Enabled
+             * @default false
+             */
+            stamps_enabled: boolean;
+            /**
              * Currency
-             * @default SGD
+             * @default
              */
             currency: string;
             /** Halal */
@@ -3103,8 +3287,13 @@ export interface components {
              * @default
              */
             upi_id: string;
+            /**
+             * Paynow Id
+             * @default
+             */
+            paynow_id: string;
             /** Rider Providers */
-            rider_providers?: ("rapido" | "uber" | "porter")[];
+            rider_providers?: ("rapido" | "uber" | "porter" | "grab" | "gojek" | "lalamove")[] | null;
             /**
              * Busy Hours
              * @default
@@ -3146,12 +3335,65 @@ export interface components {
             retail?: components["schemas"]["RetailAttributes"] | null;
             service?: components["schemas"]["ServiceAttributes"] | null;
         };
+        /**
+         * BusinessUnderstanding
+         * @description What the coach understood about the business, from the owner's own words.
+         */
+        BusinessUnderstanding: {
+            /**
+             * Kind
+             * @description product (sells goods), service (does work for people), food (food or drink to eat), mixed (two of these), unknown (not clear yet)
+             * @default unknown
+             * @enum {string}
+             */
+            kind: "product" | "service" | "food" | "mixed" | "unknown";
+            /**
+             * What
+             * @description What it is, in the owner's words
+             * @default
+             */
+            what: string;
+            /** Offerings */
+            offerings?: string[];
+            /**
+             * Audience
+             * @description Who it is for
+             * @default
+             */
+            audience: string;
+            /**
+             * Customer Wants
+             * @description What a customer would want to know
+             */
+            customer_wants?: string[];
+            /** Extra Questions */
+            extra_questions?: components["schemas"]["ExtraQuestion"][];
+            /** Never Ask */
+            never_ask?: string[];
+            /**
+             * Search Group
+             * @default
+             */
+            search_group: string;
+            /**
+             * Confidence
+             * @default 0
+             */
+            confidence: number;
+            /**
+             * Owner Kind
+             * @default false
+             */
+            owner_kind: boolean;
+        };
         /** ChallengeRequest */
         ChallengeRequest: {
             /** Business Id */
             business_id: string;
             /** Consent */
             consent: boolean;
+            /** Exclude Prompts */
+            exclude_prompts?: string[] | null;
         };
         /** ChatSummary */
         ChatSummary: {
@@ -3514,6 +3756,8 @@ export interface components {
             demo_shop: boolean;
             /** Photo Url */
             photo_url?: string | null;
+            /** Icon Url */
+            icon_url?: string | null;
             /**
              * Photo Authors
              * @default []
@@ -3569,6 +3813,30 @@ export interface components {
             accepted: boolean;
             /** Enabled */
             enabled: boolean;
+        };
+        /** ExtraQuestion */
+        ExtraQuestion: {
+            /**
+             * Key
+             * @description snake_case key
+             */
+            key: string;
+            /**
+             * Question
+             * @description How to ask the owner, plain English
+             */
+            question: string;
+            /**
+             * Label
+             * @description Short label customers see
+             * @default
+             */
+            label: string;
+            /**
+             * Confidence
+             * @default 0
+             */
+            confidence: number;
         };
         /** Feature */
         Feature: {
@@ -4079,6 +4347,11 @@ export interface components {
             /** Signed In */
             signed_in: boolean;
             /**
+             * Guest
+             * @default false
+             */
+            guest: boolean;
+            /**
              * Name
              * @default
              */
@@ -4127,6 +4400,18 @@ export interface components {
             business?: components["schemas"]["BusinessFields"] | null;
             /** Products */
             products?: components["schemas"]["ProductFields"][];
+            /** Skipped */
+            skipped?: ("hours" | "photo" | "face")[];
+            /**
+             * Photo
+             * @default false
+             */
+            photo: boolean;
+            /** Live Id */
+            live_id?: string | null;
+            understanding?: components["schemas"]["BusinessUnderstanding"] | null;
+            /** Asked Extra */
+            asked_extra?: string[];
         };
         /** NewThread */
         NewThread: {
@@ -4440,6 +4725,8 @@ export interface components {
             demo_shop: boolean;
             /** Photo Url */
             photo_url?: string | null;
+            /** Icon Url */
+            icon_url?: string | null;
             /**
              * Photo Authors
              * @default []
@@ -5313,6 +5600,16 @@ export interface components {
              * @default
              */
             reward: string;
+            /**
+             * Stamps
+             * @default 0
+             */
+            stamps: number;
+            /**
+             * Slots
+             * @default 0
+             */
+            slots: number;
         };
         /** SimAction */
         SimAction: {
@@ -6195,7 +6492,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "purchase_order" | "supply_rules" | "chart" | "action" | "payment_link";
+            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "draft" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "purchase_order" | "supply_rules" | "chart" | "action" | "payment_link";
             /**
              * Session Id
              * @default null
@@ -6249,6 +6546,11 @@ export interface components {
              * @default false
              */
             google_guide: boolean;
+            /**
+             * Guest Customer
+             * @default false
+             */
+            guest_customer: boolean;
         };
     };
     responses: never;
@@ -6718,11 +7020,34 @@ export interface operations {
             };
         };
     };
+    classify_photo_api_v1_photos_classify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
     photo_api_v1_photos_post: {
         parameters: {
             query?: {
                 business_id?: string | null;
                 currency?: string | null;
+                language?: string;
             };
             header?: never;
             path?: never;
@@ -6958,6 +7283,236 @@ export interface operations {
             path: {
                 business_id: string;
                 photo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    icon_status_api_v1_businesses__business_id__icon_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_icon_api_v1_businesses__business_id__icon_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_icon_api_v1_businesses__business_id__icon_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_icon_api_v1_businesses__business_id__icon_generate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    icon_from_gallery_api_v1_businesses__business_id__icon_from_gallery__photo_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                photo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    owner_icon_api_v1_businesses__business_id__icon__icon_id__jpg_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                icon_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_icon_api_v1_public_shops__business_id__icon__icon_id__jpg_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                icon_id: string;
             };
             cookie?: never;
         };
@@ -7979,6 +8534,38 @@ export interface operations {
             };
         };
     };
+    unblock_conversation_api_v1_businesses__business_id__inquiries__inquiry_id__unblock_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                inquiry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inquiry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     customer_translation_api_v1_public_shops__business_id__inquiries__inquiry_id__messages__message_id__translation_post: {
         parameters: {
             query?: never;
@@ -8187,6 +8774,26 @@ export interface operations {
                     "application/json": {
                         [key: string]: boolean;
                     };
+                };
+            };
+        };
+    };
+    local_guest_api_v1_customer_guest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
                 };
             };
         };
@@ -8727,8 +9334,10 @@ export interface operations {
     };
     find_place_api_v1_discover_place_get: {
         parameters: {
-            query: {
-                q: string;
+            query?: {
+                q?: string | null;
+                lat?: number | null;
+                lng?: number | null;
             };
             header?: never;
             path?: never;
@@ -11180,6 +11789,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    face_warmup_api_v1_face_warmup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    face_warmup_api_v1_face_warmup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

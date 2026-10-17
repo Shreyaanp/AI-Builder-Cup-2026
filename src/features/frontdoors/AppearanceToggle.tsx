@@ -21,8 +21,9 @@ const labels: Record<Locale, { light: string; dark: string }> = {
   fil: { light: 'Lumipat sa light mode', dark: 'Lumipat sa dark mode' },
 }
 
-/** Customer pages: one tap between light and dark (remembered with the other preferences). */
-export function AppearanceToggle() {
+/** Customer pages: one tap between light and dark (remembered with the other preferences).
+ * `inline` sits in a page's own header row instead of floating top-right. */
+export function AppearanceToggle({ inline = false }: { inline?: boolean }) {
   const dark = useTheme().palette.mode === 'dark'
   const dispatch = usePreferencesDispatch()
   const t = labels[useLocale()] ?? labels.en
@@ -32,18 +33,22 @@ export function AppearanceToggle() {
       <IconButton
         aria-label={label}
         onClick={() => dispatch({ type: 'appearance', appearance: dark ? 'light' : 'dark' })}
-        sx={{
-          position: 'fixed',
-          top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
-          right: 'calc(env(safe-area-inset-right, 0px) + 8px)',
-          zIndex: 1200,
-          width: 48,
-          height: 48,
-          bgcolor: 'background.paper',
-          border: 1,
-          borderColor: 'divider',
-          '&:hover': { bgcolor: 'background.paper' },
-        }}
+        sx={
+          inline
+            ? { width: 48, height: 48 }
+            : {
+                position: 'fixed',
+                top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
+                right: 'calc(env(safe-area-inset-right, 0px) + 8px)',
+                zIndex: 1200,
+                width: 48,
+                height: 48,
+                bgcolor: 'background.paper',
+                border: 1,
+                borderColor: 'divider',
+                '&:hover': { bgcolor: 'background.paper' },
+              }
+        }
       >
         {dark ? <Sun size={20} /> : <Moon size={20} />}
       </IconButton>

@@ -21,7 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from . import shop_today
 from .auth import Principal
-from .community_routes import community, customer, display_name, identity
+from .community_routes import community, customer, display_name, identity, signed_customer
 from .customer_routes import shared
 from .discover import distance
 from .games import (
@@ -58,6 +58,7 @@ from .passport import (
     QuestStop,
     Requirement,
     ScratchTicket,
+    ShopProgress,
     StampRecord,
     Streak,
     Visit,
@@ -88,6 +89,7 @@ from .passport import (
     valid_qr_key,
     week_of,
 )
+from .region import shop_zone
 from .rescue_feed import find_rescue, held
 
 log = structlog.get_logger()
@@ -186,6 +188,11 @@ class ShopStamp(BaseModel):
     needed: int = 8
     welcome: int = WELCOME_STAMPS
     reward: str = ""
+    # The one count every screen shows for this card (shop button, card, passport): the welcome
+    # stamps plus this customer's stamps, out of `slots` (needed + welcome). Both are 0 when the
+    # shop has no stamp card (no reward set).
+    stamps: int = 0
+    slots: int = 0
 
 
 class AreaView(BaseModel):
@@ -428,11 +435,14 @@ async def perk_views(
     for bid, shop in shops.items():
         progress = state.shops[bid]
         needed = int(shop.get("stamps_needed") or 8)
+        stamps_enabled = bool(
+            shop.get("stamps_enabled") if "stamps_enabled" in shop else shop.get("reward_text")
+        )
         for perk in await shop_perks(request, bid, shop):
             trigger = perk["trigger"]
             unlocked = (
                 (trigger == "regular" and regular and len(progress.days) >= 2)
-                or (trigger == "full_card" and progress.card >= needed)
+                or (trigger == "full_card" and stamps_enabled and progress.card >= needed)
                 or (trigger == "quest_finale" and bid in state.finale_shops)
                 or (trigger == "rescue_hero" and progress.rescues >= 3)
                 or (trigger == "third_visit" and len(progress.days) >= 3)
@@ -629,28 +639,61 @@ def next_reward(
     level: LevelView,
 ) -> NextReward | None:
     """The closest named reward: a shop card, then a collection set, else the next level."""
-    options: list[tuple[int, int, NextReward]] = []
+    cards: list[NextReward] = []
     for bid, shop in shops.items():
+        stamps_enabled = bool(
+            shop.get("stamps_enabled") if "stamps_enabled" in shop else shop.get("reward_text")
+        )
         reward = str(shop.get("reward_text") or "")
         progress = state.shops[bid]
-        if not reward or not progress.card:
+        if not stamps_enabled or not reward or not progress.card:
             continue
         left = max(0, int(shop.get("stamps_needed") or 8) - progress.card)
         card = NextReward(
             kind="card", left=left, reward=reward[:120], shop_id=bid, shop_name=progress.name
         )
-        options.append((left, 0, card))
-    for view in sets:
-        if not view.done and view.have and not view.festival:
-            left = view.need - view.have
-            options.append((left, 1, NextReward(kind="set", left=left, reward=view.id)))
+        cards.append(card)
+    if cards:
+        # A shop's stamp card always outranks a set: it is the reward the owner promised.
+        return min(cards, key=lambda card: card.left)
+    options = [
+        NextReward(kind="set", left=view.need - view.have, reward=view.id)
+        for view in sets
+        if not view.done and view.have and not view.festival
+    ]
     if options:
-        return min(options, key=lambda option: (option[0], option[1]))[2]
+        return min(options, key=lambda option: option.left)
     requirement = level.next_requirement
     if level.next and requirement:
         left = max(0, requirement.need - requirement.have)
         return NextReward(kind="level", left=left, reward=level.next)
     return None
+
+
+def shop_stamp(bid: str, p: ShopProgress, shop: dict[str, Any]) -> ShopStamp:
+    """One shop in the passport, with the card count every screen shows (welcome included)."""
+    needed = int(shop.get("stamps_needed") or 8)
+    enabled = bool(
+        shop.get("stamps_enabled") if "stamps_enabled" in shop else shop.get("reward_text")
+    )
+    return ShopStamp(
+        id=bid,
+        name=p.name,
+        area=p.area,
+        area_name=p.area_name,
+        category=p.category,
+        demo=p.demo,
+        visits=p.visits,
+        days=len(p.days),
+        card=p.card,
+        claimed=p.claimed,
+        rescues=p.rescues,
+        last_day=(p.days or [""])[-1],
+        needed=needed,
+        reward=str(shop.get("reward_text") or "")[:120] if enabled else "",
+        stamps=WELCOME_STAMPS + min(p.card, needed) if enabled else 0,
+        slots=WELCOME_STAMPS + needed if enabled else 0,
+    )
 
 
 async def build_view(
@@ -672,22 +715,7 @@ async def build_view(
     nearby = await nearby_shops(request, lat, lng)
     data = await recent_shops(request, state)
     shops = [
-        ShopStamp(
-            id=bid,
-            name=p.name,
-            area=p.area,
-            area_name=p.area_name,
-            category=p.category,
-            demo=p.demo,
-            visits=p.visits,
-            days=len(p.days),
-            card=p.card,
-            claimed=p.claimed,
-            rescues=p.rescues,
-            last_day=(p.days or [""])[-1],
-            needed=int((data.get(bid) or {}).get("stamps_needed") or 8),
-            reward=str((data.get(bid) or {}).get("reward_text") or "")[:120],
-        )
+        shop_stamp(bid, p, data.get(bid) or {})
         for bid, p in sorted(state.shops.items(), key=lambda kv: kv[1].days[-1:], reverse=True)
     ]
     areas: dict[str, AreaView] = {}
@@ -753,7 +781,7 @@ async def build_view(
 
 
 async def post_board(request: Request, principal: Principal, state: PassportState) -> None:
-    if not state.leaderboard or flagged(state, time.time()):
+    if principal.guest or not state.leaderboard or flagged(state, time.time()):
         return
     service = passports(request)
     week = week_of(local_now("UTC", time.time()).date())
@@ -853,7 +881,7 @@ async def stamp(body: StampInput, request: Request) -> StampResult:
     log.info("passport_stamp", verdict=outcome.verdict, demo=outcome.demo, sets=len(sets))
     if outcome.verdict in ("stamped", "card_only"):
         # Daily totals for the owner's Today page; no customer is identified.
-        zone = str(shop.get("timezone") or "Asia/Singapore")
+        zone = shop_zone(shop)
         returning = outcome.verdict == "stamped" and not outcome.first
         metrics: list[shop_today.Metric] = ["stamps", "returning"] if returning else ["stamps"]
         with contextlib.suppress(Exception):
@@ -866,7 +894,7 @@ async def stamp(body: StampInput, request: Request) -> StampResult:
         passport=await build_view(
             request,
             state,
-            signed_in=True,
+            signed_in=not principal.guest,
             lat=body.lat,
             lng=body.lng,
             timezone=str(shop.get("timezone") or "UTC"),
@@ -882,6 +910,8 @@ async def check(body: PublicStampInput, request: Request) -> StampResult:
     """Signed-out scan: the same checks, a signed receipt for the phone, nothing stored. The
     phone's earlier receipts are replayed first, so a second scan today is not a first visit."""
     await enforce_limits(request, [("passport", client_ip(request))], anonymous=True)
+    if request.app.state.v1_settings.guest_customer:
+        return await stamp(StampInput(**body.model_dump(exclude={"receipts"})), request)
     shop, visit = await verified_visit(request, body, None)
     state = PassportState()
     for _, earlier in await receipt_visits(request, body.receipts):
@@ -929,13 +959,21 @@ async def receipt_visits(request: Request, receipts: list[str]) -> list[tuple[st
     return found
 
 
-def apply_cards(state: PassportState, cards: dict[str, int], shops: dict[str, Any]) -> None:
+def apply_cards(
+    state: PassportState, cards: dict[str, int], shops: dict[str, Any], *, exact: bool = False
+) -> None:
+    """This phone's stamp cards. On merge they only ever raise the account's card; signed out
+    (`exact`) the phone's card is the card, so a reward claimed on the phone resets it here too
+    and every screen shows the same count."""
     for bid, count in cards.items():
         shop = shops.get(bid)
-        if shop is None or not isinstance(count, int) or count <= 0:
+        if shop is None or not isinstance(count, int) or count < 0:
+            continue
+        if count == 0 and not (exact and bid in state.shops):
             continue
         progress = shop_progress(state, bid, shop)
-        progress.card = max(progress.card, min(count, int(shop.get("stamps_needed") or 8)))
+        count = min(count, int(shop.get("stamps_needed") or 8))
+        progress.card = count if exact else max(progress.card, count)
 
 
 @router.post("/public/passport/preview", response_model=PassportView)
@@ -956,7 +994,7 @@ async def preview(
     for bid in list(body.cards)[:100]:
         if bid not in shops:
             shops[bid] = await anyio.to_thread.run_sync(store(request).public_shop, bid)
-    apply_cards(state, body.cards, {k: v for k, v in shops.items() if v})
+    apply_cards(state, body.cards, {k: v for k, v in shops.items() if v}, exact=True)
     return await build_view(
         request, state, signed_in=False, device_only=True, lat=lat, lng=lng, timezone=tz
     )
@@ -989,12 +1027,19 @@ async def merge(
         for visit in fresh:
             visit.own_shop = visit.shop_id in owned
             apply_visit(state, visit)
-        apply_cards(state, body.cards, {k: v for k, v in shops.items() if v})
+        if not request.app.state.v1_settings.guest_customer:
+            apply_cards(state, body.cards, {k: v for k, v in shops.items() if v})
 
     state, _ = await anyio.to_thread.run_sync(service.edit, principal.uid, edit)
     await post_board(request, principal, state)
     return await build_view(
-        request, state, signed_in=True, lat=lat, lng=lng, timezone=tz, uid=principal.uid
+        request,
+        state,
+        signed_in=not principal.guest,
+        lat=lat,
+        lng=lng,
+        timezone=tz,
+        uid=principal.uid,
     )
 
 
@@ -1005,7 +1050,13 @@ async def passport(
     principal = await customer(request)
     state = await anyio.to_thread.run_sync(passports(request).get, principal.uid)
     return await build_view(
-        request, state, signed_in=True, lat=lat, lng=lng, timezone=tz, uid=principal.uid
+        request,
+        state,
+        signed_in=not principal.guest,
+        lat=lat,
+        lng=lng,
+        timezone=tz,
+        uid=principal.uid,
     )
 
 
@@ -1028,7 +1079,7 @@ async def erase_passport(request: Request) -> dict[str, bool]:
 @router.post("/customer/passport/shops/{business_id}/claim", response_model=PassportView)
 async def claim(business_id: str, request: Request) -> PassportView:
     """Counter staff saw the full card: it starts again."""
-    principal = await customer(request)
+    principal = await signed_customer(request)
     shop = await shared(request, business_id)
     needed = int(shop.get("stamps_needed") or 8)
     state, claimed = await anyio.to_thread.run_sync(
@@ -1036,7 +1087,7 @@ async def claim(business_id: str, request: Request) -> PassportView:
     )
     if not claimed:
         raise HTTPException(409, "CARD_NOT_FULL")
-    return await build_view(request, state, signed_in=True, uid=principal.uid)
+    return await build_view(request, state, signed_in=not principal.guest, uid=principal.uid)
 
 
 # --- Rescue collected (QR at pickup) ---
@@ -1046,7 +1097,7 @@ async def claim(business_id: str, request: Request) -> PassportView:
 async def collect_rescue(body: RescueStampInput, request: Request) -> StampResult:
     """Scanning the shop QR during the pickup window collects what this customer held in chat:
     leaf stamp, a rescued meal and the money saved."""
-    principal = await customer(request)
+    principal = await signed_customer(request)
     await enforce_limits(request, [("passport", principal.uid)], anonymous=True)
     shop, visit = await verified_visit(request, body, principal.uid)
     now = time.time()
@@ -1069,7 +1120,12 @@ async def collect_rescue(body: RescueStampInput, request: Request) -> StampResul
     return StampResult(
         outcome=outcome,
         passport=await build_view(
-            request, state, signed_in=True, lat=body.lat, lng=body.lng, uid=principal.uid
+            request,
+            state,
+            signed_in=not principal.guest,
+            lat=body.lat,
+            lng=body.lng,
+            uid=principal.uid,
         ),
     )
 
@@ -1142,7 +1198,7 @@ class BoardInput(BaseModel):
 
 @router.put("/customer/passport/leaderboard", response_model=PassportView)
 async def join_board(body: BoardInput, request: Request) -> PassportView:
-    principal = await customer(request)
+    principal = await signed_customer(request)
     service = passports(request)
 
     def edit(state: PassportState) -> None:
@@ -1154,23 +1210,27 @@ async def join_board(body: BoardInput, request: Request) -> PassportView:
     else:
         for area in state.week_points:
             await anyio.to_thread.run_sync(service.leave_board, principal.uid, area)
-    return await build_view(request, state, signed_in=True, uid=principal.uid)
+    return await build_view(request, state, signed_in=not principal.guest, uid=principal.uid)
 
 
 @router.get("/customer/passport/board", response_model=Board)
 async def board(
     request: Request, area: str = "", lat: float | None = None, lng: float | None = None
 ) -> Board:
-    principal = await customer(request)
+    principal = await signed_customer(request)
     service = passports(request)
     state = await anyio.to_thread.run_sync(service.get, principal.uid)
     if not area and lat is not None and lng is not None:
         area = geohash(lat, lng)
     if not area:
         area = max(state.week_points, key=lambda a: sum(state.week_points[a].values()), default="")
-    if not area or len(area) > 12:
-        raise HTTPException(422, "Choose an area.")
+    if not area:
+        shop_areas = [p.area for p in state.shops.values() if p.area]
+        if shop_areas:
+            area = shop_areas[0]
     week = week_of(local_now("UTC", time.time()).date())
+    if not area or len(area) > 12:
+        return Board(area="", week=week, joined=state.leaderboard, rows=[], you=None)
     rows = await anyio.to_thread.run_sync(service.board, area, week)
     me = member_id(principal.uid)
     entries = [{**row, "you": key == me} for key, row in rows.items()]

@@ -1,6 +1,7 @@
 import type { components } from '../../../api/generated'
 import type { Business, Product } from '../api'
 import { hasHours } from '../../shop/hoursModel'
+import { closingMinutes, shopNow } from '../../owner/time'
 import { isFood, missingFacts, timeRanges, type AskFact } from '../shopProgress'
 import type { DayPart } from './todayCopy'
 
@@ -9,9 +10,13 @@ export type CoachLine = components['schemas']['CoachLine']
 type Pulse = components['schemas']['Pulse']
 type TodayHints = components['schemas']['TodayHints']
 
-export type StepId = 'items' | 'category' | 'location' | 'hours' | 'phone' | 'share'
+export type StepId =
+  'items' | 'category' | 'location' | 'hours' | 'photo' | 'phone' | 'share' | 'face'
+/** Reminders for what onboarding let the owner skip; not part of the setup progress. */
+const REMINDERS: StepId[] = ['photo', 'face']
 export type Need =
   | { id: string; kind: 'reply'; count: number }
+  | { id: string; kind: 'closeDay' }
   | { id: string; kind: 'menu' }
   | { id: string; kind: 'low'; item: string; left: number }
   | { id: string; kind: 'soldOut'; items: Product[] }
@@ -48,7 +53,19 @@ export interface TodayInput {
   facts: TodayFacts | null
   /** The daily menu question was answered (or confirmed) today. */
   menuAnswered: boolean
+  /** The day was closed today by the owner. */
+  dayClosed?: boolean
   now: Date
+  /** The owner's face check (null while unknown): skipped at onboarding → a reminder. */
+  face?: 'not_started' | 'verified' | 'in_review' | 'not_verified' | null
+}
+
+export function isCloseDayWindow(fields: Business['fields'], now: Date): boolean {
+  const tz = fields.timezone || 'Asia/Singapore'
+  const currentMinutes = shopNow(tz, now.getTime()).minutes
+  const close = closingMinutes(fields, tz)
+  const threshold = close !== null ? Math.max(0, close - 60) : 19 * 60
+  return currentMinutes >= threshold
 }
 
 const MAX_NEEDS = 3
@@ -59,16 +76,28 @@ export function dayPart(now: Date): DayPart {
   return hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'
 }
 
-/** Setup steps still missing, in the order the owner should do them. */
-export function missingSteps(shop: TodayInput['shop'], products: Product[]): StepId[] {
+/**
+ * Setup steps still missing, in the order the owner should do them. Onboarding never asks the
+ * menu (owner decision, 17 Oct), so "Add your menu" comes first; hours, the shop photo and the
+ * face check come back here when onboarding skipped them.
+ */
+export function missingSteps(
+  shop: TodayInput['shop'],
+  products: Product[],
+  face: TodayInput['face'] = null,
+): StepId[] {
   const f = shop.fields
   const steps: [StepId, boolean][] = [
     ['items', products.length === 0],
     ['category', !f.category.trim()],
-    ['location', !f.location.trim()],
+    // A GPS pin is a place too (onboarding pins the shop; the address may stay empty).
+    ['location', !f.location.trim() && f.lat == null],
     ['hours', !hasHours(f)],
     ['phone', !f.phone.trim()],
     ['share', !shop.public],
+    // Reminders last: what the owner put off is never more urgent than what the shop lacks.
+    ['photo', !shop.gallery?.length],
+    ['face', face === 'not_started' || face === 'not_verified'],
   ]
   return steps.filter(([, missing]) => missing).map(([id]) => id)
 }
@@ -78,9 +107,24 @@ export function missingSteps(shop: TodayInput['shop'], products: Product[]): Ste
  * until the shop playbook (per-shop goals and key metrics) is available; then it leads.
  */
 export function metricsFor(shop: TodayInput['shop'], hints?: TodayHints | null): Metric[] {
+  const hasStamps = Boolean(shop.fields.reward_text?.trim())
   const base: Metric[] = isFood(shop.fields)
-    ? ['sales', 'items', 'views', 'questions', 'returning', 'stamps']
-    : ['sales', 'questions', 'views', 'returning', 'stamps', 'items']
+    ? [
+        'sales',
+        'items',
+        'views',
+        'questions',
+        'returning',
+        ...(hasStamps ? (['stamps'] as Metric[]) : []),
+      ]
+    : [
+        'sales',
+        'questions',
+        'views',
+        'returning',
+        ...(hasStamps ? (['stamps'] as Metric[]) : []),
+        'items',
+      ]
   const first = (hints?.pulse ?? []).filter((key): key is Metric => base.includes(key as Metric))
   return [...new Set([...first, ...base])]
 }
@@ -88,6 +132,7 @@ export function metricsFor(shop: TodayInput['shop'], hints?: TodayHints | null):
 // The playbook's "needs you now" kinds, mapped onto what Today can show.
 const NEED_HINT: Record<Need['kind'], TodayHints['needs_you'][number] | null> = {
   reply: 'questions',
+  closeDay: null,
   menu: 'menu_check',
   low: 'low_stock',
   soldOut: null,
@@ -128,10 +173,10 @@ function pulseLine(pulse: Pulse, when: PulseLine['when'], order: Metric[]): Puls
 export function todayPlan(input: TodayInput): TodayPlan {
   const { shop, products, unread, facts } = input
   const food = isFood(shop.fields)
-  const steps = missingSteps(shop, products)
+  const steps = missingSteps(shop, products, input.face)
   // Same six checks as the readiness list (name, kind, address, hours, phone, items).
   const total = 6
-  const done = total - steps.filter((step) => step !== 'share').length
+  const done = total - steps.filter((step) => step !== 'share' && !REMINDERS.includes(step)).length
   const metrics = metricsFor(shop, facts?.hints)
   const pulse = facts
     ? (pulseLine(facts.yesterday, 'yesterday', metrics) ?? pulseLine(facts.today, 'today', metrics))
@@ -142,10 +187,17 @@ export function todayPlan(input: TodayInput): TodayPlan {
     : null
   // Without facts yet (loading or unavailable), a shop with no menu is still clearly day one.
   const fresh = facts ? !pulse && !forecast : products.length === 0
-  const dayOne = fresh && steps.length ? { step: steps[0]! } : null
+  // Reminders (photo, face check) never make a set-up shop look like day one again.
+  const setup = steps.filter((step) => !REMINDERS.includes(step))
+  const dayOne = fresh && setup.length ? { step: setup[0]! } : null
+
+  const serverClosed = Boolean(facts && (facts.today.sales != null || facts.today.items != null))
+  const isClosed = Boolean(input.dayClosed || serverClosed)
+  const closeWindow = isCloseDayWindow(shop.fields, input.now)
 
   const all: Need[] = []
   if (unread) all.push({ id: 'reply', kind: 'reply', count: unread })
+  if (closeWindow && !isClosed) all.push({ id: 'close-day', kind: 'closeDay' })
   if (products.length && facts && shop.last_confirmed !== facts.date && !input.menuAnswered)
     all.push({ id: 'menu', kind: 'menu' })
   const soldOut = products.filter((product) => product.available === false)

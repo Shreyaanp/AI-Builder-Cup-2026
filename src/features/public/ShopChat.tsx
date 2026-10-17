@@ -17,6 +17,8 @@ import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
 import { formatPrice } from '../v1/format'
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 import { CustomerConversation } from './CustomerConversation'
 import { accessKey, readAccess, type ThreadAccess } from './threadAccess'
 import { useCustomer } from '../customer/account'
@@ -72,6 +74,7 @@ export function ShopChat({
   copy: CustomerCopy
 }) {
   const locale = useLocale()
+  const shopCopy = useShopCopy()
   const roles = useTheme().material
   const [access, setAccess] = useState<ThreadAccess | null>(() => readAccess(id))
   const [entries, setEntries] = useState<{ list: Entry[]; facts: string }>({ list: [], facts })
@@ -86,7 +89,7 @@ export function ShopChat({
   const contactInput = useRef<HTMLTextAreaElement>(null)
   const account = useCustomer()
   const accountCopy = useAccountCopy()
-  const signedIn = account.status === 'signed-in'
+  const signedIn = account.status === 'signed-in' || account.status === 'guest'
   // A signed-in customer's existing chat with this shop (one per shop, like a messaging app).
   const [existing, setExisting] = useState<ChatSummary | null>(null)
   const { api } = account
@@ -235,7 +238,8 @@ export function ShopChat({
                 </Typography>
                 {entry.answer.price != null && (
                   <Typography variant="titleMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {formatPrice(entry.answer.price, currency)} / {entry.answer.unit}
+                    {formatPrice(entry.answer.price, currency)} /{' '}
+                    {unitLabel(entry.answer.unit ?? '', shopCopy)}
                   </Typography>
                 )}
                 <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -294,7 +298,9 @@ export function ShopChat({
           ) : (
             <>
               <Typography variant="bodySmall" color="text.secondary">
-                {accountCopy.signedInAs.replace('{name}', account.name)}
+                {account.status === 'guest'
+                  ? account.name
+                  : accountCopy.signedInAs.replace('{name}', account.name)}
               </Typography>
               <TextField
                 label={t.customerMessage}

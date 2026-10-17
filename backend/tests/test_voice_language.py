@@ -48,7 +48,8 @@ def test_live_run_config_and_instruction_carry_the_locale(tag: str, code: str, n
     finally:
         ui_language.reset(token)
     assert f"Always speak and write in {name} ({code})." in rule
-    assert f"If the owner mixes languages, still reply in {name}." in rule
+    assert f"understand it and still reply only in {name}" in rule
+    assert "never a mix" in rule
     assert "Never switch to another language or dialect (e.g. Bhojpuri, Maithili, Urdu)" in rule
 
 
@@ -109,3 +110,13 @@ def test_voice_socket_reads_the_lang_query(lang: str | None, hindi: bool) -> Non
                 if event["kind"] == "reply":
                     replies.append(event["text"])
     assert bool(DEVANAGARI.search(" ".join(replies))) is hindi
+
+
+def test_hindi_is_written_in_devanagari_never_romanized() -> None:
+    """Live eval (plumber): a Hindi onboarding asked "kya aap abhi apni dukan par hain?"."""
+    from app.reply_language import language_rule
+
+    assert "Devanagari script, never in Roman letters" in language_rule(reply_language("hi"))
+    assert "Tamil script" in language_rule(reply_language("ta"))
+    assert "Roman letters" not in language_rule(reply_language("en"))
+    assert "Roman letters" not in language_rule(reply_language("ms"))

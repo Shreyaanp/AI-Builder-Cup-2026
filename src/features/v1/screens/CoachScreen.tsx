@@ -1,5 +1,14 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
 import { photoCopy } from '../../coach/photoCopy'
+import { PlainText, RichText } from '../../../design/RichText'
+import { stripMarkdown } from '../../../design/markdownUtils'
+import {
+  isPhotoRoute,
+  PHOTO_ROUTES,
+  photoRouteCopy,
+  type PhotoRoute,
+} from '../../coach/photoRouteCopy'
+import { CloseDay, type Kind as DayKind } from '../../closeday/CloseDay'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent, ReactElement } from 'react'
 import {
@@ -47,7 +56,7 @@ import {
 } from 'lucide-react'
 import { visuallyHidden } from '@mui/utils'
 import { CoachChart, type CoachChartData } from '../CoachChart'
-import { RateLimitError, streamCoach } from '../../../api/stream'
+import { RateLimitError, streamCoach, TooSlowError, TURN_IDLE_MS } from '../../../api/stream'
 import type { CoachEvent } from '../../../api/stream'
 import { useIdentity } from '../../../auth/useIdentity'
 import { useLocale } from '../../../state/hooks'
@@ -68,6 +77,7 @@ import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
 import { useVoice } from '../useVoice'
+import { useOnboardingCopy } from '../onboardingCopy'
 import { useSpokenReveal } from '../useSpokenReveal'
 import { cardWords, mergeTranscript } from '../speechReveal'
 import { useOnline } from '../useOnline'
@@ -129,6 +139,8 @@ const SHEETS: Partial<Record<CoachAction['target'], ShopSheetKind>> = {
   sold_out: 'soldOut',
   menu: 'menu',
   details: 'details',
+  // The shop icon card sits at the top of the details sheet.
+  icon: 'details',
   stamps: 'details',
   plan: 'plan',
   games: 'customer',
@@ -181,6 +193,7 @@ function CoachScreen({
   setGalleryPhoto: (value: GalleryPhoto | null) => void
 }) {
   const t = useCopy()
+  const o = useOnboardingCopy()
   const theme = useTheme()
   const roles = theme.material
   const identity = useIdentity()
@@ -211,6 +224,7 @@ function CoachScreen({
   const receiveOrder = useReceiveOrder()
   // My shop sheets opened from suggestion chips.
   const [shopSheet, setShopSheet] = useState<ShopSheetKind | null>(null)
+  const [closeDayOpen, setCloseDayOpen] = useState(false)
   const menuLinks = useRef<Message[]>([])
   // The menu item a "See … in your menu" link opened the menu at.
   const [menuFocus, setMenuFocus] = useState<string | null>(null)
@@ -241,6 +255,10 @@ function CoachScreen({
   const [sales, setSales] = useState<SalesImport | null>(null)
   const [connectOpen, setConnectOpen] = useState(false)
   const connectCopy = useConnectCopy()
+  // A chat photo waiting for the owner's one-line confirmation (kept until they choose).
+  const [sorting, setSorting] = useState<{ file: File; guess: PhotoRoute | null } | null>(null)
+  const [dayPhoto, setDayPhoto] = useState<{ kind: DayKind; file: File } | null>(null)
+  const routeText = photoRouteCopy(language)
   const importer = useImport({ onSales: setSales })
   const picking = useRef<'photo' | 'document'>('photo')
   const choices = touch || Boolean(ws.active)
@@ -544,10 +562,11 @@ function CoachScreen({
   async function speakReply(text: string) {
     speechSynthesis.cancel()
     speaking.current?.pause()
+    const cleanText = stripMarkdown(text)
     try {
       const response = await api<Response>('/tts', {
         method: 'POST',
-        body: JSON.stringify({ text, language }),
+        body: JSON.stringify({ text: cleanText, language }),
         raw: true,
       })
       if (response.status === 200) {
@@ -561,7 +580,7 @@ function CoachScreen({
     } catch {
       // Fall through to on-device speech.
     }
-    const utterance = utter(text, language)
+    const utterance = utter(cleanText, language)
     speechSynthesis.speak(utterance)
   }
 
@@ -596,6 +615,8 @@ function CoachScreen({
         },
         identity.getToken,
         (state) => setReconnecting(state === 'reconnecting'),
+        // No word for this long: thinking stops with "took too long" and the message to resend.
+        TURN_IDLE_MS,
       )
       if (controller.current !== abort) return
       // The model occasionally returns an empty turn; treat it like a failed reply so the
@@ -609,7 +630,13 @@ function CoachScreen({
       if (items && controller.current === abort) setHistory(items)
     } catch (cause) {
       if (!abort.signal.aborted) {
-        setError(cause instanceof RateLimitError ? t.rateLimited : t.replyFailed)
+        setError(
+          cause instanceof TooSlowError
+            ? o.tooSlow
+            : cause instanceof RateLimitError
+              ? t.rateLimited
+              : t.replyFailed,
+        )
         // Keep the unsent message available for a retry.
         setMessages((items) => items.slice(0, -1))
         setNote(message)
@@ -708,6 +735,54 @@ function CoachScreen({
     }
   }
 
+  // A photo in the normal chat: Gemini says what it shows, the owner confirms (or corrects) in one
+  // line, then it goes to the existing action. Before a shop exists the photo starts one directly.
+  async function receivePhoto(file: File) {
+    if (busy !== 'idle') return
+    setError('')
+    if (!PHOTO_TYPES.includes(file.type) || file.size > 20_000_000) {
+      setError(t.photoType)
+      return
+    }
+    if (!activeId) return uploadPhoto(file)
+    setBusy('photo')
+    setSorting(null)
+    const operation = new AbortController()
+    photoController.current = operation
+    let guess: PhotoRoute | null = null
+    try {
+      const result = await api<{ kind: string }>('/photos/classify', {
+        method: 'POST',
+        body: file,
+        headers: { 'Content-Type': file.type },
+        signal: AbortSignal.any([operation.signal, AbortSignal.timeout(60_000)]),
+      })
+      if (isPhotoRoute(result.kind)) guess = result.kind
+    } catch (cause) {
+      if (!alive.current || operation.signal.aborted) return
+      if (cause instanceof ApiError && cause.status === 429) setError(t.rateLimited)
+      else if (cause instanceof ApiError && cause.code === 'PHOTO_BLOCKED') {
+        setError(t.photoRefused)
+        return
+      }
+      // Any other failure: nobody guesses; the photo stays and the owner picks.
+    } finally {
+      setBusy('idle')
+      if (photoInput.current) photoInput.current.value = ''
+    }
+    if (alive.current && !operation.signal.aborted) setSorting({ file, guess })
+  }
+
+  function routePhoto(kind: PhotoRoute) {
+    if (!sorting) return
+    const { file } = sorting
+    setSorting(null)
+    if (kind === 'receipt') setDayPhoto({ kind: 'delivery', file })
+    else if (kind === 'till') setDayPhoto({ kind: 'sales', file })
+    else if (kind === 'shop_photo' && activeId) setGalleryPhoto({ file, businessId: activeId })
+    else void uploadPhoto(file)
+  }
+
   async function uploadPhoto(file: File) {
     if (busy !== 'idle') return
     setError('')
@@ -724,7 +799,8 @@ function CoachScreen({
       const query = activeId
         ? `?business_id=${encodeURIComponent(activeId)}`
         : `?currency=${defaultCurrency()}`
-      const result = await api<PhotoResult>(`/photos${query}`, {
+      // The notes about anything unclear come back in the owner's language.
+      const result = await api<PhotoResult>(`/photos${query}&language=${language}`, {
         method: 'POST',
         body: file,
         headers: { 'Content-Type': file.type },
@@ -836,7 +912,7 @@ function CoachScreen({
           variant="outlined"
           onClick={(event) => suggest(item.id, event.currentTarget)}
           sx={{
-            height: 40,
+            height: 48,
             px: 1,
             borderColor: roles.outlineVariant,
             '& .MuiChip-icon': { color: roles.primary },
@@ -856,6 +932,7 @@ function CoachScreen({
     openMessages: () => setShopSheet('messages'),
     openSoldOut: () => setShopSheet('soldOut'),
     talk: () => void restored.current.then(() => voice.start(session.current)),
+    openCloseDay: () => setCloseDayOpen(true),
   }
   const lastIsReply =
     messages.at(-1)?.role === 'assistant' && !liveReply && !reveal.active() && busy === 'idle'
@@ -959,6 +1036,36 @@ function CoachScreen({
 
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', pb: 4 }}>
         {ws.loadError && <LoadError />}
+        {sorting && (
+          <Alert severity="info" icon={false} sx={{ mb: 2 }}>
+            <Typography variant="titleSmall" role="status">
+              {sorting.guess ? routeText.looks(routeText.kinds[sorting.guess]) : routeText.unsure}
+            </Typography>
+            <Stack
+              direction="row"
+              role="group"
+              aria-label={routeText.group}
+              sx={{ gap: 2, flexWrap: 'wrap', mt: 2 }}
+            >
+              {PHOTO_ROUTES.map((kind) => (
+                <Chip
+                  key={kind}
+                  label={routeText.kinds[kind]}
+                  color={kind === sorting.guess ? 'primary' : 'default'}
+                  variant={kind === sorting.guess ? 'filled' : 'outlined'}
+                  onClick={() => routePhoto(kind)}
+                  sx={{ height: 40 }}
+                />
+              ))}
+              <Chip
+                label={routeText.notNow}
+                variant="outlined"
+                onClick={() => setSorting(null)}
+                sx={{ height: 40 }}
+              />
+            </Stack>
+          </Alert>
+        )}
         {galleryPhoto && galleryPhoto.businessId === ws.active?.id && (
           <Alert severity="info" sx={{ mb: 2 }}>
             <Typography variant="titleSmall">{photoText.galleryOffer}</Typography>
@@ -1185,6 +1292,7 @@ function CoachScreen({
                     message={{ role: 'assistant', text: liveReply }}
                     you={t.you}
                     coach={t.coach}
+                    streaming
                   />
                 )}
                 {busy === 'reply' && !reply && searching === null && (
@@ -1200,6 +1308,7 @@ function CoachScreen({
         <div ref={end} />
       </Box>
       <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
+      {dayPhoto && <CloseDay initial={dayPhoto} onClose={() => setDayPhoto(null)} />}
       <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
       <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
       <ShopSheets
@@ -1211,6 +1320,14 @@ function CoachScreen({
           setMenuFocus(null)
         }}
       />
+      {closeDayOpen && (
+        <CloseDay
+          onClose={() => {
+            setCloseDayOpen(false)
+            void ws.reload()
+          }}
+        />
+      )}
 
       <Box
         sx={{
@@ -1269,7 +1386,11 @@ function CoachScreen({
           }}
         >
           {voice.state !== 'idle' ? (
-            <IconButton aria-label={voice.muted ? t.unmute : t.mute} onClick={voice.toggleMute}>
+            <IconButton
+              aria-label={voice.muted ? t.unmute : t.mute}
+              onClick={voice.toggleMute}
+              sx={{ minWidth: 48, minHeight: 48 }}
+            >
               {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </IconButton>
           ) : (
@@ -1281,6 +1402,7 @@ function CoachScreen({
                   ref={photoButton}
                   aria-haspopup={choices ? 'menu' : undefined}
                   onClick={(event) => choosePhoto(event.currentTarget)}
+                  sx={{ minWidth: 48, minHeight: 48 }}
                 >
                   {busy === 'photo' || importer.busy ? (
                     <CircularProgress size={20} aria-label={t.checkingPhoto} />
@@ -1311,7 +1433,7 @@ function CoachScreen({
                   void importer.upload(file).finally(() => {
                     input.value = ''
                   })
-                else void uploadPhoto(file)
+                else void receivePhoto(file)
               }}
             />
           )}
@@ -1527,10 +1649,12 @@ function Bubble({
   message,
   you,
   coach,
+  streaming = false,
 }: {
   message: { role: 'user' | 'assistant'; text: string }
   you: string
   coach: string
+  streaming?: boolean
 }) {
   const roles = useTheme().material
   if (message.role === 'user')
@@ -1540,9 +1664,7 @@ function Bubble({
           <Typography component="span" sx={visuallyHidden}>
             {you}:{' '}
           </Typography>
-          <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-            {message.text}
-          </Typography>
+          <PlainText text={message.text} />
         </Box>
       </Box>
     )
@@ -1559,13 +1681,11 @@ function Bubble({
       >
         <Leaf size={18} />
       </Avatar>
-      <Box sx={{ minWidth: 0, pt: 0.5 }}>
+      <Box sx={{ minWidth: 0, pt: 0.5, flex: 1 }}>
         <Typography component="span" sx={visuallyHidden}>
           {coach}:{' '}
         </Typography>
-        <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-          {message.text}
-        </Typography>
+        <RichText content={message.text} streaming={streaming} />
       </Box>
     </Stack>
   )

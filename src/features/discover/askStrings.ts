@@ -8,7 +8,7 @@ const en = {
   speak: 'Speak',
   listening: 'Listening…',
   near: 'Near {place}',
-  here: 'you',
+  here: 'Nearby',
   change: 'Change',
   thinking: [
     'Understanding what you need…',
@@ -40,7 +40,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: 'बोलें',
     listening: 'सुन रहे हैं…',
     near: '{place} के पास',
-    here: 'आपके',
+    here: 'आस-पास',
     change: 'बदलें',
     thinking: [
       'आपकी ज़रूरत समझ रहे हैं…',
@@ -68,7 +68,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: 'বলুন',
     listening: 'শুনছি…',
     near: '{place}-এর কাছে',
-    here: 'আপনার',
+    here: 'কাছাকাছি',
     change: 'বদলান',
     thinking: ['আপনার দরকার বুঝছি…', 'কাছের দোকান দেখছি…', 'মেনু ও দাম তুলনা করছি…'],
     best: 'সবচেয়ে মানানসই',
@@ -92,7 +92,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: 'మాట్లాడండి',
     listening: 'వింటున్నాం…',
     near: '{place} దగ్గర',
-    here: 'మీ',
+    here: 'దగ్గరలో',
     change: 'మార్చండి',
     thinking: [
       'మీకు ఏం కావాలో అర్థం చేసుకుంటున్నాం…',
@@ -120,7 +120,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: 'बोला',
     listening: 'ऐकत आहोत…',
     near: '{place} जवळ',
-    here: 'तुमच्या',
+    here: 'जवळपास',
     change: 'बदला',
     thinking: [
       'तुमची गरज समजून घेत आहोत…',
@@ -148,7 +148,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: 'ಮಾತನಾಡಿ',
     listening: 'ಕೇಳುತ್ತಿದ್ದೇವೆ…',
     near: '{place} ಹತ್ತಿರ',
-    here: 'ನಿಮ್ಮ',
+    here: 'ಹತ್ತಿರದಲ್ಲಿ',
     change: 'ಬದಲಿಸಿ',
     thinking: [
       'ನಿಮ್ಮ ಅಗತ್ಯ ಅರಿಯುತ್ತಿದ್ದೇವೆ…',
@@ -177,7 +177,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: '说话',
     listening: '正在聆听…',
     near: '{place}附近',
-    here: '你',
+    here: '附近',
     change: '更改',
     thinking: ['正在理解你的需求…', '正在查看附近店铺…', '正在比较菜单和价格…'],
     best: '最佳匹配',
@@ -201,7 +201,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: 'Cakap',
     listening: 'Mendengar…',
     near: 'Berhampiran {place}',
-    here: 'anda',
+    here: 'Berdekatan',
     change: 'Tukar',
     thinking: [
       'Memahami keperluan anda…',
@@ -229,7 +229,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: 'பேசு',
     listening: 'கேட்கிறது…',
     near: '{place} அருகில்',
-    here: 'உங்கள்',
+    here: 'அருகில்',
     change: 'மாற்று',
     thinking: [
       'உங்கள் தேவையைப் புரிந்துகொள்கிறது…',
@@ -257,7 +257,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: '話す',
     listening: '聞いています…',
     near: '{place}の近く',
-    here: '現在地',
+    here: '周辺',
     change: '変更',
     thinking: [
       'ご希望を読み取っています…',
@@ -285,7 +285,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: '말하기',
     listening: '듣는 중…',
     near: '{place} 근처',
-    here: '내 위치',
+    here: '주변',
     change: '변경',
     thinking: [
       '원하는 것을 파악하고 있어요…',
@@ -313,7 +313,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: 'Bicara',
     listening: 'Mendengarkan…',
     near: 'Dekat {place}',
-    here: 'Anda',
+    here: 'Sekitar',
     change: 'Ubah',
     thinking: [
       'Memahami kebutuhan Anda…',
@@ -341,7 +341,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: 'พูด',
     listening: 'กำลังฟัง…',
     near: 'ใกล้ {place}',
-    here: 'คุณ',
+    here: 'บริเวณใกล้เคียง',
     change: 'เปลี่ยน',
     thinking: ['กำลังเข้าใจสิ่งที่คุณต้องการ…', 'กำลังดูร้านใกล้คุณ…', 'กำลังเทียบเมนูและราคา…'],
     best: 'ตรงที่สุด',
@@ -365,7 +365,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: 'Nói',
     listening: 'Đang nghe…',
     near: 'Gần {place}',
-    here: 'bạn',
+    here: 'gần đây',
     change: 'Đổi',
     thinking: [
       'Đang hiểu điều bạn cần…',
@@ -393,7 +393,7 @@ const translations: Partial<Record<Locale, Copy>> = {
     speak: 'Magsalita',
     listening: 'Nakikinig…',
     near: 'Malapit sa {place}',
-    here: 'iyo',
+    here: 'Malapit',
     change: 'Palitan',
     thinking: [
       'Inaalam ang kailangan mo…',

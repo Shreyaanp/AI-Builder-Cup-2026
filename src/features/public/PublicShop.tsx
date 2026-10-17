@@ -19,8 +19,10 @@ import { customerBack, customerNavigate } from '../frontdoors/navigation'
 import type { ReactNode } from 'react'
 import { type Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
-import { BrandSplash } from '../frontdoors/Splash'
+import { ShopSkeleton } from '../customer/Skeletons'
 import { PlaceImage } from '../frontdoors/PlaceImage'
+import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
+import { LanguagePicker } from '../frontdoors/LanguagePicker'
 import { discoverCopy } from '../discover/strings'
 import { loadScriptFont } from '../../i18n/fonts'
 import { formatPrice } from '../v1/format'
@@ -30,9 +32,11 @@ import type { ShopFacts } from '../v1/api'
 import { en as ownerEnglish } from '../v1/strings'
 import { translations as ownerTranslations } from '../v1/locales'
 import { HAND_FONT, shape } from '../../design/theme'
+import { chalkDust } from '../../design/chalkboard'
 import { chalkWrite } from '../../design/chalkMotion'
 import { ShopChat } from './ShopChat'
 import { recsEvent } from '../recs/events'
+import { useOnboardingCopy } from '../v1/onboardingCopy'
 import { FollowButton } from '../customer/FollowButton'
 import { Tips } from '../customer/Tips'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
@@ -49,10 +53,12 @@ import { VerifiedBadge } from '../trust/VerifiedBadge'
 import { unitLabel } from '../shop/units'
 import { rememberOpened } from '../discover/opened'
 import { SimilarNearby } from '../discover/SimilarNearby'
+import { shopRegion, shopZone } from '../../region/region'
 
 interface PublicShopData {
   id: string
   gallery?: string[]
+  icon?: string | null
   last_confirmed?: string | null
   timezone?: string
   name: string
@@ -63,6 +69,7 @@ interface PublicShopData {
   phone: string
   reward_text?: string
   stamps_needed?: number
+  stamps_enabled?: boolean
   /** ISO 4217 code the shop's prices are stored in. */
   currency?: string
   products: {
@@ -406,6 +413,7 @@ const publicTranslations: Record<Locale, Omit<typeof en, keyof CustomerCopy>> = 
 export default function PublicShop({ id }: { id: string }) {
   const locale = useLocale()
   const shopCopy = useShopCopy()
+  const o = useOnboardingCopy()
   const discovery = discoverCopy(locale)
   const freshnessCopy = locale === 'en' ? ownerEnglish : ownerTranslations[locale]
   const t = {
@@ -415,6 +423,12 @@ export default function PublicShop({ id }: { id: string }) {
   }
   const theme = useTheme()
   const roles = theme.material
+  // Controls over the photo: a frosted surface keeps them legible on any picture.
+  const frosted = {
+    bgcolor: `color-mix(in srgb, ${roles.surface} 78%, transparent)`,
+    backdropFilter: 'blur(10px)',
+    '&:hover': { bgcolor: roles.surface },
+  }
   const [shop, setShop] = useState<PublicShopData | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
   // Data shown may be older than the last attempt when a refresh failed (network/server).
@@ -525,7 +539,7 @@ export default function PublicShop({ id }: { id: string }) {
     return () => window.clearTimeout(timer)
   }, [changedPrices])
 
-  if (state === 'loading') return <BrandSplash />
+  if (state === 'loading') return <ShopSkeleton />
   if (state === 'error')
     return (
       <Stack spacing={2} sx={{ maxWidth: 480, mx: 'auto', px: 3, pt: 12, textAlign: 'center' }}>
@@ -562,7 +576,7 @@ export default function PublicShop({ id }: { id: string }) {
       </Stack>
     )
 
-  const currency = shop.currency ?? 'SGD'
+  const currency = shop.currency ?? shopRegion(shop).currency
   // The public API names owner-written facts `custom` (owner records use `custom_facts`).
   const custom =
     (shop.facts as (ShopFacts & { custom?: ShopFacts['custom_facts'] }) | undefined)?.custom ??
@@ -580,6 +594,7 @@ export default function PublicShop({ id }: { id: string }) {
   const story = custom.find((fact) => fact.key === 'story')?.value
   const menu = [...shop.products].sort((a, b) => Number(b.available) - Number(a.available))
   const openLabel = shop.open_now == null ? null : shop.open_now ? discovery.open : discovery.closed
+  const stampsEnabled = shop.stamps_enabled ?? Boolean(shop.reward_text?.trim())
   // Demo shops' numbers are fictional; never offer to call or message them.
   const phone = shop.demo ? '' : shop.phone
   const actions = [
@@ -609,96 +624,158 @@ export default function PublicShop({ id }: { id: string }) {
         maxWidth: 720,
         mx: 'auto',
         px: 4,
-        pt: 'calc(16px + env(safe-area-inset-top))',
-        // Room for the pinned chat bar.
-        pb: 'calc(104px + env(safe-area-inset-bottom))',
+        // Phones: the photo runs to the screen's top edge, under the status bar.
+        pt: { xs: 0, sm: 'calc(16px + env(safe-area-inset-top))' },
+        // Room for the pinned chat bar (prevents occlusion at 200% font zoom).
+        pb: 'calc(148px + env(safe-area-inset-bottom))',
       }}
     >
-      {/* Compact header: who, open or not, how to get there. The menu is the page. */}
-      <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+      {/* Back and controls: on phones they float over the photo in frosted circles and stay
+          pinned while the page scrolls, so Back is always one thumb away. 48px targets. */}
+      <Stack
+        direction="row"
+        sx={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          minHeight: 64,
+          mx: { xs: -2, sm: 0 },
+          pt: { xs: 'env(safe-area-inset-top, 0px)', sm: 0 },
+          mb: { xs: 'calc(-64px - env(safe-area-inset-top, 0px))', sm: 2 },
+          pointerEvents: 'none',
+          '& > *': { pointerEvents: 'auto' },
+        }}
+      >
         <IconButton
           component="a"
           href="/explore/"
           onClick={customerBack}
           aria-label={t.back}
-          sx={{ width: 48, height: 48, flexShrink: 0 }}
+          sx={{ width: 48, height: 48, flexShrink: 0, ...frosted }}
         >
           <ArrowLeft size={20} />
         </IconButton>
-        <Box
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ alignItems: 'center', flexShrink: 0, borderRadius: 999, ...frosted }}
+        >
+          <LanguagePicker variant="inline" />
+          <AppearanceToggle inline />
+        </Stack>
+      </Stack>
+
+      {/* Hero photo / artwork banner with fixed aspect ratio + object-fit */}
+      <Box
+        data-testid="shop-hero-banner"
+        sx={{
+          // Full-bleed on phones: the shop's photo is the first thing you see.
+          width: { xs: 'calc(100% + 32px)', sm: '100%' },
+          mx: { xs: -4, sm: 0 },
+          aspectRatio: '16/10',
+          maxHeight: { xs: 300, sm: 260 },
+          borderRadius: { xs: 0, sm: `${shape.xl}px` },
+          overflow: 'hidden',
+          bgcolor: roles.surfaceContainerHigh,
+          position: 'relative',
+          '& > div': { height: '100%' },
+          '& img': { height: '100%', width: '100%', objectFit: 'cover' },
+        }}
+      >
+        <PlaceImage
+          id={id}
+          category={shop.category}
+          photo={
+            shop.gallery?.[0]
+              ? `/api/v1/public/shops/${id}/photos/${shop.gallery[0]}.jpg`
+              : shop.icon
+                ? `/api/v1/public/shops/${id}/icon/${shop.icon}.jpg`
+                : undefined
+          }
+          eager
+          transition
+          compact
+        />
+      </Box>
+
+      {/* Prominent Shop Name (full width, unclipped in English, Hindi and Tamil). On phones the
+          page rises over the photo's lower edge like a sheet. */}
+      <Box
+        sx={{
+          position: 'relative',
+          minWidth: 0,
+          mt: { xs: -3, sm: 3 },
+          mx: { xs: -4, sm: 0 },
+          px: { xs: 4, sm: 0 },
+          pt: { xs: 3, sm: 0 },
+          borderRadius: { xs: '28px 28px 0 0', sm: 0 },
+          bgcolor: 'background.default',
+          // The page's dark chalk grain, so the sheet reads as the page itself.
+          backgroundImage: theme.palette.mode === 'dark' ? chalkDust : 'none',
+        }}
+      >
+        <Typography
+          component="h1"
+          variant="headlineSmall"
           sx={{
-            width: 72,
-            height: 72,
-            flexShrink: 0,
-            borderRadius: `${shape.lg}px`,
-            overflow: 'hidden',
-            bgcolor: roles.surfaceContainerHigh,
+            fontWeight: 700,
+            overflowWrap: 'break-word',
+            color: roles.onSurface,
+            lineHeight: 1.2,
           }}
         >
-          <PlaceImage
-            id={id}
-            category={shop.category}
-            photo={
-              shop.gallery?.[0]
-                ? `/api/v1/public/shops/${id}/photos/${shop.gallery[0]}.jpg`
-                : undefined
-            }
-            eager
-            transition
-            compact
-          />
-        </Box>
-        {/* On a phone the floating theme button sits over the top-right corner: wrap before it. */}
-        <Box sx={{ minWidth: 0, flex: 1, pr: { xs: '52px', md: 0 } }}>
-          <Typography component="h1" variant="titleLarge" sx={{ overflowWrap: 'anywhere' }}>
-            {shop.name}
-          </Typography>
+          {shop.name}
+        </Typography>
+
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1.5 }}
+        >
+          {openLabel && (
+            <Typography
+              variant="labelLarge"
+              sx={{
+                color: roles.onSurface,
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 1,
+              }}
+            >
+              <Box
+                component="span"
+                aria-hidden="true"
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  bgcolor: shop.open_now ? 'var(--customer-open)' : roles.outline,
+                }}
+              />
+              {openLabel}
+            </Typography>
+          )}
+          {[shop.category, shop.hours].filter(Boolean).map((text, index) => (
+            <Typography
+              key={text}
+              variant="bodyMedium"
+              color="text.secondary"
+              sx={{ overflowWrap: 'break-word', minWidth: 0 }}
+            >
+              {openLabel || index > 0 ? `· ${text}` : text}
+            </Typography>
+          ))}
           {shop.verified_owner && !shop.demo && (
             <VerifiedBadge checked={shop.verified_owner.checked} />
           )}
           {shop.demo && (
-            // Honest but quiet: one outlined label, not a second accent colour.
-            <Chip label={t.demoShop} size="small" variant="outlined" sx={{ my: 1 }} />
+            <Chip label={t.demoShop} size="small" variant="outlined" sx={{ height: 24 }} />
           )}
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            {openLabel && (
-              <Typography
-                variant="labelLarge"
-                sx={{
-                  color: roles.onSurface,
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 1,
-                }}
-              >
-                <Box
-                  component="span"
-                  aria-hidden="true"
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    bgcolor: shop.open_now ? 'var(--customer-open)' : roles.outline,
-                  }}
-                />
-                {openLabel}
-              </Typography>
-            )}
-            {[shop.category, shop.hours].filter(Boolean).map((text, index) => (
-              // Wraps instead of cutting a long category ("Chai & Filter Coffe…") at 360px.
-              <Typography
-                key={text}
-                variant="bodyMedium"
-                color="text.secondary"
-                sx={{ overflowWrap: 'anywhere', minWidth: 0 }}
-              >
-                {openLabel || index > 0 ? `· ${text}` : text}
-              </Typography>
-            ))}
-          </Stack>
-        </Box>
-      </Stack>
+        </Stack>
+      </Box>
       {/* One line a neighbour would say about the place, in chalk. */}
       {story && (
         <Typography
@@ -721,10 +798,24 @@ export default function PublicShop({ id }: { id: string }) {
           {t.demoShopNote}
         </Typography>
       )}
-      {/* Follow and how to get there, side by side; wraps on narrow phones. */}
-      <Stack direction="row" sx={{ mt: 4, gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* Follow, stamps and how to get there in one row the thumb can swipe, never a stack. */}
+      <Stack
+        direction="row"
+        sx={{
+          mt: 3,
+          gap: 1.5,
+          alignItems: 'center',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+          mx: -4,
+          px: 4,
+          py: 0.5,
+          '& > *': { flexShrink: 0 },
+        }}
+      >
         <FollowButton id={id} name={shop.name} />
-        <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />
+        {stampsEnabled && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
         {actions.map((action) => (
           <Button
             key={action.label}
@@ -795,14 +886,18 @@ export default function PublicShop({ id }: { id: string }) {
           sx={{ px: 2, minHeight: 48, color: 'text.secondary', fontWeight: 500 }}
         >
           {shopCopy.weeklyHours}
-          {shop.hours ? ` · ${shop.hours}` : ''}
+          {shop.hours
+            ? ` · ${shop.hours}`
+            : !shop.weekly_hours?.length
+              ? ` · ${o.hoursNotSet}`
+              : ''}
         </Button>
         <Typography variant="bodySmall" color="text.secondary">
           {shop.last_confirmed
             ? (() => {
                 // "Today" in the shop's own timezone, so a late-night check reads correctly.
                 const parts = new Intl.DateTimeFormat('en-CA', {
-                  timeZone: shop.timezone ?? 'Asia/Singapore',
+                  timeZone: shopZone(shop),
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',
@@ -872,7 +967,19 @@ export default function PublicShop({ id }: { id: string }) {
         </Alert>
       )}
       {shop.products.length === 0 ? (
-        <Alert severity="info">{t.empty}</Alert>
+        // A new shop goes live before its menu (owner decision, 17 Oct): customers can already
+        // talk to it.
+        <Alert
+          severity="info"
+          data-testid="menu-coming-soon"
+          action={
+            <Button color="inherit" size="small" onClick={() => setChatOpen(true)}>
+              {o.chatShop}
+            </Button>
+          }
+        >
+          {o.menuSoon}
+        </Alert>
       ) : (
         <CategoryGroups products={shop.products}>
           {(items) => (
@@ -979,17 +1086,30 @@ export default function PublicShop({ id }: { id: string }) {
         </CategoryGroups>
       )}
       {/* Rewards after the menu: earned, not in the way. */}
-      <StampCard
-        shop={id}
-        name={shop.name}
-        timezone={shop.timezone ?? 'Asia/Singapore'}
-        reward={shop.reward_text}
-        needed={shop.stamps_needed ?? 8}
-      />
-      <ShopStamp shop={{ id, name: shop.name, category: shop.category, demo: shop.demo }} />
-      <ShopGames shop={id} />
+      {stampsEnabled && (
+        <StampCard
+          shop={id}
+          name={shop.name}
+          timezone={shopZone(shop)}
+          reward={shop.reward_text}
+          needed={shop.stamps_needed ?? 8}
+        />
+      )}
+      {stampsEnabled && (
+        <ShopStamp
+          shop={{
+            id,
+            name: shop.name,
+            category: shop.category,
+            demo: shop.demo,
+            timezone: shopZone(shop),
+            needed: shop.stamps_needed ?? 8,
+          }}
+        />
+      )}
+      {stampsEnabled && <ShopGames shop={id} />}
       {!stale && <BackInStock shop={id} products={shop.products} />}
-      <BadgeRow shop={id} />
+      {stampsEnabled && <BadgeRow shop={id} />}
       <Tips shop={id} />
       <SimilarNearby
         key={id}

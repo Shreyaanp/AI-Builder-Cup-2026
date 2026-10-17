@@ -1,58 +1,90 @@
-# oGoogle AI — streaming review template
+# Chalkboard
 
-A React/TypeScript frontend with a Python/FastAPI backend and Google ADK. Text replies stream through SSE; the backend also provides a WebSocket adapter for Gemini Live. The default is a labelled, scripted offline ADK model. The hosted configuration adds Firebase Google sign-in and Firestore conversations; local review uses a signed workspace and SQLite. oGoogle AI is an independent project.
+**Neighbourhood shops get online by talking to an AI coach; customers find them by asking.**
 
-Hosted preview: **[Open oGoogle AI](https://ogoogle-ai-176787245026.asia-south1.run.app)**. Release `2e00689` passed CI, container and HTTPS verification on October 14. The user confirmed real Google login and saved-conversation recovery work. Gemini inference is not enabled.
+[Customer site](https://chalkboard.shreyaan.work) ·
+[Owner app](https://business.chalkboard.shreyaan.work) ·
+[Demo video — pending](docs/submission-checklist.md#demo-video) ·
+[Deck PDF — pending](docs/submission-checklist.md#deck-pdf)
 
-## Review locally
+Built for the Google AI Builder Cup, Retail & Commerce track. Speak, type or photograph a menu:
+Chalkboard turns it into details the owner can review, share and keep current. Neighbours ask
+for what they need, see matching items and prices, and chat with the shop.
+
+## A look inside
+
+Existing story-test captures, with fictional shops and offline fixtures; these are not live-model
+or physical-phone evidence.
+
+| Talk to the coach                                                                                                                | See what needs attention                                                                                                   | Ask for something nearby                                                                                                     | Collect a visit stamp                                                                                       |
+| -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| <img src="docs/stories/new-shop-4-speaking-light.png" width="190" alt="Owner onboarding with voice controls and a shop draft" /> | <img src="docs/stories/today-needs-phone.png" width="190" alt="Daily owner view with menu, low-stock and setup actions" /> | <img src="docs/stories/customer-ai-3-answer.png" width="190" alt="Customer answer with a matched item, price and map pin" /> | <img src="docs/stories/S8-3.png" width="190" alt="First shop visit earns a neighbourhood passport stamp" /> |
+
+## The owner story
+
+- Sign in with Google and tell the coach your shop's name and kind of business.
+- Talk, type or add a menu photo; review the suggested items, prices, hours and location.
+- Confirm and share your Chalkboard page or QR code so neighbours can find you.
+- Say “Chai is sold out” or “Change the price”; check the change before saving.
+- Close the day from sales or stock photos, see a prep forecast, and ask about suppliers or rescue deals.
+
+## The customer story
+
+- Choose your area and ask for something nearby, such as “coffee under $3”.
+- Compare matched items, prices, distance and opening status; refine with “Cheaper?” or “Open now?”.
+- Open a shop's page for its menu, directions and answers from its listed facts.
+- Follow a shop for updates; sign in with Google to message the owner and return to Chats.
+- Scan a shop's QR for passport stamps, explore local picks, or ask to hold a rescue deal.
+
+Demo shops, replies and offers are labelled. Holds and supplier requests do not process payments.
+Google sign-in identifies an account; the optional face check does not prove business ownership.
+The Google guide hands submission to the owner on Google's pages; Chalkboard does not publish to Google.
+
+## How to run locally
+
+Prerequisites: **Node.js 24**, **Python 3.13** and **uv**. From the repository root:
 
 ```sh
-npm ci
+npm ci --ignore-scripts --no-audit --no-fund
 uv sync --project backend --locked
-# Two terminals:
+uv run --directory backend --locked python -m scripts.seed_demo_shops --sqlite data/merchant.sqlite3 --city singapore
+```
+
+Keep each server running in its own terminal, both at the repository root.
+
+Terminal 1:
+
+```sh
 npm run dev:backend
+```
+
+Terminal 2:
+
+```sh
 npm run dev
 ```
 
-Open **http://127.0.0.1:3200** and the API explorer at **http://127.0.0.1:3300/docs**. On this Windows workstation, `./start.ps1` starts both services using the installed runtimes; `./stop.ps1` stops only their recorded processes. Review launchers explicitly force offline/local mode, even if a model key has been configured elsewhere.
+Open [Owner](http://127.0.0.1:3200/), [Customer](http://127.0.0.1:3200/explore/) or
+[API docs](http://127.0.0.1:3300/docs). For the seeded shops, choose **Tiong Bahru, Singapore**
+in the customer area picker and ask for a croissant. Create your own shop in the owner app;
+the seeded shops belong to a fictional demo owner.
 
-Type a note and watch the reply arrive. Stop a reply and your note is preserved. Try Hindi, an example, edit, exact-card review and dark appearance. Agent replies do not silently change business facts. Business cards/photos remain browser-session data; conversation events are stored separately in ignored local SQLite files. Refreshing clears the browser card, not the backend database.
+Use a fresh checkout with no provider configuration. The development launcher selects offline
+coach, local sign-in and photo fixtures; no Google credentials are needed. Local voice exercises
+transport, not speech recognition. Conversations and shop records use ignored local SQLite files.
+Stop each server with Ctrl+C. [Verification and limits](docs/submission-checklist.md#local-verification)
+record exactly what was checked.
 
-## Stack and structure
+If the default ports are occupied, set `WEB_PORT` and `API_PORT` to unused ports in both terminals.
 
-- Official Vite React/TypeScript template, React 19.3 and strict TypeScript.
-- Free MUI 9.5 + Emotion, with Google-generated Material 3 colour roles and our own theme. MUI is not an official complete M3 React implementation.
-- `src/app`: shell/provider composition. `src/state`: separate business/preference read and dispatch contexts, pure reducers and typed hooks.
-- `src/features`: business card and coach input. `src/design`: shared tokens, language copy and generated light/dark roles.
-- `.agents/skills/material-design-3-ui`: pinned external design rulebook and license.
-- `docs/REACT_RULES.md`: official React references and executable lint rules. `docs/SKILL_REVIEW.md`: findings and remaining checks.
-- `backend/app`: validated contracts, identity, request limits, ADK runners, SSE and WebSocket transport. `backend/uv.lock` records compatible dependency versions.
-- `src/api/generated.d.ts`: generated Python OpenAPI contracts; `src/api/stream.ts`: cancellable, bounded SSE decoder. `useCoachStream` owns the request lifetime, not global Context.
-- [Backend guide](backend/README.md), [architecture and protocol](docs/AI_ARCHITECTURE.md), [Python rules](docs/PYTHON_RULES.md).
+## Tech stack
 
-## Checks
+- React 19, TypeScript, Vite, MUI and shared Material 3 colour roles; PWA manifests and service worker.
+- Python 3.13, FastAPI, Google ADK and the Google Gen AI SDK; SSE text and WebSocket voice.
+- Gemini on Vertex AI for coaching, photo reading and customer questions; Gemini Live and Cloud TTS prefer Achernar.
+- Firebase Google sign-in, Firestore records/conversations/vector recall, Cloud Storage photos and Cloud Vision SafeSearch.
+- Cloud Run serves the compiled frontend and API; BigQuery `AI.FORECAST` supplies TimesFM forecasts with a weekday-average fallback.
 
-```sh
-npm run check
-npm run format:check
-cd backend
-uv run ruff check app tests scripts server.py run.py
-uv run ruff format --check app tests scripts server.py run.py
-uv run mypy
-uv run pytest -q
-uv run pip-audit --local --progress-spinner off
-```
-
-Playwright uses installed Chrome on Windows and bundled Chromium elsewhere. On a new machine run `npx playwright install chromium`, or set `CHROME_PATH` to an installed browser. The checks cover lint, TypeScript/build, negative hook-rule probes and UI scenarios. The skill's upstream validator was run separately; its behavioral case documents are not counted as passed app tests.
-
-`npm run theme:generate` regenerates semantic colours using Google's library. Its bundler runs in tooling rather than the browser. `npm run format` excludes vendored rulebook sources.
-
-## Boundaries
-
-ADK is connected; the offline model is a fixture, not Gemini inference or speech recognition. Live Gemini credentials/models, frontend microphone/playback, business ownership/roles, Google publishing, public pages, inventory CRUD, forecasts and notifications remain separate work. Image selection previews a photo without uploading or analysing it. Hosted Google sign-in identifies the person; it does not establish business authority.
-
-The manifest is preliminary; no installed-PWA, Android splash or service-worker/offline guarantee is claimed. Existing physical-phone evidence belongs to the older POC. Only language/appearance persist in browser preference storage. Never add server secrets to browser environment variables. Firestore sessions and distributed leases are tested with the real local emulator; actual hosted OAuth/readiness results are recorded in PROJECT_MEMORY.md.
-
-## Repository and contributors
-
-Repository: [Shreyaanp/AI-Builer-Cup-2026](https://github.com/Shreyaanp/AI-Builer-Cup-2026), branch `main`. CONTRIBUTING.md defines two-contributor review conventions. Checks run on push/PR. The separate manual release workflow deploys a checked main SHA to one Cloud Run service. See [deployment instructions](deployment/README.md) for setup, resource limits and rollback. Publishing this template does not establish final hackathon readiness.
+[Architecture](docs/architecture.md) · [Google AI used — verified](docs/google-ai.md) ·
+[Submission checklist](docs/submission-checklist.md) · [Backend guide](backend/README.md) ·
+[Contributing](CONTRIBUTING.md)
