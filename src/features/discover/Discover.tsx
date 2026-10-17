@@ -121,7 +121,8 @@ export default function Discover({
   const t = discoverCopy(locale)
   const front = useFrontCopy()
   const rewards = useRewards()
-  const roles = useTheme().material
+  const theme = useTheme()
+  const roles = theme.material
   // GPS and a typed city are one remembered place, so a reload stays where the customer is.
   const [filters, setFilters] = useState(() => {
     const first = initialLocation?.gps
@@ -132,6 +133,7 @@ export default function Discover({
   const [query, setQuery] = useState(filters.q)
   const [gpsBusy, setGpsBusy] = useState(false)
   const [gpsError, setGpsError] = useState(false)
+  const [changingArea, setChangingArea] = useState(false)
   const [result, setResult] = useState<Discovery | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [retry, setRetry] = useState(0)
@@ -186,6 +188,21 @@ export default function Discover({
     window.addEventListener('popstate', restore)
     return () => window.removeEventListener('popstate', restore)
   }, [])
+  useEffect(() => {
+    if (status !== 'ready') return
+    const y = (history.state as { scrollY?: number } | null)?.scrollY
+    if (!y) return
+    let count = 0
+    const attempt = () => {
+      window.scrollTo({ top: y, behavior: 'instant' })
+      if (Math.abs(window.scrollY - y) > 5 && count++ < 8) {
+        requestAnimationFrame(attempt)
+      }
+    }
+    requestAnimationFrame(attempt)
+    const timer = setTimeout(attempt, 50)
+    return () => clearTimeout(timer)
+  }, [status])
   useEffect(() => {
     // Shared menu availability stays current while the customer is viewing the feed.
     const timer = window.setInterval(() => {
@@ -572,28 +589,53 @@ export default function Discover({
             label={t.budget}
           />
         </Stack>
-        <Typography variant="bodyMedium" color="text.secondary">
-          {t.reason}
-        </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
-          <PlaceSearch
-            key={filters.place ? `${filters.place.lat},${filters.place.lng}` : filters.area}
-            value={filters.place?.label ?? filters.area}
-            onFound={(place) => {
-              setGpsError(false)
-              setFilters({ ...filters, place })
-            }}
-          />
-          <Button
-            variant="outlined"
-            disabled={gpsBusy}
-            onClick={() => locate()}
-            startIcon={gpsBusy ? <CircularProgress size={18} /> : <MapPin aria-hidden size={18} />}
-            sx={{ flexShrink: 0 }}
-          >
-            {t.gps}
-          </Button>
-        </Stack>
+        {filters.place && !changingArea ? (
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 2, flexWrap: 'wrap', py: 1 }}>
+            <Typography
+              variant="bodyMedium"
+              color="text.secondary"
+              sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}
+            >
+              <MapPin size={16} aria-hidden="true" />
+              <span>{filters.place.label}</span>
+            </Typography>
+            <Button
+              size="small"
+              onClick={() => setChangingArea(true)}
+              sx={{ minHeight: 48, textDecoration: 'underline', px: 2 }}
+            >
+              {t.changeArea}
+            </Button>
+          </Stack>
+        ) : (
+          <>
+            <Typography variant="bodyMedium" color="text.secondary">
+              {t.reason}
+            </Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
+              <PlaceSearch
+                key={filters.place ? `${filters.place.lat},${filters.place.lng}` : filters.area}
+                value={filters.place?.label ?? filters.area}
+                onFound={(place) => {
+                  setGpsError(false)
+                  setFilters({ ...filters, place })
+                  setChangingArea(false)
+                }}
+              />
+              <Button
+                variant="outlined"
+                disabled={gpsBusy}
+                onClick={() => locate()}
+                startIcon={
+                  gpsBusy ? <CircularProgress size={18} /> : <MapPin aria-hidden size={18} />
+                }
+                sx={{ flexShrink: 0, minHeight: 48 }}
+              >
+                {t.gps}
+              </Button>
+            </Stack>
+          </>
+        )}
         {gpsError && <Alert severity="info">{t.gpsError}</Alert>}
         {result?.mode === 'demo' && (
           <Alert severity="info">
@@ -727,6 +769,9 @@ export default function Discover({
                 sx={{
                   borderRadius: `${shape.lg}px`,
                   bgcolor: roles.surfaceContainerLow,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
                   ...enterRise,
                 }}
               >
@@ -740,99 +785,129 @@ export default function Discover({
                       customerNavigate(event)
                     } else openPlace(place)
                   }}
-                  sx={{ height: '100%', display: 'block', textAlign: 'start' }}
+                  sx={{
+                    height: '100%',
+                    minHeight: 48,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
+                    textAlign: 'start',
+                    justifyContent: 'flex-start',
+                  }}
                 >
-                  <PlaceImage
-                    id={place.id}
-                    category={place.category}
-                    photo={place.photo_url}
-                    authors={place.photo_authors}
-                    transition
-                  />
-                  <Stack spacing={3} sx={{ p: 4 }}>
+                  <Box
+                    sx={{
+                      width: '100%',
+                      aspectRatio: '16/9',
+                      maxHeight: 160,
+                      overflow: 'hidden',
+                      position: 'relative',
+                      bgcolor: roles.surfaceContainerHigh,
+                    }}
+                  >
+                    <PlaceImage
+                      id={place.id}
+                      category={place.category}
+                      photo={place.photo_url}
+                      authors={place.photo_authors}
+                      transition
+                      compact
+                    />
+                  </Box>
+                  <Stack spacing={1} sx={{ p: 2.5, flex: 1, minWidth: 0, width: '100%' }}>
                     <Typography
                       component="h2"
-                      variant="titleLarge"
-                      sx={{ overflowWrap: 'anywhere' }}
+                      variant="titleMedium"
+                      sx={{
+                        fontWeight: 700,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
                     >
                       {place.name}
                     </Typography>
-                    <Typography variant="bodyMedium" color="text.secondary">
+                    <Typography
+                      variant="bodyMedium"
+                      color="text.secondary"
+                      sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    >
                       {categoryText(place.category)} · {distanceText(place)}
                     </Typography>
-                    <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2 }}>
-                      <Chip label={statusText(place)} size="small" />
+                    <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                       <Chip
-                        label={
-                          (place.source === 'google' ? t.google : t.chalkboard) +
-                          (place.demo && place.source === 'google' ? ` · ${t.demo}` : '')
-                        }
+                        label={statusText(place)}
+                        size="small"
+                        sx={{
+                          height: 24,
+                          fontWeight: 600,
+                          bgcolor: place.open_now
+                            ? roles.secondaryContainer
+                            : roles.surfaceContainerHigh,
+                          color: place.open_now
+                            ? roles.onSecondaryContainer
+                            : roles.onSurfaceVariant,
+                        }}
+                      />
+                      <Chip
+                        label={place.source === 'google' ? t.google : t.chalkboard}
                         size="small"
                         variant="outlined"
+                        sx={{ height: 24 }}
                       />
-                      {place.demo && place.source === 'chalkboard' && (
-                        <Chip label={`${t.pin} · ${t.demo}`} size="small" />
-                      )}
-                      {place.locally_made && (
-                        <Chip
-                          label={locallyMadeLabel(locale)}
-                          size="small"
-                          sx={{
-                            bgcolor: roles.secondaryContainer,
-                            color: roles.onSecondaryContainer,
-                            fontWeight: 600,
-                          }}
-                        />
-                      )}
                       {place.demo_shop && (
                         <Chip
                           label={t.demoShop}
                           size="small"
                           sx={{
+                            height: 24,
                             bgcolor: roles.tertiaryContainer,
                             color: roles.onTertiaryContainer,
                             fontWeight: 600,
                           }}
                         />
                       )}
+                      {place.locally_made && (
+                        <Chip
+                          label={locallyMadeLabel(locale)}
+                          size="small"
+                          sx={{
+                            height: 24,
+                            bgcolor: roles.secondaryContainer,
+                            color: roles.onSecondaryContainer,
+                            fontWeight: 600,
+                          }}
+                        />
+                      )}
                     </Stack>
-                    {place.source === 'google' && place.rating != null && (
-                      <Typography variant="bodyMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                        ★ {new Intl.NumberFormat(locale).format(place.rating)} (
-                        {new Intl.NumberFormat(locale).format(place.user_rating_count ?? 0)})
-                      </Typography>
-                    )}
-                    {place.items.map((item) => (
+                    {place.items[0] ? (
                       <Typography
-                        key={item.name + item.unit}
-                        variant="bodyMedium"
-                        sx={{ fontVariantNumeric: 'tabular-nums' }}
+                        variant="bodySmall"
+                        color="text.secondary"
+                        sx={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
                       >
-                        {item.name} ·{' '}
+                        {place.items[0].name} ·{' '}
                         {formatPrice(
-                          item.price,
+                          place.items[0].price,
                           place.currency ??
                             areaCurrency(lat, lng, filters.place?.label ?? filters.area),
                           locale,
                         )}
                       </Typography>
-                    ))}
-                    {place.sold_out.length > 0 && (
-                      <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2 }}>
-                        {place.sold_out.map((name) => (
-                          <Chip
-                            key={name}
-                            label={`${name} · ${t.soldOut}`}
-                            size="small"
-                            sx={{
-                              maxWidth: '100%',
-                              height: 'auto',
-                              '& .MuiChip-label': { whiteSpace: 'normal', py: 1 },
-                            }}
-                          />
-                        ))}
-                      </Stack>
-                    )}
+                    ) : place.source === 'google' && place.rating != null ? (
+                      <Typography
+                        variant="bodySmall"
+                        color="text.secondary"
+                        sx={{ fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        ★ {new Intl.NumberFormat(locale).format(place.rating)} (
+                        {new Intl.NumberFormat(locale).format(place.user_rating_count ?? 0)})
+                      </Typography>
+                    ) : null}
                   </Stack>
                 </CardActionArea>
               </Card>

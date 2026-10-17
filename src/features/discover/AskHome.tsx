@@ -231,8 +231,18 @@ export default function AskHome({
   // Back from a shop or a chat lands where you were in the conversation.
   useEffect(() => {
     const y = (history.state as { scrollY?: number } | null)?.scrollY
-    if (y) requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' }))
-  }, [])
+    if (!y) return
+    let count = 0
+    const attempt = () => {
+      window.scrollTo({ top: y, behavior: 'instant' })
+      if (Math.abs(window.scrollY - y) > 5 && count++ < 12) {
+        requestAnimationFrame(attempt)
+      }
+    }
+    requestAnimationFrame(attempt)
+    const timer = setTimeout(attempt, 60)
+    return () => clearTimeout(timer)
+  }, [turns])
 
   useEffect(() => {
     if (!busy) return

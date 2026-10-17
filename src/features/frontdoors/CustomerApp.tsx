@@ -112,8 +112,8 @@ function CustomerPages() {
       <a href="#customer-content" className="skip-link">
         {t.skip}
       </a>
-      {/* The Ask front door carries these in its own header row; other pages float them. */}
-      {tab !== 'ask' && (
+      {/* The Ask front door carries these in its own header row; shop page has them inline; other pages float them. */}
+      {tab !== 'ask' && !id && (
         <>
           <LanguagePicker />
           <AppearanceToggle />
