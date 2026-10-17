@@ -5313,6 +5313,16 @@ export interface components {
              * @default
              */
             reward: string;
+            /**
+             * Stamps
+             * @default 0
+             */
+            stamps: number;
+            /**
+             * Slots
+             * @default 0
+             */
+            slots: number;
         };
         /** SimAction */
         SimAction: {

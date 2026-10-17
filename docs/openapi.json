@@ -14492,6 +14492,16 @@
             "type": "string",
             "title": "Reward",
             "default": ""
+          },
+          "stamps": {
+            "type": "integer",
+            "title": "Stamps",
+            "default": 0
+          },
+          "slots": {
+            "type": "integer",
+            "title": "Slots",
+            "default": 0
           }
         },
         "type": "object",
