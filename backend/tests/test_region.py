@@ -225,3 +225,21 @@ def test_singapore_languages_are_pinned_in_every_prompt(tag, must):
     for text in (written_language(tag), language_rule(reply_language(tag))):
         for word in must:
             assert word in text, (tag, word, text)
+
+
+@pytest.mark.parametrize(
+    ("tag", "question", "starts"),
+    [
+        ("zh-Hans", "附近的咖啡", "示例回答"),
+        ("ms", "kopi berdekatan", "Jawapan contoh"),
+        ("ta", "அருகில் காபி", "மாதிரி பதில்"),
+    ],
+)
+def test_offline_area_samples_read_in_singapore_languages(tag, question, starts):
+    from app.maps_grounding import demo_answer
+
+    sample = demo_answer(question, *TIONG_BAHRU, tag)
+    assert sample.demo and sample.text.startswith(starts)
+    # The coffee sample, not the default, for a question in the language.
+    assert "Sample" not in sample.text and len(sample.places) == 2
+    assert all("Sample" not in place.name for place in sample.places)
