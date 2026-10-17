@@ -1621,7 +1621,6 @@ function AssistantTurn({
           </Button>
         </Stack>
       )}
-      {area && <AreaAnswerCard area={area} locale={locale} />}
       {/* Where first (a short map strip, pins numbered like the rows), then the list: our
           shops, then Google's, in one row shape that fits a 360px phone five to a screen. */}
       <AnswerMap
@@ -1648,6 +1647,8 @@ function AssistantTurn({
           ))}
         </PickList>
       )}
+      {/* Google's area answer follows our shops, never above them. */}
+      {area && <AreaAnswerCard area={area} locale={locale} />}
       {google.length > 0 && <GoogleRows places={google} copy={copy} locale={locale} />}
       {latest && (
         <>
