@@ -83,6 +83,12 @@ export async function enter(page: Page) {
   await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
 }
 
+/** A chat photo is first sorted in one line; the owner picks Menu to open the menu review. */
+export async function sortAsMenu(page: Page) {
+  const group = page.getByRole('group', { name: 'What is this photo?' })
+  await group.getByRole('button', { name: 'Menu', exact: true }).click()
+}
+
 export async function confirm(page: Page) {
   const review = page.getByRole('dialog', { name: reviewName })
   await review.getByRole('button', { name: 'Confirm and save' }).click()
