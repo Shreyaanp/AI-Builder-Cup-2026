@@ -377,7 +377,11 @@ export function FaceDialog({
     if (answer.result === 'verified')
       return { icon: <BadgeCheck size={40} />, title: c.verifiedTitle, body: c.verifiedBody }
     if (answer.result === 'in_review')
-      return { icon: <UserSearch size={40} />, title: c.reviewTitle, body: c.inReview }
+      return {
+        icon: <UserSearch size={40} />,
+        title: c.reviewTitle,
+        body: answer.reason === 'liveness_unsure' ? c.livenessReview : c.inReview,
+      }
     if (answer.reason === 'camera_blocked' || answer.reason === 'camera_missing')
       return { icon: <CameraOff size={40} />, title: c.retryTitle, body: reason }
     if (answer.result === 'unavailable')
