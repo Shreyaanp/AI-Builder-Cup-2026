@@ -17,6 +17,7 @@ import { BarChart3, X } from 'lucide-react'
 import { useIdentity } from '../../auth/useIdentity'
 import { readDismissal, dismissFreshness, subscribeDismissal } from './freshnessDismissal'
 import type { components } from '../../api/generated'
+import { formatLocale, type Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
 import { Sheet } from '../v1/Sheet'
@@ -34,14 +35,14 @@ interface Freshness {
 type Recap = components['schemas']['Recap']
 
 /** ISO weeks are Monday–Sunday; UTC keeps date-only boundaries stable on every device. */
-function weekRange(week: string) {
+function weekRange(week: string, locale: Locale) {
   const year = Number(week.slice(0, 4))
   const january4 = new Date(Date.UTC(year, 0, 4))
   const monday = new Date(january4)
   monday.setUTCDate(4 - ((january4.getUTCDay() + 6) % 7) + (Number(week.slice(-2)) - 1) * 7)
   const sunday = new Date(monday)
   sunday.setUTCDate(monday.getUTCDate() + 6)
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(formatLocale(locale), {
     day: 'numeric',
     month: 'short',
     year: monday.getUTCFullYear() !== sunday.getUTCFullYear() ? 'numeric' : undefined,
@@ -173,6 +174,7 @@ export function FreshnessCard({ compact = false }: { compact?: boolean }) {
 /** Monday placement is a rule in shop time; the recap itself is only fetched on opening. */
 export function RecapTile({ mondayOnly = false }: { mondayOnly?: boolean }) {
   const t = useCopy()
+  const locale = useLocale()
   const { value } = useFreshness()
   const [open, setOpen] = useState(false)
   if (!value || (mondayOnly && !value.monday)) return null
@@ -182,7 +184,7 @@ export function RecapTile({ mondayOnly = false }: { mondayOnly?: boolean }) {
         wide
         icon={<BarChart3 size={20} />}
         label={t.recapTitle}
-        value={weekRange(value.recap_week)}
+        value={weekRange(value.recap_week, locale)}
         onClick={() => setOpen(true)}
       >
         <Supporting>{t.recapHint}</Supporting>
@@ -230,7 +232,7 @@ function RecapDetails({ week }: { week: string }) {
   return (
     <Stack spacing={recap.sales_days ? 3 : 2}>
       <Typography component="p" variant="titleMedium">
-        {weekRange(week)}
+        {weekRange(week, locale)}
       </Typography>
       {!recap.sales_days && <Alert severity="info">{t.recapEmpty}</Alert>}
       {recap.sales_days > 0 && (

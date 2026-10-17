@@ -93,6 +93,7 @@ export function HoldSheet({
       onClose={onClose}
       titleId="rescue-hold-title"
       title={held ? t.rescued : signedIn ? t.holdTitle : t.signInTitle}
+      dismissInActions
       actions={
         !signedIn ? (
           <Button onClick={onClose}>{t.cancel}</Button>

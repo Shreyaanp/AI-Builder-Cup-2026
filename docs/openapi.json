@@ -627,7 +627,7 @@
     "/api/v1/photos": {
       "post": {
         "summary": "Photo",
-        "description": "``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own.",
+        "description": "``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own.\n``language`` is the owner's app language for the notes about what was unclear.",
         "operationId": "photo_api_v1_photos_post",
         "parameters": [
           {
@@ -660,6 +660,17 @@
                 }
               ],
               "title": "Currency"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 16,
+              "default": "en",
+              "title": "Language"
             }
           }
         ],
@@ -3488,18 +3499,60 @@
     "/api/v1/discover/place": {
       "get": {
         "summary": "Find Place",
-        "description": "A typed city or area anywhere in the world, as the centre for discovery.",
+        "description": "A typed city or area anywhere in the world, or coordinates reverse-geocoded to an area.",
         "operationId": "find_place_api_v1_discover_place_get",
         "parameters": [
           {
             "name": "q",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
-              "type": "string",
-              "minLength": 2,
-              "maxLength": 180,
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 180
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "title": "Q"
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 90,
+                  "minimum": -90
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 180,
+                  "minimum": -180
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lng"
             }
           }
         ],
@@ -7420,6 +7473,46 @@
         }
       }
     },
+    "/api/v1/face/warmup": {
+      "get": {
+        "summary": "Face Warmup",
+        "description": "Warm up the private face worker to prevent cold-start latency when the owner scans.",
+        "operationId": "face_warmup_api_v1_face_warmup_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Face Warmup Api V1 Face Warmup Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Face Warmup",
+        "description": "Warm up the private face worker to prevent cold-start latency when the owner scans.",
+        "operationId": "face_warmup_api_v1_face_warmup_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Face Warmup Api V1 Face Warmup Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/face/challenges": {
       "post": {
         "summary": "Challenge",
@@ -9089,6 +9182,20 @@
           "consent": {
             "type": "boolean",
             "title": "Consent"
+          },
+          "exclude_prompts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclude Prompts"
           }
         },
         "additionalProperties": false,
@@ -14492,6 +14599,16 @@
             "type": "string",
             "title": "Reward",
             "default": ""
+          },
+          "stamps": {
+            "type": "integer",
+            "title": "Stamps",
+            "default": 0
+          },
+          "slots": {
+            "type": "integer",
+            "title": "Slots",
+            "default": 0
           }
         },
         "type": "object",

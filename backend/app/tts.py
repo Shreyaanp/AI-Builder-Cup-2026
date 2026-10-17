@@ -82,8 +82,16 @@ def best_voice(
 
 
 def speakable(text: str) -> str:
-    """Strip markdown-ish symbols and bracketed asides so they aren't read aloud."""
-    text = re.sub(r"[*_`#>|]+", " ", text)
+    """Strip markdown formatting and symbols so they aren't read aloud."""
+    text = re.sub(r"<[^>]*>", "", text)
+    text = re.sub(r"!\[([^\]]*)\]\((?:[^()]+|\([^()]*\))*\)", r"\1", text)
+    text = re.sub(r"\[([^\]]+)\]\((?:[^()]+|\([^()]*\))*\)", r"\1", text)
+    text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^>\s+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^[\s]*[-*+]\s+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^[\s]*\d+\.\s+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\|?[\s:\-]+\|[\s:\-]+\|?$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"[*_`#>|~]+", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text[:MAX_CHARS]
 

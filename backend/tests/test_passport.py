@@ -51,7 +51,10 @@ def shop(
     demo: bool = False,
     category: str = "Bakery",
     currency: str = "SGD",
+    reward_text: str = "10th kopi free",
+    stamps_enabled: bool | None = None,
 ) -> dict:
+    enabled = bool(reward_text) if stamps_enabled is None else stamps_enabled
     return {
         "id": bid,
         "name": bid.title(),
@@ -63,6 +66,8 @@ def shop(
         "currency": currency,
         "hours": "07:00–19:00",
         "products": [{"name": "Kaya bun", "price": 250, "unit": "piece", "available": True}],
+        "stamps_enabled": enabled,
+        **({"reward_text": reward_text} if reward_text else {}),
         **({"demo": True} if demo else {}),
     }
 
@@ -123,6 +128,30 @@ def test_location_rules_reject_without_points() -> None:
     card = apply_visit(state, Visit(shop_id="a", shop=place, at=at(0)))
     assert card.verdict == "card_only" and state.shops["a"].card == 1 and state.points == 0
     assert apply_visit(state, Visit(shop_id="a", shop=place, at=at(0, 12))).card == 1
+
+
+def test_no_reward_shop_gives_no_card_stamp() -> None:
+    state = PassportState()
+    no_reward = shop("no-reward", reward_text="", stamps_enabled=False)
+    outcome = visit(state, no_reward, at(0))
+    # Passport is stamped and points are earned, but no card stamp is given
+    assert outcome.verdict == "stamped"
+    assert outcome.points == 50
+    assert outcome.card == 0
+    assert state.shops["no-reward"].card == 0
+
+    # With location missing / refused, a no-reward shop rejects with low_accuracy
+    # instead of card_only.
+    missing_loc = apply_visit(
+        state,
+        Visit(
+            shop_id="no-reward-2",
+            shop=shop("no-reward-2", reward_text="", stamps_enabled=False),
+            at=at(0),
+        ),
+    )
+    assert missing_loc.verdict == "low_accuracy"
+    assert missing_loc.card == 0
 
 
 def test_inside_radius_counts() -> None:
@@ -552,3 +581,23 @@ def test_passport_quests_list_nearby_stops(client: TestClient) -> None:
     kinds = {q["kind"] for q in view["quests"]}
     assert {"breakthrough", "crawl", "rescue", "makers"} <= kinds
     assert all(q["need"] >= 3 for q in view["quests"])
+
+
+def test_board_without_location_returns_calm_empty_board(client: TestClient) -> None:
+    sign_in(client, "Naveen Kumar")
+    # Signed in customer with location off and no previous stamps/points
+    board_res = client.get("/api/v1/customer/passport/board")
+    assert board_res.status_code == 200
+    data = board_res.json()
+    assert data["rows"] == []
+    assert data["you"] is None
+    assert data["area"] == ""
+    assert data["joined"] is False
+
+    # Joining the leaderboard still returns a calm empty board without 422
+    client.put("/api/v1/customer/passport/leaderboard", json={"on": True})
+    joined_res = client.get("/api/v1/customer/passport/board")
+    assert joined_res.status_code == 200
+    joined_data = joined_res.json()
+    assert joined_data["joined"] is True
+    assert joined_data["rows"] == []

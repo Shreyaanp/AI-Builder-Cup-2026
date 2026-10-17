@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-16T09:32:24.177Z",
+  "capturedAt": "2026-10-16T20:34:03.583Z",
   "mode": "audit",
   "scope": "390×844 offline audit; annotated gaps and live-only paths are not verified story outcomes",
   "stories": [
@@ -28,14 +28,6 @@
       "annotations": []
     },
     {
-      "story": "A12 · coach scroll and Google waiting motion: reduce",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
       "story": "A11 · customer light mode separates menu and background surfaces",
       "project": "phone",
       "status": "passed",
@@ -44,7 +36,23 @@
       "annotations": []
     },
     {
+      "story": "A12 · coach scroll and Google waiting motion: reduce",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
       "story": "A12 · coach scroll and Google waiting motion: no-preference",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A3 · independent customer context polls visible prices and availability",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -77,14 +85,6 @@
     },
     {
       "story": "A4 · not_stated fact chip and offline answer agree",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
-      "story": "A3 · independent customer context polls visible prices and availability",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -154,7 +154,7 @@
           "status": "passed"
         },
         {
-          "title": "5 · My shop readiness and next action",
+          "title": "5 · Shop page, then Grow: what is missing for Google",
           "status": "passed"
         },
         {
@@ -182,32 +182,48 @@
       ]
     },
     {
-      "story": "S5 · shop details to Google preview and truthful handoff",
+      "story": "S2 · daily upkeep and customer-page connection",
       "project": "phone",
       "status": "passed",
       "retry": 0,
       "steps": [
         {
-          "title": "1 · details reuse the owner shop",
+          "title": "1 · natural text and voice path",
           "status": "passed"
         },
         {
-          "title": "2 · photo upload persists for the profile",
+          "title": "2 · one review card for both changes, one tap to confirm",
           "status": "passed"
         },
         {
-          "title": "3 · profile preview shows local prices and saved details",
+          "title": "3 · already-open customer page updates within five seconds",
           "status": "passed"
         },
         {
-          "title": "4 · waiting state and official links",
+          "title": "4 · sold-out switch reaches customer page",
+          "status": "passed"
+        },
+        {
+          "title": "5 · daily still-the-same check",
+          "status": "passed"
+        },
+        {
+          "title": "6 · tap a price, review inline and save",
+          "status": "passed"
+        },
+        {
+          "title": "7 · document import uses exact review before saving",
           "status": "passed"
         }
       ],
       "annotations": [
         {
           "type": "live-only",
-          "description": "Google API access, business verification and publication; official links are inspected without opening them"
+          "description": "Speech recognition and live voice tool execution"
+        },
+        {
+          "type": "live-only",
+          "description": "Photo/PDF extraction requires live AI; CSV review is the offline import path"
         }
       ]
     },
@@ -258,6 +274,36 @@
       ]
     },
     {
+      "story": "S5 · shop details to Google preview and truthful handoff",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [
+        {
+          "title": "1 · details reuse the owner shop",
+          "status": "passed"
+        },
+        {
+          "title": "2 · photo upload persists for the profile",
+          "status": "passed"
+        },
+        {
+          "title": "3 · profile preview shows local prices and saved details",
+          "status": "passed"
+        },
+        {
+          "title": "4 · waiting state and official links",
+          "status": "passed"
+        }
+      ],
+      "annotations": [
+        {
+          "type": "live-only",
+          "description": "Google API access, business verification and publication; official links are inspected without opening them"
+        }
+      ]
+    },
+    {
       "story": "S7 · Indian language, local currency and eight-city discovery audit",
       "project": "phone",
       "status": "passed",
@@ -292,52 +338,6 @@
         {
           "type": "live-only",
           "description": "Catalogue shops are seeded on the hosted demo; the local preview stays unseeded"
-        }
-      ]
-    },
-    {
-      "story": "S2 · daily upkeep and customer-page connection",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [
-        {
-          "title": "1 · natural text and voice path",
-          "status": "passed"
-        },
-        {
-          "title": "2 · one review card for both changes, one tap to confirm",
-          "status": "passed"
-        },
-        {
-          "title": "3 · already-open customer page updates within five seconds",
-          "status": "passed"
-        },
-        {
-          "title": "4 · sold-out switch reaches customer page",
-          "status": "passed"
-        },
-        {
-          "title": "5 · daily still-the-same check",
-          "status": "passed"
-        },
-        {
-          "title": "6 · tap a price, review inline and save",
-          "status": "passed"
-        },
-        {
-          "title": "7 · document import uses exact review before saving",
-          "status": "passed"
-        }
-      ],
-      "annotations": [
-        {
-          "type": "live-only",
-          "description": "Speech recognition and live voice tool execution"
-        },
-        {
-          "type": "live-only",
-          "description": "Photo/PDF extraction requires live AI; CSV review is the offline import path"
         }
       ]
     }

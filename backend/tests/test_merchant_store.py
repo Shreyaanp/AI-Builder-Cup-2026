@@ -254,8 +254,10 @@ def test_public_shop_exposes_only_customer_fields(store: MerchantRepository) -> 
         "products",
         "last_confirmed",
         "stamps_needed",
+        "stamps_enabled",
         "gallery",
     }
+    assert shop["stamps_enabled"] is False
     # A shop that never stated customer facts publishes none.
     assert shop["facts"] == {}
     assert {key: value for key, value in shop.items() if key not in ("products", "facts")} == {
@@ -271,6 +273,7 @@ def test_public_shop_exposes_only_customer_fields(store: MerchantRepository) -> 
         "phone": "1234567890",
         "currency": "SGD",
         "stamps_needed": 8,
+        "stamps_enabled": False,
         "last_confirmed": None,
         "gallery": [],
     }

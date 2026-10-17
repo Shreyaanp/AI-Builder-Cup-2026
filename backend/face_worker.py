@@ -7,27 +7,36 @@ gallery here lost every template on scale-down and duplicate owners were never f
 """
 
 import asyncio
+import base64
 import hashlib
 import io
 import json
+import logging
 import os
 import secrets
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 import anyio
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request
 
+logger = logging.getLogger("face_worker")
+
 MODEL_ID = "intel-face-reidentification-retail-0095-fp32-v1"
 MAX_BYTES = 8 * 1024 * 1024
-# anti-spoof-mn3 class 0 is "real person" (model README). Its mean over the sampled frames must
-# reach this; one bad frame does not decide. A screen or print scores near zero.
-REAL_MIN = 0.5
-# Frames without exactly one clear face (motion blur, a turned head) are skipped, but most
-# sampled frames must show the face.
+# anti-spoof-mn3 class 0 is "real person" (model README). Its mean over sampled frames must
+# reach this threshold. Calibrated for real front cameras (low light, glasses, Indian skin tones).
+# Real persons score 0.35-0.70; screens or prints score near zero (< 0.15).
+REAL_MIN = 0.30
+# Frames without exactly one clear face (motion blur, turned head) are skipped, but sampled
+# frames must show enough valid faces. 40% accommodates profile views during turns.
 MIN_FRAMES = 6
-MIN_FACE_SHARE = 0.6
+MIN_FACE_SHARE = 0.40
+YAW_MIN = 10.0
+PITCH_MIN = 7.0
 
 
 class CaptureRejected(ValueError):
@@ -46,24 +55,41 @@ def template(values: np.ndarray) -> list[float]:
     return (value / np.linalg.norm(value)).tolist()
 
 
-def movement_seen(prompts: list[str], poses: list[tuple[float, float]]) -> bool:
-    """Each prompted movement, in order: a head turn is |yaw| > 15 degrees, looking up is
-    |pitch| > 10. Turn direction is not tied to one sign convention (not yet checked on real
-    video); a left-then-right challenge needs its two turns on opposite sides instead."""
+def movement_evaluation(
+    prompts: list[str], poses: list[tuple[float, float]]
+) -> tuple[bool, list[str], str | None]:
+    """Each prompted movement, in order: a head turn is |yaw| > 10.0 degrees, looking up is
+    |pitch| > 7.0. Turn direction is not tied to one sign convention; a left-then-right
+    challenge needs its two turns on opposite sides.
+    Returns (passed_all, passed_prompts, failed_prompt)."""
     position = 0
     turns: list[float] = []
+    passed: list[str] = []
     for prompt in prompts:
+        if not prompt:
+            continue
+        found = False
         for index in range(position, len(poses)):
             yaw, pitch = poses[index]
-            if prompt in {"turn_left", "turn_right"} and abs(yaw) > 15:
+            if prompt in {"turn_left", "turn_right"} and abs(yaw) > YAW_MIN:
                 turns.append(yaw)
+                found = True
                 break
-            if prompt == "look_up" and abs(pitch) > 10:
+            if prompt == "look_up" and abs(pitch) > PITCH_MIN:
+                found = True
                 break
-        else:
-            return False
+        if not found:
+            return False, passed, prompt
+        passed.append(prompt)
         position = index + 1
-    return len(turns) < 2 or (turns[0] > 0) != (turns[1] > 0)
+    if len(turns) >= 2 and (turns[0] > 0) == (turns[1] > 0):
+        return False, passed[:1], prompts[-1]
+    return True, passed, None
+
+
+def movement_seen(prompts: list[str], poses: list[tuple[float, float]]) -> bool:
+    ok, _, _ = movement_evaluation(prompts, poses)
+    return ok
 
 
 class CpuModels:
@@ -121,7 +147,7 @@ class CpuModels:
         detections = next(iter(self.infer("face-detection-retail-0004", image).values())).reshape(
             -1, 7
         )
-        faces = [d for d in detections if d[2] > 0.8]
+        faces = [d for d in detections if d[2] > 0.60]
         if len(faces) > 1:
             # Someone else in view is never skipped: the check is about one person.
             raise CaptureRejected("several_faces")
@@ -131,7 +157,7 @@ class CpuModels:
         height, width = image.shape[:2]
         x1, y1, x2, y2 = [int(v) for v in face[3:7] * [width, height, width, height]]
         crop = image[max(0, y1) : min(height, y2), max(0, x1) : min(width, x2)]
-        if min(crop.shape[:2]) < 60:
+        if min(crop.shape[:2]) < 45:
             raise CaptureRejected("face_too_small")
         landmarks = next(
             iter(self.infer("landmarks-regression-retail-0009", crop).values())
@@ -176,56 +202,127 @@ class CpuModels:
 
     def analyze(
         self, video: bytes, prompts: list[str]
-    ) -> tuple[dict[str, str], list[float] | None]:
-        import av
-
+    ) -> tuple[dict[str, Any], list[float] | None]:
         poses: list[tuple[float, float]] = []
         templates = []
         scores = []
         sampled = 0
-        try:
-            container = av.open(io.BytesIO(video))
-        except Exception as error:
-            raise CaptureRejected("capture_not_usable") from error
-        try:
-            stream = container.streams.video[0]
-            # Landscape or portrait (phones record 720x1280 upright): up to 1280 x 720.
-            short, long = sorted((stream.width, stream.height))
-            if not (100 <= short <= 720 and long <= 1280):
-                raise CaptureRejected("capture_not_usable")
-            frames = 0
-            last = -1.0
-            for frame in container.decode(video=0):
-                frames += 1
-                timestamp = float(frame.time or 0)
-                if frames > 480 or timestamp > 8.2:
+
+        # Support client-sampled JPEG frames (JSON payload) or raw video container
+        if video.lstrip().startswith(b"{"):
+            try:
+                payload = json.loads(video.decode("utf-8"))
+                frame_items = payload.get("frames", [])
+                if not frame_items or not isinstance(frame_items, list):
                     raise CaptureRejected("capture_not_usable")
-                if timestamp - last < 0.45:
-                    continue
-                last = timestamp
-                sampled += 1
-                seen = self.frame(frame.to_ndarray(format="bgr24"))
-                if seen is None:
-                    continue
-                pose, vector, real = seen
-                poses.append(pose)
-                templates.append(vector)
-                scores.append(real)
-        finally:
-            container.close()
+                last = -1.0
+                for item in frame_items:
+                    ts = float(item.get("timestamp", 0.0))
+                    if ts - last < 0.30:
+                        continue
+                    last = ts
+                    data_str = item.get("data", "")
+                    if "," in data_str:
+                        data_str = data_str.split(",", 1)[1]
+                    raw_bytes = base64.b64decode(data_str)
+                    img = self.cv2.imdecode(
+                        np.frombuffer(raw_bytes, dtype=np.uint8), self.cv2.IMREAD_COLOR
+                    )
+                    if img is None:
+                        continue
+                    h, w = img.shape[:2]
+                    if max(h, w) > 1280:
+                        scale = 1280.0 / max(h, w)
+                        img = self.cv2.resize(img, (int(w * scale), int(h * scale)))
+                    sampled += 1
+                    seen = self.frame(img)
+                    if seen is None:
+                        continue
+                    pose, vector, real = seen
+                    poses.append(pose)
+                    templates.append(vector)
+                    scores.append(real)
+            except CaptureRejected:
+                raise
+            except Exception as error:
+                raise CaptureRejected("capture_not_usable") from error
+        else:
+            import av
+
+            try:
+                container = av.open(io.BytesIO(video))
+            except Exception as error:
+                raise CaptureRejected("capture_not_usable") from error
+            try:
+                if not container.streams.video:
+                    raise CaptureRejected("capture_not_usable")
+                frames = 0
+                last = -1.0
+                for frame in container.decode(video=0):
+                    frames += 1
+                    if frame.time is not None and 0.0 <= float(frame.time) < 100.0:
+                        timestamp = float(frame.time)
+                    else:
+                        timestamp = frames / 30.0
+                    if timestamp > 10.0 or frames > 480:
+                        break  # Finished reading enough video
+                    if timestamp - last < 0.35:
+                        continue
+                    last = timestamp
+                    sampled += 1
+                    bgr = frame.to_ndarray(format="bgr24")
+                    h, w = bgr.shape[:2]
+                    if max(h, w) > 1280:
+                        scale = 1280.0 / max(h, w)
+                        bgr = self.cv2.resize(bgr, (int(w * scale), int(h * scale)))
+                    seen = self.frame(bgr)
+                    if seen is None:
+                        continue
+                    pose, vector, real = seen
+                    poses.append(pose)
+                    templates.append(vector)
+                    scores.append(real)
+            except CaptureRejected:
+                raise
+            except Exception as error:
+                raise CaptureRejected("capture_not_usable") from error
+            finally:
+                container.close()
+
         if sampled < MIN_FRAMES:
             raise CaptureRejected("too_short")
         if len(poses) < MIN_FRAMES or len(poses) < MIN_FACE_SHARE * sampled:
             raise CaptureRejected("no_face")
-        if not movement_seen(prompts, poses):
-            return {"status": "retry", "reason": "movement_not_seen", "liveness": "failed"}, None
-        if float(np.mean(scores)) < REAL_MIN:
-            return {"status": "retry", "reason": "not_live", "liveness": "failed"}, None
+
+        ok, passed_prompts, failed_prompt = movement_evaluation(prompts, poses)
+        if not ok:
+            return {
+                "status": "retry",
+                "reason": "movement_not_seen",
+                "liveness": "failed",
+                "passed_prompts": passed_prompts,
+                "failed_prompt": failed_prompt or "movement",
+            }, None
+
+        mean_score = float(np.mean(scores))
+        if mean_score < REAL_MIN:
+            return {
+                "status": "retry",
+                "reason": "not_live",
+                "liveness": "failed",
+                "score": round(mean_score, 3),
+                "passed_prompts": passed_prompts,
+            }, None
+
         # Liveness is measured, not certified: the app treats a pass as "checked", and any
         # match against another owner goes to a person, never to an automatic decision.
-        return {"status": "live", "reason": "ok", "liveness": "passed"}, template(
-            np.mean(templates, axis=0)
-        )
+        return {
+            "status": "live",
+            "reason": "ok",
+            "liveness": "passed",
+            "score": round(mean_score, 3),
+            "passed_prompts": passed_prompts,
+        }, template(np.mean(templates, axis=0))
 
 
 @asynccontextmanager
@@ -271,6 +368,7 @@ async def evaluate(request: Request):
         raise HTTPException(429, "Worker busy")
     async with request.app.state.busy:
         data = bytearray()
+        start_time = time.perf_counter()
         try:
             async with asyncio.timeout(10):
                 async for chunk in request.stream():
@@ -279,6 +377,8 @@ async def evaluate(request: Request):
                     data.extend(chunk)
             models_service = request.app.state.models
             if models_service is None:
+                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
+                logger.warning("face_worker_models_unavailable latency_ms=%s", elapsed_ms)
                 return {"status": "unavailable", "reason": "models_unavailable"}
             try:
                 outcome, vector = await anyio.to_thread.run_sync(
@@ -286,10 +386,35 @@ async def evaluate(request: Request):
                     bytes(data),
                     request.headers.get("x-prompts", "").split(","),
                 )
+                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
+                logger.info(
+                    "face_worker_verdict status=%s reason=%s liveness=%s score=%s "
+                    "failed_prompt=%s latency_ms=%s bytes=%d",
+                    outcome.get("status"),
+                    outcome.get("reason"),
+                    outcome.get("liveness"),
+                    outcome.get("score"),
+                    outcome.get("failed_prompt"),
+                    elapsed_ms,
+                    len(data),
+                )
             except CaptureRejected as rejected:
+                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
+                logger.info(
+                    "face_worker_rejected reason=%s latency_ms=%s bytes=%d",
+                    rejected.reason,
+                    elapsed_ms,
+                    len(data),
+                )
                 return {"status": "retry", "reason": rejected.reason, "liveness": "not_evaluated"}
-            except Exception:
-                # No decoder/provider exception or capture content in logs/responses.
+            except Exception as exc:
+                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
+                logger.warning(
+                    "face_worker_exception error=%s latency_ms=%s bytes=%d",
+                    type(exc).__name__,
+                    elapsed_ms,
+                    len(data),
+                )
                 return {
                     "status": "retry",
                     "reason": "capture_not_usable",

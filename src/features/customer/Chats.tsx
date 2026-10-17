@@ -20,11 +20,13 @@ import { PlaceImage } from '../frontdoors/PlaceImage'
 import { useCustomer } from './account'
 import { clockTime, useAccountCopy } from './copy'
 import type { AccountCopy } from './copy'
+import { PlainText, RichText } from '../../design/RichText'
 import { SignInButton } from './SignIn'
 import { fill } from '../passport/copy'
 import { useRescueCopy } from '../rescue/copy'
 import type { RescueStrings } from '../rescue/copy'
 import { rescueMarker } from '../rescue/marker'
+import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { chatPath, reduceMotion } from './paths'
 import './customer.css'
 
@@ -782,13 +784,11 @@ function Bubble({
         <Typography component="span" sx={visuallyHidden}>
           {mine ? t.you : ai ? t.aiLabel : demo ? t.demoReply : t.owner}:{' '}
         </Typography>
-        <Typography
-          variant="bodyLarge"
-          component="span"
-          sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}
-        >
-          {shown(message.text, r)}
-        </Typography>
+        {ai || demo ? (
+          <RichText content={shown(formatMoneyText(message.text, locale), r)} />
+        ) : (
+          <PlainText text={shown(message.text, r)} />
+        )}
       </Box>
       <Stack
         direction="row"

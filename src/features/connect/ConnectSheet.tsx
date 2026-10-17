@@ -18,6 +18,8 @@ import {
 } from '@mui/material'
 import { ArrowRight, CheckCircle2, Sparkles, Upload } from 'lucide-react'
 import { shape } from '../../design/theme'
+import { formatLocale } from '../../i18n/locales'
+import { useLocale } from '../../state/hooks'
 import type { Proposal } from '../v1/api'
 import { Sheet } from '../v1/Sheet'
 import { useWorkspace } from '../v1/workspaceContext'
@@ -64,6 +66,7 @@ export function ConnectSheet({
   initialSystem?: string
 }) {
   const t = useConnectCopy()
+  const locale = useLocale()
   const ws = useWorkspace()
   const roles = useTheme().material
   const shop = ws.active
@@ -269,9 +272,11 @@ export function ConnectSheet({
       onClose={handleClose}
       titleId="connect-sheet-title"
       title={t.connectTitle}
+      // Without a mapping the only action is Close, so the phone sheet adds no second one.
+      dismissInActions={!currentMapping}
       actions={
         currentMapping ? (
-          <Stack direction="row" spacing={1.5} sx={{ width: '100%', justifyContent: 'flex-end' }}>
+          <Stack direction="row" spacing={1.5} sx={{ justifyContent: 'flex-end' }}>
             <Button
               variant="outlined"
               disabled={busy}
@@ -364,7 +369,11 @@ export function ConnectSheet({
               </Stack>
               {savedForSelected?.last_synced && (
                 <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1.5 }}>
-                  {t.lastSynced(new Date(savedForSelected.last_synced * 1000).toLocaleString())}
+                  {t.lastSynced(
+                    new Date(savedForSelected.last_synced * 1000).toLocaleString(
+                      formatLocale(locale),
+                    ),
+                  )}
                 </Typography>
               )}
             </Box>

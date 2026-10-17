@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Box, Button, Chip, Stack, Typography, useTheme } from '@mui/material'
 import { ArrowUpRight, Send } from 'lucide-react'
+import { RichText } from '../../design/RichText'
 import { enterRise, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { NEEDS_TAP, type CoachAction } from './coachAction'
@@ -37,6 +38,21 @@ export function ActionChip({ action, onOpen }: { action: CoachAction; onOpen: ()
       <Chip
         icon={<ArrowUpRight size={18} />}
         label={NEEDS_TAP.has(action.target) ? action.label : c.open(action.label)}
+        variant="outlined"
+        onClick={onOpen}
+        sx={{ minHeight: 48 }}
+      />
+    </Box>
+  )
+}
+
+/** After a coach change is saved: one tap to that item in the menu (no duplicate to hunt for). */
+export function MenuLinkChip({ label, onOpen }: { label: string; onOpen: () => void }) {
+  return (
+    <Box component="li" sx={{ pl: { xs: 0, sm: 10 }, ...enterRise }}>
+      <Chip
+        icon={<ArrowUpRight size={18} />}
+        label={label}
         variant="outlined"
         onClick={onOpen}
         sx={{ minHeight: 48 }}
@@ -86,9 +102,7 @@ export function ReplyCard({
             <Typography variant="labelMedium" color="text.secondary">
               {c.yourReply}
             </Typography>
-            <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
-              {action.text}
-            </Typography>
+            <RichText content={action.text} />
           </Box>
           {done ? (
             <Typography variant="labelLarge" color="primary" role="status">
