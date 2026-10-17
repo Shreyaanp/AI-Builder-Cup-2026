@@ -30,6 +30,7 @@ from .business_understanding import BusinessUnderstander
 from .community import community_service
 from .community_routes import router as community_router
 from .connector_routes import router as connector_router
+from .pos_live_routes import router as pos_live_router
 from .contracts import CoachTurn, NewShopVoiceContext, StreamEvent
 from .coordinator import MerchantContext, current
 from .customer import CustomerAnswers
@@ -281,6 +282,7 @@ def create_app(
     app.include_router(merchant_router)
     app.include_router(icon_router)
     app.include_router(connector_router)
+    app.include_router(pos_live_router)
     app.include_router(google_sim_router)
     app.include_router(planning_router)
     app.include_router(sales_router)
