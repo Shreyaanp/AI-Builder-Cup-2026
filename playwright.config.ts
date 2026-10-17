@@ -68,5 +68,19 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },
+    // The real private face worker (s12-face-real-worker.spec.ts), only with its token set.
+    ...(process.env.FACE_WORKER_TOKEN
+      ? [
+          {
+            command: 'uv run --extra face uvicorn face_worker:app --port 3401',
+            // Models load from backend/data/face-models, relative to the worker.
+            cwd: 'backend',
+            // A 401 (no token) counts as up: the models load before it answers at all.
+            url: 'http://127.0.0.1:3401/health',
+            reuseExistingServer: !process.env.CI,
+            timeout: 120_000,
+          },
+        ]
+      : []),
   ],
 })

@@ -45,6 +45,8 @@ dev = [
   "mypy>=1.18,<2",
   "pip-audit>=2.9,<3",
   "httpx2>=2.13.1",
+  # Decodes the phone-recording fixtures in tests (the face worker image has it via [face]).
+  "av>=15,<18",
 ]
 
 [tool.uv]

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import type { RefObject } from 'react'
 import {
   Alert,
   AlertTitle,
   Box,
   Button,
   CircularProgress,
+  Dialog,
   IconButton,
   Stack,
   Tooltip,
@@ -13,6 +15,7 @@ import {
 } from '@mui/material'
 import { Camera, Check, RotateCcw, SkipForward, Upload, X } from 'lucide-react'
 import { enterRise, motion, shape } from '../../design/theme'
+import { useBackClose } from './backStack'
 import { useInChatCopy } from './inChatCopy'
 import { useOnboardingCopy } from './onboardingCopy'
 import { useVoiceModeCopy } from './voiceModeCopy'
@@ -23,18 +26,11 @@ type Phase = 'ask' | 'starting' | 'live' | 'preview' | 'sending' | 'problem'
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
-async function cameraPermission(): Promise<PermissionState> {
-  try {
-    return (await navigator.permissions.query({ name: 'camera' as PermissionName })).state
-  } catch {
-    return 'prompt'
-  }
-}
-
 /**
- * The camera as a card in the conversation (never full screen): the coach's instruction over a
- * guide frame, shutter, retake and "Use photo", one shot after another (price board, then the
- * shopfront), with upload as the fallback. Only video is requested, so the voice mic carries on.
+ * The camera's entry point in the conversation: a card with the reason, "Open camera", upload and
+ * a big Skip. Opening the camera takes the whole screen (dark backdrop, a highlighted frame guide,
+ * a big shutter, retake and "Use photo", upload as the fallback) and returns to the chat with the
+ * photo. Only video is requested, so the voice mic carries on.
  */
 export function CameraCard({
   shots,
@@ -45,7 +41,8 @@ export function CameraCard({
   shots: Shot[]
   /** Reads the photo into the shop (the conversation shows the result). */
   onPhoto: (file: File) => Promise<void>
-  onClose: () => void
+  /** `quiet`: the X or a finished photo, nothing is said; otherwise the owner chose Skip. */
+  onClose: (quiet: boolean) => void
   /** The owner is using the camera (the coach waits instead of nudging). */
   onActive?: () => void
 }) {
@@ -53,7 +50,6 @@ export function CameraCard({
   const v = useVoiceModeCopy()
   const o = useOnboardingCopy()
   const roles = useTheme().material
-  const chalk = useTheme().chalk
   const [phase, setPhase] = useState<Phase>('ask')
   const [problem, setProblem] = useState<Problem>('failed')
   const [index, setIndex] = useState(0)
@@ -100,18 +96,7 @@ export function CameraCard({
       setPhase('problem')
     }
   }
-  // Already allowed: straight to the viewfinder. Otherwise the reason comes first, then the ask.
-  useEffect(() => {
-    let alive = true
-    void cameraPermission().then((state) => {
-      if (alive && state === 'granted') void start()
-    })
-    return () => {
-      alive = false
-      stop()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  useEffect(() => stop, [])
   // The stream goes into the viewfinder whenever it is on screen.
   useEffect(() => {
     if (phase !== 'live' || !video.current || !stream.current) return
@@ -152,7 +137,7 @@ export function CameraCard({
       setPhase(stream.current ? 'live' : 'ask')
     } else {
       stop()
-      onClose()
+      onClose(true)
     }
   }
   async function send(file: File) {
@@ -163,10 +148,18 @@ export function CameraCard({
       advance()
     }
   }
-  function close() {
+  function close(quiet: boolean) {
     stop()
-    onClose()
+    onClose(quiet)
   }
+  /** The full-screen camera closes; the owner is back at the card in the chat. */
+  function leave() {
+    stop()
+    setPreview(null)
+    setPhase('ask')
+  }
+  const fullScreen =
+    phase === 'starting' || phase === 'live' || phase === 'preview' || phase === 'sending'
 
   const guide = shot === 'board' ? c.guideBoard : c.guideFront
   const title = shot === 'board' ? c.cameraBoard : c.cameraFront
@@ -214,13 +207,13 @@ export function CameraCard({
           )}
         </Box>
         <Tooltip title={c.closeCamera}>
-          <IconButton aria-label={c.closeCamera} onClick={close} sx={{ mr: -1 }}>
+          <IconButton aria-label={c.closeCamera} onClick={() => close(true)} sx={{ mr: -1 }}>
             <X size={20} />
           </IconButton>
         </Tooltip>
       </Stack>
 
-      {phase === 'ask' && (
+      {(phase === 'ask' || fullScreen) && (
         <Stack spacing={2}>
           <Typography variant="bodyMedium" color="text.secondary">
             {c.cameraWhy}
@@ -230,6 +223,7 @@ export function CameraCard({
               variant="contained"
               startIcon={<Camera size={18} />}
               onClick={() => void start()}
+              disabled={fullScreen}
               sx={{ minHeight: 48 }}
             >
               {c.openCamera}
@@ -242,7 +236,7 @@ export function CameraCard({
             variant="text"
             size="large"
             startIcon={<SkipForward size={18} />}
-            onClick={close}
+            onClick={() => close(false)}
             sx={{ minHeight: 52 }}
           >
             {o.skipForNow}
@@ -255,7 +249,7 @@ export function CameraCard({
           data-testid="camera-alert"
           data-problem={problem}
           severity="warning"
-          onClose={close}
+          onClose={() => close(true)}
           closeText={v.close}
           sx={{
             borderRadius: `${shape.lg}px`,
@@ -282,180 +276,27 @@ export function CameraCard({
         </Alert>
       )}
 
-      {(phase === 'starting' || phase === 'live' || phase === 'preview' || phase === 'sending') && (
-        <Stack spacing={1.5}>
-          <Box
-            sx={{
-              position: 'relative',
-              aspectRatio: '4 / 3',
-              maxHeight: { xs: 300, md: 360 },
-              width: '100%',
-              mx: 'auto',
-              borderRadius: `${shape.md}px`,
-              overflow: 'hidden',
-              bgcolor: '#111',
-            }}
-          >
-            {phase === 'starting' && (
-              <Stack
-                sx={{
-                  position: 'absolute',
-                  inset: 0,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 1,
-                  color: '#fff',
-                }}
-              >
-                <CircularProgress size={28} color="inherit" />
-                <Typography variant="bodyMedium">{c.startingCamera}</Typography>
-              </Stack>
-            )}
-            {(phase === 'live' || phase === 'starting') && (
-              <Box
-                component="video"
-                ref={video}
-                data-testid="viewfinder"
-                autoPlay
-                muted
-                playsInline
-                aria-label={guide}
-                sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
-            )}
-            {preview && phase !== 'live' && (
-              <Box
-                component="img"
-                src={preview.url}
-                alt={title}
-                sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
-            )}
-            {phase === 'live' && (
-              <>
-                {/* The guide frame: dim outside, chalk corners, the instruction on top. */}
-                <Box
-                  aria-hidden="true"
-                  sx={{
-                    position: 'absolute',
-                    inset: shot === 'board' ? '16% 8% 10%' : '16% 14% 8%',
-                    borderRadius: `${shape.sm}px`,
-                    border: `2px dashed ${chalk.sunflower.container}`,
-                    boxShadow: '0 0 0 999px rgba(0,0,0,0.38)',
-                    pointerEvents: 'none',
-                  }}
-                />
-                <Typography
-                  variant="labelLarge"
-                  sx={{
-                    position: 'absolute',
-                    top: 8,
-                    left: 8,
-                    right: 8,
-                    textAlign: 'center',
-                    color: '#fff',
-                    textShadow: '0 1px 3px rgba(0,0,0,0.8)',
-                  }}
-                >
-                  {guide}
-                </Typography>
-              </>
-            )}
-            {phase === 'sending' && (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'grid',
-                  placeItems: 'center',
-                  bgcolor: 'rgba(0,0,0,0.4)',
-                  color: '#fff',
-                }}
-              >
-                <CircularProgress size={32} color="inherit" />
-              </Box>
-            )}
-            {flash > 0 && (
-              <Box
-                key={flash}
-                aria-hidden="true"
-                sx={{
-                  position: 'absolute',
-                  inset: 0,
-                  bgcolor: '#fff',
-                  pointerEvents: 'none',
-                  '@keyframes shutterFlash': { from: { opacity: 0.85 }, to: { opacity: 0 } },
-                  animation: `shutterFlash 360ms ${motion.easing.emphasizedDecelerate} both`,
-                  '@media (prefers-reduced-motion: reduce)': { display: 'none' },
-                }}
-              />
-            )}
-          </Box>
-
-          {phase === 'live' && (
-            <Stack
-              direction="row"
-              sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
-            >
-              <Box sx={{ flex: 1 }}>
-                {/* One shot (the shopfront): Skip closes the card, the photo is optional. */}
-                <Button
-                  startIcon={<SkipForward size={18} />}
-                  onClick={shots.length > 1 ? advance : close}
-                  sx={{ minHeight: 48 }}
-                >
-                  {shots.length > 1 ? c.skipShot : o.skipForNow}
-                </Button>
-              </Box>
-              <IconButton
-                ref={shutter}
-                aria-label={c.takePhoto}
-                onClick={capture}
-                sx={{
-                  width: 68,
-                  height: 68,
-                  border: `4px solid ${roles.primary}`,
-                  bgcolor: roles.surface,
-                  '&:hover': { bgcolor: roles.surfaceContainerHigh },
-                  '&:active': { transform: 'scale(0.92)' },
-                  transition: `transform 120ms ${motion.easing.standard}`,
-                }}
-              >
-                <Box sx={{ width: 46, height: 46, borderRadius: '50%', bgcolor: roles.primary }} />
-              </IconButton>
-              <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-                <Tooltip title={c.uploadInstead}>
-                  <IconButton aria-label={c.uploadInstead} onClick={() => upload.current?.click()}>
-                    <Upload size={22} />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            </Stack>
-          )}
-          {phase === 'preview' && preview && (
-            <Stack direction="row" sx={{ gap: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <Button
-                variant="outlined"
-                startIcon={<RotateCcw size={18} />}
-                onClick={() => {
-                  setPreview(null)
-                  setPhase('live')
-                }}
-                sx={{ minHeight: 48 }}
-              >
-                {c.retake}
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<Check size={18} />}
-                onClick={() => void send(preview.file)}
-                sx={{ minHeight: 48 }}
-              >
-                {c.usePhoto}
-              </Button>
-            </Stack>
-          )}
-        </Stack>
+      {fullScreen && (
+        <FullScreenCamera
+          title={title}
+          guide={guide}
+          shot={shot}
+          phase={phase}
+          preview={preview}
+          flash={flash}
+          shotLabel={shots.length > 1 ? c.shotOf(index + 1, shots.length) : null}
+          video={video}
+          shutter={shutter}
+          onCapture={capture}
+          onLeave={leave}
+          onSkipShot={shots.length > 1 ? advance : null}
+          onUpload={() => upload.current?.click()}
+          onRetake={() => {
+            setPreview(null)
+            setPhase('live')
+          }}
+          onUse={() => preview && void send(preview.file)}
+        />
       )}
 
       <input
@@ -472,5 +313,257 @@ export function CameraCard({
         }}
       />
     </Box>
+  )
+}
+
+/** The camera in a full-screen dialog, in the style of the big map: dark, one job per button. */
+function FullScreenCamera({
+  title,
+  guide,
+  shot,
+  phase,
+  preview,
+  flash,
+  shotLabel,
+  video,
+  shutter,
+  onCapture,
+  onLeave,
+  onSkipShot,
+  onUpload,
+  onRetake,
+  onUse,
+}: {
+  title: string
+  guide: string
+  shot: Shot
+  phase: Phase
+  preview: { url: string; file: File } | null
+  flash: number
+  shotLabel: string | null
+  video: RefObject<HTMLVideoElement | null>
+  shutter: RefObject<HTMLButtonElement | null>
+  onCapture: () => void
+  onLeave: () => void
+  onSkipShot: (() => void) | null
+  onUpload: () => void
+  onRetake: () => void
+  onUse: () => void
+}) {
+  const c = useInChatCopy()
+  const chalk = useTheme().chalk
+  const ink = '#fff'
+  useBackClose(true, onLeave)
+  return (
+    <Dialog
+      open
+      fullScreen
+      onClose={onLeave}
+      aria-labelledby="camera-modal-title"
+      slotProps={{ paper: { sx: { bgcolor: '#000', color: ink, backgroundImage: 'none' } } }}
+    >
+      <Box
+        data-testid="camera-modal"
+        data-phase={phase}
+        data-shot={shot}
+        sx={{
+          height: '100dvh',
+          display: 'flex',
+          flexDirection: 'column',
+          pt: 'env(safe-area-inset-top)',
+        }}
+      >
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 1, px: 2, minHeight: 56 }}>
+          <Tooltip title={c.closeCamera}>
+            <IconButton
+              aria-label={c.closeCamera}
+              onClick={onLeave}
+              sx={{ minWidth: 48, minHeight: 48, color: ink }}
+            >
+              <X size={22} />
+            </IconButton>
+          </Tooltip>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography id="camera-modal-title" component="h2" variant="titleMedium">
+              {title}
+            </Typography>
+            {shotLabel && (
+              <Typography variant="bodySmall" sx={{ opacity: 0.8 }}>
+                {shotLabel}
+              </Typography>
+            )}
+          </Box>
+        </Stack>
+
+        <Box sx={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          {phase === 'starting' && (
+            <Stack
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1,
+              }}
+            >
+              <CircularProgress size={28} color="inherit" />
+              <Typography variant="bodyMedium">{c.startingCamera}</Typography>
+            </Stack>
+          )}
+          {(phase === 'live' || phase === 'starting') && (
+            <Box
+              component="video"
+              ref={video}
+              data-testid="viewfinder"
+              autoPlay
+              muted
+              playsInline
+              aria-label={guide}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          )}
+          {preview && phase !== 'live' && (
+            <Box
+              component="img"
+              src={preview.url}
+              alt={title}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          )}
+          {phase === 'live' && (
+            <>
+              {/* The highlighted frame: dim outside, a dashed chalk border, the instruction above. */}
+              <Box
+                aria-hidden="true"
+                sx={{
+                  position: 'absolute',
+                  inset: shot === 'board' ? '12% 6% 8%' : '12% 10% 8%',
+                  borderRadius: `${shape.md}px`,
+                  border: `3px dashed ${chalk.sunflower.container}`,
+                  boxShadow: '0 0 0 999px rgba(0,0,0,0.45)',
+                  pointerEvents: 'none',
+                }}
+              />
+              <Typography
+                variant="titleSmall"
+                sx={{
+                  position: 'absolute',
+                  top: 12,
+                  left: 16,
+                  right: 16,
+                  textAlign: 'center',
+                  textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                }}
+              >
+                {guide}
+              </Typography>
+            </>
+          )}
+          {phase === 'sending' && (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: 'rgba(0,0,0,0.5)',
+              }}
+            >
+              <CircularProgress size={40} color="inherit" />
+            </Box>
+          )}
+          {flash > 0 && (
+            <Box
+              key={flash}
+              aria-hidden="true"
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                bgcolor: '#fff',
+                pointerEvents: 'none',
+                '@keyframes shutterFlash': { from: { opacity: 0.85 }, to: { opacity: 0 } },
+                animation: `shutterFlash 360ms ${motion.easing.emphasizedDecelerate} both`,
+                '@media (prefers-reduced-motion: reduce)': { display: 'none' },
+              }}
+            />
+          )}
+        </Box>
+
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+            px: 2,
+            pt: 2,
+            pb: 'calc(20px + env(safe-area-inset-bottom))',
+            minHeight: 112,
+          }}
+        >
+          {phase === 'live' && (
+            <>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Button
+                  color="inherit"
+                  startIcon={<Upload size={18} />}
+                  onClick={onUpload}
+                  sx={{ minHeight: 48 }}
+                >
+                  {c.uploadInstead}
+                </Button>
+              </Box>
+              <IconButton
+                ref={shutter}
+                aria-label={c.takePhoto}
+                onClick={onCapture}
+                sx={{
+                  width: 84,
+                  height: 84,
+                  border: `5px solid ${ink}`,
+                  '&:active': { transform: 'scale(0.92)' },
+                  transition: `transform 120ms ${motion.easing.standard}`,
+                }}
+              >
+                <Box sx={{ width: 60, height: 60, borderRadius: '50%', bgcolor: ink }} />
+              </IconButton>
+              <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end', minWidth: 0 }}>
+                {onSkipShot && (
+                  <Button
+                    color="inherit"
+                    startIcon={<SkipForward size={18} />}
+                    onClick={onSkipShot}
+                    sx={{ minHeight: 48 }}
+                  >
+                    {c.skipShot}
+                  </Button>
+                )}
+              </Box>
+            </>
+          )}
+          {phase === 'preview' && preview && (
+            <>
+              <Button
+                variant="outlined"
+                color="inherit"
+                startIcon={<RotateCcw size={18} />}
+                onClick={onRetake}
+                sx={{ minHeight: 56, flex: 1 }}
+              >
+                {c.retake}
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<Check size={18} />}
+                onClick={onUse}
+                sx={{ minHeight: 56, flex: 1 }}
+              >
+                {c.usePhoto}
+              </Button>
+            </>
+          )}
+        </Stack>
+      </Box>
+    </Dialog>
   )
 }

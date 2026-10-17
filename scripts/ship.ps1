@@ -20,6 +20,10 @@ if ($LASTEXITCODE) { throw 'Cannot verify the published tag.' }
 $remoteSha = if ($remoteTag.Count) { ($remoteTag[-1] -split '\s+')[0] } else { '' }
 if ($remoteSha -ne $sha) { throw 'Publish the exact release tag before shipping.' }
 
+# The private face worker first, when its inputs changed since the image it runs (deploy.yml's
+# face step then finds it current). Main releases that skipped it left an old worker behind.
+& (Join-Path $PSScriptRoot 'ship-face.ps1')
+
 # CI gates this SHA, builds its image, applies runtime-config.py, and verifies health/SHA.
 # Capacity is deliberately managed separately (docs/release-checklist.md).
 gh workflow run deploy.yml --ref main -f "revision=$sha" -f "release_tag=$Tag"
