@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { realpathSync } from 'node:fs'
 
 // Each worktree can run its own dev servers (WEB_PORT/API_PORT), so parallel workers never test
 // each other's code through a reused server.
@@ -21,6 +22,8 @@ export default defineConfig({
   // Pre-bundled at start: found only when the face check opened, it reloaded the page mid-capture.
   optimizeDeps: { include: ['@mediapipe/tasks-vision'] },
   server: {
+    // Worktrees can share node_modules through a junction; allow its resolved font files.
+    fs: { allow: ['.', realpathSync('node_modules')] },
     host: '127.0.0.1',
     port: web,
     strictPort: true,

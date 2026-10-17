@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     customer_origin: str = ""
     v1_enabled: bool = False
     feature_google_guide: bool = True
+    web_push_enabled: bool = False
+    web_push_public_key: str = ""
+    web_push_private_key: SecretStr = SecretStr("")
+    web_push_subject: str = ""
+    reminders_caller: str = ""
+    reminders_audience: str = ""
     merchant_backend: Literal["sqlite", "firestore"] = "sqlite"
     embedding_model: str = "gemini-embedding-2"
     # The shared search engine: Vertex embeddings when Gemini runs on Vertex ("auto"), or the

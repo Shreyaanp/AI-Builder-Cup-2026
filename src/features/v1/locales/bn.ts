@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const bn: Copy = {
+  remindMe: 'মনে করিয়ে দিন',
+  reminderTiming: 'এই ডিভাইসে, দোকান খোলা ও বন্ধের সময়।',
+  reminderOff: 'এখন মনে করানো বন্ধ।',
+  reminderUnsupported: 'ইনস্টল করা অ্যাপ বা বিজ্ঞপ্তি সমর্থিত ব্রাউজার ব্যবহার করুন।',
+  reminderShop: 'মনে করাতে দোকান যোগ করুন।',
+  reminderDenied: 'বিজ্ঞপ্তি বন্ধ। ব্রাউজার সেটিংসে অনুমতি দিয়ে আবার চেষ্টা করুন।',
+  reminderFailed: 'বদলানো যায়নি। আবার চেষ্টা করুন।',
+  reminderSaving: 'বদলানো হচ্ছে…',
+  reminderLoading: 'দেখা হচ্ছে…',
   newShopMode: 'নতুন দোকান',
   newShopReady: 'আপনার নতুন দোকান তৈরি',
   newShopReadyBody: 'এখন আপনি নতুন দোকানে কাজ করছেন। প্রস্তুত হলে গ্রাহক পেজ শেয়ার করুন।',
@@ -406,6 +415,7 @@ export const bn: Copy = {
   eraseFailed: 'মোছা শেষ হয়নি। সংযোগ দেখে আবার চেষ্টা করুন।',
   eraseRetry: 'আবার চেষ্টা করুন',
   eraseSteps: {
+    reminders: 'মনে করিয়ে দিন',
     face: 'মুখের তথ্য',
     photos: 'ছবি',
     records: 'দোকান ও পণ্য',

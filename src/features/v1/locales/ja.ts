@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const ja: Copy = {
+  remindMe: '通知する',
+  reminderTiming: 'この端末で、お店の開店時と閉店時に通知します。',
+  reminderOff: '現在、通知はオフです。',
+  reminderUnsupported: 'インストール済みアプリか通知対応ブラウザをお試しください。',
+  reminderShop: '通知を設定するにはお店を追加してください。',
+  reminderDenied: '通知がブロックされています。ブラウザの設定で許可して再試行してください。',
+  reminderFailed: '更新できませんでした。再試行してください。',
+  reminderSaving: '更新中…',
+  reminderLoading: '確認中…',
   newShopMode: '新しいお店',
   newShopReady: '新しいお店の準備ができました',
   newShopReadyBody:
@@ -395,6 +404,7 @@ export const ja: Copy = {
   eraseFailed: '削除が完了しませんでした。接続を確認して、もう一度お試しください。',
   eraseRetry: 'もう一度試す',
   eraseSteps: {
+    reminders: '通知する',
     face: '顔データ',
     photos: '写真',
     records: 'お店と商品',

@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const ta: Copy = {
+  remindMe: 'நினைவூட்டுங்கள்',
+  reminderTiming: 'இந்தச் சாதனத்தில், கடை திறக்கும் மற்றும் மூடும் நேரத்தில்.',
+  reminderOff: 'இப்போது நினைவூட்டல்கள் முடக்கப்பட்டுள்ளன.',
+  reminderUnsupported: 'நிறுவிய செயலி அல்லது அறிவிப்புகளை ஆதரிக்கும் உலாவியைப் பயன்படுத்துங்கள்.',
+  reminderShop: 'நினைவூட்ட கடையைச் சேருங்கள்.',
+  reminderDenied: 'அறிவிப்புகள் தடுக்கப்பட்டுள்ளன. உலாவி அமைப்பில் அனுமதித்து மீண்டும் முயலுங்கள்.',
+  reminderFailed: 'மாற்ற முடியவில்லை. மீண்டும் முயலுங்கள்.',
+  reminderSaving: 'மாற்றுகிறோம்…',
+  reminderLoading: 'சரிபார்க்கிறோம்…',
   newShopMode: 'புதிய கடை',
   newShopReady: 'உங்கள் புதிய கடை தயார்',
   newShopReadyBody:
@@ -417,6 +426,7 @@ export const ta: Copy = {
   eraseFailed: 'நீக்குதல் முடியவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயலுங்கள்.',
   eraseRetry: 'மீண்டும் முயலுங்கள்',
   eraseSteps: {
+    reminders: 'நினைவூட்டுங்கள்',
     face: 'முகத் தகவல்',
     photos: 'புகைப்படங்கள்',
     records: 'கடைகளும் பொருட்களும்',

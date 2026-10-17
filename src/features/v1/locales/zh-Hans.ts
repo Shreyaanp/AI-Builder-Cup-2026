@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const zhHans: Copy = {
+  remindMe: '提醒我',
+  reminderTiming: '在此设备上，于店铺开门和关门时提醒。',
+  reminderOff: '提醒暂未开启。',
+  reminderUnsupported: '请使用已安装的应用或支持通知的浏览器。',
+  reminderShop: '添加店铺以设置提醒。',
+  reminderDenied: '通知已被屏蔽。请在浏览器设置中允许后重试。',
+  reminderFailed: '无法更新提醒，请重试。',
+  reminderSaving: '正在更新提醒…',
+  reminderLoading: '正在检查提醒…',
   newShopMode: '新店铺',
   newShopReady: '您的新店铺已准备好',
   newShopReadyBody: '您已切换到新店铺。准备好后即可分享顾客页面。',
@@ -382,6 +391,7 @@ export const zhHans: Copy = {
   eraseFailed: '删除未完成。请检查网络连接后重试。',
   eraseRetry: '重试',
   eraseSteps: {
+    reminders: '提醒我',
     face: '面部数据',
     photos: '照片',
     records: '店铺和商品',

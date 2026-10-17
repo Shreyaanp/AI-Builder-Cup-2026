@@ -7823,6 +7823,129 @@
         }
       }
     },
+    "/api/v1/reminders": {
+      "get": {
+        "tags": [
+          "reminders"
+        ],
+        "summary": "Status",
+        "operationId": "status_api_v1_reminders_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderStatus"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "reminders"
+        ],
+        "summary": "Subscribe",
+        "operationId": "subscribe_api_v1_reminders_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reminders/{sid}": {
+      "delete": {
+        "tags": [
+          "reminders"
+        ],
+        "summary": "Unsubscribe",
+        "operationId": "unsubscribe_api_v1_reminders__sid__delete",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/reminders/send": {
+      "post": {
+        "tags": [
+          "reminders"
+        ],
+        "summary": "Send Reminders",
+        "operationId": "send_reminders_api_v1_internal_reminders_send_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/face/warmup": {
       "get": {
         "summary": "Face Warmup",
@@ -13885,6 +14008,27 @@
         "title": "Pulse",
         "description": "One day's activity; None means \"no record\", never zero."
       },
+      "PushKeys": {
+        "properties": {
+          "p256dh": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "P256Dh"
+          },
+          "auth": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Auth"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "p256dh",
+          "auth"
+        ],
+        "title": "PushKeys"
+      },
       "QrKey": {
         "properties": {
           "key": {
@@ -14201,6 +14345,72 @@
           "revenue"
         ],
         "title": "RecapItem"
+      },
+      "ReminderInput": {
+        "properties": {
+          "business_id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Business Id"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "en",
+              "hi"
+            ],
+            "title": "Locale",
+            "default": "en"
+          },
+          "subscription": {
+            "$ref": "#/components/schemas/Subscription"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "business_id",
+          "subscription"
+        ],
+        "title": "ReminderInput"
+      },
+      "ReminderResult": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "ReminderResult"
+      },
+      "ReminderStatus": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "public_key": {
+            "type": "string",
+            "title": "Public Key"
+          },
+          "subscriptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Subscriptions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "public_key",
+          "subscriptions"
+        ],
+        "title": "ReminderStatus"
       },
       "ReorderBody": {
         "properties": {
@@ -14839,6 +15049,27 @@
           "message_id"
         ],
         "title": "Seen"
+      },
+      "SendResult": {
+        "properties": {
+          "sent": {
+            "type": "integer",
+            "title": "Sent",
+            "default": 0
+          },
+          "expired": {
+            "type": "integer",
+            "title": "Expired",
+            "default": 0
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "SendResult"
       },
       "ServiceAttributes": {
         "properties": {
@@ -16127,6 +16358,36 @@
           "row"
         ],
         "title": "Streak"
+      },
+      "Subscription": {
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "maxLength": 2048,
+            "title": "Endpoint"
+          },
+          "keys": {
+            "$ref": "#/components/schemas/PushKeys"
+          },
+          "expirationTime": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expirationtime"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "endpoint",
+          "keys"
+        ],
+        "title": "Subscription"
       },
       "Suggestions": {
         "properties": {

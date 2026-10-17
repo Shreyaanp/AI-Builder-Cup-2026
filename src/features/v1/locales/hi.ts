@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const hi: Copy = {
+  remindMe: 'याद दिलाएँ',
+  reminderTiming: 'इस डिवाइस पर, आपकी दुकान खुलने और बंद होने के समय।',
+  reminderOff: 'अभी याद दिलाना बंद है।',
+  reminderUnsupported: 'इंस्टॉल किया ऐप या सूचनाओं वाला ब्राउज़र आज़माएँ।',
+  reminderShop: 'याद दिलाने के लिए दुकान जोड़ें।',
+  reminderDenied: 'सूचनाएँ बंद हैं। ब्राउज़र सेटिंग में अनुमति देकर फिर कोशिश करें।',
+  reminderFailed: 'बदलाव नहीं हुआ। फिर कोशिश करें।',
+  reminderSaving: 'बदल रहे हैं…',
+  reminderLoading: 'जाँच रहे हैं…',
   newShopMode: 'नई दुकान',
   newShopReady: 'आपकी नई दुकान तैयार है',
   newShopReadyBody:
@@ -410,6 +419,7 @@ export const hi: Copy = {
   eraseFailed: 'मिटाना पूरा नहीं हुआ। कनेक्शन जाँचें और फिर कोशिश करें।',
   eraseRetry: 'फिर कोशिश करें',
   eraseSteps: {
+    reminders: 'याद दिलाएँ',
     face: 'चेहरे का डेटा',
     photos: 'फ़ोटो',
     records: 'दुकानें और उत्पाद',

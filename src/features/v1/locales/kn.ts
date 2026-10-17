@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const kn: Copy = {
+  remindMe: 'ನೆನಪಿಸಿ',
+  reminderTiming: 'ಈ ಸಾಧನದಲ್ಲಿ, ಅಂಗಡಿ ತೆರೆಯುವ ಮತ್ತು ಮುಚ್ಚುವ ಸಮಯದಲ್ಲಿ.',
+  reminderOff: 'ಈಗ ನೆನಪಿಸುವಿಕೆ ಆಫ್ ಆಗಿದೆ.',
+  reminderUnsupported: 'ಸ್ಥಾಪಿಸಿದ ಆ್ಯಪ್ ಅಥವಾ ಸೂಚನೆಗಳಿರುವ ಬ್ರೌಸರ್ ಬಳಸಿ.',
+  reminderShop: 'ನೆನಪಿಸಲು ಅಂಗಡಿ ಸೇರಿಸಿ.',
+  reminderDenied: 'ಸೂಚನೆಗಳು ನಿರ್ಬಂಧಿತವಾಗಿವೆ. ಬ್ರೌಸರ್ ಸೆಟ್ಟಿಂಗ್‌ನಲ್ಲಿ ಅನುಮತಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  reminderFailed: 'ಬದಲಾಯಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  reminderSaving: 'ಬದಲಾಯಿಸಲಾಗುತ್ತಿದೆ…',
+  reminderLoading: 'ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ…',
   newShopMode: 'ಹೊಸ ಅಂಗಡಿ',
   newShopReady: 'ನಿಮ್ಮ ಹೊಸ ಅಂಗಡಿ ಸಿದ್ಧವಾಗಿದೆ',
   newShopReadyBody: 'ಈಗ ನೀವು ಹೊಸ ಅಂಗಡಿಯಲ್ಲಿ ಕೆಲಸ ಮಾಡುತ್ತಿದ್ದೀರಿ. ಸಿದ್ಧವಾದಾಗ ಗ್ರಾಹಕ ಪುಟ ಹಂಚಿಕೊಳ್ಳಿ.',
@@ -412,6 +421,7 @@ export const kn: Copy = {
   eraseFailed: 'ಅಳಿಸುವಿಕೆ ಪೂರ್ಣಗೊಳ್ಳಲಿಲ್ಲ. ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
   eraseRetry: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
   eraseSteps: {
+    reminders: 'ನೆನಪಿಸಿ',
     face: 'ಮುಖದ ಡೇಟಾ',
     photos: 'ಫೋಟೋಗಳು',
     records: 'ಅಂಗಡಿಗಳು ಮತ್ತು ಉತ್ಪನ್ನಗಳು',
