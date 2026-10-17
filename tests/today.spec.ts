@@ -148,6 +148,9 @@ test('day one: setup bar, a warm start with the next step and the mic, no empty 
 })
 
 test('needs you now: at most three, most urgent first, each leaves when done', async ({ page }) => {
+  // The shop closes at 15:00, so "Close the day" joins Today from 14:00 shop time; pin the
+  // browser to 10:00 in Singapore so these rows read the same whatever the runner's clock says.
+  await page.clock.setFixedTime(new Date('2026-10-17T02:00:00Z'))
   await facts(page, {
     yesterday: { sales: 420000, items: 210, views: 38, questions: 3, stamps: 9, returning: 4 },
     forecast: { item: 'Masala chai', quantity: 45, unit: 'cup' },
@@ -179,6 +182,9 @@ test('needs you now: at most three, most urgent first, each leaves when done', a
 })
 
 test('all set: nothing pending means no card, one calm line and the pulse', async ({ page }) => {
+  // The shop closes at 15:00, so "Close the day" joins Today from 14:00 shop time; pin the
+  // browser to 10:00 in Singapore so these rows read the same whatever the runner's clock says.
+  await page.clock.setFixedTime(new Date('2026-10-17T02:00:00Z'))
   await facts(page, {
     yesterday: { sales: 615000, items: 300, views: 52, questions: 4 },
     forecast: { item: 'Masala chai', quantity: 60, unit: 'cup' },
@@ -203,6 +209,8 @@ test('all set: nothing pending means no card, one calm line and the pulse', asyn
 })
 
 test('while chatting the card shrinks to one pill that opens the same items', async ({ page }) => {
+  // Pinned to 10:00 in Singapore, before the shop's close-the-day window, so the menu question leads.
+  await page.clock.setFixedTime(new Date('2026-10-17T02:00:00Z'))
   await facts(page, { yesterday: { sales: 420000, views: 38 } })
   await shop(page, { name: 'Courtyard Chai', ...FULL, phone: '' }, PRODUCTS, { complete: true })
   await expect(page.getByTestId('today-needs').getByRole('listitem')).toHaveCount(3)
