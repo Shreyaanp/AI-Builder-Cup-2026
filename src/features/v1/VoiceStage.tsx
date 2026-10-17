@@ -366,18 +366,31 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
         borderRadius: `${shape.lg}px`,
         bgcolor: roles.surfaceContainer,
         border: `1.5px dashed ${roles.outlineVariant}`,
-        minHeight: 0,
-        overflow: { md: 'auto' },
+        minHeight: { md: 0 },
+        // A phone keeps the conversation and the composer on screen: a tall card scrolls (#83).
+        maxHeight: { xs: '38dvh', md: 'none' },
+        overflow: 'auto',
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
+      {/* Narrow: "Review my shop" moves under the name rather than squeezing it. */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          columnGap: 2,
+          rowGap: 1,
+          minWidth: 0,
+        }}
+      >
         <Box
           aria-hidden="true"
           sx={{
             width: 40,
             height: 40,
             flexShrink: 0,
-            display: 'grid',
+            // A phone gives the width to the name.
+            display: { xs: 'none', sm: 'grid' },
             placeItems: 'center',
             borderRadius: `${shape.md}px`,
             bgcolor: roles.primaryContainer,
@@ -387,7 +400,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
         >
           <Store size={22} />
         </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ flex: '1 1 9rem', minWidth: 0 }}>
           <Typography variant="labelMedium" color="text.secondary" component="p">
             {f.soFar}
           </Typography>
@@ -397,13 +410,9 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
             sx={{
               fontFamily: HAND_FONT,
               fontSize: { xs: '1.45rem', md: '2.1rem' },
-              lineHeight: 1.1,
+              // Room for the hand font's descenders.
+              lineHeight: 1.25,
               overflowWrap: 'anywhere',
-              // A long name stays two lines on a phone (the review shows it in full).
-              display: '-webkit-box',
-              WebkitBoxOrient: 'vertical',
-              WebkitLineClamp: { xs: 2, md: 'unset' },
-              overflow: 'hidden',
               color: business?.name ? 'text.primary' : 'text.secondary',
               ...(business?.name ? chalkWrite : {}),
             }}
@@ -463,7 +472,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
           size="small"
           onClick={onReview}
           data-testid="review-my-shop"
-          sx={{ flexShrink: 0 }}
+          sx={{ flexShrink: 0, ml: 'auto' }}
         >
           {o.review}
         </Button>
@@ -625,8 +634,19 @@ export function VoiceAlert({
       closeText={v.close}
       sx={{
         borderRadius: `${shape.lg}px`,
-        // On a phone the words and both buttons get the full width.
+        // On a phone the words and both buttons get the full width, and the close button sits
+        // in the corner, so a 360 px screen keeps both buttons on one row and the chat in view.
         '& .MuiAlert-icon': { display: { xs: 'none', sm: 'flex' } },
+        position: 'relative',
+        '& .MuiAlert-message': { minWidth: 0, flex: 1 },
+        '& .MuiAlert-action': {
+          position: { xs: 'absolute', sm: 'static' },
+          top: { xs: 4 },
+          right: { xs: 8 },
+          ml: { sm: 'auto' },
+          p: 0,
+        },
+        '& .MuiAlertTitle-root': { pr: { xs: 5, sm: 0 } },
         '@keyframes alertIn': {
           from: { opacity: 0, transform: 'translateY(8px)' },
           to: { opacity: 1, transform: 'none' },
@@ -635,7 +655,9 @@ export function VoiceAlert({
       }}
     >
       <AlertTitle>{title}</AlertTitle>
-      {body && <Typography variant="bodyMedium">{body}</Typography>}
+      {body && (
+        <Typography sx={{ typography: { xs: 'bodySmall', sm: 'bodyMedium' } }}>{body}</Typography>
+      )}
       <Stack direction="row" sx={{ gap: 1, mt: 1.5, flexWrap: 'wrap' }}>
         <Button
           variant="contained"

@@ -1193,7 +1193,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         variant="outlined"
         disabled={!idle}
         onClick={() => openCamera()}
-        sx={{ height: 40, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
+        sx={{ height: 48, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
       />
       <Chip
         icon={<LocateFixed size={18} />}
@@ -1201,7 +1201,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         variant="outlined"
         disabled={!idle}
         onClick={() => openMap(true)}
-        sx={{ height: 40, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
+        sx={{ height: 48, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
       />
       <Chip
         icon={<SkipForward size={18} />}
@@ -1209,7 +1209,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         variant="outlined"
         disabled={!idle || !lastCoach}
         onClick={skip}
-        sx={{ height: 40, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
+        sx={{ height: 48, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
       />
     </Stack>
   )
@@ -1270,16 +1270,30 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
             <X size={22} />
           </IconButton>
         </Tooltip>
-        <Typography component="h1" variant="titleMedium" sx={{ flex: 1, minWidth: 0 }}>
+        <Typography
+          component="h1"
+          variant="titleMedium"
+          sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
+        >
           {t.newShopMode}
         </Typography>
         <Button
           startIcon={<ListChecks size={18} />}
           onClick={() => ws.setNewShopPhase('manual')}
-          sx={{ flexShrink: 0 }}
+          sx={{ flexShrink: 0, display: { xs: 'none', sm: 'inline-flex' } }}
         >
           {c.typeItIn}
         </Button>
+        {/* A phone keeps the title on one line: the same action as a labelled icon (#83). */}
+        <Tooltip title={c.typeItIn}>
+          <IconButton
+            aria-label={c.typeItIn}
+            onClick={() => ws.setNewShopPhase('manual')}
+            sx={{ flexShrink: 0, width: 48, height: 48, display: { sm: 'none' } }}
+          >
+            <ListChecks size={22} />
+          </IconButton>
+        </Tooltip>
         {/* Always there: the owner can end the conversation at any moment (all is saved). */}
         <Button
           color="inherit"
@@ -1293,7 +1307,15 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         </Button>
       </Box>
 
-      <Box sx={{ gridArea: 'card', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {/* On a phone only the conversation shrinks; the card never folds under it (#83). */}
+      <Box
+        sx={{
+          gridArea: 'card',
+          minHeight: { xs: 'auto', md: 0 },
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         <ShopFill draft={draft} onReview={() => setReviewOpen(true)} />
       </Box>
 
@@ -1413,9 +1435,11 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       <Box
         sx={{
           gridArea: 'stage',
-          minHeight: 0,
+          minHeight: { xs: typingView || hasActiveCard ? 'auto' : 0, md: 0 },
           containerType: { xs: typingView || hasActiveCard ? 'normal' : 'size', md: 'size' },
-          display: 'flex',
+          // A phone typing with a voice alert open: the alert says what is happening, and the
+          // conversation keeps the room (#83).
+          display: { xs: problem && typingView ? 'none' : 'flex', md: 'flex' },
           flexDirection: { xs: typingView || hasActiveCard ? 'row' : 'column', md: 'column' },
           alignItems: 'center',
           justifyContent: 'center',

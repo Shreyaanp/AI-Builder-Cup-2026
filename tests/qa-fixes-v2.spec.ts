@@ -58,7 +58,7 @@ for (const appearance of ['light', 'dark'] as const) {
       await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
       const card = page.getByTestId('shop-so-far')
       // The chip-edge mask lives in VoiceStage.tsx and is reserved for the voice workers.
-      await withinViewport(page, page.getByRole('button', { name: 'Menu photo', exact: true }))
+      await withinViewport(page, page.getByRole('button', { name: 'Shop photo', exact: true }))
       await withinViewport(page, page.getByRole('button', { name: 'My location', exact: true }))
       await withinViewport(page, page.getByLabel('Message', { exact: true }))
       await page.screenshot({ path: info.outputPath('onboarding.png') })
