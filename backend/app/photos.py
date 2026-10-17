@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import time
 import warnings
 from pathlib import Path
 from typing import Any, Literal
@@ -180,6 +181,17 @@ def read_gps(data: bytes) -> tuple[float, float] | None:
     return round(lat, 6), round(lng, 6)
 
 
+def header_gps(value: str | None) -> tuple[float, float] | None:
+    """lat,lng from the browser, which strips EXIF when it shrinks the photo. Only proposed."""
+    try:
+        lat, lng = (round(float(part), 6) for part in (value or "").split(","))
+    except ValueError:
+        return None
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180) or (lat == 0 and lng == 0):
+        return None
+    return lat, lng
+
+
 class PhotoPipeline:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -344,15 +356,52 @@ class PhotoPipeline:
     async def process(
         self, uid: str, bid: str | None, data: bytes, language: str = "en"
     ) -> dict[str, Any]:
+        """Moderation and extraction both need only the sanitized image, so they run together;
+        a blocked photo cancels the extraction. Stage timings (ms since start) go to the log."""
+        timings: dict[str, int] = {}
+        started = time.perf_counter()
+
+        def mark(stage: str) -> None:
+            timings[stage] = round((time.perf_counter() - started) * 1000)
+
         gps = await anyio.to_thread.run_sync(read_gps, data)
         image = await anyio.to_thread.run_sync(sanitize, data)
-        scores = await anyio.to_thread.run_sync(self.moderate_sync, image)
-        if self.blocked(scores):
-            log.info("photo_rejected", code="EXPLICIT_CONTENT")
-            raise PhotoRejected(422, "PHOTO_BLOCKED")
-        extraction = await self.extract(image, language)
+        mark("sanitize")
+        extraction: PhotoExtraction | None = None
+        rejections: list[PhotoRejected] = []
+
+        async def moderate(scope: anyio.CancelScope) -> None:
+            try:
+                scores = await anyio.to_thread.run_sync(self.moderate_sync, image)
+                mark("moderate")
+                if self.blocked(scores):
+                    log.info("photo_rejected", code="EXPLICIT_CONTENT")
+                    rejections.insert(0, PhotoRejected(422, "PHOTO_BLOCKED"))
+                    scope.cancel()
+            except PhotoRejected as rejected:
+                rejections.append(rejected)
+                scope.cancel()
+
+        async def read(scope: anyio.CancelScope) -> None:
+            nonlocal extraction
+            try:
+                extraction = await self.extract(image, language)
+                mark("extract")
+            except PhotoRejected as rejected:
+                rejections.append(rejected)
+                scope.cancel()
+
+        with anyio.CancelScope() as scope:
+            async with anyio.create_task_group() as group:
+                group.start_soon(moderate, scope)
+                group.start_soon(read, scope)
+        if rejections:
+            raise rejections[0]
+        assert extraction is not None
         if extraction.photo_kind == "other":
             log.info("photo_rejected", code="NOT_BUSINESS")
             raise PhotoRejected(422, "NOT_BUSINESS_PHOTO")
         photo_id = await anyio.to_thread.run_sync(self.store_sync, uid, bid, image)
+        mark("store")
+        log.info("photo_timings_ms", bytes_in=len(data), bytes_clean=len(image), **timings)
         return {"photo_id": photo_id, "extraction": extraction, "gps": gps}

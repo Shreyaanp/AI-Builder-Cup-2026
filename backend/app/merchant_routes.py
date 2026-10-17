@@ -1,10 +1,12 @@
 import asyncio
 import contextlib
 import re
+import time
 from typing import Any, cast
 from uuid import UUID, uuid4
 
 import anyio
+import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -27,7 +29,7 @@ from .merchant import (
     ShareRequest,
 )
 from .money import DEFAULT_CURRENCY, to_minor
-from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected
+from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected, header_gps
 from .product_categories import suggest_category
 from .product_units import normalize_unit
 from .sales import daily_sales
@@ -59,6 +61,7 @@ async def consented_owner(request: Request) -> str:
     return uid
 
 
+log = structlog.get_logger()
 router = APIRouter(prefix="/api/v1")
 
 
@@ -299,18 +302,21 @@ async def photo(
         raise HTTPException(415, "Send a JPEG, PNG or WebP photo.")
     limit = request.app.state.v1_settings.max_photo_bytes
     buffer = bytearray()
+    received = time.perf_counter()
     try:
         async with asyncio.timeout(120):  # big phone photos on mobile data
             async for chunk in request.stream():
                 if len(buffer) + len(chunk) > limit:
                     raise HTTPException(413, "Photo is too large.")
                 buffer.extend(chunk)
+        received = time.perf_counter() - received
         try:
             outcome = await pipeline.process(uid, business_id, bytes(buffer), language)
         except PhotoRejected as rejected:
             raise HTTPException(rejected.status, rejected.code) from None
     finally:
         buffer.clear()
+    log.info("photo_request_ms", receive=round(received * 1000))
     extraction: PhotoExtraction = outcome["extraction"]
     found = extraction.business
     business = context["business"]
@@ -333,7 +339,8 @@ async def photo(
     ]
     # The photo's own location (read server-side from its EXIF) can become the shop's pin.
     # It is only ever proposed: the owner sees the pin in the review sheet before saving.
-    gps = outcome.get("gps")
+    # A phone that resized the photo in the browser lost its EXIF, so it sends the location itself.
+    gps = outcome.get("gps") or header_gps(request.headers.get("x-photo-gps"))
     pin = await request.app.state.maps.reverse(*gps) if gps else {}
     proposal = None
     if business is None and found.name.strip():
