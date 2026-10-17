@@ -62,11 +62,13 @@ test('owner confirms a POS sales export and sees it in Grow', async ({ page }) =
   const fourth = new Date(Date.UTC(year!, 0, 4))
   const day = fourth.getUTCDay() || 7
   fourth.setUTCDate(fourth.getUTCDate() - day + 1 + (week! - 1) * 7)
-  const saleDate = fourth.toISOString().slice(0, 10)
+  const recapDate = fourth.toISOString().slice(0, 10)
   const salesFixture = readFileSync(
     fileURLToPath(new URL('../backend/tests/fixtures/connect/pos_sales.csv', import.meta.url)),
     'utf8',
-  ).replaceAll('2026-10-17', saleDate)
+  )
+    .replace('2026-10-17', freshness.today)
+    .replace('2026-10-16', recapDate)
 
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /Connect your system/i }).click()
@@ -91,8 +93,14 @@ test('owner confirms a POS sales export and sees it in Grow', async ({ page }) =
   const saved = await page.request
     .get(`/api/v1/businesses/${business.id}/sales`)
     .then((response) => response.json())
-  expect(saved).toHaveLength(1)
+  expect(saved).toHaveLength(2)
   await summary.getByRole('button', { name: 'Close' }).last().click()
+
+  await page.getByRole('button', { name: 'Coach', exact: true }).click()
+  const today = page.getByTestId('today-pulse')
+  await expect(today).toContainText('Today so far')
+  await expect(today).toContainText('54')
+
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /^Weekly recap/ }).click()
   const recap = page.getByRole('dialog', { name: 'Weekly recap' })
