@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
-from app.agent import NEW_SHOP_TOPICS, instruction, new_shop_call
+from app.agent import NEW_SHOP_TOPICS, OPEN_QUESTION, instruction, new_shop_call
 from app.coordinator import (
     MerchantContext,
     ProductInput,
@@ -258,7 +258,9 @@ def test_invalid_device_location_is_rejected(tmp_path: Path, point: dict):
 
 
 def asked_topic(reply: str) -> str | None:
-    """Which of the five topics the fixture coach asked in this reply (None: none of them)."""
+    """Which topic the fixture coach asked in this reply (None: none of them)."""
+    if OPEN_QUESTION in reply:
+        return "open"
     return next((key for key, question, _ in NEW_SHOP_TOPICS if question in reply), None)
 
 
@@ -282,6 +284,8 @@ def test_new_shop_coach_speaks_first_and_moves_on_when_the_owner_does_not_answer
         return reply, events
 
     answers = {
+        # #112: the open question first; an answer with nothing usable moves on to the basics.
+        "open": "Hmm, let me think.",
         "name": "name: Chai Corner",
         "sell": "category: Tea stall",
         "location": "I'm not sure. Suggest something or skip it.",

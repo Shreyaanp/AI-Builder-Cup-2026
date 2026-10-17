@@ -43,15 +43,15 @@ test('one sentence puts the shop live; no menu question; summary, skip face, Tod
     page,
     'name: Lakshmi Tea Stall; category: chai aur samosa; location: Indiranagar metro',
   )
-  // Name, kind and place in one go: live at once, and only what is missing is asked (hours and
-  // the photo, in this conversation's own order).
+  // Name, kind and place in one go: live at once, and only what is missing is asked: the tea
+  // stall's own follow-up first (#112), then the hours and the photo.
   await expect(page.getByTestId('shop-live')).toHaveText('Live')
-  expect(['hours', 'photo']).toContain(next)
+  expect(next).toBe('followup')
   await expect(page.getByTestId('agent-action')).toHaveCount(0) // filled silently
   const shops = await (await page.request.get('/api/v1/businesses')).json()
   expect(shops).toHaveLength(1)
   expect(shops[0].public).toBe(true)
-  // "pata nahi" skips the hours (never invented); "baad mein" skips the photo.
+  // "pata nahi" skips the hours (never invented); "baad mein" skips the rest.
   while (next) next = await answer(page, next === 'hours' ? 'pata nahi' : 'baad mein')
   const summary = page.getByTestId('shop-summary')
   await expect(summary).toBeVisible()

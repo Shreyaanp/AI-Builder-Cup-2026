@@ -1,10 +1,12 @@
 """The new-shop coach's own tools (owner decisions, 17 Oct): one `update_shop` that records
 everything the owner said in one go, and `show_step` for the in-chat cards.
 
-Onboarding asks only the shop's name, what it sells, where it is, its hours and a shop photo.
-One sentence can answer several ("Lakshmi Tea Stall, chai aur samosa, Indiranagar metro ke
-paas"), so update_shop takes every field at once; a correction simply replaces the field. Saving
-is idempotent: the same answer twice (or a tool call replayed after a reconnect) changes nothing.
+Onboarding opens with "tell me about your shop" (#112); the name, what it sells and where it is
+are asked only when that answer missed them, then at most two follow-ups that fit the business
+and a shop photo. One sentence can answer several ("Lakshmi Tea Stall, chai aur samosa,
+Indiranagar metro ke paas"), so update_shop takes every field at once; a correction simply
+replaces the field. Saving is idempotent: the same answer twice (or a tool call replayed after a
+reconnect) changes nothing.
 """
 
 import asyncio
@@ -161,7 +163,8 @@ async def update_shop(
     shop or GPS was refused. hours: as said ("subah 6 se raat 10, Sunday band"), and
     weekly_hours: one record per weekday (day: mon..sun, closed: true, or open/close HH:MM;
     overnight closing belongs to the opening day). description: one short line for customers
-    from what they told you. kind: only when the owner says what kind of business it is or
+    from what they told you, keeping the details customers care about (seating, brands, home
+    visits, orders ahead). kind: only when the owner says what kind of business it is or
     corrects it ("nahi, yeh service hai"): product, service, food or mixed. extra_answers: the
     answer to an extra question listed in still_missing ({key, answer}; answer "" when they do
     not know). A correction ("nahi, Lakshmi Chai Point") is just a new value: pass it, do not

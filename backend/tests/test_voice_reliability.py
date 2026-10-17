@@ -81,7 +81,8 @@ def test_resume_prompt_lists_known_fields_and_continues_from_the_next_missing_on
         current.reset(token)
     assert 'NEVER ask for these again: name "Sharma Chai"; sells "Tea stall"' in text
     # Name and kind are known: never listed as missing; the menu is never asked at all.
-    missing = text.split("Still missing (ask ONE, the most natural next):")[1].split("\n")[0]
+    parts = text.split("Still missing (ask ONE, the first in this list; nothing outside it):")
+    missing = parts[1].split("\n")[0]
     assert missing.strip().startswith("where the shop is")
     assert "real name" not in missing and "what they sell" not in missing
     assert "menu" not in missing
@@ -91,10 +92,10 @@ def test_resume_prompt_lists_known_fields_and_continues_from_the_next_missing_on
 
 def test_progress_order_and_a_complete_draft() -> None:
     _, missing = known_and_missing(None)
-    # Only the five onboarding steps (owner decision, 17 Oct): never the menu.
+    # The three basics, the hours as a follow-up, the photo last (#112): never the menu.
     assert [item.split(" (")[0].split(",")[0] for item in missing] == [
         "the shop's real name",
-        "what they sell",
+        "what they sell or do",
         "where the shop is",
         "opening hours",
         "a photo of the shop",
