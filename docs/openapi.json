@@ -16412,6 +16412,17 @@
                 "type": "null"
               }
             ]
+          },
+          "has_customer_stamp": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Customer Stamp"
           }
         },
         "type": "object",

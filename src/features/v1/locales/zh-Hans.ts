@@ -1,6 +1,12 @@
 import type { Copy } from '../strings'
 
 export const zhHans: Copy = {
+  firstCustomers: '迎接首批顾客',
+  printPoster: '打印海报',
+  downloadPdf: '下载 PDF',
+  shareWhatsApp: '分享到 WhatsApp',
+  scanStamps: '扫码集章',
+  paperSize: '纸张尺寸',
   newShopMode: '新店铺',
   newShopReady: '您的新店铺已准备好',
   newShopReadyBody: '您已切换到新店铺。准备好后即可分享顾客页面。',

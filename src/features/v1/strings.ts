@@ -2,6 +2,12 @@ import { useLocale } from '../../state/hooks'
 import { translations } from './locales'
 
 export const en = {
+  firstCustomers: 'Get your first customers',
+  printPoster: 'Print a poster',
+  downloadPdf: 'Download PDF',
+  shareWhatsApp: 'Share on WhatsApp',
+  scanStamps: 'Scan for stamps',
+  paperSize: 'Paper size',
   newShopMode: 'New shop',
   newShopReady: 'Your new shop is ready',
   newShopReadyBody:

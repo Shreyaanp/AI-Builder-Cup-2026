@@ -11,6 +11,7 @@ export function useTodayPlan(unread: number | null): {
   plan: TodayPlan | null
   answerMenu: () => void
   markCloseDay: () => void
+  firstCustomers: boolean
 } {
   const ws = useWorkspace()
   const facts = useToday()
@@ -35,7 +36,12 @@ export function useTodayPlan(unread: number | null): {
     return () => clearInterval(timer)
   }, [])
   if (!ws.active || !ws.productsLoaded)
-    return { plan: null, answerMenu: () => undefined, markCloseDay: () => undefined }
+    return {
+      plan: null,
+      answerMenu: () => undefined,
+      markCloseDay: () => undefined,
+      firstCustomers: false,
+    }
   const plan = todayPlan({
     shop: ws.active,
     products: ws.products,
@@ -48,6 +54,7 @@ export function useTodayPlan(unread: number | null): {
   })
   return {
     plan,
+    firstCustomers: ws.active.public && facts?.has_customer_stamp === false,
     answerMenu: () => {
       if (facts) dismissFreshness(key, facts.date)
     },

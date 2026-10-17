@@ -1,6 +1,12 @@
 import type { Copy } from '../strings'
 
 export const ko: Copy = {
+  firstCustomers: '첫 고객을 맞이하세요',
+  printPoster: '포스터 인쇄',
+  downloadPdf: 'PDF 다운로드',
+  shareWhatsApp: 'WhatsApp으로 공유',
+  scanStamps: '스캔하고 스탬프 받기',
+  paperSize: '용지 크기',
   newShopMode: '새 가게',
   newShopReady: '새 가게가 준비됐어요',
   newShopReadyBody: '새 가게로 전환됐어요. 준비되면 고객 페이지를 공유하세요.',

@@ -1,6 +1,12 @@
 import type { Copy } from '../strings'
 
 export const hi: Copy = {
+  firstCustomers: 'अपने पहले ग्राहक पाएँ',
+  printPoster: 'पोस्टर प्रिंट करें',
+  downloadPdf: 'PDF डाउनलोड करें',
+  shareWhatsApp: 'WhatsApp पर भेजें',
+  scanStamps: 'स्टैंप के लिए स्कैन करें',
+  paperSize: 'कागज़ का आकार',
   newShopMode: 'नई दुकान',
   newShopReady: 'आपकी नई दुकान तैयार है',
   newShopReadyBody:

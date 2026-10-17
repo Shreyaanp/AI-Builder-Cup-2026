@@ -6088,6 +6088,8 @@ export interface components {
             /** Demo */
             demo: boolean;
             hints?: components["schemas"]["TodayHints"] | null;
+            /** Has Customer Stamp */
+            has_customer_stamp?: boolean | null;
         };
         /** TodayArea */
         TodayArea: {

@@ -1,6 +1,12 @@
 import type { Copy } from '../strings'
 
 export const vi: Copy = {
+  firstCustomers: 'Đón khách đầu tiên',
+  printPoster: 'In áp phích',
+  downloadPdf: 'Tải PDF',
+  shareWhatsApp: 'Chia sẻ qua WhatsApp',
+  scanStamps: 'Quét để nhận dấu',
+  paperSize: 'Khổ giấy',
   newShopMode: 'Cửa hàng mới',
   newShopReady: 'Cửa hàng mới của bạn đã sẵn sàng',
   newShopReadyBody: 'Bạn đang quản lý cửa hàng mới. Chia sẻ trang khách hàng khi sẵn sàng.',

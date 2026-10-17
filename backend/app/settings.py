@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     customer_origin: str = ""
     v1_enabled: bool = False
     feature_google_guide: bool = True
+    qr_poster_enabled: bool = False
     merchant_backend: Literal["sqlite", "firestore"] = "sqlite"
     embedding_model: str = "gemini-embedding-2"
     # The shared search engine: Vertex embeddings when Gemini runs on Vertex ("auto"), or the
