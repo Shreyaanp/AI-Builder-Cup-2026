@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-16T01:38:56.581Z",
+  "capturedAt": "2026-10-16T20:34:03.583Z",
   "mode": "audit",
   "scope": "390×844 offline audit; annotated gaps and live-only paths are not verified story outcomes",
   "stories": [
@@ -60,14 +60,6 @@
       "annotations": []
     },
     {
-      "story": "A6 · an existing shop reviews menu and photo pin separately",
-      "project": "phone",
-      "status": "passed",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
       "story": "A4 · yes fact chip and offline answer agree",
       "project": "phone",
       "status": "passed",
@@ -78,29 +70,13 @@
     {
       "story": "A4 · no fact chip and offline answer agree",
       "project": "phone",
-      "status": "timedOut",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
-      "story": "A8 · coach photo reuse is explicit for new shops",
-      "project": "phone",
-      "status": "timedOut",
-      "retry": 0,
-      "steps": [],
-      "annotations": []
-    },
-    {
-      "story": "A4 · muslim_owned fact chip and offline answer agree",
-      "project": "phone",
       "status": "passed",
       "retry": 0,
       "steps": [],
       "annotations": []
     },
     {
-      "story": "A8 · coach photo reuse is explicit for existing shops",
+      "story": "A4 · muslim_owned fact chip and offline answer agree",
       "project": "phone",
       "status": "passed",
       "retry": 0,
@@ -116,9 +92,25 @@
       "annotations": []
     },
     {
-      "story": "A9 · daily check survives conversation and dismisses per shop and day",
+      "story": "A6 · an existing shop reviews menu and photo pin separately",
       "project": "phone",
-      "status": "timedOut",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A8 · coach photo reuse is explicit for new shops",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A8 · coach photo reuse is explicit for existing shops",
+      "project": "phone",
+      "status": "passed",
       "retry": 0,
       "steps": [],
       "annotations": []
@@ -126,7 +118,15 @@
     {
       "story": "A8 · header and discovery use the first gallery photo with removal/error fallback",
       "project": "phone",
-      "status": "timedOut",
+      "status": "passed",
+      "retry": 0,
+      "steps": [],
+      "annotations": []
+    },
+    {
+      "story": "A9 · daily check survives conversation and dismisses per shop and day",
+      "project": "phone",
+      "status": "passed",
       "retry": 0,
       "steps": [],
       "annotations": []
@@ -154,7 +154,7 @@
           "status": "passed"
         },
         {
-          "title": "5 · My shop readiness and next action",
+          "title": "5 · Shop page, then Grow: what is missing for Google",
           "status": "passed"
         },
         {
@@ -178,6 +178,52 @@
         {
           "type": "live-only",
           "description": "Photo GPS capture needs a physical phone"
+        }
+      ]
+    },
+    {
+      "story": "S2 · daily upkeep and customer-page connection",
+      "project": "phone",
+      "status": "passed",
+      "retry": 0,
+      "steps": [
+        {
+          "title": "1 · natural text and voice path",
+          "status": "passed"
+        },
+        {
+          "title": "2 · one review card for both changes, one tap to confirm",
+          "status": "passed"
+        },
+        {
+          "title": "3 · already-open customer page updates within five seconds",
+          "status": "passed"
+        },
+        {
+          "title": "4 · sold-out switch reaches customer page",
+          "status": "passed"
+        },
+        {
+          "title": "5 · daily still-the-same check",
+          "status": "passed"
+        },
+        {
+          "title": "6 · tap a price, review inline and save",
+          "status": "passed"
+        },
+        {
+          "title": "7 · document import uses exact review before saving",
+          "status": "passed"
+        }
+      ],
+      "annotations": [
+        {
+          "type": "live-only",
+          "description": "Speech recognition and live voice tool execution"
+        },
+        {
+          "type": "live-only",
+          "description": "Photo/PDF extraction requires live AI; CSV review is the offline import path"
         }
       ]
     },
@@ -294,19 +340,6 @@
           "description": "Catalogue shops are seeded on the hosted demo; the local preview stays unseeded"
         }
       ]
-    },
-    {
-      "story": "S2 · daily upkeep and customer-page connection",
-      "project": "phone",
-      "status": "timedOut",
-      "retry": 0,
-      "steps": [
-        {
-          "title": "1 · natural text and voice path",
-          "status": "failed"
-        }
-      ],
-      "annotations": []
     }
   ]
 }

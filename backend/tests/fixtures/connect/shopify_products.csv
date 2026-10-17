@@ -1,0 +1,5 @@
+Handle,Title,Body (HTML),Vendor,Type,Tags,Option1 Name,Option1 Value,Variant SKU,Variant Grams,Variant Inventory Tracker,Variant Inventory Qty,Variant Inventory Policy,Variant Fulfillment Service,Variant Price,Variant Compare At Price,Variant Requires Shipping,Variant Taxable,Status
+artisan-sourdough,Artisan Sourdough Loaf,<p>Slow fermented traditional sourdough loaf.</p>,Crumb & Co,Bakery,bread,organic,Size,Standard,SKU-BREAD-01,750,shopify,18,deny,manual,120.00,,true,true,active
+cinnamon-swirl,Cardamom Cinnamon Swirl,<p>Spiced brioche pastry swirl.</p>,Crumb & Co,Pastry,sweet,fresh,Size,Single,SKU-PASTRY-02,120,shopify,35,deny,manual,75.00,,true,true,active
+almond-croissant,Twice Baked Almond Croissant,<p>Flaky butter croissant filled with frangipane.</p>,Crumb & Co,Pastry,bestseller,Size,Single,SKU-PASTRY-03,140,shopify,22,deny,manual,95.00,,true,true,active
+cold-brew-bottle,Nitro Cold Brew 250ml,<p>Steeped 24 hours in small batches.</p>,Crumb & Co,Beverages,cold,coffee,Size,250ml,SKU-DRINK-04,300,shopify,40,deny,manual,110.00,,true,true,active

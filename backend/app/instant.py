@@ -35,8 +35,12 @@ SCREEN_RULES: tuple[tuple[str, str], ...] = (
     (r"^(?:open|show|go to)\s+(?:you|settings)(?:\s+tab)?[.!?]?$", "you"),
     (r"^(?:open|show)\s+(?:my\s+)?(?:trust|verification)(?:\s+status)?[.!?]?$", "trust"),
     (r"^(?:open|show)\s+(?:customer\s+)?(?:games|perks)[.!?]?$", "games"),
+    (r"^(?:open|show)\s+(?:my\s+)?payments?(?:\s+(?:&|and)\s+rides)?[.!?]?$", "payments"),
+    (r"^(?:open|show)\s+(?:my\s+)?purchase\s+orders[.!?]?$", "supply"),
+    # A payment or UPI link is the payment tool's job, not the customer page.
     (
-        r"\b(?:share|send)\b.*\b(?:my\s+)?(?:page|link|shop)\b|\b(?:show|print|get)\b.*\bqr\b",
+        r"\b(?:share|send)\b(?!.*\b(?:payment|pay|upi)\b).*\b(?:my\s+)?(?:page|link|shop)\b"
+        r"|\b(?:show|print|get)\b(?!.*\b(?:payment|pay|upi)\b).*\bqr\b",
         "share",
     ),
     (r"\bclose\s+(?:the|my)\s+day\b|\bday\s*end\b|\bend\s+of\s+(?:the\s+)?day\b", "close_day"),
@@ -166,6 +170,8 @@ SCREEN_REPLIES = {
     "menu": "Here is your menu.",
     "details": "Here are your shop details.",
     "photo": "Tap Add a photo to pick one.",
+    "payments": "Here are payments and rides. You share the link; I never handle the money.",
+    "supply": "Here are your purchase orders. Nothing is sent until you confirm.",
 }
 
 

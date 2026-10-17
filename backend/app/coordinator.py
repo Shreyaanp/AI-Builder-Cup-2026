@@ -32,11 +32,14 @@ from .money import DEFAULT_CURRENCY, to_major, to_minor
 from .product_categories import suggest_category
 from .product_units import UNITS, normalize_unit
 from .recap import recap_facts
+from .search_engine import SearchEngine
 from .sourcing import OrderItem, SupplierGenerator
 from .vendor_profile import (
     BusinessTypeProfile,
+    FoodAttributes,
     allowed_facts,
     apply_answers,
+    food_segment,
     halal_allowed,
     infer_profile,
     profile_for,
@@ -156,7 +159,8 @@ async def get_question_plan() -> dict[str, Any]:
                 " or assume one), call propose_business with it, then repeat this call."
             ),
         }
-    shop = ctx.store.context(ctx.uid, ctx.business_id)["business"]
+    data = ctx.store.context(ctx.uid, ctx.business_id)
+    shop = data["business"]
     fields = (
         shop["fields"]
         if shop
@@ -166,6 +170,16 @@ async def get_question_plan() -> dict[str, Any]:
             else {}
         )
     )
+    menu = [
+        p["name"]
+        for p in (
+            data["inventory"]
+            if shop
+            else [
+                p.model_dump() for p in (ctx.new_shop_draft.products if ctx.new_shop_draft else [])
+            ]
+        )
+    ]
     # Drafts can contain unsolicited items before the name; never treat those as a name.
     for key, question in (
         ("name", "What is your business called?"),
@@ -179,21 +193,28 @@ async def get_question_plan() -> dict[str, Any]:
             }
     profile = profile_for(fields)
     plan = await _planner().plan(
-        fields.get("category", ""), fields.get("name", ""), fields.get("location", ""), profile
+        fields.get("category", ""),
+        fields.get("name", ""),
+        fields.get("location", ""),
+        profile,
+        menu,
     )
     answered = {fact["key"] for fact in fields.get("custom_facts", [])}
-    # One list in asking order: common facts still missing (recorded with their own argument of
-    # propose_customer_facts), then what customers of this business type ask (custom_facts).
+    # One list in asking order: up to three skippable questions about the owner's own goals
+    # (they shape the shop playbook), common facts still missing (recorded with their own
+    # argument of propose_customer_facts), then what customers of this business type ask.
+    understand = pending_understanding(fields) if shop else []
     common = [
         {"key": key, "question": COMMON_QUESTIONS[key], "record_with": key}
         for key in pending_customer_facts(fields)
+        if key not in {q["key"] for q in understand}
     ]
     typed = [
         {**question.model_dump(), "record_with": "custom_facts"}
         for question in plan.questions
         if question.key not in answered and question.key not in COMMON_QUESTIONS
     ]
-    pending = common + typed
+    pending = understand + common + typed
     return {
         "business_type": plan.business_type,
         "profile": profile.model_dump(exclude_none=True),
@@ -202,7 +223,9 @@ async def get_question_plan() -> dict[str, Any]:
         "answered": len(answered),
         "instruction": "Ask one pending question at a time; stop when the owner wants to. "
         "For diet record veg_only, vegan, non_veg, both or unknown; for boolean questions "
-        "record yes/no only if clear, otherwise keep the owner's words."
+        "record yes/no only if clear, otherwise keep the owner's words. Questions marked "
+        "skippable are about the owner's own goals: say they can skip, and if they do, record "
+        "skip=[that key] so it is never asked again."
         if pending
         else "All common customer questions are answered.",
     }
@@ -311,6 +334,7 @@ def get_business_context() -> dict[str, Any]:
                 "currency",
                 "custom_facts",
                 "profile",
+                "understanding",
             }
             | set(FACT_KEYS)
         }
@@ -360,6 +384,36 @@ def pending_customer_facts(fields: dict[str, Any]) -> list[str]:
         and (key != "halal" or halal_allowed(fields))
         and not (key == "vegetarian_options" and profile.kind == "food")
         and not (key == "delivery" and profile.retail and profile.retail.delivery)
+    ]
+
+
+UNDERSTAND_QUESTIONS = {
+    "focus": (
+        "What matters most for the shop right now: more customers, less waste, saving time, "
+        "or something else?",
+        "focus",
+    ),
+    "busy_hours": ("When are you busiest?", "busy_hours"),
+    "regulars": (
+        "Who are your regulars? For example office workers, students or families.",
+        "regulars",
+    ),
+}
+
+
+def pending_understanding(fields: dict[str, Any]) -> list[dict[str, Any]]:
+    """The owner's goals, busiest times and regulars: asked once after the basics, skippable,
+    never again once answered or skipped."""
+    seen = fields.get("understanding") or {}
+    answered = {
+        "focus": bool(seen.get("focus")),
+        "busy_hours": bool(fields.get("busy_hours")),
+        "regulars": bool(seen.get("regulars")),
+    }
+    return [
+        {"key": key, "question": question, "record_with": record_with, "skippable": True}
+        for key, (question, record_with) in UNDERSTAND_QUESTIONS.items()
+        if not answered[key] and key not in (seen.get("skipped") or [])
     ]
 
 
@@ -501,6 +555,7 @@ def _propose_shop(
     closed_on: str | None = None,
     reward_text: str | None = None,
     stamps_needed: int | None = None,
+    understanding: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Shared sealed-proposal logic for shop basics, customer facts, closed-today and the stamp
     card (None leaves a field as saved; closed_on="" reopens)."""
@@ -574,6 +629,20 @@ def _propose_shop(
     ):
         if value is not None:
             given[key] = value
+    if understanding:
+        merged_understanding = {**(given.get("understanding") or {}), **understanding}
+        merged_understanding["skipped"] = [
+            key
+            for key in dict.fromkeys(
+                [*(merged_understanding.get("skipped") or []), *understanding.get("skip", [])]
+            )
+            # Answering a question later un-skips it.
+            if not (key == "focus" and understanding.get("focus"))
+            and not (key == "regulars" and understanding.get("regulars"))
+            and not (key == "busy_hours" and facts["busy_hours"])
+        ]
+        merged_understanding.pop("skip", None)
+        given["understanding"] = merged_understanding
     if custom_facts:
         # Merge by key: an answer replaces the earlier answer to the same question only.
         merged = {fact["key"]: fact for fact in given.get("custom_facts", [])}
@@ -591,6 +660,18 @@ def _propose_shop(
                 update={"subtype": given.get("category", "")[:80]}
             )
             given["profile"] = active_profile
+        if active_profile.kind == "food" and food_segment(active_profile) != "unknown":
+            # Persist the segment the owner's own words gave, so every consumer agrees on it.
+            food = active_profile.food or FoodAttributes()
+            if food.segment == "unknown":
+                active_profile = active_profile.model_copy(
+                    update={
+                        "food": FoodAttributes.model_validate(
+                            {**food.model_dump(), "segment": food_segment(active_profile)}
+                        )
+                    }
+                )
+                given["profile"] = active_profile
         if active_profile.kind != "generic":
             active_profile = apply_answers(
                 active_profile,
@@ -641,8 +722,31 @@ def _propose_shop(
         [
             f"{key}: {existing['fields'].get(key) or '(empty)'} → {value or '(empty)'}"
             for key, value in fields.model_dump().items()
-            if key not in {"custom_facts", "profile"}
+            if key not in {"custom_facts", "profile", "understanding"}
             and value != existing["fields"].get(key, "" if key not in FACT_KEYS else None)
+        ]
+        + [
+            line
+            for before, after in [
+                (
+                    existing["fields"].get("understanding") or {},
+                    fields.model_dump().get("understanding") or {},
+                )
+            ]
+            for line in [
+                f"{label}: {before.get(key) or '(empty)'} → {after.get(key) or '(empty)'}"
+                for key, label in (
+                    ("focus", "What matters most"),
+                    ("focus_note", "In your words"),
+                    ("regulars", "Regulars"),
+                )
+                if (before.get(key) or "") != (after.get(key) or "")
+            ]
+            + [
+                f"Not asking again: {key}"
+                for key in after.get("skipped") or []
+                if key not in (before.get("skipped") or [])
+            ]
         ]
         + (
             [
@@ -721,9 +825,17 @@ def propose_customer_facts(
     payment_methods: list[str] | None = None,
     busy_hours: str = "",
     custom_facts: list[FactInput] | None = None,
+    focus: str = "",
+    focus_note: str = "",
+    regulars: str = "",
+    skip: list[str] | None = None,
 ) -> dict[str, Any]:
     """Prepare facts customers ask about for the owner to review, only as the owner states
-    them; pass just the facts that changed. halal: yes, no, muslim_owned or not_stated.
+    them; pass just the facts that changed. Private owner goals (never shown to customers):
+    focus is more_customers, less_waste, save_time or other (focus_note: their words, e.g.
+    "more office lunch orders"); regulars: who comes back, in their words; skip: the keys of
+    skippable plan questions (focus, busy_hours, regulars) the owner chose not to answer.
+    halal: yes, no, muslim_owned or not_stated.
     vegetarian_options, locally_made (made in-house or by local makers), preorders:
     true/false. delivery: any service name, max 40 characters; use none for no delivery,
     own for the shop's delivery. Existing grab/foodpanda keys work
@@ -756,6 +868,16 @@ def propose_customer_facts(
         payment_methods=payment_methods,
         busy_hours=busy_hours,
         custom_facts=custom_facts,
+        understanding={
+            key: value
+            for key, value in {
+                "focus": (focus or "").strip().lower().replace(" ", "_"),
+                "focus_note": (focus_note or "").strip(),
+                "regulars": (regulars or "").strip(),
+                "skip": [k for k in skip or [] if k in UNDERSTAND_QUESTIONS],
+            }.items()
+            if value
+        },
     )
 
 
@@ -952,6 +1074,8 @@ async def propose_rescue_deal(
 # --- Sourcing: find suppliers, prepare order requests, talk to suppliers (sourcing.py) -------
 
 supplier_generator: SupplierGenerator | None = None
+# The shared search engine (search_engine.py); set at startup, customers use the same one.
+search_engine: SearchEngine | None = None
 # Owner of every generated demo supplier; no person signs in as this account.
 DEMO_OWNER_UID = "chalkboard-demo-supplier-owner"
 
@@ -997,6 +1121,7 @@ async def find_suppliers(
         unit,
         _generator(),
         DEMO_OWNER_UID,
+        search_engine,
     )
     if not result["suppliers"]:
         return {

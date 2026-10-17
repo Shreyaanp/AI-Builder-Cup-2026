@@ -11,6 +11,18 @@ class Settings(BaseSettings):
     app_env: Literal["local", "test", "production"] = "local"
     coach_mode: Literal["offline", "gemini"] = "offline"
     forecast_backend: Literal["weekday_average", "bigquery"] = "weekday_average"
+    # Till receipts and supplier invoices: Document AI first, Gemini vision as the fallback.
+    document_ai_enabled: bool = False
+    document_ai_location: str = Field(default="us", pattern=r"^[a-z0-9-]+$")
+    document_ai_receipt_processor: str = Field(default="", pattern=r"^[a-f0-9]*$")
+    document_ai_invoice_processor: str = Field(default="", pattern=r"^[a-f0-9]*$")
+    # Owner analytics: nightly per-shop daily aggregates in BigQuery; "live" reads the records.
+    analytics_backend: Literal["live", "bigquery"] = "live"
+    analytics_dataset: str = Field(default="chalkboard_analytics", pattern=r"^[A-Za-z0-9_]+$")
+    analytics_location: str = "asia-south1"
+    # The Cloud Scheduler service account allowed to run the export, and its OIDC audience.
+    analytics_export_caller: str = ""
+    analytics_export_audience: str = ""
     weather_backend: Literal["disabled", "offline", "open_meteo"] = "offline"
     auth_mode: Literal["local", "firebase"] = "local"
     session_database_url: str = "sqlite+aiosqlite:///./data/sessions.sqlite3"
@@ -21,8 +33,13 @@ class Settings(BaseSettings):
     release_commit: str = "local"
     customer_origin: str = ""
     v1_enabled: bool = False
+    feature_google_guide: bool = True
     merchant_backend: Literal["sqlite", "firestore"] = "sqlite"
     embedding_model: str = "gemini-embedding-2"
+    # The shared search engine: Vertex embeddings when Gemini runs on Vertex ("auto"), or the
+    # offline concept fixture; Gemini one-line reasons for the top personal picks.
+    search_embeddings: Literal["auto", "fixture", "vertex"] = "auto"
+    search_explanations: bool = True
     media_bucket: str = ""
     # Shop gallery photos when no bucket is configured (local development and tests).
     media_dir: str = "data/media"
@@ -31,6 +48,9 @@ class Settings(BaseSettings):
     rate_limits_enabled: bool = True
     # Showcase mode: generate labelled demo shops around each new visitor area (production only).
     demo_world_enabled: bool = False
+    # Recommendations AI (retail_recs.py). Both off by default; serving also waits for the model.
+    recs_enabled: bool = False
+    recs_events_enabled: bool = False
     # Modern phone photos are 4-15 MB; Cloud Run's request limit is 32 MB.
     max_photo_bytes: int = Field(default=20_000_000, ge=65_536, le=30_000_000)
     merchant_database: str = "data/merchant.sqlite3"
@@ -73,6 +93,13 @@ class Settings(BaseSettings):
     # until measured in production; without it the coach runs exactly as before.
     context_cache_enabled: bool = False
     context_cache_ttl_seconds: int = Field(default=1800, ge=60, le=86_400)
+    # Customer AI answers about the area with Gemini's Google Maps grounding tool (Vertex).
+    # "off" keeps the honest fallback (our list + straight-line distances); "demo" returns
+    # labelled sample answers for offline previews and browser tests; "live" calls Gemini.
+    maps_grounding: Literal["off", "demo", "live"] = "off"
+    maps_grounding_model: str = ""
+    # GCP credit is limited: one grounded call per question per ~1 km area for this long.
+    maps_grounding_cache_seconds: int = Field(default=3600, ge=60, le=86_400)
     max_turn_seconds: int = Field(default=30, ge=1, le=120)
     max_voice_seconds: int = Field(default=120, ge=1, le=600)
     max_active_runs: int = Field(default=8, ge=1, le=32)
@@ -107,6 +134,13 @@ class Settings(BaseSettings):
                 raise ValueError("Vertex Gemini requires an explicit project.")
             if self.gemini_backend == "api_key" and not self.google_api_key.get_secret_value():
                 raise ValueError("API-key Gemini requires a server key.")
+        if self.maps_grounding == "live":
+            if not (self.maps_grounding_model or self.google_text_model):
+                raise ValueError("Maps grounding requires an explicit model ID.")
+            if self.gemini_backend == "vertex" and not self.google_cloud_project:
+                raise ValueError("Maps grounding on Vertex requires an explicit project.")
+            if self.gemini_backend == "api_key" and not self.google_api_key.get_secret_value():
+                raise ValueError("API-key Maps grounding requires a server key.")
         if self.app_env == "production":
             if self.v1_enabled and self.merchant_backend != "firestore":
                 raise ValueError("Production merchant records require the Firestore adapter.")

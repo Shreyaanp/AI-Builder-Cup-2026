@@ -1,0 +1,3 @@
+doc_type,doc_number,po_ref,doc_date,deliver_on,currency,payment_terms,line,item_code,your_code,description,qty,uom,unit_price,line_total,status,backorder_qty,backorder_date,substitute_for
+ORDRSP,7100004501,4500012345,2026-10-16,2026-10-18,INR,7 days,10,MAT-100234,CB-ATT-01,Wheat flour,15,kg,62.00,930.00,backordered,5,2026-10-21,
+ORDRSP,7100004501,4500012345,2026-10-16,2026-10-18,INR,7 days,20,MAT-100877,,Sugar,10,kg,44.00,440.00,accepted,,,

@@ -23,6 +23,7 @@ from .latency import FirstOutput
 from .merchant import NewShopDraft
 from .new_shop_resume import adoptable, last_question, saved_draft
 from .settings import Settings
+from .supply_tools import SUPPLY_CARD_TOOLS
 
 log = structlog.get_logger()
 
@@ -77,6 +78,15 @@ def public_events(event: Event) -> list[StreamEvent]:
                     StreamEvent(kind="sourcing", data={"stage": "searching", "item": item})
                 )
             response = part.function_response
+            if response and response.name == "prepare_payment_link":
+                merchant = current.get()
+                card = (
+                    merchant.cards.get(str((response.response or {}).get("card_id")))
+                    if merchant
+                    else None
+                )
+                if card:
+                    output.append(StreamEvent(kind="payment_link", data=card[1]))
             if response and response.name in CHART_TOOLS:
                 chart = chart_card(response.name, response.response)
                 if chart:
@@ -112,6 +122,15 @@ def public_events(event: Event) -> list[StreamEvent]:
                 )
                 if card:
                     output.append(StreamEvent(kind="action", data=card[1]))
+            if response and response.name in SUPPLY_CARD_TOOLS:
+                merchant = current.get()
+                card = (
+                    merchant.cards.get(str((response.response or {}).get("card_id")))
+                    if merchant
+                    else None
+                )
+                if card:
+                    output.append(StreamEvent(kind=card[0], data=card[1]))  # type: ignore[arg-type]
             if response and response.name == "set_reply_language":
                 # The owner asked for another language: the app switches its own setting too.
                 changed = response.response or {}

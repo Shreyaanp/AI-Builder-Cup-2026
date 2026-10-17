@@ -382,6 +382,9 @@ test('B16: one attach button offers Take photo, Photo library and Document; docu
 }) => {
   await enter(page)
   const attach = page.getByRole('button', { name: 'Attach a photo or document', exact: true })
+  const attachBox = await attach.boundingBox()
+  expect(attachBox!.width).toBeGreaterThanOrEqual(48)
+  expect(attachBox!.height).toBeGreaterThanOrEqual(48)
   const input = page.locator('#coach input[type="file"]')
   // Before a shop exists there is nothing to import into: photos only.
   await attach.tap()
@@ -393,10 +396,12 @@ test('B16: one attach button offers Take photo, Photo library and Document; docu
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await expect(page.getByRole('button', { name: 'Choose shop: Katong Kopi' })).toBeVisible()
   await attach.tap()
+  // With a shop, the same menu also connects a POS or accounts export (S14).
   await expect(page.getByRole('menuitem')).toHaveText([
     'Take photo',
     'Photo library',
     'Document (PDF, Excel, CSV)',
+    'Connect your system',
   ])
   await axe(page)
   let imports = 0

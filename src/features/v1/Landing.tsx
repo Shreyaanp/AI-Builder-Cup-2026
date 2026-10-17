@@ -70,7 +70,14 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
             <Typography
               component="h1"
               variant="displaySmall"
-              sx={{ fontSize: { md: '3.25rem' }, lineHeight: { md: 1.1 }, textWrap: 'balance' }}
+              sx={{
+                fontSize: { xs: 'clamp(1.25rem, 5.8vw, 2.25rem)', md: '3.25rem' },
+                lineHeight: { xs: 1.2, md: 1.1 },
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+                hyphens: 'auto',
+                maxWidth: '100%',
+              }}
             >
               {t.welcomeTitle}
             </Typography>
@@ -267,8 +274,8 @@ function Step({
 function Feature({ title, items }: { title: string; items: { icon: ReactNode; text: string }[] }) {
   const roles = useTheme().material
   return (
-    <Box>
-      <Typography component="h2" variant="headlineSmall" sx={{ mb: 2.5 }}>
+    <Box sx={{ minWidth: 0 }}>
+      <Typography component="h2" variant="headlineSmall" sx={{ mb: 2.5, overflowWrap: 'anywhere' }}>
         {title}
       </Typography>
       <Stack component="ul" spacing={2} sx={{ m: 0, p: 0, listStyle: 'none' }}>
@@ -278,12 +285,17 @@ function Feature({ title, items }: { title: string; items: { icon: ReactNode; te
             key={item.text}
             direction="row"
             spacing={2}
-            sx={{ alignItems: 'center' }}
+            sx={{ alignItems: 'flex-start' }}
           >
-            <Box aria-hidden="true" sx={{ color: roles.primary, display: 'flex' }}>
+            <Box
+              aria-hidden="true"
+              sx={{ color: roles.primary, display: 'flex', flexShrink: 0, pt: 0.5 }}
+            >
               {item.icon}
             </Box>
-            <Typography variant="bodyLarge">{item.text}</Typography>
+            <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere', minWidth: 0 }}>
+              {item.text}
+            </Typography>
           </Stack>
         ))}
       </Stack>

@@ -6,6 +6,7 @@ import {
   ButtonBase,
   CircularProgress,
   LinearProgress,
+  Skeleton,
   Stack,
   Typography,
   useTheme,
@@ -20,6 +21,7 @@ import {
   Globe,
   MessageSquare,
   Mic,
+  Moon,
   PackageMinus,
   PencilLine,
   Sparkles,
@@ -29,6 +31,7 @@ import {
 import { useIdentity } from '../../../auth/useIdentity'
 import { HAND_FONT, enterRise, motion, shape } from '../../../design/theme'
 import { useLocale } from '../../../state/hooks'
+import { closeDayCopy } from '../../closeday/strings'
 import { toMajor } from '../format'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
@@ -47,6 +50,7 @@ export interface TodayActions {
   openMessages: () => void
   openSoldOut: () => void
   talk: () => void
+  openCloseDay?: () => void
 }
 
 const LEAVE_MS = 320
@@ -59,7 +63,24 @@ export function TodayView({ actions }: { actions: TodayActions }) {
   const { name } = useIdentity()
   const { plan, answerMenu } = useTodayPlan(actions.unread)
   const shop = ws.active
-  if (!shop || !plan) return null
+  if (!shop) return null
+  if (!plan) {
+    return (
+      <Stack
+        spacing={{ xs: 4, sm: 5 }}
+        sx={{ pt: { xs: 1, sm: 6 }, pb: 4 }}
+        data-testid="today-skeleton"
+        aria-busy="true"
+      >
+        <Box>
+          <Skeleton variant="text" width="60%" height={36} />
+          <Skeleton variant="text" width="40%" height={24} sx={{ mt: 1 }} />
+        </Box>
+        <Skeleton variant="rounded" height={160} sx={{ borderRadius: `${shape.xl}px` }} />
+        <Skeleton variant="rounded" height={120} sx={{ borderRadius: `${shape.lg}px` }} />
+      </Stack>
+    )
+  }
   return (
     <Stack spacing={{ xs: 4, sm: 5 }} sx={{ pt: { xs: 1, sm: 6 }, pb: 4 }} data-testid="today">
       <Box>
@@ -365,6 +386,7 @@ function NeedRow({
   const t = useCopy()
   const tt = useTodayCopy()
   const o = useOnboardingCopy()
+  const locale = useLocale()
   const ws = useWorkspace()
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
@@ -387,8 +409,17 @@ function NeedRow({
     icon = <MessageSquare size={20} />
     text = tt.waiting(need.count)
     buttons = (
-      <Button variant={primary} onClick={actions.openMessages}>
+      <Button variant={primary} sx={{ minHeight: 48 }} onClick={actions.openMessages}>
         {tt.reply}
+      </Button>
+    )
+  } else if (need.kind === 'closeDay') {
+    const cd = closeDayCopy(locale)
+    icon = <Moon size={20} />
+    text = cd.tileEvening
+    buttons = (
+      <Button variant={primary} sx={{ minHeight: 48 }} onClick={actions.openCloseDay}>
+        {cd.title}
       </Button>
     )
   } else if (need.kind === 'menu') {
@@ -400,6 +431,7 @@ function NeedRow({
           variant={primary}
           disabled={busy}
           startIcon={busy ? <CircularProgress size={16} /> : undefined}
+          sx={{ minHeight: 48 }}
           onClick={() =>
             void run(async () => {
               if (!ws.active) return
@@ -413,6 +445,7 @@ function NeedRow({
         </Button>
         <Button
           disabled={busy}
+          sx={{ minHeight: 48 }}
           onClick={() => {
             answerMenu()
             actions.draft(t.todayDraft)
@@ -426,7 +459,11 @@ function NeedRow({
     icon = <PackageMinus size={20} />
     text = tt.low(need.item, need.left)
     buttons = (
-      <Button variant={primary} onClick={() => actions.ask(tt.orderDraft(need.item))}>
+      <Button
+        variant={primary}
+        sx={{ minHeight: 48 }}
+        onClick={() => actions.ask(tt.orderDraft(need.item))}
+      >
         {tt.order}
       </Button>
     )
@@ -438,12 +475,13 @@ function NeedRow({
       <Button
         variant={primary}
         disabled={busy}
+        sx={{ minHeight: 48 }}
         onClick={() => void run(() => ws.setAvailability(only, true))}
       >
         {tt.backInStock}
       </Button>
     ) : (
-      <Button variant={primary} onClick={actions.openSoldOut}>
+      <Button variant={primary} sx={{ minHeight: 48 }} onClick={actions.openSoldOut}>
         {tt.see}
       </Button>
     )
@@ -452,10 +490,14 @@ function NeedRow({
     text = stepText(need.step, food, tt, o)
     buttons = (
       <>
-        <Button variant={primary} onClick={step.run}>
+        <Button variant={primary} sx={{ minHeight: 48 }} onClick={step.run}>
           {step.label}
         </Button>
-        {step.second && <Button onClick={step.second.run}>{step.second.label}</Button>}
+        {step.second && (
+          <Button sx={{ minHeight: 48 }} onClick={step.second.run}>
+            {step.second.label}
+          </Button>
+        )}
       </>
     )
   } else {
@@ -463,7 +505,11 @@ function NeedRow({
     const fact = need.facts[0]!
     text = t.customersAsk(need.facts.map((f) => t.askNames[f]).join(' '))
     buttons = (
-      <Button variant={primary} onClick={() => actions.draft(`${t.factNames[fact]}: `)}>
+      <Button
+        variant={primary}
+        sx={{ minHeight: 48 }}
+        onClick={() => actions.draft(`${t.factNames[fact]}: `)}
+      >
         {t.answerNow}
       </Button>
     )

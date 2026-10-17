@@ -164,3 +164,28 @@ test('map pictures offline: the chalk grid stays and the pin still works', async
   await expect(map).toHaveAttribute('data-state', 'done')
   await expect(map).toContainText('Near Indiranagar')
 })
+
+for (const scheme of ['light', 'dark'] as const) {
+  test(`at 360x800 in-chat map and confirm button are visible without scrolling (${scheme})`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width: 360, height: 800 })
+    await localOnly(page)
+    await inChatFixtures(page)
+    await context.grantPermissions(['geolocation', 'microphone'])
+    await context.setGeolocation({ latitude: 12.9718234, longitude: 77.6412345, accuracy: 20 })
+    await open(page, scheme)
+    await page.getByRole('button', { name: 'My location' }).click()
+    const confirmBtn = page.getByRole('button', { name: 'This is my shop' })
+    await expect(confirmBtn).toBeVisible()
+    const box = (await confirmBtn.boundingBox())!
+    // Full 48px touch target, completely visible within the 800px viewport without scrolling
+    expect(box.height).toBeGreaterThanOrEqual(48)
+    expect(box.y + box.height).toBeLessThanOrEqual(800)
+    const logScroll = await page
+      .getByRole('region', { name: 'Conversation' })
+      .evaluate((el) => el.scrollTop)
+    expect(logScroll).toBe(0)
+  })
+}

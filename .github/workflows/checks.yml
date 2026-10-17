@@ -107,10 +107,13 @@ jobs:
       - id: playwright
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6.1.0
+        id: browsers
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-      - run: npx playwright install --with-deps chromium
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}-chromium
+      - run: npx playwright install-deps chromium
+      - run: npx playwright install chromium
+        if: steps.browsers.outputs.cache-hit != 'true'
       - run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/3
       - uses: actions/upload-artifact@v6
         if: failure()

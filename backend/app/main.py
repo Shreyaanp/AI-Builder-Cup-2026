@@ -19,7 +19,9 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 from sse_starlette import EventSourceResponse, ServerSentEvent
 
-from . import business_understanding, coordinator
+from . import business_understanding, coordinator, supply_chain
+from .analytics import AnalyticsReader
+from .analytics import router as analytics_router
 from .auth import IdentityService, Principal
 from .boundary import RequestBoundary
 from .brief import BriefWriter, WeatherService
@@ -27,6 +29,7 @@ from .business_profile import QuestionPlanner
 from .business_understanding import BusinessUnderstander
 from .community import community_service
 from .community_routes import router as community_router
+from .connector_routes import router as connector_router
 from .contracts import CoachTurn, NewShopVoiceContext, StreamEvent
 from .coordinator import MerchantContext, current
 from .customer import CustomerAnswers
@@ -38,6 +41,8 @@ from .demo_world import router as demo_world_router
 from .discover import MapsService
 from .discover import router as discover_router
 from .discover_ask import router as discover_ask_router
+from .document_ai import DocumentAIReader
+from .features import FeatureFlags
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .forecast import ForecastService
 from .forecast_routes import router as forecast_router
@@ -56,6 +61,7 @@ from .limits import (
     lease_lost,
     rate_limiter,
 )
+from .maps_grounding import AreaGrounding
 from .memory_vectors import (
     ConversationRecall,
     FirestoreRecall,
@@ -72,16 +78,29 @@ from .owner_routes import router as owner_router
 from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
+from .playbook import PlaybookWriter
+from .playbook_routes import router as playbook_router
 from .recap import RecapWriter
+from .recs_routes import router as recs_router
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
 from .reply_language import reply_language
+from .retail_recs import (
+    EventPipeline,
+    Recommender,
+    RetailClient,
+    SimilarShops,
+    configure_recommender,
+)
 from .sales_routes import router as sales_router
+from .search_engine import build_engine
 from .settings import Settings
 from .shop_language import ShopTranslator
 from .shop_today import router as shop_today_router
 from .sourcing import SupplierGenerator
 from .sourcing_routes import router as sourcing_router
 from .streaming import CoachRuntime
+from .supply_docs import DocumentTranslator
+from .supply_routes import router as supply_router
 from .today import router as today_router
 from .trust_routes import router as trust_router
 from .tts import Speech
@@ -172,17 +191,38 @@ def create_app(
         coordinator.question_planner = QuestionPlanner(settings)
         business_understanding.understander = BusinessUnderstander(settings)
         coordinator.supplier_generator = SupplierGenerator(settings)
+        supply_chain.translator = DocumentTranslator(settings)
+        app.state.search = build_engine(
+            settings, app.state.community.docs if app.state.community else None
+        )
+        coordinator.search_engine = app.state.search
         app.state.world_generator = WorldGenerator(settings)
         app.state.column_mapper = ColumnMapper(settings)
         app.state.fraud_reviewer = FraudReviewer(settings)
         app.state.forecaster = ForecastService(settings)
+        app.state.document_ai = DocumentAIReader(settings)
+        app.state.analytics = AnalyticsReader(settings)
         app.state.weather = WeatherService(settings)
         app.state.brief_writer = BriefWriter(settings)
         coordinator.forecaster = app.state.forecaster
         app.state.recap_writer = RecapWriter(settings)
+        app.state.playbook_writer = PlaybookWriter(settings)
         app.state.speech = Speech(settings)
         app.state.maps = maps_service or MapsService(settings)
+        app.state.grounding = AreaGrounding(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
+        retail = (
+            RetailClient(settings.google_cloud_project)
+            if (settings.recs_enabled or settings.recs_events_enabled)
+            and settings.google_cloud_project
+            else None
+        )
+        app.state.recs_events = EventPipeline(retail, settings.recs_events_enabled)
+        recommender = Recommender(retail, settings.recs_enabled)
+        configure_recommender(recommender)
+        # "Similar nearby": Recommendations AI while its switch is on, else embeddings.
+        if settings.recs_enabled:
+            app.state.search.similar_provider = SimilarShops(recommender)
         app.state.services = Services(
             identity,
             CoachRuntime(settings, session_service),
@@ -202,16 +242,21 @@ def create_app(
             yield
         finally:
             maintenance.cancel()
+            await anyio.to_thread.run_sync(app.state.recs_events.flush)
+            configure_recommender(None)
             await asyncio.gather(maintenance, return_exceptions=True)
             await app.state.services.replay.close()
             await app.state.customer_answers.close()
             await app.state.shop_translator.close()
             await app.state.recap_writer.close()
+            await app.state.playbook_writer.close()
             await app.state.brief_writer.close()
         await app.state.column_mapper.close()
         await app.state.fraud_reviewer.close()
         if coordinator.supplier_generator is not None:
             await coordinator.supplier_generator.close()
+        if supply_chain.translator is not None:
+            await supply_chain.translator.close()
         await app.state.world_generator.close()
         if coordinator.question_planner is not None:
             await coordinator.question_planner.close()
@@ -233,6 +278,7 @@ def create_app(
     app = FastAPI(title="oGoogle AI streaming API", version="0.1.0", lifespan=lifespan)
     app.state.google_profile = google_profile or SimulatedBusinessProfile()
     app.include_router(merchant_router)
+    app.include_router(connector_router)
     app.include_router(google_sim_router)
     app.include_router(planning_router)
     app.include_router(sales_router)
@@ -244,11 +290,15 @@ def create_app(
     app.include_router(day_close_router)
     app.include_router(demo_workspace_router)
     app.include_router(demo_world_router)
+    app.include_router(recs_router)
     app.include_router(passport_router)
     app.include_router(games_router)
     app.include_router(today_router)
     app.include_router(shop_today_router)
+    app.include_router(analytics_router)
+    app.include_router(playbook_router)
     app.include_router(sourcing_router)
+    app.include_router(supply_router)
     app.include_router(owner_router)
     app.include_router(trust_router)
     app.add_middleware(
@@ -301,6 +351,7 @@ def create_app(
         return {
             **get_services(request).identity.bootstrap(request, response),
             "v1_enabled": settings.v1_enabled,
+            "features": FeatureFlags(google_guide=settings.feature_google_guide).model_dump(),
             "customer_origin": settings.customer_origin
             or (
                 "https://chalkboard.shreyaan.work"
@@ -456,6 +507,12 @@ def create_app(
             raise HTTPException(404, "Conversation not found.")
         messages = []
         for event in session.events:
+            for part in (event.content.parts or []) if event.content else []:
+                response = part.function_response
+                if response and response.name == "prepare_payment_link":
+                    payment = (response.response or {}).get("payment")
+                    if isinstance(payment, dict):
+                        messages.append({"role": "payment", "payment": payment, "key": event.id})
             # Voice turns are stored as transcripts, not text parts: show the finished ones too.
             for name, role in (
                 ("input_transcription", "user"),

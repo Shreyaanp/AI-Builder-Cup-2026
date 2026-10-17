@@ -99,3 +99,53 @@ test('the customer page follows the customer’s phone language', async ({ page,
   expect(await customerPage.evaluate(() => document.documentElement.lang)).toBe('ja')
   await customer.close()
 })
+
+test('customer search hints use area currency and locale across all 15 languages', async ({
+  page,
+}) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  const results = await page.evaluate(async () => {
+    const copyMod = '/src/features/discover/conversationCopy.ts'
+    const localesMod = '/src/i18n/locales.ts'
+    const { conversationCopy } = (await import(copyMod)) as {
+      conversationCopy: (locale: string, currency: string) => { placeholder: string }
+    }
+    const { LOCALES } = (await import(localesMod)) as { LOCALES: string[] }
+    const inrHints = LOCALES.map((locale) => ({
+      locale,
+      hint: conversationCopy(locale, 'INR').placeholder,
+    }))
+    const sgdHints = LOCALES.map((locale) => ({
+      locale,
+      hint: conversationCopy(locale, 'SGD').placeholder,
+    }))
+    return { inrHints, sgdHints }
+  })
+  // All 15 languages using INR must contain ₹
+  for (const { locale, hint } of results.inrHints) {
+    expect(hint).toContain('₹')
+    if (locale === 'en') {
+      expect(hint).not.toContain('$')
+      expect(hint).toContain('₹')
+    }
+  }
+  const enSgd = results.sgdHints.find((h) => h.locale === 'en')
+  expect(enSgd?.hint).toContain('$3')
+})
+
+test('customer search hint uses area currency (₹) on Indian-English phone', async ({ browser }) => {
+  const context = await browser.newContext({
+    locale: 'en-IN',
+    timezoneId: 'Asia/Kolkata',
+  })
+  const page = await context.newPage()
+  await page.addInitScript(() => {
+    localStorage.setItem('chalkboard.customer.journey', 'done')
+  })
+  await page.goto('/explore/')
+  const input = page.getByRole('textbox', { name: 'Ask about anything nearby' })
+  await expect(input).toBeVisible()
+  await expect(input).toHaveAttribute('placeholder', /₹/)
+  await expect(input).not.toHaveAttribute('placeholder', /\$3/)
+  await context.close()
+})

@@ -95,9 +95,12 @@ test('the shop page reads in the customer’s language; owner item names stay as
       await expect(customer.getByText(category, { exact: false }).first()).toBeVisible()
       for (const section of sections)
         await expect(customer.getByRole('region', { name: section, exact: true })).toBeVisible()
-      // The owner's names are untouched.
-      await expect(customer.getByText('Milk bread', { exact: true })).toBeVisible()
-      await expect(customer.getByText('Chocolate cake', { exact: true })).toBeVisible()
+      // The owner's names are untouched (in the menu; Similar nearby repeats them as choices).
+      const [bread, cakes] = sections.map((name) =>
+        customer.getByRole('region', { name, exact: true }),
+      )
+      await expect(bread.getByText('Milk bread', { exact: true })).toBeVisible()
+      await expect(cakes.getByText('Chocolate cake', { exact: true })).toBeVisible()
       // 360px: nothing scrolls sideways and every fact chip is fully on screen (wrapped).
       expect(
         await customer.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),

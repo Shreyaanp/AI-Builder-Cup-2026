@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { Alert, AlertTitle, Box, Button, Stack, Typography, useTheme } from '@mui/material'
 import { Camera, Clock, Keyboard, MapPin, MicOff, RefreshCw, Store } from 'lucide-react'
 import { chalkWrite } from '../../design/chalkMotion'
-import { HAND_FONT, motion, shape } from '../../design/theme'
+import { HAND_FONT, motion, scrollArea, shape } from '../../design/theme'
 import type { Business, Product } from './api'
 import { readablePlace } from './location'
 import { useNewShopCopy } from './newShopCopy'
@@ -494,7 +494,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
             xs: 'linear-gradient(to right, #000 calc(100% - 28px), transparent)',
             md: 'none',
           },
-          scrollbarWidth: 'none',
+          ...scrollArea,
           mx: { xs: -2.5, md: 0 },
           px: { xs: 2.5, md: 0 },
           pb: { xs: 0.5, md: 0 },
@@ -555,8 +555,8 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
                       component="span"
                       sx={{
                         position: 'absolute',
-                        width: 1,
-                        height: 1,
+                        width: '1px',
+                        height: '1px',
                         overflow: 'hidden',
                         clip: 'rect(0 0 0 0)',
                       }}
