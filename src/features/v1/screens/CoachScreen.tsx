@@ -1353,7 +1353,24 @@ function CoachScreen({
         }}
       >
         {error && (
-          <Alert severity="error" onClose={() => setError('')} sx={{ mb: 1.5 }}>
+          <Alert
+            severity="error"
+            onClose={() => setError('')}
+            action={
+              note.trim() ? (
+                <Button
+                  color="inherit"
+                  size="small"
+                  disabled={busy !== 'idle'}
+                  onClick={() => void send(note)}
+                  sx={{ minHeight: 44 }}
+                >
+                  {t.retryLoad}
+                </Button>
+              ) : undefined
+            }
+            sx={{ mb: 1.5 }}
+          >
             {error}
           </Alert>
         )}
