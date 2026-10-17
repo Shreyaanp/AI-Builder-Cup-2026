@@ -357,28 +357,24 @@ test('#6 after "per cup or per pot?", the coach links to the item in the menu', 
   await expect(menu.getByRole('button', { name: 'Edit Special Chai' })).toHaveCount(2)
 })
 
-test('#8 a restaurant review offers optional dietary info; a tea stall does not', async ({
+// Onboarding v2 (owner decision, 17 Oct) asks only name, kind, place, hours and a shop photo:
+// dietary info is no longer part of the new-shop review, for a restaurant or a tea stall.
+test('#8 the new-shop review of a restaurant asks nothing beyond the five onboarding fields', async ({
   page,
 }) => {
   await enter(page)
   await openNewShopReview(page, 'name: Dakshin Sagar; category: Restaurant; location: Jayanagar')
-  const review = page.getByTestId('new-shop-review')
-  const dietary = review.getByTestId('dietary-optional')
-  await expect(dietary).toContainText('Optional')
+  const review = page.getByTestId('draft-summary')
+  await expect(review).toContainText('Dakshin Sagar')
+  await expect(page.getByTestId('dietary-optional')).toHaveCount(0)
+  await expect(review.locator('[data-field]')).toHaveCount(5)
   await noSideScroll(page)
   await axe(page)
-  await dietary.getByRole('button', { name: 'Add dietary info' }).click()
-  await expect(page.getByLabel('Message', { exact: true })).toHaveValue('Vegetarian options: ')
-  await page.getByLabel('Message', { exact: true }).fill('Vegetarian options: yes')
-  await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(page.getByTestId('agent-action').last()).toBeVisible()
-  await page.getByRole('button', { name: 'Review my shop' }).click()
-  await expect(review.getByTestId('dietary-optional')).toHaveCount(0)
 })
 
 test('#8 a tea stall review has no dietary prompt', async ({ page }) => {
   await enter(page)
   await openNewShopReview(page)
-  await expect(page.getByTestId('new-shop-review')).toBeVisible()
+  await expect(page.getByTestId('draft-summary')).toBeVisible()
   await expect(page.getByTestId('dietary-optional')).toHaveCount(0)
 })
