@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box,
@@ -33,19 +33,29 @@ import type { Destination } from './workspaceContext'
 import { CoachWorkspace, type GalleryPhoto } from './screens/CoachScreen'
 import { NewShopFlow } from './NewShopFlow'
 import { TourHost } from '../tour/Tour'
-import { ShopScreen } from './screens/ShopScreen'
 import { ShopOverview } from './ShopTiles'
-import { GoogleScreen } from './screens/GoogleScreen'
-import { GrowScreen } from './screens/GrowScreen'
-import { PrivacyScreen } from './screens/PrivacyScreen'
 import { SubPage } from './screens/SubPage'
-import { YouScreen } from './screens/YouScreen'
 import { DiscardPrompt } from './DiscardPrompt'
 import { useIdentity } from '../../auth/useIdentity'
 import { CoachGuide } from '../owner-tools/CoachGuide'
 import { PaymentsScreen } from '../owner-tools/PaymentsScreen'
 import { openOwnerFeature, useOwnerFeature } from '../owner-tools/entry'
 import { useToolCopy } from '../owner-tools/copy'
+
+// Tab screens other than the coach load when first opened.
+const ShopScreen = lazy(() =>
+  import('./screens/ShopScreen').then((m) => ({ default: m.ShopScreen })),
+)
+const GrowScreen = lazy(() =>
+  import('./screens/GrowScreen').then((m) => ({ default: m.GrowScreen })),
+)
+const YouScreen = lazy(() => import('./screens/YouScreen').then((m) => ({ default: m.YouScreen })))
+const GoogleScreen = lazy(() =>
+  import('./screens/GoogleScreen').then((m) => ({ default: m.GoogleScreen })),
+)
+const PrivacyScreen = lazy(() =>
+  import('./screens/PrivacyScreen').then((m) => ({ default: m.PrivacyScreen })),
+)
 
 export function AppShell() {
   const t = useCopy()
@@ -181,7 +191,7 @@ export function AppShell() {
               ) : feature === 'payments' ? (
                 <PaymentsScreen key={ws.activeId} />
               ) : (
-                screen
+                <Suspense fallback={null}>{screen}</Suspense>
               )}
             </Box>
             {supporting && destination === 'coach' && !feature && ws.active && !inFlow && (
