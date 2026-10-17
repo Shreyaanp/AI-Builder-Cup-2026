@@ -2,10 +2,11 @@
 
 Base: `release/stable-3` (PR #66, now on main as 6ebf1a49). Eight PRs merged with
 `git merge --no-ff origin/<branch>`, one merge commit each, conflicts resolved before the next
-merge. Then main was merged in four times: 6ebf1a49 (release 3 as a squash, same tree as
+merge. Then main was merged in six times: 6ebf1a49 (release 3 as a squash, same tree as
 `release/stable-3`, so every file kept this branch's version), 4d5afdd1 (#99, main-green test
 fixes and the landing restore), bcadb1d8 (#95, voice session hotfix; its tests pass here) and
-aacbb32d (#91, onboarding v2; see below). A fetch before the push confirmed every branch head below is in.
+aacbb32d (#91, onboarding v2; see below), 01b70ba2 (#113, #115, #106, #114) and 0c13e9f5
+(#117, #131, #92 and more; see below). A fetch before the push confirmed every branch head below is in.
 
 ## What is in
 
@@ -105,6 +106,22 @@ so it is recorded in the rules baseline (voice), not changed here. After the mer
 ruff, mypy, tsc, lint, format, rules, and the backend tests for onboarding v2, Hindi, photos,
 region, rename, streaming, voice language and reliability, new shop and payments (243 passed, 36
 skipped).
+
+## Main's later merges (01b70ba2, 0c13e9f5)
+
+- **#92 (shop icon), `PublicShop.tsx`**: the shop page keeps #78's hero banner. #92's change was
+  ported into it: the shop's icon is preferred over the first gallery photo. `ShopTiles.tsx`
+  keeps both imports.
+- **Rules on main's new code** (main has no baseline, so its additions show as new): `area_currency`
+  in `sourcing.py` (#131) lost its `"SGD"` default, since its only caller always passes a fallback.
+  The icon's image `alt` is its title. `icons.py` draws an image and returns no text, so it is in
+  the voice baseline. **Follow-up**: the shop icon panel's copy is English-only (#92).
+- **Today spec**: three tests lead with the daily menu question, but after the shop's close time
+  "Close the day" leads instead, so they failed whenever CI ran in the evening. They now pin the
+  browser clock to 10:00 in Singapore, as #99 did for B6. The assertions are unchanged.
+- **Voice rate-limit test** (`new-shop-voice.spec.ts`): failed twice on CI at the typed greeting in
+  an earlier head. It passed on the next CI run with no change to the test. Locally it passed 8 of
+  9 runs; the one failure was the page stuck on the splash while the servers were loaded.
 
 ## Not done / for later
 
