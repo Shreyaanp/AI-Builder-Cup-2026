@@ -60,7 +60,7 @@ test('coach server failure preserves draft and retry recovers', async ({ page })
     'Help me plan today',
   )
   await page.unroute('**/coach/stream')
-  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
   await expect(page.getByRole('log')).toContainText('scripted reply')
 })
 
@@ -90,6 +90,6 @@ test('actual offline coach preserves a failed draft and reconnect retry works', 
   } finally {
     await context.setOffline(false)
   }
-  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
   await expect(page.getByRole('log')).toContainText('scripted reply')
 })
