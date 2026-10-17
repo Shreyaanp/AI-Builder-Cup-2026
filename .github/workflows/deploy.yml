@@ -141,6 +141,8 @@ jobs:
           if [[ "$current" == *":inputs-$inputs" ]]; then
             echo "current=true" >> "$GITHUB_OUTPUT"
             echo "Face worker already runs inputs-$inputs; skipping its build and release."
+            # A no-traffic test revision pins traffic; make sure the current image serves.
+            gcloud run services update-traffic ogoogle-face --project=ichiropractic --region=asia-south1 --to-latest --quiet
             echo "FACE_WORKER_URL=$(gcloud run services describe ogoogle-face --project=ichiropractic --region=asia-south1 --format='value(status.url)')" >> "$GITHUB_ENV"
           fi
       - name: Build private face worker
@@ -166,6 +168,8 @@ jobs:
             --set-env-vars=FACE_REQUIRE_MODELS=true \
             --no-allow-unauthenticated --min=0 --max=1 --concurrency=1 \
             --cpu=1 --memory=2Gi --timeout=60 --cpu-boost --quiet
+          # Without this, traffic pinned by a no-traffic test revision stays on the old worker.
+          gcloud run services update-traffic ogoogle-face --project=ichiropractic --region=asia-south1 --to-latest --quiet
           url=$(gcloud run services describe ogoogle-face --project=ichiropractic --region=asia-south1 --format='value(status.url)')
           test -n "$url"
           echo "FACE_WORKER_URL=$url" >> "$GITHUB_ENV"
