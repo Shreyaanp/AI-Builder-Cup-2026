@@ -10,7 +10,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { MapPin, Search } from 'lucide-react'
+import { List, Map as MapIcon, MapPin, Search } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { loadScriptFont } from '../../i18n/fonts'
 import { motion } from '../../design/theme'
@@ -427,8 +427,13 @@ export default function Discover({
             gap: 2,
             overflowX: 'auto',
             py: 2,
+            // Runs to the screen edges, so a cut-off chip reads as "swipe for more". Doubled
+            // specificity: the Stack's own child rule resets margins.
+            '&&': { mx: -4 },
+            px: 4,
             position: 'sticky',
-            top: 'env(safe-area-inset-top)',
+            // Pinned just under the app bar (CustomerTopBar, 64px).
+            top: 'calc(64px + env(safe-area-inset-top, 0px))',
             zIndex: 2,
             bgcolor: roles.surface,
             scrollbarWidth: 'none',
@@ -567,8 +572,34 @@ export default function Discover({
             </Stack>
           </Box>
         )}
-        <Box>
-          <Button variant="outlined" aria-pressed={map} onClick={() => setMap(!map)}>
+        {/* List or map: one pill in the thumb zone, floating over the results (not a title). */}
+        <Box
+          sx={{
+            position: 'sticky',
+            bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+            zIndex: 3,
+            order: 99,
+            display: 'flex',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+          }}
+        >
+          <Button
+            variant="contained"
+            aria-pressed={map}
+            onClick={() => setMap(!map)}
+            startIcon={map ? <List aria-hidden size={18} /> : <MapIcon aria-hidden size={18} />}
+            sx={{
+              pointerEvents: 'auto',
+              minHeight: 48,
+              px: 5,
+              borderRadius: 999,
+              bgcolor: roles.inverseSurface,
+              color: roles.inverseOnSurface,
+              boxShadow: '0 6px 20px rgb(0 0 0 / 0.24)',
+              '&:hover': { bgcolor: roles.inverseSurface },
+            }}
+          >
             {map ? t.list : t.map}
           </Button>
         </Box>

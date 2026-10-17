@@ -856,12 +856,12 @@ export default function AskHome({
                   </Box>
                 </Box>
               )}
+              <NearbyShops shops={nearbyShops} copy={c} locale={locale} browse={t.browse} />
               <TodayEntry
                 copy={c}
                 onOpen={() => send(c.today, { kind: 'today' })}
                 disabled={busy}
               />
-              <NearbyShops shops={nearbyShops} copy={c} locale={locale} browse={t.browse} />
             </>
           )}
         </Box>
@@ -1177,7 +1177,7 @@ function NearbyShops({
       {browse}
     </Button>
   )
-  // The last thing on the page: when it loads or turns out empty, nothing below it moves.
+  // Skeleton cards hold the carousel's height while it loads, so the Today card below never jumps.
   if (shops && shops.length === 0) return <Box sx={{ mt: 3 }}>{all}</Box>
   return (
     <Box component="section" aria-labelledby="ask-nearby" sx={{ mt: 6 }}>
