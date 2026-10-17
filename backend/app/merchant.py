@@ -165,6 +165,7 @@ class BusinessFields(BaseModel):
     phone: str = Field(default="", max_length=40)
     reward_text: str = Field(default="", max_length=80)
     stamps_needed: int = Field(default=8, ge=3, le=20, strict=True)
+    stamps_enabled: bool = False
     # ISO 4217; prices of this shop are stored in this currency's minor unit (see money.py).
     # Empty means the region's currency (the pin's country, else the phone's).
     currency: str = Field(default="", pattern=r"^([A-Z]{3})?$")
@@ -243,6 +244,7 @@ class BusinessFields(BaseModel):
             and not (key == "rider_providers" and value in (None, LEGACY_RIDERS))
             and not (key == "reward_text" and value == "")
             and not (key == "stamps_needed" and value == 8)
+            and not (key == "stamps_enabled" and value is False)
             and not (key == "weekly_hours" and value == [])
             and not (key == "closed_on" and value == "")
             and not (key == "description" and value == "")
@@ -433,6 +435,10 @@ class MerchantRepository(Protocol):
         """Replace the shop's gallery (photo IDs the owner chose to show customers)."""
         ...
 
+    def set_icon(self, uid: str, bid: str, icon: str | None) -> str | None:
+        """Set (or clear, with None) the ID of the shop's icon picture."""
+        ...
+
     def recap_cache(
         self, uid: str, bid: str, key: str, value: dict[str, Any] | None = None
     ) -> dict[str, Any] | None: ...
@@ -547,7 +553,10 @@ def public_projection(
         "currency": shop_currency(fields),
         **({"reward_text": fields["reward_text"]} if fields.get("reward_text") else {}),
         "stamps_needed": fields.get("stamps_needed", 8),
-        "stamps_enabled": bool(fields.get("reward_text") and str(fields["reward_text"]).strip()),
+        "stamps_enabled": bool(
+            fields.get("stamps_enabled")
+            or (fields.get("reward_text") and str(fields["reward_text"]).strip())
+        ),
         # Only facts the owner confirmed; customer Q&A grounds on these too.
         "facts": customer_facts(fields),
         "products": [
@@ -699,6 +708,8 @@ class MerchantStore:
                 db.execute("ALTER TABLE businesses ADD COLUMN coach_notes TEXT")
             if "gallery" not in columns:
                 db.execute("ALTER TABLE businesses ADD COLUMN gallery TEXT")
+            if "icon" not in columns:
+                db.execute("ALTER TABLE businesses ADD COLUMN icon TEXT")
             # Lazy schema migration: older databases gain the column; rows stay NULL until a
             # playbook is first generated for that shop (never a bulk backfill).
             if "playbook" not in columns:
@@ -765,6 +776,7 @@ class MerchantStore:
             "last_confirmed": row["last_confirmed"],
             "coach_notes": json.loads(row["coach_notes"] or "[]"),
             "gallery": json.loads(row["gallery"] or "[]"),
+            "icon": row["icon"],
             "registration": row["status"],
             "public": bool(shared),
             "google_publication": "not_connected",
@@ -1150,7 +1162,7 @@ class MerchantStore:
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         with self.connect() as db:
             row = db.execute(
-                "SELECT b.fields,b.last_confirmed,b.gallery FROM businesses b "
+                "SELECT b.fields,b.last_confirmed,b.gallery,b.icon FROM businesses b "
                 "JOIN shares s ON s.business_id=b.id "
                 "WHERE b.id=?",
                 (bid,),
@@ -1167,6 +1179,7 @@ class MerchantStore:
             **public_projection(bid, json.loads(row[0]), products),
             "last_confirmed": row[1],
             "gallery": json.loads(row[2] or "[]"),
+            "icon": row[3],
         }
 
     def subscribe_stock(self, bid: str, body: StockAlertInput) -> StockAlertReceipt:
@@ -1302,6 +1315,13 @@ class MerchantStore:
             self.owned(db, uid, bid)
             db.execute("UPDATE businesses SET gallery=? WHERE id=?", (json.dumps(photos), bid))
             return photos
+
+    def set_icon(self, uid: str, bid: str, icon: str | None) -> str | None:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self.owned(db, uid, bid)
+            db.execute("UPDATE businesses SET icon=? WHERE id=?", (icon, bid))
+            return icon
 
     def analytics_shops(self, limit: int) -> list[tuple[str, str]]:
         with self.connect() as db:

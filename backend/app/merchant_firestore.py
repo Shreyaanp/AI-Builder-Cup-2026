@@ -125,6 +125,7 @@ class FirestoreMerchantStore:
             "last_confirmed": data.get("last_confirmed"),
             "coach_notes": data.get("coach_notes") or [],
             "gallery": data.get("gallery") or [],
+            "icon": data.get("icon"),
             "registration": data["status"],
             "public": bool(data.get("public")),
             "google_publication": "not_connected",
@@ -584,6 +585,7 @@ class FirestoreMerchantStore:
             **public_projection(ref.id, data["fields"], [row["fields"] for row in rows]),
             "last_confirmed": data.get("last_confirmed"),
             "gallery": data.get("gallery") or [],
+            "icon": data.get("icon"),
         }
 
     def subscribe_stock(self, bid: str, body: StockAlertInput) -> StockAlertReceipt:
@@ -760,6 +762,17 @@ class FirestoreMerchantStore:
             {"playbook": value if value else firestore.DELETE_FIELD},
             option=self.client.write_option(last_update_time=snapshot.update_time),
         )
+
+    def set_icon(self, uid: str, bid: str, icon: str | None) -> str | None:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> str | None:
+            self.owned(ref.get(transaction=transaction), uid)
+            transaction.update(ref, {"icon": icon})
+            return icon
+
+        return cast(str | None, run(self.client.transaction()))
 
     def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
         ref = self.businesses.document(document_id(bid, "Business not found."))

@@ -10,6 +10,7 @@ The offline fixture follows no fixed script.
 
 import asyncio
 import json
+import re
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,14 +23,17 @@ from starlette.websockets import WebSocketDisconnect
 
 from app import business_understanding
 from app.agent import (
+    FACE_QUESTION,
     GOODBYE,
     NEW_SHOP_INSTRUCTION,
     NEW_SHOP_TOPICS,
     OFFLINE_HI,
+    OPEN_QUESTION,
     topic_order,
     turn_instruction,
 )
 from app.business_understanding import (
+    OFFLINE_EXTRAS,
     BusinessUnderstander,
     BusinessUnderstanding,
     ExtraQuestion,
@@ -39,8 +43,8 @@ from app.business_understanding import (
 )
 from app.coordinator import MerchantContext, current, get_question_plan
 from app.main import create_app
-from app.merchant import MerchantStore, NewShopDraft
-from app.new_shop_resume import merge_drafts
+from app.merchant import BusinessFields, MerchantStore, NewShopDraft
+from app.new_shop_resume import follow_up_plan, known_and_missing, merge_drafts
 from app.new_shop_tools import end_conversation, update_shop
 from app.settings import Settings
 from tests.test_discover import settings
@@ -474,12 +478,11 @@ def test_bas_ends_the_voice_conversation_with_a_goodbye_and_no_error(tmp_path: P
 
 
 def test_the_fixture_follows_no_fixed_script() -> None:
-    """Different owners get the missing topics in different orders; each order still has
-    every topic exactly once."""
+    """Different owners get the missing basics in different orders; each order still has every
+    basic exactly once."""
     orders = {tuple(topic_order(SimpleNamespace(uid=f"owner-{n}"))) for n in range(40)}
     assert len(orders) > 3
-    topics = {key for key, _, _ in NEW_SHOP_TOPICS}
-    assert all(sorted(order) == sorted(topics) for order in orders)
+    assert all(sorted(order) == ["location", "name", "sell"] for order in orders)
     assert len({order[0] for order in orders}) == 3
 
 
@@ -538,3 +541,194 @@ def test_voice_never_waits_for_the_profile(tmp_path: Path) -> None:
         assert asyncio.run(flow()) < 0.5
     finally:
         business_understanding.understander = previous
+
+
+# --- #112 evals: open question, then smart follow-ups ------------------------------------------
+
+# The trade's own follow-up for each business (business_understanding.OFFLINE_EXTRAS).
+TRADE_QUESTIONS = {key: question for _, _, key, _, question, _ in OFFLINE_EXTRAS}
+# Never asked of any business in onboarding; food words never of a business that is not food.
+NEVER_ANY = re.compile(r"menu|price|pay|upi|deliver|halal|मेन्यू|दाम|कीमत|भुगतान|डिलीवरी|हलाल", re.I)
+FOOD_ONLY = re.compile(r"veg|food|eat|cake|tea|chai|seat|\bsit\b|खाना|शाकाहार|केक|चाय|बैठ", re.I)
+
+
+def asked_about(reply: str) -> str | None:
+    """Which question the fixture coach asked in this reply, in English or Hindi."""
+
+    def says(english: str) -> bool:
+        return english in reply or OFFLINE_HI.get(english, english) in reply
+
+    if says(FACE_QUESTION):
+        return "face"
+    if says(OPEN_QUESTION):
+        return "open"
+    extra = next((key for key, question in TRADE_QUESTIONS.items() if says(question)), None)
+    if extra:
+        return f"extra:{extra}"
+    return next((key for key, question, _ in NEW_SHOP_TOPICS if says(question)), None)
+
+
+def conversation(tmp_path: Path, language: str, answer: str) -> list[tuple[str, str]]:
+    """Greeting, the owner's one answer to the open question, then "pata nahi" to everything
+    until the face check. Every (topic, reply) the coach said, in order."""
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    said: list[tuple[str, str]] = []
+    sid: str | None = None
+    draft: dict[str, Any] | None = None
+    with TestClient(app) as client:
+        join(client)
+        for message in ["Hello! I want to open a new shop.", answer, *["pata nahi"] * 6]:
+            events = events_of(
+                client.post(
+                    "/api/v1/coach/stream",
+                    json={
+                        "message": message,
+                        "language": language,
+                        "new_shop": True,
+                        "session_id": sid,
+                        "new_shop_draft": draft,
+                    },
+                ).text
+            )
+            sid = events[0]["session_id"]
+            for event in events:
+                if event["kind"] == "draft":
+                    draft = event["data"]
+            reply = next(e["text"] for e in reversed(events) if e["kind"] == "reply")
+            topic = asked_about(reply)
+            assert topic, f"a question outside the plan: {reply}"
+            said.append((topic, reply))
+            if topic == "face":
+                break
+    return said
+
+
+EVALS = [
+    # (business, language, its name, what it offers, where, its trade question, food)
+    ("tea shop", "en", "Lakshmi Tea Stall", "tea and biscuits", "Indiranagar", "seating", True),
+    ("tea shop", "hi", "लक्ष्मी टी स्टॉल", "चाय की दुकान", "इंदिरानगर मेट्रो", "seating", True),
+    (
+        "hardware store",
+        "en",
+        "Sharma Hardware",
+        "hardware, paint and pipes",
+        "Karol Bagh",
+        "brands_stocked",
+        False,
+    ),
+    (
+        "hardware store",
+        "hi",
+        "शर्मा हार्डवेयर",
+        "हार्डवेयर और पेंट की दुकान",
+        "करोल बाग",
+        "brands_stocked",
+        False,
+    ),
+    (
+        "tailor",
+        "en",
+        "Raju Tailors",
+        "tailoring and alterations",
+        "Lajpat Nagar",
+        "stitching_for",
+        False,
+    ),
+    ("tailor", "hi", "राजू टेलर्स", "सिलाई का काम", "लाजपत नगर", "stitching_for", False),
+    ("mobile repair", "en", "Fix Point", "mobile repair", "Nehru Place", "brands_repaired", False),
+    ("mobile repair", "hi", "फिक्स पॉइंट", "मोबाइल रिपेयर", "नेहरू प्लेस", "brands_repaired", False),
+    (
+        "home bakery",
+        "en",
+        "Meera Bakes",
+        "home bakery, cakes on order",
+        "Koramangala",
+        "order_ahead",
+        True,
+    ),
+    ("home bakery", "hi", "मीरा केक्स", "घर से केक बनाती हूँ", "कोरमंगला", "order_ahead", True),
+]
+
+
+@pytest.mark.parametrize(
+    ("business", "language", "name", "offers", "place", "trade", "food"),
+    EVALS,
+    ids=[f"{business}-{language}" for business, language, *_ in EVALS],
+)
+def test_eval_open_question_then_at_most_two_smart_follow_ups(
+    tmp_path: Path,
+    business: str,
+    language: str,
+    name: str,
+    offers: str,
+    place: str,
+    trade: str,
+    food: bool,
+) -> None:
+    """The coach opens with "tell me about your shop", takes name, kind and place from the one
+    answer (never asks them again), then asks at most two follow-ups, the first the trade's own
+    question, the other only the hours; the photo and the face check close it. A Hindi owner
+    hears all of it in Hindi."""
+    answer = f"name: {name}; category: {offers}; location: {place}"
+    said = conversation(tmp_path, language, answer)
+    topics = [topic for topic, _ in said]
+    assert topics[0] == "open"
+    assert not {"name", "sell", "location"} & set(topics), topics
+    follow_ups = [t for t in topics if t.startswith("extra:") or t == "hours"]
+    assert follow_ups == [f"extra:{trade}", "hours"], topics
+    assert topics[-2:] == ["photo", "face"], topics
+    assert len(topics) == len(set(topics)), f"asked twice: {topics}"
+    for _, reply in said:
+        question = reply.removeprefix("Offline template: ").removeprefix("ऑफ़लाइन नमूना: ")
+        assert not NEVER_ANY.search(question), question
+        if not food:
+            assert not FOOD_ONLY.search(question), f"{business} asked a food question: {question}"
+        if language == "hi":
+            assert not re.search(r"[A-Za-z]{3,}", question), question
+
+
+@pytest.mark.parametrize(
+    ("language", "answer"),
+    [
+        ("en", "name: Fix Point; category: mobile repair, Samsung and Vivo; location: Nehru Place"),
+        ("hi", "name: लक्ष्मी टी स्टॉल; category: चाय, बैठने के लिए बेंच हैं; location: इंदिरानगर"),
+    ],
+)
+def test_eval_what_the_owner_already_said_is_never_asked(
+    tmp_path: Path, language: str, answer: str
+) -> None:
+    """The open answer already says the brands (the seating) and the hours: no follow-up at all,
+    straight to the photo."""
+    said = conversation(tmp_path, language, f"{answer}; hours: 7 am to 9 pm")
+    assert [topic for topic, _ in said] == ["open", "photo", "face"]
+
+
+def test_never_more_than_two_follow_ups_even_when_the_profile_comes_late() -> None:
+    """A voice profile can arrive after the hours were asked: the hours keep their place, so
+    only one of the business's own questions is left (never three in all)."""
+
+    def ask(key: str) -> ExtraQuestion:
+        return ExtraQuestion(key=key, question=f"About {key}?", confidence=0.9)
+
+    profile = BusinessUnderstanding(
+        kind="food", confidence=0.9, extra_questions=[ask("seating"), ask("chai_kinds")]
+    )
+    fields = BusinessFields(name="Lakshmi", category="chai", location="Indiranagar")
+    extras, hours = follow_up_plan(NewShopDraft(business=fields, understanding=profile))
+    assert [q.key for q in extras] == ["seating", "chai_kinds"] and hours is False
+    timed = fields.model_copy(update={"hours": "6 am to 10 pm"})
+    late = NewShopDraft(business=timed, understanding=profile)
+    extras, hours = follow_up_plan(late)
+    assert [q.key for q in extras] == ["seating"] and hours is False
+    _, missing = known_and_missing(late)
+    assert [item for item in missing if "follow-up" in item] == [missing[0]]
+    one = profile.model_copy(update={"extra_questions": [ask("seating")]})
+    extras, hours = follow_up_plan(NewShopDraft(business=fields, understanding=one))
+    assert [q.key for q in extras] == ["seating"] and hours is True
+
+
+def test_the_coach_opens_with_the_open_question_in_the_owner_language() -> None:
+    assert "Tell me about your shop" in NEW_SHOP_INSTRUCTION
+    assert "or with the name" in NEW_SHOP_INSTRUCTION
+    assert "at most TWO follow-ups" in NEW_SHOP_INSTRUCTION
+    assert OFFLINE_HI[OPEN_QUESTION] == "क्या आप अपनी दुकान के बारे में बताएँगे?"

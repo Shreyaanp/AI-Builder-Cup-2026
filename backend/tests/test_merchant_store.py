@@ -256,6 +256,7 @@ def test_public_shop_exposes_only_customer_fields(store: MerchantRepository) -> 
         "stamps_needed",
         "stamps_enabled",
         "gallery",
+        "icon",
     }
     assert shop["stamps_enabled"] is False
     # A shop that never stated customer facts publishes none.
@@ -276,6 +277,7 @@ def test_public_shop_exposes_only_customer_fields(store: MerchantRepository) -> 
         "stamps_enabled": False,
         "last_confirmed": None,
         "gallery": [],
+        "icon": None,
     }
     assert {product["name"]: product for product in shop["products"]} == {
         "Chai": {"name": "Chai", "price": 1500, "unit": "cup", "available": True},
