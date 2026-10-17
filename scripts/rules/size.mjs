@@ -35,7 +35,7 @@ export function run() {
       if (now > MAX_NEW) failures.push(`  ${f}: new file has ${now} lines (limit ${MAX_NEW})`)
       continue
     }
-    let before = 0
+    let before
     try {
       before = lines(git('show', `${base}:${f}`))
     } catch {

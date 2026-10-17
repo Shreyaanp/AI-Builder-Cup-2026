@@ -8,10 +8,14 @@ export function run() {
   if (!/name:\s*'phone'/.test(read('playwright.config.ts')))
     failures.push('  playwright.config.ts has no "phone" project')
   if (!/project:\s*\[phone/.test(read('.github/workflows/checks.yml')))
-    failures.push('  .github/workflows/checks.yml: the browser job no longer runs the phone project')
+    failures.push(
+      '  .github/workflows/checks.yml: the browser job no longer runs the phone project',
+    )
   const guards = tracked('tests/*.spec.ts').filter((f) => /scrollWidth/.test(read(f)))
   if (guards.length < 3)
-    failures.push(`  only ${guards.length} specs assert no horizontal scroll (scrollWidth); expected 3 or more`)
+    failures.push(
+      `  only ${guards.length} specs assert no horizontal scroll (scrollWidth); expected 3 or more`,
+    )
   return {
     failures: failures.length
       ? [

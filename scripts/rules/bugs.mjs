@@ -8,7 +8,8 @@ export function run() {
   if (!branch.startsWith('fix/')) return { failures: [] }
   let body = ''
   const path = process.env.GITHUB_EVENT_PATH
-  if (path && existsSync(path)) body = JSON.parse(readFileSync(path, 'utf8')).pull_request?.body ?? ''
+  if (path && existsSync(path))
+    body = JSON.parse(readFileSync(path, 'utf8')).pull_request?.body ?? ''
   if (/\b(fixes|closes|resolves)\s+#\d+/i.test(body)) return { failures: [] }
   return {
     failures: [],
