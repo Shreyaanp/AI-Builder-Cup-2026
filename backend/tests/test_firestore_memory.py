@@ -137,3 +137,18 @@ async def test_storage_limits_and_partial_events(memory: FirestoreSessionService
     stored = await memory.get_session(app_name="coach", user_id="alice", session_id=session.id)
     assert stored.events == []
     assert session.events == []
+
+
+@pytest.mark.asyncio
+async def test_distributed_voice_reconnect_takes_over(memory: FirestoreSessionService) -> None:
+    first = FirestoreRunRegistry(memory.client, memory.root.id, 1, 90)
+    second = FirestoreRunRegistry(memory.client, memory.root.id, 1, 90)
+    old = await first.acquire_async("alice", "one", "voice")
+    assert await first.renew_async(old)
+    # Another instance: the reconnect takes the conversation over instead of a 409.
+    new = await second.acquire_async("alice", "one", "voice")
+    assert not await first.renew_async(old)
+    assert await second.renew_async(new)
+    await first.release_async(old)
+    assert await second.renew_async(new)
+    await second.release_async(new)
