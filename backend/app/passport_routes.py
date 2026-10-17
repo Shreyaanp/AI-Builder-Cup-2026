@@ -88,6 +88,7 @@ from .passport import (
     valid_qr_key,
     week_of,
 )
+from .region import shop_zone
 from .rescue_feed import find_rescue, held
 
 log = structlog.get_logger()
@@ -853,7 +854,7 @@ async def stamp(body: StampInput, request: Request) -> StampResult:
     log.info("passport_stamp", verdict=outcome.verdict, demo=outcome.demo, sets=len(sets))
     if outcome.verdict in ("stamped", "card_only"):
         # Daily totals for the owner's Today page; no customer is identified.
-        zone = str(shop.get("timezone") or "Asia/Singapore")
+        zone = shop_zone(shop)
         returning = outcome.verdict == "stamped" and not outcome.first
         metrics: list[shop_today.Metric] = ["stamps", "returning"] if returning else ["stamps"]
         with contextlib.suppress(Exception):

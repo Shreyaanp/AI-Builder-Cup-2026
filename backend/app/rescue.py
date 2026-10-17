@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .community import Update, update_key
 from .forecast import Forecast, Prediction
 from .merchant import MerchantRepository
+from .region import shop_currency, shop_zone
 from .shop_time import shop_timezone
 
 
@@ -100,7 +101,7 @@ class Suggestions(BaseModel):
 def local_now(fields: dict[str, Any], now: float | None = None) -> datetime:
     return datetime.fromtimestamp(
         time.time() if now is None else now,
-        shop_timezone(fields.get("timezone") or "Asia/Singapore"),
+        shop_timezone(shop_zone(fields)),
     )
 
 
@@ -275,7 +276,7 @@ def prepare(
         "id": rid,
         "shop_id": bid,
         "items": items,
-        "currency": fields.get("currency") or "SGD",
+        "currency": shop_currency(fields),
         "starts": now,
         "ends": until.timestamp(),
         "pickup_note": body.pickup_note,

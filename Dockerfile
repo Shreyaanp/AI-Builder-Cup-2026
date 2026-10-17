@@ -19,6 +19,8 @@ WORKDIR /app/backend
 COPY backend/pyproject.toml backend/uv.lock ./
 RUN uv sync --locked --no-dev --no-editable
 COPY backend/app ./app
+# The region profiles are shared with the app (src/region/regions.json, read by app/region.py).
+COPY src/region/regions.json ./app/regions.json
 COPY backend/server.py ./server.py
 COPY --from=frontend /frontend/dist /app/frontend
 RUN useradd --create-home --uid 10001 ogoogle && mkdir -p data && chown ogoogle:ogoogle data
