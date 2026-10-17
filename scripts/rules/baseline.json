@@ -1,0 +1,87 @@
+{
+  "duplicates-maps": {
+    "src/features/v1/PinMap.tsx": 1
+  },
+  "duplicates-voice": {
+    "src/features/discover/AskHome.tsx": 1,
+    "src/features/v1/FaceDialog.tsx": 1
+  },
+  "i18n-keys": {
+    "src/features/closeday/apacTranslations.ts": 6,
+    "src/features/closeday/translations.ts": 8,
+    "src/features/coach/photoCopy.ts": 1,
+    "src/features/google-sim/strings.ts": 54,
+    "src/features/passport/games/locales/asian.ts": 9,
+    "src/features/passport/games/locales/indic.ts": 9,
+    "src/features/passport/games/locales/latin.ts": 10,
+    "src/features/passport/locales/asian.ts": 9,
+    "src/features/passport/locales/indic.ts": 9,
+    "src/features/passport/locales/latin.ts": 10,
+    "src/features/sourcing/copy.ts": 8,
+    "src/features/tour/apacTranslations.ts": 6,
+    "src/features/tour/translations.ts": 8
+  },
+  "i18n-literals": {
+    "src/features/coach/InputDock.tsx": 1,
+    "src/features/connect/ConnectSheet.tsx": 1,
+    "src/features/discover/AnswerCards.tsx": 3,
+    "src/features/frontdoors/Marketing.tsx": 3
+  },
+  "money": {
+    "src/features/v1/today/TodayView.tsx": 1
+  },
+  "region": {
+    "backend/app/agent.py": 1,
+    "backend/app/analytics.py": 1,
+    "backend/app/community_routes.py": 1,
+    "backend/app/coordinator.py": 1,
+    "backend/app/demo_catalogue.py": 1,
+    "backend/app/demo_workspace.py": 2,
+    "backend/app/demo_world.py": 2,
+    "backend/app/discover_ask.py": 3,
+    "backend/app/discover.py": 3,
+    "backend/app/fraud.py": 1,
+    "backend/app/merchant.py": 2,
+    "backend/app/money.py": 1,
+    "backend/app/passport.py": 1,
+    "backend/app/shop_time.py": 1,
+    "backend/app/shop_today.py": 1,
+    "backend/app/sourcing_offline.py": 2,
+    "backend/app/sourcing.py": 5,
+    "backend/app/supply_offline.py": 1,
+    "backend/scripts/coach_eval.py": 9,
+    "backend/scripts/eval_matrix.py": 8,
+    "backend/scripts/make_document_fixtures.py": 7,
+    "src/features/discover/AskHome.tsx": 1,
+    "src/features/discover/budget.ts": 1,
+    "src/features/discover/conversationCopy.ts": 1,
+    "src/features/discover/demoWorld.ts": 1,
+    "src/features/discover/shopCache.ts": 1,
+    "src/features/passport/StampMoment.tsx": 1,
+    "src/features/v1/format.ts": 2,
+    "src/features/v1/today/todayPlan.ts": 1
+  },
+  "voice": {
+    "backend/app/icons.py": 1,
+    "backend/app/brief.py": 1,
+    "backend/app/business_profile.py": 1,
+    "backend/app/business_understanding.py": 1,
+    "backend/app/community_routes.py": 1,
+    "backend/app/connector.py": 1,
+    "backend/app/customer.py": 1,
+    "backend/app/day_close.py": 1,
+    "backend/app/demo_world.py": 1,
+    "backend/app/discover_ask.py": 1,
+    "backend/app/fraud.py": 1,
+    "backend/app/imports.py": 1,
+    "backend/app/ingestion.py": 1,
+    "backend/app/maps_grounding.py": 1,
+    "backend/app/memory_vectors.py": 1,
+    "backend/app/playbook.py": 1,
+    "backend/app/recap.py": 1,
+    "backend/app/search_engine.py": 1,
+    "backend/app/shop_language.py": 1,
+    "backend/app/sourcing.py": 1,
+    "backend/app/supply_docs.py": 1
+  }
+}

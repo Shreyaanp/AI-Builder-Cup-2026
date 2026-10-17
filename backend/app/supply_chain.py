@@ -40,6 +40,7 @@ from pydantic import ValidationError
 
 from .merchant import SUPPLY_KINDS, MerchantRepository, ProductFields
 from .money import exponent, to_major
+from .region import shop_currency
 from .supply_docs import (
     MAPPING,
     DocLine,
@@ -404,7 +405,7 @@ async def draft_reorder(
 
     context = await anyio.to_thread.run_sync(_owned, store, uid, bid)
     fields = context["business"]["fields"]
-    currency = fields.get("currency") or "SGD"
+    currency = shop_currency(fields)
     today = shop_today(context)
     rows = await anyio.to_thread.run_sync(store.sales_history, uid, bid)
     forecast = (await forecaster.forecast(rows, today, context["inventory"])).model_dump(

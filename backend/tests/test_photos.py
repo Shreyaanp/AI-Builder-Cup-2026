@@ -151,3 +151,24 @@ def test_big_modern_phone_photo_is_accepted_and_shrunk() -> None:
     assert len(data) > 5_000_000  # the old limit rejected photos like this
     cleaned = Image.open(io.BytesIO(sanitize(data)))
     assert max(cleaned.size) <= 1600
+
+
+def test_classify_names_the_kind_and_saves_nothing(app) -> None:
+    with TestClient(app) as client:
+        join(client)
+        kinds = {21: "shop_photo", 22: "product", 23: "receipt", 24: "till", 25: "other"}
+        kinds[64] = "menu"
+        for width, kind in kinds.items():
+            sent = client.post(
+                "/api/v1/photos/classify",
+                content=jpeg(width),
+                headers={"content-type": "image/jpeg"},
+            )
+            assert sent.json() == {"kind": kind}
+        blocked = client.post(
+            "/api/v1/photos/classify",
+            content=jpeg(FIXTURE_BLOCK_WIDTH),
+            headers={"content-type": "image/jpeg"},
+        )
+        assert blocked.status_code == 422
+        assert client.get("/api/v1/businesses").json() == []

@@ -45,7 +45,11 @@ async function openPlaybook(page: Page) {
   await page.getByRole('button', { name: /^Privacy & your data/ }).click()
   await page.getByTestId('playbook-open').click()
   const sheet = page.getByRole('dialog', { name: 'What Chalkboard knows about your shop' })
-  await expect(sheet.getByTestId('playbook-key_metrics')).toBeVisible({ timeout: 20_000 })
+  // Short by default: goals and priorities first, the rest behind "More".
+  await expect(sheet.getByTestId('playbook-goals')).toBeVisible({ timeout: 20_000 })
+  await expect(sheet.getByTestId('playbook-key_metrics')).toHaveCount(0)
+  await sheet.getByTestId('playbook-more').click()
+  await expect(sheet.getByTestId('playbook-key_metrics')).toBeVisible()
   return sheet
 }
 
