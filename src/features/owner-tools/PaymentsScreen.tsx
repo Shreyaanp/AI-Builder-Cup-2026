@@ -31,7 +31,7 @@ import {
 } from './links'
 import type { PaymentLink, RiderProvider } from './links'
 import { useRegionCopy } from './regionCopy'
-import { shopRegion } from '../../region/region'
+import { railCurrency, shopRegion } from '../../region/region'
 import { formatAmount, formatPrice, shopCurrency, toMinor } from '../v1/format'
 
 /** Used unchanged by the feature screen and the coach tool's card. */
@@ -48,7 +48,7 @@ export function PaymentCard({ payment }: { payment: PaymentLink }) {
   const checked = checkedPayment(payment)
   const paynow = checked?.rail === 'paynow'
   const url = checked ? (checked.rail === 'paynow' ? checked.payload : checked.url) : ''
-  const currency = paynow ? 'SGD' : 'INR'
+  const currency = railCurrency(paynow ? 'paynow' : 'upi')
   const amount = formatPrice(toMinor(Number(payment.amount), currency), currency, locale)
   useEffect(() => {
     if (!url) return
@@ -181,7 +181,7 @@ export function PaymentsScreen() {
   // Grab in Singapore); a rail needs the shop's own currency.
   const region = shopRegion(shop?.fields)
   const rail =
-    shop && shopCurrency(shop) === (region.paymentRail === 'paynow' ? 'SGD' : 'INR')
+    shop && region.paymentRail && shopCurrency(shop) === railCurrency(region.paymentRail)
       ? region.paymentRail
       : ''
   const regionProviders = shopProviders(region.rides, region)
@@ -417,8 +417,11 @@ export function PaymentsScreen() {
                     ? undefined
                     : rail === 'paynow'
                       ? r.invalidAmountIn
-                          .replace('{min}', formatPrice(1, 'SGD', locale))
-                          .replace('{max}', formatAmount(10_000_000, 'SGD', locale))
+                          .replace('{min}', formatPrice(1, railCurrency('paynow'), locale))
+                          .replace(
+                            '{max}',
+                            formatAmount(10_000_000, railCurrency('paynow'), locale),
+                          )
                       : t.invalidAmount
                 }
                 slotProps={{ htmlInput: { inputMode: 'decimal', maxLength: 16 } }}

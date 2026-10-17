@@ -14,9 +14,10 @@ from uuid import uuid4
 import anyio
 
 from .coordinator import current
-from .region import shop_currency, shop_region
+from .region import rail_currency, shop_currency, shop_region
 
-RAILS = {"upi": ("INR", "upi_id", "add_upi_id"), "paynow": ("SGD", "paynow_id", "add_paynow_id")}
+# Each rail's account field and the fix to ask for; its currency comes from the region profile.
+RAILS = {"upi": ("upi_id", "add_upi_id"), "paynow": ("paynow_id", "add_paynow_id")}
 
 
 def _tlv(tag: str, value: str) -> str:
@@ -53,7 +54,7 @@ def paynow_payload(proxy: str, payee: str, amount: str, note: str = "") -> str:
         + _tlv("01", "12")  # dynamic: one amount
         + _tlv("26", account)
         + _tlv("52", "0000")
-        + _tlv("53", "702")  # SGD
+        + _tlv("53", "702")  # Singapore dollar (ISO 4217 numeric)
         + _tlv("54", amount)
         + _tlv("58", "SG")
         + _tlv("59", _plain(payee, 25))
@@ -81,7 +82,8 @@ async def prepare_payment_link(amount: str, note: str = "") -> dict[str, Any]:
     context = await anyio.to_thread.run_sync(ctx.store.context, ctx.uid, ctx.business_id)
     fields = context["business"]["fields"]
     rail = shop_region(fields).payment_rail
-    currency, id_key, missing = RAILS.get(rail, ("", "", ""))
+    id_key, missing = RAILS.get(rail, ("", ""))
+    currency = rail_currency(rail)
     if not rail or shop_currency(fields) != currency:
         return {"status": "no_payment_link"}
     if not fields.get(id_key):

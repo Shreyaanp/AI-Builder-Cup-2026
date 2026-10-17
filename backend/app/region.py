@@ -3,8 +3,8 @@
 One profile per country, shared with the app (src/region/regions.json, read by
 src/region/region.ts too). An owner's region comes from the shop's pin; a customer's from their
 area. Without a pin it falls back to the phone (its timezone, then its language region), then to
-the shop's saved currency. An Indian shop is never shown SGD or PayNow, and a Singapore shop never
-UPI or Rapido.
+the shop's saved currency. An Indian shop is never shown Singapore dollars or PayNow, and a
+Singapore shop never UPI or Rapido.
 """
 
 from __future__ import annotations
@@ -169,7 +169,7 @@ def region_at(lat: float | None, lng: float | None, currency: str = "") -> Regio
 
 def shop_region(fields: dict[str, Any] | None) -> Region:
     """A saved or draft shop's region: its pin, then its timezone, then its currency, then the
-    phone. A legacy shop with no pin and no stored timezone was saved as Singapore (SGD)."""
+    phone. A legacy shop with no pin and no stored timezone was saved as Singapore."""
     fields = fields or {}
     currency = str(fields.get("currency") or "")
     code = (
@@ -198,6 +198,14 @@ def shop_zone(fields: dict[str, Any] | None) -> str:
     from .shop_time import client_timezone
 
     return client_timezone.get() or "UTC"
+
+
+def rail_currency(rail: str) -> str:
+    """The currency a payment rail takes, from the region that uses it, or "" for none."""
+    for raw in _data()["regions"].values():
+        if rail and raw["payment_rail"] == rail:
+            return str(raw["currency"])
+    return ""
 
 
 def new_shop_currency(lat: float | None, lng: float | None) -> str:
