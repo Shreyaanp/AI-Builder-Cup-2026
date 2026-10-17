@@ -47,6 +47,20 @@ applies the full runtime config, preserves named secret references and runs the 
 hosting smoke. Health must be HTTP 200 with `status=ok` and `release_commit` equal to the
 selected SHA. Frontend and unauthenticated stream rejection are checked too.
 
+After the deploy completes, and again after the manual story, run the production health
+report (read-only, needs `gcloud` signed in to `ichiropractic`):
+
+```powershell
+node scripts/prod-health.mjs 30
+```
+
+It reads the last 30 minutes of `ogoogle-ai` and `ogoogle-face` logs and prints 5xx by path,
+tracebacks with the top 3 exception lines, voice sessions opened/closed/rejected and closes
+that followed a traceback, `voice_first_audio` p50/p90, face capture outcomes and cold starts.
+Exit 1 means tracebacks or 5xx were found: inspect them before calling the release good.
+The log-based metrics `chalkboard_voice_tracebacks`, `chalkboard_5xx` and
+`chalkboard_face_rejects` count the same events in Cloud Logging (no alerts attached).
+
 A queued workflow is not a successful release. Inspect the completed run, then check the
 two public custom domains, real Google sign-in, saved conversation recovery and a complete
 owner/customer story manually. CI smoke does not call a model or prove live voice accuracy.
