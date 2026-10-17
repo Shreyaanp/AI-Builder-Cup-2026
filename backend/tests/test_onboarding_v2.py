@@ -173,6 +173,10 @@ def test_the_instruction_never_asks_the_menu_and_tracks_progress_every_turn(
 ) -> None:
     assert "NO menu" in NEW_SHOP_INSTRUCTION and "update_shop" in NEW_SHOP_INSTRUCTION
     assert "Fill silently" in NEW_SHOP_INSTRUCTION
+    # Live eval (17 Oct): "do you sell flowers?" after "phool bechte hain"; "kya aap … dukan
+    # par hain?" (romanized); "are you at your shop?" to a plumber who visits homes.
+    assert "Never ask a question whose answer the owner already gave" in NEW_SHOP_INSTRUCTION
+    assert 'never say "shop"' in NEW_SHOP_INSTRUCTION
     ctx = context(
         tmp_path,
         NewShopDraft(business=BusinessFields(name="Lakshmi Tea Stall", category="chai")),
