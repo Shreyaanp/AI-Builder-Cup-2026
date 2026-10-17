@@ -226,19 +226,7 @@ class PhotoPipeline:
     def blocked(scores: dict[str, int]) -> bool:
         return any(int(scores.get(name, 0)) >= level for name, level in BLOCK_AT.items())
 
-<<<<<<< HEAD
-    # --- extraction -------------------------------------------------------------------
-    async def extract(self, image: bytes, language: str = "en") -> PhotoExtraction:
-        if self.settings.coach_mode != "gemini":
-            return PhotoExtraction(
-                photo_kind="signboard",
-                business=ExtractedBusiness(name="Offline Fixture Tea Stall", category="Tea stall"),
-                products=[ExtractedProduct(name="Chai", price=15, unit="cup", category="drinks")],
-                uncertain=[OFFLINE_NOTE.get(reply_language(language).locale, OFFLINE_NOTE["en"])],
-            )
-=======
     def _client(self) -> Any:
->>>>>>> origin/fix/chat-photo-routing
         from google import genai
 
         if self._genai is None:
@@ -290,13 +278,13 @@ class PhotoPipeline:
         return await self.classify(image)
 
     # --- extraction -------------------------------------------------------------------
-    async def extract(self, image: bytes) -> PhotoExtraction:
+    async def extract(self, image: bytes, language: str = "en") -> PhotoExtraction:
         if self.settings.coach_mode != "gemini":
             return PhotoExtraction(
                 photo_kind="signboard",
                 business=ExtractedBusiness(name="Offline Fixture Tea Stall", category="Tea stall"),
                 products=[ExtractedProduct(name="Chai", price=15, unit="cup", category="drinks")],
-                uncertain=["Offline fixture: no model read this photo."],
+                uncertain=[OFFLINE_NOTE.get(reply_language(language).locale, OFFLINE_NOTE["en"])],
             )
         from google.genai import types
 
