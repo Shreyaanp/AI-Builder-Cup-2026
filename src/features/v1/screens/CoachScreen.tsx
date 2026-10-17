@@ -2,6 +2,13 @@ import { chatBubbleStyle } from '../../coach/bubbleStyle'
 import { photoCopy } from '../../coach/photoCopy'
 import { PlainText, RichText } from '../../../design/RichText'
 import { stripMarkdown } from '../../../design/markdownUtils'
+import {
+  isPhotoRoute,
+  PHOTO_ROUTES,
+  photoRouteCopy,
+  type PhotoRoute,
+} from '../../coach/photoRouteCopy'
+import { CloseDay, type Kind as DayKind } from '../../closeday/CloseDay'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent, ReactElement } from 'react'
 import {
@@ -245,6 +252,10 @@ function CoachScreen({
   const [sales, setSales] = useState<SalesImport | null>(null)
   const [connectOpen, setConnectOpen] = useState(false)
   const connectCopy = useConnectCopy()
+  // A chat photo waiting for the owner's one-line confirmation (kept until they choose).
+  const [sorting, setSorting] = useState<{ file: File; guess: PhotoRoute | null } | null>(null)
+  const [dayPhoto, setDayPhoto] = useState<{ kind: DayKind; file: File } | null>(null)
+  const routeText = photoRouteCopy(language)
   const importer = useImport({ onSales: setSales })
   const picking = useRef<'photo' | 'document'>('photo')
   const choices = touch || Boolean(ws.active)
@@ -713,6 +724,54 @@ function CoachScreen({
     }
   }
 
+  // A photo in the normal chat: Gemini says what it shows, the owner confirms (or corrects) in one
+  // line, then it goes to the existing action. Before a shop exists the photo starts one directly.
+  async function receivePhoto(file: File) {
+    if (busy !== 'idle') return
+    setError('')
+    if (!PHOTO_TYPES.includes(file.type) || file.size > 20_000_000) {
+      setError(t.photoType)
+      return
+    }
+    if (!activeId) return uploadPhoto(file)
+    setBusy('photo')
+    setSorting(null)
+    const operation = new AbortController()
+    photoController.current = operation
+    let guess: PhotoRoute | null = null
+    try {
+      const result = await api<{ kind: string }>('/photos/classify', {
+        method: 'POST',
+        body: file,
+        headers: { 'Content-Type': file.type },
+        signal: AbortSignal.any([operation.signal, AbortSignal.timeout(60_000)]),
+      })
+      if (isPhotoRoute(result.kind)) guess = result.kind
+    } catch (cause) {
+      if (!alive.current || operation.signal.aborted) return
+      if (cause instanceof ApiError && cause.status === 429) setError(t.rateLimited)
+      else if (cause instanceof ApiError && cause.code === 'PHOTO_BLOCKED') {
+        setError(t.photoRefused)
+        return
+      }
+      // Any other failure: nobody guesses; the photo stays and the owner picks.
+    } finally {
+      setBusy('idle')
+      if (photoInput.current) photoInput.current.value = ''
+    }
+    if (alive.current && !operation.signal.aborted) setSorting({ file, guess })
+  }
+
+  function routePhoto(kind: PhotoRoute) {
+    if (!sorting) return
+    const { file } = sorting
+    setSorting(null)
+    if (kind === 'receipt') setDayPhoto({ kind: 'delivery', file })
+    else if (kind === 'till') setDayPhoto({ kind: 'sales', file })
+    else if (kind === 'shop_photo' && activeId) setGalleryPhoto({ file, businessId: activeId })
+    else void uploadPhoto(file)
+  }
+
   async function uploadPhoto(file: File) {
     if (busy !== 'idle') return
     setError('')
@@ -966,6 +1025,36 @@ function CoachScreen({
 
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', pb: 4 }}>
         {ws.loadError && <LoadError />}
+        {sorting && (
+          <Alert severity="info" icon={false} sx={{ mb: 2 }}>
+            <Typography variant="titleSmall" role="status">
+              {sorting.guess ? routeText.looks(routeText.kinds[sorting.guess]) : routeText.unsure}
+            </Typography>
+            <Stack
+              direction="row"
+              role="group"
+              aria-label={routeText.group}
+              sx={{ gap: 2, flexWrap: 'wrap', mt: 2 }}
+            >
+              {PHOTO_ROUTES.map((kind) => (
+                <Chip
+                  key={kind}
+                  label={routeText.kinds[kind]}
+                  color={kind === sorting.guess ? 'primary' : 'default'}
+                  variant={kind === sorting.guess ? 'filled' : 'outlined'}
+                  onClick={() => routePhoto(kind)}
+                  sx={{ height: 40 }}
+                />
+              ))}
+              <Chip
+                label={routeText.notNow}
+                variant="outlined"
+                onClick={() => setSorting(null)}
+                sx={{ height: 40 }}
+              />
+            </Stack>
+          </Alert>
+        )}
         {galleryPhoto && galleryPhoto.businessId === ws.active?.id && (
           <Alert severity="info" sx={{ mb: 2 }}>
             <Typography variant="titleSmall">{photoText.galleryOffer}</Typography>
@@ -1208,6 +1297,7 @@ function CoachScreen({
         <div ref={end} />
       </Box>
       <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
+      {dayPhoto && <CloseDay initial={dayPhoto} onClose={() => setDayPhoto(null)} />}
       <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
       <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
       <ShopSheets
@@ -1332,7 +1422,7 @@ function CoachScreen({
                   void importer.upload(file).finally(() => {
                     input.value = ''
                   })
-                else void uploadPhoto(file)
+                else void receivePhoto(file)
               }}
             />
           )}

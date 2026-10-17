@@ -281,6 +281,30 @@ async def stock_alerts(business_id: str, device_id: UUID, request: Request) -> l
     return await anyio.to_thread.run_sync(store(request).stock_alerts, business_id, str(device_id))
 
 
+@router.post("/photos/classify")
+async def classify_photo(request: Request) -> dict[str, str]:
+    """What a chat photo shows; nothing is stored or saved. The app confirms with the owner."""
+    uid = await consented_owner(request)
+    await enforce_limits(request, [("photo", uid)])
+    if request.headers.get("content-type", "").split(";")[0] not in PHOTO_TYPES:
+        raise HTTPException(415, "Send a JPEG, PNG or WebP photo.")
+    limit = request.app.state.v1_settings.max_photo_bytes
+    buffer = bytearray()
+    try:
+        async with asyncio.timeout(120):
+            async for chunk in request.stream():
+                if len(buffer) + len(chunk) > limit:
+                    raise HTTPException(413, "Photo is too large.")
+                buffer.extend(chunk)
+        try:
+            kind = await request.app.state.photos.classify_upload(bytes(buffer))
+        except PhotoRejected as rejected:
+            raise HTTPException(rejected.status, rejected.code) from None
+    finally:
+        buffer.clear()
+    return {"kind": kind}
+
+
 @router.post("/photos")
 async def photo(
     request: Request,
