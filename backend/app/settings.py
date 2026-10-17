@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     pos_live: Literal["offline", "live"] = "offline"
     square_sandbox_token: SecretStr = SecretStr("")
     square_sandbox_location_id: str = ""
+    # "google-connectors": the Square pull goes through an existing Google Cloud Integration
+    # Connectors connection (pos_connectors.py), then falls back to the direct API, then to
+    # the samples. Connections are created and suspended by the owner, never by the app.
+    pos_source: Literal["direct", "google-connectors"] = "direct"
+    connectors_location: str = Field(default="asia-south1", pattern=r"^[a-z0-9-]{3,40}$")
+    square_connection: str = Field(default="square-sandbox", pattern=r"^[a-z0-9-]{1,63}$")
     loyverse_token: SecretStr = SecretStr("")
     weather_backend: Literal["disabled", "offline", "open_meteo"] = "offline"
     auth_mode: Literal["local", "firebase"] = "local"

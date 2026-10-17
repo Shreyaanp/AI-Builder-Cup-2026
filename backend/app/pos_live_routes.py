@@ -69,4 +69,5 @@ async def live_sync(
         "provider": provider,
         "simulated": pulled.simulated,
         "fallback": pulled.fallback,
+        "via": pulled.via,
     }

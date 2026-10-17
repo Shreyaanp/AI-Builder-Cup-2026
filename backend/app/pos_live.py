@@ -20,6 +20,7 @@ import httpx
 import structlog
 
 from .money import exponent
+from .pos_connectors import ConnectorsError, GoogleConnectors, square_transport
 from .settings import Settings
 
 log = structlog.get_logger()
@@ -47,6 +48,7 @@ class Pull:
     rows: list[list[str]]
     simulated: bool
     fallback: str = ""
+    via: str = "samples"  # google-connectors, direct or samples
 
 
 def _money(amount: Any, currency: str) -> str:
@@ -161,7 +163,11 @@ async def square_sales(client: httpx.AsyncClient, settings: Settings) -> Table:
     )
     rows: list[list[str]] = []
     for order in orders:
+        if order.get("state", "COMPLETED") != "COMPLETED":
+            continue
         placed = datetime.fromisoformat(order["created_at"].replace("Z", "+00:00"))
+        if placed < since:
+            continue
         try:
             day = placed.astimezone(ZoneInfo(zones.get(order.get("location_id", ""), "UTC")))
         except Exception:
@@ -387,16 +393,38 @@ async def pull(
 ) -> Pull:
     fetch = FETCHERS[(provider, kind)]
     fallback = ""
+    if (
+        provider == "square"
+        and settings.pos_live == "live"
+        and settings.pos_source == "google-connectors"
+    ):
+        connectors = GoogleConnectors(settings)
+        try:
+            async with httpx.AsyncClient(
+                transport=square_transport(connectors), base_url=SQUARE_URL + "/", timeout=TIMEOUT
+            ) as through:
+                headers, rows = await fetch(through, settings)
+            return Pull(headers, rows, simulated=False, via="google-connectors")
+        except (
+            ConnectorsError,
+            LiveError,
+            httpx.HTTPError,
+            KeyError,
+            ValueError,
+            TypeError,
+        ) as error:
+            log.warning("pos_connectors_failed", kind=kind, error=type(error).__name__)
+            fallback = "CONNECTORS_UNAVAILABLE"
     client = _live_client(provider, settings)
     if client is not None:
         try:
             async with client:
                 headers, rows = await fetch(client, settings)
-            return Pull(headers, rows, simulated=False)
+            return Pull(headers, rows, simulated=False, via="direct")
         except (LiveError, httpx.HTTPError, KeyError, ValueError, TypeError) as error:
             log.warning("pos_live_failed", provider=provider, kind=kind, error=type(error).__name__)
             fallback = "LIVE_UNAVAILABLE"
-    elif settings.pos_live == "live":
+    elif settings.pos_live == "live" and not fallback:
         fallback = "NO_TOKEN"
     transport = _simulated_transport(provider, today or datetime.now(UTC).date())
     base = (SQUARE_URL if provider == "square" else LOYVERSE_URL + "/").rstrip("/") + "/"

@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
-from app import pos_live
+from app import pos_connectors, pos_live
 from app.pos_presets import detect_preset, parse_day, prepare_rows, preset_mapping
 from app.settings import Settings
 from tests.test_imports import make_shop
@@ -158,3 +158,64 @@ def test_routes_pull_into_review_without_saving(app) -> None:  # noqa: F811
         assert sales.json()["kind"] == "sales"
 
         assert client.post(f"{base}/shopify/menu").status_code == 422
+
+
+def _entity_pages(seen: list[httpx.Request], fail: int = 0) -> httpx.MockTransport:
+    """A Connectors API that serves the recorded Square samples as entity lists."""
+    sample = {
+        "Location": ("square_locations.json", "locations"),
+        "CatalogObject": ("square_catalog.json", "objects"),
+        "Order": ("square_orders.json", "orders"),
+    }
+    transport = pos_live._simulated_transport("square", date(2026, 10, 18))
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if fail:
+            return httpx.Response(fail, json={})
+        kind = request.url.path.split("/entityTypes/")[1].split("/")[0]
+        path = {
+            "Location": "/v2/locations",
+            "CatalogObject": "/v2/catalog/list",
+            "Order": "/v2/orders/search",
+        }[kind]
+        body = transport.handler(httpx.Request("GET", f"https://x{path}")).json()  # type: ignore[attr-defined]
+        return httpx.Response(
+            200, json={"entities": [{"fields": row} for row in body[sample[kind][1]]]}
+        )
+
+    return httpx.MockTransport(handle)
+
+
+def test_square_pull_through_google_connectors(monkeypatch) -> None:
+    seen: list[httpx.Request] = []
+    real = pos_connectors.GoogleConnectors.__init__
+
+    def init(self, settings, transport=None):  # noqa: ANN001, ANN202
+        real(self, settings, _entity_pages(seen))
+
+    monkeypatch.setattr(pos_connectors.GoogleConnectors, "__init__", init)
+    settings = config(pos_live="live", pos_source="google-connectors", google_cloud_project="demo")
+    pulled = asyncio.run(pos_live.pull("square", "sales", settings))
+    assert not pulled.simulated and pulled.via == "google-connectors" and pulled.rows
+    assert detect_preset(pulled.headers) is not None
+    assert all("/connections/square-sandbox/" in r.url.path and r.method == "GET" for r in seen)
+    assert all(r.headers["Authorization"] == "Bearer test-token" for r in seen)
+
+
+def test_connectors_failure_falls_back_to_samples(monkeypatch) -> None:
+    real = pos_connectors.GoogleConnectors.__init__
+
+    def init(self, settings, transport=None):  # noqa: ANN001, ANN202
+        real(self, settings, _entity_pages([], fail=403))
+
+    monkeypatch.setattr(pos_connectors.GoogleConnectors, "__init__", init)
+    settings = config(pos_live="live", pos_source="google-connectors", google_cloud_project="demo")
+    pulled = asyncio.run(pos_live.pull("square", "menu", settings))
+    assert pulled.simulated and pulled.fallback == "CONNECTORS_UNAVAILABLE" and pulled.rows
+
+
+def test_connectors_without_a_project_never_calls_google() -> None:
+    settings = config(pos_live="live", pos_source="google-connectors")
+    pulled = asyncio.run(pos_live.pull("square", "menu", settings))
+    assert pulled.simulated and pulled.fallback == "CONNECTORS_UNAVAILABLE"

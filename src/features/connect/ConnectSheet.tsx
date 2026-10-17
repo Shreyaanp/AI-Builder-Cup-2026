@@ -251,13 +251,16 @@ export function ConnectSheet({
     setError('')
     try {
       const provider = selectedSystem.toLowerCase()
-      const pulled = await ws.api<SyncResult & { simulated: boolean }>(
+      const pulled = await ws.api<SyncResult & { simulated: boolean; via: string }>(
         `/businesses/${encodeURIComponent(shop.id)}/connect/live/${provider}/${kind}`,
         { method: 'POST' },
       )
       openReview(pulled)
       if (pulled.simulated)
         ws.notify('Recorded sample data: no live ' + selectedSystem + ' link yet')
+      else if (pulled.via === 'google-connectors')
+        ws.notify('Pulled via Google Cloud Integration Connectors')
+      ws.notify('Recorded sample data: no live ' + selectedSystem + ' link yet')
     } catch {
       setError('Could not pull from ' + selectedSystem + '. Upload an export instead.')
     } finally {
