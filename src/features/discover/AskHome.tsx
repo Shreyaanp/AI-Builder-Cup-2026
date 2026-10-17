@@ -1184,7 +1184,8 @@ function NearbyShops({
       <Typography id="ask-nearby" component="h2" variant="titleMedium">
         {copy.nearbyNow}
       </Typography>
-      <PickList label={copy.nearbyNow} busy={shops === null}>
+      {/* Big photos first: the neighbourhood's shops as cards the thumb swipes through. */}
+      <PickList label={copy.nearbyNow} busy={shops === null} carousel>
         {shops
           ? shops.map((pick, index) => (
               <PickCard
@@ -1194,9 +1195,11 @@ function NearbyShops({
                 anchor={null}
                 copy={copy}
                 locale={locale}
+                numbered={false}
+                tile
               />
             ))
-          : [0, 1, 2].map((n) => <PickSkeleton key={n} />)}
+          : [0, 1, 2].map((n) => <PickSkeleton key={n} tile />)}
       </PickList>
       {all}
     </Box>

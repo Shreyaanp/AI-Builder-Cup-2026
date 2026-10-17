@@ -9,7 +9,8 @@ import { areaCurrency, currencySymbol } from '../v1/format'
 const en = {
   hello: 'What are you looking for nearby?',
   helloBody:
-    'Ask me anything. I check the menus, prices and hours of {count} shops around {place}.',
+    // Count last, so one shop never reads "1 shops".
+    'Ask me anything. I check the menus, prices and hours of the shops around {place} ({count} so far).',
   helloBodyEmpty: 'Ask me anything near {place}.',
   area: 'Area: {place}. Change',
   composer: 'Ask about anything nearby',

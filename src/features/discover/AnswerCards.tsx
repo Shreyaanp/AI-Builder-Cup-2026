@@ -34,14 +34,20 @@ function time(epoch: number, locale: string) {
   )
 }
 
-/** The answer's places as one vertical list: compact rows, five or so to a phone screen. */
+/**
+ * The answer's places as one vertical list: compact rows, five or so to a phone screen. As a
+ * `carousel` (the front door's shops nearby) it is one swipeable row of big photo cards that
+ * runs to the screen edges and snaps card by card.
+ */
 export function PickList({
   label,
   busy = false,
+  carousel = false,
   children,
 }: {
   label: string
   busy?: boolean
+  carousel?: boolean
   children: ReactNode
 }) {
   return (
@@ -55,8 +61,19 @@ export function PickList({
         p: 0,
         mt: 3,
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: carousel ? 'row' : 'column',
         gap: 2,
+        ...(carousel && {
+          mx: -4,
+          px: 4,
+          pb: 1,
+          overflowX: 'auto',
+          scrollSnapType: 'x mandatory',
+          scrollPaddingInline: '16px',
+          overscrollBehaviorX: 'contain',
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+        }),
       }}
     >
       {children}
@@ -69,20 +86,24 @@ function Thumb({
   pick,
   number,
   transition = false,
+  big = false,
 }: {
   pick: AskPick
   number?: number
   transition?: boolean
+  /** The card's full-width photo instead of the row's square. */
+  big?: boolean
 }) {
   const roles = useTheme().material
   return (
     <Box
       sx={{
         position: 'relative',
-        width: 64,
-        height: 64,
+        width: big ? '100%' : 64,
+        height: big ? 'auto' : 64,
+        aspectRatio: big ? '4/3' : undefined,
         flexShrink: 0,
-        borderRadius: '12px',
+        borderRadius: big ? 0 : '12px',
         overflow: 'hidden',
       }}
     >
@@ -158,6 +179,7 @@ export function PickCard({
   onOpen,
   details,
   numbered = true,
+  tile = false,
 }: {
   pick: AskPick
   index: number
@@ -174,6 +196,8 @@ export function PickCard({
   details?: string
   /** The map-pin number on the thumbnail; the full list has no map pins. */
   numbered?: boolean
+  /** A big photo card for a carousel (PickList `carousel`), not a row. */
+  tile?: boolean
 }) {
   const theme = useTheme()
   const roles = theme.material
@@ -197,7 +221,13 @@ export function PickCard({
     <Box
       component="li"
       id={`pick-${pick.id}`}
-      sx={{ listStyle: 'none', minWidth: 0, ...dealIn, '--deal-index': index }}
+      sx={{
+        listStyle: 'none',
+        minWidth: 0,
+        ...dealIn,
+        '--deal-index': index,
+        ...(tile && { flex: '0 0 min(72%, 264px)', scrollSnapAlign: 'start' }),
+      }}
     >
       <Box
         component={external ? 'button' : 'a'}
@@ -218,6 +248,15 @@ export function PickCard({
         data-selected={selected}
         sx={{
           ...rowSx(roles, selected),
+          ...(tile && {
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: 0,
+            p: 0,
+            height: '100%',
+            overflow: 'hidden',
+            borderRadius: '20px',
+          }),
           ...(external && {
             width: '100%',
             font: 'inherit',
@@ -226,8 +265,17 @@ export function PickCard({
           }),
         }}
       >
-        <Thumb pick={pick} number={numbered ? index + 1 : undefined} transition />
-        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Thumb pick={pick} number={numbered ? index + 1 : undefined} transition big={tile} />
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+            p: tile ? 3 : 0,
+          }}
+        >
           {(personal || reason) && (
             <Typography
               variant="labelMedium"
@@ -319,7 +367,7 @@ export function PickCard({
 }
 
 /** A same-size placeholder row while the area's shops load, so nothing below moves. */
-export function PickSkeleton() {
+export function PickSkeleton({ tile = false }: { tile?: boolean }) {
   const roles = useTheme().material
   return (
     <Box
@@ -328,8 +376,10 @@ export function PickSkeleton() {
       className="c-shimmer"
       sx={{
         listStyle: 'none',
-        height: 88,
-        borderRadius: '16px',
+        // A carousel card: the photo's 4:3 plus its three text lines.
+        ...(tile && { flex: '0 0 min(72%, 264px)', aspectRatio: '4/4.4' }),
+        height: tile ? 'auto' : 88,
+        borderRadius: tile ? '20px' : '16px',
         bgcolor: roles.surfaceContainerLow,
         border: `1px solid ${roles.outlineVariant}`,
       }}
