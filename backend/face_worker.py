@@ -14,7 +14,9 @@ import json
 import logging
 import os
 import secrets
+import sys
 import time
+from collections.abc import Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -23,7 +25,32 @@ import anyio
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request
 
+
+class JsonLines(logging.Formatter):
+    """One JSON object per line on stdout: Cloud Logging keeps it as a structured jsonPayload."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        fields = getattr(record, "fields", {})
+        return json.dumps(
+            {"severity": record.levelname, "message": record.getMessage(), **fields}, default=str
+        )
+
+
 logger = logging.getLogger("face_worker")
+# Uvicorn only configures its own loggers; without this handler every INFO line was dropped.
+if not logger.handlers:
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.setFormatter(JsonLines())
+    logger.addHandler(_handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+
+def log(level: int, event: str, **fields: Any) -> None:
+    """Capture facts only: stages, counts, codecs, timings, reasons. Never pixels, templates,
+    scores per frame or anything that identifies the owner."""
+    logger.log(level, event, extra={"fields": {"event": event, **fields}})
+
 
 MODEL_ID = "intel-face-reidentification-retail-0095-fp32-v1"
 MAX_BYTES = 8 * 1024 * 1024
@@ -40,11 +67,34 @@ PITCH_MIN = 7.0
 
 
 class CaptureRejected(ValueError):
-    """A capture the owner can fix by trying again; `reason` picks the tip the app shows."""
+    """A capture the owner can fix by trying again; `reason` picks the tip the app shows and
+    `failed` names the check that did not hold (for the logs)."""
 
-    def __init__(self, reason: str) -> None:
+    def __init__(self, reason: str, failed: str | None = None) -> None:
         super().__init__(reason)
         self.reason = reason
+        self.failed = failed
+
+
+def container_of(capture: bytes) -> str:
+    """What the bytes are, from their first bytes (the content type is only the browser's word)."""
+    head = capture[:64]
+    if head.lstrip().startswith(b"{"):
+        return "json_frames"
+    if head.startswith(b"\x1a\x45\xdf\xa3"):
+        return "webm"
+    if head[4:8] in {b"ftyp", b"moov", b"moof", b"styp", b"free", b"mdat"}:
+        return "mp4"
+    if head.startswith(b"\xff\xd8"):
+        return "jpeg"
+    return "unknown"
+
+
+def upright(image: np.ndarray, rotation: int) -> np.ndarray:
+    """Apply the stream's display rotation (degrees counter-clockwise, as FFmpeg reports it).
+    A phone held upright records sideways frames plus this note; a sideways face is no face."""
+    turns = round(rotation / 90) % 4
+    return np.ascontiguousarray(np.rot90(image, k=turns)) if turns else image
 
 
 def template(values: np.ndarray) -> list[float]:
@@ -201,101 +251,48 @@ class CpuModels:
         return (yaw, pitch), np.asarray(vector).reshape(-1), float(prediction[0])
 
     def analyze(
-        self, video: bytes, prompts: list[str]
+        self, video: bytes, prompts: list[str], trace: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], list[float] | None]:
+        """The verdict for one capture. `trace` collects what the logs say about it."""
+        trace = {} if trace is None else trace
         poses: list[tuple[float, float]] = []
         templates = []
         scores = []
-        sampled = 0
-
-        # Support client-sampled JPEG frames (JSON payload) or raw video container
-        if video.lstrip().startswith(b"{"):
+        faces = ""
+        for image in sampled_frames(video, trace):
+            trace["stage"] = "faces"
             try:
-                payload = json.loads(video.decode("utf-8"))
-                frame_items = payload.get("frames", [])
-                if not frame_items or not isinstance(frame_items, list):
-                    raise CaptureRejected("capture_not_usable")
-                last = -1.0
-                for item in frame_items:
-                    ts = float(item.get("timestamp", 0.0))
-                    if ts - last < 0.30:
-                        continue
-                    last = ts
-                    data_str = item.get("data", "")
-                    if "," in data_str:
-                        data_str = data_str.split(",", 1)[1]
-                    raw_bytes = base64.b64decode(data_str)
-                    img = self.cv2.imdecode(
-                        np.frombuffer(raw_bytes, dtype=np.uint8), self.cv2.IMREAD_COLOR
-                    )
-                    if img is None:
-                        continue
-                    h, w = img.shape[:2]
-                    if max(h, w) > 1280:
-                        scale = 1280.0 / max(h, w)
-                        img = self.cv2.resize(img, (int(w * scale), int(h * scale)))
-                    sampled += 1
-                    seen = self.frame(img)
-                    if seen is None:
-                        continue
-                    pose, vector, real = seen
-                    poses.append(pose)
-                    templates.append(vector)
-                    scores.append(real)
-            except CaptureRejected:
+                seen = self.frame(image)
+            except CaptureRejected as rejected:
+                trace["faces"] = faces + ("2" if rejected.reason == "several_faces" else "s")
                 raise
-            except Exception as error:
-                raise CaptureRejected("capture_not_usable") from error
-        else:
-            import av
-
-            try:
-                container = av.open(io.BytesIO(video))
-            except Exception as error:
-                raise CaptureRejected("capture_not_usable") from error
-            try:
-                if not container.streams.video:
-                    raise CaptureRejected("capture_not_usable")
-                frames = 0
-                last = -1.0
-                for frame in container.decode(video=0):
-                    frames += 1
-                    if frame.time is not None and 0.0 <= float(frame.time) < 100.0:
-                        timestamp = float(frame.time)
-                    else:
-                        timestamp = frames / 30.0
-                    if timestamp > 10.0 or frames > 480:
-                        break  # Finished reading enough video
-                    if timestamp - last < 0.35:
-                        continue
-                    last = timestamp
-                    sampled += 1
-                    bgr = frame.to_ndarray(format="bgr24")
-                    h, w = bgr.shape[:2]
-                    if max(h, w) > 1280:
-                        scale = 1280.0 / max(h, w)
-                        bgr = self.cv2.resize(bgr, (int(w * scale), int(h * scale)))
-                    seen = self.frame(bgr)
-                    if seen is None:
-                        continue
-                    pose, vector, real = seen
-                    poses.append(pose)
-                    templates.append(vector)
-                    scores.append(real)
-            except CaptureRejected:
-                raise
-            except Exception as error:
-                raise CaptureRejected("capture_not_usable") from error
-            finally:
-                container.close()
-
+            faces += "0" if seen is None else "1"
+            if seen is None:
+                continue
+            pose, vector, real = seen
+            poses.append(pose)
+            templates.append(vector)
+            scores.append(real)
+        trace["stage"] = "thresholds"
+        trace["faces"] = faces
+        trace["face_frames"] = len(poses)
+        if poses:
+            yaws, pitches = [p[0] for p in poses], [p[1] for p in poses]
+            trace["yaw_range"] = [round(min(yaws), 1), round(max(yaws), 1)]
+            trace["pitch_range"] = [round(min(pitches), 1), round(max(pitches), 1)]
+        sampled = trace.get("sampled", 0)
         if sampled < MIN_FRAMES:
-            raise CaptureRejected("too_short")
-        if len(poses) < MIN_FRAMES or len(poses) < MIN_FACE_SHARE * sampled:
-            raise CaptureRejected("no_face")
+            raise CaptureRejected("too_short", f"sampled {sampled} < MIN_FRAMES {MIN_FRAMES}")
+        if len(poses) < MIN_FRAMES:
+            raise CaptureRejected("no_face", f"face_frames {len(poses)} < MIN_FRAMES {MIN_FRAMES}")
+        if len(poses) < MIN_FACE_SHARE * sampled:
+            raise CaptureRejected(
+                "no_face", f"face_frames {len(poses)}/{sampled} < MIN_FACE_SHARE {MIN_FACE_SHARE}"
+            )
 
         ok, passed_prompts, failed_prompt = movement_evaluation(prompts, poses)
         if not ok:
+            trace["failed"] = f"{failed_prompt}: YAW_MIN {YAW_MIN} / PITCH_MIN {PITCH_MIN}"
             return {
                 "status": "retry",
                 "reason": "movement_not_seen",
@@ -306,6 +303,7 @@ class CpuModels:
 
         mean_score = float(np.mean(scores))
         if mean_score < REAL_MIN:
+            trace["failed"] = f"score {mean_score:.3f} < REAL_MIN {REAL_MIN}"
             return {
                 "status": "retry",
                 "reason": "not_live",
@@ -325,6 +323,108 @@ class CpuModels:
         }, template(np.mean(templates, axis=0))
 
 
+def sampled_frames(capture: bytes, trace: dict[str, Any]) -> Iterator[np.ndarray]:
+    """Upright BGR frames, about three a second, from the app's JSON list of JPEG frames or a
+    browser recording (WebM VP8/VP9, MP4 H.264). Fills `trace` with what was decoded."""
+    trace["container"] = container_of(capture)
+    trace["stage"] = "open"
+    if trace["container"] == "json_frames":
+        yield from json_frames(capture, trace)
+    else:
+        yield from video_frames(capture, trace)
+    if trace.get("sampled", 0) == 0:
+        raise CaptureRejected("capture_not_usable", "no decodable frames")
+
+
+def json_frames(capture: bytes, trace: dict[str, Any]) -> Iterator[np.ndarray]:
+    from PIL import Image, ImageOps
+
+    try:
+        items = json.loads(capture.decode("utf-8")).get("frames", [])
+    except (ValueError, AttributeError) as error:
+        raise CaptureRejected("capture_not_usable", "frames JSON unreadable") from error
+    if not isinstance(items, list) or not items:
+        raise CaptureRejected("capture_not_usable", "frames JSON has no frames")
+    trace.update(codec="jpeg", decoded=0, sampled=0, undecodable=0)
+    last = -1.0
+    for item in items[:120]:
+        trace["stage"] = "decode"
+        try:
+            stamp = float(item.get("timestamp", 0.0))
+            data = str(item.get("data", ""))
+            image = Image.open(io.BytesIO(base64.b64decode(data.split(",", 1)[-1])))
+            image = ImageOps.exif_transpose(image).convert("RGB")
+        except Exception:
+            trace["undecodable"] += 1
+            continue
+        trace["decoded"] += 1
+        trace["duration_s"] = round(stamp, 2)
+        trace.setdefault("width", image.width)
+        trace.setdefault("height", image.height)
+        if stamp - last < 0.30:
+            continue
+        last = stamp
+        if max(image.size) > 1280:
+            image.thumbnail((1280, 1280))
+        trace["sampled"] += 1
+        yield np.asarray(image)[:, :, ::-1].copy()
+
+
+def video_frames(capture: bytes, trace: dict[str, Any]) -> Iterator[np.ndarray]:
+    import av
+
+    try:
+        container = av.open(io.BytesIO(capture))
+    except Exception as error:
+        raise CaptureRejected("capture_not_usable", f"container: {type(error).__name__}") from error
+    try:
+        if not container.streams.video:
+            raise CaptureRejected("capture_not_usable", "no video stream")
+        stream = container.streams.video[0]
+        trace.update(
+            demuxer=container.format.name,
+            codec=stream.codec_context.name,
+            width=stream.codec_context.width,
+            height=stream.codec_context.height,
+            decoded=0,
+            sampled=0,
+        )
+        last = -1.0
+        trace["stage"] = "decode"
+        try:
+            for frame in container.decode(stream):
+                trace["decoded"] += 1
+                if frame.time is not None and 0.0 <= float(frame.time) < 100.0:
+                    stamp = float(frame.time)
+                else:
+                    stamp = trace["decoded"] / 30.0
+                if stamp > 10.0 or trace["decoded"] > 480:
+                    break  # Enough video: the capture is eight seconds.
+                trace["duration_s"] = round(stamp, 2)
+                if stamp - last < 0.35:
+                    continue
+                last = stamp
+                rotation = int(getattr(frame, "rotation", 0) or 0)
+                trace["rotation"] = rotation
+                if max(frame.width, frame.height) > 1280:
+                    scale = 1280.0 / max(frame.width, frame.height)
+                    frame = frame.reformat(
+                        width=int(frame.width * scale), height=int(frame.height * scale)
+                    )
+                trace["sampled"] += 1
+                yield upright(frame.to_ndarray(format="bgr24"), rotation)
+        except av.FFmpegError as error:
+            # A truncated last cluster (the recorder stopped mid-write) still leaves the frames
+            # decoded so far; only a capture with nothing usable is rejected.
+            trace["decode_error"] = type(error).__name__
+            if trace["sampled"] == 0:
+                raise CaptureRejected(
+                    "capture_not_usable", f"decode: {type(error).__name__}"
+                ) from error
+    finally:
+        container.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
@@ -334,6 +434,9 @@ async def lifespan(app: FastAPI):
             raise RuntimeError("Required face models failed to initialize") from None
         app.state.models = None
     app.state.busy = asyncio.Lock()
+    app.state.served = 0
+    app.state.started = time.monotonic()
+    log(logging.INFO, "face_worker_started", models_ready=app.state.models is not None)
     yield
 
 
@@ -378,48 +481,40 @@ async def evaluate(request: Request):
             models_service = request.app.state.models
             if models_service is None:
                 elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
-                logger.warning("face_worker_models_unavailable latency_ms=%s", elapsed_ms)
+                log(logging.WARNING, "face_worker_models_unavailable", latency_ms=elapsed_ms)
                 return {"status": "unavailable", "reason": "models_unavailable"}
+            # A first request after a cold start explains a slow answer.
+            trace: dict[str, Any] = {
+                "bytes": len(data),
+                "first_request": request.app.state.served == 0,
+                "uptime_s": round(time.monotonic() - request.app.state.started, 1),
+            }
+            request.app.state.served += 1
             try:
                 outcome, vector = await anyio.to_thread.run_sync(
                     models_service.analyze,
                     bytes(data),
                     request.headers.get("x-prompts", "").split(","),
-                )
-                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
-                logger.info(
-                    "face_worker_verdict status=%s reason=%s liveness=%s score=%s "
-                    "failed_prompt=%s latency_ms=%s bytes=%d",
-                    outcome.get("status"),
-                    outcome.get("reason"),
-                    outcome.get("liveness"),
-                    outcome.get("score"),
-                    outcome.get("failed_prompt"),
-                    elapsed_ms,
-                    len(data),
+                    trace,
                 )
             except CaptureRejected as rejected:
-                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
-                logger.info(
-                    "face_worker_rejected reason=%s latency_ms=%s bytes=%d",
-                    rejected.reason,
-                    elapsed_ms,
-                    len(data),
-                )
-                return {"status": "retry", "reason": rejected.reason, "liveness": "not_evaluated"}
+                outcome, vector = {"status": "retry", "reason": rejected.reason}, None
+                trace["failed"] = rejected.failed
             except Exception as exc:
-                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
-                logger.warning(
-                    "face_worker_exception error=%s latency_ms=%s bytes=%d",
-                    type(exc).__name__,
-                    elapsed_ms,
-                    len(data),
-                )
-                return {
-                    "status": "retry",
-                    "reason": "capture_not_usable",
-                    "liveness": "not_evaluated",
-                }
+                outcome, vector = {"status": "retry", "reason": "capture_not_usable"}, None
+                trace["failed"] = f"unexpected {type(exc).__name__}"
+            outcome.setdefault("liveness", "not_evaluated")
+            trace.update(
+                status=outcome["status"],
+                reason=outcome["reason"],
+                failed_prompt=outcome.get("failed_prompt"),
+                score=outcome.get("score"),
+                content_type=request.headers.get("content-type", ""),
+                latency_ms=round((time.perf_counter() - start_time) * 1000, 1),
+            )
+            log(logging.INFO, "face_worker_verdict", **trace)
+            # The trace goes back for the main app's own log line; it never reaches the owner.
+            outcome = {**outcome, "trace": trace}
             return {**outcome, **({"template": vector, "model": MODEL_ID} if vector else {})}
         finally:
             data.clear()
