@@ -9,6 +9,7 @@ RECALL_PATH=data/test-vectors. NEVER run commands in the background; foreground 
 `--workers=1`; no parallel sub-agents; plain commits, no AI trailers. Stay out of onboarding v2's files
 (voice.py, NewShopFlow.tsx, NewShopStage.tsx, VoiceStage.tsx, agent.py onboarding): it will call your icon
 API at the end of onboarding; document the API for it.
+
 1. Walk and fix every upload on a 360px phone (camera + gallery, JPEG/PNG/HEIC, large files, bad photos,
    offline, permission denied, cancel): menu photo → items review; POS/Excel/CSV import (Connect your
    system); close-the-day photo; shop photo; product photo; invoice/receipt (Document AI path); face check.

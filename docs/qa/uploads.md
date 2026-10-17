@@ -4,15 +4,15 @@
 
 All owner routes need the owner sign-in and consent; `{bid}` is the business id.
 
-| Call | Does | Errors |
-| --- | --- | --- |
-| `GET /api/v1/businesses/{bid}/icon` | `{icon, ai_available}` | 404 not your shop |
-| `POST /api/v1/businesses/{bid}/icon/generate` | Gemini image model draws a square icon from name + kind + region; returns `{icon, source: "ai"}` | `503 ICON_AI_OFF`, `503 ICON_UNAVAILABLE` (old icon kept, show the monogram), `429 ICON_DAILY_LIMIT` (3 per shop per UTC day, failures count) |
-| `PUT /api/v1/businesses/{bid}/icon` | Body is a JPEG/PNG/WebP photo; moderated, centre-cropped to 512 px, saved once; `{icon, source: "upload"}` | 413 too large, 415 wrong type or unreadable, moderation codes |
-| `POST /api/v1/businesses/{bid}/icon/from-gallery/{photo_id}` | Use a gallery photo as the icon | 404 |
-| `DELETE /api/v1/businesses/{bid}/icon` | Remove it (monogram returns) | |
-| `GET /api/v1/businesses/{bid}/icon/{id}.jpg` | Owner image | |
-| `GET /api/v1/public/shops/{bid}/icon/{id}.jpg` | Public image (shared shops only, immutable cache) | 404 |
+| Call                                                         | Does                                                                                                       | Errors                                                                                                                                        |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/businesses/{bid}/icon`                          | `{icon, ai_available}`                                                                                     | 404 not your shop                                                                                                                             |
+| `POST /api/v1/businesses/{bid}/icon/generate`                | Gemini image model draws a square icon from name + kind + region; returns `{icon, source: "ai"}`           | `503 ICON_AI_OFF`, `503 ICON_UNAVAILABLE` (old icon kept, show the monogram), `429 ICON_DAILY_LIMIT` (3 per shop per UTC day, failures count) |
+| `PUT /api/v1/businesses/{bid}/icon`                          | Body is a JPEG/PNG/WebP photo; moderated, centre-cropped to 512 px, saved once; `{icon, source: "upload"}` | 413 too large, 415 wrong type or unreadable, moderation codes                                                                                 |
+| `POST /api/v1/businesses/{bid}/icon/from-gallery/{photo_id}` | Use a gallery photo as the icon                                                                            | 404                                                                                                                                           |
+| `DELETE /api/v1/businesses/{bid}/icon`                       | Remove it (monogram returns)                                                                               |                                                                                                                                               |
+| `GET /api/v1/businesses/{bid}/icon/{id}.jpg`                 | Owner image                                                                                                |                                                                                                                                               |
+| `GET /api/v1/public/shops/{bid}/icon/{id}.jpg`               | Public image (shared shops only, immutable cache)                                                          | 404                                                                                                                                           |
 
 `icon` (the id, or null) is on the owner business and on `GET /public/shops/{bid}`; discovery places carry `icon_url`.
 Settings: `SHOP_ICON_AI` (switch, off by default, on in deployment/runtime-config.py), `SHOP_ICON_MODEL`
