@@ -81,14 +81,40 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
         minHeight: '100dvh',
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, mr: '104px', minHeight: 56 }}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: 'baseline',
+          gap: 2,
+          flexWrap: 'wrap',
+          minHeight: 56,
+          pr: { xs: 0, sm: '104px' },
+        }}
+      >
         <Typography
           component="h1"
-          sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: 38, lineHeight: 1.1 }}
+          sx={{
+            fontFamily: HAND_FONT,
+            fontWeight: 700,
+            fontSize: 38,
+            lineHeight: 1.1,
+            overflowWrap: 'break-word',
+          }}
         >
           {t.title}
         </Typography>
-        {view?.device_only && <Chip size="small" label={t.onThisPhone} />}
+        {view?.device_only && (
+          <Chip
+            size="small"
+            label={t.onThisPhone}
+            sx={{
+              maxWidth: '100%',
+              height: 'auto',
+              minHeight: 24,
+              '& .MuiChip-label': { whiteSpace: 'normal', py: 0.5 },
+            }}
+          />
+        )}
       </Stack>
       {status === 'error' && (
         <Alert
@@ -309,14 +335,30 @@ function StampBook({ view }: { view: PassportView }) {
               <Stack direction="row" sx={{ alignItems: 'baseline', gap: 2, flexWrap: 'wrap' }}>
                 <Typography
                   component="h3"
-                  sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: 28 }}
+                  sx={{
+                    fontFamily: HAND_FONT,
+                    fontWeight: 700,
+                    fontSize: 28,
+                    overflowWrap: 'break-word',
+                  }}
                 >
                   {area.name || t.yourArea}
                 </Typography>
                 <Typography variant="labelLarge" color="text.secondary">
                   {fill(t.stampsCount, { n: shops.reduce((n, s) => n + s.days, 0) })}
                 </Typography>
-                {area.demo && <Chip size="small" label={t.demoArea} />}
+                {area.demo && (
+                  <Chip
+                    size="small"
+                    label={t.demoArea}
+                    sx={{
+                      maxWidth: '100%',
+                      height: 'auto',
+                      minHeight: 24,
+                      '& .MuiChip-label': { whiteSpace: 'normal', py: 0.5 },
+                    }}
+                  />
+                )}
               </Stack>
               <Box
                 component="ul"
@@ -326,7 +368,7 @@ function StampBook({ view }: { view: PassportView }) {
                   m: 0,
                   mt: 3,
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))',
                   gap: 3,
                 }}
               >
@@ -344,6 +386,8 @@ function StampBook({ view }: { view: PassportView }) {
                         alignItems: 'center',
                         gap: 1,
                         textAlign: 'center',
+                        minHeight: 'auto',
+                        overflowWrap: 'break-word',
                       }}
                     >
                       <a
@@ -363,6 +407,8 @@ function StampBook({ view }: { view: PassportView }) {
                             display: '-webkit-box',
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: 'vertical',
+                            overflowWrap: 'break-word',
+                            wordBreak: 'break-word',
                           }}
                         >
                           {shop.name.replace(/\s*\(Demo\)$/, '')}

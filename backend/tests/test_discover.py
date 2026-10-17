@@ -398,6 +398,16 @@ def test_offline_place_search_knows_every_demo_city(tmp_path: Path) -> None:
         assert place("Indiranagar, Bengaluru")["label"] == "Indiranagar"
         assert place("Bandra West, Mumbai")["label"] == "Bandra"
         assert client.get("/api/v1/discover/place", params={"q": "Marina"}).status_code == 422
+        # Coordinates reverse geocode to neighbourhood name, never "you"
+        koramangala = client.get(
+            "/api/v1/discover/place", params={"lat": 12.9352, "lng": 77.6245}
+        ).json()
+        assert koramangala["label"] == "Koramangala"
+        indiranagar = client.get(
+            "/api/v1/discover/place", params={"lat": 12.9719, "lng": 77.6412}
+        ).json()
+        assert indiranagar["label"] == "Indiranagar"
+        assert koramangala["label"] != "you"
         join(client)
         response = client.post(
             "/api/v1/proposals",

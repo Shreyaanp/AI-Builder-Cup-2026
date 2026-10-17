@@ -75,3 +75,17 @@ def test_model_output_is_trimmed_and_thin_shops_are_dropped() -> None:
     world = from_spec(_WorldSpec(shops=[full, thin, full, full, full]))
     assert len(world.shops) == 4
     assert len(world.shops[0].name) == 60 and len(world.shops[0].story) == 120
+
+
+def test_rescue_deals_only_seed_for_food_and_perishable_shops() -> None:
+    from app.rescue import is_food_or_perishable
+
+    assert is_food_or_perishable("Bakery") is True
+    assert is_food_or_perishable("Cafe") is True
+    assert is_food_or_perishable("Street food") is True
+    assert is_food_or_perishable("Grocer") is True
+    assert is_food_or_perishable("Florist") is True
+    assert is_food_or_perishable("Bicycle repair") is False
+    assert is_food_or_perishable("Tailor") is False
+    assert is_food_or_perishable("Salon") is False
+    assert is_food_or_perishable("Hardware") is False
