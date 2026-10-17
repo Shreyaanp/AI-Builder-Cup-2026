@@ -370,7 +370,8 @@ for (const lang of LANGS) {
       await localOnly(customer)
       try {
         await customer.goto('/explore/')
-        const ask = customer.getByRole('textbox').first()
+        // Release 3's front door: the first textbox is the inline "where"; the Ask box is the search.
+        const ask = customer.getByRole('search').getByRole('textbox')
         await expect(ask).toBeVisible({ timeout: 30_000 })
         await expect(ask).toHaveAttribute('placeholder', /S\$/)
         await readsIn(customer, lang, '20-ask-home')

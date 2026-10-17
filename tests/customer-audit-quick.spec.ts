@@ -37,7 +37,7 @@ test.describe('Customer audit quick fixes', () => {
     expect(sgd).toContain('100,000')
   })
 
-  test('Fix 3 & 6: Indian area shows ₹50 placeholder and area name in location chip', async ({
+  test('Fix 3 & 6: Indian area shows ₹30 placeholder and area name in location chip', async ({
     page,
   }) => {
     await page.addInitScript(() => {
@@ -52,9 +52,9 @@ test.describe('Customer audit quick fixes', () => {
     await page.goto('/explore/?app=customer')
     // Location chip shows area name (Koramangala), never "you"
     await expect(page.getByRole('button', { name: /Area: Koramangala/i })).toBeVisible()
-    // Placeholder shows ₹50 example instead of $3
+    // Placeholder shows the region's ₹30 example (#90), not a dollar one
     const input = page.getByRole('textbox', { name: 'Ask about anything nearby' })
-    await expect(input).toHaveAttribute('placeholder', /₹50/)
+    await expect(input).toHaveAttribute('placeholder', /₹30/)
   })
 
   // Release 2's landing has no story phone any more; its words still follow the locale.
