@@ -20,5 +20,5 @@ change app code only for a real bug (say so). Owner decisions are in docs/OWNER-
 3. QR scan: scanning a shop's signed QR as a guest and as a signed-in customer gives a stamp; the count
    (incl. 2 welcome stamps) is identical on the shop button, card and passport; a second scan the same day
    gives no extra stamp; a shop with no reward shows no stamps; claiming a full card needs sign-in.
-Mark each test with the PR it depends on (#60/#63/#64/onboarding v2) and skip with a clear reason where
-that PR is not on the branch yet. Report: what passes on main, on fix/voice-reliability, and what fails.
+   Mark each test with the PR it depends on (#60/#63/#64/onboarding v2) and skip with a clear reason where
+   that PR is not on the branch yet. Report: what passes on main, on fix/voice-reliability, and what fails.
