@@ -11,6 +11,7 @@ from fastapi import HTTPException
 
 from .app_guide import explain_app
 from .coordinator import _card, _invalid, _propose_shop, current
+from .reply_language import LANGUAGES, find_language
 from .sales import today_for
 from .starter_templates import starter_items
 
@@ -21,6 +22,7 @@ __all__ = [
     "prepare_customer_reply",
     "propose_stamp_card",
     "set_open_today",
+    "set_reply_language",
     "suggest_starter_items",
 ]
 
@@ -104,6 +106,22 @@ def open_screen(screen: Screen) -> dict[str, Any]:
         "card_id": card_id,
         "screen": SCREENS[screen],
         **({"instruction": CONFIRM_THERE[screen]} if screen in CONFIRM_THERE else {}),
+    }
+
+
+def set_reply_language(language: str) -> dict[str, Any]:
+    """Change the language you reply in, ONLY when the owner explicitly asks to (for example
+    "English mein bolo", "speak Tamil"). language is the app code: en, hi, ta, te, kn, mr, bn,
+    zh-Hans, ms, ja, ko, id, th, vi or fil. The app switches its language to match and you
+    reply in that language from now on. Never call it because the owner mixed in a few words of
+    another language."""
+    chosen = find_language(language)
+    if not chosen:
+        return {"status": "unsupported", "supported": list(LANGUAGES)}
+    return {
+        "status": "changed",
+        "language": chosen.locale,
+        "instruction": f"From now on always speak and write in {chosen.name} ({chosen.code}).",
     }
 
 

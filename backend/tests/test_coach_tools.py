@@ -451,11 +451,14 @@ def test_model_text_excludes_thought_parts(ctx, partial, kind):
     assert public_events(event) == []
 
 
-@pytest.mark.parametrize("language", ["hi", "es", "ta-IN"])
-def test_instruction_uses_current_fallback_language(ctx, language):
+@pytest.mark.parametrize(
+    ("language", "pinned"),
+    [("hi", "Hindi (hi-IN)"), ("es", "English (en-US)"), ("ta-IN", "Tamil (ta-IN)")],
+)
+def test_instruction_pins_the_app_language(ctx, language, pinned):
     token = ui_language.set(language)
     try:
-        assert instruction(object()).endswith(f"App language (fallback only): {language}")
+        assert f"Always speak and write in {pinned}." in instruction(object())
     finally:
         ui_language.reset(token)
 
