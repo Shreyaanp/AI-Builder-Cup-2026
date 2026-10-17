@@ -122,7 +122,7 @@ for (const scheme of ['light', 'dark'] as const)
     await open(page, { scheme })
     expect(await horizontalScroll(page)).toBe(false)
     expect(await smallTargets(page)).toEqual([])
-    // Big suggestion chips sit just above the composer, in the bottom of the screen.
+    // Big suggestion chips sit in the page under the cards (#105, #123), reachable in the bottom of the screen.
     const chips = page.getByRole('list', { name: 'Ask about anything nearby' }).getByRole('button')
     expect(await chips.count()).toBeGreaterThanOrEqual(3)
     expect(await chips.count()).toBeLessThanOrEqual(4)
@@ -133,10 +133,19 @@ for (const scheme of ['light', 'dark'] as const)
     const viewport = page.viewportSize()!
     const field = (await page.getByRole('search').boundingBox())!
     expect(field.y).toBeGreaterThan(viewport.height / 2)
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     for (const chip of await chips.all()) {
       const box = (await chip.boundingBox())!
       expect(box.height).toBeGreaterThanOrEqual(48)
-      expect(box.y + box.height).toBeLessThanOrEqual(field.y)
+      // Scrolled to, each chip is wholly on screen, in the lower half, and nothing covers it.
+      expect(box.y).toBeGreaterThan(viewport.height / 2)
+      expect(box.y + box.height).toBeLessThanOrEqual(viewport.height)
+      const covered = await chip.evaluate((el) => {
+        const r = el.getBoundingClientRect()
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+        return hit !== null && !el.contains(hit)
+      })
+      expect(covered).toBe(false)
     }
     await page.waitForTimeout(800)
     expect(await page.evaluate(() => (window as unknown as { cls: number }).cls)).toBeLessThan(0.01)
