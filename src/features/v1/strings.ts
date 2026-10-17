@@ -2,6 +2,12 @@ import { lazyCopy } from '../../i18n/lazyCopy'
 import { loaders } from './locales'
 
 export const en = {
+  firstCustomers: 'Get your first customers',
+  printPoster: 'Print a poster',
+  downloadPdf: 'Download PDF',
+  shareWhatsApp: 'Share on WhatsApp',
+  scanStamps: 'Scan for stamps',
+  paperSize: 'Paper size',
   trustFree: 'Free to start',
   trustLanguage: 'Your language',
   trustData: 'Your data stays yours',

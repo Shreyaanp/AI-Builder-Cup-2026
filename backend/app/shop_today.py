@@ -13,6 +13,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
 import anyio
+import structlog
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
@@ -26,6 +27,7 @@ from .rescue import buffer_for, local_now
 from .shop_time import shop_timezone
 
 router = APIRouter(prefix="/api/v1/businesses", tags=["today"])
+log = structlog.get_logger(__name__)
 
 KIND = "shop_daily"
 Metric = Literal["views", "stamps", "returning"]
@@ -98,6 +100,8 @@ class Today(BaseModel):
     demo: bool
     # The shop playbook's order for Today (pulse numbers, "needs you now"); None without one.
     hints: TodayHints | None = None
+    # None: feature disabled; never infer zero from missing facts.
+    has_customer_stamp: bool | None = None
 
 
 def _day(fields: dict[str, Any], at: float | None = None) -> str:
@@ -119,6 +123,11 @@ def count(repository: MerchantRepository, bid: str, metric: Metric, timezone: st
 
 def daily(repository: MerchantRepository, bid: str, day: str) -> dict[str, int]:
     return {k: int(v) for k, v in (repository.feature_docs.get(KIND, f"{bid}:{day}") or {}).items()}
+
+
+def has_customer_stamp(repository: MerchantRepository, bid: str) -> bool:
+    """Check the shop's complete aggregate history, including stamps before yesterday."""
+    return repository.feature_docs.any_positive(KIND, bid, "stamps")
 
 
 def pulse(
@@ -251,6 +260,14 @@ async def today_page(business_id: str, request: Request) -> Today:
     stored = migrate_stored(await anyio.to_thread.run_sync(service.playbook, uid, business_id))
     hints = today_hints(stored, fields) if stored else None
     top = prep[0] if prep else None
+    customer_stamp = None
+    if request.app.state.v1_settings.qr_poster_enabled:
+        try:
+            customer_stamp = await anyio.to_thread.run_sync(
+                has_customer_stamp, service, business_id
+            )
+        except Exception:  # Optional promotion must not take the owner's daily facts away.
+            log.warning("customer_stamp_history_unavailable")
     return Today(
         date=today,
         currency=(shop_currency(fields)),
@@ -279,4 +296,5 @@ async def today_page(business_id: str, request: Request) -> Today:
         line=coach_line(fields, today, sales, weather, hints.line_topics if hints else None),
         demo=bool(fields.get("demo")),
         hints=hints,
+        has_customer_stamp=customer_stamp,
     )
