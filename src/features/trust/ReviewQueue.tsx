@@ -12,6 +12,12 @@ export function ReviewQueue({ queue, onChange }: { queue: Review[]; onChange: ()
   const ws = useWorkspace()
   const roles = useTheme().material
   const [busy, setBusy] = useState<string | null>(null)
+  const title = (item: Review) =>
+    item.kind === 'duplicate_owner'
+      ? c.duplicate
+      : item.kind === 'liveness'
+        ? c.liveness
+        : `${c.listing}: ${item.shop}`
 
   async function scan() {
     setBusy('scan')
@@ -80,7 +86,7 @@ export function ReviewQueue({ queue, onChange }: { queue: Review[]; onChange: ()
             <Box
               component="li"
               key={item.id}
-              aria-label={item.kind === 'duplicate_owner' ? c.duplicate : (item.shop ?? c.listing)}
+              aria-label={item.kind === 'listing' ? (item.shop ?? c.listing) : title(item)}
               sx={{
                 p: 2.5,
                 borderRadius: `${shape.md}px`,
@@ -91,11 +97,24 @@ export function ReviewQueue({ queue, onChange }: { queue: Review[]; onChange: ()
             >
               <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap', mb: 1 }}>
                 <Typography variant="titleSmall" component="h3" sx={{ flex: 1, minWidth: 0 }}>
-                  {item.kind === 'duplicate_owner' ? c.duplicate : `${c.listing}: ${item.shop}`}
+                  {title(item)}
                 </Typography>
                 <Chip size="small" label={c.decided[item.status] ?? item.status} />
               </Stack>
-              {item.kind === 'duplicate_owner' ? (
+              {item.kind === 'liveness' ? (
+                <Stack spacing={0.5}>
+                  <Typography variant="bodyMedium">
+                    {fill(c.livenessScore, { n: (item.score ?? 0).toFixed(2) })}
+                  </Typography>
+                  <Typography
+                    variant="bodyMedium"
+                    color="text.secondary"
+                    sx={{ overflowWrap: 'anywhere' }}
+                  >
+                    {(item.shops?.[0] ?? []).join(', ') || '—'}
+                  </Typography>
+                </Stack>
+              ) : item.kind === 'duplicate_owner' ? (
                 <Stack spacing={0.5}>
                   <Typography variant="bodyMedium">
                     {fill(c.similarity, { n: (item.similarity ?? 0).toFixed(2) })}

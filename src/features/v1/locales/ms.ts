@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const ms: Copy = {
+  trustFree: 'Mula percuma',
+  trustLanguage: 'Bahasa anda',
+  trustData: 'Data milik anda',
+  trustHuman: 'Bantuan manusia',
+  trustFreeBody: 'Mula percuma; tiada bayaran diperlukan.',
+  trustLanguageBody: 'Pilih Hindi, Inggeris atau bahasa lain dalam tetapan.',
+  trustDataBody: 'Padam data bila-bila masa; data wajah tersimpan disulitkan.',
+  trustHumanBody: 'Hubungi pasukan sokongan melalui WhatsApp.',
+  trustWhatsapp: 'Buka WhatsApp',
   newShopMode: 'Kedai baharu',
   newShopReady: 'Kedai baharu anda sudah sedia',
   newShopReadyBody: 'Anda kini mengurus kedai baharu. Kongsi halaman pelanggan apabila bersedia.',

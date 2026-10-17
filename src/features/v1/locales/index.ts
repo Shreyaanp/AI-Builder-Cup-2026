@@ -1,34 +1,20 @@
-import { kn } from './kn'
-import { mr } from './mr'
-import { te } from './te'
-import { bn } from './bn'
-import { hi } from './hi'
-import type { Locale } from '../../../i18n/locales'
+import type { CopyLoaders } from '../../../i18n/lazyCopy'
 import type { Copy } from '../strings'
-import { zhHans } from './zh-Hans'
-import { ms } from './ms'
-import { ta } from './ta'
-import { ja } from './ja'
-import { ko } from './ko'
-import { id } from './id'
-import { th } from './th'
-import { vi } from './vi'
-import { fil } from './fil'
 
-/** Complete APAC owner copy; English is supplied by strings.ts. */
-export const translations: Record<Exclude<Locale, 'en'>, Copy> = {
-  hi,
-  bn,
-  te,
-  mr,
-  kn,
-  'zh-Hans': zhHans,
-  ms: ms,
-  ta: ta,
-  ja: ja,
-  ko: ko,
-  id: id,
-  th: th,
-  vi: vi,
-  fil: fil,
+/** Complete APAC owner copy, one chunk per language; English is supplied by strings.ts. */
+export const loaders: CopyLoaders<Copy> = {
+  hi: () => import('./hi').then((m) => m.hi),
+  bn: () => import('./bn').then((m) => m.bn),
+  te: () => import('./te').then((m) => m.te),
+  mr: () => import('./mr').then((m) => m.mr),
+  kn: () => import('./kn').then((m) => m.kn),
+  'zh-Hans': () => import('./zh-Hans').then((m) => m.zhHans),
+  ms: () => import('./ms').then((m) => m.ms),
+  ta: () => import('./ta').then((m) => m.ta),
+  ja: () => import('./ja').then((m) => m.ja),
+  ko: () => import('./ko').then((m) => m.ko),
+  id: () => import('./id').then((m) => m.id),
+  th: () => import('./th').then((m) => m.th),
+  vi: () => import('./vi').then((m) => m.vi),
+  fil: () => import('./fil').then((m) => m.fil),
 }
