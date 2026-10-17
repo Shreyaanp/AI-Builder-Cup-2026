@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { realpathSync } from 'node:fs'
 
 // Each worktree can run its own dev servers (WEB_PORT/API_PORT), so parallel workers never test
 // each other's code through a reused server.
@@ -24,6 +25,9 @@ export default defineConfig({
     host: '127.0.0.1',
     port: web,
     strictPort: true,
+    // node_modules is a linked shared install in this checkout. Vite resolves its fonts to the
+    // link target, so allow that real directory while keeping other filesystem paths closed.
+    fs: { allow: [process.cwd(), realpathSync('node_modules')] },
     proxy: { '/api': { target: `http://127.0.0.1:${api}`, ws: true } },
   },
   preview: { host: '127.0.0.1', port: web, strictPort: true },
