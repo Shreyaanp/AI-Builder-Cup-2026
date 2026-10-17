@@ -21,6 +21,7 @@ import { shape } from '../../design/theme'
 import { formatLocale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
 import type { Proposal } from '../v1/api'
+import { useCopy } from '../v1/strings'
 import { SalesImportSheet } from '../v1/ImportMenu'
 import type { SalesImport } from '../v1/useImport'
 import { Sheet } from '../v1/Sheet'
@@ -69,6 +70,7 @@ export function ConnectSheet({
   initialSystem?: string
 }) {
   const t = useConnectCopy()
+  const copy = useCopy()
   const locale = useLocale()
   const extra = extraConnectCopy[locale]
   const ws = useWorkspace()
@@ -329,7 +331,7 @@ export function ConnectSheet({
               </Button>
             </Stack>
           ) : (
-            <Button onClick={handleClose}>Close</Button>
+            <Button onClick={handleClose}>{copy.close}</Button>
           )
         }
       >
@@ -387,7 +389,7 @@ export function ConnectSheet({
                           {hasSaved && (
                             <Chip
                               size="small"
-                              label="Connected"
+                              label={extra.connected}
                               sx={{
                                 bgcolor: roles.primaryContainer,
                                 color: roles.onPrimaryContainer,
