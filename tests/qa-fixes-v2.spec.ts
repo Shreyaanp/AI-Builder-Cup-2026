@@ -100,9 +100,8 @@ for (const appearance of ['light', 'dark'] as const) {
       await expect(business).not.toHaveClass(/MuiButton-contained/)
       const hero = page.locator('.lp-hero')
       await expect(hero.getByRole('link', { name: 'For businesses' })).toHaveCount(0)
-      // Release 2's landing pairs the owner action with a discovery action; neither repeats the header link.
-      const discover = hero.getByRole('link', { name: 'Explore nearby' })
-      await expect(discover).toBeVisible()
+      const discover = hero.getByRole('link', { name: 'Find places near me' })
+      await expect(discover).toHaveClass(/MuiButton-contained/)
       await withinViewport(page, discover)
       await discover.focus()
       await expect(discover).toBeFocused()

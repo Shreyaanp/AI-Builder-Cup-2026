@@ -273,6 +273,9 @@ test('B5: no "What’s new at …" line; + (new shop) sits top-right; settings l
 test('B6: Today fits the phone without scrolling, items leave when done, and finished setup leaves no bar', async ({
   page,
 }) => {
+  // The shop closes at 15:00, so "Close the day" joins Today from 14:00 shop time; pin the
+  // browser to 10:00 in Singapore so the menu question leads whatever the runner's clock says.
+  await page.clock.setFixedTime(new Date('2026-10-17T02:00:00Z'))
   await enter(page)
   await saveShop(page)
   const fits = () =>
