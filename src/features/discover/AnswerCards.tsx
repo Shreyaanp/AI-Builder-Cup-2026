@@ -155,6 +155,9 @@ export function PickCard({
   locale,
   selected = false,
   onFocusPin,
+  onOpen,
+  details,
+  numbered = true,
 }: {
   pick: AskPick
   index: number
@@ -165,6 +168,12 @@ export function PickCard({
   selected?: boolean
   /** Hover or focus the row: the map glides to its pin. */
   onFocusPin?: () => void
+  /** Run on tap, before the shop page opens (a Google place opens its own sheet instead). */
+  onOpen?: (event: React.MouseEvent<HTMLElement>) => void
+  /** A second quiet line under open · distance: category, stamps, rating. */
+  details?: string
+  /** The map-pin number on the thumbnail; the full list has no map pins. */
+  numbered?: boolean
 }) {
   const theme = useTheme()
   const roles = theme.material
@@ -177,6 +186,8 @@ export function PickCard({
   const deal = pick.deal
   // The meta line already says "Demo shop"; the name keeps its room for the name itself.
   const name = pick.demo_shop ? pick.name.replace(/\s*\(Demo\)$/, '') : pick.name
+  // A Google place has no shop page of ours: its row is a button that opens its sheet.
+  const external = pick.source === 'google'
 
   useEffect(() => {
     prefetchPublicShop()
@@ -189,9 +200,12 @@ export function PickCard({
       sx={{ listStyle: 'none', minWidth: 0, ...dealIn, '--deal-index': index }}
     >
       <Box
-        component="a"
-        href={`/explore/s/${pick.id}`}
-        onClick={customerNavigate}
+        component={external ? 'button' : 'a'}
+        {...(external ? { type: 'button' } : { href: `/explore/s/${pick.id}` })}
+        onClick={(event: React.MouseEvent<HTMLElement>) => {
+          onOpen?.(event)
+          if (!external) customerNavigate(event)
+        }}
         onPointerEnter={() => {
           prefetchPublicShop()
           onFocusPin?.()
@@ -202,9 +216,17 @@ export function PickCard({
         }}
         onTouchStart={prefetchPublicShop}
         data-selected={selected}
-        sx={rowSx(roles, selected)}
+        sx={{
+          ...rowSx(roles, selected),
+          ...(external && {
+            width: '100%',
+            font: 'inherit',
+            textAlign: 'start',
+            cursor: 'pointer',
+          }),
+        }}
       >
-        <Thumb pick={pick} number={index + 1} transition />
+        <Thumb pick={pick} number={numbered ? index + 1 : undefined} transition />
         <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
           {(personal || reason) && (
             <Typography
@@ -285,6 +307,11 @@ export function PickCard({
                 .join(' · ')}
             </Box>
           </Typography>
+          {details && (
+            <Typography variant="bodySmall" color="text.secondary" sx={oneLine}>
+              {details}
+            </Typography>
+          )}
         </Box>
       </Box>
     </Box>
