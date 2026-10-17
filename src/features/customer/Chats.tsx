@@ -385,7 +385,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
     return () => clearInterval(timer)
   }, [live, signedIn, api, path, apply])
 
-  const messages = summary?.thread.messages ?? []
+  const messages = Array.isArray(summary?.thread?.messages) ? summary.thread.messages : []
   const lastId = messages.at(-1)?.id
   useEffect(() => {
     if (!lastId || document.visibilityState !== 'visible') return
@@ -430,7 +430,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
   }
 
   const shop = summary?.shop
-  const human = messages.filter((m) => m.kind !== 'ai')
+  const human = messages.filter((m) => m && typeof m === 'object' && m.kind !== 'ai')
   const waiting = !summary?.thread.done && human.length > 0 && human.at(-1)!.author === 'customer'
   const closed = !!summary?.thread.done || !!summary?.thread.blocked
 
