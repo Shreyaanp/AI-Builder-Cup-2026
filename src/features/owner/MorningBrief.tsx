@@ -14,6 +14,7 @@ import type { ShopSheetKind } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
 import { fill, useOwnerCopy } from './copy'
 import { shopNow } from './time'
+import { shopZone } from '../../region/region'
 
 type Brief = components['schemas']['Brief']
 type Action = Brief['best_action']
@@ -56,7 +57,7 @@ export function MorningBrief({
   const lilac = theme.chalk.lilac
   const ws = useWorkspace()
   const shop = ws.active!
-  const today = shopNow(shop.fields.timezone ?? 'Asia/Singapore').date
+  const today = shopNow(shopZone(shop.fields)).date
   const [brief, setBrief] = useState<Brief | null>(null)
   const [hidden, setHidden] = useState(() => hiddenToday(shop.id, today))
   const [index, setIndex] = useState(0)
@@ -154,7 +155,13 @@ export function MorningBrief({
                 </Stack>
                 {/* Open-Meteo is CC BY 4.0: the attribution always shows with the data. */}
                 <Typography variant="bodySmall" color="text.secondary">
-                  <Link href={brief.weather.url} target="_blank" rel="noopener" color="inherit">
+                  <Link
+                    href={brief.weather.url}
+                    target="_blank"
+                    rel="noopener"
+                    color="inherit"
+                    sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 48 }}
+                  >
                     {fill(brief.weather.demo ? t.weatherDemoCredit : t.weatherCredit, {
                       source: 'Open-Meteo (CC BY 4.0)',
                     })}
@@ -306,8 +313,8 @@ export function MorningBrief({
             aria-current={i === index ? 'true' : undefined}
             onClick={() => goTo(i)}
             sx={{
-              width: 32,
-              height: 32,
+              width: 48,
+              height: 48,
               p: 0,
               border: 0,
               bgcolor: 'transparent',

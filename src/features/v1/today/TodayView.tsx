@@ -32,7 +32,7 @@ import { useIdentity } from '../../../auth/useIdentity'
 import { HAND_FONT, enterRise, motion, shape } from '../../../design/theme'
 import { useLocale } from '../../../state/hooks'
 import { closeDayCopy } from '../../closeday/strings'
-import { toMajor } from '../format'
+import { shopCurrency, toMajor } from '../format'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
 import { useOnboardingCopy } from '../onboardingCopy'
@@ -519,6 +519,7 @@ function NeedRow({
       component="li"
       data-need={need.kind}
       aria-hidden={leaving || undefined}
+      inert={leaving || undefined}
       sx={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -564,7 +565,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   const locale = useLocale()
   const roles = useTheme().material
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
-  const currency = ws.active?.fields.currency ?? 'SGD'
+  const currency = shopCurrency(ws.active)
   const lines: string[] = []
   if (plan.pulse) {
     const values = plan.pulse.values.map(({ metric, value }) => {
@@ -658,7 +659,7 @@ export function NeedsPill({ actions }: { actions: TodayActions }) {
         sx={{
           gap: 2,
           px: 3,
-          minHeight: 40,
+          minHeight: 48,
           borderRadius: `${shape.full}px`,
           bgcolor: roles.secondaryContainer,
           color: roles.onSecondaryContainer,

@@ -15,17 +15,10 @@ import { mapCopy } from './mapCopy'
 import { mapsLink } from './types'
 import { fillIn, type ConversationCopy } from './conversationCopy'
 import { becauseLine, ratingLine, searchCopy } from './searchCopy'
+import { formatDistance } from './formatDistance'
 
 const prefetchPublicShop = () => {
   void import('../public/PublicShop')
-}
-
-function formatDistance(metres: number, locale: string) {
-  return new Intl.NumberFormat(locale, {
-    style: 'unit',
-    unit: metres < 1000 ? 'meter' : 'kilometer',
-    maximumFractionDigits: metres < 1000 ? 0 : 1,
-  }).format(metres < 1000 ? Math.round(metres / 10) * 10 : metres / 1000)
 }
 
 function time(epoch: number, locale: string) {
@@ -34,14 +27,20 @@ function time(epoch: number, locale: string) {
   )
 }
 
-/** The answer's places as one vertical list: compact rows, five or so to a phone screen. */
+/**
+ * The answer's places as one vertical list: compact rows, five or so to a phone screen. As a
+ * `carousel` (the front door's shops nearby) it is one swipeable row of big photo cards that
+ * runs to the screen edges and snaps card by card.
+ */
 export function PickList({
   label,
   busy = false,
+  carousel = false,
   children,
 }: {
   label: string
   busy?: boolean
+  carousel?: boolean
   children: ReactNode
 }) {
   return (
@@ -55,8 +54,19 @@ export function PickList({
         p: 0,
         mt: 3,
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: carousel ? 'row' : 'column',
         gap: 2,
+        ...(carousel && {
+          mx: -4,
+          px: 4,
+          pb: 1,
+          overflowX: 'auto',
+          scrollSnapType: 'x mandatory',
+          scrollPaddingInline: '16px',
+          overscrollBehaviorX: 'contain',
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+        }),
       }}
     >
       {children}
@@ -69,20 +79,24 @@ function Thumb({
   pick,
   number,
   transition = false,
+  big = false,
 }: {
   pick: AskPick
   number?: number
   transition?: boolean
+  /** The card's full-width photo instead of the row's square. */
+  big?: boolean
 }) {
   const roles = useTheme().material
   return (
     <Box
       sx={{
         position: 'relative',
-        width: 64,
-        height: 64,
+        width: big ? '100%' : 64,
+        height: big ? 'auto' : 64,
+        aspectRatio: big ? '4/3' : undefined,
         flexShrink: 0,
-        borderRadius: '12px',
+        borderRadius: big ? 0 : '12px',
         overflow: 'hidden',
       }}
     >
@@ -155,6 +169,10 @@ export function PickCard({
   locale,
   selected = false,
   onFocusPin,
+  onOpen,
+  details,
+  numbered = true,
+  tile = false,
 }: {
   pick: AskPick
   index: number
@@ -165,6 +183,14 @@ export function PickCard({
   selected?: boolean
   /** Hover or focus the row: the map glides to its pin. */
   onFocusPin?: () => void
+  /** Run on tap, before the shop page opens (a Google place opens its own sheet instead). */
+  onOpen?: (event: React.MouseEvent<HTMLElement>) => void
+  /** A second quiet line under open · distance: category, stamps, rating. */
+  details?: string
+  /** The map-pin number on the thumbnail; the full list has no map pins. */
+  numbered?: boolean
+  /** A big photo card for a carousel (PickList `carousel`), not a row. */
+  tile?: boolean
 }) {
   const theme = useTheme()
   const roles = theme.material
@@ -177,6 +203,8 @@ export function PickCard({
   const deal = pick.deal
   // The meta line already says "Demo shop"; the name keeps its room for the name itself.
   const name = pick.demo_shop ? pick.name.replace(/\s*\(Demo\)$/, '') : pick.name
+  // A Google place has no shop page of ours: its row is a button that opens its sheet.
+  const external = pick.source === 'google'
 
   useEffect(() => {
     prefetchPublicShop()
@@ -186,12 +214,21 @@ export function PickCard({
     <Box
       component="li"
       id={`pick-${pick.id}`}
-      sx={{ listStyle: 'none', minWidth: 0, ...dealIn, '--deal-index': index }}
+      sx={{
+        listStyle: 'none',
+        minWidth: 0,
+        ...dealIn,
+        '--deal-index': index,
+        ...(tile && { flex: '0 0 min(72%, 264px)', scrollSnapAlign: 'start' }),
+      }}
     >
       <Box
-        component="a"
-        href={`/explore/s/${pick.id}`}
-        onClick={customerNavigate}
+        component={external ? 'button' : 'a'}
+        {...(external ? { type: 'button' } : { href: `/explore/s/${pick.id}` })}
+        onClick={(event: React.MouseEvent<HTMLElement>) => {
+          onOpen?.(event)
+          if (!external) customerNavigate(event)
+        }}
         onPointerEnter={() => {
           prefetchPublicShop()
           onFocusPin?.()
@@ -202,10 +239,36 @@ export function PickCard({
         }}
         onTouchStart={prefetchPublicShop}
         data-selected={selected}
-        sx={rowSx(roles, selected)}
+        sx={{
+          ...rowSx(roles, selected),
+          ...(tile && {
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: 0,
+            p: 0,
+            height: '100%',
+            overflow: 'hidden',
+            borderRadius: '20px',
+          }),
+          ...(external && {
+            width: '100%',
+            font: 'inherit',
+            textAlign: 'start',
+            cursor: 'pointer',
+          }),
+        }}
       >
-        <Thumb pick={pick} number={index + 1} transition />
-        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Thumb pick={pick} number={numbered ? index + 1 : undefined} transition big={tile} />
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+            p: tile ? 3 : 0,
+          }}
+        >
           {(personal || reason) && (
             <Typography
               variant="labelMedium"
@@ -279,12 +342,25 @@ export function PickCard({
               {[
                 pick.open_now === null ? null : pick.open_now ? ask.openNow : ask.closed,
                 anchor ? fillIn(copy.fromStation, { distance, station: anchor.name }) : distance,
-                pick.demo_shop ? ask.demo : null,
               ]
                 .filter(Boolean)
                 .join(' · ')}
             </Box>
+            {/* Its own element, so the label reads as one on its own (and is found as one). */}
+            {pick.demo_shop && (
+              <Box
+                component="span"
+                sx={{ ...oneLine, flexShrink: 0, '&::before': { content: '"· "' } }}
+              >
+                {ask.demo}
+              </Box>
+            )}
           </Typography>
+          {details && (
+            <Typography variant="bodySmall" color="text.secondary" sx={oneLine}>
+              {details}
+            </Typography>
+          )}
         </Box>
       </Box>
     </Box>
@@ -292,7 +368,7 @@ export function PickCard({
 }
 
 /** A same-size placeholder row while the area's shops load, so nothing below moves. */
-export function PickSkeleton() {
+export function PickSkeleton({ tile = false }: { tile?: boolean }) {
   const roles = useTheme().material
   return (
     <Box
@@ -301,8 +377,10 @@ export function PickSkeleton() {
       className="c-shimmer"
       sx={{
         listStyle: 'none',
-        height: 88,
-        borderRadius: '16px',
+        // A carousel card: the photo's 4:3 plus its three text lines.
+        ...(tile && { flex: '0 0 min(72%, 264px)', aspectRatio: '4/4.4' }),
+        height: tile ? 'auto' : 88,
+        borderRadius: tile ? '20px' : '16px',
         bgcolor: roles.surfaceContainerLow,
         border: `1px solid ${roles.outlineVariant}`,
       }}

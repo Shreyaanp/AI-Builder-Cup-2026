@@ -84,7 +84,8 @@ async def test_tool_requires_shop_upi_and_inr(store):
     assert (await prepare_payment_link("240"))["status"] == "needs_business"
     for fields, status in [
         ({"currency": "INR"}, "add_upi_id"),
-        ({"currency": "SGD", "upi_id": "shop@bank"}, "inr_only"),
+        ({"currency": "SGD", "upi_id": "shop@bank"}, "add_paynow_id"),
+        ({"currency": "USD", "timezone": "America/New_York"}, "no_payment_link"),
     ]:
         proposal = store.propose(
             "alice", ProposalRequest(kind="business", business=BusinessFields(name="Tea", **fields))

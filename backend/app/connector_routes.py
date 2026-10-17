@@ -19,6 +19,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from .connector import (
+    TARGET_FIELDS,
     ConnectorMapping,
     ConnectorResult,
     ai_map_fields,
@@ -38,11 +39,33 @@ from .imports import (
 from .limits import enforce_limits
 from .merchant import ProductFields, ProposalRequest
 from .merchant_routes import consented_owner, owner, store
-from .money import DEFAULT_CURRENCY, to_minor
+from .money import to_minor
 from .product_categories import suggest_category
+from .region import shop_currency
 from .sales import daily_sales
 
 router = APIRouter(prefix="/api/v1/businesses/{business_id}/connect")
+
+
+def validate_mapping(mapping: ConnectorMapping, headers: list[str] | None = None) -> None:
+    """Reject incomplete or ambiguous owner-confirmed mappings before an import is prepared."""
+    targets = [field.target_field for field in mapping.fields]
+    sources = [field.source_field for field in mapping.fields]
+    if any(not source.strip() or len(source) > 180 for source in sources):
+        raise HTTPException(422, "INVALID_MAPPING")
+    if any(target not in (*TARGET_FIELDS, "none") for target in targets):
+        raise HTTPException(422, "INVALID_MAPPING")
+    active_targets = [target for target in targets if target != "none"]
+    if len(set(active_targets)) != len(active_targets) or len(set(sources)) != len(sources):
+        raise HTTPException(422, "INVALID_MAPPING")
+    roles = set(active_targets)
+    required = {"name", "price"} if mapping.kind == "menu" else {"name", "date"}
+    if mapping.kind == "sales" and not ("total" in roles or "price" in roles):
+        raise HTTPException(422, "INVALID_MAPPING")
+    if not required.issubset(roles):
+        raise HTTPException(422, "INVALID_MAPPING")
+    if headers is not None and any(source not in headers for source in sources):
+        raise HTTPException(422, "INVALID_MAPPING")
 
 
 class SampleAnalyzeRequest(BaseModel):
@@ -73,6 +96,7 @@ async def save_mapping(
     """Save or update a confirmed column mapping for this business and source system."""
     uid = await consented_owner(request)
     await enforce_limits(request, [("import", uid)])
+    validate_mapping(body)
     service = store(request)
     confirmed_data = body.model_dump()
     confirmed_data["confirmed"] = True
@@ -153,6 +177,7 @@ async def analyze_export(
     if saved_record and saved_record.get("fields"):
         try:
             mapping = ConnectorMapping(**saved_record["fields"])
+            validate_mapping(mapping, headers)
             reused = True
             last_synced = saved_record.get("last_synced")
         except Exception:
@@ -164,12 +189,14 @@ async def analyze_export(
             request.app.state.column_mapper, headers, rows[:15], resolved_source
         )
 
+    validate_mapping(mapping, headers)
+
     previews = preview_mapped(mapping, headers, rows)
 
     # Compute diff for menu exports
     diff = None
     if mapping.kind == "menu":
-        currency = business["fields"].get("currency") or DEFAULT_CURRENCY
+        currency = shop_currency(business["fields"])
         _, _, col_map = apply_mapping(mapping, headers, rows)
         mapped_items, _ = menu_items(rows, col_map)
         diff = compute_diff(context["inventory"], mapped_items, currency=currency)
@@ -251,17 +278,21 @@ async def sync_export(
     if not rows:
         raise HTTPException(422, "EMPTY_FILE")
 
+    validate_mapping(mapping, headers)
+
     _, _, col_map = apply_mapping(mapping, headers, rows)
     now = time.time()
-    await anyio.to_thread.run_sync(service.record_connector_sync, uid, business_id, resolved_source)
 
-    currency = business["fields"].get("currency") or DEFAULT_CURRENCY
+    currency = shop_currency(business["fields"])
 
     # Sales export path
     if mapping.kind == "sales":
         aggregates = daily_sales(rows, col_map, currency)
         proposal = await anyio.to_thread.run_sync(
             service.prepare_sales, uid, business_id, aggregates
+        )
+        await anyio.to_thread.run_sync(
+            service.record_connector_sync, uid, business_id, resolved_source
         )
         return {
             "kind": "sales",
@@ -336,6 +367,7 @@ async def sync_export(
             products=products,
         ),
     )
+    await anyio.to_thread.run_sync(service.record_connector_sync, uid, business_id, resolved_source)
 
     diff = compute_diff(context["inventory"], items, currency=currency)
 

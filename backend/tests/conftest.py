@@ -15,3 +15,6 @@ def offline_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
         "MAPS_BROWSER_KEY",
     ):
         monkeypatch.delenv(name, raising=False)
+    # Test clients send no phone signals; they stand in for the Singapore demo phone, like the
+    # browser suite's en-SG / Asia/Singapore.
+    monkeypatch.setattr("app.region.NO_SIGNAL_COUNTRY", "SG")

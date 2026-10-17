@@ -8,7 +8,7 @@ from google.adk.sessions import InMemorySessionService
 from PIL import Image
 
 from app.main import create_app
-from app.photos import FIXTURE_BLOCK_WIDTH, PhotoPipeline, PhotoRejected, sanitize
+from app.photos import FIXTURE_BLOCK_WIDTH, PhotoPipeline, PhotoRejected, header_gps, sanitize
 from app.settings import Settings
 
 
@@ -151,3 +151,62 @@ def test_big_modern_phone_photo_is_accepted_and_shrunk() -> None:
     assert len(data) > 5_000_000  # the old limit rejected photos like this
     cleaned = Image.open(io.BytesIO(sanitize(data)))
     assert max(cleaned.size) <= 1600
+
+
+def test_header_gps_accepts_only_a_real_location() -> None:
+    assert header_gps("12.9716,77.5946") == (12.9716, 77.5946)
+    for bad in (None, "", "12.9", "a,b", "91,10", "10,181", "0,0", "nan,nan", "1,2,3"):
+        assert header_gps(bad) is None
+
+
+@pytest.mark.anyio
+async def test_moderation_and_extraction_run_together_and_a_block_wins() -> None:
+    import asyncio
+    import time
+
+    pipeline = PhotoPipeline(Settings(_env_file=None, media_dir="unused"))
+    delay = 0.3
+
+    def slow_moderation(image: bytes) -> dict[str, int]:
+        time.sleep(delay)
+        return {"adult": 1, "racy": 1, "violence": 1}
+
+    original = pipeline.extract
+
+    async def slow_extract(image: bytes, language: str = "en"):  # noqa: ANN202
+        await asyncio.sleep(delay)
+        return await original(image, language)
+
+    pipeline.moderate_sync = slow_moderation  # type: ignore[method-assign]
+    pipeline.extract = slow_extract  # type: ignore[method-assign]
+    pipeline.store_sync = lambda *args: "p1"  # type: ignore[method-assign]
+    started = time.perf_counter()
+    outcome = await pipeline.process("u", None, jpeg())
+    assert outcome["photo_id"] == "p1"
+    assert time.perf_counter() - started < delay * 1.8  # sequential would be 2x
+
+    pipeline.moderate_sync = lambda image: {"adult": 5, "racy": 1, "violence": 1}  # type: ignore[method-assign]
+    with pytest.raises(PhotoRejected) as blocked:
+        await pipeline.process("u", None, jpeg())
+    assert blocked.value.code == "PHOTO_BLOCKED"
+
+
+def test_classify_names_the_kind_and_saves_nothing(app) -> None:
+    with TestClient(app) as client:
+        join(client)
+        kinds = {21: "shop_photo", 22: "product", 23: "receipt", 24: "till", 25: "other"}
+        kinds[64] = "menu"
+        for width, kind in kinds.items():
+            sent = client.post(
+                "/api/v1/photos/classify",
+                content=jpeg(width),
+                headers={"content-type": "image/jpeg"},
+            )
+            assert sent.json() == {"kind": kind}
+        blocked = client.post(
+            "/api/v1/photos/classify",
+            content=jpeg(FIXTURE_BLOCK_WIDTH),
+            headers={"content-type": "image/jpeg"},
+        )
+        assert blocked.status_code == 422
+        assert client.get("/api/v1/businesses").json() == []

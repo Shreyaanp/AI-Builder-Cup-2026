@@ -173,6 +173,29 @@ test('B10: empty recap is compact, has no empty headings and uses a date range',
   await proof(page, 'B10')
 })
 
+test('#149: radar with omitted opportunities shows an empty sheet', async ({ page }) => {
+  await enter(page)
+  await page.route('**/api/v1/businesses/*/radar', (route) =>
+    route.fulfill({
+      json: { area_label: null, approximate: true, radius: 2000, days: 14, demo: false },
+    }),
+  )
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  const tile = page.getByRole('button', { name: /^Asked nearby/ })
+  await expect(tile).toBeVisible()
+  await tile.click()
+  await expect(page.getByRole('dialog', { name: 'Asked nearby' })).toBeVisible()
+})
+
+test('#150: recap with omitted recap_week stays hidden', async ({ page }) => {
+  await enter(page)
+  await page.route('**/api/v1/businesses/*/freshness', (route) =>
+    route.fulfill({ json: { today: '2026-10-14', last_confirmed: null, monday: false } }),
+  )
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  await expect(page.getByRole('button', { name: /^Weekly recap/ })).toHaveCount(0)
+})
+
 for (const mode of ['offline', 'gemini']) {
   test(`B10: ${mode} recap has exactly one truthful source label`, async ({ page }) => {
     await enter(page)
@@ -399,7 +422,7 @@ test('B12: compact categories, uncategorised last and sold-out last', async ({ p
   // B28: each category is a grid of item cards; sold-out items are marked and sort last.
   await expect(
     dialog.getByRole('region', { name: 'Drinks', exact: true }).getByRole('listitem'),
-  ).toHaveText(['Kopicup$1.80', 'TehcupSold out$1.60'])
+  ).toHaveText(['KopicupS$1.80', 'TehcupSold outS$1.60'])
   expect(
     await dialog
       .getByRole('region')
@@ -428,7 +451,7 @@ test('B12: compact categories, uncategorised last and sold-out last', async ({ p
   ).toEqual(['Drinks', 'Food', 'Uncategorised'])
   const drinks = page.getByRole('region', { name: 'Drinks', exact: true })
   expect(await drinks.getByRole('listitem').allTextContents()).toEqual([
-    'Kopi/ cup$1.80',
+    'Kopi/ cupS$1.80',
     expect.stringContaining('Teh'),
   ])
   expect(
