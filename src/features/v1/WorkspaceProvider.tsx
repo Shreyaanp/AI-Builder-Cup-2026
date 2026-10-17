@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, IconButton, Snackbar, useTheme } from '@mui/material'
 import { X } from 'lucide-react'
@@ -9,9 +9,10 @@ import { WorkspaceContext } from './workspaceContext'
 import type { Destination, Editor, NewShopPhase, Workspace } from './workspaceContext'
 import { ReviewDialog } from './ReviewDialog'
 import { BusinessDialog, ProductDialog } from './EditDialogs'
-import { FaceDialog } from './FaceDialog'
 import { customerShopLink, safeCustomerOrigin } from '../../app/router'
 import { overlayHandled } from './backStack'
+
+const FaceDialog = lazy(() => import('./FaceDialog').then((m) => ({ default: m.FaceDialog })))
 
 function readSpeak() {
   try {
@@ -93,6 +94,9 @@ export function WorkspaceProvider({
   const consumeCoachDraft = useCallback(() => setCoachDraft(null), [])
   const [coachActions, setCoachActions] = useState(false)
   const [faceOpen, setFaceOpen] = useState(false)
+  // The camera and face-check code loads the first time the dialog opens.
+  const [faceLoaded, setFaceLoaded] = useState(false)
+  if (faceOpen && !faceLoaded) setFaceLoaded(true)
   const [editor, setEditor] = useState<Editor>({ kind: 'none' })
   const [speakReplies, setSpeak] = useState(readSpeak)
   const [customerOrigin, setCustomerOrigin] = useState<string | null>(null)
@@ -391,14 +395,16 @@ export function WorkspaceProvider({
       />
       <BusinessDialog />
       <ProductDialog />
-      {value.active && (
-        <FaceDialog
-          key={faceOpen ? 'open-' + value.active.id : 'closed'}
-          open={faceOpen}
-          businessId={value.active.id}
-          api={api}
-          onClose={() => setFaceOpen(false)}
-        />
+      {value.active && faceLoaded && (
+        <Suspense fallback={null}>
+          <FaceDialog
+            key={faceOpen ? 'open-' + value.active.id : 'closed'}
+            open={faceOpen}
+            businessId={value.active.id}
+            api={api}
+            onClose={() => setFaceOpen(false)}
+          />
+        </Suspense>
       )}
       <Snackbar
         open={Boolean(toast)}
