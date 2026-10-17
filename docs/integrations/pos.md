@@ -16,21 +16,21 @@ The reply says which one answered: `simulated`, `via` (`google-connectors`, `dir
 
 ## Settings
 
-| Env var | Default | Meaning |
-| --- | --- | --- |
-| `POS_LIVE` | `offline` | `live` to call vendors; `offline` answers from samples |
-| `SQUARE_SANDBOX_TOKEN` | empty | Square sandbox access token (Secret Manager) |
-| `SQUARE_SANDBOX_LOCATION_ID` | empty | Limit sales to one sandbox location (optional) |
-| `LOYVERSE_TOKEN` | empty | Loyverse API access token (Secret Manager) |
-| `POS_SOURCE` | `direct` | `google-connectors` routes Square through Integration Connectors |
-| `CONNECTORS_LOCATION` | `asia-south1` | Region of the connections |
-| `SQUARE_CONNECTION` | `square-sandbox` | Connection id |
+| Env var                      | Default          | Meaning                                                          |
+| ---------------------------- | ---------------- | ---------------------------------------------------------------- |
+| `POS_LIVE`                   | `offline`        | `live` to call vendors; `offline` answers from samples           |
+| `SQUARE_SANDBOX_TOKEN`       | empty            | Square sandbox access token (Secret Manager)                     |
+| `SQUARE_SANDBOX_LOCATION_ID` | empty            | Limit sales to one sandbox location (optional)                   |
+| `LOYVERSE_TOKEN`             | empty            | Loyverse API access token (Secret Manager)                       |
+| `POS_SOURCE`                 | `direct`         | `google-connectors` routes Square through Integration Connectors |
+| `CONNECTORS_LOCATION`        | `asia-south1`    | Region of the connections                                        |
+| `SQUARE_CONNECTION`          | `square-sandbox` | Connection id                                                    |
 
 Tokens come only from the environment (Secret Manager on Cloud Run); they are never committed or logged, and `GET .../connect/live` reports only `live` or `simulated`.
 
 ## Owner's steps for tokens
 
-**Square sandbox:** developer.squareup.com > Applications > create an application > Credentials > Sandbox > copy the *Sandbox access token*. Create test items and sales in Sandbox test accounts > Square Dashboard.
+**Square sandbox:** developer.squareup.com > Applications > create an application > Credentials > Sandbox > copy the _Sandbox access token_. Create test items and sales in Sandbox test accounts > Square Dashboard.
 
 **Loyverse:** Back Office (loyverse.com) > Settings > Access tokens > Add access token > copy it. It grants read access to items, inventory and receipts.
 

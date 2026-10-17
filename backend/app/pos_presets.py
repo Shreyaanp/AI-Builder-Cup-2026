@@ -173,7 +173,7 @@ def preset_mapping(preset: Preset, headers: list[str], rows: list[list[str]]) ->
 def parse_day(text: str, day_first: bool) -> str | None:
     """An ISO date for a POS timestamp, or None when it is in no format we know."""
     cleaned = text.strip()
-    formats = DATE_FORMATS
+    formats: tuple[str, ...] = DATE_FORMATS
     if not day_first:
         formats = tuple(f for f in DATE_FORMATS if not f.startswith(("%d-", "%d/"))) + tuple(
             f for f in DATE_FORMATS if f.startswith(("%d-", "%d/"))

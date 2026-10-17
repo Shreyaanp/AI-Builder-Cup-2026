@@ -378,13 +378,14 @@ LABELS: dict[Provider, str] = {"square": "Square", "loyverse": "Loyverse"}
 
 def status(settings: Settings) -> list[dict[str, Any]]:
     """Which providers pull live and which answer from samples. Never reveals a token."""
+    providers: tuple[Provider, ...] = ("square", "loyverse")
     return [
         {
             "provider": provider,
             "label": LABELS[provider],
             "mode": "live" if _live_client(provider, settings) else "simulated",
         }
-        for provider in ("square", "loyverse")
+        for provider in providers
     ]
 
 
