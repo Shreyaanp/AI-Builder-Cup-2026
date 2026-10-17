@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
-from app.agent import instruction, new_shop_call
+from app.agent import NEW_SHOP_TOPICS, instruction, new_shop_call
 from app.coordinator import (
     MerchantContext,
     ProductInput,
@@ -257,6 +257,11 @@ def test_invalid_device_location_is_rejected(tmp_path: Path, point: dict):
         )
 
 
+def asked_topic(reply: str) -> str | None:
+    """Which of the five topics the fixture coach asked in this reply (None: none of them)."""
+    return next((key for key, question, _ in NEW_SHOP_TOPICS if question in reply), None)
+
+
 def test_new_shop_coach_speaks_first_and_moves_on_when_the_owner_does_not_answer(tmp_path: Path):
     app = create_app(settings(tmp_path), InMemorySessionService())
 
@@ -276,31 +281,38 @@ def test_new_shop_coach_speaks_first_and_moves_on_when_the_owner_does_not_answer
         reply = next(event["text"] for event in reversed(events) if event["kind"] == "reply")
         return reply, events
 
+    answers = {
+        "name": "name: Chai Corner",
+        "sell": "category: Tea stall",
+        "location": "I'm not sure. Suggest something or skip it.",
+        "hours": "hours: 7am-9pm",
+    }
     with TestClient(app) as client:
         join(client)
-        empty = {"business": None, "products": []}
-        greeting, events = turn(client, "Hello! I want to open a new shop.", None, empty)
+        draft: dict = {"business": None, "products": []}
+        greeting, events = turn(client, "Hello! I want to open a new shop.", None, draft)
         sid = events[0]["session_id"]
-        assert "What is your business called?" in greeting and "Hi" in greeting
-        # The name can wait when skipped; never invent one to move the conversation along.
-        idea, _ = turn(client, "I'm not sure. Suggest something or skip it.", sid, empty)
-        assert "leave the name out" in idea and "What kind of business" in idea
-        _, events = turn(client, "name: Chai Corner", sid, empty)
-        business = next(e for e in events if e["kind"] == "proposal")["data"]["snapshot"][
-            "business"
-        ]
-        empty = {"business": business, "products": []}
-        _, events = turn(client, "category: Tea stall", sid, empty)
-        proposal = next(event for event in events if event["kind"] == "proposal")
-        business = proposal["data"]["snapshot"]["business"]
-        draft = {"business": business, "products": []}
-        # Silence on location: the coach leaves it out, says so and asks the next question.
-        moved, _ = turn(client, "I'm not sure. Suggest something or skip it.", sid, draft)
-        assert "leave the location out" in moved and "opening hours" in moved
-        # Skipped questions stay skipped on later turns.
-        _, events = turn(client, "hours: 7am-9pm", sid, draft)
-        later = next(event["text"] for event in reversed(events) if event["kind"] == "reply")
-        assert "How can customers pay?" in later
+        assert "Hi" in greeting
+        # No fixed script: the coach asks what is missing in its own order; each topic once.
+        asked = [asked_topic(greeting)]
+        reply = greeting
+        while asked[-1] in answers:
+            reply, events = turn(client, answers[asked[-1]], sid, draft)
+            draft = next(
+                (
+                    {"business": e["data"]["snapshot"]["business"], "products": []}
+                    for e in events
+                    if e["kind"] == "proposal"
+                ),
+                draft,
+            )
+            assert "pay" not in reply and "menu" not in reply
+            asked.append(asked_topic(reply))
+            assert asked[-1] not in asked[:-1], f"asked twice: {reply}"
+        # Silence on location: the coach leaves it out, says so and moves on.
+        assert "location" in asked and asked[-1] == "photo"
+        assert "photo of your shop" in reply
+        # Without a place the shop is not live yet.
         assert client.get("/api/v1/businesses").json() == []
 
 
@@ -334,7 +346,7 @@ def test_new_shop_voice_session_end_resumes_the_same_conversation(
     """A Live socket always ends (time cap); the app reconnects to the same session id and the
     conversation, its turns and the draft carry on. The open conversation also allows far more
     turns than a press-to-talk coach session."""
-    monkeypatch.setattr("app.voice.VOICE_SESSION_CAP_SECONDS", 1)
+    monkeypatch.setattr("app.voice.NEW_SHOP_SESSION_CAP_SECONDS", 1)
     app = create_app(settings(tmp_path), InMemorySessionService())
     origin = {"origin": "http://127.0.0.1:3200"}
     with TestClient(app) as client:
@@ -345,18 +357,21 @@ def test_new_shop_voice_session_end_resumes_the_same_conversation(
             socket.send_json({"kind": "text", "text": "Hello! I want to open a new shop."})
             while socket.receive_json()["kind"] != "turn_complete":
                 pass
-            # The cap ends the socket with a reason the app treats as "reconnect".
+            # The 15-minute cap ends the socket politely: the app offers typing and a tap
+            # to talk again in the same conversation.
             while (event := socket.receive_json())["kind"] != "error":
                 pass
-            assert event["code"] == "SESSION_TIMEOUT"
+            assert event["code"] == "SESSION_CAP"
         assert not app.state.services.registry.active
-        monkeypatch.setattr("app.voice.VOICE_SESSION_CAP_SECONDS", 60)
+        monkeypatch.setattr("app.voice.NEW_SHOP_SESSION_CAP_SECONDS", 60)
         with client.websocket_connect(
             f"/api/v1/voice?new_shop=true&session_id={sid}", headers=origin
         ) as socket:
             socket.send_json({"kind": "new_shop", "draft": None})
             ready = socket.receive_json()
             assert ready["session_id"] == sid and "code" not in ready
+            # The conversation continues: the app resumes silently (no second greeting).
+            assert ready["data"] == {"continues": True}
             for _ in range(14):
                 socket.send_json({"kind": "text", "text": "I'm not sure. Skip it."})
                 while socket.receive_json()["kind"] != "turn_complete":

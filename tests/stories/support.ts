@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { FIRST_QUESTION } from '../newShopTopics.js'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import zlib from 'node:zlib'
@@ -97,8 +98,8 @@ export async function confirm(page: Page) {
 
 /**
  * Opens the full-screen new-shop flow from the header "+" (unless it is already open), lets the
- * coach greet, answers in the chat and opens the full-screen review. The offline coach reads
- * "name: …; location: …" notes into the draft.
+ * coach greet, answers in the chat (one message can fill several fields: the offline coach reads
+ * "name: …; category: …; location: …") and opens "Review my shop" (a sheet over the chat).
  */
 export async function openNewShopReview(
   page: Page,
@@ -108,15 +109,19 @@ export async function openNewShopReview(
   if (!(await begin.isVisible()))
     await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
   await begin.click()
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   await page.getByLabel('Message', { exact: true }).fill(details)
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(page.getByTestId('agent-action').last()).toBeVisible()
-  await page.getByRole('button', { name: 'Review my shop' }).click()
-  await expect(page.getByTestId('new-shop-review')).toBeVisible()
+  const name = /name:s*([^;]+)/.exec(details)?.[1]?.trim()
+  if (name) await expect(page.getByTestId('shop-so-far')).toContainText(name)
+  await page.getByTestId('review-my-shop').click()
+  await expect(page.getByTestId('draft-summary')).toBeVisible()
 }
 
-/** A whole new shop through the flow: chat, review, "Open my shop", back to the workspace. */
+/**
+ * A whole new shop through the flow: one chat message with name, kind and place (the shop goes
+ * live by itself), then the owner leaves the flow and lands on the ready moment.
+ */
 export async function createShop(page: Page, details?: string) {
   await openNewShopReview(page, details)
   await createShopFromReview(page)
@@ -130,9 +135,26 @@ export async function editShopDetails(page: Page) {
   await expect(page.getByLabel('Shop name')).toBeVisible()
 }
 
-/** From the flow's review page: "Open my shop", the ready moment, then the workspace. */
+/**
+ * From "Review my shop": back to the chat, make sure the shop is live (the offline coach needs
+ * a kind and a place), leave the flow, then the ready moment and the workspace.
+ */
 export async function createShopFromReview(page: Page) {
-  await page.getByRole('button', { name: 'Open my shop' }).click()
+  const summary = page.getByTestId('draft-summary')
+  if (!(await summary.isVisible())) await page.getByTestId('review-my-shop').click()
+  const empty = async (field: string) =>
+    (await summary.locator(`[data-field="${field}"]`).getAttribute('data-filled')) === 'false'
+  const missing = [
+    (await empty('category')) ? 'category: Tea stall' : '',
+    (await empty('location')) ? 'location: Indiranagar, Bengaluru' : '',
+  ].filter(Boolean)
+  await closeSheet(page)
+  if (missing.length) {
+    await page.getByLabel('Message', { exact: true }).fill(missing.join('; '))
+    await page.getByRole('button', { name: 'Send', exact: true }).click()
+  }
+  await expect(page.getByTestId('shop-live')).toBeVisible()
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeVisible()
   await page.getByRole('button', { name: 'Continue with my shop' }).click()
   await expect(page.getByTestId('new-shop-flow')).toHaveCount(0)

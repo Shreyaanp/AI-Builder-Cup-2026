@@ -76,6 +76,17 @@ class MerchantContext:
     cards: dict[str, tuple[str, dict[str, Any]]] = field(default_factory=dict)
     new_shop: bool = False
     new_shop_draft: NewShopDraft | None = None
+    # A new-shop conversation that came back after its socket ended: the coach's last question
+    # (see new_shop_resume.progress_note).
+    resumed: bool = False
+    last_question: str = ""
+    # The last new-shop proposal: a replayed or repeated answer returns it unchanged.
+    last_proposal: str | None = None
+    # The owner asked to end the conversation (end_conversation): the socket closes after the
+    # coach's goodbye.
+    ended: bool = False
+    # A Live voice conversation: tools never hold up the spoken reply (first audio).
+    spoken: bool = False
 
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)
@@ -132,6 +143,13 @@ async def get_question_plan() -> dict[str, Any]:
     if record_with is a fact name, pass that argument; if it is custom_facts, pass
     custom_facts=[{key, label, value}]. The owner may skip any."""
     ctx = current.get()
+    if ctx and ctx.new_shop:
+        # Onboarding asks only the core five (and at most two extras from the business's own
+        # profile, listed in update_shop's result); type-specific questions come later.
+        return {
+            "status": "not_in_onboarding",
+            "instruction": "Ask only what update_shop lists as still missing.",
+        }
     if not ctx or (
         not ctx.business_id and not (ctx.new_shop_draft and ctx.new_shop_draft.business)
     ):
@@ -483,6 +501,30 @@ def get_insights() -> dict[str, Any]:
     }
 
 
+def _same_new_shop_answer(
+    ctx: MerchantContext, business: BusinessFields | None, products: list[ProductFields] | None
+) -> dict[str, Any] | None:
+    """A new-shop answer already in the draft (said twice, or a tool call replayed after a
+    reconnect) changes nothing: the last proposal stands and no new one is sealed."""
+    draft = ctx.new_shop_draft
+    if not (ctx.new_shop and draft and ctx.last_proposal in ctx.proposals):
+        return None
+
+    def key(items: list[ProductFields]) -> list[str]:
+        return sorted(item.model_dump_json() for item in items)
+
+    if business != draft.business or (
+        products is not None and key(products) != key(draft.products)
+    ):
+        return None
+    return {
+        "status": "needs_review",
+        "proposal_id": ctx.last_proposal,
+        "changes": [],
+        "note": "Already recorded; nothing changed. Continue with the next missing detail.",
+    }
+
+
 def _start_new_shop_draft() -> None:
     """A new shop's items and answers can be recorded before the owner has said its name: start
     an unnamed draft (the name is required only when the owner opens the shop)."""
@@ -656,6 +698,8 @@ def _propose_shop(
                 if key not in allowed:
                     given.pop(key, None)
         fields = BusinessFields.model_validate(given)
+        if unchanged := _same_new_shop_answer(ctx, fields, None):
+            return unchanged
         proposal = ctx.store.propose(
             ctx.uid,
             ProposalRequest(
@@ -670,8 +714,15 @@ def _propose_shop(
         return _invalid(error, ctx)
     ctx.proposals[proposal["id"]] = proposal
     if ctx.new_shop:
-        ctx.new_shop_draft = NewShopDraft(
-            business=fields, products=proposal["snapshot"]["products"]
+        ctx.last_proposal = proposal["id"]
+        # Skipped steps, the photo and the live shop stay (only the shop's fields change).
+        ctx.new_shop_draft = (ctx.new_shop_draft or NewShopDraft()).model_copy(
+            update={
+                "business": fields,
+                "products": TypeAdapter(list[ProductFields]).validate_python(
+                    proposal["snapshot"]["products"]
+                ),
+            }
         )
     changes = (
         [
@@ -909,6 +960,8 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
             merged = {(p.name.casefold(), p.unit.casefold()): p for p in draft.products}
             merged.update({(p.name.casefold(), p.unit.casefold()): p for p in products})
             products = list(merged.values())
+            if unchanged := _same_new_shop_answer(ctx, draft.business, products):
+                return unchanged
         proposal = ctx.store.propose(
             ctx.uid,
             ProposalRequest(
@@ -923,7 +976,8 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
         return _invalid(error, ctx)
     ctx.proposals[proposal["id"]] = proposal
     if draft:
-        ctx.new_shop_draft = NewShopDraft(business=draft.business, products=products)
+        ctx.last_proposal = proposal["id"]
+        ctx.new_shop_draft = draft.model_copy(update={"products": products})
     changes, warnings = [], []
 
     def money(minor: int) -> float:
