@@ -21,6 +21,8 @@ import { shape } from '../../design/theme'
 import { formatLocale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
 import type { Proposal } from '../v1/api'
+import { SalesImportSheet } from '../v1/ImportMenu'
+import type { SalesImport } from '../v1/useImport'
 import { Sheet } from '../v1/Sheet'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useConnectCopy } from './strings'
@@ -54,7 +56,8 @@ const TARGET_ROLE_KEYS = [
   'none',
 ] as const
 
-const ACCEPT_FILES = '.csv,.xlsx,.json,.xml,text/csv,application/json,application/xml,text/xml'
+const ACCEPT_FILES =
+  '.csv,.xlsx,.json,.xml,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/json,application/xml,text/xml'
 
 export function ConnectSheet({
   open,
@@ -79,6 +82,7 @@ export function ConnectSheet({
   const [analyzing, setAnalyzing] = useState(false)
   const [error, setError] = useState('')
   const [savedMappings, setSavedMappings] = useState<SavedMappingSummary[]>([])
+  const [salesImport, setSalesImport] = useState<SalesImport | null>(null)
 
   // Analysis result state
   const [analysis, setAnalysis] = useState<ConnectorResult | null>(null)
@@ -175,6 +179,12 @@ export function ConnectSheet({
 
   function handleFieldChange(index: number, newTarget: string) {
     if (!currentMapping) return
+    if (
+      newTarget !== 'none' &&
+      currentMapping.fields.some(
+        (field, fieldIndex) => fieldIndex !== index && field.target_field === newTarget,
+      )
+    ) return
     const updatedFields = [...currentMapping.fields]
     const target = updatedFields[index]
     if (!target) return
@@ -217,6 +227,9 @@ export function ConnectSheet({
         import_id?: string
         digest?: string
         diff?: ConnectorDiff
+        summary?: SalesImport['summary']
+        currency?: string
+        sales?: SalesImport['sales']
       }
 
       if (tab === 'paste' && pastedText.trim()) {
@@ -256,6 +269,22 @@ export function ConnectSheet({
       handleClose()
       if (syncResult.kind === 'menu' && syncResult.proposal) {
         ws.review(syncResult.proposal)
+      } else if (
+        syncResult.kind === 'sales' &&
+        syncResult.import_id &&
+        syncResult.digest &&
+        syncResult.summary &&
+        syncResult.currency &&
+        syncResult.sales
+      ) {
+        setSalesImport({
+          kind: 'sales',
+          import_id: syncResult.import_id,
+          digest: syncResult.digest,
+          summary: syncResult.summary,
+          currency: syncResult.currency,
+          sales: syncResult.sales,
+        })
       } else {
         ws.notify(t.mappingSaved)
       }
@@ -267,6 +296,7 @@ export function ConnectSheet({
   }
 
   return (
+    <>
     <Sheet
       open={open}
       onClose={handleClose}
@@ -320,7 +350,7 @@ export function ConnectSheet({
                 {t.pickSystem}
               </Typography>
               <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
-                {KNOWN_SYSTEMS.map((sys) => {
+                {[...KNOWN_SYSTEMS, { key: 'export', label: 'Upload an export file' }].map((sys) => {
                   const isSelected = selectedSystem === sys.label
                   const hasSaved = savedMappings.some(
                     (m) => m.source_label.toLowerCase() === sys.label.toLowerCase(),
@@ -328,6 +358,7 @@ export function ConnectSheet({
                   return (
                     <ButtonBase
                       key={sys.key}
+                      aria-pressed={isSelected}
                       onClick={() => setSelectedSystem(sys.label)}
                       sx={{
                         px: 2,
@@ -342,7 +373,7 @@ export function ConnectSheet({
                         fontWeight: isSelected ? 600 : 400,
                         minHeight: 48,
                         minWidth: 48,
-                        transition: 'all 0.15s ease-in-out',
+                        transition: 'border-color 0.15s ease-in-out, background-color 0.15s ease-in-out',
                         '&:hover': {
                           borderColor: roles.primary,
                         },
@@ -436,6 +467,21 @@ export function ConnectSheet({
                   >
                     {analyzing ? t.analyzing : t.uploadFile}
                   </Button>
+                  {error && uploadedFile && (
+                    <Button
+                      variant="text"
+                      disabled={analyzing}
+                      onClick={() => void handleFileSelected(uploadedFile)}
+                      sx={{ minHeight: 48 }}
+                    >
+                      Try again
+                    </Button>
+                  )}
+                  {analyzing && (
+                    <Typography role="status" aria-live="polite" variant="bodySmall" color="text.secondary">
+                      {t.analyzing}
+                    </Typography>
+                  )}
                 </Stack>
               ) : (
                 <Stack spacing={2}>
@@ -458,6 +504,16 @@ export function ConnectSheet({
                   >
                     {analyzing ? t.analyzing : 'Analyze sample'}
                   </Button>
+                  {error && pastedText.trim() && (
+                    <Button
+                      variant="text"
+                      disabled={analyzing}
+                      onClick={() => void handleAnalyzePasted()}
+                      sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+                    >
+                      Try again
+                    </Button>
+                  )}
                 </Stack>
               )}
             </Box>
@@ -561,7 +617,13 @@ export function ConnectSheet({
                             Select Chalkboard role for &quot;{f.source_field}&quot;:
                           </Typography>
                           <Stack direction="row" sx={{ gap: 0.75, flexWrap: 'wrap' }}>
-                            {TARGET_ROLE_KEYS.map((rk) => (
+                            {TARGET_ROLE_KEYS.filter(
+                              (rk) =>
+                                rk === f.target_field ||
+                                !currentMapping.fields.some(
+                                  (field, fieldIndex) => fieldIndex !== idx && field.target_field === rk,
+                                ),
+                            ).map((rk) => (
                               <Chip
                                 key={rk}
                                 label={t.targetRoles[rk]}
@@ -570,7 +632,7 @@ export function ConnectSheet({
                                 color={rk === f.target_field ? 'primary' : 'default'}
                                 variant={rk === f.target_field ? 'filled' : 'outlined'}
                                 onClick={() => handleFieldChange(idx, rk)}
-                                sx={{ minHeight: 32 }}
+                                sx={{ minHeight: 48 }}
                               />
                             ))}
                           </Stack>
@@ -589,7 +651,7 @@ export function ConnectSheet({
                   {t.previewTitle} ({analysis.total_rows} total rows)
                 </Typography>
                 <Stack spacing={1}>
-                  {analysis.preview_rows.slice(0, 3).map((row, i) => (
+                  {analysis.preview_rows.slice(0, 3).map((_, i) => (
                     <Box
                       key={i}
                       sx={{
@@ -601,11 +663,16 @@ export function ConnectSheet({
                         gap: 1.5,
                       }}
                     >
-                      {Object.entries(row).map(([k, val]) => (
-                        <Typography key={k} variant="bodySmall">
-                          <strong>{k}:</strong> {val}
-                        </Typography>
-                      ))}
+                      {currentMapping.fields.flatMap((field) => {
+                        const value = field.sample_values[i] ?? field.sample_values[0]
+                        if (!value) return []
+                        const role = t.targetRoles[field.target_field as keyof typeof t.targetRoles]
+                        return [
+                          <Typography key={field.source_field} variant="bodySmall">
+                            <strong>{role}:</strong> {value}
+                          </Typography>,
+                        ]
+                      })}
                     </Box>
                   ))}
                 </Stack>
@@ -655,5 +722,7 @@ export function ConnectSheet({
         )}
       </Box>
     </Sheet>
+    <SalesImportSheet imported={salesImport} onClose={() => setSalesImport(null)} showResultOnSave />
+    </>
   )
 }

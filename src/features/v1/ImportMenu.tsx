@@ -182,14 +182,17 @@ export function ImportPanel({
 export function SalesImportSheet({
   imported,
   onClose,
+  showResultOnSave = false,
 }: {
   imported: SalesImport | null
   onClose: () => void
+  showResultOnSave?: boolean
 }) {
   const ws = useWorkspace()
   const t = useCopy()
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [saved, setSaved] = useState(false)
   const sales = imported?.summary
   const currency = imported?.currency ?? shopCurrency(ws.active)
   async function save() {
@@ -206,7 +209,8 @@ export function SalesImportSheet({
       )
       await ws.reload()
       ws.notify(t.salesSaved)
-      onClose()
+      if (showResultOnSave) setSaved(true)
+      else onClose()
     } catch {
       setFailed(true)
     } finally {
@@ -224,12 +228,20 @@ export function SalesImportSheet({
     >
       {sales && (
         <Box>
-          <Typography variant="bodyMedium" color="text.secondary">
-            {t.salesNotSaved}
-          </Typography>
-          <Typography variant="bodyMedium" sx={{ mt: 2 }}>
-            {t.salesReplace}
-          </Typography>
+          {saved ? (
+            <Alert severity="success" role="status">
+              {t.salesSaved}
+            </Alert>
+          ) : (
+            <>
+              <Typography variant="bodyMedium" color="text.secondary">
+                {t.salesNotSaved}
+              </Typography>
+              <Typography variant="bodyMedium" sx={{ mt: 2 }}>
+                {t.salesReplace}
+              </Typography>
+            </>
+          )}
           {failed && (
             <Alert severity="error" sx={{ mt: 2 }}>
               {t.importFailed}
@@ -273,15 +285,17 @@ export function SalesImportSheet({
               </ListItem>
             ))}
           </List>
-          <Button
-            variant="contained"
-            disabled={busy}
-            onClick={() => void save()}
-            sx={{ mt: 3, minHeight: 48 }}
-            startIcon={busy ? <CircularProgress size={18} /> : undefined}
-          >
-            {t.saveSales}
-          </Button>
+          {!saved && (
+            <Button
+              variant="contained"
+              disabled={busy}
+              onClick={() => void save()}
+              sx={{ mt: 3, minHeight: 48 }}
+              startIcon={busy ? <CircularProgress size={18} /> : undefined}
+            >
+              {t.saveSales}
+            </Button>
+          )}
         </Box>
       )}
     </Sheet>
