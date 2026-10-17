@@ -249,8 +249,15 @@ export default function Marketing() {
           </a>
           <nav aria-label="Chalkboard">
             <LanguagePicker variant="nav" />
-            <a href="/explore/">{t.find}</a>
-            <Button variant="outlined" href={businessUrl} endIcon={<ArrowUpRight size={16} />}>
+            <a href="/explore/" className="lp-nav-find">
+              {t.find}
+            </a>
+            <Button
+              className="lp-nav-business"
+              variant="outlined"
+              href={businessUrl}
+              endIcon={<ArrowUpRight size={16} />}
+            >
               {t.business}
             </Button>
           </nav>

@@ -95,9 +95,14 @@ for (const appearance of ['light', 'dark'] as const) {
       page,
     }, info) => {
       await page.goto('/?app=landing')
-      const business = page.getByRole('banner').getByRole('link', { name: 'For businesses' })
-      await expect(business).toBeVisible()
-      await expect(business).not.toHaveClass(/MuiButton-contained/)
+      const topBar = page.getByRole('banner').getByRole('link', { name: 'For businesses' })
+      if ((page.viewportSize()?.width ?? 0) < 900) await expect(topBar).toBeHidden()
+      else {
+        await expect(topBar).toBeVisible()
+        await expect(topBar).not.toHaveClass(/MuiButton-contained/)
+      }
+      const business = page.locator('.lp-final').getByRole('link', { name: 'For businesses' })
+      await expect(business).toHaveCount(1)
       const hero = page.locator('.lp-hero')
       await expect(hero.getByRole('link', { name: 'For businesses' })).toHaveCount(0)
       const discover = hero.getByRole('link', { name: 'Find places near me' })
