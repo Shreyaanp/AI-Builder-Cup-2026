@@ -29,7 +29,7 @@ import { useWorkspace } from '../v1/workspaceContext'
 interface Freshness {
   today: string
   monday: boolean
-  recap_week: string
+  recap_week?: string
   last_confirmed: string | null
 }
 type Recap = components['schemas']['Recap']
@@ -177,7 +177,7 @@ export function RecapTile({ mondayOnly = false }: { mondayOnly?: boolean }) {
   const locale = useLocale()
   const { value } = useFreshness()
   const [open, setOpen] = useState(false)
-  if (!value || (mondayOnly && !value.monday)) return null
+  if (!value?.recap_week || (mondayOnly && !value.monday)) return null
   return (
     <>
       <Tile

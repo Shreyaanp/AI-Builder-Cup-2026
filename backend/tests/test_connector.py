@@ -209,6 +209,32 @@ def test_api_analyze_and_mapping(app) -> None:  # noqa: F811
         assert res2.json()["reused"] is True
 
 
+def test_api_rejects_incomplete_or_ambiguous_confirmed_mapping(app) -> None:  # noqa: F811
+    with TestClient(app) as client:
+        join(client)
+        bid = make_shop(client)
+        incomplete = {
+            "source_label": "Petpooja",
+            "kind": "menu",
+            "fields": [{"source_field": "Item", "target_field": "name", "confidence": 1}],
+        }
+        response = client.post(f"/api/v1/businesses/{bid}/connect/mapping", json=incomplete)
+        assert response.status_code == 422
+        assert response.json()["detail"] == "INVALID_MAPPING"
+
+        duplicate_target = {
+            **incomplete,
+            "fields": [
+                {"source_field": "Item", "target_field": "name", "confidence": 1},
+                {"source_field": "Product", "target_field": "name", "confidence": 1},
+                {"source_field": "Price", "target_field": "price", "confidence": 1},
+            ],
+        }
+        response = client.post(f"/api/v1/businesses/{bid}/connect/mapping", json=duplicate_target)
+        assert response.status_code == 422
+        assert response.json()["detail"] == "INVALID_MAPPING"
+
+
 def test_api_sync_never_silent_writes(app) -> None:  # noqa: F811
     with TestClient(app) as client:
         join(client)

@@ -18,6 +18,7 @@ import { fillIn } from './conversationCopy'
 import type { MapCopy } from './mapCopy'
 import { MapLegend, ResultsMap, type MapPin } from './ResultsMap'
 import type { LatLng } from './mapsSdk'
+import { formatDistance } from './formatDistance'
 
 /** A row in the explorer: what the pin is, in the words the card would use. */
 export type ExplorerPlace = MapPin & {
@@ -30,14 +31,6 @@ export type ExplorerPlace = MapPin & {
 
 // Bottom sheet stops, as the share of the sheet that shows: peek, half, nearly full.
 const STOPS = [0.24, 0.52, 0.9]
-
-function formatDistance(metres: number, locale: string) {
-  return new Intl.NumberFormat(locale, {
-    style: 'unit',
-    unit: metres < 1000 ? 'meter' : 'kilometer',
-    maximumFractionDigits: metres < 1000 ? 0 : 1,
-  }).format(metres < 1000 ? Math.round(metres / 10) * 10 : metres / 1000)
-}
 
 /**
  * Phone first: the map fills the screen and the results sit in a draggable bottom sheet (peek,
