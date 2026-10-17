@@ -232,3 +232,38 @@ test('S12 trust: a blocked camera says how to fix it and never starts a check', 
   expect(challenges).toBe(0)
   await context.close()
 })
+
+test('S12 trust: an unsure live check goes to a person, never back to Try again', async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  const suffix = Date.now().toString().slice(-6)
+  const shop = `Dim Room Chai ${suffix}`
+  await open(page, 'light')
+  // The fixture server answers "unsure" for this face, as the worker does for a borderline score.
+  await face(page, `unsure:owner-${test.info().project.name}-${suffix}`)
+  await enter(page)
+  await seedShop(page, false, shop)
+  await openPrivacy(page)
+  const card = page.getByRole('region', { name: 'Verify it’s you' })
+  await card.getByRole('button', { name: 'Verify it’s you' }).click()
+  const dialog = await verify(page, async () => {}, 'unsure')
+  await expect(
+    dialog.getByRole('heading', { name: 'Thanks, a person will take a look' }),
+  ).toBeVisible()
+  await expect(dialog).toContainText('You do not need to try again')
+  await expect(dialog).not.toContainText('another account')
+  await expect(dialog.getByRole('button', { name: 'Try again' })).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Done' }).click()
+  await expect(card).toContainText('You do not need to try again')
+
+  // Local reviewers see it, with the score and the owner's shop, and can clear it.
+  const review = page
+    .getByRole('region', { name: 'Trust reviews' })
+    .getByRole('listitem')
+    .filter({ hasText: shop })
+  await expect(review).toContainText('Live check unsure')
+  await expect(review).toContainText('Live score 0.12')
+  await review.getByRole('button', { name: 'Looks fine' }).click()
+  await expect(card).toContainText('Verified owner')
+})

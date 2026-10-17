@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Box, Button, Stack, Typography, useTheme } from '@mui/material'
-import { Camera, Share2, Sparkles, Store } from 'lucide-react'
+import { Camera, ExternalLink, Share2, Sparkles, Store } from 'lucide-react'
 import { gsap } from 'gsap'
 import { useChalkTimeline } from '../../design/chalkMotion'
 import { HAND_FONT, shape } from '../../design/theme'
@@ -12,12 +12,15 @@ import { useNewShopCopy } from './newShopCopy'
 import { useWorkspace } from './workspaceContext'
 import { ShopSheets } from './ShopTiles'
 import { MapsHandoff } from './MapsHandoff'
+import { ShopQr } from './ShopQr'
+import { useGoLiveCopy } from './goLiveCopy'
 
 /** The "Your shop is ready" moment that ends the new-shop flow (full screen, no dialog). */
 export function NewShopReady() {
   const ws = useWorkspace()
   const t = useCopy()
   const f = useNewShopCopy()
+  const g = useGoLiveCopy()
   const tour = tourCopy(useLocale())
   const roles = useTheme().material
   const root = useRef<HTMLDivElement>(null)
@@ -25,6 +28,8 @@ export function NewShopReady() {
   const [sharing, setSharing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
+  const name = ws.active?.fields.name ?? ''
+  const link = ws.shareUrl ? new URL(ws.shareUrl, location.origin).href : null
   useChalkTimeline(root, () => {
     gsap.from('[data-ready-shop]', {
       scale: 1.3,
@@ -76,10 +81,7 @@ export function NewShopReady() {
           '&:focus': { outline: 'none' },
         }}
       >
-        {f.ready}
-      </Typography>
-      <Typography variant="headlineSmall" sx={{ mt: 3, overflowWrap: 'anywhere' }}>
-        {ws.active?.fields.name}
+        {g.congrats(name)}
       </Typography>
       <Typography
         variant="bodyLarge"
@@ -88,6 +90,27 @@ export function NewShopReady() {
       >
         {t.newShopReadyBody}
       </Typography>
+      {link && (
+        <Stack data-testid="shop-link" sx={{ mt: 4, gap: 3, alignItems: 'center' }}>
+          <Typography
+            variant="bodyMedium"
+            aria-label={g.yourLink}
+            sx={{
+              px: 4,
+              py: 3,
+              borderRadius: `${shape.sm}px`,
+              bgcolor: roles.surfaceContainerHighest,
+              overflowWrap: 'anywhere',
+              fontFamily: 'monospace',
+            }}
+          >
+            {link}
+          </Typography>
+          <Box data-testid="shop-qr">
+            <ShopQr url={link} name={name} />
+          </Box>
+        </Stack>
+      )}
       <Stack
         sx={{
           mt: 6,
@@ -98,12 +121,43 @@ export function NewShopReady() {
           textAlign: 'start',
         }}
       >
+        {link && (
+          <Button
+            variant="contained"
+            component="a"
+            href={link}
+            target="_blank"
+            rel="noreferrer"
+            startIcon={<ExternalLink size={22} />}
+          >
+            {g.openShop}
+          </Button>
+        )}
         <Button
-          variant="contained"
+          variant="outlined"
           startIcon={<Share2 size={22} />}
           onClick={() => setSharing(true)}
         >
-          {t.share}
+          {g.share}
+        </Button>
+        <Typography component="h2" variant="titleSmall" color="text.secondary">
+          {g.nextTitle}
+        </Typography>
+        <Button
+          onClick={() => {
+            ws.dismissNewShopReady()
+            ws.go('shop')
+          }}
+        >
+          {g.addMenu}
+        </Button>
+        <Button
+          onClick={() => {
+            ws.dismissNewShopReady()
+            ws.go('grow')
+          }}
+        >
+          {g.setUpStamps}
         </Button>
         <Button
           variant="outlined"

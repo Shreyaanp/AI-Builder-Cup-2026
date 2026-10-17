@@ -290,3 +290,55 @@ def test_capture_needs_consent_and_an_owned_shop(tmp_path: Path):
             "/api/v1/face/challenges", json={"business_id": bid, "consent": True}
         )
         assert stranger.status_code == 404
+
+
+def test_an_unsure_liveness_score_goes_to_a_person_not_back_to_retry(tmp_path: Path, monkeypatch):
+    """Sev 1, 17 Oct: a live owner in a dim room scored 0.092 and was told to try again."""
+    verdict = {"status": "review", "reason": "liveness_unsure", "liveness": "unsure"}
+
+    def worker(request: httpx.Request) -> httpx.Response:
+        template = trust.fixture_template("dim-room").tolist()
+        return httpx.Response(
+            200,
+            json={
+                **verdict,
+                "score": 0.092,
+                "template": template,
+                "passed_prompts": ["turn_left", "look_up"],
+            },
+        )
+
+    real = httpx.AsyncClient
+
+    def with_worker(*args, **kwargs):
+        return real(*args, **{**kwargs, "transport": httpx.MockTransport(worker)})
+
+    monkeypatch.setattr(trust.httpx, "AsyncClient", with_worker)
+    config = settings(tmp_path, face_mode="worker", face_worker_token="fixture-only")
+    with TestClient(create_app(config, InMemorySessionService())) as client:
+        bid = new_owner(client, "Courtyard Chai")
+        answer = check(client, bid)
+        assert answer["result"] == "in_review" and answer["reason"] == "liveness_unsure"
+        assert "template" not in str(answer)
+        status = client.get("/api/v1/trust").json()
+        assert status["face"] == "in_review" and status["review"] == "liveness"
+        assert "verified_owner" not in client.get(f"/api/v1/public/shops/{bid}").json()
+        review = next(item for item in status["queue"] if item["kind"] == "liveness")
+        assert review["score"] == 0.092 and review["shops"] == [["Courtyard Chai"]]
+        assert "owners" not in review
+
+        # A clear pass later resolves the review; another unsure capture opens it again.
+        verdict.update(status="live", reason="ok", liveness="passed")
+        assert check(client, bid)["result"] == "verified"
+        status = client.get("/api/v1/trust").json()
+        assert next(i for i in status["queue"] if i["kind"] == "liveness")["status"] == "resolved"
+        verdict.update(status="review", reason="liveness_unsure", liveness="unsure")
+        assert check(client, bid)["result"] == "in_review"
+
+        decided = client.post(f"/api/v1/trust/reviews/{review['id']}", json={"decision": "cleared"})
+        assert decided.json()["status"] == "cleared"
+        status = client.get("/api/v1/trust").json()
+        assert status["face"] == "verified" and "review" not in status
+        assert client.get(f"/api/v1/public/shops/{bid}").json()["verified_owner"]
+        # A person already said this owner is live: the next unsure capture is verified.
+        assert check(client, bid)["result"] == "verified"
