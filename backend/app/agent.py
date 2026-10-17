@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 from collections.abc import AsyncGenerator, Callable
 from contextvars import ContextVar
 from typing import Any
@@ -219,6 +220,9 @@ Everything by voice (the owner should never need to hunt for a button)
   Opening trust never starts a check. Customer scratch cards, sets, streaks and co-op live
   in their passport; explain_app describes them and games opens the owner's reward settings.
 - "We're closed today" / "open again today": set_open_today. Lasting hours: propose_business.
+- "Rename my shop to X" / "dukaan ka naam X karo": propose_business(name="X") with only the
+  new name (1-80 characters). It is the owner's own change, so do not question it. Prepared for
+  review like any edit; say old name → new name and ask them to confirm on screen.
 - "Any messages?": get_customer_messages; "tell her we deliver after 6": prepare_customer_reply
   (the owner taps Send).
 - Stamp card or loyalty reward: propose_stamp_card.
@@ -289,6 +293,29 @@ CURRENCY_WORDS = {
     r"euros?|€": {"EUR"},
     r"pounds?|£": {"GBP"},
 }
+
+
+RENAME_SHOP = re.compile(
+    r"^\W*(?:please\s+)?(?:"
+    r"(?:rename|change|update)\s+(?:my|the|our)\s+(?:shop|store|dukaan|business)(?:'?s)?"
+    r"(?:\s+name)?\s+(?:to|as)"
+    r"|(?:my|our)\s+(?:shop|store|business)\s+(?:name\s+)?(?:is now|should be)"
+    r"|(?:dukaan|dukan|shop)\s+ka\s+naam"
+    r")\s*[:\"“]?\s*(?P<name>.+?)\s*[\"”]?"
+    r"(?:\s+(?:karo|kar do|kar dijiye|rakh do|rakho))?\s*[.!]*$",
+    re.I,
+)
+
+
+def rename_call(question: str, ctx: Any) -> types.Part | None:
+    """Offline fixture for "rename my shop to X" / "dukaan ka naam X karo" on a saved shop."""
+    found = RENAME_SHOP.match(question.strip())
+    name = found.group("name").strip(" \"'“”") if found else ""
+    if not name or len(name) > 80 or not (ctx and ctx.business_id):
+        return None
+    return types.Part(
+        function_call=types.FunctionCall(name="propose_business", args={"name": name})
+    )
 
 
 def upkeep_call(question: str, ctx: Any) -> types.Part | None:
@@ -658,6 +685,10 @@ class OfflineCoachModel(BaseLlm):
                 )
                 if sourcing is not None:
                     yield LlmResponse(content=types.Content(role="model", parts=[sourcing]))
+                    return
+                renamed = rename_call(question, ctx)
+                if renamed is not None:
+                    yield LlmResponse(content=types.Content(role="model", parts=[renamed]))
                     return
                 upkeep = upkeep_call(question, ctx) if ctx and ctx.business_id else None
                 if upkeep is not None:
