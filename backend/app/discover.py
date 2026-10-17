@@ -17,6 +17,7 @@ from .merchant import MerchantRepository, ProposalRequest
 from .place_photos import PlacesPhotos
 from .settings import Settings
 from .shop_time import shop_timezone
+from .words import words
 
 log = structlog.get_logger()
 
@@ -418,6 +419,30 @@ class MapsService:
             )
         )
 
+    async def place(self, place_id: str) -> dict[str, Any] | None:
+        """One place by id (a grounded answer names places without coordinates). Cached."""
+
+        async def lookup() -> dict[str, Any] | None:
+            if self.demo:
+                return None
+            try:
+                response = await self.client.get(
+                    "https://places.googleapis.com/v1/places/" + place_id,
+                    headers={
+                        "X-Goog-Api-Key": self.key,
+                        "X-Goog-FieldMask": PLACES_MASK.replace("places.", ""),
+                    },
+                )
+                response.raise_for_status()
+                return dict(response.json())
+            except (httpx.HTTPError, ValueError):
+                log.warning("place_details_unavailable")
+                return None
+
+        if not re.fullmatch(r"[A-Za-z0-9_-]{8,256}", place_id):
+            return None
+        return await self.cached(("place", place_id), lookup)
+
 
 async def prepare_pin(
     body: ProposalRequest, repository: MerchantRepository, uid: str, maps: MapsService
@@ -508,7 +533,8 @@ async def prepare_pin(
 def matches(place: DiscoveryPlace, q: str, category: str, only_open: bool) -> bool:
     text = " ".join([place.name, place.category, *(item.name for item in place.items)]).casefold()
     query = re.sub(r"\b(near me|open now|nearby)\b", "", q, flags=re.I).strip()
-    if query and not all(word in text for word in re.findall(r"\w+", query.casefold())):
+    terms = [*words(query.casefold()), *re.findall(r"\d+", query)]
+    if query and not all(word in text for word in terms):
         return False
     if category and not any(term in place.category.casefold() for term in CATEGORIES[category][1]):
         return False

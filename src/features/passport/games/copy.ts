@@ -16,6 +16,7 @@ export const gamesStrings = {
   // The next named reward
   nextReward: 'Next reward',
   nextCard: '{n} more stamps → {reward}',
+  nextCardOne: '{n} more stamp → {reward}',
   nextCardReady: 'Ready to claim: {reward}',
   nextCardAt: 'At {shop}',
   nextSet: '{n} more stops → {set} badge',

@@ -75,7 +75,8 @@ test('search, category, open-now, sold-out and anonymous customer page', async (
   await page.getByLabel('Search nearby').press('Enter')
   const card = page.getByRole('list').getByRole('link').filter({ hasText: name })
   await expect(card).toBeVisible()
-  await expect(card).toContainText('Kaya toast · Sold out')
+  // Cards show the first dish only; sold-out detail lives on the shop page.
+  await expect(card).toContainText('Teh tarik')
   await expect(card).toContainText(/SGD\s*2\.20/)
   await expect(card).toContainText('Open now')
   expect(await card.getAttribute('href')).toBe(`/explore/s/${id}`)
@@ -119,6 +120,8 @@ test('Google sheet, live directions link, lazy fixture map, area and known-only 
   await page.getByRole('textbox', { name: 'City or area' }).press('Enter')
   await expect(page.getByText('No matches. Try another area or clear your filters.')).toBeVisible()
   await page.reload()
+  // A remembered place collapses to its label with a Change area button.
+  await page.getByRole('button', { name: 'Change area' }).click()
   await expect(page.getByRole('textbox', { name: 'City or area' })).toHaveValue('Tampines')
   await page.route('**/api/v1/discover?**', (route) =>
     route.fulfill({ json: { mode: 'live', places: [] } }),

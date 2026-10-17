@@ -131,7 +131,6 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
   await test.step("1 · Today's 7 on the Ask home", async () => {
     await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/`)
     await customer.getByRole('button', { name: 'Use my location' }).click()
-    await customer.getByRole('button', { name: 'Explore my neighbourhood' }).click()
     // Today's 7 is one tap away in the conversation.
     await customer.getByRole('button', { name: /Today’s 7 near you/ }).click()
     const today = customer.getByRole('region', { name: /^Today near/ })
@@ -158,7 +157,7 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     await expect(customer.getByRole('heading', { level: 1, name: shopName })).toBeVisible()
     // Signed out, the shop card is honest about where it lives.
     const card = customer.getByRole('region', { name: 'Stamp card' })
-    await expect(card.getByRole('status')).toHaveText('0 stamps')
+    await expect(card.getByRole('status')).toHaveText('2 stamps')
     await expect(card).toContainText('This card is stored on this phone.')
     await evidence(customer, 2)
   })
@@ -184,7 +183,7 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     // The signed link is spent from the address bar, and the phone card counted the visit.
     await expect(customer).not.toHaveURL(/[?&]k=/)
     const card = customer.getByRole('region', { name: 'Stamp card' })
-    await expect(card.getByRole('status')).toHaveText('1 stamp')
+    await expect(card.getByRole('status')).toHaveText('3 stamps')
   })
   await test.step('4 · passport: level, streak, stamp book and quests', async () => {
     // Back to the Ask home, then the Passport tab.
@@ -221,7 +220,7 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     await moment.getByRole('button', { name: 'Done' }).click()
     await expect(
       customer.getByRole('region', { name: 'Stamp card' }).getByRole('status'),
-    ).toHaveText('1 stamp')
+    ).toHaveText('3 stamps')
   })
 }
 

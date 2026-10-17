@@ -1,0 +1,47 @@
+{
+  "date_utc": "2026-10-16T09:09:58.110497+00:00",
+  "driver": "Python asyncio/httpx (k6 unavailable offline)",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.13.16",
+  "target": "http://127.0.0.1:3398",
+  "duration_seconds": 30.19,
+  "users": {
+    "read": 16,
+    "coach": 4
+  },
+  "think_seconds": 0.1,
+  "rate_limits": "disabled in isolated fixture only",
+  "shops": 10,
+  "conversation_mode": "new session per turn",
+  "coach_http_statuses": {
+    "200": 124,
+    "429": 317
+  },
+  "errors": {
+    "HTTPStatusError": 317
+  },
+  "requests_per_second": 113.47,
+  "endpoints": {
+    "public_shop": {
+      "requests": 1497,
+      "failures": 0,
+      "mean_ms": 21.21,
+      "p95_ms": 55.84,
+      "max_ms": 419.51
+    },
+    "discover": {
+      "requests": 1487,
+      "failures": 0,
+      "mean_ms": 91.09,
+      "p95_ms": 173.9,
+      "max_ms": 612.03
+    },
+    "coach_stream": {
+      "requests": 441,
+      "failures": 317,
+      "mean_ms": 163.46,
+      "p95_ms": 578.36,
+      "max_ms": 701.95
+    }
+  }
+}

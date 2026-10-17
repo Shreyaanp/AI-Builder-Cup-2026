@@ -122,8 +122,6 @@ test('customer commands preserve the conversation when returning from the passpo
 }) => {
   await enter(page)
   await page.goto('/explore')
-  await page.getByRole('button', { name: 'Continue', exact: true }).click()
-  await page.getByRole('button', { name: 'Explore my neighbourhood', exact: true }).click()
   await page.getByRole('textbox', { name: 'Ask about anything nearby' }).fill('Show my stamps')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page).toHaveURL(/\/explore\/passport$/)

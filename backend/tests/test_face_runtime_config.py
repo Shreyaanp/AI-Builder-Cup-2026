@@ -29,7 +29,13 @@ def test_runtime_config_requires_worker_url_and_keeps_token_out(monkeypatch, tmp
     with pytest.raises(SystemExit, match="private face worker configuration"):
         runpy.run_path(str(script))
     monkeypatch.setenv("FACE_WORKER_URL", "https://fixture-worker.example/")
+    monkeypatch.setenv("RELEASE_SHA", "a" * 40)
+    monkeypatch.setenv("FEATURE_GOOGLE_GUIDE", "false")
     runpy.run_path(str(script))
     config = json.loads((tmp_path / ".deployment/runtime.json").read_text())
     assert config["FACE_WORKER_URL"] == "https://fixture-worker.example"
     assert "FACE_WORKER_TOKEN" not in config
+    assert config["RELEASE_COMMIT"] == "a" * 40
+    assert config["FORECAST_BACKEND"] == "bigquery"
+    assert config["GOOGLE_TEXT_MODEL"] == "gemini-3.5-flash"
+    assert config["FEATURE_GOOGLE_GUIDE"] == "false"

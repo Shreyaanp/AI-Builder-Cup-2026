@@ -57,7 +57,7 @@ def test_storefront_photo_proposes_a_pin_for_a_shop_without_one(app, monkeypatch
             f"/api/v1/proposals/{first['id']}/approve", json={"digest": first["digest"]}
         ).json()["business_id"]
 
-        async def storefront(image: bytes) -> PhotoExtraction:
+        async def storefront(image: bytes, language: str = "en") -> PhotoExtraction:
             return PhotoExtraction(
                 photo_kind="storefront", business=ExtractedBusiness(name="Katong Kopi")
             )

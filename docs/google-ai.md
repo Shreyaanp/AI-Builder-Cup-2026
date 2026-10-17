@@ -39,17 +39,25 @@ These are infrastructure/location services, not additional generative-AI model c
 
 ## Pending services — not counted as used
 
-- **Recommendations AI: catalog imported; model pending console creation.** This is the status
-  supplied for these submission docs. This checkout has no import receipt, Retail API serving
-  call, model ID or Recommendations AI switch, so the catalog/import status is not independently
-  verified. Do not count it as a used product service. The [brief](briefs/task-RECS-AI.md) is intent,
-  not implementation evidence; no embeddings-based product-ranking fallback is present here.
-- **Document AI:** no client, processor call or switch found. Receipt/photo reading currently
-  uses Gemini. The [service brief](briefs/task-GOOGLE-SERVICES.md) is pending work.
-- **Gemini grounding with Google Maps:** no grounding tool call or switch found. Existing Places
-  calls are listed above; the [grounding brief](briefs/task-MAPS-GROUNDING.md) is pending work.
-- No Vertex AI Agent Engine, Looker analytics export/dashboard, or Vertex AI Vector Search
-  endpoint is called in this checkout. A proposal or an available trial does not establish use.
+The list below was written against `fb483b2`. Release 2 (merged into release 3) adds the code
+noted under each item. These services are still not counted as used until a fresh live check.
+
+- **Recommendations AI: catalog imported; model pending console creation.** Release 2 adds
+  [retail_recs.py](../backend/app/retail_recs.py) (catalog sync, events and "Similar items" serving
+  behind `RECS_ENABLED`, off by default). It falls back to embeddings until the model serves. Import
+  record: [impact/recommendations-ai.md](impact/recommendations-ai.md).
+- **Document AI:** release 2 adds [document_ai.py](../backend/app/document_ai.py) (Expense and
+  Invoice parsers for Close the day, `DOCUMENT_AI_ENABLED`, on in the release settings). A one-pass
+  live comparison is in [impact/document-ai.md](impact/document-ai.md). The deployed revision has
+  not been re-checked.
+- **Gemini grounding with Google Maps:** release 2 adds
+  [maps_grounding.py](../backend/app/maps_grounding.py) behind `MAPS_GROUNDING` (off/demo/live).
+  The release settings were not checked for a live value.
+- **BigQuery analytics export and Looker Studio:** release 2 adds
+  [analytics.py](../backend/app/analytics.py) with a nightly export, and the dashboard steps are in
+  [impact/looker-studio.md](impact/looker-studio.md).
+- No Vertex AI Agent Engine or Vertex AI Vector Search endpoint is called. A proposal or an
+  available trial does not establish use.
 
 The older [product-status document](PRODUCT-STATUS.md) and hackathon review predate the newer
 TimesFM release settings. For this submission, code/settings and explicitly dated evidence above

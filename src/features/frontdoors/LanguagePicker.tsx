@@ -11,7 +11,7 @@ export function LanguagePicker({
   variant = 'fixed',
   sx,
 }: {
-  variant?: 'fixed' | 'nav'
+  variant?: 'fixed' | 'nav' | 'inline'
   sx?: SxProps<Theme>
 }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
@@ -62,6 +62,8 @@ export function LanguagePicker({
     borderRadius: '12px',
   }
 
+  const inlineSx: SxProps<Theme> = { width: 48, height: 48 }
+
   return (
     <>
       <Tooltip title={`${t.language}: ${currentLabel}`}>
@@ -73,7 +75,7 @@ export function LanguagePicker({
           aria-controls={open ? 'customer-language-menu' : undefined}
           onClick={handleOpen}
           sx={{
-            ...(variant === 'fixed' ? fixedSx : navSx),
+            ...(variant === 'fixed' ? fixedSx : variant === 'inline' ? inlineSx : navSx),
             ...sx,
           }}
         >

@@ -100,5 +100,9 @@ export async function tamil(page: Page) {
   await page.getByRole('combobox', { name: 'Language' }).click()
   await page.getByRole('option', { name: /தமிழ்/ }).click()
   await expect(page.locator('html')).toHaveAttribute('lang', /^ta/)
-  if (current >= 0) await nav.nth(current).click()
+  // The tab bar's own label is localised too (#61).
+  const tamilNav = page
+    .getByRole('navigation', { name: 'முதன்மை வழிசெலுத்தல்' })
+    .getByRole('button')
+  if (current >= 0) await tamilNav.nth(current).click()
 }

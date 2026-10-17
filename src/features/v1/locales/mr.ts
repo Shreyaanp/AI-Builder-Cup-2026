@@ -414,6 +414,7 @@ export const mr: Copy = {
     gallery: 'दुकान गॅलरीतील फोटो',
     community: 'दुकानाच्या सार्वजनिक प्रती',
     memory: 'सहाय्यकाची मेमरी',
+    analytics: 'दुकानाचे विश्लेषण',
     conversations: 'संभाषणे',
   } as Record<string, string>,
 }

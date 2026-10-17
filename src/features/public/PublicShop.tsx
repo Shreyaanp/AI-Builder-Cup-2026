@@ -21,6 +21,8 @@ import { type Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
 import { BrandSplash } from '../frontdoors/Splash'
 import { PlaceImage } from '../frontdoors/PlaceImage'
+import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
+import { LanguagePicker } from '../frontdoors/LanguagePicker'
 import { discoverCopy } from '../discover/strings'
 import { loadScriptFont } from '../../i18n/fonts'
 import { formatPrice } from '../v1/format'
@@ -32,6 +34,7 @@ import { translations as ownerTranslations } from '../v1/locales'
 import { HAND_FONT, shape } from '../../design/theme'
 import { chalkWrite } from '../../design/chalkMotion'
 import { ShopChat } from './ShopChat'
+import { recsEvent } from '../recs/events'
 import { FollowButton } from '../customer/FollowButton'
 import { Tips } from '../customer/Tips'
 import { customerEnglish, whatsappUrl, type CustomerCopy } from './customerCopy'
@@ -46,6 +49,8 @@ import { CategoryGroups } from '../shop/CategoryGroups'
 import { useShopCopy } from '../shop/strings'
 import { VerifiedBadge } from '../trust/VerifiedBadge'
 import { unitLabel } from '../shop/units'
+import { rememberOpened } from '../discover/opened'
+import { SimilarNearby } from '../discover/SimilarNearby'
 
 interface PublicShopData {
   id: string
@@ -60,6 +65,7 @@ interface PublicShopData {
   phone: string
   reward_text?: string
   stamps_needed?: number
+  stamps_enabled?: boolean
   /** ISO 4217 code the shop's prices are stored in. */
   currency?: string
   products: {
@@ -455,6 +461,8 @@ export default function PublicShop({ id }: { id: string }) {
     )
     if (changed.length) setChangedPrices(changed.map((product) => product.name + product.unit))
     previous.current = data
+    // A personal signal for this person's own search and Today's 7, kept on this device.
+    rememberOpened(data.id)
     setShop(data)
     setStale(false)
     setState('ready')
@@ -472,6 +480,7 @@ export default function PublicShop({ id }: { id: string }) {
         if (abort.signal.aborted) return
         apply(data)
         document.title = `${data.name} · ${t.menu}`
+        recsEvent({ kind: 'shop_open', shop_id: data.id })
       })
       .catch((error: unknown) => {
         if (!abort.signal.aborted)
@@ -574,6 +583,7 @@ export default function PublicShop({ id }: { id: string }) {
   const story = custom.find((fact) => fact.key === 'story')?.value
   const menu = [...shop.products].sort((a, b) => Number(b.available) - Number(a.available))
   const openLabel = shop.open_now == null ? null : shop.open_now ? discovery.open : discovery.closed
+  const stampsEnabled = shop.stamps_enabled ?? Boolean(shop.reward_text?.trim())
   // Demo shops' numbers are fictional; never offer to call or message them.
   const phone = shop.demo ? '' : shop.phone
   const actions = [
@@ -608,8 +618,16 @@ export default function PublicShop({ id }: { id: string }) {
         pb: 'calc(148px + env(safe-area-inset-bottom))',
       }}
     >
-      {/* Compact header: who, open or not, how to get there. The menu is the page. */}
-      <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+      {/* Top navigation row: back button and controls with clear 48px targets */}
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          minHeight: 48,
+          mb: 2,
+        }}
+      >
         <IconButton
           component="a"
           href="/explore/"
@@ -619,80 +637,103 @@ export default function PublicShop({ id }: { id: string }) {
         >
           <ArrowLeft size={20} />
         </IconButton>
-        <Box
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
+          <LanguagePicker variant="inline" />
+          <AppearanceToggle inline />
+        </Stack>
+      </Stack>
+
+      {/* Hero photo / artwork banner with fixed aspect ratio + object-fit */}
+      <Box
+        data-testid="shop-hero-banner"
+        sx={{
+          width: '100%',
+          aspectRatio: '16/9',
+          maxHeight: { xs: 200, sm: 260 },
+          borderRadius: `${shape.xl}px`,
+          overflow: 'hidden',
+          bgcolor: roles.surfaceContainerHigh,
+          position: 'relative',
+          '& > div': { height: '100%' },
+          '& img': { height: '100%', width: '100%', objectFit: 'cover' },
+        }}
+      >
+        <PlaceImage
+          id={id}
+          category={shop.category}
+          photo={
+            shop.gallery?.[0]
+              ? `/api/v1/public/shops/${id}/photos/${shop.gallery[0]}.jpg`
+              : undefined
+          }
+          eager
+          transition
+          compact
+        />
+      </Box>
+
+      {/* Prominent Shop Name (full width, unclipped in English, Hindi and Tamil) */}
+      <Box sx={{ mt: 3, minWidth: 0, width: '100%' }}>
+        <Typography
+          component="h1"
+          variant="headlineSmall"
           sx={{
-            width: 72,
-            height: 72,
-            flexShrink: 0,
-            borderRadius: `${shape.lg}px`,
-            overflow: 'hidden',
-            bgcolor: roles.surfaceContainerHigh,
+            fontWeight: 700,
+            overflowWrap: 'break-word',
+            color: roles.onSurface,
+            lineHeight: 1.2,
           }}
         >
-          <PlaceImage
-            id={id}
-            category={shop.category}
-            photo={
-              shop.gallery?.[0]
-                ? `/api/v1/public/shops/${id}/photos/${shop.gallery[0]}.jpg`
-                : undefined
-            }
-            eager
-            transition
-            compact
-          />
-        </Box>
-        {/* On a phone the floating theme button sits over the top-right corner: wrap before it. */}
-        <Box sx={{ minWidth: 0, flex: 1, pr: { xs: '52px', md: 0 } }}>
-          <Typography component="h1" variant="titleLarge" sx={{ overflowWrap: 'anywhere' }}>
-            {shop.name}
-          </Typography>
+          {shop.name}
+        </Typography>
+
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1.5 }}
+        >
+          {openLabel && (
+            <Typography
+              variant="labelLarge"
+              sx={{
+                color: roles.onSurface,
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 1,
+              }}
+            >
+              <Box
+                component="span"
+                aria-hidden="true"
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  bgcolor: shop.open_now ? 'var(--customer-open)' : roles.outline,
+                }}
+              />
+              {openLabel}
+            </Typography>
+          )}
+          {[shop.category, shop.hours].filter(Boolean).map((text, index) => (
+            <Typography
+              key={text}
+              variant="bodyMedium"
+              color="text.secondary"
+              sx={{ overflowWrap: 'break-word', minWidth: 0 }}
+            >
+              {openLabel || index > 0 ? `· ${text}` : text}
+            </Typography>
+          ))}
           {shop.verified_owner && !shop.demo && (
             <VerifiedBadge checked={shop.verified_owner.checked} />
           )}
           {shop.demo && (
-            // Honest but quiet: one outlined label, not a second accent colour.
-            <Chip label={t.demoShop} size="small" variant="outlined" sx={{ my: 1 }} />
+            <Chip label={t.demoShop} size="small" variant="outlined" sx={{ height: 24 }} />
           )}
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            {openLabel && (
-              <Typography
-                variant="labelLarge"
-                sx={{
-                  color: roles.onSurface,
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 1,
-                }}
-              >
-                <Box
-                  component="span"
-                  aria-hidden="true"
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    bgcolor: shop.open_now ? 'var(--customer-open)' : roles.outline,
-                  }}
-                />
-                {openLabel}
-              </Typography>
-            )}
-            {[shop.category, shop.hours].filter(Boolean).map((text, index) => (
-              // Wraps instead of cutting a long category ("Chai & Filter Coffe…") at 360px.
-              <Typography
-                key={text}
-                variant="bodyMedium"
-                color="text.secondary"
-                sx={{ overflowWrap: 'anywhere', minWidth: 0 }}
-              >
-                {openLabel || index > 0 ? `· ${text}` : text}
-              </Typography>
-            ))}
-          </Stack>
-        </Box>
-      </Stack>
+        </Stack>
+      </Box>
       {/* One line a neighbour would say about the place, in chalk. */}
       {story && (
         <Typography
@@ -718,7 +759,7 @@ export default function PublicShop({ id }: { id: string }) {
       {/* Follow and how to get there, side by side; wraps on narrow phones. */}
       <Stack direction="row" sx={{ mt: 4, gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <FollowButton id={id} name={shop.name} />
-        <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />
+        {stampsEnabled && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
         {actions.map((action) => (
           <Button
             key={action.label}
@@ -973,18 +1014,36 @@ export default function PublicShop({ id }: { id: string }) {
         </CategoryGroups>
       )}
       {/* Rewards after the menu: earned, not in the way. */}
-      <StampCard
-        shop={id}
-        name={shop.name}
-        timezone={shop.timezone ?? 'Asia/Singapore'}
-        reward={shop.reward_text}
-        needed={shop.stamps_needed ?? 8}
-      />
-      <ShopStamp shop={{ id, name: shop.name, category: shop.category, demo: shop.demo }} />
-      <ShopGames shop={id} />
+      {stampsEnabled && (
+        <StampCard
+          shop={id}
+          name={shop.name}
+          timezone={shop.timezone ?? 'Asia/Singapore'}
+          reward={shop.reward_text}
+          needed={shop.stamps_needed ?? 8}
+        />
+      )}
+      {stampsEnabled && (
+        <ShopStamp
+          shop={{
+            id,
+            name: shop.name,
+            category: shop.category,
+            demo: shop.demo,
+            timezone: shop.timezone ?? 'Asia/Singapore',
+            needed: shop.stamps_needed ?? 8,
+          }}
+        />
+      )}
+      {stampsEnabled && <ShopGames shop={id} />}
       {!stale && <BackInStock shop={id} products={shop.products} />}
-      <BadgeRow shop={id} />
+      {stampsEnabled && <BadgeRow shop={id} />}
       <Tips shop={id} />
+      <SimilarNearby
+        key={id}
+        shop={id}
+        items={menu.filter((product) => product.available).map((product) => product.name)}
+      />
       <Stack
         direction="row"
         spacing={1}

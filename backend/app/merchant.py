@@ -26,6 +26,7 @@ from pydantic import (
 
 from .community import Documents, SqliteDocuments
 from .customer import Inquiry, InquiryInput, InquiryReceipt
+from .playbook import migrate_stored
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
 from .shop_time import client_timezone, shop_timezone
 from .stock_alerts import (
@@ -72,6 +73,31 @@ class CustomFact(BaseModel):
     value: str = Field(min_length=1, max_length=200)
 
 
+Focus = Literal["more_customers", "less_waste", "save_time", "other"]
+UNDERSTAND_KEYS = ("focus", "busy_hours", "regulars")
+
+
+class Understanding(BaseModel):
+    """The owner's own answers to "what matters most now" and "who are your regulars". Private:
+    it shapes the shop playbook and never appears in any customer projection. Busiest times are
+    the existing busy_hours fact (customers benefit from it too)."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    focus: Focus | None = None
+    # "Something else" in the owner's words, or a detail about the chosen focus.
+    focus_note: str = Field(default="", max_length=120)
+    regulars: str = Field(default="", max_length=200)
+    # Questions the owner chose to skip are never asked again (they can still answer later).
+    skipped: list[Literal["focus", "busy_hours", "regulars"]] = Field(
+        default_factory=list, max_length=3
+    )
+
+    @field_validator("skipped")
+    @classmethod
+    def unique_skips(cls, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(value))
+
+
 class DayHours(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     day: Literal["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -86,6 +112,10 @@ class DayHours(BaseModel):
         elif not self.open or not self.close or self.open == self.close:
             raise ValueError("An open day needs distinct opening and closing times.")
         return self
+
+
+def default_rider_providers() -> list[Literal["rapido", "uber", "porter"]]:
+    return ["rapido", "uber", "porter"]
 
 
 class BusinessFields(BaseModel):
@@ -133,10 +163,18 @@ class BusinessFields(BaseModel):
     preorders: bool | None = None
     preorder_lead_time: str = Field(default="", max_length=80)
     payment_methods: list[Payment] = Field(default_factory=list, max_length=8)
+    # Owner-only handoff preferences; never exposed by customer_facts.
+    upi_id: str = Field(
+        default="", pattern=r"^(?:[A-Za-z0-9][A-Za-z0-9._-]{1,254}@[A-Za-z][A-Za-z0-9.-]{1,63})?$"
+    )
+    rider_providers: list[Literal["rapido", "uber", "porter"]] = Field(
+        default_factory=default_rider_providers, max_length=3
+    )
     busy_hours: str = Field(default="", max_length=80)
     # Type-specific facts from the question plan; owner-confirmed like every other field.
     custom_facts: list[CustomFact] = Field(default_factory=list, max_length=30)
     profile: BusinessTypeProfile = Field(default_factory=BusinessTypeProfile)
+    understanding: Understanding | None = None
 
     @field_validator("weekly_hours")
     @classmethod
@@ -182,12 +220,15 @@ class BusinessFields(BaseModel):
             and not (key == "min_order" and value == "")
             and not (key == "timezone" and value == "Asia/Singapore")
             and not (key == "custom_facts" and value == [])
+            and not (key == "upi_id" and value == "")
+            and not (key == "rider_providers" and value == ["rapido", "uber", "porter"])
             and not (key == "reward_text" and value == "")
             and not (key == "stamps_needed" and value == 8)
             and not (key == "weekly_hours" and value == [])
             and not (key == "closed_on" and value == "")
             and not (key == "description" and value == "")
             and not (key == "profile" and self.profile == BusinessTypeProfile())
+            and not (key == "understanding" and value is None)
         }
 
     @model_validator(mode="after")
@@ -318,6 +359,8 @@ def demo_product_id(bid: str, product: ProductFields) -> str:
 
 
 PROPOSAL_SECONDS = 600
+# Supply-chain records (supply_chain.py) kept in feature_docs; erased with the shop.
+SUPPLY_KINDS = ("supply_rules", "supply_po", "supply_seq")
 CHALLENGE_SECONDS = 90
 
 
@@ -334,6 +377,10 @@ class MerchantRepository(Protocol):
     def save_sales(self, uid: str, bid: str, iid: str, digest: str) -> dict[str, Any]: ...
     def confirm_menu(self, uid: str, bid: str) -> dict[str, Any]: ...
     def recap_signals(self, uid: str, bid: str) -> dict[str, Any]: ...
+    def analytics_shops(self, limit: int) -> list[tuple[str, str]]:
+        """(owner uid, business id) for every shop: the nightly analytics export only."""
+        ...
+
     def set_notes(self, uid: str, bid: str, notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Replace the coach's private notes for a shop (owner-only, never public)."""
         ...
@@ -345,6 +392,8 @@ class MerchantRepository(Protocol):
     def recap_cache(
         self, uid: str, bid: str, key: str, value: dict[str, Any] | None = None
     ) -> dict[str, Any] | None: ...
+    def playbook(self, uid: str, bid: str) -> dict[str, Any] | None: ...
+    def set_playbook(self, uid: str, bid: str, value: dict[str, Any] | None) -> None: ...
     # Simulator records are isolated from confirmed merchant facts.
     def sim_state(self, uid: str, bid: str) -> dict[str, Any] | None: ...
     def save_sim_state(self, uid: str, bid: str, state: dict[str, Any]) -> None: ...
@@ -352,7 +401,9 @@ class MerchantRepository(Protocol):
         self, uid: str, request: ProposalRequest, idempotency_key: str | None = None
     ) -> dict[str, Any]: ...
     def commit(self, uid: str, pid: str, digest: str) -> dict[str, Any]: ...
-    def challenge(self, uid: str, bid: str) -> dict[str, Any]: ...
+    def challenge(
+        self, uid: str, bid: str, exclude_prompts: list[str] | None = None
+    ) -> dict[str, Any]: ...
     def consume(self, uid: str, cid: str) -> dict[str, Any]: ...
     def face_result(self, uid: str, cid: str, result: dict[str, Any]) -> None: ...
     def result(self, uid: str, cid: str) -> dict[str, Any]: ...
@@ -409,6 +460,16 @@ class MerchantRepository(Protocol):
         self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""
     ) -> Inquiry: ...
 
+    # Connect your system: saved column and field mappings per shop and source
+    def get_connector_mapping(
+        self, uid: str, bid: str, source_label: str
+    ) -> dict[str, Any] | None: ...
+    def list_connector_mappings(self, uid: str, bid: str) -> list[dict[str, Any]]: ...
+    def save_connector_mapping(
+        self, uid: str, bid: str, mapping: dict[str, Any]
+    ) -> dict[str, Any]: ...
+    def record_connector_sync(self, uid: str, bid: str, source_label: str) -> None: ...
+
 
 def public_projection(
     bid: str, fields: dict[str, Any], products: list[dict[str, Any]]
@@ -442,6 +503,7 @@ def public_projection(
         "currency": fields.get("currency") or "SGD",
         **({"reward_text": fields["reward_text"]} if fields.get("reward_text") else {}),
         "stamps_needed": fields.get("stamps_needed", 8),
+        "stamps_enabled": bool(fields.get("reward_text") and str(fields["reward_text"]).strip()),
         # Only facts the owner confirmed; customer Q&A grounds on these too.
         "facts": customer_facts(fields),
         "products": [
@@ -511,8 +573,13 @@ def seal_proposal(request: ProposalRequest) -> tuple[dict[str, Any], str, str]:
     return payload, text, hashlib.sha256(text.encode()).hexdigest()
 
 
-def challenge_prompts() -> list[str]:
-    return secrets.SystemRandom().sample(["turn_left", "turn_right", "look_up"], 2)
+def challenge_prompts(exclude: list[str] | None = None) -> list[str]:
+    pool = [p for p in ["turn_left", "turn_right", "look_up"] if not exclude or p not in exclude]
+    if not pool:
+        pool = ["turn_left", "turn_right", "look_up"]
+    count = 1 if exclude and len(exclude) >= 1 else 2
+    count = min(count, len(pool))
+    return secrets.SystemRandom().sample(pool, count)
 
 
 class MerchantStore:
@@ -563,6 +630,9 @@ class MerchantStore:
                 PRIMARY KEY(business_id,day));
             CREATE TABLE IF NOT EXISTS supplier_orders(id TEXT PRIMARY KEY,
                 business_id TEXT NOT NULL, created REAL NOT NULL, fields TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS connector_mappings(business_id TEXT NOT NULL,
+                source_label TEXT NOT NULL, fields TEXT NOT NULL, last_synced REAL,
+                updated REAL NOT NULL, PRIMARY KEY(business_id, source_label));
             """)
             if "last_confirmed" not in {
                 row[1] for row in db.execute("PRAGMA table_info(businesses)")
@@ -573,6 +643,10 @@ class MerchantStore:
                 db.execute("ALTER TABLE businesses ADD COLUMN coach_notes TEXT")
             if "gallery" not in columns:
                 db.execute("ALTER TABLE businesses ADD COLUMN gallery TEXT")
+            # Lazy schema migration: older databases gain the column; rows stay NULL until a
+            # playbook is first generated for that shop (never a bulk backfill).
+            if "playbook" not in columns:
+                db.execute("ALTER TABLE businesses ADD COLUMN playbook TEXT")
 
     def connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10)
@@ -778,8 +852,10 @@ class MerchantStore:
             db.execute("UPDATE proposals SET receipt=? WHERE id=?", (json.dumps(receipt), pid))
             return receipt
 
-    def challenge(self, uid: str, bid: str) -> dict[str, Any]:
-        prompts = challenge_prompts()
+    def challenge(
+        self, uid: str, bid: str, exclude_prompts: list[str] | None = None
+    ) -> dict[str, Any]:
+        prompts = challenge_prompts(exclude=exclude_prompts)
         cid = str(uuid4())
         expires = time.time() + CHALLENGE_SECONDS
         with self.connect() as db:
@@ -863,7 +939,13 @@ class MerchantStore:
             ]
             for bid in owned:
                 db.execute("DELETE FROM stock_alerts WHERE business_id=?", (bid,))
-                for table in ("sales_days", "sales_imports", "recaps", "sold_out_days"):
+                for table in (
+                    "sales_days",
+                    "sales_imports",
+                    "recaps",
+                    "sold_out_days",
+                    "connector_mappings",
+                ):
                     db.execute(f"DELETE FROM {table} WHERE business_id=?", (bid,))  # noqa: S608
                 db.execute("DELETE FROM inquiries WHERE business_id=?", (bid,))
                 db.execute("DELETE FROM inquiry_blocks WHERE business_id=?", (bid,))
@@ -876,7 +958,7 @@ class MerchantStore:
             for table in ("proposals", "challenges", "consents", "people", "google_sim"):
                 db.execute(f"DELETE FROM {table} WHERE uid=?", (uid,))  # noqa: S608 - fixed names
         for bid in owned:
-            for kind in ("rescue", "brief", "brief_wording", "shop_daily"):
+            for kind in ("rescue", "brief", "brief_wording", "shop_daily", *SUPPLY_KINDS):
                 self.feature_docs.delete_scope(kind, bid)
         return owned
 
@@ -1165,6 +1247,32 @@ class MerchantStore:
             db.execute("UPDATE businesses SET gallery=? WHERE id=?", (json.dumps(photos), bid))
             return photos
 
+    def analytics_shops(self, limit: int) -> list[tuple[str, str]]:
+        with self.connect() as db:
+            return [
+                (r[0], r[1])
+                for r in db.execute(
+                    "SELECT uid, business_id FROM memberships WHERE role='owner' "
+                    "ORDER BY business_id LIMIT ?",
+                    (limit,),
+                )
+            ]
+
+    def playbook(self, uid: str, bid: str) -> dict[str, Any] | None:
+        with self.connect() as db:
+            row = self.owned(db, uid, bid)
+            stored = migrate_stored(row["playbook"])
+            return stored.model_dump() if stored else None
+
+    def set_playbook(self, uid: str, bid: str, value: dict[str, Any] | None) -> None:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self.owned(db, uid, bid)
+            db.execute(
+                "UPDATE businesses SET playbook=? WHERE id=?",
+                (json.dumps(value, ensure_ascii=False) if value else None, bid),
+            )
+
     def recap_signals(self, uid: str, bid: str) -> dict[str, Any]:
         with self.connect() as db:
             business = self.owned(db, uid, bid)
@@ -1338,3 +1446,67 @@ class MerchantStore:
                     (bid, pid, json.dumps(state)),
                 )
             return state
+
+    def get_connector_mapping(self, uid: str, bid: str, source_label: str) -> dict[str, Any] | None:
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            row = db.execute(
+                "SELECT * FROM connector_mappings "
+                "WHERE business_id=? AND LOWER(source_label)=LOWER(?)",
+                (bid, source_label),
+            ).fetchone()
+            if not row:
+                return None
+            return {
+                "source_label": row["source_label"],
+                "fields": json.loads(row["fields"]),
+                "last_synced": row["last_synced"],
+                "updated": row["updated"],
+            }
+
+    def list_connector_mappings(self, uid: str, bid: str) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            rows = db.execute(
+                "SELECT * FROM connector_mappings WHERE business_id=? ORDER BY updated DESC",
+                (bid,),
+            ).fetchall()
+            return [
+                {
+                    "source_label": r["source_label"],
+                    "fields": json.loads(r["fields"]),
+                    "last_synced": r["last_synced"],
+                    "updated": r["updated"],
+                }
+                for r in rows
+            ]
+
+    def save_connector_mapping(self, uid: str, bid: str, mapping: dict[str, Any]) -> dict[str, Any]:
+        source_label = mapping["source_label"]
+        now = time.time()
+        fields_json = json.dumps(mapping)
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            db.execute(
+                """
+                INSERT INTO connector_mappings(
+                    business_id, source_label, fields, last_synced, updated
+                )
+                VALUES (?, ?, ?, NULL, ?)
+                ON CONFLICT(business_id, source_label) DO UPDATE SET
+                    fields=excluded.fields,
+                    updated=excluded.updated
+                """,
+                (bid, source_label, fields_json, now),
+            )
+            return {"source_label": source_label, "updated": now, "fields": mapping}
+
+    def record_connector_sync(self, uid: str, bid: str, source_label: str) -> None:
+        now = time.time()
+        with self.connect() as db:
+            self.owned(db, uid, bid)
+            db.execute(
+                "UPDATE connector_mappings SET last_synced=? "
+                "WHERE business_id=? AND LOWER(source_label)=LOWER(?)",
+                (now, bid, source_label),
+            )
