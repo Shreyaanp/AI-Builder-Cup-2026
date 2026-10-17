@@ -18,6 +18,17 @@ def test_vertex_gemini_uses_runtime_identity_without_a_key() -> None:
     assert not settings.google_api_key.get_secret_value()
 
 
+def test_a_busy_text_model_is_retried_briefly_but_live_is_not() -> None:
+    settings = Settings(
+        coach_mode="gemini", google_cloud_project="demo-ogoogle-local", _env_file=None, **MODELS
+    )
+    text = make_agent(settings).canonical_model.retry_options  # type: ignore[union-attr]
+    assert text.attempts == 3 and text.http_status_codes == [429, 503]
+    assert (text.max_delay or 0) <= 2
+    live = make_agent(settings, live=True).canonical_model.retry_options  # type: ignore[union-attr]
+    assert live.attempts == 1
+
+
 @pytest.mark.parametrize(
     "overrides",
     [

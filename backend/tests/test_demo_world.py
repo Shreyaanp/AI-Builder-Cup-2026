@@ -16,6 +16,28 @@ def test_fixture_prices_follow_the_local_currency() -> None:
     assert inr > usd * 10  # rupees, not dollars
 
 
+def test_world_currency_comes_from_area_region_profile(tmp_path: Path) -> None:
+    config = settings(tmp_path).model_copy(
+        update={"rate_limits_enabled": False, "demo_world_enabled": True}
+    )
+    app = create_app(config, InMemorySessionService())
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/demo/world",
+            json={
+                "lat": 1.2853,
+                "lng": 103.8318,
+                "currency": "INR",
+                "timezone": "Asia/Singapore",
+                "place": "Tiong Bahru",
+            },
+        )
+        assert response.status_code == 200, response.text
+        shop = client.get(f"/api/v1/public/shops/{response.json()['shop_ids'][0]}").json()
+        assert shop["currency"] == "SGD"
+        assert shop["products"][0]["price"] == 200  # S$2.00 coffee
+
+
 def test_world_seeds_labelled_demo_shops_once_per_area(tmp_path: Path) -> None:
     config = settings(tmp_path).model_copy(
         update={"rate_limits_enabled": False, "demo_world_enabled": True}
