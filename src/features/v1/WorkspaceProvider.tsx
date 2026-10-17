@@ -30,10 +30,12 @@ export function WorkspaceProvider({
   api,
   me,
   children,
+  readOnlyMessage,
 }: {
   api: Api
   me: Me
   children: ReactNode
+  readOnlyMessage?: string
 }) {
   const t = useCopy()
   const theme = useTheme()
@@ -64,6 +66,7 @@ export function WorkspaceProvider({
   // Each phase, tab and sub-page is a history entry, so Back goes review → conversation →
   // leaves the flow, and Shop → Today, with each screen where it was.
   useLayoutEffect(() => {
+    if (readOnlyMessage) return
     const url = new URL(location.href)
     const inFlow = creatingShop || shopReady
     url.pathname = inFlow ? '/new-shop' : '/'
@@ -79,7 +82,7 @@ export function WorkspaceProvider({
       pushEntry(url, newTab && !creatingShop ? carried() : {})
       if (newTab) window.scrollTo({ top: 0, behavior: 'instant' })
     } else replaceEntry(url)
-  }, [creatingShop, shopReady, newShopPhase, destination])
+  }, [creatingShop, shopReady, newShopPhase, destination, readOnlyMessage])
   useEffect(() => {
     const restore = (event: PopStateEvent) => {
       if (overlayHandled(event)) return
@@ -174,6 +177,10 @@ export function WorkspaceProvider({
 
   const setAvailability = useCallback(
     async (product: Product, available: boolean) => {
+      if (readOnlyMessage) {
+        setToast(readOnlyMessage)
+        return
+      }
       if (!activeId || !product.id) return
       // Optimistic: the switch moves at once; a failure restores the saved state.
       setInventory((current) => ({
@@ -198,7 +205,7 @@ export function WorkspaceProvider({
         setToast(t.actionFailed)
       }
     },
-    [activeId, api, reload, t.actionFailed],
+    [activeId, api, reload, t.actionFailed, readOnlyMessage],
   )
   const confirm = useCallback(
     async (proposal: Proposal) => {
@@ -214,6 +221,10 @@ export function WorkspaceProvider({
   )
   const setShared = useCallback(
     async (shared: boolean) => {
+      if (readOnlyMessage) {
+        setToast(readOnlyMessage)
+        return
+      }
       if (!activeId) return
       await api(`/businesses/${activeId}/share`, {
         method: 'POST',
@@ -221,7 +232,7 @@ export function WorkspaceProvider({
       })
       await reload()
     },
-    [activeId, api, reload],
+    [activeId, api, reload, readOnlyMessage],
   )
 
   const value = useMemo<Workspace>(
@@ -250,6 +261,10 @@ export function WorkspaceProvider({
       newShopReady: shopReady,
       dismissNewShopReady: () => setShopReady(false),
       startNewShop: () => {
+        if (readOnlyMessage) {
+          setToast(readOnlyMessage)
+          return
+        }
         track('onboarding_started')
         setCoachActions(false)
         setShopReady(false)
@@ -284,6 +299,10 @@ export function WorkspaceProvider({
         }
       },
       go: (next) => {
+        if (readOnlyMessage) {
+          setToast(readOnlyMessage)
+          return
+        }
         setShopReady(false)
         setDestination(next)
       },
@@ -301,12 +320,20 @@ export function WorkspaceProvider({
       confirm,
       notify: setToast,
       requestPhoto: () => {
+        if (readOnlyMessage) {
+          setToast(readOnlyMessage)
+          return
+        }
         setDestination('coach')
         setPhotoPending(true)
       },
       photoPending,
       consumePhotoRequest,
       startCoachDraft: (text: string, options?: { send?: boolean }) => {
+        if (readOnlyMessage) {
+          setToast(readOnlyMessage)
+          return
+        }
         setDestination('coach')
         setCoachDraftSend(Boolean(options?.send))
         setCoachDraft(text)
@@ -317,12 +344,13 @@ export function WorkspaceProvider({
       coachActions,
       setCoachActions,
       faceOpen,
-      setFaceOpen,
+      setFaceOpen: readOnlyMessage ? () => setToast(readOnlyMessage) : setFaceOpen,
       editor,
-      openEditor: setEditor,
+      openEditor: readOnlyMessage ? () => setToast(readOnlyMessage) : setEditor,
     }),
     [
       api,
+      readOnlyMessage,
       customerOrigin,
       me,
       businesses,

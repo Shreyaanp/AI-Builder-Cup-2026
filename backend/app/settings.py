@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     app_env: Literal["local", "test", "production"] = "local"
+    public_demo_enabled: bool = False
     coach_mode: Literal["offline", "gemini"] = "offline"
     forecast_backend: Literal["weekday_average", "bigquery"] = "weekday_average"
     # Till receipts and supplier invoices: Document AI first, Gemini vision as the fallback.

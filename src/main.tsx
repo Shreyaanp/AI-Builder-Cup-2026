@@ -23,7 +23,7 @@ setupPwa(app)
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppProviders
-      business={app === 'business'}
+      business={app === 'business' && !/^\/demo\/?$/.test(location.pathname)}
       analyticsApp={app === 'customer' ? 'customer' : app === 'business' ? 'owner' : undefined}
     >
       <Root />

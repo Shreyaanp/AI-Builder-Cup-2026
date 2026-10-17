@@ -4,6 +4,8 @@ export type AppKind = 'landing' | 'customer' | 'business'
 export function resolveApp(url: URL): AppKind {
   const override = url.searchParams.get('app')
   if (override === 'landing' || override === 'customer' || override === 'business') return override
+  if (/^\/demo\/?$/.test(url.pathname)) return 'business'
+  if (/^\/explore\/demo(?:\/|$)/.test(url.pathname)) return 'customer'
   if (url.hostname === 'business.chalkboard.shreyaan.work' || url.hostname.endsWith('.run.app'))
     return 'business'
   if (/^\/(explore(?:\/|$)|discover\/?$|s\/)/.test(url.pathname)) return 'customer'
