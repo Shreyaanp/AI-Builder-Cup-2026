@@ -101,7 +101,7 @@ and drop the eval line.
 shop page (`docs/qa/hindi/22-shop-page.png`), "First try! +50 points" scratch
 (`docs/stories/games-phone-light-3-scratch.png`).
 
-**Speaker notes:** "The customer side is one question box. The first answer appears in about a
+split second, because we answer from our own shops first and let Gemini finish the sentence.
 tenth of a second, because we answer from our own shops first and let Gemini finish the sentence.
 The shop page translates itself; the owner's item names stay as they wrote them. The stamp card is
 the habit: one stamp a day, welcome stamps so the first visit already feels like progress, and a
@@ -156,15 +156,15 @@ and honest, never a blank screen."
 
 **Visual:** a table, one row per track item: feature · where it is in the app · evidence.
 
-| Track item              | Feature                                              | Evidence                                                              |
-| ----------------------- | ---------------------------------------------------- | --------------------------------------------------------------------- |
-| Discovery               | Ask with meaning-based search                        | P@5 0.73 → 0.90 (`docs/impact/search-eval.md`)                        |
-| Conversational shopping | Chat with the shop, instant answers                  | First answer 132 ms p50 (`docs/impact/customer-latency.md`)           |
-| Demand planning         | TimesFM 7-day forecast in the coach                  | Live TimesFM result with 90% intervals (`docs/PLAN-V2.md`, 16 Oct)    |
-| Inventory               | Close the day from a till photo                      | Gemini read 26/26 lines, 15/15 amounts (`docs/impact/document-ai.md`) |
-| Customer insights       | Today pulse, weekly recap in the owner's language    | Live Hindi recap (`docs/qa/hindi-e2e.md`)                             |
-| Personalisation         | Shop playbook built by Gemini per shop               | `docs/handoff/shop-playbook.md`                                       |
-| Fraud                   | Listing checks: copied menus, odd prices, same phone | `docs/handoff/trust-fraud.md`                                         |
+| Track item              | Feature                                              | Evidence                                                               |
+| ----------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------- |
+| Discovery               | Ask with meaning-based search                        | P@5 0.73 → 0.90 (`docs/impact/search-eval.md`)                         |
+| Conversational shopping | Chat with the shop, instant answers                  | First cards 132 ms p50, local test (`docs/impact/customer-latency.md`) |
+| Demand planning         | TimesFM 7-day forecast in the coach                  | Live TimesFM result with 90% intervals (`docs/PLAN-V2.md`, 16 Oct)     |
+| Inventory               | Close the day from a till photo                      | Gemini read 26/26 lines, 15/15 amounts (`docs/impact/document-ai.md`)  |
+| Customer insights       | Today pulse, weekly recap in the owner's language    | Live Hindi recap (`docs/qa/hindi-e2e.md`)                              |
+| Personalisation         | Shop playbook built by Gemini per shop               | `docs/handoff/shop-playbook.md`                                        |
+| Fraud                   | Listing checks: copied menus, odd prices, same phone | `docs/handoff/trust-fraud.md`                                          |
 
 **Speaker notes:** "We built against the track list, not around it. Each row is something you can
 tap in the app today, with the measurement next to it."
@@ -173,7 +173,8 @@ tap in the app today, with the measurement next to it."
 
 ## 9 · What we measured
 
-- Customers see the first answer in 0.13 s instead of 11.5 s (p50, `docs/impact/customer-latency.md`)
+- The first answer cards show in 0.13 s in our local test; before the fix the live site took 11.5 s
+  (p50, `docs/impact/customer-latency.md`)
 - Search finds the right shop more often: precision@5 0.73 → 0.90 with Vertex AI embeddings, and no
   empty answers (`docs/impact/search-eval.md`)
 - The coach passed 25 of 27 live scenarios in 8 languages (`docs/impact/coach-eval-gemini-3.5-flash.json`)
@@ -185,12 +186,13 @@ tap in the app today, with the measurement next to it."
 | 0 / 215     | irrelevant onboarding questions, 40 businesses  | `docs/qa/onboarding-eval.md` (#91)             |
 | 11 / 11     | live Hindi voice onboardings went live, 0 drops | `docs/qa/onboarding-live-check.md` (#91)       |
 | 25 / 27     | live coach scenarios passed, 8 languages        | `docs/impact/coach-eval-gemini-3.5-flash.json` |
-| 0.13 s      | first customer answer, p50 (was 11.5 s)         | `docs/impact/customer-latency.md`              |
+| 0.13 s      | first answer cards, p50, local test             | `docs/impact/customer-latency.md`              |
 | 0.73 → 0.90 | search precision@5, 25 labelled queries         | `docs/impact/search-eval.md`                   |
 
 **Speaker notes:** "These are small, honest tests, and we've written down their limits next to each
 one. The search test is 20 fictional shops and 25 hand-labelled queries. The latency figure is the
-first answer on screen, from our own shops, before Gemini's longer reply streams in. What we can't
+first answer on screen, from our own shops, measured locally with test data; the live site took
+11.5 s before we rebuilt it, and we have not re-measured it live yet. What we can't
 claim yet is owner time saved in the real world: that needs real shops over weeks, and it's the
 first thing the pilot measures."
 
