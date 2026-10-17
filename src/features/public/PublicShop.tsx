@@ -991,7 +991,16 @@ export default function PublicShop({ id }: { id: string }) {
         />
       )}
       {stampsEnabled && (
-        <ShopStamp shop={{ id, name: shop.name, category: shop.category, demo: shop.demo }} />
+        <ShopStamp
+          shop={{
+            id,
+            name: shop.name,
+            category: shop.category,
+            demo: shop.demo,
+            timezone: shop.timezone ?? 'Asia/Singapore',
+            needed: shop.stamps_needed ?? 8,
+          }}
+        />
       )}
       {stampsEnabled && <ShopGames shop={id} />}
       {!stale && <BackInStock shop={id} products={shop.products} />}

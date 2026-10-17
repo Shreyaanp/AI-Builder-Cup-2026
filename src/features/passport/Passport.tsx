@@ -20,6 +20,7 @@ import { useCustomer } from '../customer/account'
 import { useAccountCopy } from '../customer/copy'
 import { SignInSheet } from '../customer/SignIn'
 import { customerNavigate } from '../frontdoors/navigation'
+import { useRewardCopy } from '../rewards/strings'
 import { formatPrice } from '../v1/format'
 import { LevelRing, Sticker } from './art'
 import { FESTIVAL_ART } from './artData'
@@ -275,6 +276,9 @@ function PendingScratch({
 
 function StampBook({ view }: { view: PassportView }) {
   const t = usePassportCopy()
+  const rewards = useRewardCopy()
+  const locale = useLocale()
+  const number = (value: number) => new Intl.NumberFormat(locale).format(value)
   const roles = useTheme().material
   const stamped = view.shops.filter((s) => s.days > 0)
   if (!stamped.length)
@@ -369,7 +373,12 @@ function StampBook({ view }: { view: PassportView }) {
                         </Typography>
                       </a>
                       <Typography variant="labelSmall" color="text.secondary">
-                        × {shop.days}
+                        {/* A shop with a stamp card: the same count as its shop page. */}
+                        {shop.slots
+                          ? rewards.progress
+                              .replace('{count}', number(shop.stamps))
+                              .replace('{total}', number(shop.slots))
+                          : `× ${shop.days}`}
                       </Typography>
                     </Box>
                   )
