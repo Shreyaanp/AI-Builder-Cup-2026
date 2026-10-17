@@ -349,11 +349,19 @@ export function PickCard({
               {[
                 pick.open_now === null ? null : pick.open_now ? ask.openNow : ask.closed,
                 anchor ? fillIn(copy.fromStation, { distance, station: anchor.name }) : distance,
-                pick.demo_shop ? ask.demo : null,
               ]
                 .filter(Boolean)
                 .join(' · ')}
             </Box>
+            {/* Its own element, so the label reads as one on its own (and is found as one). */}
+            {pick.demo_shop && (
+              <Box
+                component="span"
+                sx={{ ...oneLine, flexShrink: 0, '&::before': { content: '"· "' } }}
+              >
+                {ask.demo}
+              </Box>
+            )}
           </Typography>
           {details && (
             <Typography variant="bodySmall" color="text.secondary" sx={oneLine}>
