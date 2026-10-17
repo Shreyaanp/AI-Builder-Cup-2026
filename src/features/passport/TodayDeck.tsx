@@ -25,6 +25,7 @@ import { FESTIVAL_ART } from './artData'
 import { fill, usePassportCopy } from './copy'
 import type { PassportStrings } from './copy'
 import { usePassport } from './store'
+import { openedShops } from '../discover/opened'
 
 type Feed = components['schemas']['TodayFeed']
 type Find = components['schemas']['Find']
@@ -217,6 +218,8 @@ export function TodayDeck({ place }: { place: Place }) {
       if (prior.day === today && prior.ids.length)
         params.set('keep', prior.ids.join(',').slice(0, 1900))
     }
+    const opened = openedShops()
+    if (opened.length) params.set('opened', opened.join(',').slice(0, 1100))
     api<Feed>(`/api/v1/public/today?${params}`, { signal: AbortSignal.timeout(30_000) })
       .then((data) => {
         if (!signedIn) remember({ ...data, day: feedDay() })

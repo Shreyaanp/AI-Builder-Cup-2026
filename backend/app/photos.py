@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from .gemini_schema import to_number
 from .product_units import UNITS, normalize_unit
+from .reply_language import reply_language, written_language
 from .settings import Settings
 
 log = structlog.get_logger()
@@ -123,7 +124,13 @@ Give every product a category: the visible menu section it sits under, otherwise
 section a customer would expect (for example Drinks, Mains, Desserts, Services), in the
 board's language. Categories are suggestions the owner reviews.
 Give every product a unit from the allowed list; use "item" when none fits.
-List every field or item you are unsure about in "uncertain"."""
+List every field or item you are unsure about in "uncertain".
+Write the "uncertain" notes for the owner in {language}."""
+# The offline note in the owner's language (live notes follow the prompt above).
+OFFLINE_NOTE = {
+    "en": "Offline fixture: no model read this photo.",
+    "hi": "ऑफ़लाइन नमूना: इस फ़ोटो को किसी मॉडल ने नहीं पढ़ा।",
+}
 
 
 def sanitize(data: bytes) -> bytes:
@@ -201,13 +208,13 @@ class PhotoPipeline:
         return any(int(scores.get(name, 0)) >= level for name, level in BLOCK_AT.items())
 
     # --- extraction -------------------------------------------------------------------
-    async def extract(self, image: bytes) -> PhotoExtraction:
+    async def extract(self, image: bytes, language: str = "en") -> PhotoExtraction:
         if self.settings.coach_mode != "gemini":
             return PhotoExtraction(
                 photo_kind="signboard",
                 business=ExtractedBusiness(name="Offline Fixture Tea Stall", category="Tea stall"),
                 products=[ExtractedProduct(name="Chai", price=15, unit="cup", category="drinks")],
-                uncertain=["Offline fixture: no model read this photo."],
+                uncertain=[OFFLINE_NOTE.get(reply_language(language).locale, OFFLINE_NOTE["en"])],
             )
         from google import genai
         from google.genai import types
@@ -225,7 +232,10 @@ class PhotoPipeline:
         try:
             response = await self._genai.aio.models.generate_content(
                 model=self.settings.google_text_model,
-                contents=[types.Part.from_bytes(data=image, mime_type="image/jpeg"), PROMPT],
+                contents=[
+                    types.Part.from_bytes(data=image, mime_type="image/jpeg"),
+                    PROMPT.format(language=written_language(language)),
+                ],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     response_schema=_PhotoSpec,
@@ -258,6 +268,7 @@ class PhotoPipeline:
         photo_id = str(uuid4())
         owner = hashlib.sha256(uid.encode()).hexdigest()
         blob = self._bucket.blob(f"approved/{owner}/{bid or 'unassigned'}/{photo_id}.jpg")
+        blob.cache_control = "private, no-store"
         blob.upload_from_string(image, content_type="image/jpeg")
         return photo_id
 
@@ -291,6 +302,8 @@ class PhotoPipeline:
     def save_gallery_sync(self, bid: str, photo_id: str, image: bytes) -> None:
         if self.settings.media_bucket:
             blob = self._gallery_bucket().blob(f"shops/{bid}/{photo_id}.jpg")
+            # Bucket stays private; public delivery is authorized by the gallery route.
+            blob.cache_control = "private, max-age=3600"
             blob.upload_from_string(image, content_type="image/jpeg")
             return
         path = self._gallery_path(bid, photo_id)
@@ -328,14 +341,16 @@ class PhotoPipeline:
         return image
 
     # --- pipeline ---------------------------------------------------------------------
-    async def process(self, uid: str, bid: str | None, data: bytes) -> dict[str, Any]:
+    async def process(
+        self, uid: str, bid: str | None, data: bytes, language: str = "en"
+    ) -> dict[str, Any]:
         gps = await anyio.to_thread.run_sync(read_gps, data)
         image = await anyio.to_thread.run_sync(sanitize, data)
         scores = await anyio.to_thread.run_sync(self.moderate_sync, image)
         if self.blocked(scores):
             log.info("photo_rejected", code="EXPLICIT_CONTENT")
             raise PhotoRejected(422, "PHOTO_BLOCKED")
-        extraction = await self.extract(image)
+        extraction = await self.extract(image, language)
         if extraction.photo_kind == "other":
             log.info("photo_rejected", code="NOT_BUSINESS")
             raise PhotoRejected(422, "NOT_BUSINESS_PHOTO")

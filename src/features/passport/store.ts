@@ -26,6 +26,9 @@ type State = {
   key: string
 }
 let state: State = { view: null, status: 'idle', key: '' }
+// Only the latest load lands: a stamp changes the receipts and this phone's card a moment
+// apart, and an older answer must not overwrite the newer count.
+let loads = 0
 const listeners = new Set<() => void>()
 function emit(next: Partial<State>) {
   state = { ...state, ...next }
@@ -109,18 +112,18 @@ export function usePassport(place?: { lat: number; lng: number } | null) {
   const cards = signedIn
     ? {}
     : Object.fromEntries(
-        Object.entries(data.shops)
-          .filter(([, card]) => card.stamps > 0)
-          .map(([id, card]) => [id, card.stamps]),
+        // Every card on this phone, empty ones too: a reward claimed here resets the passport.
+        Object.entries(data.shops).map(([id, card]) => [id, card.stamps]),
       )
   const cardKey = JSON.stringify(cards)
   const key = `${account.status}|${query}|${cardKey}`
   const refresh = useCallback(() => {
     if (account.status === 'loading') return
+    const ticket = ++loads
     emit({ status: 'loading', key })
     load(account.api, signedIn, JSON.parse(cardKey) as Record<string, number>, query)
-      .then((view) => emit({ view, status: 'ready' }))
-      .catch(() => emit({ status: 'error' }))
+      .then((view) => ticket === loads && emit({ view, status: 'ready' }))
+      .catch(() => ticket === loads && emit({ status: 'error' }))
   }, [account.api, account.status, signedIn, cardKey, query, key])
   useEffect(() => {
     if (state.key !== key) refresh()

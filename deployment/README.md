@@ -8,6 +8,12 @@ One Cloud Run service serves compiled React and the Python API at the same HTTPS
 
 ## Release flow
 
+**Current release procedure:** [tagged release checklist](../docs/release-checklist.md).
+`scripts/ship.ps1 -Tag release-...` dispatches the same checked CI path; runtime config is
+applied there. Both entry points require a published tag. Capacity is preserved by release
+CI and changed separately by the assistant; see [source drift and proposed limits](../docs/architecture.md).
+The historical sizing and release evidence below are not a current cloud inspection.
+
 1. Push a main commit. GitHub Actions checks Python, the Firestore emulator, generated contracts, React/browser behavior and the actual Docker image.
 2. Manually run **Cloud Run release** in GitHub Actions. Optionally supply a full main commit SHA. The workflow validates the commit and reruns checks before publication.
 3. Build the image, authenticate using short-lived Workload Identity Federation, push the SHA-tagged image, and deploy `ogoogle-ai` in `asia-south1`.

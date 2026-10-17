@@ -348,14 +348,14 @@
 
 /* Story: tall section, pinned content, progress drives the screens and the drawing. */
 .lp-story {
-  --p: 0;
-  height: 300vh;
+  --p: 1;
+  height: auto;
   position: relative;
 }
 .lp-story-pin {
   position: sticky;
   top: 0;
-  height: 100vh;
+  min-height: 640px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: center;
@@ -806,15 +806,15 @@
 
 /* Fan of discovery cards */
 .lp-fan {
-  --p: 0;
-  height: 220vh;
+  --p: 1;
+  height: auto;
   position: relative;
   background: linear-gradient(180deg, var(--surface), var(--surface-low));
 }
 .lp-fan-pin {
   position: sticky;
   top: 0;
-  height: 100vh;
+  min-height: 640px;
   display: flex;
   flex-direction: column;
   align-items: center;

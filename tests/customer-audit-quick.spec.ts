@@ -57,15 +57,13 @@ test.describe('Customer audit quick fixes', () => {
     await expect(input).toHaveAttribute('placeholder', /₹50/)
   })
 
-  test('Fix 7: Landing story reflects active locale and currency', async ({ page }) => {
+  // Release 2's landing has no story phone any more; its words still follow the locale.
+  test('Fix 7: Landing follows the active locale', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'hi' }))
     })
     await page.goto('/?app=landing')
-    // Hindi story has ₹ and localized copy
-    await expect(page.getByText('सहेजने से पहले जाँचें').first()).toBeVisible()
-    await expect(page.getByText('पुष्टि करें और सहेजें').first()).toBeVisible()
-    await expect(page.getByText(/₹ 18/).first()).toBeVisible()
+    await expect(page.locator('nav a[href="/explore/"]')).toHaveText(/[ऀ-ॿ]/)
   })
 
   test('Fix 8: 200% text zoom does not overflow passport stamp book or occlude shop menu', async ({

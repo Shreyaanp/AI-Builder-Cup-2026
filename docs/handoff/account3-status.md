@@ -1,3 +1,71 @@
+# Account 3 status: one search engine (16 Oct 2026)
+
+Brief: `docs/briefs/task-SEARCH-ENGINE.md`. Branch `feat/search-engine` (built on
+`feat/customer-ai-first`, PR #11), PR into main. Ports 3477/3577.
+
+## What changed
+
+**Engine** (`backend/app/search_engine.py`, one module for customers and suppliers):
+
+- Vertex AI `gemini-embedding-2` embeddings of every shop (name, category, description) and
+  every menu item, batched, cached per shop keyed by content fingerprint + model (in memory and in
+  one community document per shop). An item is embedded again only when its text changes; never
+  per request. Offline/tests use a deterministic concept fixture embedder, and results say which
+  one ran. Setting `SEARCH_EMBEDDINGS=auto|fixture|vertex` (auto = Vertex when Gemini runs on
+  Vertex).
+- Hybrid ranking with all weights in `WEIGHTS` (one table, profiles `customer`, `sourcing`, `similar`):
+  meaning, exact words, distance, open now, price fit, menu freshness, the customer's own signals
+  (stamps, follows, searches, shops opened) and live Google popularity. Unit-tested.
+- Google rating/review count: live signal only, shown with attribution, never stored.
+- `Explainer`: Gemini words one line ("Because you liked filter coffee at Sharma's") for the top
+  3 personal picks only, cached per (pick, reason, language); offline the app words the same facts.
+- Item threshold is relative to the best item nearby when nothing is strongly close
+  (`item_recall`, short queries with real embeddings), floor `ITEM_RECALL_MIN`; live scores are
+  rescaled above a measured `LIVE_FLOOR`.
+- Recommendations AI `similar_items()` is used behind its provider switch when present, else
+  embeddings only.
+- `sourcing.find_suppliers` calls the same engine (`sourcing` weights profile).
+
+**APIs**: `/discover/ask` ranks with the engine and returns `because` reasons and live popularity;
+`GET /discover/similar` ("Similar nearby", rate limited `discover:similar`); Today's 7 ordering is
+personalised (`today.py`); zero-data start = location + time + popular nearby. OpenAPI and
+`src/api/generated.d.ts` regenerated.
+
+**Customer UI**: personal reason line on answer cards ("You looked at this before"), Google
+rating with attribution, `SimilarNearby` on the shop page (chips switch between the shop and one
+of its items; there is no separate item page), shops opened recorded on the device only
+(`opened.ts`) and sent as a signal to Ask and Today's 7. 15 locales (`searchCopy.ts`).
+
+**Eval**: `backend/scripts/search_eval.py`, report `docs/impact/search-eval.md`: 20 shops, 140
+items, 25 labelled queries. Precision@5 keyword search 0.728 → engine **0.902 live Vertex**,
+**0.942 offline fixture**; empty answers 2 → 0.
+
+## Tests
+
+- Backend `tests/test_search_engine.py` (ranking weights, cold start, personalisation, cache
+  re-embeds only changed items, sourcing reuse, both stores, relative item threshold).
+- Browser `tests/search-engine.spec.ts` (story: meaning → similar nearby → personal pick, phone +
+  desktop, light + dark, axe) and `tests/customer-ask.spec.ts`. Screenshots
+  `docs/stories/search-*.png`.
+
+## Results (final session)
+
+- Ruff check/format, mypy clean; **pytest 713 passed, 200 skipped** (after merging main). PR #33.
+- `npm run lint`, build, hook rules passed.
+- Own specs on a fresh SQLite DB, `--workers=1`: `search-engine.spec.ts` +
+  `customer-ask.spec.ts` **18/18**. On the long-lived dev DB the "real shop answers" test failed
+  twice: earlier runs had left many identically named seeded shops and `businesses[0]` was not the
+  new one (data, not code). Full browser suite not run in this session (shared machine).
+
+## Not done / honest limits
+
+- Eval is a small hand-labelled set over demo menus; weak live queries remain ("something sweet",
+  "breakfast" 0.4; "tea" 0.6).
+- Personal signals and Google popularity are covered by unit tests, not by the eval.
+- No physical phone; browser emulation only.
+
+---
+
 # Account 3 status: customer side, AI-first (16 Oct 2026)
 
 Brief: `docs/briefs/task-CUSTOMER-AI-FIRST.md`. Branch `feat/customer-ai-first`, PR into main.

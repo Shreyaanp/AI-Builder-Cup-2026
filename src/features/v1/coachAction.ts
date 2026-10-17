@@ -20,6 +20,10 @@ export type CoachAction = {
     | 'you'
     | 'trust'
     | 'games'
+    | 'payments'
+    | 'supply'
+    | 'playbook'
+    | 'connect'
   label: string
   business_id?: string | null
   thread_id?: string
@@ -47,6 +51,10 @@ const TARGETS = new Set<CoachAction['target']>([
   'you',
   'trust',
   'games',
+  'payments',
+  'supply',
+  'playbook',
+  'connect',
 ])
 
 /** Only known targets are acted on; anything else from the server is ignored. */

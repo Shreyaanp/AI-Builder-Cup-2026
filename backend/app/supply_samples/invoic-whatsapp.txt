@@ -1,0 +1,7 @@
+*Invoice 7100004501*
+Ref PO 4500012345
+1) Wheat flour [MAT-100234] 20 kg @ INR 62.00
+2) Sugar [MAT-100877] 10 kg @ INR 44.00
+Delivery: Sun 18 Oct
+Total INR 1,680.00
+Payment: 7 days

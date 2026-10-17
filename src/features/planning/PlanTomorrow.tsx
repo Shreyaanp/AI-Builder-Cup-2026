@@ -17,6 +17,8 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { shape } from '../../design/theme'
 import { useCopy } from './strings'
 import { useCopy as useShopCopy } from '../v1/strings'
+import { useShopCopy as useUnitCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 
 interface Observation {
   date: string
@@ -58,6 +60,7 @@ interface History {
 export function PlanTomorrow() {
   const ws = useWorkspace()
   const t = useCopy()
+  const units = useUnitCopy()
   const [selected, setSelected] = useState('')
   const product = ws.products.find((p) => p.id === selected) ?? ws.products[0]
   if (!ws.active || !product?.id) return null
@@ -71,7 +74,7 @@ export function PlanTomorrow() {
       >
         {ws.products.map((p) => (
           <MenuItem key={p.id} value={p.id}>
-            {p.name} ({p.unit})
+            {p.name} ({unitLabel(p.unit, units)})
           </MenuItem>
         ))}
       </TextField>
@@ -80,7 +83,7 @@ export function PlanTomorrow() {
         businessId={ws.active.id}
         productId={product.id}
         name={product.name}
-        unit={product.unit}
+        unit={unitLabel(product.unit, units)}
       />
     </Stack>
   )

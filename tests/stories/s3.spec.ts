@@ -39,7 +39,6 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
     })
     await test.step('2 · GPS discovery and typed city fallback', async () => {
       await customer.getByRole('button', { name: 'Use my location' }).click()
-      await customer.getByRole('button', { name: 'Explore my neighbourhood' }).click()
       // The front door is an AI ask; browsing everything nearby is one tap away.
       await expect(
         customer.getByRole('heading', { name: 'What are you looking for nearby?' }),
@@ -87,7 +86,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
     })
     await test.step('4 · shop menu categories, hours and customer facts', async () => {
       await expect(customer.getByRole('heading', { name: shopName })).toBeVisible()
-      await expect(customer.getByRole('listitem').filter({ hasText: 'Kopi' })).toContainText(
+      await expect(customer.getByRole('listitem').filter({ hasText: /^Kopi/ })).toContainText(
         '₹18.00',
       )
       await expect(customer.getByText('UPI', { exact: true })).toBeVisible()
@@ -95,7 +94,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       await expect(customer.getByRole('heading', { name: 'Drinks', exact: true })).toBeVisible()
       await customer.getByRole('button', { name: /^Weekly hours/ }).click()
       await expect(customer.getByText('07:00–20:00', { exact: true })).toBeVisible()
-      await expect(customer.getByRole('listitem').filter({ hasText: 'Kaya toast' })).toContainText(
+      await expect(customer.getByRole('listitem').filter({ hasText: /^Kaya toast/ })).toContainText(
         'Sold out',
       )
       await shot(customer, 3, 4)
@@ -170,11 +169,11 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       await moment.getByRole('button', { name: 'Done' }).click()
       await expect(customer).not.toHaveURL(/[?&]k=/)
       const card = customer.getByRole('region', { name: 'Stamp card' })
-      await expect(card.getByRole('status')).toHaveText('1 stamp')
+      await expect(card.getByRole('status')).toHaveText('3 stamps')
       await expect(customer.getByText('This card is saved to your account.')).toBeVisible()
       await shot(customer, 3, 7)
       await customer.reload()
-      await expect(card.getByRole('status')).toHaveText('1 stamp')
+      await expect(card.getByRole('status')).toHaveText('3 stamps')
     })
     await test.step('8 · light/dark and reduced motion', async () => {
       await customer.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })

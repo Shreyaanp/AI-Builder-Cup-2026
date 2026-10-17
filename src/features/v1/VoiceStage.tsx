@@ -14,7 +14,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { chalkWrite } from '../../design/chalkMotion'
-import { HAND_FONT, motion, shape } from '../../design/theme'
+import { HAND_FONT, motion, scrollArea, shape } from '../../design/theme'
 import type { Business, Product } from './api'
 import { defaultCurrency, formatPrice } from './format'
 import { readablePlace } from './location'
@@ -512,7 +512,7 @@ export function ShopFill({
             xs: 'linear-gradient(to right, #000 calc(100% - 28px), transparent)',
             md: 'none',
           },
-          scrollbarWidth: 'none',
+          ...scrollArea,
           mx: { xs: -2.5, md: 0 },
           px: { xs: 2.5, md: 0 },
           pb: { xs: 0.5, md: 0 },
@@ -573,8 +573,8 @@ export function ShopFill({
                       component="span"
                       sx={{
                         position: 'absolute',
-                        width: 1,
-                        height: 1,
+                        width: '1px',
+                        height: '1px',
                         overflow: 'hidden',
                         clip: 'rect(0 0 0 0)',
                       }}

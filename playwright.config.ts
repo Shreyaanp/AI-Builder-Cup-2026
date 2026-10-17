@@ -9,8 +9,14 @@ export default defineConfig({
   // The QA machine has its own servers and config: npm run test:qa
   testIgnore: ['qa/**', 'heatmap/**'],
   timeout: 30_000,
+  // Shard individual isolated tests, so large story files cannot dominate one shard.
+  fullyParallel: true,
   // Each test gets its own browser context and workspace, so files run in parallel.
-  workers: process.env.CI ? 3 : 4,
+  workers: process.env.PLAYWRIGHT_WORKERS
+    ? Number(process.env.PLAYWRIGHT_WORKERS)
+    : process.env.CI
+      ? 3
+      : 4,
   // One retry on CI absorbs a random failure; the list reporter still marks it "flaky".
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['./tests/stories/audit-reporter.ts']],
