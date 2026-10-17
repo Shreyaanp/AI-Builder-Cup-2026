@@ -339,3 +339,87 @@ def test_routes_run_inbound_and_outbound_and_stay_owner_scoped(app) -> None:  # 
         join(client)  # another owner
         assert client.get(f"{base}/board").status_code in {403, 404}
         assert client.post(f"{base}/send-all").status_code in {403, 404}
+
+
+# --- Coach chat tools (text and voice share them) -----------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("phrase", "amount"),
+    [("5 milk", 5), ("5 l milk", 5), ("milk 5", 5), ("five milk", 5), ("paanch milk", 5)],
+)
+def test_spoken_quantities_find_the_order_line(phrase: str, amount: float) -> None:
+    from app.supply_tools import _amounts
+
+    po = {"lines": [{"line": 10, "item": "Sugar"}, {"line": 20, "item": "Milk", "unit": "l"}]}
+    assert _amounts([phrase], po) == {20: amount}
+
+
+def test_coach_runs_the_story_by_chat(app) -> None:  # noqa: F811
+    import json
+
+    from app.agent import INSTRUCTION
+    from app.supply_tools import SUPPLY_TOOLS
+
+    names = {tool.__name__ for tool in SUPPLY_TOOLS}
+    assert {
+        "show_inbound",
+        "accept_order_change",
+        "approve_and_send_po",
+        "record_goods_received",
+        "send_asn",
+        "view_document_as_sap",
+    } <= names
+    assert "record_goods_received" in INSTRUCTION
+    with TestClient(app) as client:
+        join(client)
+        bid = client.post("/api/v1/supply/demo").json()["business_id"]
+        base = f"/api/v1/businesses/{bid}/supply"
+        for _ in range(3):
+            client.post(f"{base}/demo/next")
+
+        def say(message: str) -> tuple[str, list[dict]]:
+            response = client.post(
+                "/api/v1/coach/stream", json={"message": message, "business_id": bid}
+            )
+            assert response.status_code == 200
+            events = [
+                json.loads(line.removeprefix("data: "))
+                for line in response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            reply = next((e["text"] for e in events if e["kind"] == "reply"), "")
+            return reply, events
+
+        reply, events = say("Show me today's inbound")
+        assert "order change" in reply and "Harbour Café (Demo)" in reply
+        assert any(e["kind"] == "supply" and e["data"]["view"] == "coming" for e in events)
+
+        reply, events = say("Accept the change")
+        card = next(e["data"] for e in events if e["kind"] == "supply")
+        assert card["order"]["lines"][0]["quantity"] == 15 and "accepted" in reply
+
+        milk = next(
+            o for o in client.get(f"{base}/board").json()["orders"] if o["direction"] == "in"
+        )
+        ordered = milk["lines"][0]["quantity"]
+        reply, events = say("Received everything except 5 milk")
+        assert "Short: 5 litre Milk" in reply or "Short: 5 l Milk" in reply, reply
+        assert "Goods receipt sent to Fresh Dairy (Demo)" in reply
+        card = next(e["data"] for e in events if e["kind"] == "supply")
+        receipt = next(d for d in card["order"]["documents"] if d["kind"] == "RECEIPT")
+        assert receipt["status"] == "sent"
+        assert receipt["canonical"]["lines"][0]["quantity"] == ordered - 5
+        assert "<MESTYP>STPPOD</MESTYP>" in receipt["translated"]  # the supplier runs SAP
+        assert any(e["kind"] == "proposal" for e in events)  # stock waits for the review
+
+        reply, events = say("Send the shipping notice")
+        assert "shipping notice" in reply and "sent to Harbour Café (Demo)" in reply
+
+        reply, events = say("Show the shipping notice in SAP")
+        card = next(e["data"] for e in events if e["kind"] == "supply")
+        assert card["view"] == "sap" and "DELVRY07" in reply
+
+        reply, _ = say("Send everything")
+        assert "already sent" in reply
+        assert client.get(f"{base}/board").json()["unsent"] == []
