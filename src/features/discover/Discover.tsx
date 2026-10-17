@@ -32,6 +32,7 @@ import { mapsLink } from './types'
 import type { Discovery, Place, Usual } from './types'
 import { categories, categoryValue, matchesInterest } from './categories'
 import { isBudget } from './budget'
+import { phoneArea } from '../../region/region'
 
 const DiscoverMap = lazy(() => import('./DiscoverMap'))
 const areas = {
@@ -81,7 +82,7 @@ function readFilters(): Filters {
     halal: url.has('halal') ? url.get('halal') === '1' : saved?.halal === true,
     budget: url.has('budget') ? url.get('budget') === '1' : saved?.budget === true,
     area: typeof area === 'string' && Object.hasOwn(areas, area) ? (area as Area) : 'Tiong Bahru',
-    place: validPlace(saved?.place),
+    place: validPlace(saved?.place) ?? phoneArea(),
   }
 }
 function readUsuals(): Usual[] {
