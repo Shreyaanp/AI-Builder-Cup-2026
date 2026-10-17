@@ -125,8 +125,13 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     const customer = await context.newPage()
     await localOnly(customer)
     await customer.goto(url)
-    await expect(customer.getByRole('heading', { name: 'Offline Fixture Tea Stall' })).toBeVisible()
-    await expect(customer.getByRole('listitem').filter({ hasText: 'Chai' })).toContainText('₹15.00')
+    await expect(
+      customer.getByRole('heading', { level: 1, name: 'Offline Fixture Tea Stall' }),
+    ).toBeVisible()
+    // The menu comes before the similar-nearby list, which can hold a same-named chai from other runs.
+    await expect(customer.getByRole('listitem').filter({ hasText: 'Chai' }).first()).toContainText(
+      '₹15.00',
+    )
     await expect(customer.getByText('UPI', { exact: true })).toBeVisible()
     await shot(customer, 1, '7-customer')
   })
