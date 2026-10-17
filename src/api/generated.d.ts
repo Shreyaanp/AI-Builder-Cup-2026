@@ -257,6 +257,7 @@ export interface paths {
         /**
          * Photo
          * @description ``currency`` (ISO 4217) applies to a brand-new shop; existing shops keep their own.
+         *     ``language`` is the owner's app language for the notes about what was unclear.
          */
         post: operations["photo_api_v1_photos_post"];
         delete?: never;
@@ -6723,6 +6724,7 @@ export interface operations {
             query?: {
                 business_id?: string | null;
                 currency?: string | null;
+                language?: string;
             };
             header?: never;
             path?: never;

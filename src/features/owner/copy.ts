@@ -54,6 +54,8 @@ export const ownerStrings = {
   noPrep: 'Close one day to start your prep plan.',
   weather: 'Weather',
   rain: 'Chance of rain: {pct}%',
+  weatherCredit: 'Weather data by {source}',
+  weatherDemoCredit: 'Offline weather fixture. Live weather uses {source}.',
   lowStock: 'Running low',
   stockLeft: 'Left: {n}',
   runsOut: 'Runs out {date}',

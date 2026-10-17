@@ -40,7 +40,8 @@ def test_price_reasons_name_the_item_and_the_usual_price(found):
     assert "Masala chai at 20000.00 INR; usually about 20.00 INR" in details
     assert "Free water at 0.00 INR: zero or below" in details
     owner = [reason["owner_detail"] for reason in found["pricey"]]
-    assert "Masala chai at 20000.00 INR" in owner
+    # What the owner reads has no English words: item · price.
+    assert "Masala chai · ₹20,000.00" in owner
 
 
 def test_a_price_far_off_the_shops_own_range_is_flagged_without_other_shops():
@@ -121,7 +122,14 @@ def test_flags_open_a_review_the_owner_sees_calmly_and_never_change_the_shop(tmp
         assert "Courtyard Chai”" not in json.dumps(notice)
         review = next(item for item in status["queue"] if item["id"] == f"listing:{copy}")
         assert review["reasons"] == [
-            {"rule": "shared_phone", "detail": "Same phone as Courtyard Chai", "source": "rules"}
+            {
+                "rule": "shared_phone",
+                "detail": "Same phone as Courtyard Chai",
+                "source": "rules",
+                # The reviewer's own language builds the sentence from these.
+                "owner_detail": "098450-12345",
+                "other": "Courtyard Chai",
+            }
         ]
         public = client.get(f"/api/v1/public/shops/{copy}")
         assert public.status_code == 200 and public.json()["name"] == "Courtyard Chai Two"

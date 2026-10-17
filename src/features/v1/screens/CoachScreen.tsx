@@ -729,7 +729,8 @@ function CoachScreen({
       const query = activeId
         ? `?business_id=${encodeURIComponent(activeId)}`
         : `?currency=${defaultCurrency()}`
-      const result = await api<PhotoResult>(`/photos${query}`, {
+      // The notes about anything unclear come back in the owner's language.
+      const result = await api<PhotoResult>(`/photos${query}&language=${language}`, {
         method: 'POST',
         body: file,
         headers: { 'Content-Type': file.type },
