@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { streamCoach } from '../api/stream'
+import { streamCoach, TURN_IDLE_MS } from '../api/stream'
 import { useIdentity } from '../auth/useIdentity'
 import { listConversations, restoreConversation } from '../api/conversations'
 import type { ConversationSummary } from '../api/conversations'
@@ -70,6 +70,9 @@ export function useCoachStream() {
           if (event.kind === 'reply') setReply(event.text ?? '')
         },
         token,
+        undefined,
+        // Streaming never stays on: no event for this long ends the turn with an error.
+        TURN_IDLE_MS,
       )
       if (!current()) return false
       setStatus('complete')
