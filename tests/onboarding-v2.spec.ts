@@ -214,6 +214,19 @@ test('a reload mid-onboarding resumes silently: the card, the next step, no new 
   expect(said).not.toContain(ASKED.kind)
 })
 
+test('"these are all my information" is recognised as finishing: Review my shop opens (#191)', async ({
+  page,
+}) => {
+  await enter(page)
+  await begin(page)
+  await answer(page, 'name: Raju Tailors; category: silai ka kaam')
+  await say(page, 'these are all my information')
+  await expect(page.getByTestId('conversation-ended')).toContainText('Conversation ended')
+  // Review my shop (the sheet "Your shop so far") opens by itself.
+  await expect(page.getByRole('dialog', { name: 'Your shop so far' })).toBeVisible()
+  await expect(page.getByTestId('draft-summary')).toContainText('Raju Tailors')
+})
+
 test('"bas" ends the conversation with a goodbye; Continue carries on without re-asking', async ({
   page,
 }) => {
