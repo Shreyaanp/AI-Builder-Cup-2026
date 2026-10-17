@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "itemname": "Masala Chai",
+      "price": "15.50",
+      "stock": "20",
+      "categoryname": "Drinks",
+      "item_id": "TEA-01"
+    },
+    {
+      "itemname": "Bun",
+      "price": "25.00",
+      "stock": "0",
+      "categoryname": "Bakery",
+      "item_id": "BUN-02"
+    }
+  ]
+}

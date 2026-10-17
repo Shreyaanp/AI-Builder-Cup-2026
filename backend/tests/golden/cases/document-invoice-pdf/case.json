@@ -1,0 +1,11 @@
+{
+  "adapter": "document",
+  "input": "input.pdf",
+  "processor": "invoice",
+  "mime": "application/pdf",
+  "render": {
+    "title": "SUPPLIER INVOICE",
+    "variant": "clean"
+  },
+  "notes": "Tax 5.00 is printed; parser omits tax."
+}
