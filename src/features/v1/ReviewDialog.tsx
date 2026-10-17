@@ -172,9 +172,12 @@ export function ReviewDialog({
                   <Typography component="dt" variant="labelMedium" color="text.secondary">
                     {t.fields[key]}
                   </Typography>
-                  <Stack direction="row" sx={{ gap: 1, alignItems: 'flex-start' }}>
+                  <Stack
+                    component="dd"
+                    direction="row"
+                    sx={{ m: 0, gap: 1, alignItems: 'flex-start' }}
+                  >
                     <Typography
-                      component="dd"
                       variant="bodyLarge"
                       sx={{ m: 0, flex: 1, overflowWrap: 'anywhere' }}
                     >
