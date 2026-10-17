@@ -87,6 +87,52 @@ test('customer fixes: changing Ask location uses the new coordinates and Browse 
   await expect(page.getByRole('search')).toBeVisible()
 })
 
+test('customer fixes: repeated Ask follow-up labels render once without React key warnings', async ({
+  page,
+}) => {
+  const duplicateKeyWarnings: string[] = []
+  const searches: Record<string, unknown>[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error' && message.text().includes('same key'))
+      duplicateKeyWarnings.push(message.text())
+  })
+  await page.route('**/discover/ask', (route) => {
+    searches.push(route.request().postDataJSON())
+    return route.fulfill({
+      json: {
+        intent: {
+          summary: '',
+          keywords: ['tea'],
+          category: '',
+          max_price: null,
+          halal: false,
+          vegetarian: false,
+          locally_made: false,
+          open_now: false,
+          followups: ['Cheaper?'],
+          sort: 'best',
+          near: '',
+          deals: false,
+          area: false,
+        },
+        mode: 'keywords',
+        groups: [],
+        engine: 'fixture',
+      },
+    })
+  })
+  await page.goto('/explore/')
+  await page.getByRole('textbox', { name: 'Ask about anything nearby' }).fill('Tea')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  const cheaper = page.getByRole('button', { name: 'Cheaper?', exact: true })
+  await expect(cheaper).toHaveCount(1)
+  await expect(cheaper).toBeVisible()
+  await cheaper.click()
+  await expect.poll(() => searches.length).toBe(2)
+  expect(searches[1]?.refine).toBe('price')
+  expect(duplicateKeyWarnings).toEqual([])
+})
+
 test('customer fixes: inline sign-in explains a failed attempt and keeps the owner question', async ({
   page,
 }) => {
