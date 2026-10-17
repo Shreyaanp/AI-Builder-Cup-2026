@@ -21,7 +21,14 @@ from google.adk.sessions import InMemorySessionService
 from starlette.websockets import WebSocketDisconnect
 
 from app import business_understanding
-from app.agent import NEW_SHOP_INSTRUCTION, NEW_SHOP_TOPICS, topic_order, turn_instruction
+from app.agent import (
+    GOODBYE,
+    NEW_SHOP_INSTRUCTION,
+    NEW_SHOP_TOPICS,
+    OFFLINE_HI,
+    topic_order,
+    turn_instruction,
+)
 from app.business_understanding import (
     BusinessUnderstander,
     BusinessUnderstanding,
@@ -433,7 +440,8 @@ def test_every_stop_word_ends_the_text_conversation_even_before_the_name(
         )
         assert {"kind": "action", "data": {"target": "end_conversation"}} in ended
         reply = next(e["text"] for e in reversed(ended) if e["kind"] == "reply")
-        assert "?" not in reply and "saved" in reply
+        # A Hindi owner hears the goodbye in Hindi (#100): no question, everything saved.
+        assert "?" not in reply and reply.endswith(OFFLINE_HI[GOODBYE])
         # Nothing is lost: the next visit continues from the saved draft (resume is silent).
         resumed = client.post(
             "/api/v1/coach/stream",
