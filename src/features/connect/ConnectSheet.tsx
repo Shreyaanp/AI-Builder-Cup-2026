@@ -25,7 +25,7 @@ import { SalesImportSheet } from '../v1/ImportMenu'
 import type { SalesImport } from '../v1/useImport'
 import { Sheet } from '../v1/Sheet'
 import { useWorkspace } from '../v1/workspaceContext'
-import { useConnectCopy } from './strings'
+import { extraConnectCopy, useConnectCopy } from './strings'
 import type {
   ConnectorDiff,
   ConnectorMapping,
@@ -70,6 +70,7 @@ export function ConnectSheet({
 }) {
   const t = useConnectCopy()
   const locale = useLocale()
+  const extra = extraConnectCopy[locale]
   const ws = useWorkspace()
   const roles = useTheme().material
   const shop = ws.active
@@ -350,7 +351,7 @@ export function ConnectSheet({
                 {t.pickSystem}
               </Typography>
               <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
-                {[...KNOWN_SYSTEMS, { key: 'export', label: 'Upload an export file' }].map((sys) => {
+                {[...KNOWN_SYSTEMS, { key: 'export', label: extra.uploadExport }].map((sys) => {
                   const isSelected = selectedSystem === sys.label
                   const hasSaved = savedMappings.some(
                     (m) => m.source_label.toLowerCase() === sys.label.toLowerCase(),
@@ -474,7 +475,7 @@ export function ConnectSheet({
                       onClick={() => void handleFileSelected(uploadedFile)}
                       sx={{ minHeight: 48 }}
                     >
-                      Try again
+                      {extra.retry}
                     </Button>
                   )}
                   {analyzing && (
@@ -511,7 +512,7 @@ export function ConnectSheet({
                       onClick={() => void handleAnalyzePasted()}
                       sx={{ alignSelf: 'flex-start', minHeight: 48 }}
                     >
-                      Try again
+                      {extra.retry}
                     </Button>
                   )}
                 </Stack>

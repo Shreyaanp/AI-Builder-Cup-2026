@@ -55,6 +55,24 @@ const en = {
 
 type Copy = typeof en
 
+export const extraConnectCopy: Record<Locale, { uploadExport: string; retry: string }> = {
+  en: { uploadExport: 'Upload an export file', retry: 'Try again' },
+  hi: { uploadExport: 'निर्यात फ़ाइल अपलोड करें', retry: 'फिर कोशिश करें' },
+  'zh-Hans': { uploadExport: '上传导出文件', retry: '再试一次' },
+  ms: { uploadExport: 'Muat naik fail eksport', retry: 'Cuba lagi' },
+  ta: { uploadExport: 'ஏற்றுமதி கோப்பைப் பதிவேற்றவும்', retry: 'மீண்டும் முயற்சி செய்' },
+  ja: { uploadExport: 'エクスポートファイルをアップロード', retry: 'もう一度試す' },
+  ko: { uploadExport: '내보낸 파일 업로드', retry: '다시 시도' },
+  id: { uploadExport: 'Unggah file ekspor', retry: 'Coba lagi' },
+  th: { uploadExport: 'อัปโหลดไฟล์ส่งออก', retry: 'ลองอีกครั้ง' },
+  vi: { uploadExport: 'Tải tệp xuất lên', retry: 'Thử lại' },
+  fil: { uploadExport: 'I-upload ang export file', retry: 'Subukan muli' },
+  bn: { uploadExport: 'এক্সপোর্ট ফাইল আপলোড করুন', retry: 'আবার চেষ্টা করুন' },
+  te: { uploadExport: 'ఎగుమతి ఫైల్‌ను అప్‌లోడ్ చేయండి', retry: 'మళ్లీ ప్రయత్నించండి' },
+  mr: { uploadExport: 'एक्सपोर्ट फाइल अपलोड करा', retry: 'पुन्हा प्रयत्न करा' },
+  kn: { uploadExport: 'ರಫ್ತು ಫೈಲ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ', retry: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ' },
+}
+
 const translations: Record<Locale, Copy> = {
   en,
   hi: {
