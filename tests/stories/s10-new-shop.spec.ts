@@ -1,11 +1,12 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { FIRST_QUESTION, nextQuestion } from '../newShopTopics.js'
+import { FIRST_QUESTION, FOLLOW_UPS, nextQuestion } from '../newShopTopics.js'
 import { enter, inChatFixtures, liveOnly, localOnly, phone, shot } from './support.js'
 
 // S10 · Opening a new shop (owner answers, 15–17 Oct): big hero, then a full-screen conversation
-// in which the coach speaks first and asks only name, kind, place, hours and a shop photo (no
-// menu), fills the shop card silently, opens the map and the camera as cards inside the chat,
+// in which the coach speaks first with one open question, asks only the basics still missing,
+// then at most two follow-ups that fit the shop (#112) and a shop photo (no menu), fills the shop
+// card silently, opens the map and the camera as cards inside the chat,
 // puts the shop live once name + kind + place are known, and ends in one summary card (the face
 // check optional), a ready moment and the Google Maps hand-off.
 test.use(phone)
@@ -45,7 +46,6 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
   await context.grantPermissions(['geolocation', 'microphone', 'camera'])
   await context.setGeolocation({ latitude: 12.9718234, longitude: 77.6412345, accuracy: 20 })
   await enter(page)
-  let hoursFirst = true
 
   await test.step('1 · "+" opens the hero (no dialog)', async () => {
     await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
@@ -108,20 +108,23 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
     await big.getByRole('button', { name: 'This is my shop' }).click()
     await expect(big).toBeHidden()
     await expect(page.getByTestId('map-card').last()).toHaveAttribute('data-state', 'done')
-    // Name, kind and the pin: the shop is live by itself, and the coach asks what is left
-    // (the hours or the photo, in this conversation's own order).
+    // Name, kind and the pin: the shop is live by itself, and the coach asks what is left:
+    // first the tea stall's own follow-up (#112), never a generic one.
     await expect(page.getByTestId('shop-live')).toBeVisible()
-    hoursFirst = (await nextQuestion(page, 2)) === 'hours'
+    expect(await nextQuestion(page, 2)).toBe('followup')
+    await expect(page.getByRole('log')).toContainText(FOLLOW_UPS.seating)
     await shot(page, 10, '4-live')
     await axe(page)
   })
 
-  await test.step('5 · the hours and the shopfront photo in the chat', async () => {
-    const hours = async () => {
-      await page.getByLabel('Message', { exact: true }).fill('hours: 7 am to 9 pm')
+  await test.step('5 · the follow-ups, then the shopfront photo in the chat', async () => {
+    const send = async (text: string) => {
+      await page.getByLabel('Message', { exact: true }).fill(text)
       await page.getByRole('button', { name: 'Send', exact: true }).click()
     }
-    if (hoursFirst) await hours()
+    await send('Yes, there are two benches')
+    await expect(page.getByRole('log')).toContainText('What are your opening hours?')
+    await send('hours: 7 am to 9 pm')
     await expect(page.getByRole('log')).toContainText('Can you take a photo of your shop?')
     const camera = page.getByTestId('camera-card')
     // The card is the entry point (with a big Skip); Open camera takes the whole screen, and the
@@ -148,10 +151,6 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
     await expect(page.getByTestId('camera-card')).toHaveCount(0)
     await expect(page.getByTestId('shop-so-far')).toContainText('Photo added')
     await shot(page, 10, '5-photo')
-    if (!hoursFirst) {
-      await expect(page.getByRole('log')).toContainText('What are your opening hours?')
-      await hours()
-    }
   })
 
   await test.step('6 · one summary card, the optional face check, and the review sheet', async () => {
