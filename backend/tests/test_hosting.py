@@ -65,3 +65,24 @@ def test_production_requires_identity_cloud_memory_and_https(
     monkeypatch.setenv("FIRESTORE_EMULATOR_HOST", "127.0.0.1:8085")
     with pytest.raises(ValidationError):
         Settings(**values)
+
+
+def test_text_is_gzipped_but_streams_and_small_bodies_are_not(tmp_path: Path) -> None:
+    (tmp_path / "index.html").write_text("<html>oGoogle AI</html>")
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "big.js").write_text("console.log('fixture');\n" * 400)
+    (tmp_path / "sw.js").write_text("self.skipWaiting()")
+    with TestClient(
+        create_app(
+            Settings(app_env="test", frontend_dist=str(tmp_path), _env_file=None),
+            InMemorySessionService(),
+        )
+    ) as client:
+        big = client.get("/assets/big.js", headers={"Accept-Encoding": "gzip"})
+        assert big.headers["content-encoding"] == "gzip"
+        assert big.headers["cache-control"] == "public, max-age=31536000, immutable"
+        assert big.text.startswith("console.log")
+        small = client.get("/", headers={"Accept-Encoding": "gzip"})
+        assert "content-encoding" not in small.headers
+        assert small.headers["cache-control"] == "no-store"
+        assert client.get("/sw.js").headers["cache-control"] == "no-store"

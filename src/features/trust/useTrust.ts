@@ -13,11 +13,13 @@ export interface Notice {
 
 export interface Review {
   id: string
-  kind: 'duplicate_owner' | 'listing'
+  kind: 'duplicate_owner' | 'liveness' | 'listing'
   status: 'open' | 'cleared' | 'upheld' | 'resolved'
   updated?: number
   similarity?: number
-  /** Duplicate: shop names of the newer and the earlier account. */
+  /** Liveness: the anti-spoof model's real-person score the reviewer is deciding on. */
+  score?: number
+  /** Duplicate: shop names of the newer and the earlier account; liveness: the owner's. */
   shops?: string[][]
   shop?: string
   business_id?: string
@@ -33,6 +35,8 @@ export interface Review {
 
 export interface Trust {
   face: FaceStatus
+  /** Why a check is in review: another account's face, or a live check the model was unsure of. */
+  review?: 'duplicate' | 'liveness'
   checked?: number | null
   notices: Notice[]
   reviewer: boolean

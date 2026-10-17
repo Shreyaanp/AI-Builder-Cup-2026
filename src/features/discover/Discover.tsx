@@ -33,6 +33,8 @@ import type { Discovery, Place, Usual } from './types'
 import { categories, categoryValue, matchesInterest } from './categories'
 import { isBudget } from './budget'
 import { phoneArea } from '../../region/region'
+import { carried, entryState, pushEntry, replaceEntry, restoreScroll } from '../../app/history'
+import { overlayHandled } from '../v1/backStack'
 
 const DiscoverMap = lazy(() => import('./DiscoverMap'))
 const areas = {
@@ -141,7 +143,7 @@ export default function Discover({
     const url = new URL(location.href)
     if (open) url.searchParams.set('view', 'map')
     else url.searchParams.delete('view')
-    history.pushState(history.state, '', url)
+    pushEntry(url, carried())
     setMapOpen(open)
   }
   const [selected, setSelected] = useState<Usual | null>(null)
@@ -175,10 +177,11 @@ export default function Discover({
       budget: filters.budget ? '1' : '0',
     }))
       url.searchParams.set(key, value)
-    history.replaceState(history.state, '', url)
+    replaceEntry(url)
   }, [filters])
   useEffect(() => {
-    const restore = () => {
+    const restore = (event: PopStateEvent) => {
+      if (overlayHandled(event)) return
       const restored = readFilters()
       setFilters(restored)
       setQuery(restored.q)
@@ -189,18 +192,8 @@ export default function Discover({
   }, [])
   useEffect(() => {
     if (status !== 'ready') return
-    const y = (history.state as { scrollY?: number } | null)?.scrollY
-    if (!y) return
-    let count = 0
-    const attempt = () => {
-      window.scrollTo({ top: y, behavior: 'instant' })
-      if (Math.abs(window.scrollY - y) > 5 && count++ < 8) {
-        requestAnimationFrame(attempt)
-      }
-    }
-    requestAnimationFrame(attempt)
-    const timer = setTimeout(attempt, 50)
-    return () => clearTimeout(timer)
+    const y = entryState().scrollY
+    if (y) restoreScroll(y, 8)
   }, [status])
   useEffect(() => {
     // Shared menu availability stays current while the customer is viewing the feed.
@@ -226,10 +219,12 @@ export default function Discover({
         await ensureDemoWorld(lat, lng)
         const response = await fetch('/api/v1/discover?' + params, { signal: abort.signal })
         if (!response.ok) throw new Error('Discovery unavailable')
-        const data = (await response.json()) as Discovery
+        const raw: unknown = await response.json()
+        const data = raw && typeof raw === 'object' ? (raw as Partial<Discovery>) : {}
         if (!abort.signal.aborted) {
           const seen = new Set<string>()
-          const uniquePlaces = data.places.filter((p) => {
+          const uniquePlaces = (Array.isArray(data.places) ? data.places : []).filter((p) => {
+            if (!p || typeof p.name !== 'string' || typeof p.id !== 'string') return false
             const norm = p.name
               .replace(/\s*\((Tour|Demo)\)$/i, '')
               .trim()
@@ -238,7 +233,7 @@ export default function Discover({
             seen.add(norm)
             return true
           })
-          setResult({ ...data, places: uniquePlaces })
+          setResult({ ...(data as Discovery), places: uniquePlaces })
           setStatus('ready')
         }
       } catch {
@@ -627,6 +622,7 @@ export default function Discover({
           titleId="customer-map-title"
           title={t.map}
           dismissInActions
+          ownsHistory={false}
           actions={<Button onClick={() => setMap(false)}>{t.list}</Button>}
         >
           <Suspense fallback={<Typography role="status">{t.loading}</Typography>}>
