@@ -1,11 +1,9 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
-/** ISO date in Singapore, `back` days ago (the shop's own day). */
+/** ISO date `back` days ago in UTC: a shop made through page.request sends no timezone, so its day is UTC's. */
 function shopDay(back: number) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore' }).format(
-    new Date(Date.now() - back * 86_400_000),
-  )
+  return new Date(Date.now() - back * 86_400_000).toISOString().slice(0, 10)
 }
 
 async function shopWithTwoWeeksOfSales(page: Page) {
