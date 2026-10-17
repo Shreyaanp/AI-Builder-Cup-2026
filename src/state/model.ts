@@ -25,7 +25,14 @@ export type BusinessAction =
   | { type: 'note'; text: string }
   | { type: 'review'; revision: number }
   | { type: 'reset' }
-export type Preferences = { language: Language; appearance: ColorMode; destination: Destination }
+export type Preferences = {
+  language: Language
+  /** A language was chosen (after sign-in, in You or by asking the coach); the sign-in step
+   * "Choose your language" shows until then. */
+  languageChosen: boolean
+  appearance: ColorMode
+  destination: Destination
+}
 export type PreferencesAction =
   | { type: 'language'; language: Language }
   | { type: 'appearance'; appearance: ColorMode }
@@ -102,7 +109,11 @@ export function businessReducer(state: BusinessState, action: BusinessAction): B
 export function preferencesReducer(state: Preferences, action: PreferencesAction): Preferences {
   switch (action.type) {
     case 'language':
-      return { ...state, language: action.language }
+      return {
+        ...state,
+        language: action.language,
+        languageChosen: state.languageChosen || action.language !== 'system',
+      }
     case 'appearance':
       return { ...state, appearance: action.appearance }
     case 'destination':

@@ -134,10 +134,14 @@ export function CustomerNav({ active }: { active: CustomerTab }) {
                     maxWidth: '100%',
                     fontWeight: current ? 700 : 500,
                     lineHeight: 1.15,
-                    fontSize: 'min(12px, 3vw)',
+                    // Shrinks before it breaks: a word never splits mid-syllable (Tamil, Hindi).
+                    // The theme sets the phone size in a media query, so this has to be one too.
+                    '@media (max-width: 599px)': { fontSize: 'min(12px, 2.7vw)' },
                     letterSpacing: 0,
                     textAlign: 'center',
-                    overflowWrap: 'break-word',
+                    overflowWrap: 'normal',
+                    wordBreak: 'keep-all',
+                    hyphens: 'none',
                   }}
                 >
                   {label}

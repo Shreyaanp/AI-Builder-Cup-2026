@@ -57,8 +57,11 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       await shot(customer, 3, 2)
       liveOnly('Actual GPS accuracy and live Google Places; local map cards are fixtures')
       // A typed neighbourhood anywhere in the demo world recentres discovery.
+      await customer.getByRole('button', { name: 'Change area' }).click()
       await customer.getByRole('textbox', { name: 'City or area' }).fill('indiranagar, bengaluru')
       await customer.getByRole('textbox', { name: 'City or area' }).press('Enter')
+      // The chosen place collapses to a label; Change area reopens the box.
+      await customer.getByRole('button', { name: 'Change area' }).click()
       await expect(customer.getByRole('textbox', { name: 'City or area' })).toHaveValue(
         'Indiranagar',
       )
@@ -72,6 +75,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
         'Chinatown Hawker Centre',
       ])
       await shot(customer, 3, '2-demo-nearest')
+      await customer.getByRole('button', { name: 'Change area' }).click()
       await customer.getByRole('button', { name: 'Use my location', exact: true }).click()
       await expect(customer.getByRole('heading', { name: shopName })).toBeVisible()
     })
@@ -80,7 +84,8 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       await customer.getByRole('switch', { name: 'Halal if known' }).check()
       const card = customer.getByRole('list').getByRole('link').filter({ hasText: shopName })
       await expect(card).toBeVisible()
-      await expect(card).toContainText('₹18.00')
+      // Cards show the first dish only; the full menu is checked on the shop page.
+      await expect(card).toContainText('₹15.00')
       await shot(customer, 3, 3)
       await card.click()
     })

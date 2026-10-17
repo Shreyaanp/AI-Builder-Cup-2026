@@ -34,6 +34,7 @@ from .forecast import training, weekday_average
 from .limits import enforce_limits
 from .merchant import MerchantRepository
 from .merchant_routes import owner, store
+from .region import shop_currency, shop_zone
 from .rescue import local_now
 from .settings import Settings
 from .shop_time import shop_timezone
@@ -157,7 +158,7 @@ class Analytics(BaseModel):
 
 
 def _local_day(fields: dict[str, Any], at: float) -> str:
-    zone = shop_timezone(str(fields.get("timezone") or "Asia/Singapore"))
+    zone = shop_timezone(shop_zone(fields))
     return datetime.fromtimestamp(at, zone).date().isoformat()
 
 
@@ -239,7 +240,7 @@ def summarize(
     actual = sum(d.actual or 0 for d in scored)
     return Analytics(
         source=source,
-        currency=str(fields.get("currency") or "SGD"),
+        currency=(shop_currency(fields)),
         days=days,
         yesterday=days[-1],
         week=totals(week),
@@ -424,7 +425,7 @@ async def export(
         for iso, count in opened.items():
             counters.setdefault(iso, {})
             counters[iso] = {**counters[iso], "views": count}
-        currency = str(fields.get("currency") or "SGD")
+        currency = shop_currency(fields)
         for shop_day in build_days(fields, sales, signals["questions"], counters, days):
             rows[shop_day.date].append(
                 {

@@ -16,10 +16,22 @@ test('regional suggestions and custom names preserve legacy labels', async ({ pa
   await page.goto('/')
   const results = await page.evaluate(async () => {
     const path = '/src/features/v1/factNames.ts'
+    const regionPath = '/src/region/region.ts'
     const { factName, factSuggestions } = await import(path)
+    const { profile, COUNTRY_CURRENCY } = await import(regionPath)
+    // Suggestions follow the shop's region profile; countries without one, their currency.
+    const home = Object.fromEntries(
+      Object.entries(COUNTRY_CURRENCY as Record<string, string>).map(([country, code]) => [
+        code,
+        country,
+      ]),
+    )
     return {
       suggestions: Object.fromEntries(
-        ['INR', 'JPY', 'PHP', 'SGD', 'USD'].map((code) => [code, factSuggestions(code).payment]),
+        ['INR', 'JPY', 'PHP', 'SGD', 'USD'].map((code) => [
+          code,
+          factSuggestions(profile(home[code], code)).payment,
+        ]),
       ),
       names: [
         factName('UPI', { paynow: 'PayNow' }),

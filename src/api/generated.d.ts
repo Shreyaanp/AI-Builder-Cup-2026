@@ -245,6 +245,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/photos/classify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Classify Photo
+         * @description What a chat photo shows; nothing is stored or saved. The app confirms with the owner.
+         */
+        post: operations["classify_photo_api_v1_photos_classify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/photos": {
         parameters: {
             query?: never;
@@ -3186,7 +3206,7 @@ export interface components {
             min_order: string;
             /**
              * Timezone
-             * @default Asia/Singapore
+             * @default
              */
             timezone: string;
             /**
@@ -3223,7 +3243,7 @@ export interface components {
             stamps_enabled: boolean;
             /**
              * Currency
-             * @default SGD
+             * @default
              */
             currency: string;
             /** Halal */
@@ -3253,8 +3273,13 @@ export interface components {
              * @default
              */
             upi_id: string;
+            /**
+             * Paynow Id
+             * @default
+             */
+            paynow_id: string;
             /** Rider Providers */
-            rider_providers?: ("rapido" | "uber" | "porter")[];
+            rider_providers?: ("rapido" | "uber" | "porter" | "grab" | "gojek" | "lalamove")[] | null;
             /**
              * Busy Hours
              * @default
@@ -6967,6 +6992,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    classify_photo_api_v1_photos_classify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };

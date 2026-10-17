@@ -1,25 +1,36 @@
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const backend = fileURLToPath(new URL('../backend/', import.meta.url))
 const portable = join(homedir(), 'AppData', 'Local', 'AIBuilderCupTools', 'uv', 'uv.exe')
 const uv = process.env.UV_PATH || (existsSync(portable) ? portable : 'uv')
+// Browser tests set FRESH_TEST_DATA=1: every run gets an empty data dir (merchant, sessions,
+// recall, photos), so reruns never inherit the shops an earlier run seeded.
+const fresh = process.env.FRESH_TEST_DATA === '1'
+const dataDir = fresh ? mkdtempSync(join(tmpdir(), 'chalkboard-e2e-')).replaceAll('\\', '/') : ''
+const freshData = fresh
+  ? {
+      MERCHANT_DATABASE: `${dataDir}/merchant.sqlite3`,
+      SESSION_DATABASE_URL: `sqlite+aiosqlite:///${dataDir}/sessions.sqlite3`,
+      RECALL_PATH: `${dataDir}/conversation-vectors`,
+      MEDIA_DIR: `${dataDir}/media`,
+    }
+  : {}
 // The local preview and browser stories always start with the same fictional worlds.
 // Run in the foreground before serving; production never runs this development launcher.
 const seed = spawnSync(
   uv,
   [
     'run',
-    '--offline',
     '--locked',
     'python',
     '-m',
     'scripts.seed_tour_story',
     '--sqlite',
-    process.env.MERCHANT_DATABASE || 'data/merchant.sqlite3',
+    freshData.MERCHANT_DATABASE || process.env.MERCHANT_DATABASE || 'data/merchant.sqlite3',
   ],
   {
     cwd: backend,
@@ -27,12 +38,13 @@ const seed = spawnSync(
   },
 )
 if (seed.status !== 0) process.exit(seed.status ?? 1)
-const child = spawn(uv, ['run', '--offline', '--locked', 'python', 'run.py'], {
+const child = spawn(uv, ['run', '--locked', 'python', 'run.py'], {
   cwd: backend,
   stdio: 'inherit',
   // Review mode deliberately overrides provider modes; no paid inference.
   env: {
     ...process.env,
+    ...freshData,
     COACH_MODE: 'offline',
     AUTH_MODE: 'local',
     APP_ENV: 'local',
@@ -63,6 +75,7 @@ child.on('error', (error) => {
   process.exitCode = 1
 })
 child.on('exit', (code) => {
+  if (fresh) rmSync(dataDir, { recursive: true, force: true })
   process.exitCode = code ?? 1
 })
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal))

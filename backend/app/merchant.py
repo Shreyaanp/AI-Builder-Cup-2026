@@ -27,9 +27,18 @@ from pydantic import (
 from .business_understanding import BusinessUnderstanding
 from .community import Documents, SqliteDocuments
 from .customer import Inquiry, InquiryInput, InquiryReceipt
+from .money import exponent
 from .playbook import migrate_stored
+from .region import (
+    country_of_timezone,
+    new_shop_currency,
+    new_shop_zone,
+    shop_currency,
+    shop_region,
+    shop_zone,
+)
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
-from .shop_time import client_timezone, shop_timezone
+from .shop_time import shop_timezone
 from .stock_alerts import (
     ALERT_SECONDS,
     MAX_ALERTS,
@@ -115,8 +124,10 @@ class DayHours(BaseModel):
         return self
 
 
-def default_rider_providers() -> list[Literal["rapido", "uber", "porter"]]:
-    return ["rapido", "uber", "porter"]
+# Ride and parcel apps a shop can hand a delivery to (src/features/owner-tools/links.ts). Unset
+# means its region's (India: Rapido, Uber, Porter; Singapore: Grab, Gojek, Lalamove).
+RiderProvider = Literal["rapido", "uber", "porter", "grab", "gojek", "lalamove"]
+LEGACY_RIDERS = ["rapido", "uber", "porter"]
 
 
 class BusinessFields(BaseModel):
@@ -144,7 +155,8 @@ class BusinessFields(BaseModel):
         default_factory=list, max_length=12
     )
     min_order: str = Field(default="", max_length=80)
-    timezone: str = Field(default="Asia/Singapore", max_length=100)
+    # Empty means "where the shop is": its pin's region, else the owner's phone (region.py).
+    timezone: str = Field(default="", max_length=100)
     hours: str = Field(default="", max_length=180)
     weekly_hours: list[DayHours] = Field(default_factory=list, max_length=7)
     # Shop-local date (YYYY-MM-DD) the owner said the shop is closed ("closed today"); customers
@@ -155,7 +167,8 @@ class BusinessFields(BaseModel):
     stamps_needed: int = Field(default=8, ge=3, le=20, strict=True)
     stamps_enabled: bool = False
     # ISO 4217; prices of this shop are stored in this currency's minor unit (see money.py).
-    currency: str = Field(default="SGD", pattern=r"^[A-Z]{3}$")
+    # Empty means the region's currency (the pin's country, else the phone's).
+    currency: str = Field(default="", pattern=r"^([A-Z]{3})?$")
     halal: Halal | None = None
     vegetarian_options: bool | None = None
     # The owner makes or sources what they sell locally (home-made, made in-house, local makers).
@@ -169,9 +182,11 @@ class BusinessFields(BaseModel):
     upi_id: str = Field(
         default="", pattern=r"^(?:[A-Za-z0-9][A-Za-z0-9._-]{1,254}@[A-Za-z][A-Za-z0-9.-]{1,63})?$"
     )
-    rider_providers: list[Literal["rapido", "uber", "porter"]] = Field(
-        default_factory=default_rider_providers, max_length=3
+    # Singapore PayNow: +65 mobile or the business UEN (payments.py builds the SGQR code).
+    paynow_id: str = Field(
+        default="", pattern=r"^(?:\+65[3689]\d{7}|\d{8,9}[A-Z]|[TSR]\d{2}[A-Z]{2}\d{4}[A-Z])?$"
     )
+    rider_providers: list[RiderProvider] | None = Field(default=None, max_length=3)
     busy_hours: str = Field(default="", max_length=80)
     # Type-specific facts from the question plan; owner-confirmed like every other field.
     custom_facts: list[CustomFact] = Field(default_factory=list, max_length=30)
@@ -220,10 +235,13 @@ class BusinessFields(BaseModel):
             and not (key == "supplier" and value is False)
             and not (key == "supplies" and value == [])
             and not (key == "min_order" and value == "")
-            and not (key == "timezone" and value == "Asia/Singapore")
             and not (key == "custom_facts" and value == [])
+            # Older records left the old default out; they read back as Singapore (region.py).
+            and not (key == "timezone" and value == "Asia/Singapore")
             and not (key == "upi_id" and value == "")
-            and not (key == "rider_providers" and value == ["rapido", "uber", "porter"])
+            and not (key == "paynow_id" and value == "")
+            # The old default is India's region default, so older records read the same.
+            and not (key == "rider_providers" and value in (None, LEGACY_RIDERS))
             and not (key == "reward_text" and value == "")
             and not (key == "stamps_needed" and value == 8)
             and not (key == "stamps_enabled" and value is False)
@@ -238,6 +256,16 @@ class BusinessFields(BaseModel):
     def validate_location(self) -> BusinessFields:
         if (self.lat is None) != (self.lng is None):
             raise ValueError("Provide both latitude and longitude.")
+        if not self.timezone:
+            # A saved shop without one (older records left Asia/Singapore out) keeps its
+            # region's; a new draft opens where its pin, else the owner's phone, is.
+            self.timezone = (
+                shop_zone({"lat": self.lat, "lng": self.lng, "currency": self.currency})
+                if self.currency
+                else new_shop_zone(self.lat, self.lng)
+            )
+        if not self.currency:
+            self.currency = new_shop_currency(self.lat, self.lng)
         try:
             shop_timezone(self.timezone)
         except (ZoneInfoNotFoundError, ValueError) as error:
@@ -526,7 +554,7 @@ def public_projection(
         "lat": fields.get("lat"),
         "lng": fields.get("lng"),
         "place_id": fields.get("place_id"),
-        "timezone": fields.get("timezone") or "Asia/Singapore",
+        "timezone": shop_zone(fields),
         **({"pin_demo": True} if fields.get("pin_demo") else {}),
         # Sample shops are always labelled "Demo shop" to customers.
         **({"demo": True} if fields.get("demo") else {}),
@@ -543,7 +571,7 @@ def public_projection(
         **({"weekly_hours": fields["weekly_hours"]} if fields.get("weekly_hours") else {}),
         **({"closed_on": fields["closed_on"]} if fields.get("closed_on") else {}),
         "phone": fields.get("phone", ""),
-        "currency": fields.get("currency") or "SGD",
+        "currency": shop_currency(fields),
         **({"reward_text": fields["reward_text"]} if fields.get("reward_text") else {}),
         "stamps_needed": fields.get("stamps_needed", 8),
         "stamps_enabled": bool(
@@ -589,15 +617,27 @@ def validate_proposal(request: ProposalRequest) -> None:
     if request.kind == "business" and request.business_id and request.products:
         # A new shop may arrive with its menu (one review); edits keep products separate.
         raise HTTPException(422, "Update products separately from business details.")
-    if (
-        request.kind == "business"
-        and request.business
-        and not request.business_id
-        and "timezone" not in request.business.model_fields_set
-        and (zone := client_timezone.get())
-    ):
-        # A new shop opens in its owner's own timezone, wherever they are.
-        request.business.timezone = zone
+    if request.kind == "business" and request.business and not request.business_id:
+        place_new_shop(request)
+
+
+def place_new_shop(request: ProposalRequest) -> None:
+    """A new shop takes its money and clock from where its pin is (an Indian pin is INR and
+    Asia/Kolkata even from a phone set to Singapore), else from the owner's phone (the model
+    validator). Its prices were typed in that same money, so only the minor unit is rescaled."""
+    business = request.business
+    assert business is not None
+    pinned = shop_region({"lat": business.lat, "lng": business.lng})
+    if business.lat is None or not pinned.known:
+        return
+    if business.currency != pinned.currency:
+        scale = 10 ** (exponent(pinned.currency) - exponent(business.currency))
+        for product in request.products:
+            product.price = round(product.price * scale)
+        business.currency = pinned.currency
+    # A zone of another known country came from the phone; UTC or a far zone was chosen.
+    if country_of_timezone(business.timezone) not in (None, pinned.country):
+        business.timezone = new_shop_zone(business.lat, business.lng)
 
 
 def preserve_profile(request: ProposalRequest, saved: dict[str, Any]) -> None:
