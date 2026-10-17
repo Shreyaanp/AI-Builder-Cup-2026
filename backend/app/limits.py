@@ -41,6 +41,8 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     # Shop gallery uploads (moderated, no AI extraction).
     "gallery": ((20, 60), (100, 86_400)),
     "import": ((10, 3_600), (30, 86_400)),
+    # Shop icon from a photo or the gallery (moderated, no AI), and AI generations per shop.
+    "icon": ((20, 60), (100, 86_400)),
     # The Prep plan tile loads with My shop; repeats are answered from the forecast cache.
     "forecast": ((120, 3_600), (1_000, 86_400)),
     "owner:read": ((120, 3_600), (1_000, 86_400)),

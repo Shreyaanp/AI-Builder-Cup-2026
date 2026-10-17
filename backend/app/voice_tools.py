@@ -20,12 +20,14 @@ __all__ = [
     "explain_app",
     "get_customer_messages",
     "get_shop_playbook",
+    "make_my_icon",
     "open_screen",
     "prepare_customer_reply",
     "propose_stamp_card",
     "set_open_today",
     "set_reply_language",
     "suggest_starter_items",
+    "use_photo_as_icon",
 ]
 
 Screen = Literal[
@@ -51,6 +53,7 @@ Screen = Literal[
     "supply",
     "playbook",
     "connect",
+    "icon",
 ]
 SCREENS: dict[str, str] = {
     "messages": "Customer messages",
@@ -75,6 +78,7 @@ SCREENS: dict[str, str] = {
     "supply": "Purchase orders",
     "playbook": "What Chalkboard knows about your shop",
     "connect": "Connect your system",
+    "icon": "Shop icon",
 }
 # Screens where the owner still has to act (the app opens them; nothing changes by itself).
 CONFIRM_THERE = {
@@ -94,6 +98,7 @@ CONFIRM_THERE = {
     "supply": "Purchase orders are only sent after the owner confirms each one.",
     "playbook": "The owner can edit or remove anything there; opening it changes nothing.",
     "connect": "The owner picks the file or paste and confirms the mapped import.",
+    "icon": "The owner taps Make my icon or picks a photo there; nothing changes until they do.",
 }
 
 
@@ -124,6 +129,41 @@ def open_screen(screen: Screen) -> dict[str, Any]:
         "screen": SCREENS[screen],
         **({"instruction": CONFIRM_THERE[screen]} if screen in CONFIRM_THERE else {}),
     }
+
+
+def _icon_card(mode: str, label: str, instruction: str) -> dict[str, Any]:
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {"status": "needs_business"}
+    card_id = _card(
+        ctx,
+        "action",
+        {"target": "icon", "label": label, "business_id": ctx.business_id, "mode": mode},
+    )
+    return {"status": "opened", "card_id": card_id, "instruction": instruction}
+
+
+def make_my_icon() -> dict[str, Any]:
+    """ "Make my icon" / "give my shop a logo": open the shop icon page where the owner taps
+    Make my icon. The app draws a square icon from the shop's name, kind and place with Gemini's
+    image model (each try costs a little, so three a day per shop) and falls back to a coloured
+    monogram if it cannot. Never say the icon is made; the owner taps there and sees it."""
+    return _icon_card(
+        "generate",
+        "Make my icon",
+        "The owner taps Make my icon on that page and can try again or use their own photo.",
+    )
+
+
+def use_photo_as_icon() -> dict[str, Any]:
+    """ "Use this photo as my icon": open the shop icon page so the owner can pick or take the
+    photo, or choose one from the shop gallery; the app crops it to a square. The photo itself
+    cannot travel through voice, so never say the icon was changed."""
+    return _icon_card(
+        "photo",
+        "Use a photo as my icon",
+        "The owner picks or takes the photo on that page and sees the square crop before saving.",
+    )
 
 
 def set_reply_language(language: str) -> dict[str, Any]:

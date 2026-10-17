@@ -171,6 +171,8 @@ class DiscoveryPlace(BaseModel):
     # A seeded sample shop (labelled "Demo shop"), as opposed to demo map data above.
     demo_shop: bool = False
     photo_url: str | None = None
+    # The shop's own icon (shared shops only); the app draws a monogram when there is none.
+    icon_url: str | None = None
     photo_authors: list[str] = []
 
 
@@ -630,6 +632,11 @@ async def discover(
             photo_url=(
                 f"/api/v1/public/shops/{shop['id']}/photos/{shop['gallery'][0]}.jpg"
                 if shop.get("gallery")
+                else None
+            ),
+            icon_url=(
+                f"/api/v1/public/shops/{shop['id']}/icon/{shop['icon']}.jpg"
+                if shop.get("icon")
                 else None
             ),
             items=[TopItem(**p) for p in shop["products"][:3]],
