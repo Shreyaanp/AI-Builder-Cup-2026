@@ -223,6 +223,10 @@ test('"bas" ends the conversation with a goodbye; Continue carries on without re
   await say(page, 'bas')
   const ended = page.getByTestId('conversation-ended')
   await expect(ended).toContainText('Conversation ended')
+  // Stopping opens "Review my shop" at once; close it to carry on.
+  await expect(page.getByTestId('draft-summary')).toContainText('Raju Tailors')
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('draft-summary')).toHaveCount(0)
   await expect(page.getByRole('log')).toContainText('Everything is saved.')
   // Nothing more is asked (no nudge, no question) while the conversation rests.
   const asked = (await askedTopics(page)).length
