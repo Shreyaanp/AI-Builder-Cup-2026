@@ -329,6 +329,7 @@ class CoachRuntime:
                 ui_currency.reset(currency_token)
 
         task = asyncio.create_task(produce(), name="adk-text-producer")
+        sent_draft = merchant.new_shop_draft if merchant else None
         try:
             while True:
                 item = await queue.get()
@@ -338,6 +339,8 @@ class CoachRuntime:
                     raise item
                 if item.kind in {"delta", "reply", "proposal", "chart", "action", "suppliers"}:
                     timer.mark()
+                if item.kind == "draft" and merchant:
+                    sent_draft = merchant.new_shop_draft
                 yield item
                 if item.kind == "error":
                     return
@@ -347,6 +350,11 @@ class CoachRuntime:
             with anyio.CancelScope(shield=True):
                 async with asyncio.timeout(5):
                     await asyncio.gather(task, return_exceptions=True)
+        draft = merchant.new_shop_draft if merchant and merchant.new_shop else None
+        if draft and draft != sent_draft:
+            # Changed after the last draft event (a business profile that arrived late, "bas"):
+            # the phone gets it now, not only with the next turn.
+            yield StreamEvent(kind="draft", data=draft.model_dump(mode="json"))
         yield StreamEvent(kind="turn_complete", session_id=session_id)
 
     async def instant(

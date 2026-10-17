@@ -10,6 +10,7 @@ The offline fixture follows no fixed script.
 
 import asyncio
 import json
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -356,6 +357,46 @@ def test_a_profile_ready_by_bas_joins_the_draft(tmp_path: Path) -> None:
         asyncio.run(flow())
         assert ctx.new_shop_draft and ctx.new_shop_draft.understanding
         assert ctx.new_shop_draft.understanding.kind == "service"
+    finally:
+        business_understanding.understander = previous
+
+
+def test_the_phone_gets_a_profile_that_arrives_during_bas(tmp_path: Path) -> None:
+    """Live eval (vague store): the profile joined the draft after the turn's last draft event,
+    and "bas" came next; the stream sends the draft again before the turn completes."""
+    reader, _ = gemini_reader({"kind": "product", "confidence": 0.9}, delay=2.7)
+    previous = business_understanding.understander
+    try:
+        app = create_app(settings(tmp_path), InMemorySessionService())
+        with TestClient(app) as client:
+            # After startup, which installs the app's own (offline) reader.
+            own, business_understanding.understander = business_understanding.understander, reader
+            try:
+                join(client)
+                first = events_of(
+                    client.post(
+                        "/api/v1/coach/stream",
+                        json={"message": "category: sab kuch", "language": "hi", "new_shop": True},
+                    ).text
+                )
+                sid = first[0]["session_id"]
+                assert not any(
+                    (e.get("data") or {}).get("understanding")
+                    for e in first
+                    if e["kind"] == "draft"
+                )
+                time.sleep(1)  # the profile finishes meanwhile
+                ended = events_of(
+                    client.post(
+                        "/api/v1/coach/stream",
+                        json={"message": "bas", "new_shop": True, "session_id": sid},
+                    ).text
+                )
+            finally:
+                business_understanding.understander = own
+        drafts = [e["data"] for e in ended if e["kind"] == "draft"]
+        assert drafts and drafts[-1]["understanding"]["kind"] == "product"
+        assert ended[-1]["kind"] == "turn_complete"
     finally:
         business_understanding.understander = previous
 
