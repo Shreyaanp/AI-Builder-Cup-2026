@@ -56,12 +56,14 @@ from .voice_tools import (
     explain_app,
     get_customer_messages,
     get_shop_playbook,
+    make_my_icon,
     open_screen,
     prepare_customer_reply,
     propose_stamp_card,
     set_open_today,
     set_reply_language,
     suggest_starter_items,
+    use_photo_as_icon,
 )
 
 # The owner's app language (BCP 47) for this turn; set by the runtime, read by the instruction.
@@ -233,6 +235,9 @@ Everything by voice (the owner should never need to hunt for a button)
 - "Any messages?": get_customer_messages; "tell her we deliver after 6": prepare_customer_reply
   (the owner taps Send).
 - Stamp card or loyalty reward: propose_stamp_card.
+- "Make my icon" or "give my shop a logo": make_my_icon. "Use this photo as my icon":
+  use_photo_as_icon.
+  Both only open the icon page; the owner taps there. Never say the icon was made or changed.
 - To go somewhere in the app (share my page or QR, close the day, Get on Google, connect my POS
   or import sales, add a photo, my data or delete my data, plan tomorrow, sold out list, menu,
   shop details), call open_screen. Deleting data always needs the owner's confirmation on
@@ -1264,6 +1269,8 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
             get_shop_playbook,
             prepare_customer_reply,
             open_screen,
+            make_my_icon,
+            use_photo_as_icon,
             explain_app,
             suggest_starter_items,
             *SUPPLY_TOOLS,

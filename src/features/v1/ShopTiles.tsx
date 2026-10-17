@@ -59,6 +59,7 @@ import { hasHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
 
 import { MapsHandoff } from './MapsHandoff'
+import { ShopIcon } from '../google/ShopIcon'
 
 export type ShopSheetKind =
   'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
@@ -454,6 +455,11 @@ export function ShopSheets({
           title={shop.fields.name}
           actions={editDetails}
         >
+          {kind === 'details' && (
+            <Box sx={{ mb: 4 }}>
+              <ShopIcon />
+            </Box>
+          )}
           {kind === 'details' && (
             <Box sx={{ mb: 3 }}>
               <ShopLocation onReviewed={onClose} />
