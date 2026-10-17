@@ -15,7 +15,13 @@ export function run({ baseline }) {
   }
   const over = overBaseline(id, found, baseline)
   return {
-    counts: { [id]: Object.fromEntries(Object.keys(found).sort().map((f) => [f, 1])) },
+    counts: {
+      [id]: Object.fromEntries(
+        Object.keys(found)
+          .sort()
+          .map((f) => [f, 1]),
+      ),
+    },
     failures: over.length
       ? [
           'rule voice: a prompt module calls Gemini without stating the selected language. The model then answers in ' +
