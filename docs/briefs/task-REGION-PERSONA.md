@@ -17,9 +17,9 @@ backend/app/voice.py, NewShopFlow.tsx, NewShopStage.tsx, VoiceStage.tsx, agent.p
      payments UPI (QR/deep link), rides Rapido/Uber/Porter, units (kg, litre, cup), GST wording, dates.
    - Singapore: SGD S$, languages en/zh/ms/ta, payments PayNow/NETS/cards, rides Grab/Gojek, GST 9% wording.
    - Fallback for other countries: currency from locale, English, generic payments.
-   Every place that shows money, payment/ride options, tax wording, suggested examples ("coffee under $3"),
-   demo hints and AI prompts reads this profile. Remove every hard-coded SGD/"Asia/Singapore" default that
-   leaks into India (shop default currency is SGD today in merchant.py; timezone default Asia/Singapore).
+     Every place that shows money, payment/ride options, tax wording, suggested examples ("coffee under $3"),
+     demo hints and AI prompts reads this profile. Remove every hard-coded SGD/"Asia/Singapore" default that
+     leaks into India (shop default currency is SGD today in merchant.py; timezone default Asia/Singapore).
 2. AI prompts get the region: replies use the region's currency, payments, units and examples.
 3. Language after sign-in (owner and customer): a single "Choose your language" step right after sign-in,
    default = best guess from region + device language (India → Hindi or the regional language offered
