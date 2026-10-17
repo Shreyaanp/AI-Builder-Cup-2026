@@ -26,6 +26,7 @@ import { fill, usePassportCopy } from './copy'
 import type { PassportStrings } from './copy'
 import { usePassport } from './store'
 import { openedShops } from '../discover/opened'
+import { countdown as left } from '../customer/countdown'
 
 type Feed = components['schemas']['TodayFeed']
 type Find = components['schemas']['Find']
@@ -93,17 +94,6 @@ function useNow(active: boolean) {
     return () => clearInterval(timer)
   }, [active])
   return now
-}
-
-function left(ms: number, locale: string) {
-  const minutes = Math.max(0, Math.floor(ms / 60_000))
-  if (minutes < 60) {
-    const seconds = Math.max(0, Math.floor((ms % 60_000) / 1000))
-    return `${minutes}:${String(seconds).padStart(2, '0')}`
-  }
-  const unit = (value: number, unit: 'hour' | 'minute') =>
-    new Intl.NumberFormat(locale, { style: 'unit', unit, unitDisplay: 'narrow' }).format(value)
-  return `${unit(Math.floor(minutes / 60), 'hour')} ${unit(minutes % 60, 'minute')}`
 }
 
 function distanceText(m: number, locale: string) {
