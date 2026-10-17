@@ -247,7 +247,7 @@ export default function Marketing() {
           </a>
           <nav aria-label="Chalkboard">
             <a href="/explore/">{t.find}</a>
-            <Button variant="contained" href={businessUrl} endIcon={<ArrowUpRight size={16} />}>
+            <Button variant="outlined" href={businessUrl} endIcon={<ArrowUpRight size={16} />}>
               {t.business}
             </Button>
           </nav>
@@ -274,9 +274,6 @@ export default function Marketing() {
                   endIcon={<ArrowRight size={18} />}
                 >
                   {t.find}
-                </Button>
-                <Button variant="outlined" size="large" href={businessUrl}>
-                  {t.business}
                 </Button>
               </div>
             </div>
