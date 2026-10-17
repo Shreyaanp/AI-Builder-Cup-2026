@@ -2,9 +2,10 @@
 
 Base: `release/stable-3` (PR #66, now on main as 6ebf1a49). Eight PRs merged with
 `git merge --no-ff origin/<branch>`, one merge commit each, conflicts resolved before the next
-merge. Then main was merged in three times: 6ebf1a49 (release 3 as a squash, same tree as
+merge. Then main was merged in four times: 6ebf1a49 (release 3 as a squash, same tree as
 `release/stable-3`, so every file kept this branch's version), 4d5afdd1 (#99, main-green test
-fixes and the landing restore) and bcadb1d8 (#95, voice session hotfix; its tests pass here). A fetch before the push confirmed every branch head below is in.
+fixes and the landing restore), bcadb1d8 (#95, voice session hotfix; its tests pass here) and
+aacbb32d (#91, onboarding v2; see below). A fetch before the push confirmed every branch head below is in.
 
 ## What is in
 
@@ -92,6 +93,18 @@ were merged only after `gh pr checks` showed them all green. #78 went in before 
 The desktop project and `npm run test:qa` were not rerun locally after the reboot. CI runs both
 browser projects in full on the PR. Seven other worktrees were running Playwright on the same
 machine, which explains the cold-start `page.goto` timeouts.
+
+## Main's onboarding v2 (#91)
+
+One conflict: `backend/app/reply_language.py`, `language_rule`. Kept #91's rule (reply completely
+in the language, never romanised) and appended #90's `NOT_INSTEAD` note (e.g. Malay, not
+Indonesian). `agent.py` merged on its own: #91's new-shop flow beside #80's rename fixture and
+the single Tamil/Chinese/Malay offline set. #91's `business_understanding.py` calls Gemini without
+`language_rule`: it is an internal extractor that returns English labels for the coach to translate,
+so it is recorded in the rules baseline (voice), not changed here. After the merge, these passed:
+ruff, mypy, tsc, lint, format, rules, and the backend tests for onboarding v2, Hindi, photos,
+region, rename, streaming, voice language and reliability, new shop and payments (243 passed, 36
+skipped).
 
 ## Not done / for later
 

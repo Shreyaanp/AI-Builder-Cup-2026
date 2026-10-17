@@ -64,6 +64,7 @@
   "voice": {
     "backend/app/brief.py": 1,
     "backend/app/business_profile.py": 1,
+    "backend/app/business_understanding.py": 1,
     "backend/app/community_routes.py": 1,
     "backend/app/connector.py": 1,
     "backend/app/customer.py": 1,
