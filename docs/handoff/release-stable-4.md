@@ -2,11 +2,11 @@
 
 Base: `release/stable-3` (PR #66, now on main as 6ebf1a49). Eight PRs merged with
 `git merge --no-ff origin/<branch>`, one merge commit each, conflicts resolved before the next
-merge. Then main was merged in six times: 6ebf1a49 (release 3 as a squash, same tree as
+merge. Then main was merged in seven times: 6ebf1a49 (release 3 as a squash, same tree as
 `release/stable-3`, so every file kept this branch's version), 4d5afdd1 (#99, main-green test
 fixes and the landing restore), bcadb1d8 (#95, voice session hotfix; its tests pass here) and
 aacbb32d (#91, onboarding v2; see below), 01b70ba2 (#113, #115, #106, #114) and 0c13e9f5
-(#117, #131, #92 and more; see below). A fetch before the push confirmed every branch head below is in.
+(#117, #131, #92 and more; see below) and c441078a (#105; see below). A fetch before the push confirmed every branch head below is in.
 
 ## What is in
 
@@ -122,6 +122,18 @@ skipped).
 - **Voice rate-limit test** (`new-shop-voice.spec.ts`): failed twice on CI at the typed greeting in
   an earlier head. It passed on the next CI run with no change to the test. Locally it passed 8 of
   9 runs; the one failure was the page stuck on the splash while the servers were loaded.
+
+## Customer app: immersive, phone-first (#105, c441078a)
+
+#105 was squash-merged with an older copy of this release's files in it (its branch grew from an
+earlier release 4 head), so most conflicts were that old copy against newer commits here. The two
+release 4 files (this handoff and the rules baseline) kept this branch's version. #105 is a later
+design of the same screens #78 changed, so for `Discover.tsx` (result cards), `PublicShop.tsx` (top
+controls, full-bleed hero, shop photo first and icon as its fallback) and `CustomerApp.tsx` (the new
+top bar replaces the floating pickers) main's side won. The release's own changes in those files
+(#90's language step, region time zones, area currency) are untouched. `discover.spec.ts` keeps
+`S$2.20`, which is stricter than main's `$2.20` check. While #104 conflicted, GitHub ran no CI on
+it.
 
 ## Not done / for later
 
