@@ -52,18 +52,18 @@ test('QR stamps are once per shop per calendar day and celebrate 5 and 10', asyn
   await fixture(page)
   await page.clock.install({ time: new Date('2026-10-01T08:00:00+08:00') })
   await page.goto(`/explore/s/${id}`)
-  await expect(card(page).getByRole('status')).toHaveText('0 stamps')
+  await expect(card(page).getByRole('status')).toHaveText('2 stamps')
   await page.goto(`/explore/s/${id}?source=qr`)
-  await expect(card(page).getByRole('status')).toHaveText('1 stamps')
+  await expect(card(page).getByRole('status')).toHaveText('3 stamps')
   await expect(page.getByText('This card is stored on this phone.')).toBeVisible()
   await expect(page.getByText('10th kopi free')).toBeVisible()
   await page.reload()
-  await expect(card(page).getByRole('status')).toHaveText('1 stamps')
+  await expect(card(page).getByRole('status')).toHaveText('3 stamps')
   for (let day = 2; day <= 10; day++) {
     await setDay(page, day)
     await page.reload()
     await expect(card(page).getByRole('status')).toHaveText(
-      [5, 10].includes(day) ? `${day} stamps — hooray!` : `${day} stamps`,
+      [5, 10].includes(day) ? `${day + 2} stamps — hooray!` : `${day + 2} stamps`,
     )
   }
   await expect(
@@ -89,7 +89,7 @@ test('badges appear in Your usuals, shops have independent cards, and reduced mo
   for (let n = 0; n < 5; n++) {
     const shop = `${n}aaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa`
     await page.goto(`/explore/s/${shop}?source=qr`)
-    await expect(card(page).getByRole('status')).toHaveText('1 stamps')
+    await expect(card(page).getByRole('status')).toHaveText('3 stamps')
   }
   await expect(page.getByText('Tried 5 shops')).toBeVisible()
   // Force the fifth daily visit for one shop using genuine calendar progression.
@@ -97,10 +97,10 @@ test('badges appear in Your usuals, shops have independent cards, and reduced mo
     await setDay(page, day)
     await page.reload()
     await expect(card(page).getByRole('status')).toHaveText(
-      day === 5 ? '5 stamps — hooray!' : `${day} stamps`,
+      day === 5 ? '7 stamps — hooray!' : `${day + 2} stamps`,
     )
   }
-  await expect(card(page).getByRole('status')).toHaveText('5 stamps — hooray!')
+  await expect(card(page).getByRole('status')).toHaveText('7 stamps — hooray!')
   expect(
     await card(page)
       .getByRole('status')
@@ -172,7 +172,7 @@ test('corrupt or blocked storage does not break the customer menu or imply saved
       'Browser storage is unavailable. Your progress and reminders cannot be saved.',
     ),
   ).toBeVisible()
-  await expect(card(page).getByRole('status')).toHaveText('0 stamps')
+  await expect(card(page).getByRole('status')).toHaveText('2 stamps')
 })
 
 test('owner reward edits require exact review before saving and clearing', async ({ page }) => {
