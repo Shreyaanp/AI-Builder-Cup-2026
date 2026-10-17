@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     customer_origin: str = ""
     v1_enabled: bool = False
     feature_google_guide: bool = True
+    feature_trust_strip: bool = False
+    support_whatsapp: str = Field(default="", pattern=r"^(|https://wa\.me/[1-9][0-9]{6,14})$")
     merchant_backend: Literal["sqlite", "firestore"] = "sqlite"
     embedding_model: str = "gemini-embedding-2"
     # The shared search engine: Vertex embeddings when Gemini runs on Vertex ("auto"), or the

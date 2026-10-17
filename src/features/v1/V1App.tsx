@@ -8,6 +8,8 @@ import { LEGAL_VERSION } from './legal'
 import { Landing } from './Landing'
 import { AccountError, ConsentScreen, Splash } from './Onboarding'
 import { WorkspaceProvider } from './WorkspaceProvider'
+import { Box } from '@mui/material'
+import { TrustStrip } from './TrustStrip'
 
 import { LanguageStep } from '../language/LanguageStep'
 import { useNeedsLanguage } from '../language/needsLanguage'
@@ -18,7 +20,18 @@ export default function V1App() {
   const [preview, setPreview] = useState(false)
   if (identity.status === 'loading') return <Splash />
   if (identity.status !== 'ready' || (identity.mode === 'local' && !preview))
-    return <Landing onPreview={() => setPreview(true)} />
+    return (
+      <>
+        {identity.trustStrip?.enabled && (
+          <Box
+            sx={{ maxWidth: 1080, mx: 'auto', px: 3, pt: 'calc(16px + env(safe-area-inset-top))' }}
+          >
+            <TrustStrip />
+          </Box>
+        )}
+        <Landing onPreview={() => setPreview(true)} />
+      </>
+    )
   return <Account key={identity.scope} onLeave={() => setPreview(false)} />
 }
 

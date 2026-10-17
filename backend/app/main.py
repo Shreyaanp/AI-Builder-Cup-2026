@@ -356,6 +356,12 @@ def create_app(
             **get_services(request).identity.bootstrap(request, response),
             "v1_enabled": settings.v1_enabled,
             "features": FeatureFlags(google_guide=settings.feature_google_guide).model_dump(),
+            "trust_strip": {
+                "enabled": settings.feature_trust_strip,
+                "support_whatsapp": settings.support_whatsapp
+                if settings.feature_trust_strip
+                else "",
+            },
             "customer_origin": settings.customer_origin
             or (
                 "https://chalkboard.shreyaan.work"

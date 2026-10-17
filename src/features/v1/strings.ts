@@ -2,6 +2,15 @@ import { lazyCopy } from '../../i18n/lazyCopy'
 import { loaders } from './locales'
 
 export const en = {
+  trustFree: 'Free to start',
+  trustLanguage: 'Your language',
+  trustData: 'Your data stays yours',
+  trustHuman: 'Talk to a human',
+  trustFreeBody: 'Start for free; no payment needed.',
+  trustLanguageBody: 'Use Hindi, English or another language from settings.',
+  trustDataBody: 'Delete your data anytime; saved face data is encrypted.',
+  trustHumanBody: 'Talk to our support team on WhatsApp.',
+  trustWhatsapp: 'Open WhatsApp',
   newShopMode: 'New shop',
   newShopReady: 'Your new shop is ready',
   newShopReadyBody:
