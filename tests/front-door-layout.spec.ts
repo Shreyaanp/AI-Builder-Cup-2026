@@ -222,6 +222,19 @@ for (const language of ['ta', 'hi', 'ja'])
         .map((el) => el.textContent),
     )
     expect(overflowing).toEqual([])
+    // The chips sit in the page, below the cards: scrolled to, none is hidden behind the dock or nav (#123).
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    const covered = await page.evaluate(() => {
+      const chips = Array.from(document.querySelectorAll<HTMLElement>('[data-chips] button'))
+      return chips
+        .filter((chip) => {
+          const r = chip.getBoundingClientRect()
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+          return hit !== null && !chip.contains(hit)
+        })
+        .map((chip) => chip.textContent)
+    })
+    expect(covered).toEqual([])
     // Nav labels never run into each other.
     const labels = await page
       .getByRole('navigation')

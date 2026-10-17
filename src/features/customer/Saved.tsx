@@ -103,7 +103,7 @@ export function Saved() {
       <Typography
         component="h1"
         variant="headlineMedium"
-        sx={{ pt: 'calc(env(safe-area-inset-top) + 16px)', pb: 2, px: 1, fontWeight: 600 }}
+        sx={{ pt: 1, pb: 2, px: 1, fontWeight: 600 }}
       >
         {t.savedTitle}
       </Typography>

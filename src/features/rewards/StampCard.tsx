@@ -1,5 +1,5 @@
 import { carried, pushEntry } from '../../app/history'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -16,7 +16,7 @@ import { HAND_FONT, shape } from '../../design/theme'
 import { stampThud } from '../../design/chalkMotion'
 import { useLocale } from '../../state/hooks'
 import { useRewardCopy } from './strings'
-import { celebrations, claimReward, useRewards, visit } from './storage'
+import { celebrations, claimReward, useLanded, useRewards, visit } from './storage'
 import { useCopy } from '../v1/strings'
 import { useCustomer } from '../customer/account'
 import { setPassport, usePassport } from '../passport/store'
@@ -128,12 +128,23 @@ export function StampCard({
   const { signedIn, stamps, count, claimed } = useCardCount(shop, target)
   const full = count >= target
   const number = (value: number) => new Intl.NumberFormat(locale).format(value)
+  // After the stamp sheet closes: bring the card into view, then press the new stamp on.
+  const landed = useLanded(shop)
+  const cardRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!landed) return
+    cardRef.current?.scrollIntoView({
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'center',
+    })
+  }, [landed])
   const close = () => {
     setRedeeming(false)
     if ((history.state as { rewardRedeem?: string } | null)?.rewardRedeem === shop) history.back()
   }
   return (
     <Box
+      ref={cardRef}
       component="section"
       id="stamp-card"
       aria-label={t.stampCard}
@@ -210,7 +221,8 @@ export function StampCard({
         ))}
         {Array.from({ length: target }, (_, index) => (
           <Box
-            key={index}
+            // A new key on the newest stamp restarts its press each time one lands.
+            key={index === count - 1 ? `${index}-${landed}` : index}
             component="span"
             aria-hidden="true"
             data-filled={index < count}
@@ -225,7 +237,10 @@ export function StampCard({
               bgcolor: index < count ? theme.chalk.mint.main : roles.surface,
               color: index < count ? theme.chalk.mint.onMain : roles.onSurface,
               typography: 'labelMedium',
-              ...(index === count - 1 && celebrations.has(shop) ? stampThud : {}),
+              ...(index === count - 1 && (celebrations.has(shop) || landed > 0)
+                ? { ...stampThud, animationDelay: landed ? '280ms' : undefined }
+                : {}),
+              '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
             }}
           >
             {index < count ? <Check size={18} /> : number(index + WELCOME + 1)}
