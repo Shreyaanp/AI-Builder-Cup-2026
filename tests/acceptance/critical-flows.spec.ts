@@ -8,6 +8,7 @@ import {
   type WebSocketRoute,
 } from '@playwright/test'
 import { enter, localOnly, shareSigned } from '../stories/support.js'
+import { expectCount } from './stamps.js'
 
 /**
  * Release gate for the three flows that must work (owner, 17 Oct): vendor onboarding, a
@@ -672,31 +673,6 @@ async function customerAt(browser: Browser, at: Pin, signedIn: boolean) {
 }
 
 const quietPin = (): Pin => ({ lat: 1.2 + Math.random() * 0.1, lng: 103.7 + Math.random() * 0.1 })
-
-/** The count on the shop button, the stamp card and the passport: all the same number. */
-async function expectCount(
-  page: Page,
-  shopUrl: URL,
-  name: string,
-  count: number,
-  needed: number,
-  inPassport = true,
-) {
-  await page.goto(shopUrl.toString())
-  const card = page.getByRole('region', { name: 'Stamp card' })
-  await expect(page.getByRole('link', { name: /^Stamp card · / })).toHaveText(
-    `Stamp card · ${count} of ${needed} stamps`,
-  )
-  await expect(card.getByRole('status')).toHaveText(`${count} stamps`)
-  await expect(card.getByRole('img', { name: `${count} of ${needed} stamps` })).toBeVisible()
-  // The passport lists only shops the customer has been stamped at (not the welcome stamps alone).
-  if (!inPassport) return
-  await page.goto(`${shopUrl.origin}/explore/passport`)
-  await expect(page.locator('li').filter({ hasText: name })).toContainText(
-    `${count} of ${needed} stamps`,
-    { timeout: 15_000 },
-  )
-}
 
 for (const who of ['guest', 'signed-in customer'] as const) {
   test(`QR scan as a ${who}: one stamp, the same count (2 welcome + 1) on the shop button, card and passport; a second scan the same day adds none`, async ({
