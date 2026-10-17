@@ -55,22 +55,86 @@ const en = {
 
 type Copy = typeof en
 
-export const extraConnectCopy: Record<Locale, { uploadExport: string; retry: string }> = {
-  en: { uploadExport: 'Upload an export file', retry: 'Try again' },
-  hi: { uploadExport: 'निर्यात फ़ाइल अपलोड करें', retry: 'फिर कोशिश करें' },
-  'zh-Hans': { uploadExport: '上传导出文件', retry: '再试一次' },
-  ms: { uploadExport: 'Muat naik fail eksport', retry: 'Cuba lagi' },
-  ta: { uploadExport: 'ஏற்றுமதி கோப்பைப் பதிவேற்றவும்', retry: 'மீண்டும் முயற்சி செய்' },
-  ja: { uploadExport: 'エクスポートファイルをアップロード', retry: 'もう一度試す' },
-  ko: { uploadExport: '내보낸 파일 업로드', retry: '다시 시도' },
-  id: { uploadExport: 'Unggah file ekspor', retry: 'Coba lagi' },
-  th: { uploadExport: 'อัปโหลดไฟล์ส่งออก', retry: 'ลองอีกครั้ง' },
-  vi: { uploadExport: 'Tải tệp xuất lên', retry: 'Thử lại' },
-  fil: { uploadExport: 'I-upload ang export file', retry: 'Subukan muli' },
-  bn: { uploadExport: 'এক্সপোর্ট ফাইল আপলোড করুন', retry: 'আবার চেষ্টা করুন' },
-  te: { uploadExport: 'ఎగుమతి ఫైల్‌ను అప్‌లోడ్ చేయండి', retry: 'మళ్లీ ప్రయత్నించండి' },
-  mr: { uploadExport: 'एक्सपोर्ट फाइल अपलोड करा', retry: 'पुन्हा प्रयत्न करा' },
-  kn: { uploadExport: 'ರಫ್ತು ಫೈಲ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ', retry: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ' },
+export const extraConnectCopy: Record<
+  Locale,
+  { uploadExport: string; retry: string; salesImported: (rows: string, items: string) => string }
+> = {
+  en: {
+    uploadExport: 'Upload an export file',
+    retry: 'Try again',
+    salesImported: (rows, items) =>
+      `${rows} sales · ${items} ${items === '1' ? 'item' : 'items'} imported`,
+  },
+  hi: {
+    uploadExport: 'निर्यात फ़ाइल अपलोड करें',
+    retry: 'फिर कोशिश करें',
+    salesImported: (rows, items) => `${rows} बिक्री · ${items} चीज़ें आयात की गईं`,
+  },
+  'zh-Hans': {
+    uploadExport: '上传导出文件',
+    retry: '再试一次',
+    salesImported: (rows, items) => `已导入 ${rows} 笔销售、${items} 个商品`,
+  },
+  ms: {
+    uploadExport: 'Muat naik fail eksport',
+    retry: 'Cuba lagi',
+    salesImported: (rows, items) => `${rows} jualan · ${items} item diimport`,
+  },
+  ta: {
+    uploadExport: 'ஏற்றுமதி கோப்பைப் பதிவேற்றவும்',
+    retry: 'மீண்டும் முயற்சி செய்',
+    salesImported: (rows, items) => `${rows} விற்பனை · ${items} பொருட்கள் இறக்குமதி செய்யப்பட்டன`,
+  },
+  ja: {
+    uploadExport: 'エクスポートファイルをアップロード',
+    retry: 'もう一度試す',
+    salesImported: (rows, items) => `${rows}件の売上・${items}品目を取り込みました`,
+  },
+  ko: {
+    uploadExport: '내보낸 파일 업로드',
+    retry: '다시 시도',
+    salesImported: (rows, items) => `${rows}건의 판매 · ${items}개 항목을 가져왔어요`,
+  },
+  id: {
+    uploadExport: 'Unggah file ekspor',
+    retry: 'Coba lagi',
+    salesImported: (rows, items) => `${rows} penjualan · ${items} barang diimpor`,
+  },
+  th: {
+    uploadExport: 'อัปโหลดไฟล์ส่งออก',
+    retry: 'ลองอีกครั้ง',
+    salesImported: (rows, items) => `นำเข้าการขาย ${rows} รายการ · สินค้า ${items} รายการ`,
+  },
+  vi: {
+    uploadExport: 'Tải tệp xuất lên',
+    retry: 'Thử lại',
+    salesImported: (rows, items) => `Đã nhập ${rows} lượt bán · ${items} mặt hàng`,
+  },
+  fil: {
+    uploadExport: 'I-upload ang export file',
+    retry: 'Subukan muli',
+    salesImported: (rows, items) => `Na-import ang ${rows} benta · ${items} item`,
+  },
+  bn: {
+    uploadExport: 'এক্সপোর্ট ফাইল আপলোড করুন',
+    retry: 'আবার চেষ্টা করুন',
+    salesImported: (rows, items) => `${rows}টি বিক্রি · ${items}টি পণ্য আনা হয়েছে`,
+  },
+  te: {
+    uploadExport: 'ఎగుమతి ఫైల్‌ను అప్‌లోడ్ చేయండి',
+    retry: 'మళ్లీ ప్రయత్నించండి',
+    salesImported: (rows, items) => `${rows} అమ్మకాలు · ${items} వస్తువులు దిగుమతి అయ్యాయి`,
+  },
+  mr: {
+    uploadExport: 'एक्सपोर्ट फाइल अपलोड करा',
+    retry: 'पुन्हा प्रयत्न करा',
+    salesImported: (rows, items) => `${rows} विक्री · ${items} वस्तू आयात केल्या`,
+  },
+  kn: {
+    uploadExport: 'ರಫ್ತು ಫೈಲ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ',
+    retry: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
+    salesImported: (rows, items) => `${rows} ಮಾರಾಟ · ${items} ಐಟಂಗಳನ್ನು ಆಮದು ಮಾಡಲಾಗಿದೆ`,
+  },
 }
 
 const translations: Record<Locale, Copy> = {

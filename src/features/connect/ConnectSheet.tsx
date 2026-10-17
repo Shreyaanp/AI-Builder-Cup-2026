@@ -723,7 +723,19 @@ export function ConnectSheet({
         )}
       </Box>
     </Sheet>
-    <SalesImportSheet imported={salesImport} onClose={() => setSalesImport(null)} showResultOnSave />
+    <SalesImportSheet
+      imported={salesImport}
+      onClose={() => setSalesImport(null)}
+      showResultOnSave
+      resultText={
+        salesImport
+          ? extra.salesImported(
+              new Intl.NumberFormat(locale).format(salesImport.summary.rows),
+              new Intl.NumberFormat(locale).format(salesImport.summary.items),
+            )
+          : undefined
+      }
+    />
     </>
   )
 }

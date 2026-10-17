@@ -89,6 +89,7 @@ test('owner confirms a POS sales export and sees it in Grow', async ({ page }) =
   await expect(summary).toContainText('Kopi')
   await summary.getByRole('button', { name: 'Save these sales' }).click()
   await expect(summary.getByRole('status')).toBeVisible()
+  await expect(summary.getByRole('status')).toContainText('2 sales · 1 item imported')
 
   const saved = await page.request
     .get(`/api/v1/businesses/${business.id}/sales`)

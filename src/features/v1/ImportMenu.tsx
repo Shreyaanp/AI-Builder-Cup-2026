@@ -183,10 +183,12 @@ export function SalesImportSheet({
   imported,
   onClose,
   showResultOnSave = false,
+  resultText,
 }: {
   imported: SalesImport | null
   onClose: () => void
   showResultOnSave?: boolean
+  resultText?: string
 }) {
   const ws = useWorkspace()
   const t = useCopy()
@@ -230,7 +232,7 @@ export function SalesImportSheet({
         <Box>
           {saved ? (
             <Alert severity="success" role="status">
-              {t.salesSaved}
+              {resultText ?? t.salesSaved}
             </Alert>
           ) : (
             <>
