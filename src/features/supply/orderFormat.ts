@@ -2,7 +2,9 @@ import type { PurchaseOrder } from './types.ts'
 
 /** The number without a leading "PO-"/"PO " so the copy's own "PO" prefix is not doubled. */
 export function poNumber(number: string | number | null | undefined): string {
-  return String(number ?? '').trim().replace(/^PO[-\s]*/i, '')
+  return String(number ?? '')
+    .trim()
+    .replace(/^PO[-\s]*/i, '')
 }
 
 /** Order total in minor units: the stated total, else the sum of line totals, else null. */
