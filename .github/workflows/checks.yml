@@ -105,7 +105,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [phone, desktop]
+        project: ${{ github.event_name == 'pull_request' && fromJSON('["phone"]') || fromJSON('["phone", "desktop"]') }}
         shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7.0.1
