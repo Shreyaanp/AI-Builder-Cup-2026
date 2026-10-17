@@ -668,3 +668,37 @@ def test_end_conversation_twice_changes_nothing(tmp_path: Path) -> None:
     assert first["status"] == second["status"] == "ended"
     assert "card_id" in first and "card_id" not in second
     assert len(context.cards) == 1
+
+
+def test_a_gps_pin_before_the_name_is_merged_not_refused() -> None:
+    """Live check (17 Oct): "haan, main dukaan par hoon" before the name; the phone's pin draft
+    (empty name) closed the socket with INVALID_FRAME."""
+    saved = NewShopDraft(skipped=["hours"])
+    pin = NewShopDraft(
+        business=BusinessFields(name="", lat=12.9352, lng=77.6245, pin_source="device")
+    )
+    merged = merge_drafts(saved, pin)
+    assert merged and merged.business and merged.business.lat == 12.9352
+    assert merged.business.name == "" and merged.skipped == ["hours"]
+
+
+def test_the_voice_socket_takes_a_pin_before_the_name(tmp_path: Path) -> None:
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        join(client)
+        with client.websocket_connect("/api/v1/voice?new_shop=true&lang=hi", headers=ORIGIN) as ws:
+            ws.send_json({"kind": "new_shop", "draft": None})
+            assert ws.receive_json()["kind"] == "ready"
+            ws.send_json({"kind": "text", "text": "हाँ, मैं अभी दुकान पर हूँ।"})
+            while ws.receive_json()["kind"] != "turn_complete":
+                pass
+            pin = {"name": "", "lat": 12.9352, "lng": 77.6245, "pin_source": "device"}
+            ws.send_json({"kind": "new_shop", "draft": {"business": pin, "products": []}})
+            ws.send_json({"kind": "text", "text": "name: Kaveri Tiffin; category: idli dosa"})
+            seen = []
+            while (event := ws.receive_json())["kind"] != "turn_complete":
+                seen.append(event)
+        assert not any(event["kind"] == "error" for event in seen)
+        drafts = [event["data"] for event in seen if event["kind"] == "draft"]
+        assert drafts and drafts[-1]["business"]["lat"] == 12.9352
+        assert drafts[-1]["business"]["name"] == "Kaveri Tiffin"

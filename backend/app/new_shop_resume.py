@@ -41,7 +41,9 @@ def merge_drafts(base: NewShopDraft | None, overlay: NewShopDraft | None) -> New
         return overlay
     business = base.business
     if overlay.business:
-        fields = base.business.model_dump() if base.business else {}
+        # Nothing saved yet (the GPS pin came before the name): start from the app's own copy,
+        # whose empty name is valid while the shop is described (live check: socket closed).
+        fields = (base.business or overlay.business).model_dump()
         fields.update({k: v for k, v in overlay.business.model_dump().items() if _filled(v)})
         business = BusinessFields.model_validate(fields)
     products = {(p.name.casefold(), p.unit.casefold()): p for p in base.products}
