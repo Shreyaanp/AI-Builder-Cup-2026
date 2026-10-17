@@ -15,6 +15,7 @@ import {
 import { Pencil, RefreshCw, X } from 'lucide-react'
 import type { components } from '../../../api/generated'
 import { useLocale } from '../../../state/hooks'
+import { useConversationCopy } from '../../discover/conversationCopy'
 import { ApiError } from '../api'
 import { Sheet } from '../Sheet'
 import { useWorkspace } from '../workspaceContext'
@@ -36,6 +37,9 @@ const SECTIONS: PlaybookSection[] = [
   'segments',
   'next_features',
 ]
+// Shown at first; the rest sits behind "More" so the sheet opens as a short read.
+const FIRST_SECTIONS = new Set<PlaybookSection>(['goals', 'priorities'])
+const FIRST_ENTRIES = 3
 // Metrics that have a number on the Today page; the rest are honest "not tracked yet".
 const ON_TODAY = new Set<MetricId>([
   'items_sold',
@@ -80,6 +84,8 @@ function PlaybookSheet({ open, onClose }: { open: boolean; onClose: () => void }
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState<'refresh' | 'save' | null>(null)
   const [status, setStatus] = useState('')
+  const [showAll, setShowAll] = useState(false)
+  const more = useConversationCopy()
   const [problem, setProblem] = useState('')
   const base = `/businesses/${encodeURIComponent(activeId ?? '')}/playbook`
 
@@ -213,7 +219,10 @@ function PlaybookSheet({ open, onClose }: { open: boolean; onClose: () => void }
               </Group>
             )}
             {SECTIONS.map((section) => {
-              const entries = (view.playbook[section] ?? []) as Entry[]
+              const first = FIRST_SECTIONS.has(section)
+              if (!first && !showAll) return null
+              const all = (view.playbook[section] ?? []) as Entry[]
+              const entries = first && !showAll ? all.slice(0, FIRST_ENTRIES) : all
               if (!entries.length) return null
               return (
                 <Group key={section} title={t.sections[section]} testId={`playbook-${section}`}>
@@ -235,7 +244,7 @@ function PlaybookSheet({ open, onClose }: { open: boolean; onClose: () => void }
                 </Group>
               )
             })}
-            {(view.playbook.vocabulary?.terms ?? []).length > 0 && (
+            {showAll && (view.playbook.vocabulary?.terms ?? []).length > 0 && (
               <Group title={t.words} list={false} testId="playbook-words">
                 <Typography variant="bodySmall" color="text.secondary" sx={{ mb: 2 }}>
                   {t.wordsHint}
@@ -254,6 +263,14 @@ function PlaybookSheet({ open, onClose }: { open: boolean; onClose: () => void }
                 </Stack>
               </Group>
             )}
+            <Button
+              onClick={() => setShowAll((value) => !value)}
+              aria-expanded={showAll}
+              data-testid="playbook-more"
+              sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+            >
+              {showAll ? more.less : more.more}
+            </Button>
           </Stack>
         )}
       </Box>
