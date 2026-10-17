@@ -8,6 +8,7 @@ in the background; foreground only, batches under 10 min; `--workers=1`; no para
 commits, no AI trailers. Owner decisions (17 Oct 01:30, docs/OWNER-NOTES.md) are binding:
 
 ## Flow (owner-quizzed)
+
 - Ask ONLY: shop name, what you sell (category), where (pin), hours, shop photo. NO MENU in onboarding.
   After onboarding, Today shows "Add your menu" first (photo / type buttons); the customer page shows
   "Menu coming soon" + chat with the shop until a menu exists.
@@ -36,9 +37,11 @@ commits, no AI trailers. Owner decisions (17 Oct 01:30, docs/OWNER-NOTES.md) are
   spoken greeting; never re-ask a filled field; the owner continues when ready.
 
 ## Smart, dynamic business understanding (owner 17 Oct 04:45: "if it is not smart there is no point")
+
 Today onboarding is a fixed script: NEW_SHOP_TOPICS in backend/app/agent.py (name → sell → location →
 hours → payment → delivery → halal), a food-shaped schema, FOOD/GENERIC templates in business_profile.py.
 A self-cleaning HELMET STATION got asked "is it halal?". Fix the approach, not the symptom:
+
 - Universal core only (name, what you offer, where, hours, photo). No payment/delivery/halal/veg/menu
   questions in onboarding at all.
 - The agent first UNDERSTANDS the business: Gemini writes a structured profile from what the owner said
@@ -62,6 +65,7 @@ A self-cleaning HELMET STATION got asked "is it halal?". Fix the approach, not t
   script + results in docs/qa/onboarding-eval.md; any failure becomes a test case.
 
 ## Voice quality (Gemini-grade, ADK 2.12 RunConfig supports all of these; gemini-3.8-live)
+
 - session_resumption (transparent) + context_window_compression (sliding window); handle GoAway by
   reconnecting with the resumption handle; remove the 40-call cap (max_llm_calls) for live and replace it
   with a ~15-minute session cap that ends politely ("let's continue by typing" + a tap to continue).
@@ -75,6 +79,7 @@ A self-cleaning HELMET STATION got asked "is it halal?". Fix the approach, not t
   session state and the instruction shows "known / still missing" every turn.
 
 ## Proof
+
 Tests for every rule above (backend + phone browser, Hindi locale). Then a live check (owner's gcloud, small
 cost): 10 Hindi onboardings via the voice socket (text turns + one audio clip) on live gemini-3.8-live:
 zero drops, zero repeated questions, first audio < 800 ms p50, no menu question, live after name+category+pin.

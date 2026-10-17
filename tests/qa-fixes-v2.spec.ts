@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { enter, image, localOnly, seedShop } from './stories/support.js'
+import { FIRST_QUESTION } from './newShopTopics.js'
 import { LOCALES } from '../src/i18n/locales.js'
 import { formatPrice } from '../src/features/v1/format.js'
 import { formatMoneyText } from '../src/features/inquiries/formatMoneyText.js'
@@ -54,7 +55,7 @@ for (const appearance of ['light', 'dark'] as const) {
       await enter(page)
       await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
       await page.getByRole('button', { name: 'Let’s begin' }).click()
-      await expect(page.getByRole('log')).toContainText('What is your business called?')
+      await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
       const card = page.getByTestId('shop-so-far')
       // The chip-edge mask lives in VoiceStage.tsx and is reserved for the voice workers.
       await withinViewport(page, page.getByRole('button', { name: 'Menu photo', exact: true }))

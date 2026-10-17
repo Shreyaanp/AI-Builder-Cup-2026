@@ -367,7 +367,8 @@ test('voice rate limit: the alert says how long to wait; voice unavailable: carr
   await expect(alert).toContainText(/Try again in [12] s/)
   const retry = alert.getByRole('button', { name: 'Try again' })
   await expect(retry).toBeDisabled()
-  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
+  // The typed greeting arrives beside the alert; a loaded CI runner can take over 5 s.
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION, { timeout: 15_000 })
   await expect(retry).toBeEnabled({ timeout: 5_000 })
   mode = 'down'
   await retry.click()

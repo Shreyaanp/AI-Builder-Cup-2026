@@ -2,6 +2,7 @@
 
 Owner (17 Oct 00:05), live, Hindi: "connection lost", the same question asked again, the flow breaks after
 some time and gets stuck. Production logs (Cloud Run ogoogle-ai, 16 Oct 17:45-18:18 UTC) show:
+
 - Every new-shop voice session ends by itself after ~9-12 turns / ~130 s with `voice_closed` and NO error.
   Prime suspect: RunConfig max_llm_calls = NEW_SHOP_LLM_CALLS = 40 (backend/app/voice.py:29,167): turns +
   tool calls exhaust it mid-onboarding and run_live ends. Confirm (log why the stream ended), don't guess.
@@ -18,6 +19,7 @@ RECALL_PATH=data/test-vectors. NEVER run commands in the background; foreground 
 parallel sub-agents; plain commits, no AI trailers.
 
 Make it robust and idempotent:
+
 1. A full onboarding (name, category, place, menu, hours, photo, review, live) must fit in one session: lift
    the call budget to what onboarding really needs (measure calls per turn), and when any limit is near,
    continue seamlessly (rotate the Live session server-side with the context carried over) instead of
@@ -38,5 +40,5 @@ Make it robust and idempotent:
    drops. Then ONE live check with the owner's gcloud credentials: a Hindi new-shop session of 15+ text
    turns via the voice socket against live Gemini Live completes without voice_closed and without a
    repeated question (small cost; record the transcript in the PR).
-Ruff, mypy, pytest, lint, build, prettier, voice/new-shop specs. Push fix/voice-reliability, PR to main
-titled "Voice onboarding never drops or repeats (Hindi)". Summarise with the live check result.
+   Ruff, mypy, pytest, lint, build, prettier, voice/new-shop specs. Push fix/voice-reliability, PR to main
+   titled "Voice onboarding never drops or repeats (Hindi)". Summarise with the live check result.
