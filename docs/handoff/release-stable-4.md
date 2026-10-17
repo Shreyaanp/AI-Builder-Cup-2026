@@ -2,9 +2,9 @@
 
 Base: `release/stable-3` (PR #66, now on main as 6ebf1a49). Eight PRs merged with
 `git merge --no-ff origin/<branch>`, one merge commit each, conflicts resolved before the next
-merge. Then main was merged in twice: 6ebf1a49 (release 3 as a squash, same tree as
-`release/stable-3`, so every file kept this branch's version) and 4d5afdd1 (#99, main-green test
-fixes and the landing restore). A fetch before the push confirmed every branch head below is in.
+merge. Then main was merged in three times: 6ebf1a49 (release 3 as a squash, same tree as
+`release/stable-3`, so every file kept this branch's version), 4d5afdd1 (#99, main-green test
+fixes and the landing restore) and bcadb1d8 (#95, voice session hotfix; its tests pass here). A fetch before the push confirmed every branch head below is in.
 
 ## What is in
 
