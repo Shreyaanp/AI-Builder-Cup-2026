@@ -134,8 +134,7 @@ export function StampMoment({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, attempt, account.status, shop.id, qrKey, signedIn, rescue])
 
-  const finish = () =>
-    onClose(phase.step === 'result' && phase.outcome.verdict === 'stamped')
+  const finish = () => onClose(phase.step === 'result' && phase.outcome.verdict === 'stamped')
   return (
     // A bottom sheet on phones (slides up into the thumb zone), a dialog on wide screens.
     <Sheet open={open} onClose={finish} titleId="stamp-moment-title" dismissInActions>

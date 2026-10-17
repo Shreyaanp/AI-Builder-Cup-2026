@@ -20,7 +20,12 @@ export function ShopSkeleton() {
       aria-label={t.loading}
       aria-busy="true"
       data-testid="shop-skeleton"
-      sx={{ maxWidth: 720, mx: 'auto', px: 4, pt: { xs: 0, sm: 'calc(80px + env(safe-area-inset-top))' } }}
+      sx={{
+        maxWidth: 720,
+        mx: 'auto',
+        px: 4,
+        pt: { xs: 0, sm: 'calc(80px + env(safe-area-inset-top))' },
+      }}
     >
       <Skeleton
         variant="rectangular"
