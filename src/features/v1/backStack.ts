@@ -51,6 +51,9 @@ function onPopState(event: PopStateEvent) {
     if (ignore === 0) queued.splice(0).forEach(pushState)
     return
   }
+  // A feature URL can sit above this entry without closing it. Landing back on
+  // its marker returns to the draft; it does not discard the draft itself.
+  if (stack.at(-1)?.id === history.state?.overlay) return
   const top = stack.pop()
   if (!top) return
   handledPops.add(event)

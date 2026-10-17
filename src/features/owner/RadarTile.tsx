@@ -3,6 +3,8 @@ import { Alert, Box, Button, Chip, Stack, Typography, useTheme } from '@mui/mate
 import { Plus, Radar as RadarIcon, ShieldCheck } from 'lucide-react'
 import type { components } from '../../api/generated'
 import { shape } from '../../design/theme'
+import { formatLocale } from '../../i18n/locales'
+import { useLocale } from '../../state/hooks'
 import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
@@ -67,11 +69,12 @@ export function RadarTile() {
  */
 export function RadarSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useOwnerCopy()
+  const locale = useLocale()
   const theme = useTheme()
   const roles = theme.material
   const ws = useWorkspace()
   const { radar, failed, retry } = useRadar(ws.active!.id, open)
-  const km = radar ? new Intl.NumberFormat(undefined).format(radar.radius / 1000) : ''
+  const km = radar ? new Intl.NumberFormat(formatLocale(locale)).format(radar.radius / 1000) : ''
   return (
     <Sheet open={open} onClose={onClose} titleId="radar-sheet-title" title={t.radar}>
       {failed && !radar ? (

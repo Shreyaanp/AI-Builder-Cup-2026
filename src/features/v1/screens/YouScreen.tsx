@@ -13,7 +13,17 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { Check, ChevronRight, Download, LogOut, Plus, ShieldCheck } from 'lucide-react'
+import {
+  Check,
+  ChevronRight,
+  Download,
+  LogOut,
+  MessageCircleQuestion,
+  Plus,
+  ShieldCheck,
+} from 'lucide-react'
+import { openOwnerFeature } from '../../owner-tools/entry'
+import { useToolCopy } from '../../owner-tools/copy'
 import { TrustCard } from '../../trust/TrustCard'
 import { useIdentity } from '../../../auth/useIdentity'
 import { installState, offerInstall, subscribeInstall } from '../../../app/pwa'
@@ -119,6 +129,7 @@ function Row({
 export function YouScreen() {
   const t = useCopy()
   const tabs = useTabsCopy()
+  const tools = useToolCopy()
   const ws = useWorkspace()
   const identity = useIdentity()
   const preferences = usePreferences()
@@ -246,6 +257,11 @@ export function YouScreen() {
 
         <Group title={tabs.help}>
           <TourMenuButton onStart={() => undefined} />
+          <Row
+            icon={<MessageCircleQuestion size={20} />}
+            label={tools.guideTitle}
+            onClick={() => openOwnerFeature('guide')}
+          />
           {installation !== 'installed' && (
             <Box ref={installButton}>
               <Row

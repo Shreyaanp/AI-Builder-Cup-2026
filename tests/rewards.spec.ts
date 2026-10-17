@@ -48,21 +48,22 @@ async function setDay(page: Page, day: number) {
 }
 
 test('QR stamps are once per shop per calendar day and celebrate 5 and 10', async ({ page }) => {
+  test.slow()
   await fixture(page)
   await page.clock.install({ time: new Date('2026-10-01T08:00:00+08:00') })
   await page.goto(`/explore/s/${id}`)
-  await expect(card(page).getByRole('status')).toHaveText('0 stamps')
+  await expect(card(page).getByRole('status')).toHaveText('2 stamps')
   await page.goto(`/explore/s/${id}?source=qr`)
-  await expect(card(page).getByRole('status')).toHaveText('1 stamp')
+  await expect(card(page).getByRole('status')).toHaveText('3 stamps')
   await expect(page.getByText('This card is stored on this phone.')).toBeVisible()
   await expect(page.getByText('10th kopi free')).toBeVisible()
   await page.reload()
-  await expect(card(page).getByRole('status')).toHaveText('1 stamp')
+  await expect(card(page).getByRole('status')).toHaveText('3 stamps')
   for (let day = 2; day <= 10; day++) {
     await setDay(page, day)
     await page.reload()
     await expect(card(page).getByRole('status')).toHaveText(
-      [5, 10].includes(day) ? `${day} stamps — hooray!` : `${day} stamps`,
+      [5, 10].includes(day) ? `${day + 2} stamps — hooray!` : `${day + 2} stamps`,
     )
   }
   await expect(
@@ -88,7 +89,7 @@ test('badges appear in Your usuals, shops have independent cards, and reduced mo
   for (let n = 0; n < 5; n++) {
     const shop = `${n}aaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa`
     await page.goto(`/explore/s/${shop}?source=qr`)
-    await expect(card(page).getByRole('status')).toHaveText('1 stamp')
+    await expect(card(page).getByRole('status')).toHaveText('3 stamps')
   }
   await expect(page.getByText('Tried 5 shops')).toBeVisible()
   // Force the fifth daily visit for one shop using genuine calendar progression.
@@ -96,10 +97,10 @@ test('badges appear in Your usuals, shops have independent cards, and reduced mo
     await setDay(page, day)
     await page.reload()
     await expect(card(page).getByRole('status')).toHaveText(
-      day === 5 ? '5 stamps — hooray!' : `${day} stamps`,
+      day === 5 ? '7 stamps — hooray!' : `${day + 2} stamps`,
     )
   }
-  await expect(card(page).getByRole('status')).toHaveText('5 stamps — hooray!')
+  await expect(card(page).getByRole('status')).toHaveText('7 stamps — hooray!')
   expect(
     await card(page)
       .getByRole('status')
@@ -171,7 +172,7 @@ test('corrupt or blocked storage does not break the customer menu or imply saved
       'Browser storage is unavailable. Your progress and reminders cannot be saved.',
     ),
   ).toBeVisible()
-  await expect(card(page).getByRole('status')).toHaveText('0 stamps')
+  await expect(card(page).getByRole('status')).toHaveText('2 stamps')
 })
 
 test('owner reward edits require exact review before saving and clearing', async ({ page }) => {
@@ -243,3 +244,52 @@ for (const [locale, title] of locales) {
     })
   })
 }
+
+test('shop with reward displays stamp card and perks on phone and desktop', async ({ page }) => {
+  await fixture(page)
+  await page.goto(`/explore/s/${id}`)
+  await expect(card(page)).toBeVisible()
+  await expect(page.getByText('10th kopi free')).toBeVisible()
+})
+
+test('shop without reward hides stamp card, stamp CTA and games, and QR scan gives no stamp', async ({
+  page,
+}) => {
+  await localOnly(page)
+  const noRewardId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+  await page.route('**/api/v1/public/shops/*', (route) =>
+    route.fulfill({
+      json: {
+        id: noRewardId,
+        name: 'Plain Bakery',
+        timezone: 'Asia/Singapore',
+        category: 'Bakery',
+        location: 'Tiong Bahru',
+        hours: '08:00–18:00',
+        phone: '',
+        currency: 'SGD',
+        reward_text: '',
+        stamps_needed: 8,
+        stamps_enabled: false,
+        products: [{ name: 'Sourdough', unit: 'loaf', price: 600, available: true }],
+      },
+    }),
+  )
+  await page.route('**/api/v1/discover?**', (route) =>
+    route.fulfill({ json: { mode: 'demo', places: [], google_unavailable: false } }),
+  )
+
+  await page.goto(`/explore/s/${noRewardId}`)
+  await expect(card(page)).not.toBeVisible()
+  await expect(page.getByRole('button', { name: /collect daily stamp/i })).not.toBeVisible()
+  await expect(page.getByRole('region', { name: /games & loyalty/i })).not.toBeVisible()
+  await expect(page.getByRole('list', { name: 'Your badges' })).not.toBeVisible()
+
+  // QR scan should not show card or increment stamps
+  await page.goto(`/explore/s/${noRewardId}?source=qr`)
+  await expect(card(page)).not.toBeVisible()
+  await expect(page.getByRole('button', { name: /collect daily stamp/i })).not.toBeVisible()
+  const raw = await page.evaluate((key) => localStorage.getItem(key), progressKey)
+  const saved = raw ? JSON.parse(raw) : { shops: {} }
+  expect(saved.shops?.[noRewardId]?.stamps ?? 0).toBe(0)
+})

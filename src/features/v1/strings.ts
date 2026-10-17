@@ -425,6 +425,7 @@ export const en = {
     gallery: 'shop gallery photos',
     community: 'public shop copies',
     memory: 'assistant memory',
+    analytics: 'shop analytics',
     conversations: 'conversations',
   } as Record<string, string>,
 }

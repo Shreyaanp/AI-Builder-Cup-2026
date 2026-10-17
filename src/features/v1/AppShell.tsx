@@ -41,11 +41,22 @@ import { PrivacyScreen } from './screens/PrivacyScreen'
 import { SubPage } from './screens/SubPage'
 import { YouScreen } from './screens/YouScreen'
 import { DiscardPrompt } from './DiscardPrompt'
+import { useIdentity } from '../../auth/useIdentity'
+import { CoachGuide } from '../owner-tools/CoachGuide'
+import { PaymentsScreen } from '../owner-tools/PaymentsScreen'
+import { openOwnerFeature, useOwnerFeature } from '../owner-tools/entry'
+import { useToolCopy } from '../owner-tools/copy'
 
 export function AppShell() {
   const t = useCopy()
   const tabs = useTabsCopy()
   const ws = useWorkspace()
+  const feature = useOwnerFeature()
+  const tools = useToolCopy()
+  const { features } = useIdentity()
+  // The Google guide can be switched off for a release; its sub-page then falls back to Coach.
+  const destination =
+    ws.destination === 'google' && !features.google_guide ? 'coach' : ws.destination
   const roles = useTheme().material
   const rail = useMediaQuery(`(min-width:${windowClass.medium}px)`)
   const keyboard = useKeyboardOpen()
@@ -57,6 +68,16 @@ export function AppShell() {
   // Large windows: My shop tiles beside the coach (phones keep the coach to one card).
   const supporting = useMediaQuery(`(min-width:${windowClass.large}px)`)
   useEffect(() => {
+    if (!feature) return
+    const previousTitle = document.title
+    document.title = `${feature === 'guide' ? tools.guideTitle : tools.payTitle} · Chalkboard`
+    document.getElementById('main')?.focus({ preventScroll: true })
+    window.scrollTo(0, 0)
+    return () => {
+      document.title = previousTitle
+    }
+  }, [feature, tools.guideTitle, tools.payTitle])
+  useEffect(() => {
     document.documentElement.style.setProperty('--nav-offset', showNavBar ? '84px' : '0px')
   }, [showNavBar])
   const destinations: { id: Destination; label: string; icon: ReactNode }[] = [
@@ -66,9 +87,14 @@ export function AppShell() {
     { id: 'you', label: tabs.navYou, icon: <CircleUserRound size={22} /> },
   ]
   // A sub-page (Google, Privacy) keeps its tab selected.
-  const tab = PARENT_TAB[ws.destination] ?? ws.destination
+  const tab = PARENT_TAB[destination] ?? destination
+  // Leaving for a tab closes an open owner feature (guide, payments).
+  const go = (destination: Destination) => {
+    openOwnerFeature(null)
+    ws.go(destination)
+  }
   const screen =
-    ws.destination === 'coach'
+    destination === 'coach'
       ? null
       : {
           shop: <ShopScreen />,
@@ -84,19 +110,19 @@ export function AppShell() {
               <PrivacyScreen />
             </SubPage>
           ),
-        }[ws.destination]
+        }[destination]
 
   return (
     <>
       {inFlow && <NewShopFlow setGalleryPhoto={setGalleryPhoto} />}
       <Box sx={{ display: inFlow ? 'none' : 'flex', minHeight: '100dvh', bgcolor: roles.surface }}>
         <a href="#main" className="skip-link">
-          Skip to content
+          {tabs.skipToContent}
         </a>
         {rail && (
           <Box
             component="nav"
-            aria-label="Main"
+            aria-label={tabs.mainNav}
             sx={{
               width: 96,
               flexShrink: 0,
@@ -115,7 +141,7 @@ export function AppShell() {
               <Leaf size={28} />
             </Box>
             {destinations.map((item) => (
-              <NavItem key={item.id} item={item} selected={tab === item.id} onSelect={ws.go} rail />
+              <NavItem key={item.id} item={item} selected={tab === item.id} onSelect={go} rail />
             ))}
           </Box>
         )}
@@ -137,12 +163,18 @@ export function AppShell() {
             >
               {/* Coach stays mounted while hidden so drafts, replies and voice survive tab
                 changes; keyed by shop so each shop has its own thread. */}
-              <Box hidden={ws.destination !== 'coach'} sx={{ height: '100%' }}>
+              <Box hidden={destination !== 'coach' || feature !== null} sx={{ height: '100%' }}>
                 <CoachWorkspace galleryPhoto={galleryPhoto} setGalleryPhoto={setGalleryPhoto} />
               </Box>
-              {screen}
+              {feature === 'guide' ? (
+                <CoachGuide />
+              ) : feature === 'payments' ? (
+                <PaymentsScreen key={ws.activeId} />
+              ) : (
+                screen
+              )}
             </Box>
-            {supporting && ws.destination === 'coach' && ws.active && !inFlow && (
+            {supporting && destination === 'coach' && !feature && ws.active && !inFlow && (
               <Box
                 component="aside"
                 aria-label={tabs.navShop}
@@ -166,7 +198,7 @@ export function AppShell() {
         {showNavBar && (
           <Box
             component="nav"
-            aria-label="Main"
+            aria-label={tabs.mainNav}
             sx={{
               position: 'fixed',
               insetInline: 0,
@@ -181,7 +213,7 @@ export function AppShell() {
             }}
           >
             {destinations.map((item) => (
-              <NavItem key={item.id} item={item} selected={tab === item.id} onSelect={ws.go} />
+              <NavItem key={item.id} item={item} selected={tab === item.id} onSelect={go} />
             ))}
           </Box>
         )}

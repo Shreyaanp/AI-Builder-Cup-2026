@@ -1,12 +1,19 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { Box, LinearProgress, Stack, Typography, useTheme } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
-import { CalendarClock, Globe, Stamp } from 'lucide-react'
+import { CalendarClock, Globe, IndianRupee, Stamp } from 'lucide-react'
+import { useIdentity } from '../../../auth/useIdentity'
 import { CloseDayTile } from '../../closeday/CloseDay'
+import { openOwnerFeature } from '../../owner-tools/entry'
+import { useToolCopy } from '../../owner-tools/copy'
 import { PrepPlanTile } from '../../forecast/PrepPlan'
 import { useCopy as usePlanCopy } from '../../planning/strings'
 import { RecapTile } from '../../sales/ShopInsights'
 import { OrdersTile } from '../../sourcing/Orders'
+import { SupplyTile } from '../../supply/Supply'
+import { WeekPulseTile } from '../../analytics/WeekPulse'
+import { usePlaybook } from '../playbook/usePlaybook'
 import { readiness } from '../shopProgress'
 import { ShopSheets, Supporting, Tile, type ShopSheetKind } from '../ShopTiles'
 import { tileGrid } from '../tileSpan'
@@ -20,7 +27,7 @@ import { RescueTile } from '../../owner/RescueTile'
 
 /**
  * Grow: every owner tool as a card with its live one-line status. Cards open the existing
- * screens and flows. Tools that do not exist yet (payments, POS) have no card at all.
+ * screens and flows; the shop playbook decides which tool leads.
  */
 export function GrowScreen() {
   const tabs = useTabsCopy()
@@ -37,12 +44,34 @@ export function GrowScreen() {
   )
 }
 
+/** Tools the playbook suggests first, the rest in their usual order (stable). Cards without a
+ * playbook tool of their own stay beside the closest one (supply with orders). */
+const GROW_ALIAS: Record<string, string> = {
+  supply: 'orders',
+  radar: 'rescue',
+  payments: 'rescue',
+  week: 'recap',
+}
+function byGrowOrder(grow: string[], tools: [string, ReactNode][]): ReactNode[] {
+  const rank = (id: string) => {
+    const index = grow.indexOf(GROW_ALIAS[id] ?? id)
+    return index < 0 ? grow.length : index
+  }
+  return tools
+    .map(([id, node], index) => ({ id, node, index }))
+    .sort((a, b) => rank(a.id) - rank(b.id) || a.index - b.index)
+    .map((tool) => tool.node)
+}
+
 function GrowTiles() {
   const t = useCopy()
   const tabs = useTabsCopy()
   const plan = usePlanCopy()
+  const tools = useToolCopy()
+  const { features } = useIdentity()
   const ws = useWorkspace()
   const roles = useTheme().material
+  const { state: playbook } = usePlaybook()
   const [planOpen, setPlanOpen] = useState(false)
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
   const [radarOpen, setRadarOpen] = useState(false)
@@ -53,48 +82,82 @@ function GrowTiles() {
   const stamps = shop.fields.stamps_needed ?? 8
   // Evenings lead with closing the day; the rest of the day with what to prepare.
   const evening = new Date().getHours() >= 17
-  const prep = <PrepPlanTile key="prep" />
-  const close = <CloseDayTile key="close" />
+  const prep: [string, ReactNode] = ['prep', <PrepPlanTile key="prep" />]
+  const close: [string, ReactNode] = ['close_day', <CloseDayTile key="close" />]
+  // The shop's playbook decides which tool comes first; without one, the usual order.
+  const cards = byGrowOrder(playbook.kind === 'ready' ? playbook.view.grow : [], [
+    ...(evening ? [close, prep] : [prep, close]),
+    ['orders', <OrdersTile key="orders" />],
+    ['supply', <SupplyTile key="supply" />],
+    [
+      'plan',
+      <Tile
+        key="plan"
+        icon={<CalendarClock size={20} />}
+        label={plan.title}
+        value={t.planHint}
+        onClick={() => setPlanOpen(true)}
+      />,
+    ],
+    ['rescue', <RescueTile key="rescue" />],
+    ['radar', <RadarTile key="radar" />],
+    [
+      'payments',
+      <Tile
+        key="payments"
+        icon={<IndianRupee size={20} />}
+        label={tools.payTitle}
+        value={tools.create}
+        onClick={() => openOwnerFeature('payments')}
+      >
+        <Supporting>{tools.riderTitle}</Supporting>
+      </Tile>,
+    ],
+    ...(features.google_guide
+      ? [
+          [
+            'google',
+            <Tile
+              key="google"
+              span={2}
+              tour="google"
+              icon={<Globe size={20} />}
+              label={t.googleTitle}
+              value={missing > 0 ? tabs.googleMissing(missing) : tabs.googleReady}
+              onClick={() => ws.go('google')}
+            >
+              {missing > 0 && (
+                <LinearProgress
+                  variant="determinate"
+                  value={(done / total) * 100}
+                  aria-hidden="true"
+                  sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
+                />
+              )}
+            </Tile>,
+          ] as [string, ReactNode],
+        ]
+      : []),
+    [
+      'perks',
+      <Tile
+        key="perks"
+        icon={<Stamp size={20} />}
+        label={tabs.perks}
+        value={shop.fields.reward_text || tabs.perksOff}
+        onClick={() => ws.openEditor({ kind: 'business', fields: shop.fields })}
+      >
+        {shop.fields.reward_text && <Supporting>{tabs.perksAfter(stamps)}</Supporting>}
+      </Tile>,
+    ],
+    ['week', <WeekPulseTile key="week" />],
+    ['recap', <RecapTile key="recap" />],
+  ])
   return (
     <Stack spacing={4}>
       <MorningBrief key={shop.id} onSheet={setSheet} onRadar={() => setRadarOpen(true)} />
       <Box data-testid="grow-tiles" sx={tileGrid}>
-        {evening ? [close, prep] : [prep, close]}
-        <OrdersTile />
-        <Tile
-          icon={<CalendarClock size={20} />}
-          label={plan.title}
-          value={t.planHint}
-          onClick={() => setPlanOpen(true)}
-        />
-        <RescueTile />
-        <RadarTile />
-        <Tile
-          span={2}
-          tour="google"
-          icon={<Globe size={20} />}
-          label={t.googleTitle}
-          value={missing > 0 ? tabs.googleMissing(missing) : tabs.googleReady}
-          onClick={() => ws.go('google')}
-        >
-          {missing > 0 && (
-            <LinearProgress
-              variant="determinate"
-              value={(done / total) * 100}
-              aria-hidden="true"
-              sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
-            />
-          )}
-        </Tile>
-        <Tile
-          icon={<Stamp size={20} />}
-          label={tabs.perks}
-          value={shop.fields.reward_text || tabs.perksOff}
-          onClick={() => ws.openEditor({ kind: 'business', fields: shop.fields })}
-        >
-          {shop.fields.reward_text && <Supporting>{tabs.perksAfter(stamps)}</Supporting>}
-        </Tile>
-        <RecapTile />
+        {cards}
       </Box>
       <ShopSheets
         kind={sheet ?? (planOpen ? 'plan' : null)}

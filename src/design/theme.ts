@@ -223,7 +223,15 @@ export function nivaTheme(
       },
       MuiCssBaseline: {
         styleOverrides: {
-          html: { colorScheme: mode },
+          ':root': {
+            '--scrollbar-thumb': roles.outlineVariant,
+            '--scrollbar-thumb-hover': roles.outline,
+          },
+          html: {
+            colorScheme: mode,
+            scrollbarWidth: 'thin',
+            scrollbarColor: `${roles.outlineVariant} transparent`,
+          },
           body: {
             margin: 0,
             minWidth: 280,
@@ -232,6 +240,24 @@ export function nivaTheme(
             ...(mode === 'dark' && { backgroundImage: chalkDust }),
           },
           '*, *::before, *::after': { boxSizing: 'border-box' },
+          '*': {
+            scrollbarWidth: 'thin',
+            scrollbarColor: `${roles.outlineVariant} transparent`,
+          },
+          '*::-webkit-scrollbar': {
+            width: 8,
+            height: 8,
+          },
+          '*::-webkit-scrollbar-track': {
+            backgroundColor: 'transparent',
+          },
+          '*::-webkit-scrollbar-thumb': {
+            backgroundColor: roles.outlineVariant,
+            borderRadius: 8,
+          },
+          '*::-webkit-scrollbar-thumb:hover': {
+            backgroundColor: roles.outline,
+          },
           'button, a, input, textarea': { WebkitTapHighlightColor: 'transparent' },
           ':focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: '2px' },
           '::selection': {
@@ -353,3 +379,36 @@ export function nivaTheme(
     },
   })
 }
+
+/**
+ * Sx helper for horizontal chip rows, tabs, and carousels:
+ * - Hidden scrollbar on touch devices to keep touch carousels clean.
+ * - On desktop / mouse hover, reveals a thin, rounded thumb so mouse users have a clear scroll cue.
+ */
+export const scrollArea = {
+  scrollbarWidth: 'none',
+  '&::-webkit-scrollbar': {
+    width: 6,
+    height: 6,
+    display: 'none',
+  },
+  '@media (hover: hover) and (pointer: fine)': {
+    '&:hover': {
+      scrollbarWidth: 'thin',
+      scrollbarColor: 'var(--scrollbar-thumb) transparent',
+      '&::-webkit-scrollbar': {
+        display: 'block',
+      },
+      '&::-webkit-scrollbar-track': {
+        backgroundColor: 'transparent',
+      },
+      '&::-webkit-scrollbar-thumb': {
+        backgroundColor: 'var(--scrollbar-thumb)',
+        borderRadius: 6,
+      },
+      '&::-webkit-scrollbar-thumb:hover': {
+        backgroundColor: 'var(--scrollbar-thumb-hover)',
+      },
+    },
+  },
+} as const

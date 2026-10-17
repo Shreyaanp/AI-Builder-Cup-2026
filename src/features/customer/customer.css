@@ -170,6 +170,11 @@
   animation-timing-function: var(--c-ease);
 }
 
+/* Typing on a phone: the composer takes the navigation bar's place on the keyboard. */
+html[data-typing] .c-nav {
+  visibility: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .c-shimmer,
   .c-ping,
