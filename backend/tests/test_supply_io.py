@@ -9,7 +9,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from app import demo_supply_seed, supply_chain, supply_docs, supply_io
+from app import demo_supply_seed, supply_chain, supply_docs, supply_io, supply_outbound
 from app.coordinator import MerchantContext, current
 from app.merchant import MerchantStore
 from app.supply_docs import DocLine, Party, SupplyDoc
@@ -136,7 +136,7 @@ def test_forecast_order_and_change_are_validated_linked_and_saved(shop) -> None:
     assert order["lines"][0]["product"] == "Sugar" and order["forecast"] == entry["id"]
     linked = store.feature_docs.get(supply_io.INBOX, f"{bid}/{entry['id']}")
     assert linked["order_id"] == order["id"]
-    assert supply_io.chip(order, date(2026, 10, 18)) == "new"
+    assert supply_outbound.chip(order, date(2026, 10, 18)) == "new"
     # Partner orders are not the shop's suppliers: no supplier rules for a buyer.
     assert supply_chain.relationship(store, bid, "harbour") is None
 
@@ -150,14 +150,14 @@ def test_forecast_order_and_change_are_validated_linked_and_saved(shop) -> None:
     ]
     order = changed["order"]
     assert order["lines"][0]["quantity"] == 20  # nothing applies before the owner accepts
-    assert supply_io.chip(order, date(2026, 10, 18)) == "needs_you"
-    board = supply_io.board(store, "alice", bid)
+    assert supply_outbound.chip(order, date(2026, 10, 18)) == "needs_you"
+    board = supply_outbound.board(store, "alice", bid)
     assert [t["code"] for t in board["tasks"]] == ["accept_change"]
 
     order = supply_io.accept_change(store, "alice", bid, order["id"], order["version"])
     assert order["lines"][0]["quantity"] == 15 and order["delivery"] == "2026-10-22"
     assert order["total"] == 15 * 4000 and order["pending_change"] is None
-    steps = [step["step"] for step in supply_io.timeline(order)]
+    steps = [step["step"] for step in supply_outbound.timeline(order)]
     assert steps == ["created", "changed", "shipped", "closed"]
     # The same document again is recognised, not applied twice.
     again = receive(store, bid, partner_doc("ORDER_CHANGE", "CH-1", 15, ref="4700001201"))
@@ -170,14 +170,14 @@ def test_bad_documents_become_problems_not_silent_changes(shop) -> None:
     assert orphan["entry"]["status"] == "problem" and orphan["entry"]["problem"] == "unknown_order"
     unknown = receive(store, bid, partner_doc("ORDERS", "4700001300", 5, item="Saffron"))
     assert unknown["entry"]["problem"] == "unknown_item"
-    assert supply_io.chip(unknown["order"], date(2026, 10, 18)) == "problem"
-    tasks = supply_io.board(store, "alice", bid)["tasks"]
+    assert supply_outbound.chip(unknown["order"], date(2026, 10, 18)) == "problem"
+    tasks = supply_outbound.board(store, "alice", bid)["tasks"]
     assert {t["problem"] for t in tasks if t["code"] == "problem"} == {
         "unknown_order",
         "unknown_item",
     }
     supply_io.dismiss(store, "alice", bid, orphan["entry"]["id"])
-    tasks = supply_io.board(store, "alice", bid)["tasks"]
+    tasks = supply_outbound.board(store, "alice", bid)["tasks"]
     assert [t["problem"] for t in tasks if t["code"] == "problem"] == ["unknown_item"]
     with pytest.raises(ValueError):
         supply_docs.parse("Hello, are you open today?")
@@ -192,8 +192,10 @@ def test_bad_documents_become_problems_not_silent_changes(shop) -> None:
 def test_change_after_shipping_is_too_late(shop) -> None:
     store, bid = shop
     order = receive(store, bid, partner_doc("ORDERS", "4700001201", 20))["order"]
-    asn = supply_io.prepare_asn(store, "alice", bid, order["id"], order["version"])
-    supply_io.send(store, "alice", bid, order["id"], asn["order"]["version"], asn["document"]["id"])
+    asn = supply_outbound.prepare_asn(store, "alice", bid, order["id"], order["version"])
+    supply_outbound.send(
+        store, "alice", bid, order["id"], asn["order"]["version"], asn["document"]["id"]
+    )
     late = receive(store, bid, partner_doc("ORDER_CHANGE", "CH-2", 10, ref="4700001201"))
     assert late["entry"]["status"] == "problem" and late["entry"]["problem"] == "too_late"
     assert late["order"]["pending_change"] is None
@@ -205,20 +207,20 @@ def test_change_after_shipping_is_too_late(shop) -> None:
 def test_shipping_notice_goes_out_in_the_partners_format(shop) -> None:
     store, bid = shop
     order = receive(store, bid, partner_doc("ORDERS", "4700001201", 20))["order"]
-    prepared = supply_io.prepare_asn(store, "alice", bid, order["id"], order["version"])
+    prepared = supply_outbound.prepare_asn(store, "alice", bid, order["id"], order["version"])
     document = prepared["document"]
     assert document["kind"] == "DESADV" and document["status"] == "pending"
     assert document["translated_format"] == "idoc"
     assert "<IDOCTYP>DELVRY07</IDOCTYP>" in document["translated"]
     assert "<BSTNR>4700001201</BSTNR>" in document["translated"]
-    assert [row["kind"] for row in supply_io.unsent(store, bid)] == ["DESADV"]
+    assert [row["kind"] for row in supply_outbound.unsent(store, bid)] == ["DESADV"]
     order = prepared["order"]
-    assert supply_io.chip(order, date(2026, 10, 18)) == "needs_you"
-    result = supply_io.send_all(store, "alice", bid)
+    assert supply_outbound.chip(order, date(2026, 10, 18)) == "needs_you"
+    result = supply_outbound.send_all(store, "alice", bid)
     assert [row["kind"] for row in result["sent"]] == ["DESADV"] and result["unsent"] == []
     order = supply_chain.get_po(store, "alice", bid, order["id"])
     assert order["status"] == "closed" and order["shipped_at"]
-    assert supply_io.chip(order, date(2026, 10, 18)) == "done"
+    assert supply_outbound.chip(order, date(2026, 10, 18)) == "done"
 
 
 def test_goods_receipt_prefills_records_shortage_and_waits_until_sent(shop) -> None:
@@ -229,8 +231,10 @@ def test_goods_receipt_prefills_records_shortage_and_waits_until_sent(shop) -> N
     order = receive(store, bid, incoming, "json")["order"]
     assert order["direction"] == "in" and order["partner"]["id"] == "sunrise"
     assert supply_chain.relationship(store, bid, "sunrise")  # a supplier of the shop
-    assert supply_io.expected(order) == {10: 12}
-    result = supply_io.record_receipt(store, "alice", bid, order["id"], order["version"], {10: 7})
+    assert supply_outbound.expected(order) == {10: 12}
+    result = supply_outbound.record_receipt(
+        store, "alice", bid, order["id"], order["version"], {10: 7}
+    )
     document = result["document"]
     assert document["kind"] == "RECEIPT" and document["status"] == "pending"
     assert document["short"] == [{"item": "Sugar", "quantity": 5, "unit": "kg"}]
@@ -239,39 +243,41 @@ def test_goods_receipt_prefills_records_shortage_and_waits_until_sent(shop) -> N
     assert result["proposal"] and result["order"]["received_stock"] == {"Sugar": 60 + 7}
     order = result["order"]
     assert order["received"] and order["status"] == "received"
-    assert supply_io.chip(order, date(2026, 10, 18)) == "problem"  # a shortage to send
-    tasks = supply_io.board(store, "alice", bid)["tasks"]
+    assert supply_outbound.chip(order, date(2026, 10, 18)) == "problem"  # a shortage to send
+    tasks = supply_outbound.board(store, "alice", bid)["tasks"]
     assert tasks[0]["code"] == "send_receipt" and tasks[0]["short"][0]["quantity"] == 5
     # The owner corrects it: the pending receipt is replaced, not duplicated.
-    result = supply_io.record_receipt(store, "alice", bid, order["id"], order["version"], {})
+    result = supply_outbound.record_receipt(store, "alice", bid, order["id"], order["version"], {})
     order = result["order"]
     assert sum(d["kind"] == "RECEIPT" for d in order["documents"]) == 1
     assert result["proposal"] is None  # the stock review was prepared the first time
-    order = supply_io.send(
+    order = supply_outbound.send(
         store, "alice", bid, order["id"], order["version"], result["document"]["id"]
     )
     assert order["status"] == "closed"
-    assert [s["step"] for s in supply_io.timeline(order) if s["at"]] == [
+    assert [s["step"] for s in supply_outbound.timeline(order) if s["at"]] == [
         "created",
         "received",
         "closed",
     ]
     with pytest.raises(HTTPException):
-        supply_io.record_receipt(store, "alice", bid, order["id"], order["version"], {})
+        supply_outbound.record_receipt(store, "alice", bid, order["id"], order["version"], {})
 
 
 def test_close_the_day_sends_a_receipt_for_goods_received_without_one(shop) -> None:
     store, bid = shop
     po = draft(store, bid, "Sugar", 20)["order"]
     po = supply_chain.approve(store, "alice", bid, po["id"], po["version"])
-    result = supply_io.record_receipt(store, "alice", bid, po["id"], po["version"])
+    result = supply_outbound.record_receipt(store, "alice", bid, po["id"], po["version"])
     po = result["order"]
     assert po["supplier"]["system"] in supply_docs.FORMATS
     # An order received through the older "Goods arrived" button has no receipt yet.
     po["documents"] = [d for d in po["documents"] if d["kind"] != "RECEIPT"]
     po = supply_chain._save(store, bid, po)
-    assert [(r["kind"], r["doc_id"]) for r in supply_io.unsent(store, bid)] == [("RECEIPT", None)]
-    sent = supply_io.send_all(store, "alice", bid)
+    assert [(r["kind"], r["doc_id"]) for r in supply_outbound.unsent(store, bid)] == [
+        ("RECEIPT", None)
+    ]
+    sent = supply_outbound.send_all(store, "alice", bid)
     assert len(sent["sent"]) == 1 and sent["unsent"] == []
     po = supply_chain.get_po(store, "alice", bid, po["id"])
     receipt = next(d for d in po["documents"] if d["kind"] == "RECEIPT")
@@ -304,7 +310,7 @@ def test_demo_partner_plays_the_story_through_the_real_pipeline(shop) -> None:
     assert kinds == ["FORECAST", "ORDERS", "ORDER_CHANGE"]
     with pytest.raises(HTTPException):
         demo_supply_seed.next_document(store, "alice", bid)
-    board = supply_io.board(store, "alice", bid)
+    board = supply_outbound.board(store, "alice", bid)
     assert board["demo"] and board["orders"][0]["partner"]["demo"]
     assert board["inbox"][0]["raw"].startswith("<?xml")
 

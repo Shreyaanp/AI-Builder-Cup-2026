@@ -13,7 +13,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from . import supply_chain, supply_io
+from . import supply_chain, supply_io, supply_outbound
 from .demo_data import SHOPS
 from .merchant import MerchantRepository
 from .supply_docs import DocLine, Party, SupplyDoc, parse, render
@@ -43,7 +43,8 @@ def _item(context: dict[str, Any]) -> dict[str, Any]:
 
 
 def _tag(context: dict[str, Any]) -> str:
-    return "sg" if context["business"]["fields"].get("currency") == "SGD" else "in"
+    # One demo shop per area currency: the currency keeps partner ids apart.
+    return str(supply_chain.shop_currency(context["business"]["fields"])).casefold()
 
 
 def script(context: dict[str, Any], today: date) -> list[SupplyDoc]:
@@ -115,7 +116,7 @@ def _supplier_order(context: dict[str, Any], today: date) -> SupplyDoc:
     price = round(product["price"] * 0.6)
     return SupplyDoc(
         kind="ORDERS",
-        number="SO-" + ("2210" if tag == "in" else "3310"),
+        number=f"SO-{tag.upper()}-2210",
         issued=today.isoformat(),
         delivery=today.isoformat(),
         currency=supply_chain.shop_currency(context["business"]["fields"]),
@@ -148,8 +149,8 @@ def seed_shop(store: MerchantRepository, uid: str, bid: str) -> None:
     result = supply_io.process(store, bid, context, order, "json", render(order, "json"), "parser")
     po = result["order"]
     if po and not po.get("received"):
-        saved = supply_io.record_receipt(store, uid, bid, po["id"], po["version"])
-        supply_io.send(
+        saved = supply_outbound.record_receipt(store, uid, bid, po["id"], po["version"])
+        supply_outbound.send(
             store, uid, bid, po["id"], saved["order"]["version"], saved["document"]["id"]
         )
     for _ in range(3):
@@ -168,12 +169,13 @@ def seed_shop(store: MerchantRepository, uid: str, bid: str) -> None:
     if sold and sold.get("pending_change"):
         sold = supply_io.accept_change(store, uid, bid, sold["id"], sold["version"])
     if sold and not any(d["kind"] == "DESADV" for d in sold["documents"]):
-        supply_io.prepare_asn(store, uid, bid, sold["id"], sold["version"])
+        supply_outbound.prepare_asn(store, uid, bid, sold["id"], sold["version"])
 
 
 def seed(store: MerchantRepository, uid: str = "demo-world-owner") -> None:
-    """The India and Singapore demo shops (owned by the seed owner)."""
-    for currency in ("INR", "SGD"):
-        demo = next((shop for shop in SHOPS if shop.fields.currency == currency), None)
-        if demo:
+    """The first demo shop of each area currency (owned by the seed owner)."""
+    seen: set[str] = set()
+    for demo in SHOPS:
+        if demo.fields.currency not in seen:
+            seen.add(demo.fields.currency)
             seed_shop(store, uid, demo.id)

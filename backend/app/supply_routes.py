@@ -6,7 +6,7 @@ import anyio
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import coordinator, supply_chain, supply_io
+from . import coordinator, supply_chain, supply_io, supply_outbound
 from .forecast import ForecastService
 from .limits import enforce_limits
 from .merchant_routes import consented_owner, owner, store
@@ -313,7 +313,7 @@ class SendBody(BaseModel):
 async def board(business_id: str, request: Request) -> dict[str, Any]:
     """What needs the owner, what came in, what was received and what must go out."""
     uid = await owner(request)
-    return await anyio.to_thread.run_sync(supply_io.board, store(request), uid, business_id)
+    return await anyio.to_thread.run_sync(supply_outbound.board, store(request), uid, business_id)
 
 
 @router.post("/businesses/{business_id}/supply/inbound")
@@ -361,7 +361,7 @@ async def goods_receipt(
     """Goods came in: lines left out arrived in full. The receipt waits until sent."""
     uid = await consented_owner(request)
     return await anyio.to_thread.run_sync(
-        supply_io.record_receipt,
+        supply_outbound.record_receipt,
         store(request),
         uid,
         business_id,
@@ -378,7 +378,7 @@ async def shipping_notice(
 ) -> dict[str, Any]:
     uid = await consented_owner(request)
     return await anyio.to_thread.run_sync(
-        supply_io.prepare_asn,
+        supply_outbound.prepare_asn,
         store(request),
         uid,
         business_id,
@@ -394,7 +394,7 @@ async def send_document(
 ) -> dict[str, Any]:
     uid = await consented_owner(request)
     return await anyio.to_thread.run_sync(
-        supply_io.send, store(request), uid, business_id, order_id, body.version, body.doc_id
+        supply_outbound.send, store(request), uid, business_id, order_id, body.version, body.doc_id
     )
 
 
@@ -402,7 +402,9 @@ async def send_document(
 async def send_all(business_id: str, request: Request) -> dict[str, Any]:
     """Close the day: everything still unsent goes out in one tap."""
     uid = await consented_owner(request)
-    return await anyio.to_thread.run_sync(supply_io.send_all, store(request), uid, business_id)
+    return await anyio.to_thread.run_sync(
+        supply_outbound.send_all, store(request), uid, business_id
+    )
 
 
 @router.post("/businesses/{business_id}/supply/inbox/{entry_id}/dismiss")

@@ -253,12 +253,12 @@ RECEIVABLE = {"sent", "changed", "confirmed", "dispatched", "invoiced", "receive
 def _supply_card(
     ctx: MerchantContext, view: str, order: dict[str, Any] | None = None, **extra: Any
 ) -> str:
-    from . import supply_chain, supply_io
+    from . import supply_chain, supply_outbound
 
     context = supply_chain._owned(ctx.store, ctx.uid, ctx.business_id or "")
     data = {
         "view": view,
-        "order": supply_io.view(order, supply_chain.shop_today(context)) if order else None,
+        "order": supply_outbound.view(order, supply_chain.shop_today(context)) if order else None,
         **extra,
     }
     return _card(ctx, "supply", data)
@@ -343,12 +343,12 @@ def show_inbound(kind: str = "") -> dict[str, Any]:
     inbound", "what came in?", "any order changes?" or "what needs me?". kind: forecast, order,
     change or empty for all. Say the first two or three in plain words (never IDoc codes) and
     name what needs the owner; the app shows them as cards."""
-    from . import supply_io
+    from . import supply_outbound
 
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {"status": "needs_business"}
-    board = supply_io.board(ctx.store, ctx.uid, ctx.business_id)
+    board = supply_outbound.board(ctx.store, ctx.uid, ctx.business_id)
     want = DOCUMENT_WORDS.get((kind or "").strip().casefold(), "")
     entries = [e for e in board["inbox"] if not want or e["kind"] == want][:6]
     return {
@@ -448,7 +448,7 @@ def record_goods_received(
     received" → neither. order: number, supplier or item if named. send=false only if the owner
     wants to check the receipt first. The stock update still waits for their tap on the review
     card. In one line: what came, what was short, that the receipt went to the supplier."""
-    from . import supply_io
+    from . import supply_io, supply_outbound
 
     ctx = current.get()
     if not ctx or not ctx.business_id:
@@ -469,16 +469,16 @@ def record_goods_received(
             "status": "nothing_to_receive",
             "instruction": "Say no delivery is open; ask which order arrived.",
         }
-    want = supply_io.expected(po)
+    want = supply_outbound.expected(po)
     received = {line: max(0.0, want[line] - qty) for line, qty in _amounts(missing, po).items()}
     received.update(_amounts(received_only, po))
     try:
-        result = supply_io.record_receipt(
+        result = supply_outbound.record_receipt(
             ctx.store, ctx.uid, ctx.business_id, po["id"], po["version"], received
         )
         saved = result["order"]
         if send:
-            saved = supply_io.send(
+            saved = supply_outbound.send(
                 ctx.store,
                 ctx.uid,
                 ctx.business_id,
@@ -514,7 +514,7 @@ def send_asn(order: str = "") -> dict[str, Any]:
     """Send the shipping notice (advance ship notice, ASN) for goods the shop ships to a
     partner, written in the partner's format (SAP DELVRY07 for SAP partners): "send the
     shipping notice", "tell Harbour Café it is on its way". order: number, partner or item."""
-    from . import supply_io
+    from . import supply_io, supply_outbound
 
     ctx = current.get()
     if not ctx or not ctx.business_id:
@@ -538,8 +538,10 @@ def send_asn(order: str = "") -> dict[str, Any]:
             "card_id": _supply_card(ctx, "order", po),
         }
     try:
-        result = supply_io.prepare_asn(ctx.store, ctx.uid, ctx.business_id, po["id"], po["version"])
-        saved = supply_io.send(
+        result = supply_outbound.prepare_asn(
+            ctx.store, ctx.uid, ctx.business_id, po["id"], po["version"]
+        )
+        saved = supply_outbound.send(
             ctx.store,
             ctx.uid,
             ctx.business_id,
@@ -561,13 +563,13 @@ def send_asn(order: str = "") -> dict[str, Any]:
 def send_pending_documents() -> dict[str, Any]:
     """Send every goods receipt and shipping notice that has not gone out yet (what Close the
     day reminds about): "send everything", "send the receipt", "send what's pending"."""
-    from . import supply_io
+    from . import supply_outbound
 
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {"status": "needs_business"}
     try:
-        result = supply_io.send_all(ctx.store, ctx.uid, ctx.business_id)
+        result = supply_outbound.send_all(ctx.store, ctx.uid, ctx.business_id)
     except HTTPException as error:
         return _invalid(error, ctx)
     return {
