@@ -624,6 +624,29 @@
         }
       }
     },
+    "/api/v1/photos/classify": {
+      "post": {
+        "summary": "Classify Photo",
+        "description": "What a chat photo shows; nothing is stored or saved. The app confirms with the owner.",
+        "operationId": "classify_photo_api_v1_photos_classify_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Classify Photo Api V1 Photos Classify Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/photos": {
       "post": {
         "summary": "Photo",

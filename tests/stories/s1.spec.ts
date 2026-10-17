@@ -12,6 +12,7 @@ import {
   tryVoice,
   voiceFixture,
   detailsStep,
+  sortAsMenu,
 } from './support.js'
 
 test.use(phone)
@@ -105,6 +106,7 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     await confirm(page)
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
     await page.locator('#coach input[type="file"]').setInputFiles(gpsBoardPath)
+    await sortAsMenu(page)
     await expect(page.getByRole('dialog', { name: reviewName })).not.toContainText(
       '12.97180, 77.64120',
     )
