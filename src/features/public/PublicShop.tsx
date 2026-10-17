@@ -99,11 +99,11 @@ function safePublicShop(value: unknown): PublicShopData {
             !!item &&
             typeof item.name === 'string' &&
             typeof item.unit === 'string' &&
-            typeof item.price === 'number' &&
-            typeof item.available === 'boolean',
+            typeof item.price === 'number',
         )
         .map((item) => ({
           ...item,
+          available: item.available !== false,
           name_local: typeof item.name_local === 'string' ? item.name_local : undefined,
           category: typeof item.category === 'string' ? item.category : undefined,
         }))
