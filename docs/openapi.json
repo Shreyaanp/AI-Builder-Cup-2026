@@ -8944,6 +8944,11 @@
             "title": "Stamps Needed",
             "default": 8
           },
+          "stamps_enabled": {
+            "type": "boolean",
+            "title": "Stamps Enabled",
+            "default": false
+          },
           "currency": {
             "type": "string",
             "pattern": "^[A-Z]{3}$",

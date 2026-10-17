@@ -3097,6 +3097,11 @@ export interface components {
              */
             stamps_needed: number;
             /**
+             * Stamps Enabled
+             * @default false
+             */
+            stamps_enabled: boolean;
+            /**
              * Currency
              * @default SGD
              */
