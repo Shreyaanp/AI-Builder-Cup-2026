@@ -35,7 +35,15 @@ from .coordinator import (
     shop_currency,
     ui_currency,
 )
-from .new_shop_resume import done_steps, keep_draft, keep_draft_after_model, progress_note
+from .new_shop_resume import (
+    done_steps,
+    follow_up_plan,
+    keep_draft,
+    keep_draft_after_model,
+    pending_extras,
+    progress_note,
+    ready_to_go_live,
+)
 from .new_shop_tools import attach_ready_profile, end_conversation, show_step, update_shop
 from .payments import prepare_payment_link
 from .playbook import coach_summary, migrate_stored
@@ -51,12 +59,14 @@ from .voice_tools import (
     explain_app,
     get_customer_messages,
     get_shop_playbook,
+    make_my_icon,
     open_screen,
     prepare_customer_reply,
     propose_stamp_card,
     set_open_today,
     set_reply_language,
     suggest_starter_items,
+    use_photo_as_icon,
 )
 
 # The owner's app language (BCP 47) for this turn; set by the runtime, read by the instruction.
@@ -232,6 +242,9 @@ Everything by voice (the owner should never need to hunt for a button)
 - "Any messages?": get_customer_messages; "tell her we deliver after 6": prepare_customer_reply
   (the owner taps Send).
 - Stamp card or loyalty reward: propose_stamp_card.
+- "Make my icon" or "give my shop a logo": make_my_icon. "Use this photo as my icon":
+  use_photo_as_icon.
+  Both only open the icon page; the owner taps there. Never say the icon was made or changed.
 - To go somewhere in the app (share my page or QR, close the day, Get on Google, connect my POS
   or import sales, add a photo, my data or delete my data, plan tomorrow, sold out list, menu,
   shop details), call open_screen. Deleting data always needs the owner's confirmation on
@@ -517,10 +530,12 @@ def new_shop_call(
     return None
 
 
-# Fixture questions (one per turn). Never the menu, payment, delivery or halal: onboarding asks
-# only these five (owner decision, 17 Oct), plus at most two extras from the business's own
-# profile. No fixed script: each conversation asks what is missing in its own order
-# (`topic_order`), so nothing (tests included) may rely on one order.
+# Fixture questions (one per turn). Never the menu, payment, delivery or halal (#112): the open
+# question first; the three basics only when the owner's answer missed them, in each
+# conversation's own order (`topic_order`, so nothing may rely on one order); then at most two
+# follow-ups (the business's own questions, the hours when there is room); then the photo.
+OPEN_QUESTION = "Can you tell me about your shop?"
+BASIC_TOPICS = ("name", "sell", "location")
 NEW_SHOP_TOPICS = (
     ("name", "What is your business called?", "the name"),
     ("sell", "What do you sell?", "what you sell"),
@@ -533,7 +548,6 @@ NEW_SHOP_TOPICS = (
     ("photo", "Can you take a photo of your shop? You can skip it.", "the shop photo"),
 )
 FACE_QUESTION = "Would you like the optional face check? You can skip it."
-FOOD_WORDS = ("food", "tea", "chai", "kopi", "cafe", "bakery", "restaurant", "snack", "stall")
 
 
 GOODBYE = "Okay, see you soon. Everything is saved."
@@ -544,6 +558,7 @@ OFFLINE_HI = {
     "Hi, I am your shop coach. Let us put your shop online together. ": (
         "नमस्ते, मैं आपका दुकान कोच हूँ। चलिए, मिलकर आपकी दुकान ऑनलाइन करते हैं। "
     ),
+    OPEN_QUESTION: "क्या आप अपनी दुकान के बारे में बताएँगे?",
     "What is your business called?": "आपके कारोबार का नाम क्या है?",
     "What do you sell?": "आप क्या बेचते हैं?",
     "Are you at the shop right now? Tap Use my location, or tell me the area.": (
@@ -554,6 +569,19 @@ OFFLINE_HI = {
         "क्या आप अपनी दुकान की फ़ोटो ले सकते हैं? चाहें तो इसे छोड़ दें।"
     ),
     FACE_QUESTION: "क्या आप वैकल्पिक चेहरा जाँच करना चाहेंगे? चाहें तो इसे छोड़ दें।",
+    # The offline reading's follow-ups (business_understanding.OFFLINE_EXTRAS).
+    "Which classes or subjects do you teach?": "आप कौन-सी कक्षाएँ या विषय पढ़ाते हैं?",
+    "Do you stitch for men, women or both?": "आप पुरुषों, महिलाओं या दोनों के कपड़े सिलते हैं?",
+    "Which phone brands do you repair?": "आप किन कंपनियों के फ़ोन ठीक करते हैं?",
+    "How many days ahead should customers order a cake?": (
+        "ग्राहकों को केक कितने दिन पहले ऑर्डर करना चाहिए?"
+    ),
+    "Can customers sit and have their tea, or is it takeaway only?": (
+        "क्या ग्राहक बैठकर चाय पी सकते हैं, या सिर्फ़ ले जाने के लिए है?"
+    ),
+    "Which brands do customers mostly come to you for?": (
+        "ग्राहक आपके पास ज़्यादातर किन ब्रांड के लिए आते हैं?"
+    ),
     GOODBYE: "ठीक है, जल्द मिलते हैं। सब कुछ सहेज लिया गया है।",
     "No problem. Just say something like: I sell tea and snacks. ": (
         "कोई बात नहीं। बस ऐसे बताइए: मैं चाय और नाश्ता बेचता हूँ। "
@@ -602,22 +630,21 @@ def _extras() -> list[Any]:
 def _asked(text: str) -> str | None:
     if _says(text, FACE_QUESTION):
         return "face"
-    extra = next((q.key for q in _extras() if q.question in text), None)
+    if _says(text, OPEN_QUESTION):
+        return "open"
+    extra = next((q.key for q in _extras() if _says(text, q.question)), None)
     if extra:
         return f"extra:{extra}"
     return next((key for key, question, _ in NEW_SHOP_TOPICS if _says(text, question)), None)
 
 
 def topic_order(ctx: Any) -> list[str]:
-    """This conversation's own order of the five topics: what the shop is, its name and its
-    place first (in an order of the owner's own, seeded by who they are), then hours and the
-    photo."""
+    """This conversation's own order of the three basics (what the shop is, its name and its
+    place), seeded by who the owner is; asked only when the open answer missed them."""
     import itertools
 
     seed = sum(map(ord, str(getattr(ctx, "uid", "") or "")))
-    core = list(itertools.permutations(("name", "sell", "location")))[seed % 6]
-    rest = ("hours", "photo") if (seed // 6) % 2 == 0 else ("photo", "hours")
-    return [*core, *rest]
+    return list(list(itertools.permutations(BASIC_TOPICS))[seed % 6])
 
 
 def _last_asked(contents: list[types.Content]) -> str | None:
@@ -676,10 +703,9 @@ def _new_shop_reply(
     if getattr(ctx, "ended", False):
         return "Offline template: " + GOODBYE
     if vague and not any(content.role == "model" for content in earlier) and not fields:
-        first = next(q for key, q, _ in NEW_SHOP_TOPICS if key == order[0])
         return (
             "Offline template: Hi, I am your shop coach. Let us put your shop online together. "
-            + first
+            + OPEN_QUESTION
         )
     skipped = skipped_topics(history)
     last = _last_asked(earlier)
@@ -713,12 +739,15 @@ def _new_shop_reply(
         prefix += "Your shop is live now. "
     questions = dict((key, q) for key, q, _ in NEW_SHOP_TOPICS)
     question = next((questions[key] for key in order if not done[key] and key not in skipped), None)
-    if not question and draft:
-        # The business's own extra questions (at most two, confident ones), each once.
-        from .new_shop_resume import pending_extras
-
+    if not question and ready_to_go_live(draft):
+        # The business's own follow-ups (within the budget of two), each once.
         pending = [k for k in pending_extras(draft) if f"extra:{k}" not in skipped]
         question = next((q.question for q in _extras() if q.key in pending), None)
+    if not question and follow_up_plan(draft)[1] and "hours" not in skipped:
+        # The hours, only when the business's own questions left room.
+        question = questions["hours"]
+    if not question and not done["photo"] and "photo" not in skipped:
+        question = questions["photo"]
     if question:
         return prefix + question
     if last == "face":
@@ -1063,37 +1092,49 @@ the owner already runs a real, open shop and is telling you about it so customer
 active. Talk like a calm, friendly neighbour who knows small businesses, in a real back-and-forth,
 never like a form. Aim to have the shop live in about a minute.
 
-What to find out: ONLY these five, nothing else (NO menu, items or prices, NO payment,
-delivery, halal, vegetarian or food questions: the menu is added later from Today)
-1. the shop's real name; 2. what they offer (goods, a service, food, or a mix); 3. where it is;
-4. opening hours; 5. a photo of the shop. Then the summary and the optional face check.
-- Understand the business first, in the owner's own words: a self-cleaning helmet station, a
-  tailor, a tuition centre, a tea stall that also does mobile recharge. Every business is
-  different; never assume it is a food shop. Keep their words as what they offer (category).
-  If they correct the kind ("nahi, yeh service hai"), pass kind to update_shop silently and
-  continue. A vague answer ("kuch bhi bechte hain"): ask once, kindly, what customers come for.
-- Extra questions: ONLY the ones update_shop lists in still_missing (at most two, from the
-  business's own profile), each once, after the core; never invent other questions. Skip one
-  the owner already answered in their own words ("ghar par bhi aati hoon" answers home
-  visits): save that answer with extra_answers instead of asking.
+The owner knows their shop best, so the conversation goes: one open question, listen, then
+only what is still needed (NO menu, items or prices, NO payment, delivery, halal or vegetarian
+questions: the menu is added later from Today).
+1. Open: ask them to tell you about their shop, in their language, in a few words ("Apni
+   dukaan ke baare mein bataiye" / "Tell me about your shop"). Never start with a list of
+   questions or with the name.
+2. Take EVERYTHING from that answer in one update_shop call: the name, what they offer (in
+   their words), the place, the hours, a description that keeps every detail they gave
+   (seating, brands, home visits, orders...). Confirm nothing they just said; react in a few
+   words that show you understood ("Achha, chai aur samosa, metro ke paas.").
+3. The basics are required: the name, what they offer and where. Ask only the ones their answer
+   missed, one at a time, naturally (a hardware store: "Dukaan ka naam kya hai?").
+4. Then at most TWO follow-ups that fit THIS business: the ones still_missing lists (the
+   business's own questions first, the hours when there is room), each once. A tea stall gets
+   tea-stall questions, a hardware store never a food one. Never a generic question, never one
+   their words already answered (they said "ghar par bhi aati hoon": save it with
+   extra_answers instead of asking), never invent other questions.
+5. Offer the shop photo once, then the summary and the optional face check.
+- Understand the business in the owner's own words: a self-cleaning helmet station, a tailor,
+  a tuition centre, a tea stall that also does mobile recharge. Every business is different;
+  never assume it is a food shop. Keep their words as what they offer (category). If they
+  correct the kind ("nahi, yeh service hai"), pass kind to update_shop silently and continue.
+  A vague answer ("kuch bhi bechte hain"): ask once, kindly, what customers come for.
 - The owner wants to stop ("bas", "ho gaya", "band karo", "that's all", "stop", "bye"): call
   end_conversation at once (even if the name, kind or place are missing; everything is saved),
   then one short goodbye in the reply language. No question after that.
-- Ask only what is still missing (see "Progress so far" below and every update_shop result),
-  never in a fixed order: one sentence can answer several ("Lakshmi Tea Stall, chai aur samosa,
-  Indiranagar metro ke paas" gives name, kind and place): record all of it and ask only what is
-  left. NEVER ask again for something already known.
-- The name: ask for it; never invent, suggest or rename it. A kind of shop ("chai ki dukaan")
-  is never a name. If unsure whether it is the name or what they sell, ask once, kindly.
-- Where: first ask whether they are at the shop right now. If yes, call show_step "location"
-  (the phone's GPS pins it; the app then tells you the place; until then never say it is
-  pinned, say the map is open and go on with the next question). If they are not there, or the
-  location is refused, ask the area or street and a landmark and record it as location. A
-  business without a shop that goes to its customers (a plumber, a home tutor, a mehendi artist
-  who visits): never say "shop"; ask where they are based (are they there now → the pin, else
-  the area) and record that as location.
-- Hours: ask once; understand per-day answers ("subah 6 se raat 10, Sunday band" → every day
-  06:00-22:00, Sunday closed) and pass weekly_hours. "pata nahi", "baad mein" or no answer:
+- Ask only what is still missing (see "Progress so far" below and every update_shop result):
+  one sentence can answer several ("Lakshmi Tea Stall, chai aur samosa, Indiranagar metro ke
+  paas" gives name, kind and place): record all of it and ask only what is left. NEVER ask
+  again for something already known.
+- The name: ask for it only if they did not say it; never invent, suggest or rename it. A kind
+  of shop ("chai ki dukaan") is never a name. If unsure whether it is the name or what they
+  sell, ask once, kindly.
+- Where (only if they did not say it): first ask whether they are at the shop right now. If
+  yes, call show_step "location" (the phone's GPS pins it; the app then tells you the place;
+  until then never say it is pinned, say the map is open and go on with the next question). If
+  they are not there, or the location is refused, ask the area or street and a landmark and
+  record it as location. A business without a shop that goes to its customers (a plumber, a
+  home tutor, a mehendi artist who visits): never say "shop"; ask where they are based (are
+  they there now → the pin, else the area) and record that as location.
+- Hours (only when still_missing lists them): ask once, the way this business would hear it;
+  understand per-day answers ("subah 6 se raat 10, Sunday band" → every day 06:00-22:00,
+  Sunday closed) and pass weekly_hours. "pata nahi", "baad mein" or no answer:
   update_shop(skip=["hours"]) and move on cheerfully. Never invent hours.
 - Photo: ask for a photo of the shop and call show_step "camera" (it has a big Skip). "baad
   mein" or a skip: update_shop(skip=["photo"]) and move on.
@@ -1133,7 +1174,7 @@ Tools (silently, in the same turn as your reply)
 
 Messages from the app (these are not the owner speaking)
 - The opening message means the owner just opened this screen: greet them in one short sentence
-  and ask the shop's name.
+  and ask them to tell you about their shop (the open question, not the name).
 - "Not sure / no answer" means the owner went quiet: make it easier (offer a likely answer or two
   options); for hours or the photo, skip it and move on.
 - A photo note: the shop photo arrived; react in a few words and continue with what is missing.
@@ -1286,6 +1327,8 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
             get_shop_playbook,
             prepare_customer_reply,
             open_screen,
+            make_my_icon,
+            use_photo_as_icon,
             explain_app,
             suggest_starter_items,
             *SUPPLY_TOOLS,

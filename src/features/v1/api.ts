@@ -49,6 +49,8 @@ export interface Business {
   coach_notes?: { id: string; text: string; created: string }[]
   /** Photo IDs the owner chose to show customers (public once the page is shared). */
   gallery?: string[]
+  /** ID of the shop's icon picture; the app draws a monogram when there is none. */
+  icon?: string | null
   registration: string
   public: boolean
   google_publication: string

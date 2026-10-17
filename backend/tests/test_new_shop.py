@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
-from app.agent import NEW_SHOP_TOPICS, instruction, new_shop_call
+from app.agent import NEW_SHOP_TOPICS, OPEN_QUESTION, instruction, new_shop_call
 from app.coordinator import (
     MerchantContext,
     ProductInput,
@@ -258,7 +258,9 @@ def test_invalid_device_location_is_rejected(tmp_path: Path, point: dict):
 
 
 def asked_topic(reply: str) -> str | None:
-    """Which of the five topics the fixture coach asked in this reply (None: none of them)."""
+    """Which topic the fixture coach asked in this reply (None: none of them)."""
+    if OPEN_QUESTION in reply:
+        return "open"
     return next((key for key, question, _ in NEW_SHOP_TOPICS if question in reply), None)
 
 
@@ -282,6 +284,8 @@ def test_new_shop_coach_speaks_first_and_moves_on_when_the_owner_does_not_answer
         return reply, events
 
     answers = {
+        # #112: the open question first; an answer with nothing usable moves on to the basics.
+        "open": "Hmm, let me think.",
         "name": "name: Chai Corner",
         "sell": "category: Tea stall",
         "location": "I'm not sure. Suggest something or skip it.",
@@ -429,3 +433,44 @@ def test_reverse_pin_reads_the_address_under_the_pin_for_owners_only(tmp_path: P
         far = client.get("/api/v1/places/reverse", params={"lat": -40, "lng": 10}).json()
         assert far == {"label": "Your current location", "approximate": True}
         assert client.get("/api/v1/places/reverse", params={"lat": 91, "lng": 0}).status_code == 422
+
+
+async def test_offline_new_shop_tool_result_gets_the_next_question_in_hindi(tmp_path: Path):
+    from google.genai import types
+
+    from app.agent import OfflineCoachModel, ui_language
+
+    context = MerchantContext(
+        MerchantStore(str(tmp_path / "shops.sqlite")),
+        "alice",
+        None,
+        [],
+        new_shop=True,
+        new_shop_draft=NewShopDraft(business=BusinessFields(name="Chai Corner")),
+        message="name: Chai Corner",
+    )
+    result = types.Content(
+        role="user",
+        parts=[
+            types.Part(
+                function_response=types.FunctionResponse(
+                    name="propose_business", response={"status": "needs_review"}
+                )
+            )
+        ],
+    )
+    request = types.Content(role="user", parts=[types.Part(text="name: Chai Corner")])
+    token, lang = current.set(context), ui_language.set("hi")
+    try:
+        replies = [
+            r
+            async for r in OfflineCoachModel().generate_content_async(
+                type("R", (), {"contents": [request, result]})()  # type: ignore[arg-type]
+            )
+        ]
+    finally:
+        ui_language.reset(lang)
+        current.reset(token)
+    text = replies[0].content.parts[0].text
+    assert "Offline demo" not in text and "review the proposed" not in text
+    assert "?" in text
