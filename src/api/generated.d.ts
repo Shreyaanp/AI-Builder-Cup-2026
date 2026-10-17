@@ -2427,6 +2427,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/face/warmup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Face Warmup
+         * @description Warm up the private face worker to prevent cold-start latency when the owner scans.
+         */
+        get: operations["face_warmup_api_v1_face_warmup_get"];
+        put?: never;
+        /**
+         * Face Warmup
+         * @description Warm up the private face worker to prevent cold-start latency when the owner scans.
+         */
+        post: operations["face_warmup_api_v1_face_warmup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/face/challenges": {
         parameters: {
             query?: never;
@@ -3153,6 +3177,8 @@ export interface components {
             business_id: string;
             /** Consent */
             consent: boolean;
+            /** Exclude Prompts */
+            exclude_prompts?: string[] | null;
         };
         /** ChatSummary */
         ChatSummary: {
@@ -11194,6 +11220,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    face_warmup_api_v1_face_warmup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    face_warmup_api_v1_face_warmup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

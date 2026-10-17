@@ -7473,6 +7473,46 @@
         }
       }
     },
+    "/api/v1/face/warmup": {
+      "get": {
+        "summary": "Face Warmup",
+        "description": "Warm up the private face worker to prevent cold-start latency when the owner scans.",
+        "operationId": "face_warmup_api_v1_face_warmup_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Face Warmup Api V1 Face Warmup Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Face Warmup",
+        "description": "Warm up the private face worker to prevent cold-start latency when the owner scans.",
+        "operationId": "face_warmup_api_v1_face_warmup_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Face Warmup Api V1 Face Warmup Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/face/challenges": {
       "post": {
         "summary": "Challenge",
@@ -9142,6 +9182,20 @@
           "consent": {
             "type": "boolean",
             "title": "Consent"
+          },
+          "exclude_prompts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclude Prompts"
           }
         },
         "additionalProperties": false,
