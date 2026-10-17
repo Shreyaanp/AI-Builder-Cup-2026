@@ -47,7 +47,7 @@
     "backend/app/shop_time.py": 1,
     "backend/app/shop_today.py": 1,
     "backend/app/sourcing_offline.py": 2,
-    "backend/app/sourcing.py": 4,
+    "backend/app/sourcing.py": 5,
     "backend/app/supply_offline.py": 1,
     "backend/scripts/coach_eval.py": 9,
     "backend/scripts/eval_matrix.py": 8,
@@ -62,6 +62,7 @@
     "src/features/v1/today/todayPlan.ts": 1
   },
   "voice": {
+    "backend/app/icons.py": 1,
     "backend/app/brief.py": 1,
     "backend/app/business_profile.py": 1,
     "backend/app/business_understanding.py": 1,
