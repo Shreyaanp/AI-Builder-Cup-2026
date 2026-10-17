@@ -60,6 +60,7 @@ export function AppShell() {
   const roles = useTheme().material
   const rail = useMediaQuery(`(min-width:${windowClass.medium}px)`)
   const keyboard = useKeyboardOpen()
+  const [navHeight, navRef] = useBarHeight()
   // The new-shop flow takes the whole screen; the workspace stays mounted (hidden) behind it,
   // so the current shop's coach keeps its conversation and unsent note.
   const inFlow = ws.creatingShop || ws.newShopReady
@@ -157,7 +158,8 @@ export function AppShell() {
                 flex: 1,
                 minWidth: 0,
                 px: { xs: 2, sm: 3, md: 4 },
-                pb: rail ? 3 : 'calc(96px + env(safe-area-inset-bottom))',
+                // Clear the fixed bar by its measured height: labels wrap and fonts differ.
+                pb: rail ? 3 : `${navHeight + 16}px`,
                 outline: 'none',
               }}
             >
@@ -198,6 +200,7 @@ export function AppShell() {
         {showNavBar && (
           <Box
             component="nav"
+            ref={navRef}
             aria-label={tabs.mainNav}
             sx={{
               position: 'fixed',
@@ -221,6 +224,21 @@ export function AppShell() {
       </Box>
     </>
   )
+}
+
+/** Height of the fixed bottom bar (safe-area padding included), kept current as it resizes. */
+function useBarHeight() {
+  const [height, setHeight] = useState(112)
+  const [node, setNode] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    if (!node) return
+    const measure = () => setHeight(Math.ceil(node.getBoundingClientRect().height))
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [node])
+  return [height, setNode] as const
 }
 
 /**

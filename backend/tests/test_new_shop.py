@@ -433,3 +433,44 @@ def test_reverse_pin_reads_the_address_under_the_pin_for_owners_only(tmp_path: P
         far = client.get("/api/v1/places/reverse", params={"lat": -40, "lng": 10}).json()
         assert far == {"label": "Your current location", "approximate": True}
         assert client.get("/api/v1/places/reverse", params={"lat": 91, "lng": 0}).status_code == 422
+
+
+async def test_offline_new_shop_tool_result_gets_the_next_question_in_hindi(tmp_path: Path):
+    from google.genai import types
+
+    from app.agent import OfflineCoachModel, ui_language
+
+    context = MerchantContext(
+        MerchantStore(str(tmp_path / "shops.sqlite")),
+        "alice",
+        None,
+        [],
+        new_shop=True,
+        new_shop_draft=NewShopDraft(business=BusinessFields(name="Chai Corner")),
+        message="name: Chai Corner",
+    )
+    result = types.Content(
+        role="user",
+        parts=[
+            types.Part(
+                function_response=types.FunctionResponse(
+                    name="propose_business", response={"status": "needs_review"}
+                )
+            )
+        ],
+    )
+    request = types.Content(role="user", parts=[types.Part(text="name: Chai Corner")])
+    token, lang = current.set(context), ui_language.set("hi")
+    try:
+        replies = [
+            r
+            async for r in OfflineCoachModel().generate_content_async(
+                type("R", (), {"contents": [request, result]})()  # type: ignore[arg-type]
+            )
+        ]
+    finally:
+        ui_language.reset(lang)
+        current.reset(token)
+    text = replies[0].content.parts[0].text
+    assert "Offline demo" not in text and "review the proposed" not in text
+    assert "?" in text
