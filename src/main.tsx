@@ -4,7 +4,7 @@ import '@fontsource-variable/google-sans-flex'
 // Handwritten chalk accents (headings, prices, notes; never body text).
 import '@fontsource/caveat/600.css'
 import '@fontsource/caveat/700.css'
-import '@fontsource-variable/roboto'
+import './design/roboto.css'
 import Root from './app/Root'
 import { AppProviders } from './app/AppProviders'
 import { setupPwa } from './app/pwa'
@@ -22,7 +22,10 @@ setupPwa(app)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AppProviders business={app === 'business'}>
+    <AppProviders
+      business={app === 'business'}
+      analyticsApp={app === 'customer' ? 'customer' : app === 'business' ? 'owner' : undefined}
+    >
       <Root />
     </AppProviders>
   </StrictMode>,

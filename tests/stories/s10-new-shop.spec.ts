@@ -163,7 +163,7 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
 
   await test.step('7 · "Your shop is ready", and the Google Maps hand-off', async () => {
     await page.getByTestId('shop-summary').getByRole('button', { name: 'Skip for now' }).click()
-    await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
     await shot(page, 10, '7-ready')
     await axe(page)
     const handoff = page.getByTestId('maps-handoff')
@@ -258,7 +258,7 @@ test('S10 · type it in instead: one question per screen, then Edit details the 
     await expect(review).toContainText('within 25 m')
     await axe(page)
     await page.getByRole('button', { name: 'Open my shop' }).click()
-    await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
     await page.getByRole('button', { name: 'Continue with my shop' }).click()
   })
 

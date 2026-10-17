@@ -41,7 +41,8 @@ import {
 import { gsap } from 'gsap'
 import { visuallyHidden } from '@mui/utils'
 import { chatBubbleStyle } from '../coach/bubbleStyle'
-import { PlainText, RichText } from '../../design/RichText'
+import { PlainText } from '../../design/PlainText'
+import { RichText } from '../../design/LazyRichText'
 import { stripMarkdown } from '../../design/markdownUtils'
 import { RateLimitError, streamCoach, TooSlowError, TURN_IDLE_MS } from '../../api/stream'
 import type { CoachEvent } from '../../api/stream'
@@ -67,7 +68,10 @@ import { defaultCurrency, formatPrice } from './format'
 import { NewShopReady } from './NewShopStage'
 import { useNewShopCopy } from './newShopCopy'
 import { useNameSuggestion, useOnboardingCopy } from './onboardingCopy'
+import { track } from '../../app/analytics'
 import { Sheet } from './Sheet'
+import { missingForListing, type ListingField } from './goLive'
+import { useGoLiveCopy } from './goLiveCopy'
 import { dietaryMissing, factEntries } from './shopProgress'
 import { useNextStepsCopy } from './nextStepsCopy'
 import { useCopy } from './strings'
@@ -216,6 +220,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const wide = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'))
   const o = useOnboardingCopy()
+  const g = useGoLiveCopy()
   const c = useInChatCopy()
   const phase = ws.newShopPhase
 
@@ -247,6 +252,10 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const [error, setError] = useState('')
   // "Review my shop": always one tap away, whatever the coach is doing.
   const [reviewOpen, setReviewOpen] = useState(false)
+  // The big Review my shop button (after the conversation ended): live goes straight to the
+  // congratulations page, otherwise the sheet with List my shop (#180).
+  const [listOpen, setListOpen] = useState(false)
+  const [listing, setListing] = useState(false)
   // The owner ended the conversation ("bas", "that's all", or the End button): everything is
   // saved; no nudges, no reconnect, until they tap Continue.
   const [ended, setEndedState] = useState(false)
@@ -610,6 +619,57 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     )
     add({ role: 'summary' })
   }
+  /** Review my shop (big button): an already live shop goes straight to the congratulations. */
+  function reviewShop() {
+    if (draftRef.current.live_id) void finish(false)
+    else setListOpen(true)
+  }
+  /** List my shop: the shop opens and is shared, then the congratulations page. */
+  async function listShop() {
+    const current = draftRef.current
+    if (listing || missingForListing(current).length) return
+    setListing(true)
+    setError('')
+    try {
+      const proposal = await api<Proposal>('/proposals', {
+        method: 'POST',
+        body: JSON.stringify({
+          kind: 'business',
+          business_id: null,
+          revision: 0,
+          ...current,
+          owner_location: ownerLocation,
+        }),
+      })
+      const receipt = await ws.api<{ business_id: string }>(`/proposals/${proposal.id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ digest: proposal.digest }),
+      })
+      const bid = receipt.business_id
+      await ws.api(`/businesses/${bid}/share`, {
+        method: 'POST',
+        body: JSON.stringify({ public: true }),
+      })
+      setDraft({ ...current, live_id: bid })
+      setListOpen(false)
+      wantVoice.current = false
+      clearSilence()
+      stopVoice()
+      if (photoFile.current) setGalleryPhoto({ file: photoFile.current, businessId: bid })
+      await ws.finishNewShop(bid)
+    } catch {
+      setError(t.actionFailed)
+    } finally {
+      setListing(false)
+    }
+  }
+  /** A missing answer: the question comes back (the map for the place, the coach for the rest). */
+  function answerMissing(field: ListingField) {
+    setListOpen(false)
+    if (endedRef.current) continueConversation()
+    if (field === 'location') openMap(true)
+    else void say(g.ask[field])
+  }
   /** Done: the live shop opens (and the face check, when the owner chose it). */
   async function finish(face: boolean) {
     const bid = draftRef.current.live_id
@@ -726,6 +786,8 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
 
   /** Any turn: in the live voice session when one is open, otherwise a streamed text turn. */
   async function say(message: string) {
+    if (/^(stop|that's enough|that is enough|we're done|we are done)$/i.test(message.trim()))
+      track('stop_said')
     clearSilence()
     // Typing always works: a word after the end simply carries the conversation on.
     if (endedRef.current) {
@@ -802,6 +864,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     const blocked = canVoice && (await micPermission()) === 'denied'
     if (blocked) setPreflight({ kind: 'mic-blocked' })
     if (canVoice && !blocked) {
+      track('voice_used')
       wantVoice.current = true
       void voice.start()
     } else {
@@ -863,6 +926,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
   }, [lines, live, reducedMotion])
+  const missing = missingForListing(draft)
   const summaryDue = complete(draft) && Boolean(draft.live_id)
   const showSummary = useEffectEvent(() => offerSummary())
   useEffect(() => {
@@ -1463,9 +1527,21 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                     <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 0.5 }}>
                       {o.endedBody}
                     </Typography>
-                    <Button variant="contained" onClick={continueConversation} sx={{ mt: 2 }}>
-                      {o.continueChat}
-                    </Button>
+                    <Stack sx={{ mt: 2, gap: 1.5 }}>
+                      <Button
+                        variant="contained"
+                        size="large"
+                        data-testid="finish-review"
+                        disabled={finishing}
+                        onClick={reviewShop}
+                        sx={{ minHeight: 56 }}
+                      >
+                        {g.review}
+                      </Button>
+                      <Button onClick={continueConversation} sx={{ minHeight: 48 }}>
+                        {o.continueChat}
+                      </Button>
+                    </Stack>
                   </Paper>
                 </Box>
               )}
@@ -1558,6 +1634,45 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       <Typography role="status" sx={visuallyHidden}>
         {status}
       </Typography>
+      <Sheet
+        open={listOpen}
+        onClose={() => setListOpen(false)}
+        titleId="list-shop-title"
+        title={o.reviewTitle}
+        actions={
+          <Button
+            variant="contained"
+            data-testid="list-my-shop"
+            disabled={listing || missing.length > 0}
+            startIcon={listing ? <CircularProgress size={18} color="inherit" /> : undefined}
+            onClick={() => void listShop()}
+            sx={{ minHeight: 48 }}
+          >
+            {listing ? g.listing : g.listShop}
+          </Button>
+        }
+      >
+        <DraftSummary draft={draft} />
+        {missing.length > 0 && (
+          <Alert severity="warning" data-testid="list-missing" sx={{ mt: 2 }}>
+            <Typography variant="labelLarge">{g.missingTitle}</Typography>
+            <Stack sx={{ mt: 1, gap: 1, alignItems: 'flex-start' }}>
+              {missing.map((field) => (
+                <Button
+                  key={field}
+                  size="small"
+                  variant="outlined"
+                  data-missing={field}
+                  onClick={() => answerMissing(field)}
+                  sx={{ minHeight: 44 }}
+                >
+                  {g.missing[field]}
+                </Button>
+              ))}
+            </Stack>
+          </Alert>
+        )}
+      </Sheet>
       <Sheet
         open={reviewOpen}
         onClose={() => setReviewOpen(false)}

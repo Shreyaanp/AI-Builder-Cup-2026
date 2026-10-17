@@ -200,7 +200,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.keyboard.press('Escape')
     await expect(page.getByTestId('draft-summary')).toHaveCount(0)
     await page.getByRole('button', { name: 'Cancel', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeFocused()
+    await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeFocused()
     await capture('9-ready')
   })
 

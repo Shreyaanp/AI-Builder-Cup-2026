@@ -19,6 +19,17 @@ test.beforeEach(async ({ page }) => {
   await localOnly(page)
 })
 
+test('bundled fonts load from linked local dependencies', async ({ page }) => {
+  const fontResponses: number[] = []
+  page.on('response', (response) => {
+    if (response.url().includes('fontsource')) fontResponses.push(response.status())
+  })
+  await page.goto('/')
+  await page.evaluate(() => document.fonts.ready)
+  expect(fontResponses.length).toBeGreaterThan(0)
+  expect(fontResponses).toEqual(fontResponses.map(() => 200))
+})
+
 /** `sheet`: the flow's one sheet, "Review my shop", is open. */
 async function audit(page: Page, sheet = false) {
   expect(
@@ -72,7 +83,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await say(page, 'location: Indiranagar')
     await expect(page.getByTestId('shop-live')).toBeVisible()
     await page.getByRole('button', { name: 'Cancel', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeFocused()
+    await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeFocused()
     await capture('4-ready')
     await page.getByRole('button', { name: 'Continue with my shop' }).click()
     await expect(page.getByRole('button', { name: 'Choose shop: Market Chai' })).toBeVisible()
