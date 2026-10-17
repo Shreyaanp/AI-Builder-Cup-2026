@@ -95,9 +95,22 @@ export function MorningBrief({
   const lowStock = Array.isArray(brief.low_stock)
     ? brief.low_stock.filter((row) => row && typeof row.name === 'string')
     : []
+  const rawAction = brief.best_action
+  const actionKinds = [
+    'reply',
+    'order',
+    'radar',
+    'reduce_prep',
+    'confirm_menu',
+    'record_sales',
+    'none',
+  ]
   const action =
-    brief.best_action && typeof brief.best_action === 'object'
-      ? brief.best_action
+    rawAction &&
+    typeof rawAction === 'object' &&
+    actionKinds.includes(rawAction.kind) &&
+    typeof rawAction.title === 'string'
+      ? { ...rawAction, item: typeof rawAction.item === 'string' ? rawAction.item : null }
       : { kind: 'none' as const, title: '', demo: false }
   const number = (n: number) => new Intl.NumberFormat(locale).format(n)
   const slides: { key: string; icon: ReactNode; title: string; body: ReactNode }[] = [
