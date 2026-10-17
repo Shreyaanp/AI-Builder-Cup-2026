@@ -1,3 +1,4 @@
+import { carried, pushEntry } from '../../app/history'
 import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
@@ -285,7 +286,7 @@ export function StampCard({
               setSignIn(true)
               return
             }
-            history.pushState({ ...(history.state as object | null), rewardRedeem: shop }, '')
+            pushEntry(null, { ...carried(), rewardRedeem: shop })
             setFailedClaim(false)
             setRedeeming(true)
           }}
