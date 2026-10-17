@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .imports import ColumnMap, cell, number
 from .money import exponent
+from .region import shop_currency, shop_zone
 from .shop_time import shop_timezone
 
 MAX_DAYS = 365
@@ -30,7 +31,7 @@ class DailySale(BaseModel):
 
 
 def today_for(fields: dict[str, Any]) -> date:
-    return datetime.now(shop_timezone(fields.get("timezone") or "Asia/Singapore")).date()
+    return datetime.now(shop_timezone(shop_zone(fields))).date()
 
 
 def daily_sales(rows: list[list[str]], mapping: ColumnMap, currency: str) -> list[dict[str, Any]]:
@@ -92,7 +93,7 @@ def prepare_import(business: dict[str, Any], rows: list[dict[str, Any]]) -> dict
     snapshot = {
         "business_id": business["id"],
         "revision": business["revision"],
-        "currency": business["fields"].get("currency") or "SGD",
+        "currency": shop_currency(business["fields"]),
         "sales": rows,
     }
     text = json.dumps(snapshot, sort_keys=True, ensure_ascii=False)

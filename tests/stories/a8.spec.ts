@@ -9,6 +9,7 @@ import {
   seedShop,
   share,
   shot,
+  sortAsMenu,
 } from './support.js'
 
 test.use(phone)
@@ -21,6 +22,8 @@ for (const existing of [false, true]) {
     await enter(page)
     if (existing) await seedShop(page)
     await page.locator('input[type="file"][accept*="image/jpeg"]').setInputFiles(await image(page))
+    // Before a shop exists the photo starts one directly; with a shop it is sorted first.
+    if (existing) await sortAsMenu(page)
     await confirm(page)
     const shop = (await (await page.request.get('/api/v1/businesses')).json())[0]
     expect(shop.gallery ?? []).toEqual([])
@@ -33,6 +36,7 @@ for (const existing of [false, true]) {
       [],
     )
     await page.locator('input[type="file"][accept*="image/jpeg"]').setInputFiles(await image(page))
+    await sortAsMenu(page)
     await confirm(page)
     await page.getByRole('button', { name: 'Add to gallery', exact: true }).click()
     await expect(
