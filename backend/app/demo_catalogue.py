@@ -29,7 +29,9 @@ def item(
 def shop(bid: str, products: list[ProductFields], **fields: Any) -> DemoShop:
     city = fields.pop("city", "singapore")
     fields.setdefault("currency", "SGD")
-    fields.setdefault("reward_text", "A small treat on the house")
+    fields.setdefault("stamps_enabled", True)
+    fields.setdefault("stamps_needed", 8)
+    fields.setdefault("reward_text", "Free item after 8 visits")
     fields["name"] += " (Demo)"
     fields["pin_label"] = fields.get("pin_label", "Approximate pin") + " · Demo"
     fields["pin_demo"] = True
