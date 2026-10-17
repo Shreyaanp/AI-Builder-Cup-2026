@@ -1,4 +1,5 @@
 import os
+from datetime import date
 from typing import Literal
 from urllib.parse import urlsplit
 
@@ -100,6 +101,13 @@ class Settings(BaseSettings):
     maps_grounding_model: str = ""
     # GCP credit is limited: one grounded call per question per ~1 km area for this long.
     maps_grounding_cache_seconds: int = Field(default=3600, ge=60, le=86_400)
+    # DEMO PURPOSE ONLY (see app/places_demo_cache.py): keep Google Maps answers and photos on
+    # disk so an area looked at once is never fetched again, until the date below.
+    places_demo_cache: bool = False
+    places_demo_cache_dir: str = ""
+    places_demo_cache_until: date | None = None
+    # Paid Google Maps calls (search, details, photos) per UTC day per instance.
+    places_daily_cap: int = Field(default=300, ge=0, le=100_000)
     max_turn_seconds: int = Field(default=30, ge=1, le=120)
     max_voice_seconds: int = Field(default=120, ge=1, le=600)
     max_active_runs: int = Field(default=8, ge=1, le=32)

@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from .limits import client_ip, enforce_limits
 from .merchant import MerchantRepository, ProposalRequest
 from .place_photos import PlacesPhotos
+from .places_demo_cache import DailyCap, PlacesDemoCache
 from .settings import Settings
 from .shop_time import shop_timezone
 
@@ -273,21 +274,38 @@ class MapsService:
         browser = settings.maps_browser_key.get_secret_value() if settings.maps_browser_key else ""
         self.demo = not (self.key and browser)
         self.client = httpx.AsyncClient(timeout=8, trust_env=False, transport=transport)
-        self.photos = PlacesPhotos(self.client, self.key, enabled=not self.demo)
+        # DEMO PURPOSE ONLY (off by default): answers kept on disk, see places_demo_cache.py.
+        self.demo_cache = PlacesDemoCache(
+            settings.places_demo_cache and not self.demo,
+            settings.places_demo_cache_dir,
+            settings.places_demo_cache_until,
+        )
+        self.cap = DailyCap(settings.places_daily_cap)
+        self.photos = PlacesPhotos(
+            self.client, self.key, enabled=not self.demo, store=self.demo_cache, cap=self.cap
+        )
         self.cache: dict[tuple[Any, ...], tuple[float, Any]] = {}
         self.lock = asyncio.Lock()
 
     async def close(self) -> None:
         await self.client.aclose()
 
-    async def cached(self, key: tuple[Any, ...], lookup: Any) -> Any:
+    async def cached(self, key: tuple[Any, ...], lookup: Any, paid: bool = False) -> Any:
         # Single-flight prevents bursts from multiplying paid lookups. Bounded lifetime and size.
         async with self.lock:
             now = time.monotonic()
             self.cache = {k: v for k, v in self.cache.items() if v[0] > now}
             if key in self.cache:
                 return self.cache[key][1]
-            result = await lookup()
+            # DEMO PURPOSE ONLY: an area someone already looked at is answered from disk.
+            stored = self.demo_cache.get(key)
+            if stored is not None:
+                result = stored
+            else:
+                if paid and not self.demo and not self.cap.take():
+                    raise HTTPException(503, "MAPS_DAILY_CAP")
+                result = await lookup()
+                self.demo_cache.put(key, result)
             if len(self.cache) >= 256:
                 self.cache.pop(next(iter(self.cache)))
             self.cache[key] = (time.monotonic() + 600, result)
@@ -412,9 +430,14 @@ class MapsService:
             except (httpx.HTTPError, KeyError, ValueError) as error:
                 raise HTTPException(503, "PLACES_UNAVAILABLE") from error
 
+        # With the demo cache on, one ~1 km area shares one answer (distances are recomputed
+        # from each customer's own point); otherwise ~100 m, for 10 minutes.
+        digits = 2 if self.demo_cache.active() else 3
         return list(
             await self.cached(
-                ("places", round(lat, 3), round(lng, 3), radius, q.casefold(), category), lookup
+                ("places", round(lat, digits), round(lng, digits), radius, q.casefold(), category),
+                lookup,
+                paid=True,
             )
         )
 
@@ -440,7 +463,7 @@ class MapsService:
 
         if not re.fullmatch(r"[A-Za-z0-9_-]{8,256}", place_id):
             return None
-        return await self.cached(("place", place_id), lookup)
+        return await self.cached(("place", place_id), lookup, paid=True)
 
 
 async def prepare_pin(
