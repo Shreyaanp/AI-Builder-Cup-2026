@@ -65,7 +65,7 @@ import { FactList } from './FactList'
 import { defaultCurrency, formatPrice } from './format'
 import { NewShopReady } from './NewShopStage'
 import { useNewShopCopy } from './newShopCopy'
-import { useOnboardingCopy } from './onboardingCopy'
+import { useNameSuggestion, useOnboardingCopy } from './onboardingCopy'
 import { Sheet } from './Sheet'
 import { dietaryMissing, factEntries } from './shopProgress'
 import { useNextStepsCopy } from './nextStepsCopy'
@@ -234,6 +234,9 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const [sealed, setSealed] = useState<Proposal | null>(null)
   const [ownerLocation, setOwnerLocation] = useState<PinChoice | OwnerLocation | null>(null)
   const [photoNotes, setPhotoNotes] = useState<string[]>([])
+  // A name printed on a photo that differs from (or is missing in) the owner's: tap to use it.
+  const [nameSuggestion, setNameSuggestion] = useState<string | null>(null)
+  const suggestName = useNameSuggestion()
   const photoFile = useRef<File | null>(null)
   const [review, setReview] = useState<Proposal | null>(null)
   const [busy, setBusyState] = useState<'idle' | 'reply' | 'photo' | 'review'>('idle')
@@ -526,20 +529,26 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       ].slice(-80),
     )
   }
-  function closeCamera(id: string) {
+  /**
+   * `quiet` (the X, a finished photo): the card just closes, nothing is sent or spoken and the
+   * coach does not nudge. Skip says "later" to the coach, which carries on with the next question.
+   */
+  function closeCamera(id: string, quiet: boolean) {
     openCards.current.delete(id)
-    // Closed without a photo: the owner skipped it ("baad mein"); Today reminds them later.
+    // Closed without a photo: Today reminds them later.
     const draft = draftRef.current
-    if (busyRef.current !== 'photo' && !draft.photo && !draft.skipped?.includes('photo')) {
+    const skipping =
+      busyRef.current !== 'photo' && !draft.photo && !draft.skipped?.includes('photo')
+    if (skipping) {
       setDraft({ ...draft, skipped: [...(draft.skipped ?? []), 'photo'] })
-      void say(o.photoSkipped)
+      if (!quiet) void say(o.photoSkipped)
     }
     setLines((items) =>
       items.map((line) =>
         line.id === id && line.role === 'camera' ? { ...line, closed: true } : line,
       ),
     )
-    armSilence()
+    if (!(quiet && skipping)) armSilence()
   }
   function openMap(locate: boolean, hold = true) {
     const id = crypto.randomUUID()
@@ -901,8 +910,9 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         signal: AbortSignal.timeout(60_000),
       })
       const before = draftRef.current
-      // A signboard can name the shop, but only what the owner has not said yet: a photo never
-      // replaces their answer. Its items wait for the menu step on Today.
+      // A photo fills what the owner has not said yet, but never the shop's name: that is theirs
+      // (said, typed or not yet synced). A different name on the photo is only offered as a chip.
+      // Its items wait for the menu step on Today.
       const seen = result.proposal?.snapshot.business
       const after = {
         ...(seen
@@ -910,7 +920,9 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
               ...result.proposal!.snapshot,
               business: Object.fromEntries(
                 Object.entries(seen).filter(
-                  ([key]) => !filled((before.business as Record<string, unknown> | null)?.[key]),
+                  ([key]) =>
+                    key !== 'name' &&
+                    !filled((before.business as Record<string, unknown> | null)?.[key]),
                 ),
               ) as unknown as Business['fields'],
               products: [],
@@ -919,10 +931,18 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         photo: true,
       }
       setDraft(after)
+      const printed = seen?.name?.trim() ?? ''
+      setNameSuggestion(
+        printed &&
+          printed.toLocaleLowerCase() !== (after.business?.name ?? '').trim().toLocaleLowerCase()
+          ? printed
+          : null,
+      )
       photoFile.current = file
       setPhotoNotes(result.extraction.uncertain.slice(0, 5))
       setBusy('idle')
-      // In plain words for the coach (no "label: value" pairs it could mistake for answers).
+      // In plain words for the coach (no "label: value" pairs it could mistake for answers). The
+      // name is the owner's, never the one printed on the photo.
       const read = [after.business?.name, after.business?.category].filter(Boolean)
       void say(f.photoNote(read.join(', ') || o.photoAdded))
     } catch (cause) {
@@ -1187,6 +1207,32 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       direction="row"
       sx={{ gap: 1, flexWrap: 'wrap', justifyContent: { md: 'center' }, flexShrink: 0 }}
     >
+      {nameSuggestion && (
+        <Chip
+          icon={<Store size={18} />}
+          label={suggestName(nameSuggestion)}
+          data-testid="name-suggestion"
+          disabled={!idle}
+          color="primary"
+          variant="outlined"
+          onClick={() => {
+            const next = nameSuggestion
+            setNameSuggestion(null)
+            setDraft({
+              ...draftRef.current,
+              business: { ...(draftRef.current.business ?? EMPTY_BUSINESS), name: next },
+            })
+            void say(next)
+          }}
+          onDelete={() => setNameSuggestion(null)}
+          sx={{
+            height: 48,
+            px: 0.5,
+            maxWidth: '100%',
+            '& .MuiChip-icon': { color: roles.primary },
+          }}
+        />
+      )}
       <Chip
         icon={<Camera size={18} />}
         label={o.shopPhoto}
@@ -1368,7 +1414,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                       <CameraCard
                         shots={line.shots}
                         onPhoto={uploadPhoto}
-                        onClose={() => closeCamera(line.id)}
+                        onClose={(quiet) => closeCamera(line.id, quiet)}
                         onActive={() => openCards.current.add(line.id)}
                       />
                     </Box>

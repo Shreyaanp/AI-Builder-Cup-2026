@@ -572,3 +572,13 @@ export function useOnboardingCopy(): OnboardingCopy {
 export function onboardingCopyFor(locale: Locale): OnboardingCopy {
   return copy[locale]
 }
+
+const nameSuggestion: Partial<Record<Locale, (name: string) => string>> = {
+  en: (name) => `Name on the photo: ${name}?`,
+  hi: (name) => `फ़ोटो पर नाम: ${name}?`,
+}
+
+/** A name read from a photo is only ever offered; the owner taps to use it. */
+export function useNameSuggestion(): (name: string) => string {
+  return nameSuggestion[useLocale()] ?? nameSuggestion.en!
+}
