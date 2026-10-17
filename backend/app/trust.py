@@ -2,8 +2,8 @@
 queue (possible duplicate owners and listing flags).
 
 Nothing here blocks, hides or punishes anyone. A check that passes earns the owner a badge; a
-face that looks like another account's opens a review item a person looks at; a capture that
-does not work only asks the owner to try again.
+face that looks like another account's, or a capture the liveness model is unsure about, opens
+a review item a person looks at; a capture that does not work only asks the owner to try again.
 
 Templates (256 numbers from the face model, never the video or a photo) are encrypted with
 AES-256-GCM, bound to their owner, and kept in the shared document store so every instance of
@@ -41,6 +41,8 @@ QUEUE_LIMIT = 500
 # face recognition demo treats about 0.4 as the same person; 0.55 is stricter. It is not
 # calibrated on our owners, and it only ever opens a review a person decides.
 DUPLICATE_SIMILARITY = 0.55
+# Review items that hold an owner's face check in_review until a person decides.
+FACE_REVIEWS = ("duplicate_owner", "liveness")
 FIXTURE_HEADER = "x-face-fixture"
 
 
@@ -121,6 +123,9 @@ TRACE_FIELDS = (
     "face_frames",
     "yaw_range",
     "pitch_range",
+    "start_pose",
+    "face_luma",
+    "live_frames",
     "stage",
     "failed",
     "first_request",
@@ -162,12 +167,15 @@ async def evaluate(
         if len(capture) < 1024:
             return answer("fixture", {"status": "retry", "reason": "capture_not_usable"})
         name = request.headers.get(FIXTURE_HEADER, "")[:80] or uid
+        # "unsure:<name>" stands in for a capture the liveness model was unsure about.
+        unsure = name.startswith("unsure:")
         return answer(
             "fixture",
             {
-                "status": "live",
-                "reason": "ok",
+                "status": "review" if unsure else "live",
+                "reason": "liveness_unsure" if unsure else "ok",
                 "liveness": "fixture",
+                **({"score": 0.12} if unsure else {}),
                 "template": fixture_template(name).tolist(),
                 "passed_prompts": prompts,
             },
@@ -249,12 +257,13 @@ def record(
 ) -> dict[str, Any]:
     """Store a live capture's template and compare it with every other owner's.
 
-    Returns what the owner sees: verified, in_review (looks like another account; a person
-    will look), or retry/unavailable with a reason. `shop_names(uid)` names an owner's shops
-    for the review item, so a reviewer sees shops, not account IDs.
+    Returns what the owner sees: verified, in_review (looks like another account, or the
+    worker was unsure the capture is live; a person will look), or retry/unavailable with a
+    reason. `shop_names(uid)` names an owner's shops for the review item, so a reviewer sees
+    shops, not account IDs.
     """
     now = time.time()
-    if outcome.get("status") != "live" or "template" not in outcome:
+    if outcome.get("status") not in {"live", "review"} or "template" not in outcome:
         res: dict[str, Any] = {
             "result": "unavailable" if outcome.get("status") == "unavailable" else "retry",
             "reason": outcome.get("reason", "capture_not_usable"),
@@ -288,13 +297,14 @@ def record(
         {"uid": uid, "sealed": vault.seal(uid, vector), "created": now},
     )
     face = "verified"
+    review = None
     if best_uid and best >= DUPLICATE_SIMILARITY:
         key = "duplicate:" + ":".join(sorted([uid, best_uid]))
         earlier = store.get(REVIEW_KIND, key)
         if earlier and earlier.get("status") == "cleared":
             face = "verified"  # A person already decided these two are different owners.
         else:
-            face = "in_review"
+            face, review = "in_review", "duplicate"
             store.put(
                 REVIEW_KIND,
                 key,
@@ -311,14 +321,47 @@ def record(
                     "shops": {uid: shop_names(uid), best_uid: shop_names(best_uid)},
                 },
             )
-    store.put(STATUS_KIND, uid, uid, now, {"face": face, "checked": now})
+    key = f"liveness:{uid}"
+    earlier = store.get(REVIEW_KIND, key)
+    if outcome["status"] == "live" and earlier and earlier.get("status") == "open":
+        # A clear pass since: nothing left for a person to decide.
+        store.put(REVIEW_KIND, key, QUEUE, earlier["created"], {**earlier, "status": "resolved"})
+    if outcome["status"] == "review":
+        # Unsure is not a failure: a person looks at it instead of the owner retrying forever.
+        if not (earlier and earlier.get("status") == "cleared"):
+            face, review = "in_review", review or "liveness"
+            store.put(
+                REVIEW_KIND,
+                key,
+                QUEUE,
+                now,
+                {
+                    "id": key,
+                    "kind": "liveness",
+                    "status": "open",
+                    "created": (earlier or {}).get("created", now),
+                    "updated": now,
+                    "owners": [uid],
+                    "score": outcome.get("score"),
+                    "shops": {uid: shop_names(uid)},
+                },
+            )
+    store.put(
+        STATUS_KIND,
+        uid,
+        uid,
+        now,
+        {"face": face, "checked": now, **({"review": review} if review else {})},
+    )
     log.info(
         "face_check_recorded",
         result=face,
         duplicate_match=bool(best_uid and best >= DUPLICATE_SIMILARITY),
         similarity=round(best, 3) if best_uid else None,
+        liveness_review=outcome["status"] == "review",
     )
-    ans: dict[str, Any] = {"result": face, "reason": "ok", "checked": now}
+    reason = "liveness_unsure" if review == "liveness" else "ok"
+    ans: dict[str, Any] = {"result": face, "reason": reason, "checked": now}
     if "passed_prompts" in outcome:
         ans["passed_prompts"] = outcome["passed_prompts"]
     return ans
@@ -382,12 +425,29 @@ def decide(store: Any, review_id: str, decision: str, admin: str) -> dict[str, A
     now = time.time()
     item = {**item, "status": decision, "decided": now, "decided_by": admin, "updated": now}
     store.put(REVIEW_KIND, review_id, QUEUE, item.get("created", now), item)
-    if item["kind"] == "duplicate_owner":
+    if item["kind"] in FACE_REVIEWS:
         newest = item["owners"][0]
         current = status(store, newest)
         if current.get("face") in {"in_review", "not_verified"}:
-            face = "verified" if decision == "cleared" else "not_verified"
-            store.put(STATUS_KIND, newest, newest, now, {**current, "face": face})
+            # Cleared only verifies once no other face review about this owner is open.
+            still_open = [
+                other["kind"]
+                for other in queue(store)
+                if other["id"] != review_id
+                and other.get("status") == "open"
+                and other["kind"] in FACE_REVIEWS
+                and other["owners"][0] == newest
+            ]
+            if decision != "cleared":
+                face = "not_verified"
+            elif still_open:
+                face = "in_review"
+            else:
+                face = "verified"
+            update = {**current, "face": face}
+            if face == "in_review":
+                update["review"] = "duplicate" if "duplicate_owner" in still_open else "liveness"
+            store.put(STATUS_KIND, newest, newest, now, update)
     return item
 
 

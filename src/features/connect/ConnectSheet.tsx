@@ -28,6 +28,7 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { extraConnectCopy, useConnectCopy } from './strings'
 import { photoCopy } from './photoCopy'
 import { ScreenPhotoInput } from './ScreenPhotoInput'
+import { useConnectUiCopy } from './uiStrings'
 import type {
   ConnectorDiff,
   ConnectorMapping,
@@ -71,12 +72,17 @@ export function ConnectSheet({
   initialSystem?: string
 }) {
   const t = useConnectCopy()
+  const ui = useConnectUiCopy()
   const locale = useLocale()
   const extra = extraConnectCopy[locale]
   const photoText = photoCopy[locale]
   const ws = useWorkspace()
   const roles = useTheme().material
   const shop = ws.active
+  const systems = KNOWN_SYSTEMS.map((system) => ({
+    ...system,
+    displayLabel: system.key === 'other' ? ui.otherPos : system.label,
+  }))
 
   const [selectedSystem, setSelectedSystem] = useState<string>(initialSystem ?? 'Petpooja')
   const [tab, setTab] = useState<'upload' | 'paste'>('upload')
@@ -183,7 +189,7 @@ export function ConnectSheet({
       setAnalysis(result)
       setCurrentMapping(result.mapping)
     } catch {
-      setError('Could not analyze file. Please verify format.')
+      setError(ui.analyzeFileFailed)
     } finally {
       setAnalyzing(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -214,7 +220,7 @@ export function ConnectSheet({
       setAnalysis(result)
       setCurrentMapping(result.mapping)
     } catch {
-      setError('Could not analyze sample data. Please check syntax.')
+      setError(ui.analyzeSampleFailed)
     } finally {
       setAnalyzing(false)
     }
@@ -316,7 +322,7 @@ export function ConnectSheet({
           },
         )
       } else {
-        throw new Error('No data to sync')
+        throw new Error(ui.noData)
       }
 
       // Close connect sheet and open proposal review before saving
@@ -343,7 +349,7 @@ export function ConnectSheet({
         ws.notify(t.mappingSaved)
       }
     } catch {
-      setError('Could not complete sync. Please try again.')
+      setError(ui.syncFailed)
     } finally {
       setBusy(false)
     }
@@ -381,7 +387,7 @@ export function ConnectSheet({
               </Button>
             </Stack>
           ) : (
-            <Button onClick={handleClose}>Close</Button>
+            <Button onClick={handleClose}>{ui.close}</Button>
           )
         }
       >
@@ -404,7 +410,10 @@ export function ConnectSheet({
                   {t.pickSystem}
                 </Typography>
                 <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
-                  {[...KNOWN_SYSTEMS, { key: 'export', label: extra.uploadExport }].map((sys) => {
+                  {[
+                    ...systems,
+                    { key: 'export', label: extra.uploadExport, displayLabel: extra.uploadExport },
+                  ].map((sys) => {
                     const isSelected = selectedSystem === sys.label
                     const hasSaved = savedMappings.some(
                       (m) => m.source_label.toLowerCase() === sys.label.toLowerCase(),
@@ -435,11 +444,11 @@ export function ConnectSheet({
                         }}
                       >
                         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                          <span>{sys.label}</span>
+                          <span>{sys.displayLabel}</span>
                           {hasSaved && (
                             <Chip
                               size="small"
-                              label="Connected"
+                              label={ui.connected}
                               sx={{
                                 bgcolor: roles.primaryContainer,
                                 color: roles.onPrimaryContainer,

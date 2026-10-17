@@ -1,8 +1,10 @@
 import { createContext } from 'react'
 import type { FeatureFlags } from './features'
+import type { TrustStripConfig } from './trustStrip'
 
 export interface Identity {
   features: FeatureFlags
+  trustStrip?: TrustStripConfig
   mode: 'local' | 'firebase'
   status: 'loading' | 'ready' | 'signed-out' | 'error'
   scope: string
