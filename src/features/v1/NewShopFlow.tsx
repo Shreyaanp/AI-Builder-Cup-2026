@@ -256,7 +256,9 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     endedRef.current = next
     setEndedState(next)
   }
-  /** The owner said stop (any language): the chat rests and Review my shop opens at once. */
+  /** The owner is finished (any language, typed or spoken, #191): the chat rests and Review my
+   * shop opens at once. #180 hook: when "List my shop" → "Congratulations" lands, it starts
+   * from this same review sheet, so every way of finishing reaches it through here. */
   const endAfterStop = () => {
     setEnded(true)
     setReviewOpen(true)
