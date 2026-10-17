@@ -340,7 +340,8 @@ export function ConnectSheet({
                           : roles.surfaceContainerHighest,
                         color: isSelected ? roles.onPrimaryContainer : roles.onSurface,
                         fontWeight: isSelected ? 600 : 400,
-                        minHeight: 44,
+                        minHeight: 48,
+                        minWidth: 48,
                         transition: 'all 0.15s ease-in-out',
                         '&:hover': {
                           borderColor: roles.primary,
@@ -387,12 +388,21 @@ export function ConnectSheet({
               </Typography>
 
               <Tabs
+                variant="fullWidth"
                 value={tab}
                 onChange={(_, v) => setTab(v as 'upload' | 'paste')}
-                sx={{ mb: 2, minHeight: 40 }}
+                sx={{ mb: 2, minHeight: 48 }}
               >
-                <Tab label={t.uploadFile} value="upload" sx={{ minHeight: 40, py: 0.5 }} />
-                <Tab label={t.pasteData} value="paste" sx={{ minHeight: 40, py: 0.5 }} />
+                <Tab
+                  label={t.uploadFile}
+                  value="upload"
+                  sx={{ minHeight: 48, py: 0.5, whiteSpace: 'normal', overflowWrap: 'anywhere' }}
+                />
+                <Tab
+                  label={t.pasteData}
+                  value="paste"
+                  sx={{ minHeight: 48, py: 0.5, whiteSpace: 'normal', overflowWrap: 'anywhere' }}
+                />
               </Tabs>
 
               {tab === 'upload' ? (
@@ -414,7 +424,15 @@ export function ConnectSheet({
                     startIcon={analyzing ? <CircularProgress size={18} /> : <Upload size={18} />}
                     disabled={analyzing}
                     onClick={() => fileInputRef.current?.click()}
-                    sx={{ minHeight: 48 }}
+                    sx={{
+                      minHeight: 48,
+                      maxWidth: '100%',
+                      height: 'auto',
+                      py: 1,
+                      textAlign: 'start',
+                      whiteSpace: 'normal',
+                      overflowWrap: 'anywhere',
+                    }}
                   >
                     {analyzing ? t.analyzing : t.uploadFile}
                   </Button>

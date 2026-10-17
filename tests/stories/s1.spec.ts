@@ -129,7 +129,7 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
       customer.getByRole('heading', { level: 1, name: 'Offline Fixture Tea Stall' }),
     ).toBeVisible()
     // The menu comes before the similar-nearby list, which can hold a same-named chai from other runs.
-    await expect(customer.getByRole('listitem').filter({ hasText: 'Chai' }).first()).toContainText(
+    await expect(customer.getByRole('listitem').filter({ hasText: /^Chai/ }).first()).toContainText(
       '₹15.00',
     )
     await expect(customer.getByText('UPI', { exact: true })).toBeVisible()
