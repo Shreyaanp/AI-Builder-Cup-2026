@@ -3,11 +3,20 @@
 from .demo_catalogue import DemoShop, item, shop
 from .merchant import Understanding
 from .money import to_minor
+from .region import profile
 from .vendor_profile import allowed_facts, infer_profile
 
+_INDIA = profile("IN")
+_SINGAPORE = profile("SG")
 CENTRES = {
-    "bengaluru": (12.9718, 77.6412, "INR", "Asia/Kolkata", "Indiranagar, Bengaluru"),
-    "singapore": (1.3052, 103.9045, "SGD", "Asia/Singapore", "Katong, Singapore"),
+    "bengaluru": (12.9718, 77.6412, _INDIA.currency, _INDIA.timezone, "Indiranagar, Bengaluru"),
+    "singapore": (
+        1.3052,
+        103.9045,
+        _SINGAPORE.currency,
+        _SINGAPORE.timezone,
+        "Katong, Singapore",
+    ),
 }
 
 

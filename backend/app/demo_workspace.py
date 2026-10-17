@@ -71,7 +71,7 @@ async def demo_workspace(
 @router.post("/customer")
 async def demo_customer(
     request: Request,
-    zone: str = Query(default="Asia/Singapore", max_length=64),
+    zone: str = Query(default=CENTRES["singapore"][3], max_length=64),
 ) -> dict[str, Any]:
     """Explicit opt-in; never run merely because somebody signs in or visits a shop."""
     principal = await customer(request)

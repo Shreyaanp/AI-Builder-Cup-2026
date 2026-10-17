@@ -32,6 +32,9 @@ for (const appearance of ['light', 'dark']) {
     test(`${world.city} shop: authored menu and demo badge (${appearance})`, async ({
       page,
     }, info) => {
+      // The customer shop is a large lazy-loaded immersive screen. On a cold Vite
+      // start its first compilation can outlast the default 30 second test budget.
+      test.setTimeout(60_000)
       await page.addInitScript((appearance) => {
         localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance }))
       }, appearance)
