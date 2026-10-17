@@ -59,7 +59,7 @@ export default defineConfig({
       url: `http://127.0.0.1:${api}/api/v1/health`,
       reuseExistingServer: !process.env.CI,
       // A throwaway database per run: reruns never inherit earlier runs' seeded shops.
-      env: { FRESH_TEST_DATA: '1' },
+      env: { FRESH_TEST_DATA: '1', PUBLIC_DEMO_ENABLED: 'true' },
       timeout: 60_000,
     },
     {
