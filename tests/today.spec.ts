@@ -116,6 +116,9 @@ test.beforeEach(async ({ page }) => {
   // Midday in the shop's zone, so the evening close-the-day need never depends on when CI runs.
   await page.clock.setFixedTime(new Date('2026-10-17T11:00:00+08:00'))
   await localOnly(page)
+  // "Close the day" joins Today in the evening; pin the browser to 10:00 in Kolkata so these
+  // tests see the same Today whatever the runner's clock says.
+  await page.clock.setFixedTime(new Date('2026-10-17T04:30:00Z'))
   await enter(page)
 })
 test.afterEach(async ({ page }) => {
