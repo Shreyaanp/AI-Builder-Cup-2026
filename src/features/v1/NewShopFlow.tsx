@@ -526,11 +526,17 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       ].slice(-80),
     )
   }
-  function closeCamera(id: string) {
+  function closeCamera(id: string, how: 'skip' | 'dismiss') {
     openCards.current.delete(id)
     // Closed without a photo: the owner skipped it ("baad mein"); Today reminds them later.
+    // The X only closes the card, quietly: no new turn, no audio, the draft as it was (#107).
     const draft = draftRef.current
-    if (busyRef.current !== 'photo' && !draft.photo && !draft.skipped?.includes('photo')) {
+    if (
+      how === 'skip' &&
+      busyRef.current !== 'photo' &&
+      !draft.photo &&
+      !draft.skipped?.includes('photo')
+    ) {
       setDraft({ ...draft, skipped: [...(draft.skipped ?? []), 'photo'] })
       void say(o.photoSkipped)
     }
@@ -539,7 +545,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         line.id === id && line.role === 'camera' ? { ...line, closed: true } : line,
       ),
     )
-    armSilence()
+    if (how === 'skip') armSilence()
   }
   function openMap(locate: boolean, hold = true) {
     const id = crypto.randomUUID()
@@ -1368,7 +1374,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                       <CameraCard
                         shots={line.shots}
                         onPhoto={uploadPhoto}
-                        onClose={() => closeCamera(line.id)}
+                        onClose={(how) => closeCamera(line.id, how)}
                         onActive={() => openCards.current.add(line.id)}
                       />
                     </Box>

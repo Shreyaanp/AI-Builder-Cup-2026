@@ -45,7 +45,11 @@ export function CameraCard({
   shots: Shot[]
   /** Reads the photo into the shop (the conversation shows the result). */
   onPhoto: (file: File) => Promise<void>
-  onClose: () => void
+  /**
+   * The card is done. "skip": the owner skipped the photo (or sent it), and the coach moves on.
+   * "dismiss": the X, which closes quietly with no new turn and no audio (#107).
+   */
+  onClose: (how: 'skip' | 'dismiss') => void
   /** The owner is using the camera (the coach waits instead of nudging). */
   onActive?: () => void
 }) {
@@ -152,7 +156,7 @@ export function CameraCard({
       setPhase(stream.current ? 'live' : 'ask')
     } else {
       stop()
-      onClose()
+      onClose('skip')
     }
   }
   async function send(file: File) {
@@ -165,7 +169,11 @@ export function CameraCard({
   }
   function close() {
     stop()
-    onClose()
+    onClose('skip')
+  }
+  function dismiss() {
+    stop()
+    onClose('dismiss')
   }
 
   const guide = shot === 'board' ? c.guideBoard : c.guideFront
@@ -214,7 +222,7 @@ export function CameraCard({
           )}
         </Box>
         <Tooltip title={c.closeCamera}>
-          <IconButton aria-label={c.closeCamera} onClick={close} sx={{ mr: -1 }}>
+          <IconButton aria-label={c.closeCamera} onClick={dismiss} sx={{ mr: -1 }}>
             <X size={20} />
           </IconButton>
         </Tooltip>
@@ -255,7 +263,7 @@ export function CameraCard({
           data-testid="camera-alert"
           data-problem={problem}
           severity="warning"
-          onClose={close}
+          onClose={dismiss}
           closeText={v.close}
           sx={{
             borderRadius: `${shape.lg}px`,
