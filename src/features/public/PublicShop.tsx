@@ -574,7 +574,7 @@ export default function PublicShop({ id }: { id: string }) {
     // Type-specific facts the owner confirmed (e.g. a salon's walk-ins), label: value.
     ...custom
       // The story has its own line; the demo label is already in the header.
-      .filter((fact) => fact.key !== 'story' && fact.key !== 'demo_data')
+      .filter((fact) => !['story', 'demo_data', 'demo_verified'].includes(fact.key))
       .map((fact) => `${fact.label}: ${fact.value}`),
   ]
   // Available items first; sold-out items stay listed (customers ask about them) but last.
@@ -658,9 +658,13 @@ export default function PublicShop({ id }: { id: string }) {
           {shop.verified_owner && !shop.demo && (
             <VerifiedBadge checked={shop.verified_owner.checked} />
           )}
-          {shop.demo && (
-            // Honest but quiet: one outlined label, not a second accent colour.
-            <Chip label={t.demoShop} size="small" variant="outlined" sx={{ my: 1 }} />
+          {shop.demo && custom.some((fact) => fact.key === 'demo_verified') ? (
+            <VerifiedBadge demoLabel={t.demoShop} />
+          ) : (
+            shop.demo && (
+              // Honest but quiet: one outlined label, not a second accent colour.
+              <Chip label={t.demoShop} size="small" variant="outlined" sx={{ my: 1 }} />
+            )
           )}
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
             {openLabel && (
