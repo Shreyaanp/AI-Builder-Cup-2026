@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-from app.agent import NEW_SHOP_TOPICS, OfflineCoachModel, OFFLINE_HI, ui_language
+from app.agent import NEW_SHOP_TOPICS, OFFLINE_HI, OfflineCoachModel, ui_language
 from app.coordinator import MerchantContext, current
 from app.main import create_app
 from app.merchant import BusinessFields, MerchantStore, NewShopDraft
@@ -62,7 +62,10 @@ def test_resume_keeps_prior_turns_and_does_not_ask_for_known_fields_again(tmp_pa
 
 @pytest.mark.xfail(
     strict=True,
-    reason="Shop update currently replaces the owner name when an inferred name is passed; the draft has no field provenance.",
+    reason=(
+        "Shop update currently replaces the owner name when an inferred name is passed; "
+        "the draft has no field provenance."
+    ),
 )
 def test_owner_name_survives_a_later_menu_or_photo_name_extraction(tmp_path):
     ctx = MerchantContext(
@@ -93,9 +96,7 @@ def test_owner_name_survives_a_later_menu_or_photo_name_extraction(tmp_path):
     assert ctx.new_shop_draft.business.name == "Lakshmi Tea Stall"
 
 
-@pytest.mark.parametrize(
-    "tool_name", ["update_shop", "attach_ready_profile", "show_step"]
-)
+@pytest.mark.parametrize("tool_name", ["update_shop", "attach_ready_profile", "show_step"])
 @pytest.mark.asyncio
 async def test_new_shop_tool_result_drives_the_models_next_turn(tmp_path, tool_name):
     ctx = MerchantContext(
@@ -120,9 +121,7 @@ async def test_new_shop_tool_result_drives_the_models_next_turn(tmp_path, tool_n
             )
         ],
     )
-    owner_message = types.Content(
-        role="user", parts=[types.Part(text="name: Lakshmi Tea Stall")]
-    )
+    owner_message = types.Content(role="user", parts=[types.Part(text="name: Lakshmi Tea Stall")])
     token = current.set(ctx)
     language = ui_language.set("hi")
     try:
