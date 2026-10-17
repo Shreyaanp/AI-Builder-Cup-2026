@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const fil: Copy = {
+  trustFree: 'Libreng magsimula',
+  trustLanguage: 'Wika mo',
+  trustData: 'Sa iyo ang datos',
+  trustHuman: 'Kausapin ang tao',
+  trustFreeBody: 'Magsimula nang libre; walang kailangang bayaran.',
+  trustLanguageBody: 'Pumili ng Hindi, Ingles o ibang wika sa settings.',
+  trustDataBody: 'Burahin ang datos anumang oras; naka-encrypt ang naka-save na datos ng mukha.',
+  trustHumanBody: 'Kausapin ang aming support team sa WhatsApp.',
+  trustWhatsapp: 'Buksan ang WhatsApp',
   newShopMode: 'Bagong tindahan',
   newShopReady: 'Handa na ang bago mong tindahan',
   newShopReadyBody:

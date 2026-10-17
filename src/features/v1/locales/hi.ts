@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const hi: Copy = {
+  trustFree: 'शुरुआत मुफ़्त',
+  trustLanguage: 'आपकी भाषा',
+  trustData: 'आपका डेटा आपका है',
+  trustHuman: 'इंसान से बात करें',
+  trustFreeBody: 'मुफ़्त शुरू करें; भुगतान ज़रूरी नहीं।',
+  trustLanguageBody: 'सेटिंग्स में हिंदी, अंग्रेज़ी या दूसरी भाषा चुनें।',
+  trustDataBody: 'डेटा कभी भी मिटाएँ; चेहरे का सहेजा डेटा एन्क्रिप्टेड है।',
+  trustHumanBody: 'WhatsApp पर हमारी सहायता टीम से बात करें।',
+  trustWhatsapp: 'WhatsApp खोलें',
   newShopMode: 'नई दुकान',
   newShopReady: 'आपकी नई दुकान तैयार है',
   newShopReadyBody:

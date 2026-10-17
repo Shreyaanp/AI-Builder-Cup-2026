@@ -4578,6 +4578,50 @@
         }
       }
     },
+    "/api/v1/demo/customer": {
+      "post": {
+        "summary": "Demo Customer",
+        "description": "Explicit opt-in; never run merely because somebody signs in or visits a shop.",
+        "operationId": "demo_customer_api_v1_demo_customer_post",
+        "parameters": [
+          {
+            "name": "zone",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "default": "Asia/Singapore",
+              "title": "Zone"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Demo Customer Api V1 Demo Customer Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/demo/world": {
       "post": {
         "summary": "Demo World",
@@ -6748,6 +6792,29 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supply/demo": {
+      "post": {
+        "summary": "Showcase",
+        "description": "Explicit local demo; creates a private buyer and simulated supplier only.",
+        "operationId": "showcase_api_v1_supply_demo_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Showcase Api V1 Supply Demo Post"
                 }
               }
             }
