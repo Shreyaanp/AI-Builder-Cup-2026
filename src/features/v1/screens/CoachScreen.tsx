@@ -1,5 +1,6 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
 import { photoCopy } from '../../coach/photoCopy'
+import { photoHeaders, preparePhoto } from '../photoPrep'
 import { PlainText, RichText } from '../../../design/RichText'
 import { stripMarkdown } from '../../../design/markdownUtils'
 import {
@@ -783,7 +784,8 @@ function CoachScreen({
     else void uploadPhoto(file)
   }
 
-  async function uploadPhoto(file: File) {
+  async function uploadPhoto(picked: File) {
+    let file = picked
     if (busy !== 'idle') return
     setError('')
     if (!PHOTO_TYPES.includes(file.type) || file.size > 20_000_000) {
@@ -795,6 +797,10 @@ function CoachScreen({
     photoController.current = operation
     setGalleryPhoto(null)
     try {
+      // Shrunk on the phone first: the spinner is already up, the upload is a fraction of the bytes.
+      const photo = await preparePhoto(file)
+      if (!alive.current || operation.signal.aborted) return
+      file = photo.file
       // A new shop takes the phone region's currency; an existing shop keeps its own.
       const query = activeId
         ? `?business_id=${encodeURIComponent(activeId)}`
@@ -803,7 +809,7 @@ function CoachScreen({
       const result = await api<PhotoResult>(`/photos${query}&language=${language}`, {
         method: 'POST',
         body: file,
-        headers: { 'Content-Type': file.type },
+        headers: photoHeaders(photo),
         signal: AbortSignal.any([operation.signal, AbortSignal.timeout(60_000)]),
       })
       if (!alive.current || operation.signal.aborted) return
