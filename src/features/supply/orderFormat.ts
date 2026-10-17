@@ -1,4 +1,4 @@
-import type { PurchaseOrder } from './types'
+import type { PurchaseOrder } from './types.ts'
 
 /** The number without a leading "PO-"/"PO " so the copy's own "PO" prefix is not doubled. */
 export function poNumber(number: string | null | undefined): string {

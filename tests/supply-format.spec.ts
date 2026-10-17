@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { orderTotal, poNumber } from '../src/features/supply/orderFormat'
+import { orderTotal, poNumber } from '../src/features/supply/orderFormat.ts'
 
 test('poNumber drops a leading PO- so the label reads "PO 2026-0042"', () => {
   expect(poNumber('PO-2026-0042')).toBe('2026-0042')
