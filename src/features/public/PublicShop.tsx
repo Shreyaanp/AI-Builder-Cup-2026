@@ -29,8 +29,7 @@ import { formatPrice } from '../v1/format'
 import { factName } from '../v1/factNames'
 import { Sheet } from '../v1/Sheet'
 import type { Api, ShopFacts } from '../v1/api'
-import { en as ownerEnglish } from '../v1/strings'
-import { translations as ownerTranslations } from '../v1/locales'
+import { useCopy as useOwnerCopy } from '../v1/strings'
 import { HAND_FONT, shape } from '../../design/theme'
 import { chalkDust } from '../../design/chalkboard'
 import { chalkWrite } from '../../design/chalkMotion'
@@ -54,6 +53,7 @@ import { unitLabel } from '../shop/units'
 import { rememberOpened } from '../discover/opened'
 import { SimilarNearby } from '../discover/SimilarNearby'
 import { shopRegion, shopZone } from '../../region/region'
+import { track } from '../../app/analytics'
 
 interface PublicShopData {
   id: string
@@ -88,6 +88,61 @@ interface PublicShopData {
   demo?: boolean
   /** The owner passed the optional live face check (when; never who). */
   verified_owner?: { checked?: number | null }
+}
+
+function safePublicShop(value: unknown): PublicShopData {
+  const data = value && typeof value === 'object' ? (value as Partial<PublicShopData>) : {}
+  const products = Array.isArray(data.products)
+    ? data.products
+        .filter(
+          (item): item is PublicShopData['products'][number] =>
+            !!item &&
+            typeof item.name === 'string' &&
+            typeof item.unit === 'string' &&
+            typeof item.price === 'number',
+        )
+        .map((item) => ({
+          ...item,
+          available: item.available !== false,
+          name_local: typeof item.name_local === 'string' ? item.name_local : undefined,
+          category: typeof item.category === 'string' ? item.category : undefined,
+        }))
+    : []
+  const rawFacts = data.facts && typeof data.facts === 'object' ? data.facts : {}
+  const facts: ShopFacts = {
+    ...rawFacts,
+    delivery_note: typeof rawFacts.delivery_note === 'string' ? rawFacts.delivery_note : undefined,
+    preorder_lead_time:
+      typeof rawFacts.preorder_lead_time === 'string' ? rawFacts.preorder_lead_time : undefined,
+    busy_hours: typeof rawFacts.busy_hours === 'string' ? rawFacts.busy_hours : undefined,
+    payment_methods: Array.isArray(rawFacts.payment_methods)
+      ? rawFacts.payment_methods.filter((method): method is string => typeof method === 'string')
+      : [],
+    custom_facts: Array.isArray(rawFacts.custom_facts)
+      ? rawFacts.custom_facts.filter(
+          (fact) =>
+            fact &&
+            typeof fact.key === 'string' &&
+            typeof fact.label === 'string' &&
+            typeof fact.value === 'string',
+        )
+      : [],
+  }
+  return {
+    ...data,
+    id: typeof data.id === 'string' ? data.id : '',
+    name: typeof data.name === 'string' ? data.name : '',
+    category: typeof data.category === 'string' ? data.category : '',
+    location: typeof data.location === 'string' ? data.location : '',
+    hours: typeof data.hours === 'string' ? data.hours : '',
+    phone: typeof data.phone === 'string' ? data.phone : '',
+    products,
+    gallery: Array.isArray(data.gallery)
+      ? data.gallery.filter((item): item is string => typeof item === 'string')
+      : [],
+    weekly_hours: Array.isArray(data.weekly_hours) ? data.weekly_hours : [],
+    facts,
+  }
 }
 
 const PAYMENT_BRANDS = { paynow: 'PayNow', grabpay: 'GrabPay', nets: 'NETS' } as const
@@ -415,7 +470,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   const shopCopy = useShopCopy()
   const o = useOnboardingCopy()
   const discovery = discoverCopy(locale)
-  const freshnessCopy = locale === 'en' ? ownerEnglish : ownerTranslations[locale]
+  const freshnessCopy = useOwnerCopy()
   const t = {
     ...en,
     ...publicTranslations[locale],
@@ -446,7 +501,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   const fetchShop = useCallback(
     (signal?: AbortSignal) =>
       previewApi
-        ? previewApi<PublicShopData>(`/public/shops/${id}`, { signal })
+        ? previewApi<unknown>(`/public/shops/${id}`, { signal }).then(safePublicShop)
         : // Categories, sections and the demo story come back in the customer's language (English
           // is the source, so it needs no parameter).
           fetch(
@@ -456,7 +511,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
             // 404 = owner stopped sharing; anything else is a transient failure.
             if (response.status === 404) throw new Error('missing')
             if (!response.ok) throw new Error('error')
-            return (await response.json()) as PublicShopData
+            return safePublicShop(await response.json())
           }),
     [id, locale, previewApi],
   )
@@ -495,6 +550,8 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
       .then((data) => {
         if (abort.signal.aborted) return
         apply(data)
+        const country = shopRegion(data).country
+        track('shop_opened', { region: country === 'SG' ? 'SG' : 'IN' })
         document.title = `${data.name} · ${t.menu}`
         if (!previewApi) recsEvent({ kind: 'shop_open', shop_id: data.id })
       })
@@ -583,16 +640,25 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
 
   const currency = shop.currency ?? shopRegion(shop).currency
   // The public API names owner-written facts `custom` (owner records use `custom_facts`).
-  const custom =
+  const customValue =
     (shop.facts as (ShopFacts & { custom?: ShopFacts['custom_facts'] }) | undefined)?.custom ??
     shop.facts?.custom_facts ??
     []
+  const custom = Array.isArray(customValue)
+    ? customValue.filter(
+        (fact) =>
+          fact &&
+          typeof fact.key === 'string' &&
+          typeof fact.label === 'string' &&
+          typeof fact.value === 'string',
+      )
+    : []
   const chips = [
     ...factChips(shop.facts ?? {}, t),
     // Type-specific facts the owner confirmed (e.g. a salon's walk-ins), label: value.
     ...custom
       // The story has its own line; the demo label is already in the header.
-      .filter((fact) => fact.key !== 'story' && fact.key !== 'demo_data')
+      .filter((fact) => !['story', 'demo_data', 'demo_verified'].includes(fact.key))
       .map((fact) => `${fact.label}: ${fact.value}`),
   ]
   // Available items first; sold-out items stay listed (customers ask about them) but last.
@@ -778,9 +844,14 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           {shop.verified_owner && !shop.demo && (
             <VerifiedBadge checked={shop.verified_owner.checked} />
           )}
-          {shop.demo && !previewApi && (
-            <Chip label={t.demoShop} size="small" variant="outlined" sx={{ height: 24 }} />
-          )}
+          {shop.demo &&
+            !previewApi &&
+            (custom.some((fact) => fact.key === 'demo_verified') ? (
+              <VerifiedBadge demoLabel={t.demoShop} />
+            ) : (
+              // Honest but quiet: one outlined label, not a second accent colour.
+              <Chip label={t.demoShop} size="small" variant="outlined" sx={{ height: 24 }} />
+            ))}
         </Stack>
       </Box>
       {/* One line a neighbour would say about the place, in chalk. */}

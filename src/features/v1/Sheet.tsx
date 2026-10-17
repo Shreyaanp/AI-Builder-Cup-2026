@@ -37,6 +37,7 @@ export function Sheet({
   keepMounted = false,
   dirty = false,
   dismissInActions = false,
+  ownsHistory = true,
 }: {
   open: boolean
   onClose: () => void
@@ -52,11 +53,13 @@ export function Sheet({
   dirty?: boolean
   /** `actions` already hold a Cancel/Back/Done, so the phone sheet adds no Close of its own. */
   dismissInActions?: boolean
+  /** False when the sheet's own address is its history entry (the map's `?view=map`). */
+  ownsHistory?: boolean
 }) {
   const roles = useTheme().material
   const t = useCopy()
   const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
-  useBackClose(open, onClose, dirty)
+  useBackClose(open && ownsHistory, onClose, dirty)
   // Swipe, Esc and the scrim also close; the button makes it obvious and works for everyone.
   // Desktop keeps the corner X; a phone gets Close in the bottom row, inside the thumb zone.
   const close = (

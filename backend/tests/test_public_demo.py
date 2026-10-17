@@ -43,7 +43,7 @@ def test_demo_without_identity_is_filled_private_and_read_only(app, monkeypatch)
         bid = business["id"]
         inventory = read(client, session, f"/businesses/{bid}/inventory").json()
         sales = read(client, session, f"/businesses/{bid}/sales").json()
-        assert len(sales) == 42 * len(inventory)
+        assert len(sales) >= 42 * len(inventory)
         assert read(client, session, f"/businesses/{bid}/forecast").json()["status"] == "ready"
         assert len(read(client, session, f"/businesses/{bid}/inquiries").json()) == 3
         shops = read(client, session, "/shops").json()

@@ -32,7 +32,13 @@ for (const width of [360, 390, 412]) {
         const realApi: string[] = []
         page.on('request', (request) => {
           const path = new URL(request.url()).pathname
-          if (path.startsWith('/api/') && !path.startsWith('/api/v1/demo/')) realApi.push(path)
+          // The public analytics config (no account data) is the one allowed call besides the demo.
+          if (
+            path.startsWith('/api/') &&
+            !path.startsWith('/api/v1/demo/') &&
+            path !== '/api/v1/bootstrap'
+          )
+            realApi.push(path)
         })
         await page.goto('/demo')
         const banner =

@@ -14,11 +14,12 @@ import anyio
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
 from .demo_data import SHOPS, customer_activity
-from .demo_workspace import ZONE_CITY, seed_workspace
+from .demo_workspace import ZONE_CITY
 from .forecast import ForecastService
 from .limits import Bucket, client_ip
 from .merchant import MerchantStore
 from .sales import today_for
+from .tour_story import seed_workspace
 
 router = APIRouter(prefix="/api/v1/demo/sessions")
 TTL_SECONDS = 900
@@ -59,14 +60,15 @@ def fixture(zone: str) -> tuple[dict[str, Any], list[dict[str, Any]], date]:
     # The same tour seeding code runs against throwaway files, never the real merchant store.
     with TemporaryDirectory(prefix="chalkboard-demo-") as directory, ExitStack() as cleanup:
         service = FixtureStore(str(Path(directory) / "demo.sqlite3"), cleanup)
-        uid = "public-demo"
-        bid = seed_workspace(service, uid, zone)
+        uid = f"public-demo-{token_urlsafe(8)}"
+        city = ZONE_CITY.get(zone, "singapore")
+        city = city if city in {"bengaluru", "singapore"} else "singapore"
+        bid, _ = seed_workspace(service, uid, city)
         business = service.list_businesses(uid)[0]
         business["fields"]["name"] = business["fields"]["name"].replace(" (Tour)", " (Demo)")
         inventory = service.inventory(uid, bid)
         sales = service.sales_history(uid, bid)
         today = today_for(business["fields"])
-        city = ZONE_CITY.get(zone, "singapore")
         shops = [shop for shop in SHOPS if shop.city == city]
         demo = next(shop for shop in shops if shop.fields.category.lower() != "hardware")
         reads: dict[str, Any] = {

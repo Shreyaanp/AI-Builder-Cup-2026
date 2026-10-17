@@ -145,6 +145,12 @@ async def trust_status(request: Request) -> dict[str, Any]:
     return {
         "face": current.get("face", "not_started"),
         "checked": current.get("checked"),
+        # Why a check is in review ("duplicate" or "liveness"), for the owner's wording.
+        **(
+            {"review": current["review"]}
+            if current.get("face") == "in_review" and current.get("review")
+            else {}
+        ),
         "notices": await anyio.to_thread.run_sync(trust.owner_notices, docs, uid) if docs else [],
         "reviewer": admin,
         **({"queue": await anyio.to_thread.run_sync(review_queue, docs)} if admin else {}),
@@ -158,6 +164,9 @@ def review_queue(docs: Any) -> list[dict[str, Any]]:
         row = {k: item[k] for k in ("id", "kind", "status", "created", "updated") if k in item}
         if item["kind"] == "duplicate_owner":
             row["similarity"] = item.get("similarity")
+            row["shops"] = [item.get("shops", {}).get(person, []) for person in item["owners"]]
+        elif item["kind"] == "liveness":
+            row["score"] = item.get("score")
             row["shops"] = [item.get("shops", {}).get(person, []) for person in item["owners"]]
         else:
             row["shop"] = item.get("shop")

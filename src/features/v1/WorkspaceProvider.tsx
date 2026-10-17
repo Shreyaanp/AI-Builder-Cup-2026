@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, IconButton, Snackbar, useTheme } from '@mui/material'
 import { X } from 'lucide-react'
@@ -9,9 +9,13 @@ import { WorkspaceContext } from './workspaceContext'
 import type { Destination, Editor, NewShopPhase, Workspace } from './workspaceContext'
 import { ReviewDialog } from './ReviewDialog'
 import { BusinessDialog, ProductDialog } from './EditDialogs'
-import { FaceDialog } from './FaceDialog'
 import { customerShopLink, safeCustomerOrigin } from '../../app/router'
 import { overlayHandled } from './backStack'
+import { track } from '../../app/analytics'
+import { tabFromUrl } from './workspaceContext'
+import { carried, entryState, pushEntry, replaceEntry, restoreScroll } from '../../app/history'
+
+const FaceDialog = lazy(() => import('./FaceDialog').then((m) => ({ default: m.FaceDialog })))
 
 function readSpeak() {
   try {
@@ -52,25 +56,33 @@ export function WorkspaceProvider({
     bid: null,
     items: [],
   })
-  const [destination, setDestination] = useState<Destination>('coach')
+  // The tab is in the address (`/?tab=shop`), so a refresh keeps it.
+  const [destination, setDestination] = useState<Destination>(() => tabFromUrl(location.search))
   const [proposal, setProposal] = useState<Proposal | null>(null)
   // Proposals confirmed in this session, so the coach can link a saved change back to the menu.
   const [savedProposals, setSavedProposals] = useState<string[]>([])
   // The route belongs to this workspace, so entering registration preserves the current
   // shop's mounted coach and unsent draft. No merchant data is written to browser storage.
-  // Each phase is a history entry, so Back goes review → conversation → leaves the flow.
+  // Each phase, tab and sub-page is a history entry, so Back goes review → conversation →
+  // leaves the flow, and Shop → Today, with each screen where it was.
   useLayoutEffect(() => {
     if (readOnlyMessage) return
     const url = new URL(location.href)
-    url.pathname = creatingShop || shopReady ? '/new-shop' : '/'
+    const inFlow = creatingShop || shopReady
+    url.pathname = inFlow ? '/new-shop' : '/'
     if (creatingShop) url.searchParams.set('step', newShopPhase)
     else if (shopReady) url.searchParams.set('step', 'ready')
     else url.searchParams.delete('step')
-    if (url.href !== location.href) {
-      if (creatingShop) history.pushState(null, '', url)
-      else history.replaceState(null, '', url)
-    }
-  }, [creatingShop, shopReady, newShopPhase, readOnlyMessage])
+    if (inFlow || destination === 'coach') url.searchParams.delete('tab')
+    else url.searchParams.set('tab', destination)
+    if (url.href === location.href) return
+    const newTab = !inFlow && tabFromUrl(location.search) !== destination
+    if (creatingShop || newTab) {
+      // A tab keeps the open draft's marker, so Back from a page above it is not that draft's Back.
+      pushEntry(url, newTab && !creatingShop ? carried() : {})
+      if (newTab) window.scrollTo({ top: 0, behavior: 'instant' })
+    } else replaceEntry(url)
+  }, [creatingShop, shopReady, newShopPhase, destination, readOnlyMessage])
   useEffect(() => {
     const restore = (event: PopStateEvent) => {
       if (overlayHandled(event)) return
@@ -82,6 +94,8 @@ export function WorkspaceProvider({
       setNewShopPhase(
         value === 'manual' ? 'manual' : value === 'chat' || value === 'review' ? 'chat' : 'hero',
       )
+      setDestination(tabFromUrl(location.search))
+      restoreScroll(entryState().scrollY ?? 0)
     }
     window.addEventListener('popstate', restore)
     return () => window.removeEventListener('popstate', restore)
@@ -96,6 +110,9 @@ export function WorkspaceProvider({
   const consumeCoachDraft = useCallback(() => setCoachDraft(null), [])
   const [coachActions, setCoachActions] = useState(false)
   const [faceOpen, setFaceOpen] = useState(false)
+  // The camera and face-check code loads the first time the dialog opens.
+  const [faceLoaded, setFaceLoaded] = useState(false)
+  if (faceOpen && !faceLoaded) setFaceLoaded(true)
   const [editor, setEditor] = useState<Editor>({ kind: 'none' })
   const [speakReplies, setSpeak] = useState(readSpeak)
   const [customerOrigin, setCustomerOrigin] = useState<string | null>(null)
@@ -248,6 +265,7 @@ export function WorkspaceProvider({
           setToast(readOnlyMessage)
           return
         }
+        track('onboarding_started')
         setCoachActions(false)
         setShopReady(false)
         setNewShopPhase('hero')
@@ -419,14 +437,16 @@ export function WorkspaceProvider({
       />
       <BusinessDialog />
       <ProductDialog />
-      {value.active && (
-        <FaceDialog
-          key={faceOpen ? 'open-' + value.active.id : 'closed'}
-          open={faceOpen}
-          businessId={value.active.id}
-          api={api}
-          onClose={() => setFaceOpen(false)}
-        />
+      {value.active && faceLoaded && (
+        <Suspense fallback={null}>
+          <FaceDialog
+            key={faceOpen ? 'open-' + value.active.id : 'closed'}
+            open={faceOpen}
+            businessId={value.active.id}
+            api={api}
+            onClose={() => setFaceOpen(false)}
+          />
+        </Suspense>
       )}
       <Snackbar
         open={Boolean(toast)}
