@@ -103,6 +103,16 @@
   gap: 12px;
   margin-top: 28px;
 }
+/* Phones only: the nav's business link is hidden there, so the hero carries it. */
+.lp-cta .lp-cta-business {
+  display: none;
+}
+@media (max-width: 899px) {
+  .lp-cta .lp-cta-business {
+    display: inline-flex;
+    min-height: 48px;
+  }
+}
 
 /* Hero */
 .lp-hero {
