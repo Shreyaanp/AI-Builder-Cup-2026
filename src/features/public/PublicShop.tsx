@@ -49,6 +49,7 @@ import { VerifiedBadge } from '../trust/VerifiedBadge'
 import { unitLabel } from '../shop/units'
 import { rememberOpened } from '../discover/opened'
 import { SimilarNearby } from '../discover/SimilarNearby'
+import { shopRegion, shopZone } from '../../region/region'
 
 interface PublicShopData {
   id: string
@@ -562,7 +563,7 @@ export default function PublicShop({ id }: { id: string }) {
       </Stack>
     )
 
-  const currency = shop.currency ?? 'SGD'
+  const currency = shop.currency ?? shopRegion(shop).currency
   // The public API names owner-written facts `custom` (owner records use `custom_facts`).
   const custom =
     (shop.facts as (ShopFacts & { custom?: ShopFacts['custom_facts'] }) | undefined)?.custom ??
@@ -802,7 +803,7 @@ export default function PublicShop({ id }: { id: string }) {
             ? (() => {
                 // "Today" in the shop's own timezone, so a late-night check reads correctly.
                 const parts = new Intl.DateTimeFormat('en-CA', {
-                  timeZone: shop.timezone ?? 'Asia/Singapore',
+                  timeZone: shopZone(shop),
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',
@@ -982,7 +983,7 @@ export default function PublicShop({ id }: { id: string }) {
       <StampCard
         shop={id}
         name={shop.name}
-        timezone={shop.timezone ?? 'Asia/Singapore'}
+        timezone={shopZone(shop)}
         reward={shop.reward_text}
         needed={shop.stamps_needed ?? 8}
       />

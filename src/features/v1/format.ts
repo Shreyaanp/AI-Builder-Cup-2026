@@ -1,100 +1,10 @@
-/** Currency for every country (ISO 3166 → ISO 4217, from CLDR). Works worldwide. */
-const REGION_CURRENCY: Record<string, string> = Object.fromEntries(
-  (
-    'AD:EUR AE:AED AF:AFN AG:XCD AL:ALL AM:AMD AO:AOA AR:ARS AT:EUR AU:AUD AZ:AZN BA:BAM BB:BBD ' +
-    'BD:BDT BE:EUR BF:XOF BG:BGN BH:BHD BI:BIF BJ:XOF BN:BND BO:BOB BR:BRL BS:BSD BT:BTN BW:BWP ' +
-    'BY:BYN BZ:BZD CA:CAD CD:CDF CF:XAF CG:XAF CH:CHF CI:XOF CL:CLP CM:XAF CN:CNY CO:COP CR:CRC ' +
-    'CU:CUP CV:CVE CY:EUR CZ:CZK DE:EUR DJ:DJF DK:DKK DM:XCD DO:DOP DZ:DZD EC:USD EE:EUR EG:EGP ' +
-    'ER:ERN ES:EUR ET:ETB FI:EUR FJ:FJD FR:EUR GA:XAF GB:GBP GD:XCD GE:GEL GH:GHS GM:GMD GN:GNF ' +
-    'GQ:XAF GR:EUR GT:GTQ GW:XOF GY:GYD HK:HKD HN:HNL HR:EUR HT:HTG HU:HUF ID:IDR IE:EUR IL:ILS ' +
-    'IN:INR IQ:IQD IR:IRR IS:ISK IT:EUR JM:JMD JO:JOD JP:JPY KE:KES KG:KGS KH:KHR KM:KMF KN:XCD ' +
-    'KR:KRW KW:KWD KZ:KZT LA:LAK LB:LBP LC:XCD LI:CHF LK:LKR LR:LRD LS:LSL LT:EUR LU:EUR LV:EUR ' +
-    'LY:LYD MA:MAD MC:EUR MD:MDL ME:EUR MG:MGA MK:MKD ML:XOF MM:MMK MN:MNT MO:MOP MR:MRU MT:EUR ' +
-    'MU:MUR MV:MVR MW:MWK MX:MXN MY:MYR MZ:MZN NA:NAD NE:XOF NG:NGN NI:NIO NL:EUR NO:NOK NP:NPR ' +
-    'NZ:NZD OM:OMR PA:PAB PE:PEN PG:PGK PH:PHP PK:PKR PL:PLN PT:EUR PY:PYG QA:QAR RO:RON RS:RSD ' +
-    'RU:RUB RW:RWF SA:SAR SB:SBD SC:SCR SD:SDG SE:SEK SG:SGD SI:EUR SK:EUR SL:SLE SN:XOF SO:SOS ' +
-    'SR:SRD SS:SSP SV:USD SY:SYP SZ:SZL TD:XAF TG:XOF TH:THB TJ:TJS TL:USD TM:TMT TN:TND TO:TOP ' +
-    'TR:TRY TT:TTD TW:TWD TZ:TZS UA:UAH UG:UGX US:USD UY:UYU UZ:UZS VE:VES VN:VND VU:VUV WS:WST ' +
-    'YE:YER ZA:ZAR ZM:ZMW ZW:ZWG PR:USD GU:USD'
-  )
-    .split(' ')
-    .map((pair) => pair.split(':') as [string, string]),
-)
-
-/** Where the phone is set (its timezone) says more about the shop than its language does. */
-const ZONE_REGION: Record<string, string> = {
-  'Asia/Kolkata': 'IN',
-  'Asia/Calcutta': 'IN',
-  'Asia/Singapore': 'SG',
-  'Asia/Kuala_Lumpur': 'MY',
-  'Asia/Jakarta': 'ID',
-  'Asia/Makassar': 'ID',
-  'Asia/Jayapura': 'ID',
-  'Asia/Bangkok': 'TH',
-  'Asia/Ho_Chi_Minh': 'VN',
-  'Asia/Saigon': 'VN',
-  'Asia/Manila': 'PH',
-  'Asia/Tokyo': 'JP',
-  'Asia/Seoul': 'KR',
-  'Asia/Shanghai': 'CN',
-  'Asia/Hong_Kong': 'HK',
-  'Asia/Taipei': 'TW',
-  'Asia/Dhaka': 'BD',
-  'Asia/Karachi': 'PK',
-  'Asia/Colombo': 'LK',
-  'Asia/Kathmandu': 'NP',
-  'Asia/Dubai': 'AE',
-  'Asia/Riyadh': 'SA',
-  'Asia/Qatar': 'QA',
-  'Asia/Kuwait': 'KW',
-  'Asia/Yangon': 'MM',
-  'Asia/Phnom_Penh': 'KH',
-  'Asia/Jerusalem': 'IL',
-  'Europe/London': 'GB',
-  'Europe/Dublin': 'IE',
-  'Europe/Paris': 'FR',
-  'Europe/Berlin': 'DE',
-  'Europe/Madrid': 'ES',
-  'Europe/Rome': 'IT',
-  'Europe/Amsterdam': 'NL',
-  'Europe/Zurich': 'CH',
-  'Europe/Stockholm': 'SE',
-  'Europe/Oslo': 'NO',
-  'Europe/Copenhagen': 'DK',
-  'Europe/Warsaw': 'PL',
-  'Europe/Istanbul': 'TR',
-  'Europe/Moscow': 'RU',
-  'Africa/Lagos': 'NG',
-  'Africa/Nairobi': 'KE',
-  'Africa/Cairo': 'EG',
-  'Africa/Johannesburg': 'ZA',
-  'America/New_York': 'US',
-  'America/Chicago': 'US',
-  'America/Denver': 'US',
-  'America/Los_Angeles': 'US',
-  'America/Phoenix': 'US',
-  'America/Toronto': 'CA',
-  'America/Vancouver': 'CA',
-  'America/Mexico_City': 'MX',
-  'America/Sao_Paulo': 'BR',
-  'America/Argentina/Buenos_Aires': 'AR',
-  'America/Bogota': 'CO',
-  'America/Lima': 'PE',
-  'America/Santiago': 'CL',
-  'Australia/Sydney': 'AU',
-  'Australia/Melbourne': 'AU',
-  'Australia/Perth': 'AU',
-  'Australia/Brisbane': 'AU',
-  'Pacific/Auckland': 'NZ',
-}
-
-function phoneZone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? ''
-  } catch {
-    return ''
-  }
-}
+import {
+  COUNTRY_CURRENCY,
+  currencyMark,
+  moneyLocale,
+  phoneCountry,
+  shopRegion,
+} from '../../region/region'
 
 /**
  * Default currency for a new shop, from the phone: its timezone first (Asia/Kolkata → INR, even
@@ -102,25 +12,23 @@ function phoneZone(): string {
  */
 export function defaultCurrency(
   languages: readonly string[] = navigator.languages ?? [],
-  zone: string = phoneZone(),
+  zone?: string,
 ): string {
-  const fromZone = REGION_CURRENCY[ZONE_REGION[zone] ?? '']
-  if (fromZone) return fromZone
-  for (const tag of languages) {
-    const region = tag.split('-').find((part, index) => index > 0 && /^[A-Z]{2}$/i.test(part))
-    const currency = region && REGION_CURRENCY[region.toUpperCase()]
-    if (currency) return currency
-  }
-  return 'USD'
+  return COUNTRY_CURRENCY[phoneCountry(languages, zone) ?? ''] ?? 'USD'
 }
 
-/** A saved shop's currency; shops saved before currencies existed are SGD. */
-export function shopCurrency(shop: { fields: { currency?: string } } | null | undefined): string {
-  return shop ? (shop.fields.currency ?? 'SGD') : defaultCurrency()
+/** A saved shop's currency; for one without (older shops, drafts), its region's. */
+export function shopCurrency(
+  shop:
+    | { fields: { currency?: string; lat?: number | null; lng?: number | null; timezone?: string } }
+    | null
+    | undefined,
+): string {
+  return shop ? shop.fields.currency || shopRegion(shop.fields).currency : defaultCurrency()
 }
 
 /** Every country's currency, sorted; the editor puts the shop's own first. */
-export const CURRENCIES = [...new Set(Object.values(REGION_CURRENCY))].sort()
+export const CURRENCIES = [...new Set(Object.values(COUNTRY_CURRENCY))].sort()
 
 /** Mirrors `backend/app/money.py` — keep both tables in sync. */
 const ZERO_DECIMAL = new Set([
@@ -164,16 +72,42 @@ export function formatPrice(
   locale?: string,
 ): string {
   const digits = exponent(currency)
-  return new Intl.NumberFormat(locale, {
+  // The currency's home grouping (₹1,00,000) and the symbol people read there (S$, not $).
+  const mark = currencyMark(currency)
+  return new Intl.NumberFormat(moneyLocale(currency, locale ?? appLanguage()), {
     style: 'currency',
     currency,
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
-  }).format(toMajor(minor, currency))
+  })
+    .formatToParts(toMajor(minor, currency))
+    .map((part) => (part.type === 'currency' && mark ? mark : part.value))
+    .join('')
 }
 
-/** The local symbol for a currency, e.g. "$" for SGD in en-SG, "¥" for JPY. */
+/** The page language (set from the app's language preference) when no locale is passed. */
+function appLanguage(): string | undefined {
+  return typeof document === 'undefined' ? undefined : document.documentElement.lang || undefined
+}
+
+/** A round amount in major units ("S$3", "₹30"): no decimals when the amount is whole. */
+export function formatAmount(major: number, currency: string, locale?: string): string {
+  if (!Number.isInteger(major)) return formatPrice(toMinor(major, currency), currency, locale)
+  const mark = currencyMark(currency)
+  return new Intl.NumberFormat(moneyLocale(currency, locale ?? appLanguage()), {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  })
+    .formatToParts(major)
+    .map((part) => (part.type === 'currency' && mark ? mark : part.value))
+    .join('')
+}
+
+/** The local symbol for a currency, e.g. "S$" for SGD, "¥" for JPY, "¥" for JPY. */
 export function currencySymbol(currency: string = defaultCurrency(), locale?: string): string {
+  const mark = currencyMark(currency)
+  if (mark) return mark
   const part = new Intl.NumberFormat(locale, { style: 'currency', currency })
     .formatToParts(0)
     .find((item) => item.type === 'currency')

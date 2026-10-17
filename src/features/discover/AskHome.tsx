@@ -53,10 +53,12 @@ import { ensureDemoWorld } from './demoWorld'
 import { localRankShops, prefetchAreaShops } from './shopCache'
 import { recsEvent } from '../recs/events'
 import { PlaceSearch, type FoundPlace } from './PlaceSearch'
+import { askBudget } from './budget'
+import { phoneArea, regionAt } from '../../region/region'
+import { formatAmount } from '../v1/format'
 import '../customer/customer.css'
 
 const FILTERS = 'chalkboard.discover.filters'
-const FALLBACK: FoundPlace = { lat: 1.2847, lng: 103.832, label: 'Tiong Bahru' }
 /** Nav bar (80) + composer (56) + breathing room. */
 const COMPOSER_CLEARANCE = 'calc(176px + env(safe-area-inset-bottom))'
 
@@ -132,8 +134,11 @@ export default function AskHome({
         ? { lat: initialLocation.gps[0], lng: initialLocation.gps[1], label: t.here }
         : initialLocation?.place) ??
       savedPlace() ??
-      FALLBACK,
+      phoneArea(),
   )
+  // Example searches use the money of where the customer is ("coffee under ₹30" in India).
+  const area = regionAt(place.lat, place.lng)
+  const askPrice = formatAmount(askBudget(area), area.currency, locale)
   const [turns, setTurns] = useState<Turn[]>(loadTurns)
   const [draft, setDraft] = useState('')
   const [changing, setChanging] = useState(false)
@@ -713,7 +718,7 @@ export default function AskHome({
             inputRef={input}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder={listening ? t.listening : c.placeholder}
+            placeholder={listening ? t.listening : fillIn(c.placeholder, { price: askPrice })}
             inputProps={{ 'aria-label': c.composer, enterKeyHint: 'send', maxLength: 300 }}
             sx={{ flex: 1, minWidth: 0, minHeight: 48, fontSize: 16 }}
           />
