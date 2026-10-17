@@ -67,7 +67,7 @@ test('one sentence puts the shop live; no menu question; summary, skip face, Tod
   )
   // Face check skipped: the shop opens; Today asks for the menu first (photo or typed).
   await summary.getByRole('button', { name: 'Skip for now' }).click()
-  await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
   await page.getByRole('button', { name: 'Continue with my shop' }).click()
   const today = page.getByTestId('today-day-one')
   await expect(today).toContainText('Add your menu')

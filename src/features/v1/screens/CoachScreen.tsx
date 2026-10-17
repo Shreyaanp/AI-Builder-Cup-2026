@@ -1,7 +1,8 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
 import { photoCopy } from '../../coach/photoCopy'
 import { photoHeaders, preparePhoto } from '../photoPrep'
-import { PlainText, RichText } from '../../../design/RichText'
+import { PlainText } from '../../../design/PlainText'
+import { RichText } from '../../../design/LazyRichText'
 import { stripMarkdown } from '../../../design/markdownUtils'
 import {
   isPhotoRoute,
@@ -10,7 +11,16 @@ import {
   type PhotoRoute,
 } from '../../coach/photoRouteCopy'
 import { CloseDay, type Kind as DayKind } from '../../closeday/CloseDay'
-import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import type { ChangeEvent, KeyboardEvent, ReactElement } from 'react'
 import {
   Alert,
@@ -56,7 +66,7 @@ import {
   ZapOff,
 } from 'lucide-react'
 import { visuallyHidden } from '@mui/utils'
-import { CoachChart, type CoachChartData } from '../CoachChart'
+import type { CoachChartData } from '../CoachChart'
 import { RateLimitError, streamCoach, TooSlowError, TURN_IDLE_MS } from '../../../api/stream'
 import type { CoachEvent } from '../../../api/stream'
 import { useIdentity } from '../../../auth/useIdentity'
@@ -88,11 +98,10 @@ import { LoadError } from '../LoadError'
 import { enterRise, shape } from '../../../design/theme'
 import { useSourcingCopy } from '../../sourcing/copy'
 import { OrdersSheet } from '../../sourcing/Orders'
+import { track } from '../../../app/analytics'
 import { useReceiveOrder } from '../../sourcing/orderData'
 import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
-import { PurchaseOrderCard } from '../../supply/PurchaseOrderCard'
-import { RulesChangeCard } from '../../supply/Supply'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
 import { utter } from '../phoneVoice'
 import { useLanguageSwitch } from '../languageSwitch'
@@ -104,6 +113,15 @@ import { GuideChips } from '../../owner-tools/CoachGuide'
 import { openOwnerFeature } from '../../owner-tools/entry'
 import { PaymentCard } from '../../owner-tools/PaymentsScreen'
 import type { PaymentLink } from '../../owner-tools/links'
+
+// Charts, purchase orders and rules cards only appear mid-conversation; their code loads then.
+const CoachChart = lazy(() => import('../CoachChart').then((m) => ({ default: m.CoachChart })))
+const PurchaseOrderCard = lazy(() =>
+  import('../../supply/PurchaseOrderCard').then((m) => ({ default: m.PurchaseOrderCard })),
+)
+const RulesChangeCard = lazy(() =>
+  import('../../supply/Supply').then((m) => ({ default: m.RulesChangeCard })),
+)
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 // The composer grows with multi-line text up to this many lines, then scrolls.
@@ -446,6 +464,7 @@ function CoachScreen({
   })
   /** Stop: the voice and its words stop together; only what was said stays. */
   function stopTalking() {
+    track('stop_said')
     addReply(reveal.cut())
     voice.stop()
   }
@@ -819,12 +838,15 @@ function CoachScreen({
         signal: AbortSignal.any([operation.signal, AbortSignal.timeout(60_000)]),
       })
       if (!alive.current || operation.signal.aborted) return
-      const notes = result.extraction.uncertain.slice(0, 3).join(' · ')
-      setPhotoPin(result.pin_proposal ?? null)
-      const businessId = activeId ?? result.proposal?.snapshot.business_id
+      const uncertain = Array.isArray(result?.extraction?.uncertain)
+        ? result.extraction.uncertain.filter((note): note is string => typeof note === 'string')
+        : []
+      const notes = uncertain.slice(0, 3).join(' · ')
+      setPhotoPin(result?.pin_proposal ?? null)
+      const businessId = activeId ?? result?.proposal?.snapshot?.business_id
       if (
         businessId &&
-        ['storefront', 'signboard', 'menu', 'price_list'].includes(result.photo_kind)
+        ['storefront', 'signboard', 'menu', 'price_list'].includes(result?.photo_kind ?? '')
       )
         setGalleryPhoto({ file, businessId })
       setMessages((items) =>
@@ -832,13 +854,12 @@ function CoachScreen({
           ...items,
           {
             role: 'assistant' as const,
-            text: result.proposal ? t.photoRead + (notes ? `\n${notes}` : '') : t.photoNothing,
+            text: result?.proposal ? t.photoRead + (notes ? `\n${notes}` : '') : t.photoNothing,
           },
         ].slice(-40),
       )
       // The review sheet carries the reader's doubts, so the decision surface discloses them.
-      if (result.proposal)
-        review({ ...result.proposal, photo_notes: result.extraction.uncertain.slice(0, 5) })
+      if (result?.proposal) review({ ...result.proposal, photo_notes: uncertain.slice(0, 5) })
     } catch (cause) {
       const code = cause instanceof ApiError ? cause.code : ''
       setError(
@@ -943,7 +964,11 @@ function CoachScreen({
     },
     openMessages: () => setShopSheet('messages'),
     openSoldOut: () => setShopSheet('soldOut'),
-    talk: () => void restored.current.then(() => voice.start(session.current)),
+    talk: () =>
+      void restored.current.then(() => {
+        track('voice_used')
+        return voice.start(session.current)
+      }),
     openCloseDay: () => setCloseDayOpen(true),
   }
   const lastIsReply =
@@ -1247,7 +1272,9 @@ function CoachScreen({
                     </Box>
                   ) : message.role === 'chart' ? (
                     <Box component="li" key={message.key} sx={{ display: 'flex' }}>
-                      <CoachChart chart={message.chart} />
+                      <Suspense fallback={null}>
+                        <CoachChart chart={message.chart} />
+                      </Suspense>
                     </Box>
                   ) : message.role === 'suppliers' ? (
                     <SupplierCarousel
@@ -1264,26 +1291,30 @@ function CoachScreen({
                   ) : message.role === 'po' ? (
                     pos[message.poId] && (
                       <Box component="li" key={message.poId} sx={{ pl: { xs: 0, sm: 10 } }}>
-                        <PurchaseOrderCard
-                          order={pos[message.poId]!}
-                          onChange={(po) => setPos((known) => ({ ...known, [po.id]: po }))}
-                        />
+                        <Suspense fallback={null}>
+                          <PurchaseOrderCard
+                            order={pos[message.poId]!}
+                            onChange={(po) => setPos((known) => ({ ...known, [po.id]: po }))}
+                          />
+                        </Suspense>
                       </Box>
                     )
                   ) : message.role === 'rules' ? (
                     <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
-                      <RulesChangeCard
-                        row={message.row}
-                        onChange={(row) =>
-                          setMessages((items) =>
-                            items.map((item) =>
-                              item.role === 'rules' && item.key === message.key
-                                ? { ...item, row }
-                                : item,
-                            ),
-                          )
-                        }
-                      />
+                      <Suspense fallback={null}>
+                        <RulesChangeCard
+                          row={message.row}
+                          onChange={(row) =>
+                            setMessages((items) =>
+                              items.map((item) =>
+                                item.role === 'rules' && item.key === message.key
+                                  ? { ...item, row }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                      </Suspense>
                     </Box>
                   ) : message.role === 'order' ? (
                     orders[message.orderId] && (
@@ -1594,7 +1625,10 @@ function CoachScreen({
                 onClick={() => {
                   if (voice.state === 'recording') voice.finishRecording()
                   else if (voice.state === 'idle')
-                    void restored.current.then(() => voice.start(session.current))
+                    void restored.current.then(() => {
+                      track('voice_used')
+                      return voice.start(session.current)
+                    })
                   else stopTalking()
                 }}
                 sx={
