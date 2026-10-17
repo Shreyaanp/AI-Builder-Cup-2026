@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -7,7 +7,27 @@ import { fileURLToPath } from 'node:url'
 const backend = fileURLToPath(new URL('../backend/', import.meta.url))
 const portable = join(homedir(), 'AppData', 'Local', 'AIBuilderCupTools', 'uv', 'uv.exe')
 const uv = process.env.UV_PATH || (existsSync(portable) ? portable : 'uv')
-const child = spawn(uv, ['run', '--locked', 'python', 'run.py'], {
+// The local preview and browser stories always start with the same fictional worlds.
+// Run in the foreground before serving; production never runs this development launcher.
+const seed = spawnSync(
+  uv,
+  [
+    'run',
+    '--offline',
+    '--locked',
+    'python',
+    '-m',
+    'scripts.seed_tour_story',
+    '--sqlite',
+    process.env.MERCHANT_DATABASE || 'data/merchant.sqlite3',
+  ],
+  {
+    cwd: backend,
+    stdio: 'inherit',
+  },
+)
+if (seed.status !== 0) process.exit(seed.status ?? 1)
+const child = spawn(uv, ['run', '--offline', '--locked', 'python', 'run.py'], {
   cwd: backend,
   stdio: 'inherit',
   // Review mode deliberately overrides provider modes; no paid inference.
