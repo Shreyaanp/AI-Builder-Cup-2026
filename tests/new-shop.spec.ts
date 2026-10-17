@@ -72,7 +72,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await say(page, 'location: Indiranagar')
     await expect(page.getByTestId('shop-live')).toBeVisible()
     await page.getByRole('button', { name: 'Cancel', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeFocused()
+    await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeFocused()
     await capture('4-ready')
     await page.getByRole('button', { name: 'Continue with my shop' }).click()
     await expect(page.getByRole('button', { name: 'Choose shop: Market Chai' })).toBeVisible()
