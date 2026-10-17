@@ -136,7 +136,7 @@ def _find(headers: list[str], names: tuple[str, ...]) -> int | None:
     lowered = [header.casefold().strip() for header in headers]
     for name in names:
         for index, header in enumerate(lowered):
-            if (header.startswith(name[:-1]) if name.endswith("*") else header == name):
+            if header.startswith(name[:-1]) if name.endswith("*") else header == name:
                 return index
     return None
 
@@ -145,11 +145,7 @@ def detect_preset(headers: list[str]) -> Preset | None:
     """The first preset whose signature headers are all present."""
     present = {header.casefold().strip() for header in headers}
     return next(
-        (
-            preset
-            for preset in PRESETS
-            if all(name in present for name in preset.signature)
-        ),
+        (preset for preset in PRESETS if all(name in present for name in preset.signature)),
         None,
     )
 

@@ -228,7 +228,8 @@ async def _loyverse_catalog(
     client: httpx.AsyncClient,
 ) -> tuple[list[dict[str, Any]], dict[str, str]]:
     categories = {
-        c["id"]: c.get("name", "") for c in await _loyverse_pages(client, "/categories", "categories")
+        c["id"]: c.get("name", "")
+        for c in await _loyverse_pages(client, "/categories", "categories")
     }
     return await _loyverse_pages(client, "/items", "items"), categories
 

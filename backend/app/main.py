@@ -30,7 +30,6 @@ from .business_understanding import BusinessUnderstander
 from .community import community_service
 from .community_routes import router as community_router
 from .connector_routes import router as connector_router
-from .pos_live_routes import router as pos_live_router
 from .contracts import CoachTurn, NewShopVoiceContext, StreamEvent
 from .coordinator import MerchantContext, current
 from .customer import CustomerAnswers
@@ -82,6 +81,7 @@ from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
 from .playbook import PlaybookWriter
 from .playbook_routes import router as playbook_router
+from .pos_live_routes import router as pos_live_router
 from .recap import RecapWriter
 from .recs_routes import router as recs_router
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
