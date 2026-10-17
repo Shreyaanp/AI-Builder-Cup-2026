@@ -529,20 +529,26 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       ].slice(-80),
     )
   }
-  function closeCamera(id: string) {
+  /**
+   * `quiet` (the X, a finished photo): the card just closes, nothing is sent or spoken and the
+   * coach does not nudge. Skip says "later" to the coach, which carries on with the next question.
+   */
+  function closeCamera(id: string, quiet: boolean) {
     openCards.current.delete(id)
-    // Closed without a photo: the owner skipped it ("baad mein"); Today reminds them later.
+    // Closed without a photo: Today reminds them later.
     const draft = draftRef.current
-    if (busyRef.current !== 'photo' && !draft.photo && !draft.skipped?.includes('photo')) {
+    const skipping =
+      busyRef.current !== 'photo' && !draft.photo && !draft.skipped?.includes('photo')
+    if (skipping) {
       setDraft({ ...draft, skipped: [...(draft.skipped ?? []), 'photo'] })
-      void say(o.photoSkipped)
+      if (!quiet) void say(o.photoSkipped)
     }
     setLines((items) =>
       items.map((line) =>
         line.id === id && line.role === 'camera' ? { ...line, closed: true } : line,
       ),
     )
-    armSilence()
+    if (!(quiet && skipping)) armSilence()
   }
   function openMap(locate: boolean, hold = true) {
     const id = crypto.randomUUID()
@@ -1408,7 +1414,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                       <CameraCard
                         shots={line.shots}
                         onPhoto={uploadPhoto}
-                        onClose={() => closeCamera(line.id)}
+                        onClose={(quiet) => closeCamera(line.id, quiet)}
                         onActive={() => openCards.current.add(line.id)}
                       />
                     </Box>
