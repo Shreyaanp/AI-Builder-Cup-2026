@@ -399,7 +399,7 @@ test('B12: compact categories, uncategorised last and sold-out last', async ({ p
   // B28: each category is a grid of item cards; sold-out items are marked and sort last.
   await expect(
     dialog.getByRole('region', { name: 'Drinks', exact: true }).getByRole('listitem'),
-  ).toHaveText(['Kopicup$1.80', 'TehcupSold out$1.60'])
+  ).toHaveText(['KopicupS$1.80', 'TehcupSold outS$1.60'])
   expect(
     await dialog
       .getByRole('region')
@@ -428,7 +428,7 @@ test('B12: compact categories, uncategorised last and sold-out last', async ({ p
   ).toEqual(['Drinks', 'Food', 'Uncategorised'])
   const drinks = page.getByRole('region', { name: 'Drinks', exact: true })
   expect(await drinks.getByRole('listitem').allTextContents()).toEqual([
-    'Kopi/ cup$1.80',
+    'Kopi/ cupS$1.80',
     expect.stringContaining('Teh'),
   ])
   expect(

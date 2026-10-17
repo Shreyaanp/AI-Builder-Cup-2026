@@ -1,23 +1,25 @@
-import { defaultCurrency } from './format'
+import type { RegionProfile } from '../../region/region'
 
 /** Known saved keys keep their translated labels; custom names keep their spelling. */
 export function factName(value: string, labels: Record<string, string>): string {
   return Object.hasOwn(labels, value) ? (labels[value] ?? value) : value
 }
 
-/** Suggestions follow the phone region, independently of the shop's stored currency. */
-export function factSuggestions(currency = defaultCurrency()) {
-  const regional: Record<string, { payment: string[]; delivery: string[] }> = {
-    INR: { payment: ['UPI', 'Paytm', 'PhonePe'], delivery: ['Swiggy', 'Zomato'] },
-    JPY: { payment: ['PayPay'], delivery: ['Uber Eats'] },
-    PHP: { payment: ['GCash'], delivery: ['grab', 'foodpanda'] },
-    SGD: { payment: ['paynow', 'nets', 'grabpay'], delivery: ['grab', 'foodpanda'] },
-    MYR: { payment: ['Touch ’n Go'], delivery: ['grab', 'foodpanda'] },
-    IDR: { payment: ['GoPay', 'OVO'], delivery: ['GoFood', 'grab'] },
-  }
-  const local = regional[currency]
+// Countries without a region profile yet (region.ts): suggestions from their currency.
+const BY_CURRENCY: Record<string, { payment: string[]; delivery: string[] }> = {
+  JPY: { payment: ['PayPay'], delivery: ['Uber Eats'] },
+  PHP: { payment: ['GCash'], delivery: ['grab', 'foodpanda'] },
+  MYR: { payment: ['Touch ’n Go'], delivery: ['grab', 'foodpanda'] },
+  IDR: { payment: ['GoPay', 'OVO'], delivery: ['GoFood', 'grab'] },
+}
+
+/** Suggestions follow the shop's region (UPI in India, PayNow in Singapore); never limits. */
+export function factSuggestions(region: RegionProfile) {
+  const local = region.country
+    ? { payment: region.payments, delivery: region.delivery }
+    : BY_CURRENCY[region.currency]
   return {
-    payment: [...(local?.payment ?? []), 'card', 'cash'],
+    payment: [...new Set([...(local?.payment ?? []), 'card', 'cash'])],
     delivery: ['none', 'own', ...(local?.delivery ?? [])],
   }
 }

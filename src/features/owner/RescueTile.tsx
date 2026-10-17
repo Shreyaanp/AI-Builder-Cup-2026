@@ -26,6 +26,7 @@ import { useTabsCopy } from '../v1/tabsCopy'
 import { useNextStepsCopy } from '../v1/nextStepsCopy'
 import { fill, useOwnerCopy } from './copy'
 import { defaultUntil, shopNow } from './time'
+import { shopZone } from '../../region/region'
 
 type Deal = components['schemas']['Deal']
 type Suggestions = components['schemas']['Suggestions']
@@ -109,7 +110,7 @@ function RescueSheet({
   const t = useOwnerCopy()
   const ws = useWorkspace()
   const shop = ws.active!
-  const tz = shop.fields.timezone ?? 'Asia/Singapore'
+  const tz = shopZone(shop.fields)
   const today = shopNow(tz).date
   const day = (deal: Deal) => shopNow(tz, deal.starts * 1000).date
   const live = deals.filter((d) => d.status === 'live' && d.ends * 1000 > now)
@@ -268,7 +269,7 @@ function NewRescue({ used, onSent }: { used: Set<string>; onSent: () => void }) 
   const coral = theme.chalk.coral
   const ws = useWorkspace()
   const shop = ws.active!
-  const tz = shop.fields.timezone ?? 'Asia/Singapore'
+  const tz = shopZone(shop.fields)
   const currency = shopCurrency(shop)
   const [hint, setHint] = useState<Suggestions | null>(null)
   const [rows, setRows] = useState<Row[]>([])
@@ -437,7 +438,8 @@ function NewRescue({ used, onSent }: { used: Set<string>; onSent: () => void }) 
             aria-pressed={discount === pct}
             onClick={() => setDiscount(pct)}
             sx={{
-              minHeight: 40,
+              minHeight: 48,
+              minWidth: 48,
               px: 1,
               ...(discount === pct
                 ? { bgcolor: coral.container, color: coral.onContainer, fontWeight: 700 }

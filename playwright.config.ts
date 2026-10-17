@@ -25,6 +25,17 @@ export default defineConfig({
     // Singapore demo market: English UI, SGD prices, SG formats.
     locale: 'en-SG',
     timezoneId: 'Asia/Singapore',
+    // The language was already chosen after sign-in; tests/region.spec.ts clears this to walk
+    // the "Choose your language" step itself.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: `http://127.0.0.1:${web}`,
+          localStorage: [{ name: 'niva.language.chosen', value: '1' }],
+        },
+      ],
+    },
     screenshot: 'only-on-failure',
     launchOptions: {
       args:
@@ -47,6 +58,8 @@ export default defineConfig({
       command: 'node scripts/backend-dev.mjs',
       url: `http://127.0.0.1:${api}/api/v1/health`,
       reuseExistingServer: !process.env.CI,
+      // A throwaway database per run: reruns never inherit earlier runs' seeded shops.
+      env: { FRESH_TEST_DATA: '1' },
       timeout: 60_000,
     },
     {

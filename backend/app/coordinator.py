@@ -17,6 +17,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError, field_validator
 
+from . import region
 from .business_profile import QuestionPlanner
 from .forecast import ForecastService
 from .merchant import (
@@ -28,7 +29,7 @@ from .merchant import (
     ProductFields,
     ProposalRequest,
 )
-from .money import DEFAULT_CURRENCY, to_major, to_minor
+from .money import to_major, to_minor
 from .product_categories import suggest_category
 from .product_units import UNITS, normalize_unit
 from .recap import recap_facts
@@ -306,7 +307,7 @@ def _invalid(
 
 
 def shop_currency(business: dict[str, Any] | None) -> str:
-    return (business or {}).get("fields", {}).get("currency") or DEFAULT_CURRENCY
+    return region.shop_currency((business or {}).get("fields"))
 
 
 def get_business_context() -> dict[str, Any]:
@@ -563,6 +564,8 @@ def _propose_shop(
     if not ctx:
         return {"status": "unavailable"}
     existing = ctx.store.context(ctx.uid, ctx.business_id)["business"]
+    if len(name.strip()) > 80:
+        return _invalid(ValueError("A shop name is 1-80 characters."), ctx)
     draft_fields = ctx.new_shop_draft.business if ctx.new_shop_draft else None
     previous_category = (
         existing["fields"].get("category", "")
@@ -610,7 +613,10 @@ def _propose_shop(
         if ctx.new_shop and draft:
             given = {**draft.model_dump(), **{k: v for k, v in given.items() if v}}
         if not re.fullmatch(r"[A-Z]{3}", given["currency"]):
-            given["currency"] = ui_currency.get() or DEFAULT_CURRENCY
+            # The phone's currency, unless the pin says the shop is elsewhere (region.py).
+            given["currency"] = ui_currency.get() or region.new_shop_currency(
+                given.get("lat"), given.get("lng")
+            )
         given["demo"] = False
     given.update({key: value for key, value in facts.items() if value is not None})
     if profile is not None:
@@ -788,7 +794,8 @@ def propose_business(
 ) -> dict[str, Any]:
     """Prepare the shop's basic details (new shop, or edits to the active shop) for the owner to
     review. Nothing is saved until the owner confirms. Leave a field empty if the owner did not
-    say it; for an existing shop pass name="" and only what changed. currency is the ISO 4217
+    say it; for an existing shop pass name="" and only what changed. To rename the shop pass the
+    new name (1-80 characters, "rename my shop to X"). currency is the ISO 4217
     code (SGD, JPY, MYR…) for a new shop, only when the owner states or clearly implies it.
     weekly_hours: one record per stated weekday (day: mon/tue/wed/thu/fri/sat/sun,
     closed: boolean, open/close: HH:MM). Overnight closing belongs to the opening day.
