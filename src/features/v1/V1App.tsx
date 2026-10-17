@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useIdentity } from '../../auth/useIdentity'
 import { makeApi } from './api'
-import type { Me } from './api'
+import type { Business, Me } from './api'
 import { AppShell } from './AppShell'
 import { BackHistory } from './backStack'
 import { LEGAL_VERSION } from './legal'
@@ -9,7 +9,10 @@ import { Landing } from './Landing'
 import { AccountError, ConsentScreen, Splash } from './Onboarding'
 import { WorkspaceProvider } from './WorkspaceProvider'
 
-/** First run: splash → welcome/sign-in → consent → workspace. */
+import { LanguageStep } from '../language/LanguageStep'
+import { useNeedsLanguage } from '../language/needsLanguage'
+
+/** First run: splash → welcome/sign-in → language → consent → workspace. */
 export default function V1App() {
   const identity = useIdentity()
   const [preview, setPreview] = useState(false)
@@ -24,6 +27,21 @@ function Account({ onLeave }: { onLeave: () => void }) {
   const api = useMemo(() => makeApi(identity.getToken), [identity.getToken])
   const [me, setMe] = useState<Me | null>(null)
   const [failed, setFailed] = useState(false)
+  const needsLanguage = useNeedsLanguage()
+  // The language step guesses from the owner's shop pin when they already have a shop.
+  const [shops, setShops] = useState<Business[] | null>(null)
+  useEffect(() => {
+    if (!needsLanguage || !me) return
+    const abort = new AbortController()
+    void api<Business[]>('/businesses', { signal: abort.signal })
+      .then((value) => {
+        if (!abort.signal.aborted) setShops(value)
+      })
+      .catch(() => {
+        if (!abort.signal.aborted) setShops([])
+      })
+    return () => abort.abort()
+  }, [api, me, needsLanguage])
   const load = useCallback(
     async (signal?: AbortSignal) => {
       const value = await api<Me>('/me', { signal })
@@ -45,6 +63,8 @@ function Account({ onLeave }: { onLeave: () => void }) {
   if (failed)
     return <AccountError onSignOut={identity.mode === 'firebase' ? identity.signOut : onLeave} />
   if (!me) return <Splash />
+  if (needsLanguage)
+    return shops ? <LanguageStep shop place={shops[0]?.fields ?? null} /> : <Splash />
   if (!me.consent_current)
     return (
       <ConsentScreen

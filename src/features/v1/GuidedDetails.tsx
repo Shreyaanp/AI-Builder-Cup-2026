@@ -30,6 +30,7 @@ import { useInChatCopy, type DetailStep } from './inChatCopy'
 import { MapCard, type PinChoice } from './MapCard'
 import { useNewShopCopy } from './newShopCopy'
 import { useCopy } from './strings'
+import { shopRegion } from '../../region/region'
 
 type Row = { key: string; name: string; price: string; unit: string }
 export type GuidedResult = {
@@ -100,7 +101,7 @@ export function GuidedDetails({
   const [index, setIndex] = useState(Math.max(0, steps.indexOf(startStep ?? steps[0]!)))
   const step = steps[index]!
   const [fields, setFields] = useState(initial)
-  const currency = fields.currency ?? 'SGD'
+  const currency = fields.currency || shopRegion(fields).currency
   const [rows, setRows] = useState<Row[]>(() =>
     initialProducts.length
       ? initialProducts.map((p) => ({
@@ -118,7 +119,7 @@ export function GuidedDetails({
   const page = useRef<HTMLDivElement>(null)
   // Where the focus goes after a move: the new question, or the answer that needs fixing.
   const [focus, setFocus] = useState({ tick: 0, invalid: false })
-  const suggestions = factSuggestions()
+  const suggestions = factSuggestions(shopRegion(fields))
 
   const dirty =
     JSON.stringify(fields) !== JSON.stringify(initial) ||

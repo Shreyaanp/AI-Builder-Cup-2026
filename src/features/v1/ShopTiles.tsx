@@ -59,6 +59,7 @@ import { hasHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
 
 import { MapsHandoff } from './MapsHandoff'
+import { shopZone } from '../../region/region'
 
 export type ShopSheetKind =
   'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
@@ -304,7 +305,7 @@ export function ShopTiles({
     shop.fields.hours,
     new Date(),
     shop.fields.weekly_hours,
-    shop.fields.timezone ?? 'Asia/Singapore',
+    shopZone(shop.fields),
   )
   const soldOutNames = ws.products
     .filter((product) => product.available === false)

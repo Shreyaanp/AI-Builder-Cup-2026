@@ -14,6 +14,7 @@ import type { ShopSheetKind } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
 import { fill, useOwnerCopy } from './copy'
 import { shopNow } from './time'
+import { shopZone } from '../../region/region'
 
 type Brief = components['schemas']['Brief']
 type Action = Brief['best_action']
@@ -56,7 +57,7 @@ export function MorningBrief({
   const lilac = theme.chalk.lilac
   const ws = useWorkspace()
   const shop = ws.active!
-  const today = shopNow(shop.fields.timezone ?? 'Asia/Singapore').date
+  const today = shopNow(shopZone(shop.fields)).date
   const [brief, setBrief] = useState<Brief | null>(null)
   const [hidden, setHidden] = useState(() => hiddenToday(shop.id, today))
   const [index, setIndex] = useState(0)

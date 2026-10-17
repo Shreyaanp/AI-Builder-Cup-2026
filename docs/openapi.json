@@ -8926,7 +8926,7 @@
             "type": "string",
             "maxLength": 100,
             "title": "Timezone",
-            "default": "Asia/Singapore"
+            "default": ""
           },
           "hours": {
             "type": "string",
@@ -8969,9 +8969,9 @@
           },
           "currency": {
             "type": "string",
-            "pattern": "^[A-Z]{3}$",
+            "pattern": "^([A-Z]{3})?$",
             "title": "Currency",
-            "default": "SGD"
+            "default": ""
           },
           "halal": {
             "anyOf": [
@@ -9064,17 +9064,33 @@
             "title": "Upi Id",
             "default": ""
           },
+          "paynow_id": {
+            "type": "string",
+            "pattern": "^(?:\\+65[3689]\\d{7}|\\d{8,9}[A-Z]|[TSR]\\d{2}[A-Z]{2}\\d{4}[A-Z])?$",
+            "title": "Paynow Id",
+            "default": ""
+          },
           "rider_providers": {
-            "items": {
-              "type": "string",
-              "enum": [
-                "rapido",
-                "uber",
-                "porter"
-              ]
-            },
-            "type": "array",
-            "maxItems": 3,
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "rapido",
+                    "uber",
+                    "porter",
+                    "grab",
+                    "gojek",
+                    "lalamove"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Rider Providers"
           },
           "busy_hours": {

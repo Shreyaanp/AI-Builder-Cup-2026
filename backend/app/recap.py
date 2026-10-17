@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from .gemini_schema import gemini_schema, parse_reply
 from .imports import ColumnMapper
+from .region import region_rule, shop_currency, shop_region, shop_zone
 from .reply_language import written_language
 from .shop_time import shop_timezone
 
@@ -67,7 +68,7 @@ def recap_facts(week: str, sales: list[dict[str, Any]], signals: dict[str, Any])
         item["quantity"] += row["quantity"]
         item["revenue"] += row["revenue"]
     revenue, old = sum(r["revenue"] for r in current), sum(r["revenue"] for r in prior)
-    timezone = shop_timezone(signals["fields"].get("timezone") or "Asia/Singapore")
+    timezone = shop_timezone(shop_zone(signals["fields"]))
     questions: dict[str, int] = defaultdict(int)
     for thread in signals["questions"]:
         messages = thread.get("messages") or [{"author": "customer", "created": thread["created"]}]
@@ -77,7 +78,7 @@ def recap_facts(week: str, sales: list[dict[str, Any]], signals: dict[str, Any])
                 questions[day] += 1
     return {
         "week": week,
-        "currency": signals["fields"].get("currency") or "SGD",
+        "currency": shop_currency(signals["fields"]),
         "sales_days": len({r["date"] for r in current}),
         "previous_sales_days": len({r["date"] for r in prior}),
         "top_sellers": sorted(items.values(), key=lambda r: (-r["quantity"], r["item"]))[:5],
@@ -214,7 +215,8 @@ class RecapWriter(ColumnMapper):
                         "units or currency codes. Explain missing sales "
                         "days and avoid "
                         "claiming full weekly revenue or reasons for changes. No tools or "
-                        "business changes.",
+                        "business changes. "
+                        + region_rule(shop_region({"currency": facts.get("currency")})),
                         response_mime_type="application/json",
                         response_json_schema=gemini_schema(Summary),
                         temperature=0.2,
