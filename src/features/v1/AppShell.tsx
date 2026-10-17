@@ -45,6 +45,7 @@ import { PrivacyScreen } from './screens/PrivacyScreen'
 import { SubPage } from './screens/SubPage'
 import { YouScreen } from './screens/YouScreen'
 import { DiscardPrompt } from './DiscardPrompt'
+import { useBackClose } from './backStack'
 import { useIdentity } from '../../auth/useIdentity'
 import { CoachGuide } from '../owner-tools/CoachGuide'
 import { PaymentsScreen } from '../owner-tools/PaymentsScreen'
@@ -358,6 +359,7 @@ function TopBar() {
   const [shopMenu, setShopMenu] = useState<HTMLElement | null>(null)
   const [tourBusy, setTourBusy] = useState(false)
   const [tourFailed, setTourFailed] = useState(false)
+  useBackClose(Boolean(shopMenu), () => setShopMenu(null))
   // Settings live on the You tab now; the top bar keeps the shop switcher, new chat and "+".
   return (
     <Box
