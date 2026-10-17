@@ -12,6 +12,7 @@ import structlog
 from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from google.adk.sessions import BaseSessionService, DatabaseSessionService
 from google.cloud import firestore
@@ -312,6 +313,7 @@ def create_app(
     )
 
     app.add_middleware(RequestBoundary, allowed_origins=settings.allowed_origins)
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(_request: Request, error: RequestValidationError) -> JSONResponse:
