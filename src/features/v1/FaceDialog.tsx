@@ -30,11 +30,15 @@ import type { Api } from './api'
 import { useBackClose } from './backStack'
 import { motion, shape } from '../../design/theme'
 import { announceTrustChange } from '../trust/useTrust'
-import { useTrustCopy } from '../trust/copy'
+import { fill, useTrustCopy } from '../trust/copy'
 
 interface Challenge {
   id: string
   prompts: string[]
+}
+interface SampledFrame {
+  timestamp: number
+  data: string
 }
 interface Capture {
   stream?: MediaStream
@@ -44,13 +48,17 @@ interface Capture {
   timeout?: ReturnType<typeof setTimeout>
   abort: AbortController
   chunks: Blob[]
+  frames: SampledFrame[]
+  canvas?: HTMLCanvasElement
 }
 type Phase = 'intro' | 'camera' | 'processing' | 'result'
 interface Outcome {
   result: 'verified' | 'in_review' | 'retry' | 'unavailable'
   reason?: string
+  passed_prompts?: string[]
+  failed_prompt?: string
 }
-type Guide = 'ok' | 'none' | 'many' | 'closer' | null
+type Guide = 'ok' | 'none' | 'many' | 'closer' | 'light' | null
 
 const CAPTURE_MS = 8000
 // Look straight first, then each prompt for half of what remains.
@@ -88,12 +96,21 @@ export function FaceDialog({
   const [consent, setConsent] = useState(false)
   const [phase, setPhase] = useState<Phase>('intro')
   const [prompt, setPrompt] = useState<string | null>(null)
+  const [promptIndex, setPromptIndex] = useState(-1)
+  const [totalPrompts, setTotalPrompts] = useState(2)
+  const [passedPrompts, setPassedPrompts] = useState<string[]>([])
   const [guide, setGuide] = useState<Guide>(null)
   const [progress, setProgress] = useState(0)
   const [slow, setSlow] = useState(false)
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const video = useRef<HTMLVideoElement>(null)
   const live = useRef<Capture | null>(null)
+
+  useEffect(() => {
+    if (open) {
+      void api<{ ready: boolean }>('/face/warmup', { method: 'POST' }).catch(() => {})
+    }
+  }, [open, api])
 
   function release() {
     const capture = live.current
@@ -106,6 +123,7 @@ export function FaceDialog({
     if (capture.recorder?.state === 'recording') capture.recorder.stop()
     capture.stream?.getTracks().forEach((track) => track.stop())
     capture.chunks.length = 0
+    capture.frames.length = 0
     if (video.current) video.current.srcObject = null
   }
   useEffect(() => () => release(), [])
@@ -117,21 +135,17 @@ export function FaceDialog({
 
   async function begin() {
     if (live.current) return
-    const capture: Capture = { abort: new AbortController(), chunks: [] }
+    const capture: Capture = { abort: new AbortController(), chunks: [], frames: [] }
     live.current = capture
     setPhase('camera')
     setProgress(0)
     setPrompt(null)
+    setPromptIndex(-1)
     setGuide(null)
     setSlow(false)
     const mime = ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'].find(
       (type) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type),
-    )
-    if (!mime) {
-      release()
-      finish({ result: 'unavailable', reason: 'unsupported' })
-      return
-    }
+    ) ?? 'video/webm'
     let stream: MediaStream
     try {
       // Camera first: a refused permission never starts a server challenge.
@@ -155,8 +169,13 @@ export function FaceDialog({
       const challenge = await api<Challenge>('/face/challenges', {
         method: 'POST',
         signal: capture.abort.signal,
-        body: JSON.stringify({ business_id: businessId, consent }),
+        body: JSON.stringify({
+          business_id: businessId,
+          consent,
+          exclude_prompts: passedPrompts.length > 0 ? passedPrompts : undefined,
+        }),
       })
+      setTotalPrompts(challenge.prompts.length)
       if (!video.current) throw new Error('Camera view unavailable')
       video.current.srcObject = stream
       await video.current.play()
@@ -173,43 +192,90 @@ export function FaceDialog({
         if (event.data.kind === 'unavailable') setGuide(null)
         if (event.data.kind === 'guidance') {
           const faces = event.data.faces ?? 0
-          setGuide(
-            faces === 0
+          setGuide((cur) => {
+            if (cur === 'light') return 'light'
+            return faces === 0
               ? 'none'
               : faces > 1
                 ? 'many'
                 : (event.data.width ?? 1) < 0.22
                   ? 'closer'
-                  : 'ok',
-          )
+                  : 'ok'
+          })
         }
       }
       worker.postMessage({ kind: 'init' })
-      const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 500000 })
-      capture.recorder = recorder
-      recorder.ondataavailable = (event) => {
-        if (live.current === capture && event.data.size) capture.chunks.push(event.data)
+
+      let recorder: MediaRecorder | null = null
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mime)) {
+        try {
+          recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 500000 })
+          capture.recorder = recorder
+          recorder.ondataavailable = (event) => {
+            if (live.current === capture && event.data.size) capture.chunks.push(event.data)
+          }
+          recorder.onstop = () => {
+            void submit(challenge, capture, mime)
+          }
+          recorder.start(250)
+        } catch {
+          // If MediaRecorder fails, fallback is canvas frame sequence
+        }
       }
-      recorder.onstop = () => {
-        void submit(challenge, capture, mime)
-      }
+
       // Real time, not ticks: a busy phone delays timers, and the prompts must match the recording.
-      let started = Infinity
-      recorder.onstart = (event) => {
-        started = event.timeStamp
-      }
-      recorder.start(250)
+      let started = 0
       const span = (CAPTURE_MS - READY_MS) / challenge.prompts.length
       capture.interval = setInterval(() => {
+        if (!started) started = performance.now()
         const elapsed = Math.max(0, performance.now() - started)
         setProgress(Math.min(100, (elapsed / CAPTURE_MS) * 100))
-        setPrompt(
+        const pIdx =
           elapsed < READY_MS
-            ? null
-            : (challenge.prompts[
-                Math.min(challenge.prompts.length - 1, Math.floor((elapsed - READY_MS) / span))
-              ] ?? null),
-        )
+            ? -1
+            : Math.min(challenge.prompts.length - 1, Math.floor((elapsed - READY_MS) / span))
+        setPromptIndex(pIdx)
+        setPrompt(pIdx >= 0 ? (challenge.prompts[pIdx] ?? null) : null)
+
+        // Capture frame onto canvas and measure light
+        if (video.current && video.current.readyState >= 2) {
+          if (!capture.canvas) {
+            capture.canvas = document.createElement('canvas')
+          }
+          const canvas = capture.canvas
+          const vw = video.current.videoWidth || 640
+          const vh = video.current.videoHeight || 480
+          const maxDim = Math.max(vw, vh)
+          const scale = maxDim > 640 ? 640 / maxDim : 1
+          canvas.width = Math.round(vw * scale)
+          canvas.height = Math.round(vh * scale)
+          const ctx = canvas.getContext('2d', { willReadFrequently: true })
+          if (ctx) {
+            ctx.drawImage(video.current, 0, 0, canvas.width, canvas.height)
+            try {
+              const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+              const d = imgData.data
+              let sum = 0
+              let samples = 0
+              for (let i = 0; i < d.length; i += 64) {
+                sum += 0.299 * (d[i] ?? 0) + 0.587 * (d[i + 1] ?? 0) + 0.114 * (d[i + 2] ?? 0)
+                samples++
+              }
+              if (samples > 0 && sum / samples < 45) {
+                setGuide('light')
+              }
+            } catch {
+              // ignore canvas readback error if cross-origin or constrained
+            }
+            const nowSec = elapsed / 1000
+            const lastFrame = capture.frames[capture.frames.length - 1]
+            if (!lastFrame || nowSec - lastFrame.timestamp >= 0.35) {
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.82)
+              capture.frames.push({ timestamp: nowSec, data: dataUrl })
+            }
+          }
+        }
+
         if (ready && !detecting && video.current?.readyState === 4) {
           detecting = true
           void createImageBitmap(video.current)
@@ -222,8 +288,13 @@ export function FaceDialog({
             })
         }
       }, 250)
+
       capture.timeout = setTimeout(() => {
-        if (recorder.state === 'recording') recorder.stop()
+        if (recorder && recorder.state === 'recording') {
+          recorder.stop()
+        } else {
+          void submit(challenge, capture, mime)
+        }
       }, CAPTURE_MS)
     } catch {
       if (live.current === capture) {
@@ -242,17 +313,32 @@ export function FaceDialog({
     setProgress(100)
     setPhase('processing')
     const slowTimer = setTimeout(() => setSlow(true), 6000)
-    const blob = new Blob(capture.chunks, { type: mime })
+
+    let body: BodyInit
+    let contentType: string
+    if (capture.frames.length >= 6) {
+      body = JSON.stringify({ frames: capture.frames })
+      contentType = 'application/json'
+    } else {
+      body = new Blob(capture.chunks, { type: mime })
+      contentType = mime
+    }
     capture.chunks.length = 0
+    capture.frames.length = 0
+
     try {
-      if (blob.size > 8 * 1024 * 1024) throw new Error('Capture too large')
       const answer = await api<Outcome>(`/face/challenges/${challenge.id}/capture`, {
         method: 'POST',
-        body: blob,
-        headers: { 'Content-Type': mime },
+        body,
+        headers: { 'Content-Type': contentType },
         signal: capture.abort.signal,
       })
       if (live.current === capture) {
+        if (answer.passed_prompts && answer.passed_prompts.length > 0) {
+          setPassedPrompts((prev) =>
+            Array.from(new Set([...prev, ...(answer.passed_prompts ?? [])])),
+          )
+        }
         finish(answer)
         if (answer.result === 'verified' || answer.result === 'in_review') announceTrustChange()
       }
@@ -266,6 +352,7 @@ export function FaceDialog({
 
   function close() {
     release()
+    setPassedPrompts([])
     onClose()
   }
   function retry() {
@@ -441,28 +528,48 @@ export function FaceDialog({
                   )}
                 </>
               ) : (
-                <Stack
-                  key={prompt ?? 'ready'}
-                  direction="row"
-                  spacing={1}
-                  sx={{
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    '@keyframes facePrompt': {
-                      from: { opacity: 0, transform: 'translateY(6px)' },
-                      to: { opacity: 1, transform: 'none' },
-                    },
-                    animation: `facePrompt ${motion.duration.medium}ms ${EASE} both`,
-                  }}
-                >
-                  {prompt && (
-                    <Box aria-hidden="true" sx={{ display: 'flex', color: roles.primary }}>
-                      {ARROWS[prompt]}
+                <Stack spacing={0.5} sx={{ alignItems: 'center' }}>
+                  {promptIndex >= 0 && (
+                    <Box
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        px: 1.5,
+                        py: 0.25,
+                        borderRadius: '999px',
+                        bgcolor: roles.surfaceContainerHigh,
+                        color: roles.onSurfaceVariant,
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {fill(c.step, { n: promptIndex + 1, total: totalPrompts })}
                     </Box>
                   )}
-                  <Typography variant="titleMedium">
-                    {prompt ? (c.prompts[prompt] ?? c.getReady) : c.getReady}
-                  </Typography>
+                  <Stack
+                    key={prompt ?? 'ready'}
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      '@keyframes facePrompt': {
+                        from: { opacity: 0, transform: 'translateY(6px)' },
+                        to: { opacity: 1, transform: 'none' },
+                      },
+                      animation: `facePrompt ${motion.duration.medium}ms ${EASE} both`,
+                    }}
+                  >
+                    {prompt && (
+                      <Box aria-hidden="true" sx={{ display: 'flex', color: roles.primary }}>
+                        {ARROWS[prompt]}
+                      </Box>
+                    )}
+                    <Typography variant="titleMedium">
+                      {prompt ? (c.prompts[prompt] ?? c.getReady) : c.getReady}
+                    </Typography>
+                  </Stack>
                 </Stack>
               )}
             </Box>
