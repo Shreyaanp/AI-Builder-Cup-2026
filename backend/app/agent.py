@@ -315,6 +315,9 @@ END_WORDS = re.compile(
     re.I,
 )
 
+# https://ai.google.dev/gemini-api/docs/thought-signatures: function calls not made by the model.
+APP_CALL_SIGNATURE = b"skip_thought_signature_validator"
+
 
 def asks_to_end(text: str) -> bool:
     """The owner's message is only a stop word ("bas", "ho gaya", "that's all", "bas itna hi"),
@@ -341,8 +344,13 @@ def end_on_request(callback_context: Any, llm_request: LlmRequest) -> LlmRespons
         return None
     if not asks_to_end(ctx.message):
         return None
-    call = types.FunctionCall(name="end_conversation", args={})
-    return LlmResponse(content=types.Content(role="model", parts=[types.Part(function_call=call)]))
+    # Gemini 3 rejects a function call in the history without a thought signature (400 on every
+    # later turn); a call the app makes itself carries the documented placeholder signature.
+    part = types.Part(
+        function_call=types.FunctionCall(name="end_conversation", args={}),
+        thought_signature=APP_CALL_SIGNATURE,
+    )
+    return LlmResponse(content=types.Content(role="model", parts=[part]))
 
 
 # "nahi, yeh service hai" / "no, it is a service": the kind, corrected silently.

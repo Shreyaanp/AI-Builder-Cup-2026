@@ -627,6 +627,8 @@ def test_the_text_coach_ends_on_a_stop_word_before_the_model_decides(tmp_path: P
         assert response and response.content and response.content.parts
         call = response.content.parts[0].function_call
         assert call and call.name == "end_conversation"
+        # Gemini 3 refuses a history call without a signature (every later turn would fail).
+        assert response.content.parts[0].thought_signature
         # After the tool ran, the model writes the goodbye itself.
         answered = types.Content(
             role="user",
