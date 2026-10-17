@@ -9,8 +9,6 @@ ZERO_DECIMAL = {
     *("BIF", "DJF", "GNF", "KMF", "PYG", "RWF", "VUV", "XPF"),
 }
 THREE_DECIMAL = {"BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND"}
-# Only when the phone sends nothing usable; new shops normally get their owner's currency.
-DEFAULT_CURRENCY = "SGD"
 
 
 def exponent(currency: str) -> int:

@@ -8,6 +8,7 @@ import {
   reviewName,
   seedShop,
   shot,
+  sortAsMenu,
 } from './support.js'
 
 test.use(phone)
@@ -18,6 +19,7 @@ test('A6 · an existing shop reviews menu and photo pin separately', async ({ pa
   await seedShop(page)
   const before = (await (await page.request.get('/api/v1/businesses')).json())[0]
   await page.locator('input[type="file"][accept*="image/jpeg"]').setInputFiles(gpsBoardPath)
+  await sortAsMenu(page)
   await expect(page.getByRole('dialog', { name: reviewName })).toContainText('Chai')
   await confirm(page)
   expect(

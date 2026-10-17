@@ -9,7 +9,8 @@ from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .gemini_schema import gemini_schema, parse_reply
-from .money import DEFAULT_CURRENCY, to_major
+from .money import to_major
+from .region import region_rule, shop_currency, shop_region
 from .reply_language import written_language
 from .settings import Settings
 
@@ -506,7 +507,7 @@ class CustomerAnswers:
                         else genai.Client(api_key=self.settings.google_api_key.get_secret_value())
                     )
                 # Only a public whitelist reaches this new client; no ADK sessions or tools.
-                currency = shop.get("currency") or DEFAULT_CURRENCY
+                currency = shop_currency(shop)
                 facts = {
                     key: shop[key] for key in ("name", "category", "location", "hours", "phone")
                 }
@@ -525,6 +526,8 @@ class CustomerAnswers:
                         system_instruction=RULES
                         + "Fallback reply language (tag "
                         + f"{question.language}): {written_language(question.language)}.\n"
+                        + region_rule(shop_region(shop), currency)
+                        + "\n"
                         + json.dumps(facts, ensure_ascii=False),
                         response_mime_type="application/json",
                         response_json_schema=gemini_schema(Answer),

@@ -51,6 +51,7 @@ export const english = {
   placeHint: 'Search any city or neighbourhood',
   placeError: 'Couldn’t find that place. Try a city or neighbourhood name.',
   demoShop: 'Demo shop',
+  changeArea: 'Change area',
 }
 type Copy = typeof english
 const keys = Object.keys(english) as (keyof Copy)[]
@@ -107,6 +108,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'कोई शहर या मोहल्ला खोजें',
     'स्थान नहीं मिला। शहर या मोहल्ले का नाम लिखें।',
     'डेमो दुकान',
+    'क्षेत्र बदलें',
   ],
   bn: [
     'আশেপাশে কী আছে?',
@@ -159,6 +161,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'শহর বা পাড়া খুঁজুন',
     'জায়গা পাওয়া যায়নি। শহর বা পাড়ার নাম দিন।',
     'ডেমো দোকান',
+    'এলাকা পরিবর্তন করুন',
   ],
   te: [
     'నా చుట్టూ ఏముంది?',
@@ -211,6 +214,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'ఏ నగరం లేదా కాలనీ అయినా వెతకండి',
     'ప్రదేశం దొరకలేదు. నగరం లేదా కాలనీ పేరు ప్రయత్నించండి.',
     'డెమో దుకాణం',
+    'ప్రాంతాన్ని మార్చండి',
   ],
   mr: [
     'जवळपास काय आहे?',
@@ -263,6 +267,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'कोणतेही शहर किंवा वस्ती शोधा',
     'ठिकाण सापडले नाही. शहर किंवा वस्तीचे नाव वापरा.',
     'डेमो दुकान',
+    'भाग बदला',
   ],
   kn: [
     'ಸುತ್ತಮುತ್ತ ಏನಿದೆ?',
@@ -315,6 +320,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'ಯಾವುದೇ ನಗರ ಅಥವಾ ಬಡಾವಣೆ ಹುಡುಕಿ',
     'ಸ್ಥಳ ಸಿಗಲಿಲ್ಲ. ನಗರ ಅಥವಾ ಬಡಾವಣೆಯ ಹೆಸರು ಪ್ರಯತ್ನಿಸಿ.',
     'ಡೆಮೊ ಅಂಗಡಿ',
+    'ಪ್ರದೇಶ ಬದಲಾಯಿಸಿ',
   ],
 
   'zh-Hans': [
@@ -368,6 +374,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     '搜索任意城市或街区',
     '找不到这个地方。请输入城市或街区名称。',
     '示范店铺',
+    '更换区域',
   ],
   ms: [
     'Apa yang berdekatan?',
@@ -420,6 +427,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'Cari mana-mana bandar atau kawasan',
     'Tempat itu tidak ditemui. Cuba nama bandar atau kawasan.',
     'Kedai demo',
+    'Tukar kawasan',
   ],
   ta: [
     'அருகில் என்ன இருக்கிறது?',
@@ -472,6 +480,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'எந்த நகரம் அல்லது பகுதியையும் தேடுங்கள்',
     'அந்த இடம் கிடைக்கவில்லை. நகரம் அல்லது பகுதியின் பெயரை முயற்சிக்கவும்.',
     'மாதிரிக் கடை',
+    'பகுதியை மாற்று',
   ],
   ja: [
     '近くには何がある？',
@@ -524,6 +533,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     '世界中の都市や地域を検索',
     '場所が見つかりません。都市名や地域名で試してください。',
     'デモ店舗',
+    '地域を変更',
   ],
   ko: [
     '주변에 무엇이 있나요?',
@@ -576,6 +586,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     '어느 도시나 동네든 검색',
     '장소를 찾을 수 없어요. 도시나 동네 이름으로 다시 시도해 주세요.',
     '데모 가게',
+    '지역 변경',
   ],
   id: [
     'Ada apa di sekitar saya?',
@@ -628,6 +639,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'Cari kota atau lingkungan mana pun',
     'Tempat tidak ditemukan. Coba nama kota atau lingkungan.',
     'Toko demo',
+    'Ubah area',
   ],
   th: [
     'รอบตัวมีอะไรบ้าง?',
@@ -680,6 +692,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'ค้นหาเมืองหรือย่านใดก็ได้',
     'ไม่พบสถานที่นั้น ลองใช้ชื่อเมืองหรือย่าน',
     'ร้านตัวอย่าง',
+    'เปลี่ยนพื้นที่',
   ],
   vi: [
     'Quanh tôi có gì?',
@@ -732,6 +745,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'Tìm bất kỳ thành phố hoặc khu phố nào',
     'Không tìm thấy địa điểm. Hãy thử tên thành phố hoặc khu phố.',
     'Cửa hàng mẫu',
+    'Đổi khu vực',
   ],
   fil: [
     'Ano ang malapit sa akin?',
@@ -784,6 +798,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
     'Hanapin ang anumang lungsod o lugar',
     'Hindi nahanap ang lugar. Subukan ang pangalan ng lungsod o lugar.',
     'Demo na tindahan',
+    'Baguhin ang lugar',
   ],
 }
 
