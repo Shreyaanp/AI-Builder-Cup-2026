@@ -224,8 +224,11 @@ async def update_shop(
         if result.get("status") not in {"needs_review"}:
             return result
         result = {"status": "saved", "proposal_id": result.get("proposal_id")}
-    elif draft.understanding is None and owner_words(draft):
-        await understand(ctx, owner_words(draft), wait=0)
+    pending = ctx.new_shop_draft or draft
+    if pending.understanding is None and owner_words(pending):
+        # A profile that took longer than one answer: picked up with any later answer (hours,
+        # the place), not only with one that changes nothing.
+        await understand(ctx, owner_words(pending), wait=0)
     current_draft = ctx.new_shop_draft
     if facts and current_draft and current_draft.business:
         # The answers to the business's own questions: customer facts of the shop (the owner's
@@ -269,6 +272,9 @@ def end_conversation() -> dict[str, Any]:
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}
+    if ctx.ended:
+        # Already ended (the app caught the stop word first): a second call changes nothing.
+        return {"status": "ended", "instruction": END_NOTE}
     ctx.ended = True
     card_id = _card(ctx, "action", {"target": "end_conversation"})
     log.info("conversation_end_requested", new_shop=ctx.new_shop)

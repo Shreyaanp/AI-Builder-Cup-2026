@@ -309,6 +309,32 @@ def test_a_slow_profile_never_holds_up_the_reply(tmp_path: Path) -> None:
         business_understanding.understander = previous
 
 
+def test_a_slow_profile_is_picked_up_with_the_next_answer(tmp_path: Path) -> None:
+    """Live eval (kirana, 17 Oct): the profile took longer than the first answer and every later
+    answer changed a field (the place, the hours), so it never reached the draft."""
+    reader, models = gemini_reader({"kind": "product", "confidence": 0.9}, delay=3)
+    previous = business_understanding.understander
+    business_understanding.understander = reader
+    try:
+        ctx = context(tmp_path)
+
+        async def flow() -> None:
+            token = current.set(ctx)
+            try:
+                await update_shop(name="Gupta Kirana", category="kirana, ration")
+                assert ctx.new_shop_draft and ctx.new_shop_draft.understanding is None
+                await asyncio.sleep(1)
+                await update_shop(location="Karol Bagh")
+            finally:
+                current.reset(token)
+
+        asyncio.run(flow())
+        assert ctx.new_shop_draft and ctx.new_shop_draft.understanding
+        assert ctx.new_shop_draft.understanding.kind == "product" and models.calls == 1
+    finally:
+        business_understanding.understander = previous
+
+
 def test_end_conversation_marks_the_turn_and_opens_no_question(tmp_path: Path) -> None:
     ctx = context(tmp_path)
     token = current.set(ctx)

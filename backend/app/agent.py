@@ -314,6 +314,37 @@ END_WORDS = re.compile(
     r"|^\W*(?:बस|हो गया|बंद करो|बस करो|बाय)\W*$|\bbas,? (?:itna hi|ho gaya)\b|बस,? इतना ही",
     re.I,
 )
+
+
+def asks_to_end(text: str) -> bool:
+    """The owner's message is only a stop word ("bas", "ho gaya", "that's all", "bas itna hi"),
+    not an answer that happens to contain one ("Lakshmi Tea Stall, bas itna hi naam hai")."""
+    said = text.strip()
+    return bool(END_WORDS.search(said)) and len(said.split()) <= 5
+
+
+def end_on_request(callback_context: Any, llm_request: LlmRequest) -> LlmResponse | None:
+    """ADK before-model callback: a new-shop owner who says "bas" / "ho gaya" / "bye" always ends
+    the conversation (owner, 17 Oct), never left to the model's reading of the moment (after
+    the face-check offer the live model once took "हो गया" as a yes). The model still writes the
+    goodbye after the tool. Live voice does the same in voice.py (a blocked Live turn would not
+    run the tool)."""
+    ctx = current.get()
+    if not ctx or not ctx.new_shop or ctx.ended:
+        return None
+    if getattr(callback_context._invocation_context, "live_request_queue", None) is not None:
+        return None
+    if not llm_request.contents:
+        return None
+    last = llm_request.contents[-1]
+    if last.role != "user" or any(p.function_response for p in last.parts or []):
+        return None
+    if not asks_to_end(ctx.message):
+        return None
+    call = types.FunctionCall(name="end_conversation", args={})
+    return LlmResponse(content=types.Content(role="model", parts=[types.Part(function_call=call)]))
+
+
 # "nahi, yeh service hai" / "no, it is a service": the kind, corrected silently.
 KIND_WORDS = {
     "service": "service",
@@ -966,7 +997,13 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
         model = (LiveGemini if live else Gemini)(
             model=settings.google_live_model if live else settings.google_text_model,
             client_kwargs=client_kwargs,
-            retry_options=types.HttpRetryOptions(attempts=1),
+            # A busy model (429/503) is refused before anything streams, so the text coach tries
+            # again briefly instead of breaking the owner's turn; Live reconnects on its own.
+            retry_options=types.HttpRetryOptions(attempts=1)
+            if live
+            else types.HttpRetryOptions(
+                attempts=3, initial_delay=0.5, max_delay=2.0, http_status_codes=[429, 503]
+            ),
         )
     # V1 merchants get only the record-backed tools; the classic starter keeps its draft tools.
     tools: list[Callable[..., Any]] = (
@@ -1010,6 +1047,7 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
         # Each recorded new-shop answer is saved in the conversation at once (resume = continue).
         after_tool_callback=keep_draft,
         after_model_callback=keep_draft_after_model,
+        before_model_callback=end_on_request,
         # Thinking shares the output budget: a small cap left some turns completely empty.
         # Low temperature keeps tool calls for reported changes consistent.
         # The Live (voice) model rejects a custom thinking level ("project is not allowlisted"),

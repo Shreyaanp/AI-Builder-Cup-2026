@@ -13,13 +13,13 @@ from google.adk.live.live_request_queue import LiveRequestQueue
 from google.genai import types
 from pydantic import ValidationError
 
-from .agent import ui_language
+from .agent import asks_to_end, ui_language
 from .auth import Principal
 from .contracts import NewShopVoiceContext, StreamEvent, VoiceControl
 from .coordinator import current
 from .latency import FirstOutput
 from .new_shop_resume import merge_drafts, question_in
-from .new_shop_tools import go_live
+from .new_shop_tools import end_conversation, go_live
 from .reply_language import ReplyLanguage, reply_language
 from .settings import Settings
 from .streaming import CoachRuntime, public_events
@@ -278,6 +278,16 @@ async def offline_voice(
                 return
 
 
+async def end_by_request(websocket: WebSocket) -> None:
+    """The owner said a stop word and the model did not end the conversation itself: the app
+    runs end_conversation and tells the phone, like the tool would have."""
+    result = end_conversation()
+    merchant = current.get()
+    card = merchant.cards.get(str(result.get("card_id"))) if merchant else None
+    if card:
+        await websocket.send_json(StreamEvent(kind="action", data=card[1]).payload())
+
+
 class LiveLink:
     """The Live connection of the moment: a rotation swaps in a fresh request queue."""
 
@@ -302,9 +312,11 @@ async def gemini_voice(
     max_text_turns = NEW_SHOP_TEXT_TURNS if new_shop else VOICE_TEXT_TURNS
     # A typed turn the coach has not answered yet: a fresh Live connection gets it again.
     unanswered: list[str] = []
+    # The owner typed "bas" / "ho gaya": the conversation ends after the coach's goodbye.
+    stop_asked = False
 
     async def upstream() -> None:
-        nonlocal text_turns
+        nonlocal text_turns, stop_asked
         while True:
             frame = await receive_frame(websocket)
             if frame["type"] == "websocket.disconnect":
@@ -336,6 +348,8 @@ async def gemini_voice(
                 if text_turns > max_text_turns or not command.text.strip():
                     raise ValueError("Text turn limit exceeded")
                 unanswered[:] = [command.text]
+                if new_shop and asks_to_end(command.text):
+                    stop_asked = True
                 link.queue.send_content(
                     types.Content(role="user", parts=[types.Part(text=command.text)])
                 )
@@ -355,12 +369,14 @@ async def gemini_voice(
         heard = FirstOutput("voice_first_audio")
         heard.done = True
         said = ""
+        owner_said = ""
         received = False
         try:
             async for event in events:
                 received = True
                 if event.input_transcription and event.input_transcription.text:
                     heard.restart()
+                    owner_said += event.input_transcription.text
                 if event.error_code:
                     log.warning(
                         "voice_provider_error",
@@ -394,6 +410,10 @@ async def gemini_voice(
                     unanswered.clear()
                     stats.last_question = question_in(said) or stats.last_question
                     said = ""
+                    spoken_stop, owner_said = new_shop and asks_to_end(owner_said), ""
+                    if (stop_asked or spoken_stop) and not owner_ended():
+                        # "bas" always ends the conversation, whatever the model made of it.
+                        await end_by_request(websocket)
                     if owner_ended():
                         # The goodbye has been spoken; everything is saved.
                         return "owner_ended"

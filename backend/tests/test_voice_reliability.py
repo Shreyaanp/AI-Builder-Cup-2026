@@ -562,3 +562,107 @@ async def test_a_provider_that_keeps_closing_ends_with_a_reason(tmp_path: Path) 
 
     with pytest.raises(RuntimeError, match="keeps ending"):
         await run_voice(FakeLive([closes]), FakeSocket(), new_shop_context(tmp_path))
+
+
+# --- "bas" always ends the conversation, whatever the model made of it ---
+
+
+@pytest.mark.parametrize("spoken", [False, True])
+async def test_a_stop_word_ends_live_voice_even_when_the_model_asks_on(
+    tmp_path: Path, spoken: bool
+) -> None:
+    """Live once took "हो गया" after the face-check offer as a yes and asked on. Typed or
+    spoken, the app ends the conversation after the coach's turn, like end_conversation."""
+    socket = FakeSocket()
+    if not spoken:
+        socket.push({"kind": "text", "text": "हो गया"})
+
+    async def asks_on(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        if spoken:
+            yield Event(author="user", input_transcription=types.Transcription(text="हो गया"))
+        else:
+            await queue.get()
+        for event in turn("ठीक है! क्या आप चेहरा जाँच करना चाहेंगे?", tools=0):
+            yield event
+        await asyncio.Event().wait()
+
+    context = new_shop_context(tmp_path)
+    stats = await run_voice(FakeLive([asks_on]), socket, context)
+    assert stats.reason == "owner_ended" and context.ended
+    assert {"kind": "action", "data": {"target": "end_conversation"}} in socket.sent
+    assert not any(isinstance(e, dict) and e.get("kind") == "error" for e in socket.sent)
+
+
+async def test_an_ordinary_answer_never_ends_live_voice(tmp_path: Path) -> None:
+    socket = FakeSocket()
+    socket.push({"kind": "text", "text": "subah 7 se raat 9, bas Sunday band"})
+
+    async def answers(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        await queue.get()
+        for event in turn("क्या आप दुकान की फ़ोटो ले सकते हैं?", tools=0):
+            yield event
+        socket.push({"kind": "close"})
+        await asyncio.Event().wait()
+
+    context = new_shop_context(tmp_path)
+    stats = await run_voice(FakeLive([answers]), socket, context)
+    assert stats.reason == "client_close" and not context.ended
+
+
+def test_the_text_coach_ends_on_a_stop_word_before_the_model_decides(tmp_path: Path) -> None:
+    from types import SimpleNamespace
+
+    from google.adk.models.llm_request import LlmRequest
+
+    from app.agent import end_on_request
+
+    context = new_shop_context(tmp_path)
+    text_turn = SimpleNamespace(_invocation_context=SimpleNamespace(live_request_queue=None))
+    owner = types.Content(role="user", parts=[types.Part(text="हो गया")])
+    request = LlmRequest(contents=[owner])
+    token = current.set(context)
+    try:
+        context.message = "हो गया"
+        response = end_on_request(text_turn, request)
+        assert response and response.content and response.content.parts
+        call = response.content.parts[0].function_call
+        assert call and call.name == "end_conversation"
+        # After the tool ran, the model writes the goodbye itself.
+        answered = types.Content(
+            role="user",
+            parts=[
+                types.Part(
+                    function_response=types.FunctionResponse(
+                        name="end_conversation", response={"status": "ended"}
+                    )
+                )
+            ],
+        )
+        assert end_on_request(text_turn, LlmRequest(contents=[owner, answered])) is None
+        # Live voice is handled in voice.py; an ordinary answer goes to the model.
+        live_turn = SimpleNamespace(
+            _invocation_context=SimpleNamespace(live_request_queue=LiveRequestQueue())
+        )
+        assert end_on_request(live_turn, request) is None
+        context.message = "Lakshmi Tea Stall, bas itna hi naam hai"
+        assert end_on_request(text_turn, request) is None
+        context.message = "bas"
+        context.ended = True
+        assert end_on_request(text_turn, request) is None
+    finally:
+        current.reset(token)
+
+
+def test_end_conversation_twice_changes_nothing(tmp_path: Path) -> None:
+    from app.new_shop_tools import end_conversation
+
+    context = new_shop_context(tmp_path)
+    token = current.set(context)
+    try:
+        first = end_conversation()
+        second = end_conversation()
+    finally:
+        current.reset(token)
+    assert first["status"] == second["status"] == "ended"
+    assert "card_id" in first and "card_id" not in second
+    assert len(context.cards) == 1
