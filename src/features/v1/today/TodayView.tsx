@@ -28,7 +28,7 @@ import {
 import { useIdentity } from '../../../auth/useIdentity'
 import { HAND_FONT, enterRise, motion, shape } from '../../../design/theme'
 import { useLocale } from '../../../state/hooks'
-import { toMajor } from '../format'
+import { shopCurrency, toMajor } from '../format'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
 import { useTodayCopy, type Festival } from './todayCopy'
@@ -475,7 +475,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   const locale = useLocale()
   const roles = useTheme().material
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
-  const currency = ws.active?.fields.currency ?? 'SGD'
+  const currency = shopCurrency(ws.active)
   const lines: string[] = []
   if (plan.pulse) {
     const values = plan.pulse.values.map(({ metric, value }) => {

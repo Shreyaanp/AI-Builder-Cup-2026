@@ -76,7 +76,7 @@ test('search, category, open-now, sold-out and anonymous customer page', async (
   const card = page.getByRole('list').getByRole('link').filter({ hasText: name })
   await expect(card).toBeVisible()
   await expect(card).toContainText('Kaya toast · Sold out')
-  await expect(card).toContainText(/SGD\s*2\.20/)
+  await expect(card).toContainText('S$2.20')
   await expect(card).toContainText('Open now')
   expect(await card.getAttribute('href')).toBe(`/explore/s/${id}`)
   await card.click()

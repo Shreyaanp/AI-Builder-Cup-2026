@@ -36,6 +36,7 @@ import { mapsLink } from './types'
 import type { Discovery, Place, Usual } from './types'
 import { categories, categoryValue, matchesInterest } from './categories'
 import { isBudget } from './budget'
+import { regionAt } from '../../region/region'
 
 const DiscoverMap = lazy(() => import('./DiscoverMap'))
 const areas = {
@@ -798,7 +799,12 @@ export default function Discover({
                         variant="bodyMedium"
                         sx={{ fontVariantNumeric: 'tabular-nums' }}
                       >
-                        {item.name} · {formatPrice(item.price, place.currency ?? 'SGD', locale)}
+                        {item.name} ·{' '}
+                        {formatPrice(
+                          item.price,
+                          place.currency ?? regionAt(place.lat, place.lng).currency,
+                          locale,
+                        )}
                       </Typography>
                     ))}
                     {place.sold_out.length > 0 && (

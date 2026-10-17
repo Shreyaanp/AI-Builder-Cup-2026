@@ -37,8 +37,11 @@ export interface Business {
     reward_text?: string
     stamps_needed?: number
     upi_id?: string
-    rider_providers?: ('rapido' | 'uber' | 'porter')[]
-    /** ISO 4217; shops saved before currencies existed have none (treated as SGD). */
+    /** Singapore PayNow: +65 mobile or the business UEN. */
+    paynow_id?: string
+    /** Unset: the region's ride apps (src/region/region.ts). */
+    rider_providers?: import('../owner-tools/links').RiderProvider[] | null
+    /** ISO 4217; shops saved before currencies existed have none (their region's: shopCurrency). */
     currency?: string
   } & ShopFacts
   revision: number

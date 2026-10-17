@@ -65,7 +65,7 @@ test('demo: photo, price correction, customer page and availability', async ({
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await menu.click()
   // B28: the price is its own button on the item card.
-  await expect(page.getByRole('button', { name: 'Edit price: Chai, $12.00' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Edit price: Chai, S$12.00' })).toBeVisible()
   await closeSheet()
 
   await page.getByRole('button', { name: /^Customer page/ }).click()

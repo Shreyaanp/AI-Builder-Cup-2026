@@ -120,7 +120,11 @@
           "language": "bn",
           "box": [21.5, 85.9, 27.2, 89.9]
         }
-      ]
+      ],
+      "area": {
+        "label": "Indiranagar, Bengaluru",
+        "point": [12.9784, 77.6408]
+      }
     },
     "SG": {
       "name": "Singapore",
@@ -153,7 +157,11 @@
           [1.2, 104.1]
         ]
       ],
-      "areas": []
+      "areas": [],
+      "area": {
+        "label": "Tiong Bahru",
+        "point": [1.2847, 103.832]
+      }
     }
   },
   "fallback": {
@@ -176,7 +184,11 @@
     "cheap": 8,
     "examples": "",
     "bounds": [],
-    "areas": []
+    "areas": [],
+    "area": {
+      "label": "Tiong Bahru",
+      "point": [1.2847, 103.832]
+    }
   },
   "timezones": {
     "Asia/Kolkata": "IN",
