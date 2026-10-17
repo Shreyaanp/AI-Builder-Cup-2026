@@ -176,7 +176,7 @@ export function ShopIcon() {
             <Box
               component="img"
               src={url}
-              alt="Shop icon"
+              alt={copy.title}
               sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           ) : (
