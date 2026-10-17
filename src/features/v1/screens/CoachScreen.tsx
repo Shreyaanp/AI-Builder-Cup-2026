@@ -842,7 +842,7 @@ function CoachScreen({
           variant="outlined"
           onClick={(event) => suggest(item.id, event.currentTarget)}
           sx={{
-            height: 40,
+            height: 48,
             px: 1,
             borderColor: roles.outlineVariant,
             '& .MuiChip-icon': { color: roles.primary },

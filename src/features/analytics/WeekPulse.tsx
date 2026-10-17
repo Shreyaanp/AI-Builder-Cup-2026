@@ -181,7 +181,7 @@ export function WeekPulse({ data }: { data: Analytics }) {
             sx={{
               display: 'grid',
               gridTemplateColumns: `repeat(${days.length}, 1fr)`,
-              gap: 1.5,
+              gap: 2,
               alignItems: 'end',
               height: 96,
               mt: 1,
@@ -199,7 +199,7 @@ export function WeekPulse({ data }: { data: Analytics }) {
                         right: 0,
                         bottom: 0,
                         height: `${(previous / peak) * 100}%`,
-                        borderRadius: '6px 6px 2px 2px',
+                        borderRadius: '8px 8px 4px 4px',
                         border: `2px dashed ${roles.outline}`,
                       }}
                     />
@@ -212,7 +212,7 @@ export function WeekPulse({ data }: { data: Analytics }) {
                       right: '20%',
                       bottom: 0,
                       height: `${day.sales ? Math.max(4, (day.sales / peak) * 100) : 0}%`,
-                      borderRadius: '6px 6px 2px 2px',
+                      borderRadius: '8px 8px 4px 4px',
                       bgcolor: theme.chalk.mint.main,
                     }}
                   />
@@ -225,8 +225,8 @@ export function WeekPulse({ data }: { data: Analytics }) {
             sx={{
               display: 'grid',
               gridTemplateColumns: `repeat(${days.length}, 1fr)`,
-              gap: 1.5,
-              mt: 0.5,
+              gap: 2,
+              mt: 1,
             }}
           >
             {days.map((day) => (

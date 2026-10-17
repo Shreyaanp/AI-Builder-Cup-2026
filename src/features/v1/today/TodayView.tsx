@@ -611,7 +611,7 @@ export function NeedsPill({ actions }: { actions: TodayActions }) {
         sx={{
           gap: 2,
           px: 3,
-          minHeight: 40,
+          minHeight: 48,
           borderRadius: `${shape.full}px`,
           bgcolor: roles.secondaryContainer,
           color: roles.onSecondaryContainer,
