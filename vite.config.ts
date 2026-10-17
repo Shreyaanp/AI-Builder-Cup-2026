@@ -1,5 +1,6 @@
+import { realpathSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, searchForWorkspaceRoot } from 'vite'
 
 // Each worktree can run its own dev servers (WEB_PORT/API_PORT), so parallel workers never test
 // each other's code through a reused server.
@@ -24,6 +25,11 @@ export default defineConfig({
     host: '127.0.0.1',
     port: web,
     strictPort: true,
+    fs: {
+      // npm may be linked to a shared dependency directory outside this checkout. Keep Vite's
+      // strict file serving, while allowing that resolved dependency root for font assets.
+      allow: [searchForWorkspaceRoot(process.cwd()), realpathSync('node_modules')],
+    },
     proxy: { '/api': { target: `http://127.0.0.1:${api}`, ws: true } },
   },
   preview: { host: '127.0.0.1', port: web, strictPort: true },
