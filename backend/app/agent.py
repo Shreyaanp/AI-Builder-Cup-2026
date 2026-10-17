@@ -403,22 +403,79 @@ SKIP_WORDS = re.compile(
 REVIEW_WORDS = re.compile(
     r"\b(review|show) my shop\b|\bdukaan dikhao\b|दुकान दिखाओ|\bcheck karna\b", re.I
 )
-# The owner wants to stop: the conversation ends (end_conversation), whatever is still missing.
-END_WORDS = re.compile(
-    r"^\W*(?:bas|bas karo|ho gaya|band karo|that'?s all|stop|bye|goodbye|enough)\W*$"
-    r"|^\W*(?:बस|हो गया|बंद करो|बस करो|बाय)\W*$|\bbas,? (?:itna hi|ho gaya)\b|बस,? इतना ही",
-    re.I,
+# The owner is finished: the conversation ends (end_conversation), whatever is still missing.
+# Every owner turn, typed or spoken, is read here first (microseconds, no model call): a message
+# made only of finishing phrases ("bas", "that's everything", "these are all my information",
+# "और कुछ नहीं", "就这些", "itu sahaja", "அவ்வளவுதான்") plus courtesy words ("ok", "thanks", "ji")
+# ends it. Anything else in the message (a name, a question, "I'm done with X, what next?", a
+# correction) leaves the decision to the coach, whose instruction asks the same on every turn.
+FINISHED = (
+    # English
+    r"that'?s all|that is all|that'?s it|that is it|that'?s everything|that is everything"
+    r"|that'?s all (?:for now|from my side|from me|i have|i have to say|the info(?:rmation)?)"
+    r"|(?:these|this|that) (?:is|are) all (?:my|the) (?:info(?:rmation)?s?|details)"
+    r"|(?:that'?s|that is|this is|these are) (?:all|everything) (?:about my shop|you need)"
+    r"|i'?ve (?:told|given) you everything|i have (?:told|given) you everything"
+    r"|you (?:have|got) everything|i have nothing (?:more|else)(?: to (?:add|say))?"
+    r"|nothing (?:more|else)(?: to (?:add|say|tell))?|no(?:thing)? more|(?:i'?m|i am) all done"
+    r"|(?:i'?m|i am|we'?re|we are) (?:done|finished)(?: (?:for now|here|now))?|all done"
+    r"|(?:let'?s|we can) (?:stop|end|finish)(?: (?:here|now|the chat))?|(?:i )?want to stop"
+    r"|end (?:the )?(?:chat|conversation)|stop|stop it|stop asking|that'?s enough|enough"
+    r"|bye|bye bye|goodbye|good bye|see you|talk (?:to you )?later"
+    # Hindi, romanised
+    r"|bas|bas karo|bas kijiye|ho gaya|ho gya|bas ho gaya|ho gaya bas|band karo|mera ho gaya"
+    r"|bas itna(?: hi)?(?: hai)?|itna hi(?: hai)?|bas yahi(?: hai)?|yahi sab(?: hai)?"
+    r"|aur kuch nahi(?:n)?(?: hai)?|kuch aur nahi(?:n)?|(?:maine )?sab bata diya"
+    r"|(?:meri )?saari? jaa?nkaa?ri (?:yahi hai|de di)|kha?tam(?: karo)?|poora ho gaya"
+    r"|phir milte hain|baad mein baat karte hain"
+    # Hindi, Devanagari
+    r"|बस|हो गया|बंद करो|बस करो|बस कीजिए|बाय|रुको|रुकिए|काफ़ी है|काफी है|बस इतना(?: ही)?(?: है)?"
+    r"|इतना ही(?: है)?|बस यही(?: है)?|यही सब(?: है)?|और कुछ नहीं(?: है)?|कुछ और नहीं"
+    r"|(?:मैंने )?सब बता दिया|(?:मेरी )?सारी जानकारी (?:यही है|दे दी)|ख़त्म(?: करो)?|खत्म(?: करो)?"
+    r"|मेरा हो गया|पूरा हो गया|बस हो गया|अलविदा|फिर मिलते हैं|बाद में बात करते हैं"
+    # Chinese (simplified and traditional)
+    r"|够了|好了|行了|停|停止|别说了|不用了|再见|拜拜|结束|就这些了?|就这样吧?|没有了|没了"
+    r"|没有别的了|我说完了|说完了|都说完了|我的信息就这些|先这样吧?|可以了"
+    r"|夠了|別說了|再見|結束|就這些了?|就這樣吧?|沒有了|我說完了|說完了"
+    # Malay
+    r"|cukup|sudah|sudah cukup|sudah selesai|selesai|berhenti|tamat|dah cukup|sampai sini"
+    r"|itu (?:sahaja|saja|je|sahaja dari saya|semua)|itulah semua|dah habis|dah siap"
+    r"|saya (?:dah|sudah) selesai|tiada (?:apa )?lagi|tak ada lagi|takde lagi"
+    r"|selamat tinggal|jumpa lagi"
+    # Tamil
+    r"|போதும்|சரி போதும்|நிறுத்து|நிறுத்துங்கள்|நிறுத்துங்க|முடிந்தது|முடிஞ்சது|முடிச்சாச்சு|பை"
+    r"|அவ்வளவு ?தான்|இவ்வளவு ?தான்|அவ்வளவே|வேற ஒன்னும் இல்ல|வேறு எதுவும் இல்லை|வேற எதுவும் இல்ல"
+    r"|எல்லாம் சொல்லிட்டேன்|எல்லாம் சொல்லிவிட்டேன்|பிறகு பேசலாம்"
 )
+# Courtesy around the finishing words: "ok, that's all, thank you", "haan ji bas", "好的，就这些".
+COURTESY = (
+    r"ok|okay|okk|okie|yes|yeah|yep|yup|no|nope|alright|all right|fine|so|well|thanks|thank you"
+    r"(?: so much| very much)?|thanks a lot|ji|haan|haan ji|han|theek hai|thik hai|achha|accha"
+    r"|dhanyavaad|dhanyawad|shukriya|nahi|nahin|हाँ|हां|जी|हाँ जी|ठीक है|अच्छा|धन्यवाद|शुक्रिया|नहीं"
+    r"|好|好的|嗯|谢谢|謝謝|是的|不|baik|terima kasih|ya|tak|சரி|நன்றி|ஆமா|இல்லை"
+)
+FINISH_CLAUSE = re.compile(rf"^(?:(?:{FINISHED}|{COURTESY})\s*)+$", re.I)
+COURTESY_CLAUSE = re.compile(rf"^(?:(?:{COURTESY})\s*)+$", re.I)
+# Clause breaks; "?" is never here: a question is never the end ("that's all?", "हो गया?").
+CLAUSE_BREAK = re.compile(r"[,.!;:…，。！；、\n\-–—]+")
+QUESTION = re.compile(r"[?？]")
 
 # https://ai.google.dev/gemini-api/docs/thought-signatures: function calls not made by the model.
 APP_CALL_SIGNATURE = b"skip_thought_signature_validator"
 
 
 def asks_to_end(text: str) -> bool:
-    """The owner's message is only a stop word ("bas", "ho gaya", "that's all", "bas itna hi"),
-    not an answer that happens to contain one ("Lakshmi Tea Stall, bas itna hi naam hai")."""
-    said = text.strip()
-    return bool(END_WORDS.search(said)) and len(said.split()) <= 5
+    """The owner says they are finished ("bas", "that's everything", "these are all my
+    information", "ok ji, aur kuch nahi", "就这些，谢谢"), not an answer or a question that
+    happens to contain such a word ("Lakshmi Tea Stall, bas itna hi naam hai", "I'm done with
+    the name, what next?", "Goodbye Cafe")."""
+    said = text.replace("’", "'").replace("‘", "'").strip()
+    if not said or QUESTION.search(said) or len(said) > 120:
+        return False
+    clauses = [c.strip() for c in CLAUSE_BREAK.split(said) if c.strip()]
+    return all(FINISH_CLAUSE.match(c) for c in clauses) and not all(
+        COURTESY_CLAUSE.match(c) for c in clauses
+    )
 
 
 def end_on_request(callback_context: Any, llm_request: LlmRequest) -> LlmResponse | None:
@@ -490,7 +547,7 @@ def new_shop_call(
     fields = draft.business if draft else None
     if REVIEW_WORDS.search(question):
         return call("show_step", {"step": "review"})
-    if END_WORDS.search(question):
+    if asks_to_end(question):
         return call("end_conversation", {})
     args: dict[str, Any] = {}
     for key in ("name", "category", "location", "hours", "description", "kind"):
@@ -1115,9 +1172,18 @@ questions: the menu is added later from Today).
   never assume it is a food shop. Keep their words as what they offer (category). If they
   correct the kind ("nahi, yeh service hai"), pass kind to update_shop silently and continue.
   A vague answer ("kuch bhi bechte hain"): ask once, kindly, what customers come for.
-- The owner wants to stop ("bas", "ho gaya", "band karo", "that's all", "stop", "bye"): call
-  end_conversation at once (even if the name, kind or place are missing; everything is saved),
-  then one short goodbye in the reply language. No question after that.
+- On EVERY owner turn, first decide: is the owner telling you they are finished, in any
+  language or words? If yes, your FIRST action is the end_conversation tool call (never only
+  words, even if the name, kind or place are missing; everything is saved), then one short
+  goodbye in the reply language. No question after that. They are finished when they say so:
+  "bas", "ho gaya", "that's all", "these are all my information", "I've told you everything",
+  "nothing more to add", "I'm done", "bye"; "bas, itna hi", "aur kuch nahi hai", "maine sab
+  bata diya"; "मेरी सारी जानकारी यही है", "और कुछ नहीं"; "就这些", "我说完了", "没有别的了";
+  "itu sahaja", "saya dah selesai", "tiada lagi"; "அவ்வளவுதான்", "எல்லாம் சொல்லிட்டேன்".
+  They are NOT finished (answer normally): a question ("is that all?", "what next?", "हो
+  गया?"), "I'm done with the name, what next?", a name or answer that contains such a word
+  ("Goodbye Cafe", "Lakshmi Tea Stall, bas itna hi naam hai", "chai aur samosa, bas"), a
+  correction ("nahi, naam Lakshmi Chai Point hai"), "not done yet".
 - Ask only what is still missing (see "Progress so far" below and every update_shop result):
   one sentence can answer several ("Lakshmi Tea Stall, chai aur samosa, Indiranagar metro ke
   paas" gives name, kind and place): record all of it and ask only what is left. NEVER ask
@@ -1165,7 +1231,7 @@ Tools (silently, in the same turn as your reply)
 - update_shop records everything the owner said in ONE call (name, category, location, hours,
   weekly_hours, description, kind, extra_answers, skip). Call it whenever they give any of
   these, before asking the next thing. Its result lists what is known and still missing: trust
-  it. end_conversation ends the conversation when the owner asks to stop.
+  it. end_conversation ends the conversation when the owner is finished (see above).
 - Order in every turn: call update_shop / show_step FIRST, then say your one question once.
   Never ask, call a tool, and ask again: the owner would hear the same question twice.
 - show_step opens the in-chat cards: location, camera, summary, review, face_check.
