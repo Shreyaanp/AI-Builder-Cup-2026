@@ -3,8 +3,8 @@ import {
   ASKED_HI as ASKED,
   askedTopics,
   FIRST_QUESTION_HI as FIRST_QUESTION,
+  FOLLOW_UPS_HI,
   nextQuestion,
-  topicOf,
 } from './newShopTopics.js'
 import { enter, localOnly } from './stories/support.js'
 
@@ -138,9 +138,8 @@ test('Hindi: the socket dies right after an answer is saved; voice resumes silen
   // the phone hears back.
   live.drop = true
   const afterPlace = await owner(first, 'location: लाजपत नगर')
-  // Hours and the photo come in this conversation's own order.
-  const firstRest = afterPlace.includes(ASKED.hours) ? 'hours' : 'photo'
-  expect(afterPlace).toContain(ASKED[firstRest])
+  // #112: after the basics, the tea stall's own follow-up comes first.
+  expect(afterPlace).toContain(FOLLOW_UPS_HI.seating)
   await expect(card).not.toContainText('लाजपत नगर')
   first.route.close({ code: 4000, reason: 'Connection interrupted' })
   live.drop = false
@@ -169,15 +168,13 @@ test('Hindi: the socket dies right after an answer is saved; voice resumes silen
 
   // The conversation carries on from the next missing field: nothing already answered again.
   const next = await owner(second, 'मुझे नहीं पता।')
-  expect(next).toContain(firstRest === 'hours' ? ASKED.photo : ASKED.hours)
-  for (const done of [ASKED.name, ASKED.kind, ASKED.place, ASKED[firstRest]])
+  expect(next).toContain(ASKED.hours)
+  for (const done of [ASKED.name, ASKED.kind, ASKED.place, FOLLOW_UPS_HI.seating])
     expect(next).not.toContain(done)
   const said = await log.innerText()
-  // A question can come twice only when the greeting asked it and the owner answered something
-  // else first (it was still missing); an answered field is never asked again.
-  const greeted = topicOf(said.match(FIRST_QUESTION)![0])
-  for (const [key, question] of Object.entries(ASKED))
-    expect(said.split(question).length - 1, question).toBeLessThanOrEqual(key === greeted ? 2 : 1)
+  // Every question at most once: an answered (or unknown) one is never asked again.
+  for (const question of [...Object.values(ASKED), FOLLOW_UPS_HI.seating])
+    expect(said.split(question).length - 1, question).toBeLessThanOrEqual(1)
   expect(said).not.toMatch(/menu|pay|delivery|halal/i)
   // One shop, live for customers.
   expect(await (await page.request.get('/api/v1/businesses')).json()).toHaveLength(1)

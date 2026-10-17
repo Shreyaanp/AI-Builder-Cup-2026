@@ -62,7 +62,7 @@ NEVER_IN_ONBOARDING = re.compile(
     r"pay|upi|cash|card|wallet|भुगतान|पेमेंट|deliver|डिलीवरी|home ?drop|"
     r"halal|हलाल|veg|शाकाहार|meat|मांस|non.?veg|egg|अंडा|jain|alcohol|"
     r"hour|timing|open|close|समय|टाइम|खुल|बंद|name|नाम|address|location|where|कहाँ|पता|"
-    r"photo|फ़ोटो|फोटो|picture|email|phone|number|whatsapp",
+    r"photo|फ़ोटो|फोटो|picture|email|phone (?:number|no)|mobile number|contact|whatsapp",
     re.I,
 )
 UNIVERSAL_NEVER = ["menu or prices", "payment", "delivery", "halal", "vegetarian"]
@@ -204,7 +204,7 @@ PRODUCT_WORDS = re.compile(
     r"dawai|pharmacy|chemist|clothes|kapde|sarees?|shoes?|accessories|stationery|books?|"
     r"vegetables?|sabzi|fruits?|phal|hardware|toys?|cosmetics|jewell?ery|mobiles?|phones?|"
     r"electronics|gifts?|bech(?:te|ta|ti)|helmets?)\b|बेच|किराना|राशन|फूल|दवा|कपड़े|सब्ज़ी|सब्जी|"
-    r"फल|किताब|जूते|खिलौने|सामान",
+    r"फल|किताब|जूते|खिलौने|हार्डवेयर|सामान",
     re.I,
 )
 VAGUE = re.compile(
@@ -215,19 +215,59 @@ VAGUE = re.compile(
 # Words that say a thing is food only when no service or product reading is stronger.
 FOOD_ONLY_AS_SHOP = re.compile(r"\bstall\b|ठेला", re.I)
 
-OFFLINE_EXTRAS: list[tuple[str, str, str, str]] = [
-    # (pattern, key, label, question): asked only for a confident, matching business.
+# The follow-up someone who knows this trade would ask (#112: a tea shop gets a tea-shop
+# question, a hardware store never a food one): (kinds, what the business is, key, label,
+# question, words that already answer it). Asked only for a confident, matching business.
+OFFLINE_EXTRAS: list[tuple[set[str], str, str, str, str, str]] = [
     (
+        {"service"},
         r"tuition|coaching|classes|ट्यूशन|कोचिंग",
         "classes_taught",
         "Classes taught",
         "Which classes or subjects do you teach?",
+        r"\d|math|science|english|गणित|विज्ञान|कक्षा",
     ),
     (
+        {"service"},
         r"tailor|darzi|silai|stitch|सिलाई|दर्जी",
         "stitching_for",
         "Stitching for",
         "Do you stitch for men, women or both?",
+        r"ladies|gents|\bmen\b|women|both|mahila|purush|लेडीज|जेंट्स|महिला|पुरुष|दोनों",
+    ),
+    (
+        {"service", "mixed"},
+        r"(?:mobile|phone|मोबाइल|फ़ोन|फोन).*(?:repair|theek|रिपेयर|मरम्मत|ठीक)|"
+        r"(?:repair|रिपेयर|मरम्मत).*(?:mobile|phone|मोबाइल|फ़ोन|फोन)",
+        "brands_repaired",
+        "Brands repaired",
+        "Which phone brands do you repair?",
+        r"samsung|apple|iphone|vivo|oppo|xiaomi|redmi|realme|oneplus|nokia|motorola|brand|"
+        r"company|कंपनी|ब्रांड|सैमसंग|सभी",
+    ),
+    (
+        {"food"},
+        r"bakery|bake|cakes?|बेकरी|केक",
+        "order_ahead",
+        "Order ahead",
+        "How many days ahead should customers order a cake?",
+        r"\d|same day|advance|din pehle|पहले|उसी दिन",
+    ),
+    (
+        {"food", "mixed"},
+        r"\b(?:tea|chai|coffee|kopi)\b|चाय|कॉफ़ी|कॉफी",
+        "seating",
+        "Seating",
+        "Can customers sit and have their tea, or is it takeaway only?",
+        r"seat|\bsit\b|baith|बैठ|takeaway|parcel|पार्सल|bench|बेंच|kursi|कुर्सी|table|टेबल",
+    ),
+    (
+        {"product"},
+        r"hardware|paints?|pipes?|sanitary|electricals?|tools?|हार्डवेयर|पेंट|पाइप",
+        "brands_stocked",
+        "Brands",
+        "Which brands do customers mostly come to you for?",
+        r"brand|company|कंपनी|ब्रांड|asian paints|havells|supreme|berger|anchor|finolex",
     ),
 ]
 
@@ -251,7 +291,7 @@ def offline_understanding(text: str) -> BusinessUnderstanding:
             r"(?i)flowers?|phool|medicines?|dawai|pharmacy|chemist|clothes|kapde|sarees?|shoes?|"
             r"accessories|stationery|books?|vegetables?|sabzi|fruits?|phal|hardware|toys?|"
             r"cosmetics|jewell?ery|mobiles?|phones?|electronics|gifts?|kirana|grocer|ration|"
-            r"helmets?|फूल|दवा|कपड़े|सब्ज़ी|सब्जी|फल|किताब|जूते|खिलौने|किराना|राशन",
+            r"helmets?|फूल|दवा|कपड़े|सब्ज़ी|सब्जी|फल|किताब|जूते|खिलौने|हार्डवेयर|किराना|राशन",
             product_text,
         )
     )
@@ -272,11 +312,11 @@ def offline_understanding(text: str) -> BusinessUnderstanding:
     confidence = 0.9 if kind != "unknown" else 0.3
     extras = [
         ExtraQuestion(key=key, label=label, question=question, confidence=0.9)
-        for pattern, key, label, question in OFFLINE_EXTRAS
-        if kind == "service"
+        for kinds, pattern, key, label, question, answered in OFFLINE_EXTRAS
+        if kind in kinds
         and re.search(pattern, said, re.I)
         # Already answered in the same words ("tuition for class 8 to 10").
-        and not re.search(r"(?i)\d|math|science|english|ladies|gents|men|women|both", said)
+        and not re.search(answered, said, re.I)
     ][:1]
     never = [] if kind == "food" else ["halal", "vegetarian", "menu"]
     group = _offline_group(said, kind)
@@ -298,6 +338,7 @@ def _offline_group(said: str, kind: str) -> str:
         (r"(?i)\b(?:bakery|cakes?|bread)\b|बेकरी|केक", "bakery"),
         (r"(?i)\b(?:salon|parlou?r|barber|beauty|makeup)\b|पार्लर", "beauty"),
         (r"(?i)\b(?:kirana|grocer(?:y|ies)|ration)\b|किराना|राशन", "grocery"),
+        (r"(?i)\bhardware\b|हार्डवेयर", "hardware"),
     ):
         if re.search(pattern, said):
             return group
@@ -318,12 +359,16 @@ and write a structured profile of it. Understand the business; never force it in
 - what: what it is, in the owner's own words (keep their language and spelling).
 - offerings: up to 8 things it offers, in the owner's words. audience: who it is for.
 - customer_wants: what a customer would most want to know before visiting (up to 5).
-- extra_questions: AT MOST 2 questions to ask the owner now, only when you are confident they
-  apply to THIS business and change a customer's decision; usually zero. Never about the name,
-  what they sell, the place, hours, photos, phone, menu, prices, fees, payment, delivery, halal,
-  vegetarian, meat or anything food-related: those are handled elsewhere. Never ask what the
-  owner's words already answer (they said "ghar par bhi aati hoon": no question about home
-  visits). confidence 0-1 each.
+- extra_questions: the 1 or 2 follow-ups someone who knows THIS trade would ask, the things a
+  customer of this exact business decides on (a tea stall: can people sit or is it takeaway; a
+  mobile repair shop: which phone brands; a tailor: men, women or both; a home bakery: how many
+  days ahead to order; a hardware store: which brands people come for). Best first. Only when
+  you are confident they apply; zero is fine. Never generic, never something another kind of
+  business would be asked (no food questions for a hardware store). Never about the name, what
+  they sell, the place, hours, photos, phone, menu, prices, fees, payment, delivery, halal,
+  vegetarian or meat: those are handled elsewhere. Never ask what the owner's words already
+  answer (they said "ghar par bhi aati hoon": no question about home visits; "Samsung aur
+  Vivo theek karte hain": no question about brands). confidence 0-1 each.
 - never_ask: questions that are NEVER relevant for this business (e.g. a helmet cleaning
   station: halal, vegetarian, menu).
 - search_group: one of coffee, food, bakery, grocery, pharmacy, hardware, fashion, beauty,

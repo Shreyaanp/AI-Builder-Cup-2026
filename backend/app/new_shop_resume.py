@@ -97,19 +97,27 @@ def saved_draft(state: dict[str, Any]) -> NewShopDraft | None:
         return None
 
 
-# What onboarding gathers (owner decision, 17 Oct): name, what they sell, where, hours, a shop
-# photo. Never the menu: that comes after, from Today. (key, label for the model).
-STEPS = (
-    ("name", "the shop's real name"),
-    ("category", "what they sell (the kind of shop)"),
+# What onboarding gathers (#112): the owner first tells about the shop in their own words; the
+# three basics (name, what they sell, where) are asked only when that answer missed them; then at
+# most two follow-ups that fit this business (its own questions, the hours when there is room);
+# then the shop photo is offered once. Never the menu: that comes after, from Today.
+BASICS = (
+    ("name", "the shop's real name (required)"),
+    ("category", "what they sell or do (required)"),
     (
         "place",
-        "where the shop is (ask if they are at the shop right now: if yes, call show_step"
-        ' "location" and the phone\'s GPS pins it; if not, ask the area and a landmark)',
+        "where the shop is (required; ask if they are at the shop right now: if yes, call"
+        ' show_step "location" and the phone\'s GPS pins it; if not, ask the area and a landmark)',
     ),
-    ("hours", 'opening hours, per day ("pata nahi" or no answer: skip it, never invent)'),
-    ("photo", 'a photo of the shop (show_step "camera"; "baad mein" skips it)'),
 )
+HOURS_STEP = (
+    "opening hours (a follow-up, asked the way this business would hear it, a tea stall:"
+    ' "subah kitne baje se chai milti hai?"; per day; "pata nahi" or no answer: skip it,'
+    " never invent)"
+)
+PHOTO_STEP = 'a photo of the shop (offered once, last: show_step "camera"; "baad mein" skips it)'
+# At most this many follow-up questions after the basics, the hours included.
+FOLLOW_UPS = 2
 
 
 def has_place(fields: BusinessFields | None) -> bool:
@@ -157,31 +165,49 @@ def known_and_missing(draft: NewShopDraft | None) -> tuple[list[str], list[str]]
         known.append("shop photo taken")
     elif "photo" in skipped:
         known.append("shop photo: skipped (added later from Today)")
-    missing = [label for key, label in STEPS if not done[key]]
+    missing = [label for key, label in BASICS if not done[key]]
     understood = draft.understanding if draft else None
     answered = {fact.key: fact.value for fact in fields.custom_facts} if fields else {}
+    extras, hours_follow_up = follow_up_plan(draft)
     for extra in understood.extra_questions if understood else []:
         if extra.key in answered:
             known.append(f'{extra.label.casefold()} "{answered[extra.key]}"')
         elif draft and extra.key in draft.asked_extra:
             known.append(f"{extra.label.casefold()}: asked already (the owner did not know)")
-        elif done["name"] and done["category"] and done["place"]:
-            # Extras only once the shop is live; asked once, never pushed.
+        elif extra in extras and done["name"] and done["category"] and done["place"]:
+            # Follow-ups only once the shop is live; asked once, never pushed.
             missing.append(
-                f'optional, ask once only if natural: "{extra.question}" (record with'
+                f'optional follow-up, ask once: "{extra.question}" (record with'
                 f' update_shop extra_answers key "{extra.key}"; not known: answer "")'
             )
+    if hours_follow_up:
+        missing.append(HOURS_STEP)
+    if not done["photo"]:
+        missing.append(PHOTO_STEP)
     return known, missing
 
 
+def follow_up_plan(draft: NewShopDraft | None) -> tuple[list[Any], bool]:
+    """This business's follow-ups after the basics, at most FOLLOW_UPS in all: its own questions
+    first, then the hours when there is room and the owner has not said them. Hours already
+    known take a place too (a voice profile can arrive after the hours were asked), so the
+    owner is never asked more than two."""
+    done = done_steps(draft)
+    understood = draft.understanding if draft else None
+    own = list(understood.extra_questions) if understood else []
+    hours_follow_up = not done["hours"] and len(own) < FOLLOW_UPS
+    room = FOLLOW_UPS - (1 if done["hours"] or hours_follow_up else 0)
+    return own[: max(room, 0)], hours_follow_up
+
+
 def pending_extras(draft: NewShopDraft | None) -> list[str]:
-    """Keys of the confident extra questions not asked yet."""
+    """Keys of this business's follow-up questions (within the budget) not asked yet."""
     if not draft or not draft.understanding:
         return []
     answered = {f.key for f in draft.business.custom_facts} if draft.business else set()
     return [
         extra.key
-        for extra in draft.understanding.extra_questions
+        for extra in follow_up_plan(draft)[0]
         if extra.key not in answered and extra.key not in draft.asked_extra
     ]
 
@@ -217,11 +243,14 @@ def progress_note(draft: NewShopDraft | None, last_question: str, resumed: bool)
     lines.append(
         "- Already known, NEVER ask for these again: " + "; ".join(known) + "."
         if known
-        else "- Nothing is known yet."
+        else "- Nothing is known yet: if you have not asked yet, ask the open question (tell me"
+        " about your shop), not the name."
     )
     if missing:
         lines.append(
-            "- Still missing (ask ONE, the most natural next): " + "; ".join(missing) + "."
+            "- Still missing (ask ONE, the first in this list; nothing outside it): "
+            + "; ".join(missing)
+            + "."
         )
     else:
         lines.append(

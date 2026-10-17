@@ -58,6 +58,7 @@ import { shopRegion, shopZone } from '../../region/region'
 interface PublicShopData {
   id: string
   gallery?: string[]
+  icon?: string | null
   last_confirmed?: string | null
   timezone?: string
   name: string
@@ -689,7 +690,9 @@ export default function PublicShop({ id }: { id: string }) {
           photo={
             shop.gallery?.[0]
               ? `/api/v1/public/shops/${id}/photos/${shop.gallery[0]}.jpg`
-              : undefined
+              : shop.icon
+                ? `/api/v1/public/shops/${id}/icon/${shop.icon}.jpg`
+                : undefined
           }
           eager
           transition
