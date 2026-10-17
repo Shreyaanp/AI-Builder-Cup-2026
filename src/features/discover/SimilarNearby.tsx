@@ -8,16 +8,9 @@ import { PlaceImage } from '../frontdoors/PlaceImage'
 import { formatPrice } from '../v1/format'
 import { askCopy } from './askStrings'
 import { useSearchCopy } from './searchCopy'
+import { formatDistance } from './formatDistance'
 
 type Similar = components['schemas']['SimilarResponse']
-
-function distanceText(metres: number, locale: string) {
-  return new Intl.NumberFormat(locale, {
-    style: 'unit',
-    unit: metres < 1000 ? 'meter' : 'kilometer',
-    maximumFractionDigits: metres < 1000 ? 0 : 1,
-  }).format(metres < 1000 ? Math.round(metres / 10) * 10 : metres / 1000)
-}
 
 /**
  * "Similar nearby" on a shop page: shops alike in meaning, close to this one (the shared search
@@ -140,7 +133,7 @@ export function SimilarNearby({ shop, items }: { shop: string; items: string[] }
                   </Typography>
                   <Typography variant="bodySmall" color="text.secondary" noWrap>
                     {[
-                      distanceText(place.distance_m, locale),
+                      formatDistance(place.distance_m, locale),
                       place.open_now === null ? null : place.open_now ? ask.openNow : ask.closed,
                       place.demo_shop ? ask.demo : null,
                     ]
