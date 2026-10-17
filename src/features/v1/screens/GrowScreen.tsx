@@ -13,6 +13,7 @@ import { RecapTile } from '../../sales/ShopInsights'
 import { OrdersTile } from '../../sourcing/Orders'
 import { SupplyTile } from '../../supply/Supply'
 import { WeekPulseTile } from '../../analytics/WeekPulse'
+import { growOrderOf } from '../playbook/growOrder'
 import { usePlaybook } from '../playbook/usePlaybook'
 import { readiness } from '../shopProgress'
 import { ShopSheets, Supporting, Tile, type ShopSheetKind } from '../ShopTiles'
@@ -85,11 +86,7 @@ function GrowTiles() {
   const prep: [string, ReactNode] = ['prep', <PrepPlanTile key="prep" />]
   const close: [string, ReactNode] = ['close_day', <CloseDayTile key="close" />]
   // The shop's playbook decides which tool comes first; without one, the usual order.
-  const growOrder =
-    playbook.kind === 'ready' && Array.isArray(playbook.view.grow)
-      ? playbook.view.grow.filter((id): id is string => typeof id === 'string')
-      : []
-  const cards = byGrowOrder(growOrder, [
+  const cards = byGrowOrder(growOrderOf(playbook), [
     ...(evening ? [close, prep] : [prep, close]),
     ['orders', <OrdersTile key="orders" />],
     ['supply', <SupplyTile key="supply" />],
