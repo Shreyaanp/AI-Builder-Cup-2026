@@ -359,10 +359,10 @@ async function run(story, variant) {
       await publish(page, id)
       await page.goto(`/explore/s/${id}?source=qr`)
       const card = page.getByRole('region', { name: 'Stamp card' })
-      await expect(card.getByRole('status')).toContainText('1 stamps')
+      await expect(card.getByRole('status')).toContainText('1 stamp')
       await shot('01-phone-stamp')
       await page.reload()
-      await expect(card.getByRole('status')).toContainText('1 stamps')
+      await expect(card.getByRole('status')).toContainText('1 stamp')
       await page.goto('/explore/passport/')
       await shot('02-passport')
       gap(
