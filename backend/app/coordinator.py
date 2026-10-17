@@ -466,6 +466,8 @@ def _propose_shop(
     if not ctx:
         return {"status": "unavailable"}
     existing = ctx.store.context(ctx.uid, ctx.business_id)["business"]
+    if len(name.strip()) > 80:
+        return _invalid(ValueError("A shop name is 1-80 characters."), ctx)
     draft_fields = ctx.new_shop_draft.business if ctx.new_shop_draft else None
     previous_category = (
         existing["fields"].get("category", "")
@@ -633,7 +635,8 @@ def propose_business(
 ) -> dict[str, Any]:
     """Prepare the shop's basic details (new shop, or edits to the active shop) for the owner to
     review. Nothing is saved until the owner confirms. Leave a field empty if the owner did not
-    say it; for an existing shop pass name="" and only what changed. currency is the ISO 4217
+    say it; for an existing shop pass name="" and only what changed. To rename the shop pass the
+    new name (1-80 characters, "rename my shop to X"). currency is the ISO 4217
     code (SGD, JPY, MYR…) for a new shop, only when the owner states or clearly implies it.
     weekly_hours: one record per stated weekday (day: mon/tue/wed/thu/fri/sat/sun,
     closed: boolean, open/close: HH:MM). Overnight closing belongs to the opening day.
