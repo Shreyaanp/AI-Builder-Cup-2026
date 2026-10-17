@@ -220,7 +220,8 @@ async def update_shop(
         )
         if said != owner_words(draft):
             # What the business is, understood before it is saved (its type profile follows).
-            await understand(ctx, said)
+            # Voice: never hold up the spoken reply; the profile joins with a later answer.
+            await understand(ctx, said, wait=0 if ctx.spoken else UNDERSTAND_SECONDS)
             draft = ctx.new_shop_draft or draft
         result = _propose_shop(
             name=name,

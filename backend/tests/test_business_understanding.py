@@ -505,3 +505,28 @@ def test_an_extra_the_owner_already_answered_is_never_asked() -> None:
         )
     )
     assert [q.key for q in shop.extra_questions] == ["home_visits"]
+
+
+def test_voice_never_waits_for_the_profile(tmp_path: Path) -> None:
+    """Live check: saving the kind held the spoken reply for up to 2.5 s (first audio ~4 s)."""
+    reader, _ = gemini_reader({"kind": "food", "confidence": 0.9}, delay=3)
+    previous = business_understanding.understander
+    business_understanding.understander = reader
+    try:
+        ctx = context(tmp_path)
+        ctx.spoken = True
+
+        async def flow() -> float:
+            loop = asyncio.get_running_loop()
+            started = loop.time()
+            token = current.set(ctx)
+            try:
+                result = await update_shop(name="Lakshmi Tea Stall", category="chai, samosa")
+            finally:
+                current.reset(token)
+            assert result["status"] == "saved"
+            return loop.time() - started
+
+        assert asyncio.run(flow()) < 0.5
+    finally:
+        business_understanding.understander = previous

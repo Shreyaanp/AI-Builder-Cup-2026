@@ -308,6 +308,9 @@ async def gemini_voice(
     extras = True
     text_turns = 0
     new_shop = is_new_shop()
+    merchant = current.get()
+    if merchant:
+        merchant.spoken = True
     budget = AudioBudget(runtime.settings, new_shop)
     max_text_turns = NEW_SHOP_TEXT_TURNS if new_shop else VOICE_TEXT_TURNS
     # A typed turn the coach has not answered yet: a fresh Live connection gets it again.

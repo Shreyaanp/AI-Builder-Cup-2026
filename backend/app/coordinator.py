@@ -81,6 +81,8 @@ class MerchantContext:
     # The owner asked to end the conversation (end_conversation): the socket closes after the
     # coach's goodbye.
     ended: bool = False
+    # A Live voice conversation: tools never hold up the spoken reply (first audio).
+    spoken: bool = False
 
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)
