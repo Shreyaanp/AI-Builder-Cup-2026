@@ -143,9 +143,10 @@ export function FaceDialog({
     setPromptIndex(-1)
     setGuide(null)
     setSlow(false)
-    const mime = ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'].find(
-      (type) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type),
-    ) ?? 'video/webm'
+    const mime =
+      ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'].find(
+        (type) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type),
+      ) ?? 'video/webm'
     let stream: MediaStream
     try {
       // Camera first: a refused permission never starts a server challenge.
