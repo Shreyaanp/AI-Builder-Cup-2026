@@ -1552,7 +1552,10 @@ function AssistantTurn({
   const followups: Chip[] = [
     ...refinements.slice(0, 3),
     ...(intent.followups ?? []).slice(0, 1).map((text) => ({ label: text, q: text })),
-  ]
+  ].filter(
+    (chip, index, chips) =>
+      chips.findIndex((candidate) => candidate.label === chip.label) === index,
+  )
   const area = answer.area ?? null
   const nothing = ours.length === 0 && google.length === 0 && !(area?.status === 'ok')
   return (
