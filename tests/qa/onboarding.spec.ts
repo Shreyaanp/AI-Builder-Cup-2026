@@ -4,6 +4,7 @@ import {
   createShopFromReview,
   editShopDetails,
 } from '../stories/support.js'
+import { FIRST_QUESTION } from '../newShopTopics.js'
 import { test, expect, enter, audit, evidence, owner, tamil } from './support.js'
 
 test('consent validates both choices and keyboard activation', async ({ page }) => {
@@ -27,7 +28,7 @@ test('new shop: cancel writes nothing, review saves once and reloads', async ({ 
   await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   await page.getByLabel('Message', { exact: true }).fill('name: QA neighbourhood shop')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByTestId('shop-so-far')).toContainText('QA neighbourhood shop')

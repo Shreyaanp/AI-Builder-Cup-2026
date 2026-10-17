@@ -184,16 +184,17 @@ async def test_name_then_type_even_when_items_arrive_first(store):
     token = current.set(context)
     try:
         propose_business("", category="Tailor")
-        plan = await get_question_plan()
-        assert [q["key"] for q in plan["pending"]] == ["name"]
+        # Onboarding asks only the core (and the business's own extras): no question plan.
+        assert (await get_question_plan())["status"] == "not_in_onboarding"
         propose_business("Actual name")
-        assert (await get_question_plan())["profile"]["kind"] == "tailor"
+        assert context.new_shop_draft and context.new_shop_draft.business
+        assert context.new_shop_draft.business.profile.kind == "tailor"
+        context.new_shop = False
         context.new_shop_draft = NewShopDraft(business=BusinessFields(name="Actual name"))
         assert [q["key"] for q in (await get_question_plan())["pending"]] == ["category"]
-        assert "What is your business called?" in new_shop_reply(
-            MerchantContext(store, "alice", None, []),
-            vague=True,
-        )
+        context.new_shop = True
+        greeting = new_shop_reply(MerchantContext(store, "alice", None, []), vague=True)
+        assert greeting.startswith("Offline template: Hi") and greeting.endswith("?")
         call = new_shop_call("I sell chai", MerchantContext(store, "alice", None, []))
         assert call and call.function_call and call.function_call.name == "update_shop"
         # What they sell is never taken for a name.

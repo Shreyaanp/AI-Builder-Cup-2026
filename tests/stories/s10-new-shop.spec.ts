@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { FIRST_QUESTION } from '../newShopTopics.js'
 import { enter, inChatFixtures, liveOnly, localOnly, phone, shot } from './support.js'
 
 // S10 · Opening a new shop (owner answers, 15–17 Oct): big hero, then a full-screen conversation
@@ -60,7 +61,7 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
       'Gemini Live voice and its spoken greeting; offline the greeting is the scripted coach',
     )
     await page.getByRole('button', { name: 'Let’s begin' }).click()
-    await expect(page.getByRole('log')).toContainText('What is your business called?')
+    await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
     // Voice mode: one open conversation; the mic stays on (not paused) after the greeting and
     // the orb listens. Keyboard, mute and end voice are the other controls.
     await expect(page.getByTestId('voice-orb').first()).toHaveAttribute('data-phase', 'listening')
@@ -193,7 +194,7 @@ test('S10 · type it in instead: one question per screen, then Edit details the 
   await enter(page)
   await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
   await page.getByRole('button', { name: 'Let’s begin' }).click()
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 
   await test.step('1 · from the conversation: "Type it in instead"', async () => {
     await page.getByRole('button', { name: 'Type it in instead' }).click()

@@ -2555,6 +2555,57 @@ export interface components {
             retail?: components["schemas"]["RetailAttributes"] | null;
             service?: components["schemas"]["ServiceAttributes"] | null;
         };
+        /**
+         * BusinessUnderstanding
+         * @description What the coach understood about the business, from the owner's own words.
+         */
+        BusinessUnderstanding: {
+            /**
+             * Kind
+             * @description product (sells goods), service (does work for people), food (food or drink to eat), mixed (two of these), unknown (not clear yet)
+             * @default unknown
+             * @enum {string}
+             */
+            kind: "product" | "service" | "food" | "mixed" | "unknown";
+            /**
+             * What
+             * @description What it is, in the owner's words
+             * @default
+             */
+            what: string;
+            /** Offerings */
+            offerings?: string[];
+            /**
+             * Audience
+             * @description Who it is for
+             * @default
+             */
+            audience: string;
+            /**
+             * Customer Wants
+             * @description What a customer would want to know
+             */
+            customer_wants?: string[];
+            /** Extra Questions */
+            extra_questions?: components["schemas"]["ExtraQuestion"][];
+            /** Never Ask */
+            never_ask?: string[];
+            /**
+             * Search Group
+             * @default
+             */
+            search_group: string;
+            /**
+             * Confidence
+             * @default 0
+             */
+            confidence: number;
+            /**
+             * Owner Kind
+             * @default false
+             */
+            owner_kind: boolean;
+        };
         /** ChallengeRequest */
         ChallengeRequest: {
             /** Business Id */
@@ -2852,6 +2903,30 @@ export interface components {
             google_unavailable: boolean;
             /** Places */
             places: components["schemas"]["DiscoveryPlace"][];
+        };
+        /** ExtraQuestion */
+        ExtraQuestion: {
+            /**
+             * Key
+             * @description snake_case key
+             */
+            key: string;
+            /**
+             * Question
+             * @description How to ask the owner, plain English
+             */
+            question: string;
+            /**
+             * Label
+             * @description Short label customers see
+             * @default
+             */
+            label: string;
+            /**
+             * Confidence
+             * @default 0
+             */
+            confidence: number;
         };
         /** Feed */
         Feed: {
@@ -3242,6 +3317,18 @@ export interface components {
             business?: components["schemas"]["BusinessFields"] | null;
             /** Products */
             products?: components["schemas"]["ProductFields"][];
+            /** Skipped */
+            skipped?: ("hours" | "photo" | "face")[];
+            /**
+             * Photo
+             * @default false
+             */
+            photo: boolean;
+            /** Live Id */
+            live_id?: string | null;
+            understanding?: components["schemas"]["BusinessUnderstanding"] | null;
+            /** Asked Extra */
+            asked_extra?: string[];
         };
         /** NewThread */
         NewThread: {

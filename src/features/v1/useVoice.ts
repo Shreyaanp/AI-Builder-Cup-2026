@@ -61,6 +61,8 @@ export interface VoiceConversation {
    * `continues`: the server already holds this conversation, so the coach must not greet again).
    */
   onReady?: (resumed: boolean, continues: boolean) => void
+  /** The owner asked to stop ("bas", "that's all"): the goodbye has played, nothing reconnects. */
+  onEnded?: () => void
 }
 
 /**
@@ -425,6 +427,9 @@ export function useVoice(
         }
         if (event.kind === 'error') throw new Error(`server:${event.code ?? 'error'}`)
         switchLanguage(event)
+        if (event.kind === 'action' && event.data?.target === 'end_conversation')
+          // The owner asked to stop: the microphone closes now; the goodbye still plays.
+          micOpen.current = false
         eventRef.current(event)
         if (event.kind === 'ready') {
           clearTimeout(current.deadline)
@@ -483,6 +488,19 @@ export function useVoice(
       if (current.complete) {
         stop()
       } else if (conversationRef.current) {
+        if (event.reason === 'ENDED') {
+          // The owner ended the conversation: the goodbye finishes playing, then all stops.
+          micOpen.current = false
+          const ended = conversationRef.current
+          setTimeout(
+            () => {
+              ended.onEnded?.()
+              stop()
+            },
+            Math.max(0, (audio.next - audio.audio.currentTime) * 1000 + 100),
+          )
+          return
+        }
         if (lastCode === 'SESSION_CAP' || event.reason === 'SESSION_CAP') {
           // The 15-minute cap: a calm pause, never a dead end (typing works; tap to talk again).
           fail({ kind: 'session-cap' })

@@ -78,6 +78,9 @@ class MerchantContext:
     last_question: str = ""
     # The last new-shop proposal: a replayed or repeated answer returns it unchanged.
     last_proposal: str | None = None
+    # The owner asked to end the conversation (end_conversation): the socket closes after the
+    # coach's goodbye.
+    ended: bool = False
 
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)
@@ -134,6 +137,13 @@ async def get_question_plan() -> dict[str, Any]:
     if record_with is a fact name, pass that argument; if it is custom_facts, pass
     custom_facts=[{key, label, value}]. The owner may skip any."""
     ctx = current.get()
+    if ctx and ctx.new_shop:
+        # Onboarding asks only the core five (and at most two extras from the business's own
+        # profile, listed in update_shop's result); type-specific questions come later.
+        return {
+            "status": "not_in_onboarding",
+            "instruction": "Ask only what update_shop lists as still missing.",
+        }
     if not ctx or (
         not ctx.business_id and not (ctx.new_shop_draft and ctx.new_shop_draft.business)
     ):

@@ -30,7 +30,7 @@ APP_NAME = "ogoogle_ai"
 # Tools whose results reach the chat as supplier or order cards.
 SOURCING_TOOLS = {"find_suppliers", "prepare_order", "message_supplier", "cancel_order"}
 # Tools whose result is an app action card: open a screen, or a prepared customer reply.
-ACTION_TOOLS = {"open_screen", "prepare_customer_reply", "show_step"}
+ACTION_TOOLS = {"open_screen", "prepare_customer_reply", "show_step", "end_conversation"}
 # Tools that prepare a sealed proposal for the review dialog.
 PROPOSAL_TOOLS = {
     "update_shop",

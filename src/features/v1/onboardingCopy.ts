@@ -36,6 +36,11 @@ export interface OnboardingCopy {
   menuSoon: string
   chatShop: string
   hoursNotSet: string
+  /** The always-visible End button, and the calm state after the conversation ended. */
+  endChat: string
+  endedTitle: string
+  endedBody: string
+  continueChat: string
 }
 
 const copy: Record<Locale, OnboardingCopy> = {
@@ -68,6 +73,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'Menu coming soon. Chat with the shop meanwhile.',
     chatShop: 'Chat with the shop',
     hoursNotSet: 'Hours not set',
+    endChat: 'End',
+    endedTitle: 'Conversation ended',
+    endedBody: 'Everything is saved. Continue whenever you like.',
+    continueChat: 'Continue',
   },
   hi: {
     shopPhoto: 'दुकान की फ़ोटो',
@@ -99,6 +108,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'मेन्यू जल्द आ रहा है। तब तक दुकान से चैट करें।',
     chatShop: 'दुकान से चैट करें',
     hoursNotSet: 'समय तय नहीं',
+    endChat: 'बंद करें',
+    endedTitle: 'बातचीत खत्म हुई',
+    endedBody: 'सब कुछ सेव है। जब चाहें आगे बढ़ें।',
+    continueChat: 'आगे बढ़ें',
   },
   bn: {
     shopPhoto: 'দোকানের ছবি',
@@ -129,6 +142,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'মেনু শিগগির আসছে। ততক্ষণ দোকানের সঙ্গে চ্যাট করুন।',
     chatShop: 'দোকানের সঙ্গে চ্যাট করুন',
     hoursNotSet: 'সময় ঠিক করা হয়নি',
+    endChat: 'শেষ করুন',
+    endedTitle: 'কথা শেষ হয়েছে',
+    endedBody: 'সবকিছু সেভ করা আছে। যখন খুশি আবার শুরু করুন।',
+    continueChat: 'আবার শুরু করুন',
   },
   te: {
     shopPhoto: 'దుకాణం ఫోటో',
@@ -160,6 +177,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'మెనూ త్వరలో వస్తుంది. అప్పటివరకు దుకాణంతో చాట్ చేయండి.',
     chatShop: 'దుకాణంతో చాట్ చేయండి',
     hoursNotSet: 'సమయాలు సెట్ చేయలేదు',
+    endChat: 'ముగించు',
+    endedTitle: 'సంభాషణ ముగిసింది',
+    endedBody: 'అన్నీ సేవ్ అయ్యాయి. ఎప్పుడైనా కొనసాగించండి.',
+    continueChat: 'కొనసాగించు',
   },
   mr: {
     shopPhoto: 'दुकानाचा फोटो',
@@ -190,6 +211,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'मेनू लवकरच येत आहे. तोपर्यंत दुकानाशी चॅट करा.',
     chatShop: 'दुकानाशी चॅट करा',
     hoursNotSet: 'वेळ ठरलेली नाही',
+    endChat: 'संपवा',
+    endedTitle: 'संवाद संपला',
+    endedBody: 'सगळं सेव्ह झालं आहे. हवं तेव्हा पुढे चला.',
+    continueChat: 'पुढे चला',
   },
   kn: {
     shopPhoto: 'ಅಂಗಡಿಯ ಫೋಟೋ',
@@ -220,6 +245,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'ಮೆನು ಶೀಘ್ರದಲ್ಲೇ ಬರಲಿದೆ. ಅಲ್ಲಿಯವರೆಗೆ ಅಂಗಡಿಯೊಂದಿಗೆ ಚಾಟ್ ಮಾಡಿ.',
     chatShop: 'ಅಂಗಡಿಯೊಂದಿಗೆ ಚಾಟ್ ಮಾಡಿ',
     hoursNotSet: 'ಸಮಯ ನಿಗದಿಯಾಗಿಲ್ಲ',
+    endChat: 'ಮುಗಿಸಿ',
+    endedTitle: 'ಸಂಭಾಷಣೆ ಮುಗಿಯಿತು',
+    endedBody: 'ಎಲ್ಲವೂ ಉಳಿಸಲಾಗಿದೆ. ಯಾವಾಗ ಬೇಕಾದರೂ ಮುಂದುವರಿಸಿ.',
+    continueChat: 'ಮುಂದುವರಿಸಿ',
   },
   'zh-Hans': {
     shopPhoto: '店铺照片',
@@ -250,6 +279,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: '菜单即将上线。在此之前可以和店家聊天。',
     chatShop: '和店家聊天',
     hoursNotSet: '未设置营业时间',
+    endChat: '结束',
+    endedTitle: '对话已结束',
+    endedBody: '内容都已保存，随时可以继续。',
+    continueChat: '继续',
   },
   ms: {
     shopPhoto: 'Gambar kedai',
@@ -281,6 +314,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'Menu akan datang. Sementara itu, sembang dengan kedai.',
     chatShop: 'Sembang dengan kedai',
     hoursNotSet: 'Waktu belum ditetapkan',
+    endChat: 'Tamat',
+    endedTitle: 'Perbualan tamat',
+    endedBody: 'Semuanya disimpan. Sambung bila-bila masa.',
+    continueChat: 'Sambung',
   },
   ta: {
     shopPhoto: 'கடையின் புகைப்படம்',
@@ -313,6 +350,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'மெனு விரைவில் வரும். அதுவரை கடையுடன் அரட்டையடிக்கவும்.',
     chatShop: 'கடையுடன் அரட்டை',
     hoursNotSet: 'நேரம் அமைக்கப்படவில்லை',
+    endChat: 'முடி',
+    endedTitle: 'உரையாடல் முடிந்தது',
+    endedBody: 'எல்லாம் சேமிக்கப்பட்டது. எப்போது வேண்டுமானாலும் தொடரலாம்.',
+    continueChat: 'தொடர்',
   },
   ja: {
     shopPhoto: 'お店の写真',
@@ -344,6 +385,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'メニューは準備中です。それまでお店とチャットできます。',
     chatShop: 'お店とチャット',
     hoursNotSet: '営業時間未設定',
+    endChat: '終了',
+    endedTitle: '会話を終了しました',
+    endedBody: 'すべて保存済みです。いつでも続きから始められます。',
+    continueChat: '続ける',
   },
   ko: {
     shopPhoto: '가게 사진',
@@ -374,6 +419,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: '메뉴가 곧 올라와요. 그동안 가게와 채팅해 보세요.',
     chatShop: '가게와 채팅',
     hoursNotSet: '영업시간 미설정',
+    endChat: '종료',
+    endedTitle: '대화가 끝났어요',
+    endedBody: '모두 저장했어요. 언제든 이어서 하세요.',
+    continueChat: '계속하기',
   },
   id: {
     shopPhoto: 'Foto toko',
@@ -405,6 +454,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'Menu segera hadir. Sementara itu, ngobrol dengan toko.',
     chatShop: 'Ngobrol dengan toko',
     hoursNotSet: 'Jam belum diatur',
+    endChat: 'Selesai',
+    endedTitle: 'Percakapan selesai',
+    endedBody: 'Semua tersimpan. Lanjutkan kapan saja.',
+    continueChat: 'Lanjutkan',
   },
   th: {
     shopPhoto: 'รูปร้าน',
@@ -435,6 +488,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'เมนูกำลังจะมา ระหว่างนี้แชทกับร้านได้',
     chatShop: 'แชทกับร้าน',
     hoursNotSet: 'ยังไม่ได้ตั้งเวลาเปิด',
+    endChat: 'จบ',
+    endedTitle: 'จบการสนทนาแล้ว',
+    endedBody: 'บันทึกทุกอย่างแล้ว ทำต่อได้ทุกเมื่อ',
+    continueChat: 'ทำต่อ',
   },
   vi: {
     shopPhoto: 'Ảnh cửa hàng',
@@ -465,6 +522,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'Thực đơn sắp có. Trong lúc chờ, hãy trò chuyện với cửa hàng.',
     chatShop: 'Trò chuyện với cửa hàng',
     hoursNotSet: 'Chưa đặt giờ mở cửa',
+    endChat: 'Kết thúc',
+    endedTitle: 'Đã kết thúc trò chuyện',
+    endedBody: 'Mọi thứ đã được lưu. Tiếp tục bất cứ lúc nào.',
+    continueChat: 'Tiếp tục',
   },
   fil: {
     shopPhoto: 'Larawan ng tindahan',
@@ -496,6 +557,10 @@ const copy: Record<Locale, OnboardingCopy> = {
     menuSoon: 'Malapit na ang menu. Habang wala pa, makipag-chat sa tindahan.',
     chatShop: 'Makipag-chat sa tindahan',
     hoursNotSet: 'Wala pang oras',
+    endChat: 'Tapusin',
+    endedTitle: 'Tapos na ang usapan',
+    endedBody: 'Naka-save ang lahat. Ituloy kahit kailan.',
+    continueChat: 'Ituloy',
   },
 }
 

@@ -24,6 +24,7 @@ from pydantic import (
     model_validator,
 )
 
+from .business_understanding import BusinessUnderstanding
 from .community import Documents, SqliteDocuments
 from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
@@ -289,6 +290,12 @@ class NewShopDraft(BaseModel):
     skipped: list[NewShopStep] = Field(default_factory=list, max_length=3)
     photo: bool = False
     live_id: str | None = Field(default=None, max_length=64)
+    # What the coach understood about the business (business_understanding), and the keys of
+    # its extra questions already asked (answered or not known): each is asked at most once.
+    understanding: BusinessUnderstanding | None = None
+    asked_extra: list[Annotated[str, Field(pattern=r"^[a-z0-9_]{1,40}$")]] = Field(
+        default_factory=list, max_length=4
+    )
 
 
 class ProposalRequest(BaseModel):

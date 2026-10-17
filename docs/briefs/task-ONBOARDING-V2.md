@@ -35,6 +35,32 @@ commits, no AI trailers. Owner decisions (17 Oct 01:30, docs/OWNER-NOTES.md) are
 - Resume after any drop: SILENT resume: show the draft card + the next step's UI (e.g. the map), no
   spoken greeting; never re-ask a filled field; the owner continues when ready.
 
+## Smart, dynamic business understanding (owner 17 Oct 04:45: "if it is not smart there is no point")
+Today onboarding is a fixed script: NEW_SHOP_TOPICS in backend/app/agent.py (name → sell → location →
+hours → payment → delivery → halal), a food-shaped schema, FOOD/GENERIC templates in business_profile.py.
+A self-cleaning HELMET STATION got asked "is it halal?". Fix the approach, not the symptom:
+- Universal core only (name, what you offer, where, hours, photo). No payment/delivery/halal/veg/menu
+  questions in onboarding at all.
+- The agent first UNDERSTANDS the business: Gemini writes a structured profile from what the owner said
+  (kind: product / service / food / mixed; what it is in the owner's words; offerings; who it's for; what a
+  customer would want to know; which questions are relevant and which are NEVER relevant). Categories are
+  created only when needed: keep the owner's own words as the category; map to a search group only when
+  one clearly fits; never force a fixed list.
+- At most 1-2 extra questions, and only when the profile is confident they apply. When unsure, ask nothing
+  extra (a missed question is cheap, a wrong one breaks trust). Food details (halal/veg) only ever for food
+  businesses, later via the coach, never in onboarding.
+- Corrections like "nahi, yeh service hai" fix the kind silently.
+- END ON REQUEST: an end_conversation tool. "bas", "ho gaya", "band karo", "that's all", "stop", "bye" → a short
+  goodbye in the selected language, save everything, close the mic/session. If name+category+pin are not
+  known yet, still end; the draft is saved and the next visit resumes silently. Always-visible End button.
+- The offline fixture model must stop rewarding a fixed order: update it and the tests to the new behaviour.
+- EVAL (live gemini-3.8-live / text model, owner's gcloud, small cost): ~40 very different businesses in
+  Hindi and English, e.g. self-cleaning helmet station, tailor, mobile repair, tuition centre, flower seller,
+  tea stall, pharmacy, laundry, pet grooming, bike repair, beauty parlour, photocopy shop, home bakery,
+  yoga class, chai + mobile recharge (mixed), vague answers ("kuch bhi bechte hain"). Pass bar: ZERO
+  irrelevant questions, >= 95% correct kind, every "bas" ends the conversation. Save the eval as a re-runnable
+  script + results in docs/qa/onboarding-eval.md; any failure becomes a test case.
+
 ## Voice quality (Gemini-grade, ADK 2.12 RunConfig supports all of these; gemini-3.8-live)
 - session_resumption (transparent) + context_window_compression (sliding window); handle GoAway by
   reconnecting with the resumption handle; remove the 40-call cap (max_llm_calls) for live and replace it

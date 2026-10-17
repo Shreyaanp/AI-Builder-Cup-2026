@@ -1,4 +1,5 @@
 import { expect, test, type Page, type WebSocketRoute } from '@playwright/test'
+import { ASKED, askedTopics, FIRST_QUESTION, nextQuestion } from './newShopTopics.js'
 import { enter, localOnly } from './stories/support.js'
 
 // Owner report (17 Oct, Hindi): "connection lost", the same question asked again, the flow stuck,
@@ -104,13 +105,10 @@ async function typeTurn(page: Page, copy: Copy, text: string) {
   await page.getByRole('button', { name: copy.send!, exact: true }).click()
 }
 
-// The offline coach's questions (onboarding v2: never the menu, payment or delivery).
-const ASKED = {
-  name: 'What is your business called?',
-  kind: 'What do you sell?',
-  place: 'Are you at the shop right now?',
-  hours: 'What are your opening hours?',
-  photo: 'Can you take a photo of your shop?',
+// The offline coach asks what is missing in each owner's own order (no fixed script): after the
+// name, the next question is whichever of the kind and the place is left first.
+async function askedAfterName(page: Page, count: number) {
+  expect(['kind', 'place']).toContain(await nextQuestion(page, count))
 }
 
 test('Hindi: the socket dies right after an answer is saved; voice resumes silently at the next field', async ({
@@ -121,7 +119,7 @@ test('Hindi: the socket dies right after an answer is saved; voice resumes silen
   const live = await proxyLive(page)
   const copy = await hindiFlow(page)
   const log = page.getByRole('log')
-  await expect(log).toContainText(ASKED.name, { timeout: 20_000 })
+  await expect(log).toContainText(FIRST_QUESTION, { timeout: 20_000 })
   const first = live.sockets[0]!
   expect(first.url.searchParams.get('lang')).toBe('hi')
 
@@ -133,7 +131,10 @@ test('Hindi: the socket dies right after an answer is saved; voice resumes silen
   // The owner answers; the server saves it (the shop goes live), but the network drops before
   // the phone hears back.
   live.drop = true
-  expect(await owner(first, 'location: लाजपत नगर')).toContain(ASKED.hours)
+  const afterPlace = await owner(first, 'location: लाजपत नगर')
+  // Hours and the photo come in this conversation's own order.
+  const firstRest = afterPlace.includes(ASKED.hours) ? 'hours' : 'photo'
+  expect(afterPlace).toContain(ASKED[firstRest])
   await expect(card).not.toContainText('लाजपत नगर')
   first.route.close({ code: 4000, reason: 'Connection interrupted' })
   live.drop = false
@@ -162,8 +163,8 @@ test('Hindi: the socket dies right after an answer is saved; voice resumes silen
 
   // The conversation carries on from the next missing field: nothing already answered again.
   const next = await owner(second, 'मुझे नहीं पता।')
-  expect(next).toContain(ASKED.photo)
-  for (const done of [ASKED.name, ASKED.kind, ASKED.place, ASKED.hours])
+  expect(next).toContain(firstRest === 'hours' ? ASKED.photo : ASKED.hours)
+  for (const done of [ASKED.name, ASKED.kind, ASKED.place, ASKED[firstRest]])
     expect(next).not.toContain(done)
   const said = await log.innerText()
   for (const question of Object.values(ASKED))
@@ -180,7 +181,7 @@ test('Hindi: a long onboarding (18 turns) stays on one socket and never drops', 
   await quietMicrophone(page)
   const live = await proxyLive(page)
   await hindiFlow(page)
-  await expect(page.getByRole('log')).toContainText(ASKED.name, { timeout: 20_000 })
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION, { timeout: 20_000 })
   const socket = live.sockets[0]!
   const turns = [
     'name: शर्मा चाय',
@@ -214,10 +215,11 @@ test('Hindi: a reply lost mid-turn never leaves the coach thinking; Retry contin
   await quietMicrophone(page)
   const live = await proxyLive(page)
   const copy = await hindiFlow(page)
-  await expect(page.getByRole('log')).toContainText(ASKED.name, { timeout: 20_000 })
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION, { timeout: 20_000 })
   // The owner types while voice is on; the server's whole answer is lost on the way.
   await page.getByRole('button', { name: copy.typeInstead! }).click()
   live.drop = true
+  const asked = (await askedTopics(page)).length
   await typeTurn(page, copy, 'name: गुप्ता स्टोर')
   const orb = page.getByTestId('voice-orb').first()
   await expect(orb).toHaveAttribute('data-phase', 'thinking')
@@ -233,7 +235,7 @@ test('Hindi: a reply lost mid-turn never leaves the coach thinking; Retry contin
   await stalled.getByRole('button', { name: copy.retry! }).click()
   await expect(stalled).toHaveCount(0)
   await expect(page.getByTestId('shop-so-far')).toContainText('गुप्ता स्टोर')
-  await expect(page.getByRole('log')).toContainText(ASKED.kind)
+  await askedAfterName(page, asked)
 })
 
 test('Hindi: the 15-minute cap ends politely: typing works and a tap talks again', async ({
@@ -243,7 +245,7 @@ test('Hindi: the 15-minute cap ends politely: typing works and a tap talks again
   await quietMicrophone(page)
   const live = await proxyLive(page)
   const copy = await hindiFlow(page)
-  await expect(page.getByRole('log')).toContainText(ASKED.name, { timeout: 20_000 })
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION, { timeout: 20_000 })
   const first = live.sockets[0]!
   // The server's cap (simulated): a polite end, not a dropped connection.
   first.route.send(JSON.stringify({ kind: 'error', code: 'SESSION_CAP' }))
@@ -255,12 +257,49 @@ test('Hindi: the 15-minute cap ends politely: typing works and a tap talks again
   await page.waitForTimeout(1_500)
   expect(live.sockets).toHaveLength(1)
   // Typing works at once, in the same conversation.
+  const asked = (await askedTopics(page)).length
   await typeTurn(page, copy, 'name: वर्मा स्वीट्स')
   await expect(page.getByTestId('shop-so-far')).toContainText('वर्मा स्वीट्स')
-  await expect(page.getByRole('log')).toContainText(ASKED.kind)
+  await askedAfterName(page, asked)
   // A tap talks again (the same conversation, no new greeting).
   await alert.getByRole('button', { name: copy.talkAgain! }).click()
   await expect.poll(() => live.sockets.length, { timeout: 20_000 }).toBe(2)
   const sid = JSON.parse(first.received.find((m) => m.includes('"ready"'))!).session_id
   expect(live.sockets[1]!.url.searchParams.get('session_id')).toBe(sid)
+})
+
+test('Hindi: "बस" ends the voice conversation: a goodbye, the mic closes, no reconnect', async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  await quietMicrophone(page)
+  const live = await proxyLive(page)
+  const copy = await hindiFlow(page)
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION, { timeout: 20_000 })
+  const socket = live.sockets[0]!
+  await owner(socket, 'name: शर्मा चाय; category: चाय की दुकान')
+  // Before the place is known: the owner may still stop; everything said is kept.
+  const goodbye = await owner(socket, 'बस')
+  expect(goodbye).not.toContain('?')
+  expect(socket.received.join('\n')).toContain('"target":"end_conversation"')
+  const ended = page.getByTestId('conversation-ended')
+  await expect(ended).toContainText(copy.endedTitle!)
+  await expect(page.getByTestId('voice-alert')).toHaveCount(0)
+  // No reconnect loop and no error: the conversation rests until the owner continues.
+  await page.waitForTimeout(2_000)
+  expect(live.sockets).toHaveLength(1)
+  expect(socket.received.join('\n')).not.toContain('"kind":"error"')
+  await expect(page.getByTestId('shop-so-far')).toContainText('शर्मा चाय')
+  // Continue: the same conversation, silently, from the next missing field.
+  await ended.getByRole('button', { name: copy.continueChat! }).click()
+  await expect.poll(() => live.sockets.length, { timeout: 20_000 }).toBe(2)
+  const sid = JSON.parse(socket.received.find((m) => m.includes('"ready"'))!).session_id
+  expect(live.sockets[1]!.url.searchParams.get('session_id')).toBe(sid)
+  const second = live.sockets[1]!
+  await expect.poll(() => second.received.some((m) => m.includes('"ready"'))).toBe(true)
+  // Silent: no new greeting.
+  await page.waitForTimeout(1_500)
+  expect(second.received.filter((m) => m.includes('"kind":"reply"'))).toHaveLength(0)
+  const next = await owner(second, 'location: लाजपत नगर')
+  for (const done of [ASKED.name, ASKED.kind, ASKED.place]) expect(next).not.toContain(done)
 })

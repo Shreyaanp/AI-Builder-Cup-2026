@@ -1,4 +1,5 @@
 import { AxeBuilder } from '@axe-core/playwright'
+import { FIRST_QUESTION } from './newShopTopics.js'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, inChatFixtures, localOnly } from './stories/support.js'
 
@@ -23,7 +24,7 @@ async function open(page: Page, scheme: 'light' | 'dark') {
   await enter(page)
   await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
   await page.getByRole('button', { name: 'Let’s begin' }).click()
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 }
 
 const name = (state: string, scheme: string, isMobile: boolean) =>
@@ -83,7 +84,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.screenshot({ path: name('manual-3-items', scheme, isMobile) })
     // Back returns to the same conversation.
     await page.goBack()
-    await expect(page.getByRole('log')).toContainText('What is your business called?')
+    await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   })
 }
 
@@ -101,7 +102,7 @@ test('camera blocked: the alert explains, Try again and Upload instead work', as
   await alert.getByRole('button', { name: 'Try again' }).click()
   await expect(page.getByTestId('camera-alert')).toBeVisible()
   // The conversation is untouched and the voice controls are still there.
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   const chooser = page.waitForEvent('filechooser')
   await page.getByTestId('camera-alert').getByRole('button', { name: 'Upload instead' }).click()
   await chooser

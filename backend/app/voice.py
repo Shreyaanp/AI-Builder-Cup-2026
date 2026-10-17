@@ -56,6 +56,12 @@ def is_new_shop() -> bool:
     return bool(merchant and merchant.new_shop)
 
 
+def owner_ended() -> bool:
+    """The owner asked to stop ("bas", "that's all"): end_conversation ran this turn."""
+    merchant = current.get()
+    return bool(merchant and merchant.ended)
+
+
 class VoiceIdle(TimeoutError):
     pass
 
@@ -266,6 +272,10 @@ async def offline_voice(
                     stats.turns += 1
                     stats.last_question = question_in(said) or stats.last_question
                 await websocket.send_json(event.payload())
+            if owner_ended():
+                # The goodbye is out; everything is saved. The conversation ends here.
+                stats.end("owner_ended")
+                return
 
 
 class LiveLink:
@@ -384,6 +394,9 @@ async def gemini_voice(
                     unanswered.clear()
                     stats.last_question = question_in(said) or stats.last_question
                     said = ""
+                    if owner_ended():
+                        # The goodbye has been spoken; everything is saved.
+                        return "owner_ended"
             return "provider_closed"
         except Exception as failure:
             if extras and not received:
@@ -400,6 +413,9 @@ async def gemini_voice(
         while True:
             began = time.monotonic()
             ended = await one_connection()
+            if ended == "owner_ended":
+                stats.end(ended)
+                return
             if ended == "options_rejected":
                 # The same conversation, at once, on a plain connection (nothing was said yet).
                 fresh(resumed=False)
@@ -533,5 +549,8 @@ async def serve_voice(
                 if error:
                     await websocket.send_json(StreamEvent(kind="error", code=error).payload())
             with suppress(RuntimeError, WebSocketDisconnect):
+                if stats.reason == "owner_ended":
+                    # The app shows "Conversation ended" (no reconnect, no error).
+                    reason = "ENDED"
                 await websocket.close(code=code, reason=reason)
     return stats

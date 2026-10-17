@@ -10,6 +10,7 @@ import {
   CircularProgress,
   Divider,
   IconButton,
+  Paper,
   Stack,
   Tooltip,
   Typography,
@@ -240,6 +241,15 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const [error, setError] = useState('')
   // "Review my shop": always one tap away, whatever the coach is doing.
   const [reviewOpen, setReviewOpen] = useState(false)
+  // The owner ended the conversation ("bas", "that's all", or the End button): everything is
+  // saved; no nudges, no reconnect, until they tap Continue.
+  const [ended, setEndedState] = useState(false)
+  const endedRef = useRef(false)
+  const endAsked = useRef(false)
+  const setEnded = (next: boolean) => {
+    endedRef.current = next
+    setEndedState(next)
+  }
   // A turn that took too long (no event for TURN_IDLE_MS): what to send again on Retry.
   const [stalled, setStalled] = useState<string | null>(null)
   const turnTimer = useRef<number | undefined>(undefined)
@@ -345,7 +355,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   }
   function armSilence(extra = 0) {
     clearSilence()
-    if (nudges.current >= MAX_NUDGES) return
+    if (nudges.current >= MAX_NUDGES || endedRef.current) return
     silence.current = window.setTimeout(onSilence, SILENCE_MS + extra)
   }
   // No answer: the coach responds in the chat anyway (a suggestion or a default) and moves on.
@@ -611,6 +621,12 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     if (busyRef.current === 'reply') armTurn()
     if (event.kind === 'action' && event.data?.target === 'new_shop_step')
       showStep(String(event.data.step ?? ''))
+    if (event.kind === 'action' && event.data?.target === 'end_conversation') {
+      // The owner asked to stop: after the goodbye, the conversation rests.
+      endAsked.current = true
+      wantVoice.current = false
+      clearSilence()
+    }
     if (event.kind === 'ready' && event.session_id) session.current = event.session_id
     // Typed resume (the page reloaded mid-onboarding): the opening turn's answer is not shown or
     // spoken; the shop card and the next step's card carry on silently.
@@ -628,6 +644,9 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       setDraft(withServerDraft(draftRef.current, event.data as unknown as Draft))
     if (event.kind === 'interrupted') commitCoach(false)
     if (event.kind === 'turn_complete') commitCoach(true)
+    // Typed: the goodbye is in; the conversation ends here (voice ends on its own close).
+    if (event.kind === 'turn_complete' && endAsked.current && voiceRef.current?.state === 'idle')
+      setEnded(true)
   }
   /** The live voice: the same turn, its words and cards revealed in step with the audio. */
   function receiveVoice(event: CoachEvent) {
@@ -679,6 +698,10 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       // A turn sent while the session was (re)connecting, or one it never answered, goes now.
       if (pending.current) voiceRef.current?.sendText(pending.current, draftRef.current)
     },
+    onEnded: () => {
+      wantVoice.current = false
+      setEnded(true)
+    },
   })
   useEffect(() => {
     voiceRef.current = voice
@@ -691,6 +714,11 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   /** Any turn: in the live voice session when one is open, otherwise a streamed text turn. */
   async function say(message: string) {
     clearSilence()
+    // Typing always works: a word after the end simply carries the conversation on.
+    if (endedRef.current) {
+      endAsked.current = false
+      setEnded(false)
+    }
     setError('')
     setStalled(null)
     lastTurn.current = message
@@ -1015,6 +1043,33 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     if (voice.state !== 'idle') setTyping(false)
     else void retryVoice()
   }
+  /** End: the conversation stops at once (voice, typing, nudges); everything is saved. */
+  function endConversation() {
+    wantVoice.current = false
+    endAsked.current = false
+    clearSilence()
+    if (reveal.active()) addCoachLine(reveal.cut())
+    controller.current?.abort()
+    controller.current = null
+    pending.current = null
+    setStalled(null)
+    setLive('')
+    setBusy('idle')
+    stopSpeaking()
+    stopVoice()
+    setEnded(true)
+  }
+  /** Continue after an end: the same conversation, silently from where it stopped. */
+  function continueConversation() {
+    endAsked.current = false
+    setEnded(false)
+    nudges.current = 0
+    if (!typing && canVoice) {
+      wantVoice.current = true
+      // The same session: the coach carries on silently (no new greeting).
+      void voice.start(session.current, true)
+    }
+  }
   function endVoice() {
     wantVoice.current = false
     // The voice and its words stop together; only what was said stays.
@@ -1212,9 +1267,20 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         <Button
           startIcon={<ListChecks size={18} />}
           onClick={() => ws.setNewShopPhase('manual')}
-          sx={{ mr: -1, flexShrink: 0 }}
+          sx={{ flexShrink: 0 }}
         >
           {c.typeItIn}
+        </Button>
+        {/* Always there: the owner can end the conversation at any moment (all is saved). */}
+        <Button
+          color="inherit"
+          startIcon={<PhoneOff size={18} />}
+          data-testid="end-conversation"
+          onClick={endConversation}
+          disabled={ended}
+          sx={{ mr: -1, flexShrink: 0 }}
+        >
+          {o.endChat}
         </Button>
       </Box>
 
@@ -1302,6 +1368,26 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                 ) : (
                   <ChatLine key={line.id} line={line} />
                 ),
+              )}
+              {ended && (
+                <Box component="li" sx={{ ml: { xs: 0, sm: 6 } }}>
+                  <Paper
+                    variant="outlined"
+                    role="status"
+                    data-testid="conversation-ended"
+                    sx={{ p: 3, borderRadius: `${shape.lg}px` }}
+                  >
+                    <Typography variant="titleMedium" component="h3">
+                      {o.endedTitle}
+                    </Typography>
+                    <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 0.5 }}>
+                      {o.endedBody}
+                    </Typography>
+                    <Button variant="contained" onClick={continueConversation} sx={{ mt: 2 }}>
+                      {o.continueChat}
+                    </Button>
+                  </Paper>
+                </Box>
               )}
               {busy === 'reply' && !live && !voiceOn && (
                 <Box component="li" sx={{ pl: 6 }}>

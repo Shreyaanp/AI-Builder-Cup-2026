@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { FIRST_QUESTION } from './newShopTopics.js'
 import {
   confirm,
   createShopFromReview,
@@ -34,7 +35,7 @@ async function audit(page: Page, sheet = false) {
 async function begin(page: Page) {
   await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
   await page.getByRole('button', { name: 'Let’s begin' }).click()
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 }
 
 async function say(page: Page, text: string) {
@@ -59,7 +60,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0)
     await capture('1-hero')
     await page.getByRole('button', { name: 'Let’s begin' }).click()
-    await expect(page.getByRole('log')).toContainText('What is your business called?')
+    await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
     await say(page, 'name: Market Chai; category: Tea stall')
     await expect(page.getByTestId('shop-so-far')).toContainText('Market Chai')
     await expect(page.getByRole('log')).toContainText('Are you at the shop right now?')
@@ -107,7 +108,7 @@ test('a shop photo in the chat: the card shows it, no menu is read, the gallery 
   // Onboarding never takes a menu: the items wait for "Add your menu" on Today.
   await expect(card).not.toContainText('Chai')
   // A photo is not evidence of a name: the owner supplies it.
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   await say(page, 'name: Chai Corner; category: Tea stall; location: Indiranagar')
   await expect(page.getByTestId('shop-live')).toBeVisible()
   await createShopFromReview(page)
@@ -189,7 +190,7 @@ test('header plus opens a separate draft; cancel restores the current shop draft
   await page.getByRole('button', { name: /Choose shop/ }).click()
   await page.getByRole('menuitem', { name: 'New shop', exact: true }).click()
   await page.getByRole('button', { name: 'Let’s begin' }).click()
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   await say(page, 'name: Second Bakery; category: Bakery')
   await expect(page.getByTestId('shop-so-far')).toContainText('Second Bakery')
   // Without a place the new shop is not live yet: nothing is saved.

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { FIRST_QUESTION } from '../newShopTopics.js'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import zlib from 'node:zlib'
@@ -102,7 +103,7 @@ export async function openNewShopReview(
   if (!(await begin.isVisible()))
     await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
   await begin.click()
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   await page.getByLabel('Message', { exact: true }).fill(details)
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   const name = /name:s*([^;]+)/.exec(details)?.[1]?.trim()

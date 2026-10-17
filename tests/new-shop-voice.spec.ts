@@ -1,4 +1,5 @@
 import { AxeBuilder } from '@axe-core/playwright'
+import { FIRST_QUESTION } from './newShopTopics.js'
 import { expect, test, type Page, type WebSocketRoute } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
 
@@ -133,7 +134,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('button', { name: 'Let’s begin' }).click()
 
     // Listening: the coach greeted, the mic is on (not paused) and stays on.
-    await expect(page.getByRole('log')).toContainText('What is your business called?')
+    await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
     await expect(orb(page)).toHaveAttribute('data-phase', 'listening')
     const mic = page.getByRole('button', { name: 'Pause the mic' })
     await expect(mic).toHaveAttribute('aria-pressed', 'false')
@@ -221,7 +222,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(alert.getByRole('button', { name: 'Type instead' })).toBeVisible()
     await expect(alert.getByRole('button', { name: 'Close' })).toBeVisible()
     // The coach still opens the conversation, by text, and the composer is there.
-    await expect(page.getByRole('log')).toContainText('What is your business called?')
+    await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
     await expect(page.getByLabel('Message', { exact: true })).toBeVisible()
     await audit(page)
     const desktop = info.project.name === 'desktop' ? '-desktop' : ''
@@ -261,7 +262,7 @@ test('a microphone the browser already blocks is explained before any session op
   await openFlow(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByTestId('voice-alert')).toContainText('Your microphone is blocked')
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   await page.getByTestId('voice-alert').getByRole('button', { name: 'Close' }).click()
   await expect(page.getByTestId('voice-alert')).toHaveCount(0)
   await expect(page.getByLabel('Message', { exact: true })).toBeVisible()
@@ -277,7 +278,7 @@ test('session end: the app reconnects to the same conversation and it carries on
   await enter(page)
   await openFlow(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   await expect(orb(page)).toHaveAttribute('data-phase', 'listening')
   const first = live.ready[0]
   expect(first).toBeTruthy()
@@ -301,7 +302,7 @@ test('session end: the app reconnects to the same conversation and it carries on
   await page.getByLabel('Message', { exact: true }).fill('name: Night Owl Kopi; category: Cafe')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByTestId('shop-so-far')).toContainText('Night Owl Kopi')
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   const history = await (await page.request.get(`/api/v1/conversations/${first}`)).json()
   const said = history.messages.map((item: { text: string }) => item.text).join('\n')
   expect(said).toContain('Hello! I want to open a new shop.')
@@ -366,7 +367,7 @@ test('voice rate limit: the alert says how long to wait; voice unavailable: carr
   await expect(alert).toContainText(/Try again in [12] s/)
   const retry = alert.getByRole('button', { name: 'Try again' })
   await expect(retry).toBeDisabled()
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   await expect(retry).toBeEnabled({ timeout: 5_000 })
   mode = 'down'
   await retry.click()

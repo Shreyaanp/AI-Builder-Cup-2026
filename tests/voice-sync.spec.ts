@@ -1,3 +1,4 @@
+import { FIRST_QUESTION } from './newShopTopics.js'
 import { expect, test, type Page, type WebSocketRoute } from '@playwright/test'
 import { SpeechTimeline, snapToSentence, snapToWord } from '../src/features/v1/speechReveal.js'
 
@@ -349,7 +350,7 @@ test('onboarding: the camera opens when the coach says "photo", not when the tex
   await page.getByRole('button', { name: 'Agree and continue' }).click()
   await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
   await page.getByRole('button', { name: 'Let’s begin' }).click()
-  await expect(page.getByRole('log')).toContainText('What is your business called?')
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 
   const camera = page.getByTestId('camera-card')
   const said =

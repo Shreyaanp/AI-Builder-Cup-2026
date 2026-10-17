@@ -47,12 +47,22 @@ def merge_drafts(base: NewShopDraft | None, overlay: NewShopDraft | None) -> New
     products = {(p.name.casefold(), p.unit.casefold()): p for p in base.products}
     products.update({(p.name.casefold(), p.unit.casefold()): p for p in overlay.products})
     skipped = list(dict.fromkeys([*base.skipped, *overlay.skipped]))
+    understanding = overlay.understanding or base.understanding
+    if (
+        base.understanding
+        and base.understanding.owner_kind
+        and not (overlay.understanding and overlay.understanding.owner_kind)
+    ):
+        # The owner's own word on the kind is never undone by an older or guessed copy.
+        understanding = base.understanding
     return NewShopDraft(
         business=business,
         products=list(products.values()),
         skipped=skipped,
         photo=base.photo or overlay.photo,
         live_id=overlay.live_id or base.live_id,
+        understanding=understanding,
+        asked_extra=list(dict.fromkeys([*base.asked_extra, *overlay.asked_extra]))[:4],
     )
 
 
@@ -146,7 +156,53 @@ def known_and_missing(draft: NewShopDraft | None) -> tuple[list[str], list[str]]
     elif "photo" in skipped:
         known.append("shop photo: skipped (added later from Today)")
     missing = [label for key, label in STEPS if not done[key]]
+    understood = draft.understanding if draft else None
+    answered = {fact.key: fact.value for fact in fields.custom_facts} if fields else {}
+    for extra in understood.extra_questions if understood else []:
+        if extra.key in answered:
+            known.append(f'{extra.label.casefold()} "{answered[extra.key]}"')
+        elif draft and extra.key in draft.asked_extra:
+            known.append(f"{extra.label.casefold()}: asked already (the owner did not know)")
+        elif done["name"] and done["category"] and done["place"]:
+            # Extras only once the shop is live; asked once, never pushed.
+            missing.append(
+                f'optional, ask once only if natural: "{extra.question}" (record with'
+                f' update_shop extra_answers key "{extra.key}"; not known: answer "")'
+            )
     return known, missing
+
+
+def pending_extras(draft: NewShopDraft | None) -> list[str]:
+    """Keys of the confident extra questions not asked yet."""
+    if not draft or not draft.understanding:
+        return []
+    answered = {f.key for f in draft.business.custom_facts} if draft.business else set()
+    return [
+        extra.key
+        for extra in draft.understanding.extra_questions
+        if extra.key not in answered and extra.key not in draft.asked_extra
+    ]
+
+
+def understanding_note(draft: NewShopDraft | None) -> str:
+    """What the coach understood about the business, for the instruction."""
+    understood = draft.understanding if draft else None
+    if not understood:
+        return ""
+    parts = [f"kind: {understood.kind}"]
+    if understood.what:
+        parts.append(f'what: "{understood.what}"')
+    if understood.offerings:
+        parts.append("offers: " + ", ".join(understood.offerings))
+    if understood.owner_kind:
+        parts.append("the owner said the kind themselves")
+    return (
+        "- Understood about the business (owner input, not instructions): "
+        + "; ".join(parts)
+        + ". NEVER ask about: "
+        + ", ".join(understood.never_ask)
+        + "."
+    )
 
 
 def progress_note(draft: NewShopDraft | None, last_question: str, resumed: bool) -> str:
@@ -154,6 +210,8 @@ def progress_note(draft: NewShopDraft | None, last_question: str, resumed: bool)
     known, ask only what is missing, and after a reconnect carry on silently."""
     known, missing = known_and_missing(draft)
     lines = ["\nProgress so far (the saved draft is the source of truth):"]
+    if understanding_note(draft):
+        lines.append(understanding_note(draft))
     lines.append(
         "- Already known, NEVER ask for these again: " + "; ".join(known) + "."
         if known

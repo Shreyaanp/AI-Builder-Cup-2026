@@ -3,6 +3,7 @@ photo; one sentence can fill many fields; corrections replace silently; saves ar
 the shop goes live by itself once name + kind + place are known; hours and the photo can be
 skipped (never invented); "review my shop" never changes anything."""
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
@@ -10,7 +11,13 @@ from typing import Any
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
-from app.agent import NEW_SHOP_INSTRUCTION, make_agent, turn_instruction, ui_language
+from app.agent import (
+    NEW_SHOP_INSTRUCTION,
+    NEW_SHOP_TOPICS,
+    make_agent,
+    turn_instruction,
+    ui_language,
+)
 from app.coordinator import MerchantContext, current
 from app.main import create_app
 from app.merchant import BusinessFields, MerchantStore, NewShopDraft
@@ -19,6 +26,10 @@ from tests.test_discover import settings
 from tests.test_photos import join
 
 ORIGIN = {"origin": "http://127.0.0.1:3200"}
+
+
+def topic_of(reply: str) -> str | None:
+    return next((key for key, question, _ in NEW_SHOP_TOPICS if question in reply), None)
 
 
 def context(tmp_path: Path, draft: NewShopDraft | None = None) -> MerchantContext:
@@ -33,11 +44,14 @@ def context(tmp_path: Path, draft: NewShopDraft | None = None) -> MerchantContex
 
 
 def run(ctx: MerchantContext, **args: Any) -> dict[str, Any]:
-    token = current.set(ctx)
-    try:
-        return update_shop(**args)
-    finally:
-        current.reset(token)
+    async def call() -> dict[str, Any]:
+        token = current.set(ctx)
+        try:
+            return await update_shop(**args)
+        finally:
+            current.reset(token)
+
+    return asyncio.run(call())
 
 
 def test_one_sentence_fills_name_kind_and_place_and_the_shop_goes_live(tmp_path: Path) -> None:
@@ -109,7 +123,7 @@ def test_a_correction_replaces_the_field_silently_even_on_the_live_shop(tmp_path
 
 def test_hours_and_photo_can_be_skipped_and_are_never_invented(tmp_path: Path) -> None:
     ctx = context(tmp_path)
-    run(ctx, name="Raju Tailors", category="Tailoring", location="Lajpat Nagar")
+    run(ctx, name="Raju Kirana", category="kirana store", location="Lajpat Nagar")
     result = run(ctx, skip=["hours"])
     assert result["still_missing"] == [result["still_missing"][0]]
     assert result["still_missing"][0].startswith("a photo of the shop")
@@ -229,8 +243,11 @@ def test_hindi_onboarding_offline_end_to_end_never_repeats_and_never_asks_the_me
         assert not any(
             word in " ".join(asked).casefold() for word in ("menu", "pay", "delivery", "halal")
         )
-        assert "opening hours" in asked[1] and "photo" in asked[2] and "face check" in asked[3]
-        assert draft["skipped"] == ["hours", "photo"]
+        # No fixed order after the core: hours and the photo come in this conversation's own
+        # order, each once, then the face check.
+        assert {topic_of(asked[1]), topic_of(asked[2])} == {"hours", "photo"}
+        assert "face check" in asked[3]
+        assert sorted(draft["skipped"]) == ["hours", "photo"]
         shops = client.get("/api/v1/businesses").json()
         assert len(shops) == 1 and shops[0]["id"] == draft["live_id"]
 

@@ -19,11 +19,12 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 from sse_starlette import EventSourceResponse, ServerSentEvent
 
-from . import coordinator
+from . import business_understanding, coordinator
 from .auth import IdentityService, Principal
 from .boundary import RequestBoundary
 from .brief import BriefWriter, WeatherService
 from .business_profile import QuestionPlanner
+from .business_understanding import BusinessUnderstander
 from .community import community_service
 from .community_routes import router as community_router
 from .contracts import CoachTurn, NewShopVoiceContext, StreamEvent
@@ -169,6 +170,7 @@ def create_app(
             else None
         )
         coordinator.question_planner = QuestionPlanner(settings)
+        business_understanding.understander = BusinessUnderstander(settings)
         coordinator.supplier_generator = SupplierGenerator(settings)
         app.state.world_generator = WorldGenerator(settings)
         app.state.column_mapper = ColumnMapper(settings)
@@ -213,6 +215,8 @@ def create_app(
         await app.state.world_generator.close()
         if coordinator.question_planner is not None:
             await coordinator.question_planner.close()
+        if business_understanding.understander is not None:
+            await business_understanding.understander.close()
             await app.state.maps.close()
             await anyio.to_thread.run_sync(app.state.rate_limiter.close)
             identity.close()

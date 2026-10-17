@@ -7,16 +7,39 @@ paas"), so update_shop takes every field at once; a correction simply replaces t
 is idempotent: the same answer twice (or a tool call replayed after a reconnect) changes nothing.
 """
 
+import asyncio
 import threading
 from typing import Any, Literal
 
+import anyio
 import structlog
 from fastapi import HTTPException
-from pydantic import ValidationError
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
-from .coordinator import MerchantContext, _card, _propose_shop, current
-from .merchant import BusinessFields, DayHours, NewShopDraft, NewShopStep, ProposalRequest
+from .business_understanding import (
+    KINDS,
+    BusinessUnderstanding,
+    get_understander,
+    keep_owner_kind,
+    with_owner_kind,
+)
+from .coordinator import FactInput, MerchantContext, _card, _propose_shop, current
+from .merchant import (
+    BusinessFields,
+    CustomFact,
+    DayHours,
+    NewShopDraft,
+    NewShopStep,
+    ProposalRequest,
+)
 from .new_shop_resume import known_and_missing, ready_to_go_live
+from .vendor_profile import (
+    BusinessTypeProfile,
+    FoodAttributes,
+    RetailAttributes,
+    ServiceAttributes,
+    infer_profile,
+)
 
 log = structlog.get_logger()
 
@@ -38,26 +61,98 @@ def progress(draft: NewShopDraft | None) -> dict[str, Any]:
     return result
 
 
-def update_shop(
+class ExtraAnswer(BaseModel):
+    """The owner's answer to one of the business's extra questions."""
+
+    key: str = Field(description="The extra question's key from still_missing")
+    answer: str = Field(default="", description='In the owner\'s words; "" when they do not know')
+
+
+# How long a tool waits for the business profile; a slower one is picked up on the next answer.
+UNDERSTAND_SECONDS = 2.5
+
+
+def words(category: str, description: str) -> str:
+    return ". ".join(part for part in (category, description) if part.strip())
+
+
+def owner_words(draft: NewShopDraft | None) -> str:
+    """What the owner said the business is (never its name: "Tea Tree Tailors" is no tea)."""
+    fields = draft.business if draft else None
+    return words(fields.category, fields.description) if fields else ""
+
+
+async def understand(ctx: MerchantContext, said: str, wait: float = UNDERSTAND_SECONDS) -> None:
+    """Bring the draft's business profile up to date with what the owner said (the owner's own
+    word on the kind always wins). Never blocks a reply for long, never fails a save."""
+    draft = ctx.new_shop_draft or NewShopDraft()
+    if not said:
+        return
+    reader = get_understander()
+    fresh = reader.cached(said)
+    if fresh is None:
+        try:
+            fresh = await asyncio.wait_for(asyncio.shield(reader.understand(said)), wait)
+        except TimeoutError:
+            log.info("business_understanding_pending")
+            return
+        except Exception as failure:  # noqa: BLE001 - the profile is an aid, never a blocker
+            log.warning("business_understanding_failed", reason=str(failure)[:200])
+            return
+    understood = keep_owner_kind(fresh, draft.understanding)
+    if understood != draft.understanding:
+        ctx.new_shop_draft = draft.model_copy(update={"understanding": understood})
+        log.info(
+            "business_understood",
+            kind=understood.kind,
+            extras=len(understood.extra_questions),
+            group=understood.search_group,
+        )
+
+
+def shop_profile(understood: BusinessUnderstanding | None, category: str) -> BusinessTypeProfile:
+    """The saved shop's type profile from what the coach understood. Food details stay unknown
+    (never halal-relevant from onboarding); a mixed or unclear business stays generic."""
+    if not understood or understood.kind in {"unknown", "mixed"}:
+        return BusinessTypeProfile()
+    guess = infer_profile(category, understood.what)
+    if understood.kind == "food":
+        return BusinessTypeProfile(kind="food", subtype=category[:80], food=FoodAttributes())
+    if understood.kind == "service":
+        if guess.kind in {"tailor", "salon", "service"}:
+            return guess
+        return BusinessTypeProfile(kind="service", service=ServiceAttributes())
+    if guess.kind in {"retail", "grocer"}:
+        return guess
+    return BusinessTypeProfile(kind="retail", retail=RetailAttributes())
+
+
+async def update_shop(
     name: str = "",
     category: str = "",
     location: str = "",
     hours: str = "",
     weekly_hours: list[DayHours] | None = None,
     description: str = "",
+    kind: str = "",
+    extra_answers: list[ExtraAnswer] | None = None,
     skip: list[NewShopStep] | None = None,
 ) -> dict[str, Any]:
     """Record what the owner just said about their new shop, all fields at once, silently (in
     the same turn as your reply). Pass ONLY the fields they said; one sentence can give several.
-    name: the shop's real name, only when clearly a name (never invent one). category: what they
-    sell, in a few words ("chai and samosa", "tailoring"). location: the area or street and a
-    landmark, only when they are not at the shop or GPS was refused. hours: as said
-    ("subah 6 se raat 10, Sunday band"), and weekly_hours: one record per weekday (day:
-    mon..sun, closed: true, or open/close HH:MM; overnight closing belongs to the opening day).
-    description: one short line for customers from what they told you. A correction ("nahi,
-    Lakshmi Chai Point") is just a new value: pass it, do not confirm it aloud. skip: steps the
-    owner put off or does not know ("pata nahi", "baad mein", silence twice): hours, photo, face.
-    The same answer twice changes nothing. Never pass prices or menu items here."""
+    name: the shop's real name, only when clearly a name (never invent one). category: what
+    they offer, in THEIR words, a few words ("chai aur samosa", "silai ka kaam", "self-cleaning
+    helmet station"). location: the area or street and a landmark, only when they are not at the
+    shop or GPS was refused. hours: as said ("subah 6 se raat 10, Sunday band"), and
+    weekly_hours: one record per weekday (day: mon..sun, closed: true, or open/close HH:MM;
+    overnight closing belongs to the opening day). description: one short line for customers
+    from what they told you. kind: only when the owner says what kind of business it is or
+    corrects it ("nahi, yeh service hai"): product, service, food or mixed. extra_answers: the
+    answer to an extra question listed in still_missing ({key, answer}; answer "" when they do
+    not know). A correction ("nahi, Lakshmi Chai Point") is just a new value: pass it, do not
+    confirm it aloud. skip: steps the owner put off or does not know ("pata nahi", "baad
+    mein", silence twice): hours, photo, face. The same answer twice changes nothing. Never pass
+    prices or menu items here."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}
@@ -73,9 +168,45 @@ def update_shop(
         "hours": hours,
         "description": description,
     }
+    draft = ctx.new_shop_draft or NewShopDraft()
+    if kind.strip().casefold() in KINDS:
+        owner_kind = with_owner_kind(draft.understanding, kind.strip().casefold())
+        if owner_kind != draft.understanding:
+            ctx.new_shop_draft = draft = draft.model_copy(update={"understanding": owner_kind})
+    # Extra answers: each question is asked once; an answer becomes a customer fact.
+    questions = (
+        {q.key: q for q in draft.understanding.extra_questions} if draft.understanding else {}
+    )
+    facts: list[FactInput] = []
+    asked: list[str] = []
+    # The model's arguments arrive as plain JSON objects (or models, from tests and fixtures).
+    for extra in TypeAdapter(list[ExtraAnswer]).validate_python(
+        [e.model_dump() if isinstance(e, BaseModel) else e for e in extra_answers or []]
+    ):
+        question = questions.get(extra.key.strip())
+        if not question or question.key in draft.asked_extra:
+            continue
+        asked.append(question.key)
+        if extra.answer.strip():
+            facts.append(
+                FactInput(key=question.key, label=question.label, value=extra.answer.strip()[:200])
+            )
+    if asked:
+        ctx.new_shop_draft = draft = draft.model_copy(
+            update={"asked_extra": list(dict.fromkeys([*draft.asked_extra, *asked]))[:4]}
+        )
     changed = any((value or "").strip() for value in given.values()) or weekly_hours is not None
     result: dict[str, Any] = {"status": "saved"}
     if changed:
+        fields = draft.business
+        said = words(
+            category.strip() or (fields.category if fields else ""),
+            description.strip() or (fields.description if fields else ""),
+        )
+        if said != owner_words(draft):
+            # What the business is, understood before it is saved (its type profile follows).
+            await understand(ctx, said)
+            draft = ctx.new_shop_draft or draft
         result = _propose_shop(
             name=name,
             category=category,
@@ -83,10 +214,29 @@ def update_shop(
             hours=hours,
             weekly_hours=weekly_hours,
             description=description,
+            profile=shop_profile(
+                draft.understanding,
+                category.strip() or (fields.category if fields else ""),
+            )
+            if draft.understanding
+            else None,
         )
         if result.get("status") not in {"needs_review"}:
             return result
         result = {"status": "saved", "proposal_id": result.get("proposal_id")}
+    elif draft.understanding is None and owner_words(draft):
+        await understand(ctx, owner_words(draft), wait=0)
+    current_draft = ctx.new_shop_draft
+    if facts and current_draft and current_draft.business:
+        # The answers to the business's own questions: customer facts of the shop (the owner's
+        # words), saved with the draft and on the live shop.
+        business = current_draft.business
+        merged = {fact.key: fact for fact in business.custom_facts}
+        merged.update({f.key: CustomFact(key=f.key, label=f.label, value=f.value) for f in facts})
+        ctx.new_shop_draft = current_draft.model_copy(
+            update={"business": business.model_copy(update={"custom_facts": list(merged.values())})}
+        )
+        changed = True
     draft = ctx.new_shop_draft or NewShopDraft()
     later = [
         step
@@ -95,12 +245,34 @@ def update_shop(
     ]
     if later:
         ctx.new_shop_draft = draft.model_copy(update={"skipped": [*draft.skipped, *later]})
-    if not changed and not later:
+    if not changed and not later and not asked and not kind:
         result["note"] = "Nothing new to record."
-    went_live = go_live(ctx)
+    went_live = await anyio.to_thread.run_sync(go_live, ctx)
     if went_live:
         result["went_live"] = True
     return {**result, **progress(ctx.new_shop_draft)}
+
+
+# Owner words that end the conversation ("bas", "ho gaya", "that's all", "bye").
+END_NOTE = (
+    'Say ONE short, warm goodbye in the reply language (a few words, e.g. "theek hai, phir'
+    ' milte hain"), nothing else, no question. Everything is saved; the app closes the'
+    " conversation and the owner continues from here next time."
+)
+
+
+def end_conversation() -> dict[str, Any]:
+    """End the conversation now because the owner asked to stop ("bas", "ho gaya", "band
+    karo", "that's all", "stop", "bye", "baad mein baat karte hain"). Call it at once, even if
+    the name, kind or place are not known yet: everything said is already saved and the next
+    visit carries on silently. Then say one short goodbye and nothing else."""
+    ctx = current.get()
+    if not ctx:
+        return {"status": "unavailable"}
+    ctx.ended = True
+    card_id = _card(ctx, "action", {"target": "end_conversation"})
+    log.info("conversation_end_requested", new_shop=ctx.new_shop)
+    return {"status": "ended", "card_id": card_id, "instruction": END_NOTE}
 
 
 # One owner's shop goes live once, even when a tool call and the app's draft update race.
