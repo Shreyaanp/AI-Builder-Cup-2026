@@ -619,6 +619,7 @@ export default function Discover({
           titleId="customer-map-title"
           title={t.map}
           dismissInActions
+          ownsHistory={false}
           actions={<Button onClick={() => setMap(false)}>{t.list}</Button>}
         >
           <Suspense fallback={<Typography role="status">{t.loading}</Typography>}>

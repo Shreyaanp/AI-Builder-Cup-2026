@@ -33,7 +33,7 @@ export function ShopStamp({
     return params.get('source') === 'qr' && key ? key : null
   })
   const [key, setKey] = useState(scan ?? '')
-  const [open, setOpen] = useState(scan !== null)
+  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   useEffect(() => {
     if (scan === null) return
@@ -43,6 +43,9 @@ export function ShopStamp({
       url.searchParams.delete('source')
       url.searchParams.delete('k')
       history.replaceState(history.state, '', url)
+      // The moment is a sheet with its own history entry: open it on the cleaned address, so
+      // closing it never lands back on a link with the spent key.
+      setOpen(true)
     }, 0)
     return () => clearTimeout(timer)
   }, [scan])
