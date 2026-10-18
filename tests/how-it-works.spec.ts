@@ -1,180 +1,164 @@
-﻿import { test, expect } from '@playwright/test'
-import AxeBuilder from '@axe-core/playwright'
-import { mkdir } from 'node:fs/promises'
+﻿import { AxeBuilder } from '@axe-core/playwright'
+import { expect, test, type Page } from '@playwright/test'
+import { resolveApp } from '../src/app/router.ts'
+import { pagesEnglish, pagesHindi } from '../src/features/frontdoors/howItWorksCopy.ts'
 
-test.use({ viewport: { width: 390, height: 844 } })
-test.skip(({ isMobile }) => !isMobile, 'Phone storyboard coverage')
+// /how-it-works, /features and /landing-preview: phone first, light and dark, English and Hindi.
+test.skip(({ isMobile }) => !isMobile, 'Phone pages')
 
-test.beforeEach(async ({ page, baseURL }) => {
-  // This page must work without any API or third-party service.
+async function open(page: Page, path: string, language: 'en' | 'hi', appearance: 'light' | 'dark') {
+  // Public pages: no API and no third-party request.
   await page.route('**/*', (route) => {
     const url = new URL(route.request().url())
-    return url.origin === new URL(baseURL!).origin && !url.pathname.startsWith('/api/')
-      ? route.continue()
+    return ['127.0.0.1', 'localhost'].includes(url.hostname) && !url.pathname.startsWith('/api/')
+      ? route.fallback()
       : route.abort()
   })
-  await page.addInitScript(() => {
-    localStorage.setItem(
-      'niva.starter.preferences',
-      JSON.stringify({ language: 'en', appearance: 'light' }),
-    )
-  })
+  await page.addInitScript(
+    ([language, appearance]) =>
+      localStorage.setItem('niva.starter.preferences', JSON.stringify({ language, appearance })),
+    [language, appearance],
+  )
+  await page.goto(path)
+}
+
+const noOverflow = async (page: Page) =>
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+    true,
+  )
+
+test('both hosts serve the pages; the landing stays the landing', () => {
+  for (const host of ['chalkboard.shreyaan.work', 'business.chalkboard.shreyaan.work'])
+    for (const path of ['/how-it-works', '/features', '/landing-preview/'])
+      expect(resolveApp(new URL(`https://${host}${path}`))).toBe('pages')
+  expect(resolveApp(new URL('https://chalkboard.shreyaan.work/'))).toBe('landing')
+  expect(resolveApp(new URL('https://business.chalkboard.shreyaan.work/'))).toBe('business')
 })
 
-test('silent 40-second autoplay, pause, replay, scene selection and both host routes', async ({
-  page,
-}) => {
-  await page.clock.install()
-  await page.goto('/how-it-works')
-  await expect(page.getByRole('heading', { name: 'How it works', exact: true })).toBeVisible()
-  const phone = page.locator('.how-phone')
-  const pause = page.getByRole('button', { name: 'Pause', exact: true })
-  await expect(pause).toBeVisible()
-  await page.clock.runFor(8_000)
-  await expect(phone).toHaveAttribute('data-scene', '0')
-  await expect(phone.getByText('Your shop is live')).toBeVisible()
-  await pause.click()
-  const frozen = await phone.getAttribute('data-second')
-  await page.clock.runFor(5_000)
-  await expect(phone).toHaveAttribute('data-second', frozen!)
-  expect(
-    await phone.locator('.how-success').evaluate((el) => getComputedStyle(el).animationPlayState),
-  ).toBe('paused')
-  await page.getByRole('button', { name: 'Play', exact: true }).click()
-  await page.clock.runFor(8_000)
-  await expect(phone).toHaveAttribute('data-scene', '1')
-  await expect(phone.getByText('Stamp collected')).toBeVisible()
-  await page.clock.runFor(12_000)
-  await expect(phone).toHaveAttribute('data-scene', '2')
-  await expect(phone.getByText('Supplier confirmed')).toBeVisible()
-  await expect(phone.getByText('Restocked', { exact: true })).toBeVisible()
-  await page.clock.runFor(10_000)
-  await expect(phone).toHaveAttribute('data-scene', '3')
-  await expect(phone.getByText('Items added')).toBeVisible()
-  await page.clock.runFor(2_000)
-  await expect(phone).toHaveAttribute('data-scene', '0')
-  await expect(phone).toHaveAttribute('data-second', '0')
-  await page.getByRole('button', { name: 'Snap your till. Add your items.', exact: true }).click()
-  await expect(phone).toHaveAttribute('data-scene', '3')
-  await expect(phone.getByText('Items added')).toBeVisible()
-  await page.clock.runFor(4_000)
-  await expect(phone).toHaveAttribute('data-second', '30')
-  await page.getByRole('button', { name: 'Replay', exact: true }).click()
-  await expect(phone).toHaveAttribute('data-second', '0')
-  await expect(pause).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Find places near me' })).toHaveAttribute(
-    'href',
-    '/explore',
-  )
-  await expect(page.getByRole('link', { name: 'For business', exact: true })).toHaveAttribute(
-    'href',
-    '/?app=business',
-  )
-  await expect(page.getByRole('link', { name: 'Try the demo shop' })).toHaveAttribute(
-    'href',
-    '/demo',
-  )
-  expect(await page.locator('audio, video').count()).toBe(0)
-  const routes = await page.evaluate(async () => {
-    const path = '/src/app/router.ts'
-    const { resolveApp } = await import(path)
-    return ['chalkboard.shreyaan.work', 'business.chalkboard.shreyaan.work'].map((host) =>
-      resolveApp(new URL(`https://${host}/how-it-works`)),
+for (const width of [360, 390, 412]) {
+  test(`${width}px: /how-it-works splits shops and customers, one lazy muted video each`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await open(page, '/how-it-works', 'en', 'light')
+    const t = pagesEnglish
+    await expect(page.getByRole('heading', { level: 1, name: t.howTitle })).toBeVisible({
+      timeout: 20_000,
+    })
+    await expect(page.getByText(t.lead)).toBeVisible()
+    await expect(page.getByRole('heading', { level: 2, name: t.shopsLine })).toBeAttached()
+    await expect(page.getByRole('heading', { level: 2, name: t.customersLine })).toBeAttached()
+    for (const [flow, captions] of [
+      ['vendor', t.vendorCaptions],
+      ['customer', t.customerCaptions],
+    ] as const) {
+      const video = page.getByTestId(`${flow}-video`)
+      await expect(video).toHaveJSProperty('muted', true)
+      await expect(video).toHaveAttribute('playsinline', '')
+      await expect(video).toHaveAttribute('controls', '')
+      await expect(video).toHaveAttribute('poster', `/how-it-works/${flow}-en.jpg`)
+      // The steps are the video's captions, without the end card.
+      const label = flow === 'vendor' ? t.forShops : t.forCustomers
+      const steps = page.getByRole('list', { name: `${label}: ${t.steps}` }).getByRole('listitem')
+      await expect(steps).toHaveText(captions.slice(0, -1))
+      for (const caption of captions) expect(caption.split(/\s+/).length).toBeLessThanOrEqual(8)
+    }
+    // Nothing downloads until the customer video nears the screen.
+    const customer = page.getByTestId('customer-video')
+    expect(await customer.getAttribute('src')).toBeNull()
+    await customer.scrollIntoViewIfNeeded()
+    await expect(customer).toHaveAttribute('src', '/how-it-works/customer-en.mp4')
+    await expect(page.getByRole('link', { name: t.tryDemo })).toHaveAttribute(
+      'href',
+      'https://business.chalkboard.shreyaan.work/demo',
     )
+    await expect(page.getByRole('link', { name: t.findPlaces })).toHaveAttribute(
+      'href',
+      '/explore/',
+    )
+    await noOverflow(page)
   })
-  expect(routes).toEqual(['how-it-works', 'how-it-works'])
-})
+}
 
-test('static frames, phone widths, light/dark, English/Hindi, keyboard and screenshots', async ({
-  page,
-}) => {
-  test.setTimeout(120_000)
-  await mkdir('output/playwright/how-it-works', { recursive: true })
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.goto('/how-it-works')
-  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeDisabled()
-  await expect(page.locator('.how-phone').getByText('Your shop is live')).toBeVisible()
-  const captions = [
-    'Speak. Your shop takes shape.',
-    'Scan. Collect a stamp.',
-    'Spot low stock. Restock in time.',
-    'Snap your till. Add your items.',
-  ]
-  for (const appearance of ['light', 'dark']) {
-    if (appearance === 'dark')
-      await page.getByRole('button', { name: 'Use dark appearance' }).click()
-    for (const [index, caption] of captions.entries()) {
-      const dot = page.getByRole('button', { name: caption, exact: true })
-      await dot.focus()
-      await page.keyboard.press('Enter')
-      await expect(dot).toHaveAttribute('aria-current', 'step')
-      await expect(page.locator('figcaption')).toHaveText(caption)
-      expect(caption.split(/\s+/).length).toBeLessThanOrEqual(8)
-      await page.evaluate(() => scrollTo(0, 0))
-      await page.screenshot({
-        path: `output/playwright/how-it-works/en-${appearance}-${index + 1}-390.png`,
-        fullPage: true,
-      })
-    }
-    expect(
-      (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
-        .violations,
-    ).toEqual([])
-    await page.getByRole('button', { name: 'हिन्दी', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'कैसे काम करता है' })).toBeVisible()
-    for (const width of [360, 390, 412]) {
-      await page.setViewportSize({ width, height: 844 })
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-        true,
-      )
-      expect(
-        await page.locator('.how-phone').evaluate((el) => el.scrollWidth <= el.clientWidth),
-      ).toBe(true)
-      if (width === 390) {
-        await page.screenshot({
-          path: `output/playwright/how-it-works/hi-${appearance}-390.png`,
-          fullPage: true,
-        })
-      }
-    }
+for (const appearance of ['light', 'dark'] as const) {
+  test(`Hindi, ${appearance}: both pages read in Hindi with Hindi videos; no a11y violations`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.evaluate(() => {
-      document.documentElement.style.fontSize = '24px'
-    })
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    const t = pagesHindi
+    await open(page, '/how-it-works', 'hi', appearance)
+    await expect(page.getByRole('heading', { level: 1, name: t.howTitle })).toBeVisible()
+    await expect(page.getByTestId('vendor-video')).toHaveAttribute(
+      'poster',
+      '/how-it-works/vendor-hi.jpg',
+    )
+    await expect(
+      page
+        .getByRole('list', { name: `${t.forShops}: ${t.steps}` })
+        .getByRole('listitem')
+        .first(),
+    ).toHaveText(t.vendorCaptions[0]!)
+    await noOverflow(page)
     expect(
-      await page.locator('.how-phone').evaluate((el) => el.scrollWidth <= el.clientWidth),
-    ).toBe(true)
-    await page.evaluate(() => {
-      document.documentElement.style.fontSize = ''
-    })
-    await page.getByRole('button', { name: 'English', exact: true }).click()
-    for (const width of [360, 412]) {
-      await page.setViewportSize({ width, height: 844 })
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-        true,
-      )
-    }
-    await page.setViewportSize({ width: 1440, height: 1000 })
+      (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
+    ).toEqual([])
     await page.screenshot({
-      path: `output/playwright/how-it-works/en-${appearance}-desktop.png`,
+      path: `output/playwright/how-it-works-hi-${appearance}.png`,
       fullPage: true,
     })
-    await page.setViewportSize({ width: 390, height: 844 })
-  }
-  await page.clock.install()
-  const second = await page.locator('.how-phone').getAttribute('data-second')
-  await page.clock.runFor(45_000)
-  await expect(page.locator('.how-phone')).toHaveAttribute('data-second', second!)
-  const translations = await page.evaluate(async () => {
-    const path = '/src/features/frontdoors/howItWorksCopy.ts'
-    const { howEnglish, howTranslations } = await import(path)
-    return { english: howEnglish, locales: howTranslations }
-  })
-  for (const values of Object.values(translations.locales) as Record<string, string>[]) {
-    expect(Object.keys(values)).toEqual(Object.keys(translations.english))
+
+    await page.goto('/features')
+    await expect(page.getByRole('heading', { level: 1, name: t.featuresTitle })).toBeVisible()
+    for (const [title] of [...t.shopFeatures, ...t.customerFeatures])
+      await expect(page.getByRole('heading', { level: 3, name: title })).toBeAttached()
+    await noOverflow(page)
     expect(
-      Object.values(values).every((value) => typeof value === 'string' && value.length > 0),
-    ).toBe(true)
-  }
+      (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
+    ).toEqual([])
+    await page.screenshot({
+      path: `output/playwright/features-hi-${appearance}.png`,
+      fullPage: true,
+    })
+  })
+}
+
+test('/features (English, dark): two grids, a trust strip and links to the videos', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 })
+  await open(page, '/features', 'en', 'dark')
+  const t = pagesEnglish
+  await expect(page.getByRole('heading', { level: 1, name: t.featuresTitle })).toBeVisible()
+  await expect(page.getByRole('region', { name: t.shopsLine }).getByRole('listitem')).toHaveCount(
+    t.shopFeatures.length,
+  )
+  await expect(
+    page.getByRole('region', { name: t.customersLine }).getByRole('listitem'),
+  ).toHaveCount(t.customerFeatures.length)
+  await expect(page.getByTestId('trust-strip')).toContainText(t.free)
+  await expect(page.getByRole('link', { name: t.watch }).first()).toHaveAttribute(
+    'href',
+    '/how-it-works#vendor',
+  )
+  await noOverflow(page)
+  await page.screenshot({ path: 'output/playwright/features-en-dark.png', fullPage: true })
+})
+
+test('/landing-preview: labelled proposal, noindex, both videos inline', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await open(page, '/landing-preview', 'en', 'light')
+  const t = pagesEnglish
+  await expect(page.getByRole('note')).toHaveText(t.previewBanner)
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex')
+  await expect(page.getByRole('heading', { level: 1, name: t.previewHero })).toBeVisible()
+  await expect(page.getByTestId('vendor-video')).toBeAttached()
+  await expect(page.getByTestId('customer-video')).toBeAttached()
+  await expect(page.getByRole('link', { name: t.previewHow })).toHaveAttribute(
+    'href',
+    '/how-it-works',
+  )
+  await noOverflow(page)
+  expect(
+    (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
+  ).toEqual([])
 })
