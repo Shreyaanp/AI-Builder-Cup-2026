@@ -33,6 +33,7 @@ import { isLanguagePref, LOCALE_NAMES, LOCALES, systemLocale } from '../../../i1
 import { usePreferences, usePreferencesDispatch } from '../../../state/hooks'
 import { TourMenuButton } from '../../tour/Tour'
 import { Sheet } from '../Sheet'
+import { ReminderSettings } from '../ReminderSettings'
 import { useCopy } from '../strings'
 import { useTabsCopy } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
@@ -172,6 +173,7 @@ export function YouScreen() {
         <TrustCard compact />
 
         <Group title={t.settings}>
+          <ReminderSettings />
           <Box sx={{ px: 3, py: 2 }}>
             {/* Default follows the phone's language setting; owners can pin a language here. */}
             <TextField
