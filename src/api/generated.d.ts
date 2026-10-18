@@ -2862,6 +2862,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status */
+        get: operations["status_api_v1_reminders_get"];
+        /** Subscribe */
+        put: operations["subscribe_api_v1_reminders_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reminders/{sid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Unsubscribe */
+        delete: operations["unsubscribe_api_v1_reminders__sid__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internal/reminders/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send Reminders */
+        post: operations["send_reminders_api_v1_internal_reminders_send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/face/warmup": {
         parameters: {
             query?: never;
@@ -5371,6 +5423,13 @@ export interface components {
             /** Returning */
             returning?: number | null;
         };
+        /** PushKeys */
+        PushKeys: {
+            /** P256Dh */
+            p256dh: string;
+            /** Auth */
+            auth: string;
+        };
         /** QrKey */
         QrKey: {
             /** Key */
@@ -5521,6 +5580,35 @@ export interface components {
              * @default
              */
             note: string;
+        };
+        /** ReminderInput */
+        ReminderInput: {
+            /** Business Id */
+            business_id: string;
+            /**
+             * Locale
+             * @default en
+             * @enum {string}
+             */
+            locale: "en" | "hi";
+            subscription: components["schemas"]["Subscription"];
+        };
+        /** ReminderResult */
+        ReminderResult: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+        };
+        /** ReminderStatus */
+        ReminderStatus: {
+            /** Enabled */
+            enabled: boolean;
+            /** Public Key */
+            public_key: string;
+            /** Subscriptions */
+            subscriptions: string[];
         };
         /** ReorderBody */
         ReorderBody: {
@@ -5792,6 +5880,24 @@ export interface components {
             version: number;
             /** Doc Id */
             doc_id: string;
+        };
+        /** SendResult */
+        SendResult: {
+            /**
+             * Sent
+             * @default 0
+             */
+            sent: number;
+            /**
+             * Expired
+             * @default 0
+             */
+            expired: number;
+            /**
+             * Failed
+             * @default 0
+             */
+            failed: number;
         };
         /** ServiceAttributes */
         ServiceAttributes: {
@@ -6366,6 +6472,14 @@ export interface components {
             row: ("done" | "rain" | "frozen" | "missed" | "current")[];
             /** Planned */
             planned?: string[];
+        };
+        /** Subscription */
+        Subscription: {
+            /** Endpoint */
+            endpoint: string;
+            keys: components["schemas"]["PushKeys"];
+            /** Expirationtime */
+            expirationTime?: number | null;
         };
         /** Suggestions */
         Suggestions: {
@@ -12687,6 +12801,110 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    status_api_v1_reminders_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderStatus"];
+                };
+            };
+        };
+    };
+    subscribe_api_v1_reminders_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unsubscribe_api_v1_reminders__sid__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_reminders_api_v1_internal_reminders_send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendResult"];
                 };
             };
         };

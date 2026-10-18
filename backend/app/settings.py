@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     v1_enabled: bool = False
     guest_customer: bool = False
     feature_google_guide: bool = True
+    web_push_enabled: bool = False
+    web_push_public_key: str = ""
+    web_push_private_key: SecretStr = SecretStr("")
+    web_push_subject: str = ""
+    reminders_caller: str = ""
+    reminders_audience: str = ""
     qr_poster_enabled: bool = False
     feature_trust_strip: bool = False
     support_whatsapp: str = Field(default="", pattern=r"^(|https://wa\.me/[1-9][0-9]{6,14})$")
