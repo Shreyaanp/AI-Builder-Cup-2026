@@ -510,6 +510,8 @@ function CoachScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, activeId])
   useEffect(() => {
+    // Nothing to follow yet: scrolling to the end would park the greeting under the top bar.
+    if (!messages.length && !reply && !reveal.shown) return
     end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
   }, [messages, reply, reveal.shown, reducedMotion])
   const revealReply = useEffectEvent(() => {

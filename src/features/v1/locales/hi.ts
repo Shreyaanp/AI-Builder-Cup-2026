@@ -330,6 +330,7 @@ export const hi: Copy = {
   importFailed: 'फ़ाइल पढ़ नहीं पाए। सामान के नाम और दाम वाली CSV या Excel फ़ाइल भेजें।',
   salesSummary: 'बिक्री का सार',
   salesNotSaved: 'आपकी फ़ाइल से। कुछ सहेजा नहीं गया।',
+  salesCurrencyMismatch: 'दूसरी मुद्रा वाली पंक्तियाँ छोड़ दी गईं।',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} दिन · ${from} – ${to}` : 'फ़ाइल में तारीखें नहीं हैं',
   topItems: 'सबसे ज़्यादा बिकने वाले',

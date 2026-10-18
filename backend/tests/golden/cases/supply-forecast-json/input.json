@@ -1,0 +1,37 @@
+{
+  "kind": "ORDERS",
+  "number": "GOLD-1001",
+  "ref": "PO-100",
+  "issued": "2026-10-18",
+  "delivery": "2026-10-21",
+  "currency": "INR",
+  "buyer": {
+    "id": "",
+    "name": "Synthetic Chai Shop",
+    "system": "json"
+  },
+  "supplier": {
+    "id": "",
+    "name": "Test Wholesale",
+    "system": "json"
+  },
+  "terms_days": null,
+  "lines": [
+    {
+      "line": 10,
+      "item": "Sugar",
+      "buyer_code": "",
+      "supplier_code": "",
+      "quantity": 35.0,
+      "unit": "kg",
+      "price": 4400,
+      "total": 154000,
+      "status": "accepted",
+      "backorder_quantity": 0.0,
+      "backorder_date": "",
+      "substitute_for": ""
+    }
+  ],
+  "total": 154000,
+  "note": ""
+}

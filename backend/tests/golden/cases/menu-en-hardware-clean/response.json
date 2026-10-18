@@ -1,0 +1,17 @@
+{
+  "photo_kind": "menu",
+  "products": [
+    {
+      "name": "Steel nails",
+      "price": 45.0,
+      "unit": "pack",
+      "category": "Tools"
+    },
+    {
+      "name": "Hammer",
+      "price": 220.0,
+      "unit": "piece",
+      "category": "Tools"
+    }
+  ]
+}

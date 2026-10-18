@@ -1,0 +1,13 @@
+{
+  "kind": "menu",
+  "count": 1,
+  "rows": [
+    {
+      "name": "Chai",
+      "price": 1550,
+      "stock": 20,
+      "unit": "cup",
+      "category": "Drinks"
+    }
+  ]
+}
