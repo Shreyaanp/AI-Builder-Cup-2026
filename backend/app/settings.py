@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     frontend_dist: str = ""
     release_commit: str = "local"
     customer_origin: str = ""
+    ga_measurement_id: str = Field(default="", pattern=r"^(|G-[A-Z0-9]+)$")
     v1_enabled: bool = False
     feature_google_guide: bool = True
     web_push_enabled: bool = False
@@ -40,6 +41,8 @@ class Settings(BaseSettings):
     web_push_subject: str = ""
     reminders_caller: str = ""
     reminders_audience: str = ""
+    feature_trust_strip: bool = False
+    support_whatsapp: str = Field(default="", pattern=r"^(|https://wa\.me/[1-9][0-9]{6,14})$")
     merchant_backend: Literal["sqlite", "firestore"] = "sqlite"
     embedding_model: str = "gemini-embedding-2"
     # The shared search engine: Vertex embeddings when Gemini runs on Vertex ("auto"), or the

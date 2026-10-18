@@ -18,6 +18,7 @@ import type { LegalDocument } from './LegalDialog'
 import { useCopy } from './strings'
 import { BrandSplash } from '../frontdoors/Splash'
 import { JourneyProgress } from '../frontdoors/OwnerJourney'
+import { TrustStrip } from './TrustStrip'
 
 function Frame({ children }: { children: ReactNode }) {
   return (
@@ -108,6 +109,7 @@ export function ConsentScreen({
     <Frame>
       <Mark />
       <JourneyProgress step={2} />
+      <TrustStrip />
       <Box>
         <Typography component="h1" variant="headlineMedium">
           {t.consentTitle}
