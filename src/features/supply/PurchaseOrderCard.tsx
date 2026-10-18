@@ -28,6 +28,8 @@ import { enterRise, fieldFade, shape } from '../../design/theme'
 import { chalkWrite, stampThud } from '../../design/chalkMotion'
 import { formatPrice } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
+import { Disclosure } from '../v1/Disclosure'
+import { usePaceCopy } from '../v1/paceCopy'
 import { useShowcaseCopy } from './showcaseCopy'
 import { orderTotal, poNumber } from './orderFormat'
 import { useSupplyCopy, type SupplyCopy } from './copy'
@@ -671,8 +673,9 @@ function DocumentDetail({
 
 export function Code({ label, text }: { label: string; text: string }) {
   const roles = useTheme().material
+  const c = usePaceCopy()
   return (
-    <Box sx={{ minWidth: 0 }}>
+    <Disclosure title={c.document}>
       <Typography variant="labelMedium" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
         {label}
       </Typography>
@@ -691,13 +694,14 @@ export function Code({ label, text }: { label: string; text: string }) {
           fontFamily: '"Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
           fontSize: 12,
           lineHeight: 1.5,
-          whiteSpace: 'pre',
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'anywhere',
           '&:focus-visible': { outline: `2px solid ${roles.primary}`, outlineOffset: 2 },
         }}
       >
         {text}
       </Box>
-    </Box>
+    </Disclosure>
   )
 }
 

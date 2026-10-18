@@ -5,11 +5,9 @@ import type { Business, Me } from './api'
 import { AppShell } from './AppShell'
 import { BackHistory } from './backStack'
 import { LEGAL_VERSION } from './legal'
-import { Landing } from './Landing'
+import { OwnerFrontDoor } from './OwnerFrontDoor'
 import { AccountError, ConsentScreen, Splash } from './Onboarding'
 import { WorkspaceProvider } from './WorkspaceProvider'
-import { Box } from '@mui/material'
-import { TrustStrip } from './TrustStrip'
 
 import { LanguageStep } from '../language/LanguageStep'
 import { useNeedsLanguage } from '../language/needsLanguage'
@@ -25,18 +23,7 @@ export default function V1App() {
   }, [identity.status, identity.mode, preview])
   if (identity.status === 'loading') return <Splash />
   if (identity.status !== 'ready' || (identity.mode === 'local' && !preview))
-    return (
-      <>
-        {identity.trustStrip?.enabled && (
-          <Box
-            sx={{ maxWidth: 1080, mx: 'auto', px: 3, pt: 'calc(16px + env(safe-area-inset-top))' }}
-          >
-            <TrustStrip />
-          </Box>
-        )}
-        <Landing onPreview={() => setPreview(true)} />
-      </>
-    )
+    return <OwnerFrontDoor onPreview={() => setPreview(true)} />
   return <Account key={identity.scope} onLeave={() => setPreview(false)} />
 }
 

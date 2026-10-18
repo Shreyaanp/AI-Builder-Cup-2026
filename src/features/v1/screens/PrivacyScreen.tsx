@@ -27,10 +27,11 @@ import { useWorkspace } from '../workspaceContext'
 import { PlaybookEntry } from '../playbook/ShopPlaybook'
 import { usePlaybookCopy } from '../playbook/playbookCopy'
 import { shape } from '../../../design/theme'
+import { Disclosure } from '../Disclosure'
+import { useTrustCopy } from '../../trust/copy'
 import { TrustCard } from '../../trust/TrustCard'
 
 function Section({
-  icon,
   title,
   children,
 }: {
@@ -44,15 +45,9 @@ function Section({
       component="section"
       sx={{ bgcolor: roles.surfaceContainerLow, borderRadius: `${shape.lg}px`, p: 3 }}
     >
-      <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 1.5 }}>
-        <Box aria-hidden="true" sx={{ color: roles.primary, display: 'flex' }}>
-          {icon}
-        </Box>
-        <Typography component="h2" variant="titleMedium">
-          {title}
-        </Typography>
-      </Stack>
+      <Disclosure title={title}>
       {children}
+      </Disclosure>
     </Box>
   )
 }
@@ -62,6 +57,7 @@ type EraseState =
 
 export function PrivacyScreen() {
   const t = useCopy()
+  const trust = useTrustCopy()
   const playbook = usePlaybookCopy()
   const language = useLocale()
   const ws = useWorkspace()
@@ -122,7 +118,7 @@ export function PrivacyScreen() {
           </Stack>
         </Section>
 
-        <TrustCard />
+        <Disclosure title={trust.title}><TrustCard /></Disclosure>
 
         <Section icon={<ShieldCheck size={22} />} title={t.dataSection}>
           <Typography variant="bodyMedium" color="text.secondary">
@@ -187,7 +183,7 @@ export function PrivacyScreen() {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => setConfirming(false)}>{t.cancel}</Button>
-          <Button variant="contained" color="error" onClick={() => void eraseEverything()}>
+          <Button variant="outlined" color="error" onClick={() => void eraseEverything()}>
             {t.deleteConfirm}
           </Button>
         </DialogActions>

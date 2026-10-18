@@ -14,6 +14,7 @@ import { ShopSheets } from './ShopTiles'
 import { MapsHandoff } from './MapsHandoff'
 import { ShopQr } from './ShopQr'
 import { FirstCustomers } from './FirstCustomers'
+import { Disclosure } from './Disclosure'
 import { useGoLiveCopy } from './goLiveCopy'
 
 /** The "Your shop is ready" moment that ends the new-shop flow (full screen, no dialog). */
@@ -53,8 +54,8 @@ export function NewShopReady({ preview = false }: { preview?: boolean }) {
         maxWidth: 780,
         mx: 'auto',
         textAlign: 'center',
-        py: { xs: 8, md: 14 },
-        px: 4,
+        py: { xs: 4, md: 14 },
+        px: 2,
       }}
     >
       <Box
@@ -92,6 +93,10 @@ export function NewShopReady({ preview = false }: { preview?: boolean }) {
       >
         {t.newShopReadyBody}
       </Typography>
+      <Button variant="contained" fullWidth sx={{ mt: 4, minHeight: 56 }} onClick={ws.dismissNewShopReady}>
+        {t.newShopContinue}
+      </Button>
+      <Disclosure title={g.share}>
       {link && (
         <Stack data-testid="shop-link" sx={{ mt: 4, gap: 3, alignItems: 'center' }}>
           <Typography
@@ -114,19 +119,9 @@ export function NewShopReady({ preview = false }: { preview?: boolean }) {
           <FirstCustomers url={link} name={name} />
         </Stack>
       )}
-      <Stack
-        sx={{
-          mt: 6,
-          p: 3,
-          gap: 2,
-          bgcolor: roles.surfaceContainer,
-          borderRadius: `${shape.lg}px`,
-          textAlign: 'start',
-        }}
-      >
         {link && (
           <Button
-            variant="contained"
+            variant="text"
             component="a"
             href={link}
             target="_blank"
@@ -143,6 +138,18 @@ export function NewShopReady({ preview = false }: { preview?: boolean }) {
         >
           {g.share}
         </Button>
+      </Disclosure>
+      <Disclosure title={g.nextTitle}>
+      <Stack
+        sx={{
+          mt: 2,
+          p: 3,
+          gap: 2,
+          bgcolor: roles.surfaceContainer,
+          borderRadius: `${shape.lg}px`,
+          textAlign: 'start',
+        }}
+      >
         <Typography component="h2" variant="titleSmall" color="text.secondary">
           {g.nextTitle}
         </Typography>
@@ -181,14 +188,14 @@ export function NewShopReady({ preview = false }: { preview?: boolean }) {
         </Button>
         {failed && <Alert severity="error">{tour.failed}</Alert>}
       </Stack>
+      </Disclosure>
+      <Disclosure title={t.googleTitle}>
       {ws.active && (
         <Box sx={{ mt: 3 }}>
           <MapsHandoff fields={ws.active.fields} products={ws.products} />
         </Box>
       )}
-      <Button sx={{ mt: 3 }} onClick={ws.dismissNewShopReady}>
-        {t.newShopContinue}
-      </Button>
+      </Disclosure>
       <ShopSheets kind={sharing ? 'customer' : null} onClose={() => setSharing(false)} />
     </Box>
   )

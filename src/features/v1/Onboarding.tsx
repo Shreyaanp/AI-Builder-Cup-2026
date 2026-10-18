@@ -11,14 +11,16 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { Check, Leaf, Lock, Trash2 } from 'lucide-react'
+import { Leaf } from 'lucide-react'
 import { shape } from '../../design/theme'
 import { LegalDialog } from './LegalDialog'
 import type { LegalDocument } from './LegalDialog'
 import { useCopy } from './strings'
 import { BrandSplash } from '../frontdoors/Splash'
 import { JourneyProgress } from '../frontdoors/OwnerJourney'
-import { TrustStrip } from './TrustStrip'
+import { Disclosure } from './Disclosure'
+import { useInChatCopy } from './inChatCopy'
+import { usePaceCopy } from './paceCopy'
 
 function Frame({ children }: { children: ReactNode }) {
   return (
@@ -28,12 +30,12 @@ function Frame({ children }: { children: ReactNode }) {
         minHeight: '100dvh',
         display: 'flex',
         justifyContent: 'center',
-        px: 3,
+        px: 2,
         pt: 'calc(48px + env(safe-area-inset-top))',
         pb: 'calc(32px + env(safe-area-inset-bottom))',
       }}
     >
-      <Stack spacing={4} sx={{ width: '100%', maxWidth: 480 }}>
+      <Stack spacing={3} sx={{ width: '100%', maxWidth: 480 }}>
         {children}
       </Stack>
     </Box>
@@ -94,109 +96,62 @@ export function ConsentScreen({
   onDecline: () => void
 }) {
   const t = useCopy()
-  const roles = useTheme().material
+  const c = useInChatCopy()
+  const pace = usePaceCopy()
+  const [step, setStep] = useState(0)
   const [terms, setTerms] = useState(false)
   const [privacy, setPrivacy] = useState(false)
   const [legal, setLegal] = useState<LegalDocument>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const points = [
-    { icon: <Lock size={20} />, text: t.consentStore },
-    { icon: <Check size={20} />, text: t.consentPurpose },
-    { icon: <Trash2 size={20} />, text: t.consentRights },
-  ]
   return (
     <Frame>
       <Mark />
       <JourneyProgress step={2} />
-      <TrustStrip />
-      <Box>
-        <Typography component="h1" variant="headlineMedium">
-          {t.consentTitle}
-        </Typography>
-        <Typography variant="bodyLarge" color="text.secondary" sx={{ mt: 1.5 }}>
-          {t.consentBody}
-        </Typography>
-      </Box>
-      <Stack
-        component="ul"
-        spacing={2}
-        sx={{
-          m: 0,
-          p: 3,
-          listStyle: 'none',
-          bgcolor: roles.surfaceContainerLow,
-          borderRadius: `${shape.lg}px`,
-        }}
-      >
-        {points.map((point) => (
-          <Stack
-            component="li"
-            key={point.text}
-            direction="row"
-            spacing={2}
-            sx={{ alignItems: 'flex-start' }}
-          >
-            <Box aria-hidden="true" sx={{ color: roles.primary, pt: 0.25, display: 'flex' }}>
-              {point.icon}
-            </Box>
-            <Typography variant="bodyMedium">{point.text}</Typography>
-          </Stack>
-        ))}
-      </Stack>
-      <Stack spacing={0.5}>
-        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-          <FormControlLabel
-            control={<Checkbox checked={terms} onChange={(_, checked) => setTerms(checked)} />}
-            label={t.acceptTerms}
-          />
-          <Button
-            size="small"
-            onClick={() => setLegal('terms')}
-            aria-label={`${t.read}: ${t.viewTerms}`}
-          >
-            {t.read}
-          </Button>
-        </Stack>
-        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-          <FormControlLabel
-            control={<Checkbox checked={privacy} onChange={(_, checked) => setPrivacy(checked)} />}
-            label={t.acceptPrivacy}
-          />
-          <Button
-            size="small"
-            onClick={() => setLegal('privacy')}
-            aria-label={`${t.read}: ${t.viewPrivacy}`}
-          >
-            {t.read}
-          </Button>
-        </Stack>
-      </Stack>
-      {error && <Alert severity="error">{error}</Alert>}
-      <Stack spacing={1.5}>
-        <Button
-          variant="contained"
-          size="large"
-          disabled={!terms || !privacy || busy}
-          startIcon={busy ? <CircularProgress size={18} /> : undefined}
-          onClick={() => {
-            setBusy(true)
-            setError('')
-            onAccept().catch(() => {
-              setError(t.actionFailed)
-              setBusy(false)
-            })
-          }}
-        >
-          {t.agree}
-        </Button>
-        <Button onClick={onDecline} disabled={busy}>
-          {t.notNow}
-        </Button>
-      </Stack>
-      <Typography variant="bodySmall" color="text.secondary" sx={{ textAlign: 'center' }}>
-        {t.draftLegal}
+      <Typography component="h1" variant="headlineMedium">
+        {step === 0 ? t.viewTerms : t.viewPrivacy}
       </Typography>
+      <Typography variant="bodyLarge" color="text.secondary">
+        {step === 0 ? t.consentPurpose : t.consentStore}
+      </Typography>
+      <Button onClick={() => setLegal(step === 0 ? 'terms' : 'privacy')} sx={{ minHeight: 48 }}>
+        {t.read}: {step === 0 ? t.viewTerms : t.viewPrivacy}
+      </Button>
+      <FormControlLabel
+        control={<Checkbox checked={step === 0 ? terms : privacy} onChange={(_, checked) => step === 0 ? setTerms(checked) : setPrivacy(checked)} sx={{ minWidth: 48, minHeight: 48 }} />}
+        label={step === 0 ? t.acceptTerms : t.acceptPrivacy}
+      />
+      <Disclosure>
+        <Stack spacing={2}>
+          <Typography>{t.consentBody}</Typography>
+          <Typography>{t.consentRights}</Typography>
+          <Typography>{t.draftLegal}</Typography>
+        </Stack>
+      </Disclosure>
+      {error && <Alert severity="error">{error}</Alert>}
+      <Stack spacing={1.5} sx={{ mt: 'auto' }}>
+        {step === 0 ? (
+          <Button variant="contained" size="large" disabled={!terms} onClick={() => setStep(1)} sx={{ minHeight: 56 }}>{c.next}</Button>
+        ) : (
+          <Button
+            variant="contained"
+            size="large"
+            disabled={!terms || !privacy || busy}
+            startIcon={busy ? <CircularProgress size={18} /> : undefined}
+            onClick={() => {
+              setBusy(true)
+              setError('')
+              onAccept().catch(() => {
+                setError(t.actionFailed)
+                setBusy(false)
+              })
+            }}
+            sx={{ minHeight: 56 }}
+          >{pace.agree}</Button>
+        )}
+        {step === 1 && <Button disabled={busy} onClick={() => setStep(0)}>{c.back}</Button>}
+        <Button onClick={onDecline} disabled={busy}>{t.notNow}</Button>
+      </Stack>
       <LegalDialog open={legal} onClose={() => setLegal(null)} />
     </Frame>
   )

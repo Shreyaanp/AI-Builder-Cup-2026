@@ -34,6 +34,8 @@ import { usePreferences, usePreferencesDispatch } from '../../../state/hooks'
 import { SeeAgain } from '../../first-run/FirstRun'
 import { TourMenuButton } from '../../tour/Tour'
 import { Sheet } from '../Sheet'
+import { Disclosure } from '../Disclosure'
+import { useTrustCopy } from '../../trust/copy'
 import { ReminderSettings } from '../ReminderSettings'
 import { useCopy } from '../strings'
 import { useTabsCopy } from '../tabsCopy'
@@ -44,25 +46,16 @@ function Group({ title, children }: { title?: string; children: ReactNode }) {
   const roles = useTheme().material
   return (
     <Box component="section" aria-label={title}>
-      {title && (
-        <Typography
-          component="h2"
-          variant="titleSmall"
-          color="text.secondary"
-          sx={{ px: 1, mb: 1.5 }}
-        >
-          {title}
-        </Typography>
-      )}
       <Box
         sx={{
           bgcolor: roles.surfaceContainer,
           borderRadius: `${shape.lg}px`,
           overflow: 'hidden',
+          px: 2,
           '& > * + *': { borderTop: `1px solid ${roles.outlineVariant}` },
         }}
       >
-        {children}
+        {title ? <Disclosure title={title}>{children}</Disclosure> : children}
       </Box>
     </Box>
   )
@@ -130,6 +123,7 @@ function Row({
  */
 export function YouScreen() {
   const t = useCopy()
+  const trust = useTrustCopy()
   const tabs = useTabsCopy()
   const tools = useToolCopy()
   const ws = useWorkspace()
@@ -171,11 +165,11 @@ export function YouScreen() {
       </Stack>
 
       <Stack spacing={4}>
-        <TrustCard compact />
+        <Disclosure title={trust.title}><TrustCard compact /></Disclosure>
 
         <Group title={t.settings}>
-          <SeeAgain app="owner" />
-          <ReminderSettings />
+          <Disclosure title={t.remindMe}><ReminderSettings /></Disclosure>
+          <Disclosure title={t.language}>
           <Box sx={{ px: 3, py: 2 }}>
             {/* Default follows the phone's language setting; owners can pin a language here. */}
             <TextField
@@ -198,6 +192,8 @@ export function YouScreen() {
               ))}
             </TextField>
           </Box>
+          </Disclosure>
+          <Disclosure title={tabs.look}>
           <Box sx={{ px: 3, py: 2 }}>
             <Typography id="look-label" variant="labelLarge" sx={{ display: 'block', mb: 1 }}>
               {tabs.look}
@@ -218,6 +214,8 @@ export function YouScreen() {
               <ToggleButton value="dark">{t.themeDark}</ToggleButton>
             </ToggleButtonGroup>
           </Box>
+          </Disclosure>
+          <Disclosure title={tabs.coachVoice}>
           <Stack direction="row" sx={{ alignItems: 'center', gap: 2, px: 3, py: 1.5 }}>
             <Box sx={{ flex: 1 }}>
               <Typography variant="labelLarge" sx={{ display: 'block' }}>
@@ -234,6 +232,8 @@ export function YouScreen() {
               slotProps={{ input: { 'aria-label': t.readAloud } }}
             />
           </Stack>
+          </Disclosure>
+          <SeeAgain app="owner" />
         </Group>
 
         <Group title={tabs.yourShops}>

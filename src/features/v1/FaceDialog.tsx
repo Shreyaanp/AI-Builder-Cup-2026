@@ -32,6 +32,8 @@ import { useBackClose } from './backStack'
 import { track } from '../../app/analytics'
 import { motion, shape } from '../../design/theme'
 import { announceTrustChange } from '../trust/useTrust'
+import { useInChatCopy } from './inChatCopy'
+import { usePaceCopy } from './paceCopy'
 import { fill, useTrustCopy } from '../trust/copy'
 
 interface Challenge {
@@ -53,7 +55,7 @@ interface Capture {
   frames: SampledFrame[]
   canvas?: HTMLCanvasElement
 }
-type Phase = 'intro' | 'camera' | 'processing' | 'result'
+type Phase = 'consent' | 'intro' | 'camera' | 'processing' | 'result'
 interface Outcome {
   result: 'verified' | 'in_review' | 'retry' | 'unavailable'
   reason?: string
@@ -92,6 +94,8 @@ export function FaceDialog({
   onClose: () => void
 }) {
   const c = useTrustCopy()
+  const steps = useInChatCopy()
+  const pace = usePaceCopy()
   const theme = useTheme()
   const roles = theme.material
   const phone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -410,7 +414,7 @@ export function FaceDialog({
       <DialogContent>
         {phase === 'intro' && (
           <Stack spacing={2.5}>
-            <Typography variant="bodyLarge">{c.pitch}</Typography>
+            <Typography variant="bodyLarge">{c.how[0]}</Typography>
             <Button
               onClick={() => setShowHow((value) => !value)}
               aria-expanded={showHow}
@@ -433,13 +437,17 @@ export function FaceDialog({
                   gap: 1,
                 }}
               >
-                {c.how.map((line) => (
+                {[c.pitch, ...c.how.slice(1)].map((line) => (
                   <Typography component="li" variant="bodyMedium" key={line}>
                     {line}
                   </Typography>
                 ))}
               </Box>
             )}
+          </Stack>
+        )}
+        {phase === 'consent' && (
+          <Stack spacing={2}>
             <FormControlLabel
               control={
                 <Checkbox
@@ -602,7 +610,13 @@ export function FaceDialog({
                 </Stack>
               )}
             </Box>
-            {phase === 'camera' && (
+            {phase === 'consent' && (
+          <>
+            <Button onClick={() => setPhase('intro')}>{steps.back}</Button>
+            <Button variant="contained" disabled={!consent} onClick={() => void begin()} sx={{ minHeight: 48, flex: 1 }}>{pace.agree}</Button>
+          </>
+        )}
+        {phase === 'camera' && (
               // Live hints change several times a second: visible, not announced.
               <Typography variant="bodyMedium" color="text.secondary" sx={{ minHeight: 24 }}>
                 {guide ? c.guide[guide] : ''}
@@ -653,9 +667,13 @@ export function FaceDialog({
         {phase === 'intro' && (
           <>
             <Button onClick={close}>{c.notNow}</Button>
-            <Button variant="contained" disabled={!consent} onClick={() => void begin()}>
-              {c.openCamera}
-            </Button>
+            <Button variant="contained" onClick={() => setPhase('consent')} sx={{ minHeight: 48, flex: 1 }}>{steps.next}</Button>
+          </>
+        )}
+        {phase === 'consent' && (
+          <>
+            <Button onClick={() => setPhase('intro')}>{steps.back}</Button>
+            <Button variant="contained" disabled={!consent} onClick={() => void begin()} sx={{ minHeight: 48, flex: 1 }}>{pace.agree}</Button>
           </>
         )}
         {phase === 'camera' && (

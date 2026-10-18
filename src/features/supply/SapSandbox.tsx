@@ -13,6 +13,7 @@ import { ChevronDown } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
 import { formatPrice } from '../v1/format'
+import { Code } from './PurchaseOrderCard'
 import { useWorkspace } from '../v1/workspaceContext'
 import { dayLabel } from './supplyData'
 import type { PoLine } from './types'
@@ -130,14 +131,7 @@ export function SapSandboxOrders({ open }: { open: boolean }) {
                     {line.quantity} {line.unit} · {line.item}
                   </Typography>
                 ))}
-                <Typography variant="labelLarge">{copy.idoc}</Typography>
-                <Box
-                  component="pre"
-                  tabIndex={0}
-                  sx={{ m: 0, overflow: 'auto', maxHeight: 240, fontSize: 12 }}
-                >
-                  {order.idoc}
-                </Box>
+                <Code label={copy.idoc} text={order.idoc} />
               </Box>
             </Collapse>
           </Box>
