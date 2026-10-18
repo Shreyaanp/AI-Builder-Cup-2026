@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import time
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal
+from typing import Any
 
 import anyio
 import httpx
@@ -20,12 +20,43 @@ from .limits import enforce_limits
 from .merchant import MerchantRepository
 from .merchant_routes import consented_owner, owner, store
 from .region import shop_zone
+from .reply_language import LANGUAGES
 from .settings import Settings
 from .shop_time import shop_timezone, valid_timezone
 
 router = APIRouter(prefix="/api/v1", tags=["reminders"])
 KIND = "push_subscriptions"
 MAX_DEVICES = 5
+
+# Keep these keys and locale codes aligned with the owner's i18n copy files and
+# src/i18n/locales.ts. English is used only if an individual translation is absent.
+PUSH_COPY: dict[str, dict[str, str]] = {
+    "en": {"needsYouNow": "{count} things need you", "closeDay": "Close the day"},
+    "hi": {"needsYouNow": "{count} कामों पर ध्यान दें", "closeDay": "दिन पूरा करें"},
+    "ta": {"needsYouNow": "{count} விஷயங்களைக் கவனியுங்கள்", "closeDay": "நாளை முடிக்கவும்"},
+    "zh-Hans": {"needsYouNow": "有{count}件事需要您处理", "closeDay": "结束今天"},
+    "bn": {"needsYouNow": "{count}টি বিষয়ে নজর দিন", "closeDay": "দিন শেষ করুন"},
+    "te": {"needsYouNow": "{count} విషయాలపై శ్రద్ధ పెట్టండి", "closeDay": "రోజును ముగించండి"},
+    "mr": {"needsYouNow": "{count} गोष्टींकडे लक्ष द्या", "closeDay": "दिवस संपवा"},
+    "kn": {"needsYouNow": "{count} ವಿಷಯಗಳತ್ತ ಗಮನ ನೀಡಿ", "closeDay": "ದಿನ ಮುಗಿಸಿ"},
+    "ms": {"needsYouNow": "{count} perkara perlu perhatian anda", "closeDay": "Tutup hari ini"},
+    "ja": {"needsYouNow": "{count}件の対応が必要です", "closeDay": "今日を締めくくる"},
+    "ko": {"needsYouNow": "확인할 일이 {count}개 있어요", "closeDay": "오늘 마감하기"},
+    "id": {"needsYouNow": "{count} hal perlu perhatian Anda", "closeDay": "Tutup hari ini"},
+    "th": {"needsYouNow": "มี {count} เรื่องที่ต้องจัดการ", "closeDay": "ปิดวัน"},
+    "vi": {"needsYouNow": "Có {count} việc cần bạn xử lý", "closeDay": "Kết thúc ngày"},
+    "fil": {
+        "needsYouNow": "May {count} bagay na kailangan mong asikasuhin",
+        "closeDay": "Tapusin ang araw",
+    },
+}
+
+
+def push_title(locale: str, kind: str, count: int) -> str:
+    key = "needsYouNow" if kind == "morning" else "closeDay"
+    english = PUSH_COPY["en"][key]
+    template = PUSH_COPY.get(locale, {}).get(key, english)
+    return template.format(count=count)
 
 
 class PushKeys(BaseModel):
@@ -65,8 +96,15 @@ class Subscription(BaseModel):
 class ReminderInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     business_id: str = Field(min_length=1, max_length=80)
-    locale: Literal["en", "hi"] = "en"
+    locale: str = "en"
     subscription: Subscription
+
+    @field_validator("locale")
+    @classmethod
+    def supported_locale(cls, value: str) -> str:
+        if value not in LANGUAGES:
+            raise ValueError("Unsupported locale")
+        return value
 
 
 class ReminderStatus(BaseModel):
@@ -259,12 +297,7 @@ async def dispatch(repository: MerchantRepository, settings: Settings, now: date
                 claim, docs, uid, sid, kind, day, now.timestamp()
             ):
                 continue
-            hindi = entry.get("locale") == "hi"
-            title = (
-                (f"{n} कामों पर ध्यान दें" if hindi else f"{n} things need you")
-                if kind == "morning"
-                else ("दिन पूरा करें" if hindi else "Close the day")
-            )
+            title = push_title(entry.get("locale", "en"), kind, n)
             payload = {
                 "title": title,
                 "tag": f"reminder-{bid}-{kind}-{day}",
