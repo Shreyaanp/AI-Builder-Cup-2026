@@ -214,17 +214,18 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
     try {
       if (mode === 'firebase') await firebase.current?.signOut()
       else await api('/api/v1/customer/session', { method: 'DELETE' })
-      await clearSession('customer')
-      setProfile(null)
-      setDeviceFollows([])
-      setName('')
-      setUnread(0)
-      setStatus('signed-out')
-      frontDoor('customer')
     } catch {
       ending.current = false
       setError('unfinished')
+      return
     }
+    await clearSession('customer')
+    setProfile(null)
+    setDeviceFollows([])
+    setName('')
+    setUnread(0)
+    setStatus('signed-out')
+    frontDoor('customer')
   }, [api, mode])
 
   const refreshUnread = useCallback(() => {

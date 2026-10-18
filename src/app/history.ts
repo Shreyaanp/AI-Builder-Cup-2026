@@ -22,7 +22,7 @@ export interface EntryState {
   [field: string]: unknown
 }
 
-const PREFIX = sideKey('entry.')
+const prefix = () => sideKey('entry.')
 // The newest entries' stored state is kept; older ones are dropped.
 const MAX_STORED = 30
 
@@ -126,7 +126,7 @@ export function readEntry<T>(name: string): T | null {
   const key = entryState().key
   if (!key) return null
   try {
-    const value = sessionStorage.getItem(`${PREFIX}${key}.${name}`)
+    const value = sessionStorage.getItem(`${prefix()}${key}.${name}`)
     return value === null ? null : (JSON.parse(value) as T)
   } catch {
     return null
@@ -137,14 +137,14 @@ export function writeEntry(name: string, value: unknown) {
   const key = entryState().key
   if (!key) return
   try {
-    const order = (JSON.parse(sessionStorage.getItem(`${PREFIX}order`) || '[]') as string[])
+    const order = (JSON.parse(sessionStorage.getItem(`${prefix()}order`) || '[]') as string[])
       .filter((item) => item !== key)
       .concat(key)
     for (const old of order.splice(0, Math.max(0, order.length - MAX_STORED)))
       for (const item of Object.keys(sessionStorage))
-        if (item.startsWith(`${PREFIX}${old}.`)) sessionStorage.removeItem(item)
-    sessionStorage.setItem(`${PREFIX}order`, JSON.stringify(order))
-    sessionStorage.setItem(`${PREFIX}${key}.${name}`, JSON.stringify(value))
+        if (item.startsWith(`${prefix()}${old}.`)) sessionStorage.removeItem(item)
+    sessionStorage.setItem(`${prefix()}order`, JSON.stringify(order))
+    sessionStorage.setItem(`${prefix()}${key}.${name}`, JSON.stringify(value))
   } catch {
     /* Optional storage: the screen still works for this visit. */
   }

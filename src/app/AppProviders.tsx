@@ -18,19 +18,21 @@ import { configureAnalytics, watchRouteChanges } from './analytics'
 import { sideKey } from '../auth/appSide'
 
 /** Kept apart from the preferences object, which older code and tests overwrite whole. */
-const LANGUAGE_CHOSEN = sideKey('language.chosen')
-const PREFERENCES = sideKey('preferences')
+const languageChosenKey = () => sideKey('language.chosen')
+const preferencesKey = () => sideKey('preferences')
 
 function readPreferences(): Preferences {
   let saved: Partial<Preferences> = {}
   let chosen = false
   try {
-    // Pre-split device-wide records are read first, so a signed-in device keeps its language.
+    // This side's record wins; the pre-split device-wide one is only a fallback.
     chosen =
-      (localStorage.getItem('niva.language.chosen') ?? localStorage.getItem(LANGUAGE_CHOSEN)) ===
-      '1'
+      (localStorage.getItem(languageChosenKey()) ??
+        localStorage.getItem('niva.language.chosen')) === '1'
     saved = JSON.parse(
-      localStorage.getItem('niva.starter.preferences') ?? localStorage.getItem(PREFERENCES) ?? '{}',
+      localStorage.getItem(preferencesKey()) ??
+        localStorage.getItem('niva.starter.preferences') ??
+        '{}',
     ) as Partial<Preferences>
   } catch {
     /* Storage may be disabled. */
@@ -95,13 +97,8 @@ function Providers({
         language: preferences.language,
         appearance: preferences.appearance,
       })
-      localStorage.setItem(PREFERENCES, display)
-      if (preferences.languageChosen) localStorage.setItem(LANGUAGE_CHOSEN, '1')
-      // Old device-wide records are not erased (the other side may not have read them yet),
-      // but they are kept current so they never override a newer choice. Only nonpersonal
-      // display preferences are involved; sign-out erases the old keys.
-      if (localStorage.getItem('niva.starter.preferences') !== null)
-        localStorage.setItem('niva.starter.preferences', display)
+      localStorage.setItem(preferencesKey(), display)
+      if (preferences.languageChosen) localStorage.setItem(languageChosenKey(), '1')
     } catch {
       /* App remains usable without storage. */
     }

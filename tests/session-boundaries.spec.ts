@@ -286,6 +286,18 @@ for (const [side, action] of [
             `chalkboard.${side === 'owner' ? 'customer' : 'owner'}.private`,
           ),
           databases: (await indexedDB.databases()).map((db) => db.name),
+          // Firebase's database stays (another tab may hold it open); its records are gone.
+          firebaseRecords: await new Promise<number>((resolve, reject) => {
+            const open = indexedDB.open('firebaseLocalStorageDb')
+            open.onerror = () => reject(open.error)
+            open.onsuccess = () => {
+              const count = open.result.transaction('data').objectStore('data').count()
+              count.onsuccess = () => {
+                open.result.close()
+                resolve(count.result)
+              }
+            }
+          }),
           caches: await caches.keys(),
         }),
         side,
@@ -296,7 +308,8 @@ for (const [side, action] of [
       businessInstall: side === 'owner' ? null : '1',
       ownerDay: side === 'owner' ? null : '2026-10-18',
       other: 'keep',
-      databases: [],
+      databases: ['firebaseLocalStorageDb'],
+      firebaseRecords: 0,
       caches: [side === 'owner' ? 'chalkboard-customer-private' : 'chalkboard-business-private'],
     })
     await page.reload()
@@ -415,5 +428,102 @@ for (const side of ['owner', 'customer'] as const) {
     expect(remaining).toEqual([
       `firebase:authUser:fixture:ogoogle-${side === 'owner' ? 'customer' : 'owner'}-demo-boundaries`,
     ])
+  })
+}
+
+test('sign-out while another tab holds Firebase databases open never leaves a queued delete behind', async ({
+  context,
+  page,
+}) => {
+  test.setTimeout(60_000)
+  await fixture(context)
+  const names = [
+    'firebaseLocalStorageDb',
+    'firebase-heartbeat-database',
+    'firebase-installations-database',
+  ]
+  const other = await context.newPage()
+  await other.goto('/explore/')
+  // Like Firebase, this tab keeps its connections open and has no versionchange handler.
+  await other.evaluate(async (names) => {
+    const held: IDBDatabase[] = []
+    for (const name of names)
+      held.push(
+        await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open(name, 1)
+          request.onupgradeneeded = () => request.result.createObjectStore('data')
+          request.onsuccess = () => resolve(request.result)
+          request.onerror = () => reject(request.error)
+        }),
+      )
+    Object.assign(window, { held })
+  }, names)
+  await page.goto('/explore/')
+  await customerProfile(page)
+  await page.getByRole('button', { name: 'Continue with Google', exact: true }).click()
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'You are signed out.' })).toBeVisible()
+  // A queued deleteDatabase would hold every later open, which is what keeps the app on its splash.
+  const opened = await page.evaluate(
+    (names) =>
+      Promise.all(
+        names.map(
+          (name) =>
+            new Promise<boolean>((resolve) => {
+              const timer = setTimeout(() => resolve(false), 5000)
+              const request = indexedDB.open(name)
+              request.onsuccess = () => {
+                clearTimeout(timer)
+                request.result.close()
+                resolve(true)
+              }
+              request.onerror = () => resolve(false)
+            }),
+        ),
+      ),
+    names,
+  )
+  expect(opened).toEqual([true, true, true])
+  await customerProfile(page)
+  await page.getByRole('button', { name: 'Continue with Google', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible()
+})
+
+for (const side of ['owner', 'customer'] as const) {
+  test(`${side} sign-out still reaches the front door when cleanup steps throw`, async ({
+    context,
+    page,
+  }) => {
+    await fixture(context)
+    await page.goto(side === 'owner' ? '/' : '/explore/')
+    if (side === 'customer') await customerProfile(page)
+    await page.getByRole('button', { name: 'Continue with Google', exact: true }).click()
+    if (side === 'owner') await page.getByRole('button', { name: 'You', exact: true }).click()
+    await page.evaluate(() => {
+      Object.defineProperty(indexedDB, 'databases', {
+        value: () => {
+          throw new Error('databases missing')
+        },
+      })
+      Object.defineProperty(caches, 'keys', { value: () => Promise.reject(new Error('cache')) })
+      Object.defineProperty(navigator.serviceWorker, 'getRegistrations', {
+        value: async () => [
+          {
+            scope: location.origin + (location.pathname.startsWith('/explore') ? '/explore/' : '/'),
+            pushManager: {
+              getSubscription: async () => ({ unsubscribe: async () => false }),
+            },
+            unregister: async () => true,
+          },
+        ],
+      })
+    })
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+    await expect(page).toHaveURL(side === 'owner' ? /\/\?app=business$/ : /\/explore\/$/)
+    await expect(page.getByRole('status').filter({ hasText: 'You are signed out.' })).toBeVisible()
+    if (side === 'customer') await customerProfile(page)
+    await expect(
+      page.getByRole('button', { name: 'Continue with Google', exact: true }),
+    ).toBeVisible()
   })
 }
