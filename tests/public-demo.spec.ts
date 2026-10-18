@@ -46,19 +46,36 @@ for (const width of [360, 390, 412]) {
             ? 'Demo shop - nothing here is real'
             : 'डेमो दुकान - यहाँ कुछ भी असली नहीं है'
         await expect(page.getByText(banner, { exact: true })).toBeVisible({ timeout: 30_000 })
+        await page
+          .getByRole('dialog')
+          .getByRole('button', { name: language === 'en' ? 'Skip' : 'छोड़ें', exact: true })
+          .click()
+        await page.locator('[data-tour="nav-shop"]').click()
         await expect(page.locator('[data-tour="menu"]')).toBeVisible({ timeout: 15_000 })
-        await expect(page).toHaveURL(/\/demo$/)
+        await expect(page).toHaveURL(/\/demo\?tab=shop$/)
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
           true,
         )
         const edit = page.locator('[data-tour="customer"] button').first()
         await edit.click()
+        await expect(page.getByRole('dialog').getByRole('textbox').first()).toHaveValue(
+          'Lantern Chai Corner (Demo)',
+        )
+        await page
+          .getByRole('button', { name: language === 'en' ? 'Cancel' : 'रद्द करें', exact: true })
+          .click()
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        await page.locator('[data-tour="customer"] button').nth(1).click()
+        const publish = page.getByRole('dialog').getByRole('switch')
+        await publish.click()
+        await expect(publish).not.toBeChecked()
         await expect(
-          page.getByText(
-            language === 'en' ? 'Demo only. Changes are turned off.' : 'यह डेमो है। बदलाव बंद हैं।',
-            { exact: true },
-          ),
+          page.getByText(language === 'en' ? 'Demo: not sent' : 'डेमो: भेजा नहीं गया', {
+            exact: true,
+          }),
         ).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('dialog')).toHaveCount(0)
         await page.locator('[data-tour="menu"]').click()
         await expect(page.getByRole('dialog')).toBeVisible()
         await expect(page.getByRole('dialog').locator('li').first()).toBeVisible()

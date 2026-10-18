@@ -134,8 +134,8 @@ export function AppShell() {
       <Box
         sx={{
           display: inFlow ? 'none' : 'flex',
-          minHeight: '100dvh',
-          height: destination === 'coach' && !feature ? '100dvh' : undefined,
+          minHeight: 'var(--app-viewport, 100dvh)',
+          height: destination === 'coach' && !feature ? 'var(--app-viewport, 100dvh)' : undefined,
           bgcolor: roles.surface,
         }}
       >

@@ -120,7 +120,11 @@ async def get_forecast() -> dict[str, Any]:
         return {"status": "needs_business"}
     context = await anyio.to_thread.run_sync(ctx.store.context, ctx.uid, ctx.business_id)
     rows = await anyio.to_thread.run_sync(ctx.store.sales_history, ctx.uid, ctx.business_id)
-    service = forecaster or ForecastService(Settings(_env_file=None))  # type: ignore[call-arg]
+    from .demo_context import services
+
+    service = services.get().get("forecaster") or forecaster
+    if service is None:
+        service = ForecastService(Settings(_env_file=None))  # type: ignore[call-arg]
     result = await service.forecast(
         rows, today_for(context["business"]["fields"]), context["inventory"]
     )
@@ -128,6 +132,10 @@ async def get_forecast() -> dict[str, Any]:
 
 
 def _planner() -> QuestionPlanner:
+    from .demo_context import services
+
+    if service := services.get().get("question_planner"):
+        return service
     global question_planner
     if question_planner is None:
         from .settings import Settings
@@ -1088,6 +1096,10 @@ DEMO_OWNER_UID = "chalkboard-demo-supplier-owner"
 
 
 def _generator() -> SupplierGenerator:
+    from .demo_context import services
+
+    if service := services.get().get("supplier_generator"):
+        return service
     global supplier_generator
     if supplier_generator is None:
         from .settings import Settings
@@ -1113,6 +1125,7 @@ async def find_suppliers(
     (rank number, name, distance, price) and ask which one to order from. If
     generated_demo_suppliers is true, say honestly that these are demo suppliers."""
     from . import sourcing
+    from .demo_context import services
 
     ctx = current.get()
     if not ctx or not ctx.business_id:
@@ -1128,7 +1141,7 @@ async def find_suppliers(
         unit,
         _generator(),
         DEMO_OWNER_UID,
-        search_engine,
+        None if services.get() else search_engine,
     )
     if not result["suppliers"]:
         return {

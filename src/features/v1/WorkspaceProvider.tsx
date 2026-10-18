@@ -66,10 +66,9 @@ export function WorkspaceProvider({
   // Each phase, tab and sub-page is a history entry, so Back goes review → conversation →
   // leaves the flow, and Shop → Today, with each screen where it was.
   useLayoutEffect(() => {
-    if (readOnlyMessage) return
     const url = new URL(location.href)
     const inFlow = creatingShop || shopReady
-    url.pathname = inFlow ? '/new-shop' : '/'
+    url.pathname = readOnlyMessage ? '/demo' : inFlow ? '/new-shop' : '/'
     if (creatingShop) url.searchParams.set('step', newShopPhase)
     else if (shopReady) url.searchParams.set('step', 'ready')
     else url.searchParams.delete('step')

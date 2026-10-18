@@ -4,7 +4,7 @@ import { formatPrice } from '../src/features/v1/format.ts'
 test.describe('Customer audit quick fixes', () => {
   test('Fix 1: Language picker is accessible in landing and explore headers', async ({ page }) => {
     // Landing page
-    await page.goto('/?app=landing')
+    await page.goto('/?app=landing&landing=classic')
     const landingPicker = page.getByRole('button', { name: /Language/i }).first()
     await expect(landingPicker).toBeVisible()
     await landingPicker.click()
@@ -62,7 +62,7 @@ test.describe('Customer audit quick fixes', () => {
     await page.addInitScript(() => {
       localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'hi' }))
     })
-    await page.goto('/?app=landing')
+    await page.goto('/?app=landing&landing=classic')
     await expect(page.locator('nav a[href="/explore/"]')).toHaveText(/[ऀ-ॿ]/)
   })
 

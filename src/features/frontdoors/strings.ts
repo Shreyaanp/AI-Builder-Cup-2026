@@ -1337,6 +1337,13 @@ const demoEnglish = {
   readOnly: 'Demo: not sent',
   title: 'Demo shop',
   tryDemo: 'Try demo',
+  askTitle: 'Coach (sample answer)',
+  askPrep:
+    'Tomorrow, make 40 cups of chai, 30 samosas and 2 trays of poha. Based on the last 14 days; Saturdays sell about a fifth more. This is a sample.',
+  askSuppliers:
+    'Three nearby wholesalers sell this: Shree Traders (1.2 km), Metro Cash and Carry (3 km) and City Dairy (2 km). In the live app the coach drafts the WhatsApp order for you. This is a sample.',
+  askOther: 'In the live app this opens for your own shop. This demo shows sample data only.',
+  close: 'Close',
 }
 type DemoCopy = typeof demoEnglish
 // prettier-ignore
@@ -1360,6 +1367,9 @@ export function useDemoCopy(): DemoCopy {
   const locale = useLocale()
   if (locale === 'en') return demoEnglish
   return Object.fromEntries(
-    Object.keys(demoEnglish).map((key, i) => [key, demoRows[locale][i]]),
+    Object.keys(demoEnglish).map((key, i) => [
+      key,
+      demoRows[locale][i] ?? demoEnglish[key as keyof DemoCopy],
+    ]),
   ) as DemoCopy
 }
