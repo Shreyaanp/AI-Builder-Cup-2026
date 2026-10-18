@@ -1,3 +1,4 @@
+import { narrationControls } from './narrationControls.js'
 import type { Locale } from '../../i18n/locales.js'
 import { tourApac } from './apacTranslations.js'
 import { tourTranslations } from './translations.js'
@@ -12,6 +13,8 @@ const en = {
   settings: 'Take the tour',
   narration: 'Read aloud',
   next: 'Next',
+  skipVoice: 'Skip voice',
+  close: 'Close tour',
   back: 'Back',
   skip: 'Skip',
   stepOf: '{n} of {total}',
@@ -64,5 +67,10 @@ const translations: Partial<Record<Locale, Partial<Copy>>> = {
 }
 
 export function tourCopy(locale: Locale): Copy {
-  return { ...en, ...(translations[locale] ?? {}) }
+  return {
+    ...en,
+    ...(translations[locale] ?? {}),
+    skipVoice: narrationControls[locale][0],
+    close: narrationControls[locale][1],
+  }
 }

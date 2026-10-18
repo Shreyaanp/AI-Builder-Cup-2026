@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 // First visit: a guided tour on a filled demo shop (menu + eight weeks of sales).
 test.skip(({ isMobile }) => !isMobile, '390×844 phone story')
 
-test('guided tour: demo shop is created, eight spotlights, then start your own', async ({
+test('guided tour: demo shop is created, fourteen spotlights, then start your own', async ({
   page,
 }) => {
   await page.route('**/*', (route) =>
@@ -31,6 +31,12 @@ test('guided tour: demo shop is created, eight spotlights, then start your own',
     'Just talk or type',
     'Get on Google, guided',
     'Share your page',
+    'Supply chain',
+    'Purchase orders',
+    'View as SAP (IDoc)',
+    'Import sales or menu (Excel, photo, notes)',
+    'Get your first customers',
+    'Your new shop is ready',
   ]
   for (const [index, title] of titles.entries()) {
     await page.getByRole('button', { name: 'Next', exact: true }).tap()
