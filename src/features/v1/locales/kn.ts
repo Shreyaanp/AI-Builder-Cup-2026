@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const kn: Copy = {
+  remindMe: 'ನೆನಪಿಸಿ',
+  reminderTiming: 'ಈ ಸಾಧನದಲ್ಲಿ, ಅಂಗಡಿ ತೆರೆಯುವ ಮತ್ತು ಮುಚ್ಚುವ ಸಮಯದಲ್ಲಿ.',
+  reminderOff: 'ಈಗ ನೆನಪಿಸುವಿಕೆ ಆಫ್ ಆಗಿದೆ.',
+  reminderUnsupported: 'ಸ್ಥಾಪಿಸಿದ ಆ್ಯಪ್ ಅಥವಾ ಸೂಚನೆಗಳಿರುವ ಬ್ರೌಸರ್ ಬಳಸಿ.',
+  reminderShop: 'ನೆನಪಿಸಲು ಅಂಗಡಿ ಸೇರಿಸಿ.',
+  reminderDenied: 'ಸೂಚನೆಗಳು ನಿರ್ಬಂಧಿತವಾಗಿವೆ. ಬ್ರೌಸರ್ ಸೆಟ್ಟಿಂಗ್‌ನಲ್ಲಿ ಅನುಮತಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  reminderFailed: 'ಬದಲಾಯಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  reminderSaving: 'ಬದಲಾಯಿಸಲಾಗುತ್ತಿದೆ…',
+  reminderLoading: 'ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ…',
   firstCustomers: 'ಮೊದಲ ಗ್ರಾಹಕರನ್ನು ಪಡೆಯಿರಿ',
   printPoster: 'ಪೋಸ್ಟರ್ ಮುದ್ರಿಸಿ',
   downloadPdf: 'PDF ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ',
@@ -427,6 +436,7 @@ export const kn: Copy = {
   eraseFailed: 'ಅಳಿಸುವಿಕೆ ಪೂರ್ಣಗೊಳ್ಳಲಿಲ್ಲ. ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
   eraseRetry: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
   eraseSteps: {
+    reminders: 'ನೆನಪಿಸಿ',
     face: 'ಮುಖದ ಡೇಟಾ',
     photos: 'ಫೋಟೋಗಳು',
     records: 'ಅಂಗಡಿಗಳು ಮತ್ತು ಉತ್ಪನ್ನಗಳು',

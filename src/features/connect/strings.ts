@@ -3,11 +3,12 @@ import type { Locale } from '../../i18n/locales'
 
 const en = {
   connectTitle: 'Connect your system',
+  connectType: 'POS / ERP',
   connectSubtitle: 'Plug in your POS, ERP or billing software instead of re-entering data',
   pickSystem: 'Pick your system',
   uploadOrPaste: 'Upload export or paste sample',
-  mappingTitle: 'AI column mapping',
-  mappingSubtitle: 'Gemini mapped your export fields to our schema. Tap any row to adjust.',
+  mappingTitle: 'Column mapping',
+  mappingSubtitle: 'Your export fields are matched to shop fields. Tap any row to adjust.',
   sourceColumn: 'Source column',
   targetField: 'Chalkboard field',
   confidence: 'Confidence',
@@ -57,7 +58,11 @@ type Copy = typeof en
 
 export const extraConnectCopy: Record<
   Locale,
-  { uploadExport: string; retry: string; salesImported: (rows: string, items: string) => string }
+  {
+    uploadExport: string
+    retry: string
+    salesImported: (rows: string, items: string) => string
+  }
 > = {
   en: {
     uploadExport: 'Upload an export file',
@@ -141,12 +146,13 @@ const translations: Record<Locale, Copy> = {
   en,
   hi: {
     connectTitle: 'अपना सिस्टम जोड़ें',
-    connectSubtitle: 'डेटा दोबारा दर्ज करने के बजाय अपना POS, ERP या बिलिंग सॉफ़्टवेयर जोड़ें',
+    connectType: 'पीओएस / ईआरपी',
+    connectSubtitle: 'डेटा दोबारा दर्ज किए बिना अपना बिक्री सिस्टम जोड़ें।',
     pickSystem: 'अपना सिस्टम चुनें',
     uploadOrPaste: 'फ़ाइल अपलोड करें या नमूना चिपकाएँ',
-    mappingTitle: 'AI कॉलम मैपिंग',
+    mappingTitle: 'कॉलम मैपिंग',
     mappingSubtitle:
-      'Gemini ने आपके एक्सपोर्ट फ़ील्ड को मैप किया है। बदलने के लिए किसी भी पंक्ति पर टैप करें।',
+      'आपके एक्सपोर्ट फ़ील्ड दुकान के फ़ील्ड से जुड़े हैं। बदलने के लिए किसी पंक्ति पर टैप करें।',
     sourceColumn: 'स्रोत कॉलम',
     targetField: 'चॉकबोर्ड फ़ील्ड',
     confidence: 'सटीकता',
@@ -185,11 +191,12 @@ const translations: Record<Locale, Copy> = {
   },
   'zh-Hans': {
     connectTitle: '连接您的系统',
+    connectType: 'POS / ERP',
     connectSubtitle: '直接接入您的 POS、ERP 或开票系统，无需重复录入数据',
     pickSystem: '选择您的系统',
     uploadOrPaste: '上传导出文件或粘贴样例',
-    mappingTitle: 'AI 字段映射',
-    mappingSubtitle: 'Gemini 已将导出字段匹配至系统。点击任意行即可调整。',
+    mappingTitle: '字段映射',
+    mappingSubtitle: '导出字段已与店铺字段匹配。点击任意行即可调整。',
     sourceColumn: '来源列',
     targetField: '系统字段',
     confidence: '匹配度',
@@ -228,13 +235,14 @@ const translations: Record<Locale, Copy> = {
   },
   ms: {
     connectTitle: 'Sambungkan sistem anda',
+    connectType: 'POS / ERP',
     connectSubtitle:
       'Palamkan perisian POS, ERP atau invois anda tanpa perlu memasukkan semula data',
     pickSystem: 'Pilih sistem anda',
     uploadOrPaste: 'Muat naik eksport atau tampal sampel',
-    mappingTitle: 'Pemetaan lajur AI',
+    mappingTitle: 'Pemetaan lajur',
     mappingSubtitle:
-      'Gemini telah memetakan lajur eksport anda. Ketik mana-mana baris untuk laraskan.',
+      'Lajur eksport anda dipadankan dengan medan kedai. Ketik mana-mana baris untuk laraskan.',
     sourceColumn: 'Lajur sumber',
     targetField: 'Medan Chalkboard',
     confidence: 'Keyakinan',
@@ -273,11 +281,12 @@ const translations: Record<Locale, Copy> = {
   },
   ta: {
     connectTitle: 'உங்கள் அமைப்பை இணைக்கவும்',
+    connectType: 'POS / ERP',
     connectSubtitle: 'தரவை மீண்டும் உள்ளிடாமல் உங்கள் POS அல்லது பில்லிங் மென்பொருளை இணைக்கவும்',
     pickSystem: 'உங்கள் அமைப்பைத் தேர்ந்தெடுக்கவும்',
     uploadOrPaste: 'கோப்பைப் பதிவேற்றவும் அல்லது மாதிரியை ஒட்டவும்',
-    mappingTitle: 'AI நெடுவரிசை பொருத்தம்',
-    mappingSubtitle: 'Gemini உங்கள் கோப்புப் புலங்களை பொருத்தியுள்ளது. மாற்ற தட்டவும்.',
+    mappingTitle: 'நெடுவரிசை பொருத்தம்',
+    mappingSubtitle: 'ஏற்றுமதி புலங்கள் கடைப் புலங்களுடன் பொருந்தியுள்ளன. மாற்ற வரியைத் தட்டவும்.',
     sourceColumn: 'மூல நெடுவரிசை',
     targetField: 'Chalkboard புலம்',
     confidence: 'நம்பகத்தன்மை',
@@ -316,11 +325,12 @@ const translations: Record<Locale, Copy> = {
   },
   ja: {
     connectTitle: '外部システムと連携',
+    connectType: 'POS / ERP',
     connectSubtitle: 'POSや販売管理・ERPのエクスポートを直接取り込みます',
     pickSystem: 'システムを選択',
     uploadOrPaste: 'ファイルをアップロードまたは貼り付け',
-    mappingTitle: 'AI 列マッピング',
-    mappingSubtitle: 'Geminiがエクスポート項目を自動対応付けしました。タップして修正できます。',
+    mappingTitle: '列の対応付け',
+    mappingSubtitle: 'エクスポート項目を店舗の項目に対応付けました。タップして修正できます。',
     sourceColumn: 'エクスポート列',
     targetField: '対応項目',
     confidence: '信頼度',
@@ -359,11 +369,12 @@ const translations: Record<Locale, Copy> = {
   },
   ko: {
     connectTitle: '기존 시스템 연결',
+    connectType: 'POS / ERP',
     connectSubtitle: 'POS, ERP 또는 결제 소프트웨어 데이터를 직접 연동하세요',
     pickSystem: '시스템 선택',
     uploadOrPaste: '내보내기 파일 업로드 또는 샘플 붙여넣기',
-    mappingTitle: 'AI 열 매핑',
-    mappingSubtitle: 'Gemini가 항목을 스키마에 매핑했습니다. 탭하여 수정할 수 있습니다.',
+    mappingTitle: '열 매핑',
+    mappingSubtitle: '내보낸 항목을 매장 항목에 연결했습니다. 탭하여 수정할 수 있습니다.',
     sourceColumn: '소스 열',
     targetField: '타겟 필드',
     confidence: '정확도',
@@ -402,11 +413,12 @@ const translations: Record<Locale, Copy> = {
   },
   id: {
     connectTitle: 'Hubungkan sistem Anda',
+    connectType: 'POS / ERP',
     connectSubtitle: 'Hubungkan POS, ERP atau software kasir Anda tanpa perlu input manual',
     pickSystem: 'Pilih sistem Anda',
     uploadOrPaste: 'Unggah ekspor atau tempel sampel',
-    mappingTitle: 'Pemetaan kolom AI',
-    mappingSubtitle: 'Gemini telah memetakan kolom Anda. Ketuk baris mana saja untuk mengubah.',
+    mappingTitle: 'Pemetaan kolom',
+    mappingSubtitle: 'Kolom ekspor dicocokkan dengan kolom toko. Ketuk baris untuk mengubah.',
     sourceColumn: 'Kolom sumber',
     targetField: 'Kolom Chalkboard',
     confidence: 'Tingkat akurasi',
@@ -445,11 +457,12 @@ const translations: Record<Locale, Copy> = {
   },
   th: {
     connectTitle: 'เชื่อมต่อระบบของคุณ',
+    connectType: 'POS / ERP',
     connectSubtitle: 'เชื่อมต่อโปรแกรม POS, ERP หรือระบบบิลโดยไม่ต้องป้อนข้อมูลซ้ำ',
     pickSystem: 'เลือกระบบของคุณ',
     uploadOrPaste: 'อัปโหลดไฟล์หรือวางข้อมูลตัวอย่าง',
-    mappingTitle: 'การจับคู่คอลัมน์ด้วย AI',
-    mappingSubtitle: 'Gemini จับคู่คอลัมน์ให้เรียบร้อย แตะเพื่อปรับแต่งได้ทันที',
+    mappingTitle: 'การจับคู่คอลัมน์',
+    mappingSubtitle: 'จับคู่คอลัมน์ที่ส่งออกกับข้อมูลร้านแล้ว แตะเพื่อปรับได้',
     sourceColumn: 'คอลัมน์ต้นทาง',
     targetField: 'ฟิลด์ Chalkboard',
     confidence: 'ความมั่นใจ',
@@ -488,11 +501,12 @@ const translations: Record<Locale, Copy> = {
   },
   vi: {
     connectTitle: 'Kết nối hệ thống của bạn',
+    connectType: 'POS / ERP',
     connectSubtitle: 'Tích hợp phần mềm POS, ERP hoặc tính tiền mà không cần nhập lại',
     pickSystem: 'Chọn hệ thống của bạn',
     uploadOrPaste: 'Tải tệp lên hoặc dán dữ liệu mẫu',
-    mappingTitle: 'Đối chiếu cột bằng AI',
-    mappingSubtitle: 'Gemini đã tự động đối chiếu các trường dữ liệu. Chạm để chỉnh sửa.',
+    mappingTitle: 'Đối chiếu cột',
+    mappingSubtitle: 'Các trường đã xuất được ghép với trường của cửa hàng. Chạm để sửa.',
     sourceColumn: 'Cột nguồn',
     targetField: 'Trường Chalkboard',
     confidence: 'Độ tin cậy',
@@ -531,13 +545,14 @@ const translations: Record<Locale, Copy> = {
   },
   fil: {
     connectTitle: 'Ikonekta ang iyong sistema',
+    connectType: 'POS / ERP',
     connectSubtitle:
       'I-plug in ang iyong POS, ERP o software sa pagsingil nang hindi muling nag-e-encode',
     pickSystem: 'Piliin ang iyong sistema',
     uploadOrPaste: 'Mag-upload ng export o mag-paste ng sample',
-    mappingTitle: 'AI column mapping',
+    mappingTitle: 'Pagtutugma ng column',
     mappingSubtitle:
-      'Itinugma ng Gemini ang iyong mga column. I-tap ang anumang row para i-adjust.',
+      'Itinugma ang mga column sa mga field ng tindahan. I-tap ang row para baguhin.',
     sourceColumn: 'Source column',
     targetField: 'Chalkboard field',
     confidence: 'Kumpiyansa',
@@ -576,12 +591,13 @@ const translations: Record<Locale, Copy> = {
   },
   bn: {
     connectTitle: 'আপনার সিস্টেম সংযুক্ত করুন',
+    connectType: 'POS / ERP',
     connectSubtitle: 'নতুন করে ডেটা এন্ট্রি না করে আপনার POS, ERP বা বিলিং সফটওয়্যার যুক্ত করুন',
     pickSystem: 'আপনার সিস্টেম নির্বাচন করুন',
     uploadOrPaste: 'ফাইল আপলোড করুন বা নমুনা পেস্ট করুন',
-    mappingTitle: 'AI কলাম ম্যাপিং',
+    mappingTitle: 'কলাম ম্যাপিং',
     mappingSubtitle:
-      'Gemini আপনার ডেটা ফিল্ড ম্যাপ করেছে। পরিবর্তন করতে যে কোনো সারিতে ট্যাপ করুন।',
+      'আপনার রপ্তানি করা ফিল্ড দোকানের ফিল্ডের সঙ্গে মিলেছে। বদলাতে সারিতে ট্যাপ করুন।',
     sourceColumn: 'উৎস কলাম',
     targetField: 'চকবোর্ড ফিল্ড',
     confidence: 'নির্ভুলতা',
@@ -620,13 +636,13 @@ const translations: Record<Locale, Copy> = {
   },
   te: {
     connectTitle: 'మీ సిస్టమ్‌ను కనెక్ట్ చేయండి',
+    connectType: 'POS / ERP',
     connectSubtitle:
       'డేటాను మళ్లీ నమోదు చేయకుండా మీ POS, ERP లేదా బిల్లింగ్ సాఫ్ట్‌వేర్‌ను కనెక్ట్ చేయండి',
     pickSystem: 'మీ సిస్టమ్‌ను ఎంచుకోండి',
     uploadOrPaste: 'ఫైల్ అప్‌లోడ్ చేయండి లేదా నమూనా పేస్ట్ చేయండి',
-    mappingTitle: 'AI కాలమ్ మ్యాపింగ్',
-    mappingSubtitle:
-      'Gemini మీ ఎగుమతి ఫీల్డ్‌లను మ్యాప్ చేసింది. మార్చడానికి ఏదైనా వరుసపై నొక్కండి.',
+    mappingTitle: 'కాలమ్ మ్యాపింగ్',
+    mappingSubtitle: 'ఎగుమతి ఫీల్డ్‌లు దుకాణం ఫీల్డ్‌లతో సరిపోలాయి. మార్చడానికి వరుసను నొక్కండి.',
     sourceColumn: 'మూల కాలమ్',
     targetField: 'Chalkboard ఫీల్డ్',
     confidence: 'ఖచ్చితత్వం',
@@ -665,11 +681,13 @@ const translations: Record<Locale, Copy> = {
   },
   mr: {
     connectTitle: 'तुमची प्रणाली जोडा',
+    connectType: 'POS / ERP',
     connectSubtitle: 'डेटा पुन्हा भरण्याऐवजी तुमचे POS, ERP किंवा बिलिंग सॉफ्टवेअर जोडा',
     pickSystem: 'तुमची प्रणाली निवडा',
     uploadOrPaste: 'फाइल अपलोड करा किंवा नमुना पेस्ट करा',
-    mappingTitle: 'AI कॉलम मॅपिंग',
-    mappingSubtitle: 'Gemini ने तुमचे फील्ड मॅप केले आहे. बदलण्यासाठी कोणत्याही ओळीवर टॅप करा.',
+    mappingTitle: 'कॉलम मॅपिंग',
+    mappingSubtitle:
+      'तुमची निर्यात केलेली फील्ड दुकानाच्या फील्डशी जुळली आहेत. बदलण्यासाठी ओळीवर टॅप करा.',
     sourceColumn: 'स्रोत कॉलम',
     targetField: 'Chalkboard फील्ड',
     confidence: 'अचूकता',
@@ -708,13 +726,13 @@ const translations: Record<Locale, Copy> = {
   },
   kn: {
     connectTitle: 'ನಿಮ್ಮ ಸಿಸ್ಟಮ್ ಸಂಪರ್ಕಿಸಿ',
+    connectType: 'POS / ERP',
     connectSubtitle:
       'ಡೇಟಾವನ್ನು ಪುನಃ ನಮೂದಿಸದೆ ನಿಮ್ಮ POS, ERP ಅಥವಾ ಬಿಲ್ಲಿಂಗ್ ತಂತ್ರಾಂಶವನ್ನು ಸಂಪರ್ಕಿಸಿ',
     pickSystem: 'ನಿಮ್ಮ ಸಿಸ್ಟಮ್ ಆಯ್ಕೆಮಾಡಿ',
     uploadOrPaste: 'ಫೈಲ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ ಅಥವಾ ನಮೂನೆ ಅಂಟಿಸಿ',
-    mappingTitle: 'AI ಕಾಲಮ್ ಮ್ಯಾಪಿಂಗ್',
-    mappingSubtitle:
-      'Gemini ನಿಮ್ಮ ರಫ್ತು ಕ್ಷೇತ್ರಗಳನ್ನು ಮ್ಯಾಪ್ ಮಾಡಿದೆ. ಬದಲಾಯಿಸಲು ಯಾವುದೇ ಸಾಲನ್ನು ಟ್ಯಾಪ್ ಮಾಡಿ.',
+    mappingTitle: 'ಕಾಲಮ್ ಮ್ಯಾಪಿಂಗ್',
+    mappingSubtitle: 'ರಫ್ತು ಕ್ಷೇತ್ರಗಳು ಅಂಗಡಿಯ ಕ್ಷೇತ್ರಗಳಿಗೆ ಹೊಂದಿವೆ. ಬದಲಾಯಿಸಲು ಸಾಲನ್ನು ಟ್ಯಾಪ್ ಮಾಡಿ.',
     sourceColumn: 'ಮೂಲ ಕಾಲಮ್',
     targetField: 'Chalkboard ಕ್ಷೇತ್ರ',
     confidence: 'ನಿಖರತೆ',
@@ -755,5 +773,9 @@ const translations: Record<Locale, Copy> = {
 
 export function useConnectCopy(): Copy {
   const locale = useLocale()
+  return connectCopyFor(locale)
+}
+
+export function connectCopyFor(locale: Locale): Copy {
   return translations[locale] ?? en
 }

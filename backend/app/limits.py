@@ -47,6 +47,7 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     # The Prep plan tile loads with My shop; repeats are answered from the forecast cache.
     "forecast": ((120, 3_600), (1_000, 86_400)),
     "owner:read": ((120, 3_600), (1_000, 86_400)),
+    "owner:write": ((30, 60), (200, 86_400)),
     "rescue:write": ((30, 60), (200, 86_400)),
     "rescue:public": ((30, 60),),
     "rescue:hold": ((20, 60), (100, 86_400)),
@@ -67,6 +68,7 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "thread:owner": ((60, 60),),
     # Signed-in customers: messages across all their threads, and neighbour tips.
     "thread:customer": ((20, 60), (300, 86_400)),
+    "thread:guest": ((10, 60), (100, 86_400)),
     "tips": ((5, 600), (20, 86_400)),
     # Passport stamp attempts (QR scans) and the Today feed.
     "passport": ((20, 60), (200, 86_400)),
