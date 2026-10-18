@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { lanes, toMermaid } from '../src/architecture/diagram.js'
+import { lanes } from '../src/architecture/diagram.js'
 
 test('architecture page shows every lane and fits the screen', async ({ page }) => {
   await page.goto('/architecture')
@@ -13,9 +12,4 @@ test('architecture page shows every lane and fits the screen', async ({ page }) 
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     .toBe(true)
-})
-
-test('docs/architecture.md carries the same diagram as the page', () => {
-  const doc = readFileSync('docs/architecture.md', 'utf8')
-  expect(doc).toContain('```mermaid\n' + toMermaid() + '\n```')
 })

@@ -53,7 +53,7 @@ export function NextRewardLine({ view }: { view: PassportView }) {
 }
 
 /**
- * The front door's games entry point (docs/handoff/customer-games.md): a compact card with the
+ * The front door's games entry point: a compact card with the
  * next named reward, the streak flame and any scratch cards waiting, linking to the passport.
  * Renders nothing until the passport has loaded, so it never pushes the page around.
  */

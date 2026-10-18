@@ -1,7 +1,7 @@
 """Game routes: scratch a card, freeze a streak week, collect the co-op reward, use a won perk,
 and a shop's game facts (odds, welcome stamps, reciprocity perks, "neighbours tried this").
 
-Every outcome is decided on the server (docs/research/gamification.md). Each route returns the
+Every outcome is decided on the server. Each route returns the
 whole passport, so the phone redraws from one source of truth.
 """
 

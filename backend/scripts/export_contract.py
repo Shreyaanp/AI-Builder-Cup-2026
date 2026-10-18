@@ -16,7 +16,7 @@ schema.setdefault("components", {}).setdefault("schemas", {}).update(
         "FeatureFlags": FeatureFlags.model_json_schema(),
     }
 )
-target = Path("../docs/openapi.json")
+target = Path("openapi.json")
 target.parent.mkdir(exist_ok=True)
 target.write_text(json.dumps(schema, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print("Exported offline OpenAPI and streaming event contracts.")

@@ -51,7 +51,7 @@ config = {
     "FIRESTORE_NAMESPACE": target["firestoreNamespace"],
     # Share links and QR codes made in the business app point customers here.
     "CUSTOMER_ORIGIN": "https://chalkboard.shreyaan.work",
-    # Customer front door: "new" one-story page or "classic" (docs/LANDING-REVERT.md).
+    # Customer front door: "new" one-story page or "classic".
     "LANDING_VARIANT": os.environ.get("LANDING_VARIANT", "classic").strip(),
     "GA_MEASUREMENT_ID": os.environ.get("GA_MEASUREMENT_ID", "").strip(),
     # Hand-set on the live revision before; the env file replaces all env, so keep them here.

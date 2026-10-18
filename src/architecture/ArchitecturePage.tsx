@@ -1,10 +1,9 @@
-import { Box, Link, Paper, Stack, Typography, useTheme } from '@mui/material'
+import { Box, Paper, Stack, Typography, useTheme } from '@mui/material'
 import { ArrowDown, ArrowRight } from 'lucide-react'
 import { shape, windowClass } from '../design/theme'
 import { adaptSteps, edges, lanes, scaleFacts } from './diagram'
 
 const titles = new Map(lanes.flatMap((lane) => lane.nodes.map((node) => [node.id, node.title])))
-const SOURCE = 'https://github.com/Shreyaanp/AI-Builder-Cup-2026/blob/main/docs/architecture.md'
 
 /** /architecture on any host: the production diagram for judges, readable on a phone. */
 export default function ArchitecturePage() {
@@ -156,12 +155,6 @@ export default function ArchitecturePage() {
           </Paper>
         ))}
       </Box>
-
-      <Typography variant="bodyMedium" sx={{ mt: 4 }}>
-        <Link href={SOURCE} target="_blank" rel="noreferrer" sx={{ minHeight: 48 }}>
-          Full architecture notes and evidence
-        </Link>
-      </Typography>
     </Box>
   )
 }

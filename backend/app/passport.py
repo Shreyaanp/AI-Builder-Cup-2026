@@ -2,7 +2,7 @@
 
 The server is the source of truth for signed-in customers. A stamp needs the shop's signed QR
 key, a location fix inside the shop radius, and a new local day for that shop; everything else
-earns no points (docs/research/customer.md §2.2). Signed-out visits get a signed receipt that
+earns no points. Signed-out visits get a signed receipt that
 lives on the phone and merges once on sign-in. Demo shops earn "demo points", always kept apart
 from real points. Levels never go down and points never expire.
 
@@ -40,7 +40,7 @@ MAX_SPEED_KMH = 150
 # More rejected stamps than this in a day flags the account (kept off the leaderboard).
 FLAG_REJECTS = 3
 STREAK_MILESTONES = {4: 50, 8: 100, 12: 150, 26: 300}
-# Streak freezes (docs/research/gamification.md §3): every passport starts with one, one more is
+# Streak freezes: every passport starts with one, one more is
 # earned every 4 active weeks or won on a scratch card, and at most 2 are banked. A freeze covers a
 # missed week on its own, or the customer freezes a week ahead ("away next week").
 RAIN_CHECK_EVERY = 4

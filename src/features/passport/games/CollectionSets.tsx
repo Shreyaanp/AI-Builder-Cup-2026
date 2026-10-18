@@ -115,7 +115,7 @@ export function SetComplete({ set }: { set: Pick<SetView, 'id' | 'art'> }) {
 }
 
 /**
- * Collection sets (docs/research/gamification.md §4): themed sets of different shops, each with
+ * Collection sets: themed sets of different shops, each with
  * its stickers, the next stop named, and a badge plus a shop perk when complete.
  */
 export function CollectionSets({ sets }: { sets: SetView[] }) {

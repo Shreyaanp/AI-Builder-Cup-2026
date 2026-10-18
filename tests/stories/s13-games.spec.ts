@@ -3,7 +3,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test'
 import { enter, localOnly, phone, shareSigned } from './support.js'
 
 /**
- * S13 · The passport games (docs/research/gamification.md). An owner sets a scratch-card prize
+ * S13 · The passport games. An owner sets a scratch-card prize
  * and thank-yous; a signed-in neighbour standing at the shop scans the counter QR: stamp →
  * scratch card → prize → collection-set progress → the neighbourhood goal → a streak freeze for
  * next week. Light and dark, phone and desktop; screenshots in docs/stories/games-*.png and a

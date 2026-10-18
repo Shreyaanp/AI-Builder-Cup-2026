@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     # Briefs, trackers and notes change nothing that ships: no checks, no release.
-    paths-ignore: ['docs/**', '*.md']
+    paths-ignore: ['*.md']
   pull_request:
   workflow_call:
     inputs:
@@ -18,7 +18,7 @@ concurrency:
   group: checks-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  # Owner's product rules as code (docs/RULES.md). Fast: no install beyond npm ci.
+  # Owner's product rules as code. Fast: no install beyond npm ci.
   rules:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -93,8 +93,8 @@ jobs:
       - run: npm ci
       - run: uv run python -m scripts.export_contract
         working-directory: backend
-      - run: npx openapi-typescript docs/openapi.json -o src/api/generated.d.ts
-      - run: git diff --exit-code -- docs/openapi.json src/api/generated.d.ts
+      - run: npx openapi-typescript backend/openapi.json -o src/api/generated.d.ts
+      - run: git diff --exit-code -- backend/openapi.json src/api/generated.d.ts
       - run: npm run lint
       - run: npm run build
       - run: npm run test:hooks
