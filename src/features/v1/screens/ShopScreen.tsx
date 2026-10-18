@@ -15,7 +15,7 @@ export function ShopScreen() {
   const ws = useWorkspace()
   return (
     <ShopGate>
-      <Box component="section" aria-label={tabs.navShop} sx={{ maxWidth: 760, mx: 'auto', pt: 2 }}>
+      <Box component="section" aria-label={tabs.navShop} sx={{ maxWidth: 720, mx: 'auto', pt: 2 }}>
         <ShopHome key={ws.activeId} />
       </Box>
     </ShopGate>
@@ -27,14 +27,14 @@ export function ShopGate({ children }: { children: ReactNode }) {
   const ws = useWorkspace()
   if (ws.loading)
     return (
-      <Stack spacing={2} sx={{ maxWidth: 760, mx: 'auto', pt: 4 }} aria-busy="true">
+      <Stack spacing={2} sx={{ maxWidth: 720, mx: 'auto', pt: 4 }} aria-busy="true">
         <Skeleton variant="text" width="60%" height={48} />
         <Skeleton variant="rounded" height={220} />
       </Stack>
     )
   if (ws.loadError)
     return (
-      <Box sx={{ maxWidth: 760, mx: 'auto', pt: 4 }}>
+      <Box sx={{ maxWidth: 720, mx: 'auto', pt: 4 }}>
         <LoadError />
       </Box>
     )
