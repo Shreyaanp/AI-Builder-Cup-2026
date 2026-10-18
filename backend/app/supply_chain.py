@@ -1301,25 +1301,18 @@ def receive(
     return {"order": saved, "proposal": proposal}
 
 
-def restock(
-    store: MerchantRepository,
-    uid: str,
-    bid: str,
-    context: dict[str, Any],
-    po: dict[str, Any],
-    amounts: dict[int, float],
-) -> tuple[dict[str, ProductFields], dict[str, Any] | None]:
-    """The stock update for goods that came in, prepared for the owner's usual review (the
-    menu changes only when they confirm it). amounts: received quantity per order line."""
-    from .merchant import ProposalRequest
+def stock_after(
+    inventory: list[dict[str, Any]], po: dict[str, Any], amounts: dict[int, float]
+) -> dict[str, tuple[dict[str, Any], int]]:
+    """Each shop item the received lines restock, with its stock afterwards (nothing saved)."""
     from .sourcing import convert, matches
 
-    changed: dict[str, ProductFields] = {}
+    after: dict[str, tuple[dict[str, Any], int]] = {}
     for line in po["lines"]:
         amount_in = float(amounts.get(line["line"], 0))
         if not amount_in:
             continue
-        for product in context["inventory"]:
+        for product in inventory:
             name = line.get("substitute") or line["item"]
             if not (
                 matches(product["name"], name)
@@ -1331,15 +1324,34 @@ def restock(
             if amount is None:
                 continue
             base = product.get("stock") or 0
-            changed[product["name"]] = ProductFields(
-                name=product["name"],
-                category=product.get("category", ""),
-                price=product["price"],
-                unit=product["unit"],
-                stock=min(1_000_000, int(base + round(amount))),
-                available=True,
-            )
+            after[product["name"]] = (product, min(1_000_000, int(base + round(amount))))
             break
+    return after
+
+
+def restock(
+    store: MerchantRepository,
+    uid: str,
+    bid: str,
+    context: dict[str, Any],
+    po: dict[str, Any],
+    amounts: dict[int, float],
+) -> tuple[dict[str, ProductFields], dict[str, Any] | None]:
+    """The stock update for goods that came in, prepared for the owner's usual review (the
+    menu changes only when they confirm it). amounts: received quantity per order line."""
+    from .merchant import ProposalRequest
+
+    changed = {
+        name: ProductFields(
+            name=product["name"],
+            category=product.get("category", ""),
+            price=product["price"],
+            unit=product["unit"],
+            stock=stock,
+            available=True,
+        )
+        for name, (product, stock) in stock_after(context["inventory"], po, amounts).items()
+    }
     proposal = None
     if changed:
         proposal = store.propose(

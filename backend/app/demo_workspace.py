@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 
 from .community_routes import customer
 from .limits import enforce_limits
-from .merchant_routes import consented_owner, store
+from .merchant_routes import consented_owner, owner, store
 from .sales import today_for
 from .tour_catalogue import CENTRES, TOUR_SHOPS
 from .tour_story import seed_customer, seed_story, seed_workspace, tour_id
@@ -100,3 +100,22 @@ async def demo_customer(
     city = "bengaluru" if ZONE_CITY.get(zone) == "bengaluru" else "singapore"
     lat, lng, _currency, _timezone, area = CENTRES[city]
     return {"ready": True, "place": {"lat": lat, "lng": lng, "label": area}}
+
+
+@router.get("/chain/{business_id}")
+async def demo_chain(business_id: str, request: Request) -> dict[str, Any]:
+    """The tour's order story on the owner's own tour shop: seeded demo records, read only."""
+    from . import supply_chain
+    from .supply_routes import forecaster
+    from .tour_chain import story, tour_city
+
+    uid = await owner(request)
+    tour_city(uid, business_id)
+    service = store(request)
+    context = await anyio.to_thread.run_sync(service.context, uid, business_id)
+    history = await anyio.to_thread.run_sync(service.sales_history, uid, business_id)
+    today = supply_chain.shop_today(context)
+    forecast = await forecaster(request).forecast(history, today, context["inventory"])
+    return await anyio.to_thread.run_sync(
+        story, service, uid, business_id, forecast.model_dump(mode="json"), today
+    )

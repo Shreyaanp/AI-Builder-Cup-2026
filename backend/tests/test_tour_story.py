@@ -417,3 +417,52 @@ def test_wholesaler_books_the_stall_order_and_restocks_by_csv(world) -> None:
         assert supply_io.partner_of(bought)["name"] == distributor
         assert bought["documents"][0]["raw_format"] == "csv"
         assert bought["documents"][0]["raw"].startswith("doc_type,doc_number")
+
+
+def test_tour_chain_follows_one_order_on_seeded_records(app) -> None:  # noqa: F811
+    """Every name and number in the tour's order story comes from the seeded records."""
+    with TestClient(app) as client:
+        join(client)
+        stories = {}
+        for zone in ("Asia/Kolkata", "Asia/Singapore"):
+            bid = client.post(f"/api/v1/demo/workspace?zone={zone}").json()["business_id"]
+            response = client.get(f"/api/v1/demo/chain/{bid}")
+            assert response.status_code == 200, response.text
+            stories[zone] = (bid, response.json())
+        bid, india = stories["Asia/Kolkata"]
+        assert india["today"]["item"] == "Tea dust" and india["today"]["runs_out"]
+        assert india["order"]["number"] == "4500000001"
+        assert india["order"]["partner"] == "Sri Lakshmi Provisions (Demo)"
+        assert [line["item"] for line in india["order"]["lines"]][1:] == [
+            "Milk",
+            "Sugar",
+            "Paper cups (50)",
+        ]
+        assert india["order"]["message"].startswith("*Purchase order 4500000001*")
+        inbound = india["wholesaler"]["inbound"]
+        assert inbound["number"] == "4500000001"
+        assert inbound["partner"] == "Lantern Chai Corner (Demo)"
+        assert inbound["lines"] == india["order"]["lines"]
+        restock = india["wholesaler"]["restock"]
+        assert restock["partner"] == "Anand Distributors (Demo)"
+        assert restock["csv"].startswith("doc_type,doc_number")
+        chain = india["chain"]
+        assert chain["name"] == "Metro Foods (Demo)" and chain["outlets"] == "24"
+        assert chain["order"]["partner"] == "Bharat FMCG Distribution (Demo)"
+        assert chain["order"]["idocs"][:4] == ["ORDERS05", "ORDERS05", "DELVRY07", "INVOIC02"]
+        tea = next(row for row in india["arrived"] if row["item"] == "Tea dust")
+        assert tea["after"] == tea["before"] + india["order"]["lines"][0]["quantity"]
+        assert tea["runs_out_before"] and not tea["runs_out_after"]
+        assert tea["covered_until"] > tea["runs_out_before"]
+        assert india["customers"]["stamps_needed"] == 8
+        assert india["customers"]["reward"] == "A free chai"
+        assert india["customers"]["stamps_today"] > 0
+        _, sg = stories["Asia/Singapore"]
+        assert sg["today"]["item"] == "Kopi powder"
+        assert sg["order"]["partner"] == "Ah Huat Provision (Demo)"
+        assert sg["wholesaler"]["restock"]["partner"] == "Katong Wholesale Distributors (Demo)"
+        assert sg["wholesaler"]["inbound"]["partner"] == "Sunny Side Kopitiam (Demo)"
+
+    with TestClient(app) as stranger:
+        join(stranger)
+        assert stranger.get(f"/api/v1/demo/chain/{bid}").status_code == 404
