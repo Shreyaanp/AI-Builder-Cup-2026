@@ -99,6 +99,27 @@ function answer(name = 'Fixture Kopi') {
   }
 }
 
+test('duplicate model follow-up is shown once and raises no React key error', async ({ page }) => {
+  const keyErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error' && message.text().includes('same key'))
+      keyErrors.push(message.text())
+  })
+  await page.route('**/api/v1/discover/ask', (route) =>
+    route.fulfill({
+      json: {
+        ...answer(),
+        intent: { ...answer().intent, followups: ['Cheaper?'] },
+      },
+    }),
+  )
+  await page.goto('/explore/')
+  await ask(page, 'kopi')
+  await expect(page.getByRole('article', { name: 'kopi' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Cheaper?', exact: true })).toHaveCount(1)
+  expect(keyErrors).toEqual([])
+})
+
 test('front door: the conversation opens with real local suggestions and Today’s 7', async ({
   page,
   isMobile,

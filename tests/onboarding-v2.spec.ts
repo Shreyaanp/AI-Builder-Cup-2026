@@ -67,7 +67,7 @@ test('one sentence puts the shop live; no menu question; summary, skip face, Tod
   )
   // Face check skipped: the shop opens; Today asks for the menu first (photo or typed).
   await summary.getByRole('button', { name: 'Skip for now' }).click()
-  await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
   await page.getByRole('button', { name: 'Continue with my shop' }).click()
   const today = page.getByTestId('today-day-one')
   await expect(today).toContainText('Add your menu')
@@ -214,6 +214,19 @@ test('a reload mid-onboarding resumes silently: the card, the next step, no new 
   expect(said).not.toContain(ASKED.kind)
 })
 
+test('"these are all my information" is recognised as finishing: Review my shop opens (#191)', async ({
+  page,
+}) => {
+  await enter(page)
+  await begin(page)
+  await answer(page, 'name: Raju Tailors; category: silai ka kaam')
+  await say(page, 'these are all my information')
+  await expect(page.getByTestId('conversation-ended')).toContainText('Conversation ended')
+  // Review my shop (the sheet "Your shop so far") opens by itself.
+  await expect(page.getByRole('dialog', { name: 'Your shop so far' })).toBeVisible()
+  await expect(page.getByTestId('draft-summary')).toContainText('Raju Tailors')
+})
+
 test('"bas" ends the conversation with a goodbye; Continue carries on without re-asking', async ({
   page,
 }) => {
@@ -223,6 +236,10 @@ test('"bas" ends the conversation with a goodbye; Continue carries on without re
   await say(page, 'bas')
   const ended = page.getByTestId('conversation-ended')
   await expect(ended).toContainText('Conversation ended')
+  // Stopping opens "Review my shop" at once; close it to carry on.
+  await expect(page.getByTestId('draft-summary')).toContainText('Raju Tailors')
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('draft-summary')).toHaveCount(0)
   await expect(page.getByRole('log')).toContainText('Everything is saved.')
   // Nothing more is asked (no nudge, no question) while the conversation rests.
   const asked = (await askedTopics(page)).length

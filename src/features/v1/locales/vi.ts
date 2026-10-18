@@ -1,6 +1,21 @@
 import type { Copy } from '../strings'
 
 export const vi: Copy = {
+  firstCustomers: 'Đón khách đầu tiên',
+  printPoster: 'In áp phích',
+  downloadPdf: 'Tải PDF',
+  shareWhatsApp: 'Chia sẻ qua WhatsApp',
+  scanStamps: 'Quét để nhận dấu',
+  paperSize: 'Khổ giấy',
+  trustFree: 'Bắt đầu miễn phí',
+  trustLanguage: 'Ngôn ngữ của bạn',
+  trustData: 'Dữ liệu của bạn',
+  trustHuman: 'Gặp nhân viên',
+  trustFreeBody: 'Bắt đầu miễn phí; không cần thanh toán.',
+  trustLanguageBody: 'Chọn tiếng Hindi, Anh hoặc ngôn ngữ khác trong cài đặt.',
+  trustDataBody: 'Xóa dữ liệu bất cứ lúc nào; dữ liệu khuôn mặt đã lưu được mã hóa.',
+  trustHumanBody: 'Liên hệ nhóm hỗ trợ qua WhatsApp.',
+  trustWhatsapp: 'Mở WhatsApp',
   newShopMode: 'Cửa hàng mới',
   newShopReady: 'Cửa hàng mới của bạn đã sẵn sàng',
   newShopReadyBody: 'Bạn đang quản lý cửa hàng mới. Chia sẻ trang khách hàng khi sẵn sàng.',

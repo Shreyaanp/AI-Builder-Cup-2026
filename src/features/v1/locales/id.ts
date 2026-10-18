@@ -1,6 +1,21 @@
 import type { Copy } from '../strings'
 
 export const id: Copy = {
+  firstCustomers: 'Dapatkan pelanggan pertama',
+  printPoster: 'Cetak poster',
+  downloadPdf: 'Unduh PDF',
+  shareWhatsApp: 'Bagikan via WhatsApp',
+  scanStamps: 'Pindai untuk stempel',
+  paperSize: 'Ukuran kertas',
+  trustFree: 'Mulai gratis',
+  trustLanguage: 'Bahasa Anda',
+  trustData: 'Data tetap milik Anda',
+  trustHuman: 'Bicara dengan staf',
+  trustFreeBody: 'Mulai gratis; tidak perlu membayar.',
+  trustLanguageBody: 'Pilih Hindi, Inggris, atau bahasa lain di pengaturan.',
+  trustDataBody: 'Hapus data kapan saja; data wajah tersimpan dienkripsi.',
+  trustHumanBody: 'Hubungi tim bantuan kami lewat WhatsApp.',
+  trustWhatsapp: 'Buka WhatsApp',
   newShopMode: 'Toko baru',
   newShopReady: 'Toko baru Anda sudah siap',
   newShopReadyBody: 'Anda kini mengelola toko baru. Bagikan halaman pelanggan saat siap.',

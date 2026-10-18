@@ -22,6 +22,7 @@ import { fill, usePassportCopy } from '../passport/copy'
 import { usePassport } from '../passport/store'
 import { formatPrice } from '../v1/format'
 import { useOnline } from '../v1/useOnline'
+import { phoneArea } from '../../region/region'
 import { useRescueCopy } from './copy'
 import { HoldSheet } from './HoldSheet'
 import { clock, countdown, distanceText, useHolds, useNow } from './holds'
@@ -30,7 +31,6 @@ import type { Hold, PublicRescue } from './holds'
 type Place = { lat: number; lng: number; label: string }
 const FILTERS = 'chalkboard.discover.filters'
 // The Ask home's default area, so a first visit shows the same neighbourhood.
-const FALLBACK: Place = { lat: 1.2847, lng: 103.832, label: 'Tiong Bahru' }
 const RADIUS = 3000
 // The pin pulse doubles its speed in the last 30 minutes (1.6 s â†’ 0.8 s).
 const URGENT = 30 * 60
@@ -50,7 +50,7 @@ function savedPlace(): Place {
   } catch {
     /* Optional storage. */
   }
-  return FALLBACK
+  return phoneArea()
 }
 
 /** The same remembered place as the Ask home, so both tabs show one neighbourhood. */
