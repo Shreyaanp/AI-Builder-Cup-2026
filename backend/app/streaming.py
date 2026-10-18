@@ -319,7 +319,7 @@ class CoachRuntime:
         ui_language.set(language)
         timer = FirstOutput("text_agent")
         if merchant and merchant.uid.startswith("public-demo-"):
-            from .agent import public_demo_reply
+            from .demo_coach import public_demo_reply
 
             reply = public_demo_reply(merchant, text)
             if reply:
