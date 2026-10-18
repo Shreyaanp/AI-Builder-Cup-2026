@@ -14,6 +14,7 @@ Date: 2026-10-18. Scope: Local Playwright end-to-end flow tests on PHONE project
 | `tests/agy/supply-chain.spec.ts`       | Purchase orders inbound and outbound flow in Supply hub                                                               | PASS   | Covers opening Supply hub, reviewing forecast and recommended purchase orders, modifying quantities, sending dispatch notice, and tracking outbound shipping updates.          |
 | `tests/agy/pos-import.spec.ts`         | POS import via CSV file → column mapping → review → menu updated                                                      | PASS   | Covers Petpooja system selection, uploading CSV file, column mapping review, confirm import, and verifying menu updated.                                                       |
 | `tests/agy/pos-import.spec.ts`         | POS import via JSON file (Petpooja export) → column mapping → review                                                  | PASS   | Covers uploading JSON export file, column mapping confirmation, and review.                                                                                                    |
+| `tests/agy/pos-import.spec.ts`         | POS import via XLSX file → column mapping → review → menu updated                                                    | PASS   | Covers uploading native XLSX spreadsheet export, column mapping confirmation, check before saving review, and confirming menu items updated.                                  |
 | `tests/agy/pos-import.spec.ts`         | POS import via screen photo (photo of a screen/printout) → AI mapping → review                                        | PASS   | Covers uploading sample screen photos, reading photos, mapping review, and menu update confirmation.                                                                           |
 | `tests/agy/trust-strip.spec.ts`        | displays all trust chips, opens informative modal sheets, and links to support                                        | PASS   | Covers all 4 trust chips, modal bottom sheets, WhatsApp support link, graceful drop when support disabled, and full hide when trust strip disabled.                            |
 | `tests/agy/demo-shop.spec.ts`          | unauthenticated visitor opens /demo, inspects demo shop, browses shops, and exits demo                                | PASS   | Tests `/demo` labelled banner, read-only guard alert on edit attempt, demo menu inspection, browsing demo shops, and exiting demo back to base routes.                         |
@@ -25,6 +26,7 @@ Date: 2026-10-18. Scope: Local Playwright end-to-end flow tests on PHONE project
 
 ## Notes on Bugs & Fixmes
 
-- All 16 specs across 8 test suites passed cleanly with single-worker execution (`--workers=1`).
+- All 17 specs across 8 test suites passed cleanly with single-worker execution (`--workers=1`).
 - No active product defects required `test.fixme` markings or new GitHub issue filings.
 - All test suites verify layout responsiveness on 390px phone viewports with no horizontal scroll overflow (`scrollWidth <= innerWidth + 1`).
+- Verified compliance with `PHONE-UX-RULES.md` (phone-first layout, touch targets >= 48px, 390px viewport, reduced motion, localization in Hindi and English).

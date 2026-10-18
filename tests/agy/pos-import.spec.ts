@@ -25,6 +25,9 @@ const screenPhotoExcel = fileURLToPath(
 const screenPhotoPetpooja = fileURLToPath(
   new URL('../../backend/tests/fixtures/screen-photos/petpooja/photo.png', import.meta.url),
 )
+const genericXlsx = fileURLToPath(
+  new URL('../../backend/tests/golden/cases/generic-xlsx/input.xlsx', import.meta.url),
+)
 
 test.describe('POS import flows on phone (390px)', () => {
   test('POS import via CSV file → column mapping → review → menu updated', async ({ page }) => {
@@ -103,6 +106,38 @@ test.describe('POS import flows on phone (390px)', () => {
     await confirm(page)
 
     // Verify no horizontal overflow
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+      true,
+    )
+  })
+
+  test('POS import via XLSX file → column mapping → review → menu updated', async ({ page }) => {
+    test.setTimeout(90_000)
+    await enter(page)
+    await seedShop(page)
+
+    await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    await page.getByRole('button', { name: /Connect your system/i }).click()
+
+    const connectDialog = page.getByRole('dialog', { name: 'Connect your system' })
+    await expect(connectDialog).toBeVisible()
+
+    await connectDialog.getByTestId('connector-file').setInputFiles({
+      name: 'input.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: readFileSync(genericXlsx),
+    })
+
+    await expect(connectDialog.getByRole('heading', { name: /Column mapping/i })).toBeVisible({
+      timeout: 15_000,
+    })
+    await connectDialog.getByRole('button', { name: 'Confirm & review import' }).click()
+
+    const review = page.getByRole('dialog', { name: reviewName })
+    await expect(review).toBeVisible()
+    await expect(review).toContainText('Masala Chai')
+    await confirm(page)
+
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
       true,
     )

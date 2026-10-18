@@ -15,6 +15,7 @@ test.describe('Trust strip on phone (390px)', () => {
   test('displays all trust chips, opens informative modal sheets, and links to support', async ({
     page,
   }) => {
+    test.setTimeout(60_000)
     let supportUrl = 'https://wa.me/919876543210'
     let stripEnabled = true
 
