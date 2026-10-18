@@ -14,6 +14,7 @@ import type { ShopSheetKind } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
 import { fill, useOwnerCopy } from './copy'
 import { shopNow } from './time'
+import { dayLabel } from '../supply/supplyData'
 import { shopZone } from '../../region/region'
 
 type Brief = components['schemas']['Brief']
@@ -219,13 +220,7 @@ export function MorningBrief({
               </Typography>
               {typeof row.runs_out === 'string' && (
                 <Typography variant="bodySmall" color="text.secondary">
-                  {fill(t.runsOut, {
-                    date: new Intl.DateTimeFormat(locale, {
-                      weekday: 'short',
-                      day: 'numeric',
-                      timeZone: 'UTC',
-                    }).format(new Date(`${row.runs_out}T00:00:00Z`)),
-                  })}
+                  {fill(t.runsOut, { date: dayLabel(row.runs_out, locale) })}
                 </Typography>
               )}
             </Stack>

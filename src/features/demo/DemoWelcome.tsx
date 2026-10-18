@@ -7,19 +7,41 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { tourCopy } from '../tour/strings'
 import { startDemoTour } from '../tour/tourActions'
 
+const SEEN = 'chalkboard.demo.welcome.v1'
+
+/** Offered once per browser tab: a reload (or a second visit) never puts it over the tabs again. */
+function seen() {
+  try {
+    return sessionStorage.getItem(SEEN) === '1'
+  } catch {
+    return false
+  }
+}
+
+function remember() {
+  try {
+    sessionStorage.setItem(SEEN, '1')
+  } catch {
+    // Private mode: the sheet may show again after a reload, which is harmless.
+  }
+}
+
 /** The demo's first screen offers the guided tour once; Help keeps it reachable later. */
 export function DemoWelcome() {
   const ws = useWorkspace()
   const t = tourCopy(useLocale())
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(() => !seen())
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const startAfterClose = useRef(false)
-  if (!ws.active) return null
+  const close = () => {
+    remember()
+    setOpen(false)
+  }
   return (
     <Sheet
       open={open}
-      onClose={() => setOpen(false)}
+      onClose={close}
       onExited={() => {
         if (!startAfterClose.current) return
         startAfterClose.current = false
@@ -34,20 +56,20 @@ export function DemoWelcome() {
         <Stack spacing={1} sx={{ width: '100%' }}>
           <Button
             variant="contained"
-            disabled={busy}
+            disabled={busy || !ws.active}
             startIcon={
               busy ? <CircularProgress size={16} color="inherit" /> : <Sparkles size={18} />
             }
             onClick={() => {
               // Let this sheet's focus trap finish exiting before the tour opens its own.
               startAfterClose.current = true
-              setOpen(false)
+              close()
             }}
             sx={{ minHeight: 48 }}
           >
             {busy ? t.preparing : t.offerButton}
           </Button>
-          <Button onClick={() => setOpen(false)} sx={{ minHeight: 48 }}>
+          <Button onClick={close} sx={{ minHeight: 48 }}>
             {t.skip}
           </Button>
         </Stack>

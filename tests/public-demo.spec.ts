@@ -69,9 +69,10 @@ for (const width of [360, 390, 412]) {
         const publish = page.getByRole('dialog').getByRole('switch')
         await publish.click()
         await expect(publish).not.toBeChecked()
+        // Blocked writes answer with the friendly demo note (#322), never an error alert.
         await expect(
-          page.getByText(language === 'en' ? 'Demo: not sent' : 'डेमो: भेजा नहीं गया', {
-            exact: true,
+          page.locator('.MuiSnackbar-root', {
+            hasText: "This is a demo shop; changes aren't saved",
           }),
         ).toBeVisible()
         await page.keyboard.press('Escape')
