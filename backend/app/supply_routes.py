@@ -113,6 +113,16 @@ async def showcase(request: Request) -> dict[str, str]:
     return {"business_id": await create_showcase(store(request), uid)}
 
 
+@router.get("/businesses/{business_id}/supply/sap-sandbox")
+async def sap_sandbox_orders(business_id: str, request: Request) -> dict[str, Any]:
+    """Real purchase orders from the SAP sandbox (read only), or the recorded sample."""
+    await owner(request)
+    service = getattr(request.app.state, "sap_sandbox", None)
+    if service is None:
+        raise HTTPException(503, "The SAP sandbox is not available.")
+    return await service.orders()
+
+
 @router.put("/businesses/{business_id}/supply/suppliers/{supplier_id}/rules")
 async def save_rules(
     business_id: str, supplier_id: str, body: RulesBody, request: Request
