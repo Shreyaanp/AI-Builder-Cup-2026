@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button, CircularProgress, Stack, Typography } from '@mui/material'
 import { Sparkles } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
@@ -14,11 +14,19 @@ export function DemoWelcome() {
   const [open, setOpen] = useState(true)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
+  const startAfterClose = useRef(false)
   if (!ws.active) return null
   return (
     <Sheet
       open={open}
       onClose={() => setOpen(false)}
+      onExited={() => {
+        if (!startAfterClose.current) return
+        startAfterClose.current = false
+        void startDemoTour(ws, setBusy, setFailed).then((started) => {
+          if (!started) setOpen(true)
+        })
+      }}
       titleId="demo-welcome-title"
       title={t.offerTitle}
       dismissInActions
@@ -30,11 +38,11 @@ export function DemoWelcome() {
             startIcon={
               busy ? <CircularProgress size={16} color="inherit" /> : <Sparkles size={18} />
             }
-            onClick={() =>
-              void startDemoTour(ws, setBusy, setFailed).then((started) => {
-                if (started) setOpen(false)
-              })
-            }
+            onClick={() => {
+              // Let this sheet's focus trap finish exiting before the tour opens its own.
+              startAfterClose.current = true
+              setOpen(false)
+            }}
             sx={{ minHeight: 48 }}
           >
             {busy ? t.preparing : t.offerButton}
