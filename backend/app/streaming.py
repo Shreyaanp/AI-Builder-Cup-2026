@@ -318,7 +318,20 @@ class CoachRuntime:
             merchant.message = text
         ui_language.set(language)
         timer = FirstOutput("text_agent")
-        if self.settings.instant_path_enabled and merchant:
+        if merchant and merchant.uid.startswith("public-demo-"):
+            from .agent import public_demo_reply
+
+            reply = public_demo_reply(merchant, text)
+            if reply:
+                yield StreamEvent(kind="reply", text=reply)
+                timer.mark("text_demo")
+                yield StreamEvent(kind="turn_complete", session_id=session_id)
+                return
+        if (
+            self.settings.instant_path_enabled
+            and merchant
+            and not merchant.uid.startswith("public-demo-")
+        ):
             instant = await self.instant(principal, session_id, text, currency)
             if instant:
                 for event in instant.events:
