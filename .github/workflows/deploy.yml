@@ -1,3 +1,6 @@
+      PUBLIC_DEMO_ENABLED: ${{ vars.PUBLIC_DEMO_ENABLED || 'true' }}
+      MAPS_GROUNDING: ${{ vars.MAPS_GROUNDING || 'live' }}
+      MAPS_GROUNDING_CACHE_SECONDS: ${{ vars.MAPS_GROUNDING_CACHE_SECONDS || '86400' }}
 name: Cloud Run release
 on:
   workflow_dispatch:

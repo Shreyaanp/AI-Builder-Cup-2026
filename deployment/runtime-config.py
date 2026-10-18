@@ -52,6 +52,10 @@ config = {
     # Share links and QR codes made in the business app point customers here.
     "CUSTOMER_ORIGIN": "https://chalkboard.shreyaan.work",
     "GA_MEASUREMENT_ID": os.environ.get("GA_MEASUREMENT_ID", "").strip(),
+    # Hand-set on the live revision before; the env file replaces all env, so keep them here.
+    "PUBLIC_DEMO_ENABLED": os.environ.get("PUBLIC_DEMO_ENABLED", "true").strip(),
+    "MAPS_GROUNDING": os.environ.get("MAPS_GROUNDING", "live").strip(),
+    "MAPS_GROUNDING_CACHE_SECONDS": os.environ.get("MAPS_GROUNDING_CACHE_SECONDS", "86400").strip(),
     "ALLOWED_ORIGINS": json.dumps([origin, "https://chalkboard.shreyaan.work", "https://business.chalkboard.shreyaan.work"]),
     "FIREBASE_WEB_API_KEY": os.environ["FIREBASE_WEB_API_KEY"].strip(),
     "FIREBASE_WEB_APP_ID": os.environ["FIREBASE_WEB_APP_ID"].strip(),
