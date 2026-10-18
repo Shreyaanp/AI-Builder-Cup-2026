@@ -5,6 +5,8 @@ export function resolveApp(url: URL): AppKind {
   if (/^\/how-it-works\/?$/.test(url.pathname)) return 'how-it-works'
   const override = url.searchParams.get('app')
   if (override === 'landing' || override === 'customer' || override === 'business') return override
+  if (/^\/demo\/?$/.test(url.pathname)) return 'business'
+  if (/^\/explore\/demo(?:\/|$)/.test(url.pathname)) return 'customer'
   if (url.hostname === 'business.chalkboard.shreyaan.work' || url.hostname.endsWith('.run.app'))
     return 'business'
   if (/^\/(explore(?:\/|$)|discover\/?$|s\/)/.test(url.pathname)) return 'customer'
@@ -17,6 +19,31 @@ export function canonicalCustomerPath(path: string): string {
   if (/^\/discover\/?$/.test(path)) return '/explore/browse'
   if (path.startsWith('/s/')) return '/explore' + path
   return path
+}
+
+/**
+ * Where Back goes from a page opened straight from a link (shared shop, QR stamp, a tab):
+ * the screen it belongs under in the app. Null for the app's start screen.
+ */
+export function backTarget(url: URL, app: AppKind): string | null {
+  const keep = new URLSearchParams()
+  const override = url.searchParams.get('app')
+  if (override) keep.set('app', override)
+  const query = keep.size ? `?${keep}` : ''
+  const path = url.pathname
+  if (app === 'customer') {
+    if (/^\/explore\/chats\/[^/]+\/[^/]+\/?$/.test(path)) return `/explore/chats${query}`
+    // A list link (/explore?category=…) is the Browse page, not the start screen.
+    const filtered = [...url.searchParams.keys()].some((key) => key !== 'app')
+    return /^\/explore\/?$/.test(path) && !filtered ? null : `/explore/${query}`
+  }
+  if (app !== 'business') return null
+  const tab = url.searchParams.get('tab')
+  if (path === '/new-shop') return `/${query}`
+  if (path !== '/' || !tab) return null
+  const parent = { google: 'grow', privacy: 'you' }[tab]
+  if (parent) keep.set('tab', parent)
+  return `/${keep.size ? `?${keep}` : ''}`
 }
 
 export function customerShopLink(id: string, origin: string): string {

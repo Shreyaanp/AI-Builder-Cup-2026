@@ -1,6 +1,21 @@
 import type { Copy } from '../strings'
 
 export const zhHans: Copy = {
+  firstCustomers: '迎接首批顾客',
+  printPoster: '打印海报',
+  downloadPdf: '下载 PDF',
+  shareWhatsApp: '分享到 WhatsApp',
+  scanStamps: '扫码集章',
+  paperSize: '纸张尺寸',
+  trustFree: '免费开始',
+  trustLanguage: '你的语言',
+  trustData: '数据属于你',
+  trustHuman: '人工帮助',
+  trustFreeBody: '免费开始，无需付款。',
+  trustLanguageBody: '在设置中选择印地语、英语或其他语言。',
+  trustDataBody: '随时删除数据；保存的人脸数据均已加密。',
+  trustHumanBody: '通过 WhatsApp 联系支持团队。',
+  trustWhatsapp: '打开 WhatsApp',
   newShopMode: '新店铺',
   newShopReady: '您的新店铺已准备好',
   newShopReadyBody: '您已切换到新店铺。准备好后即可分享顾客页面。',

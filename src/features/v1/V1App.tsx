@@ -8,17 +8,35 @@ import { LEGAL_VERSION } from './legal'
 import { Landing } from './Landing'
 import { AccountError, ConsentScreen, Splash } from './Onboarding'
 import { WorkspaceProvider } from './WorkspaceProvider'
+import { Box } from '@mui/material'
+import { TrustStrip } from './TrustStrip'
 
 import { LanguageStep } from '../language/LanguageStep'
 import { useNeedsLanguage } from '../language/needsLanguage'
+import { setAnalyticsConsent } from '../../app/analytics'
 
 /** First run: splash → welcome/sign-in → language → consent → workspace. */
 export default function V1App() {
   const identity = useIdentity()
   const [preview, setPreview] = useState(false)
+  useEffect(() => {
+    if (identity.status !== 'ready' || (identity.mode === 'local' && !preview))
+      setAnalyticsConsent(false)
+  }, [identity.status, identity.mode, preview])
   if (identity.status === 'loading') return <Splash />
   if (identity.status !== 'ready' || (identity.mode === 'local' && !preview))
-    return <Landing onPreview={() => setPreview(true)} />
+    return (
+      <>
+        {identity.trustStrip?.enabled && (
+          <Box
+            sx={{ maxWidth: 1080, mx: 'auto', px: 3, pt: 'calc(16px + env(safe-area-inset-top))' }}
+          >
+            <TrustStrip />
+          </Box>
+        )}
+        <Landing onPreview={() => setPreview(true)} />
+      </>
+    )
   return <Account key={identity.scope} onLeave={() => setPreview(false)} />
 }
 
@@ -60,6 +78,9 @@ function Account({ onLeave }: { onLeave: () => void }) {
       })
     return () => abort.abort()
   }, [api])
+  useEffect(() => {
+    setAnalyticsConsent(me?.consent_current === true)
+  }, [me?.consent_current])
   if (failed)
     return <AccountError onSignOut={identity.mode === 'firebase' ? identity.signOut : onLeave} />
   if (!me) return <Splash />

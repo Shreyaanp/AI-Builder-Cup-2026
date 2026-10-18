@@ -57,7 +57,9 @@ export function TrustCard({ compact = false }: { compact?: boolean }) {
     face === 'verified' && trust?.checked
       ? fill(c.verifiedOn, { date: formatDate(trust.checked, locale) })
       : face === 'in_review'
-        ? c.inReview
+        ? trust?.review === 'liveness'
+          ? c.livenessReview
+          : c.inReview
         : face === 'not_verified'
           ? c.notVerified
           : c.pitch

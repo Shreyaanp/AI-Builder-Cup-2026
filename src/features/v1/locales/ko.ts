@@ -1,6 +1,21 @@
 import type { Copy } from '../strings'
 
 export const ko: Copy = {
+  firstCustomers: '첫 고객을 맞이하세요',
+  printPoster: '포스터 인쇄',
+  downloadPdf: 'PDF 다운로드',
+  shareWhatsApp: 'WhatsApp으로 공유',
+  scanStamps: '스캔하고 스탬프 받기',
+  paperSize: '용지 크기',
+  trustFree: '무료로 시작',
+  trustLanguage: '내 언어',
+  trustData: '내 데이터는 내 것',
+  trustHuman: '담당자와 상담',
+  trustFreeBody: '결제 없이 무료로 시작하세요.',
+  trustLanguageBody: '설정에서 힌디어, 영어 등 언어를 선택하세요.',
+  trustDataBody: '데이터는 언제든 삭제할 수 있으며 저장된 얼굴 데이터는 암호화됩니다.',
+  trustHumanBody: 'WhatsApp으로 지원팀과 상담하세요.',
+  trustWhatsapp: 'WhatsApp 열기',
   newShopMode: '새 가게',
   newShopReady: '새 가게가 준비됐어요',
   newShopReadyBody: '새 가게로 전환됐어요. 준비되면 고객 페이지를 공유하세요.',

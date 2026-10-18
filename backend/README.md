@@ -20,6 +20,14 @@ Copy `.env.example` to `.env`, set a server-only key and explicit available text
 
 ## Checks and contracts
 
+Public preview (#153): set `PUBLIC_DEMO_ENABLED=true` to enable `/demo` on either host and
+`/explore/demo` for customer browsing. The default is off. These previews reuse the tour seed in
+throwaway storage, expose fixture reads only, and expire after 15 minutes or on Exit demo.
+Allocation is limited to 5 per minute and 20 per hour per IP, with 128 sessions per process.
+Sessions are intentionally in memory: a process restart ends them; multiple instances require
+session affinity or a shared fixture cache before enabling this switch. No sign-in, merchant
+publication, live AI, or durable owner records are involved.
+
 ```sh
 uv run ruff check app tests scripts server.py run.py
 uv run ruff format --check app tests scripts server.py run.py

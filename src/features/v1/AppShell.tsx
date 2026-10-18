@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box,
@@ -22,6 +22,7 @@ import {
   Leaf,
   MessageCircle,
   Plus,
+  Sparkles,
   Sprout,
   Store,
 } from 'lucide-react'
@@ -33,19 +34,33 @@ import type { Destination } from './workspaceContext'
 import { CoachWorkspace, type GalleryPhoto } from './screens/CoachScreen'
 import { NewShopFlow } from './NewShopFlow'
 import { TourHost } from '../tour/Tour'
-import { ShopScreen } from './screens/ShopScreen'
+import { startDemoTour } from '../tour/tourActions'
+import { tourCopy } from '../tour/strings'
+import { useLocale } from '../../state/hooks'
 import { ShopOverview } from './ShopTiles'
-import { GoogleScreen } from './screens/GoogleScreen'
-import { GrowScreen } from './screens/GrowScreen'
-import { PrivacyScreen } from './screens/PrivacyScreen'
 import { SubPage } from './screens/SubPage'
-import { YouScreen } from './screens/YouScreen'
 import { DiscardPrompt } from './DiscardPrompt'
+import { useBackClose } from './backStack'
 import { useIdentity } from '../../auth/useIdentity'
 import { CoachGuide } from '../owner-tools/CoachGuide'
 import { PaymentsScreen } from '../owner-tools/PaymentsScreen'
 import { openOwnerFeature, useOwnerFeature } from '../owner-tools/entry'
 import { useToolCopy } from '../owner-tools/copy'
+
+// Tab screens other than the coach load when first opened.
+const ShopScreen = lazy(() =>
+  import('./screens/ShopScreen').then((m) => ({ default: m.ShopScreen })),
+)
+const GrowScreen = lazy(() =>
+  import('./screens/GrowScreen').then((m) => ({ default: m.GrowScreen })),
+)
+const YouScreen = lazy(() => import('./screens/YouScreen').then((m) => ({ default: m.YouScreen })))
+const GoogleScreen = lazy(() =>
+  import('./screens/GoogleScreen').then((m) => ({ default: m.GoogleScreen })),
+)
+const PrivacyScreen = lazy(() =>
+  import('./screens/PrivacyScreen').then((m) => ({ default: m.PrivacyScreen })),
+)
 
 export function AppShell() {
   const t = useCopy()
@@ -181,7 +196,7 @@ export function AppShell() {
               ) : feature === 'payments' ? (
                 <PaymentsScreen key={ws.activeId} />
               ) : (
-                screen
+                <Suspense fallback={null}>{screen}</Suspense>
               )}
             </Box>
             {supporting && destination === 'coach' && !feature && ws.active && !inFlow && (
@@ -348,9 +363,13 @@ function NavItem({
 
 function TopBar() {
   const t = useCopy()
+  const tourText = tourCopy(useLocale())
   const ws = useWorkspace()
   const roles = useTheme().material
   const [shopMenu, setShopMenu] = useState<HTMLElement | null>(null)
+  const [tourBusy, setTourBusy] = useState(false)
+  const [tourFailed, setTourFailed] = useState(false)
+  useBackClose(Boolean(shopMenu), () => setShopMenu(null))
   // Settings live on the You tab now; the top bar keeps the shop switcher, new chat and "+".
   return (
     <Box
@@ -421,6 +440,26 @@ function TopBar() {
           </MenuItem>
         ))}
         <Divider />
+        <MenuItem
+          disabled={tourBusy}
+          sx={{ minHeight: 48 }}
+          onClick={() => {
+            openOwnerFeature(null)
+            void startDemoTour(ws, setTourBusy, setTourFailed).then((started) => {
+              if (started) setShopMenu(null)
+            })
+          }}
+        >
+          <ListItemIcon>
+            <Sparkles size={18} />
+          </ListItemIcon>
+          <ListItemText primary={tourBusy ? tourText.preparing : tourText.settings} />
+        </MenuItem>
+        {tourFailed && (
+          <Typography role="alert" color="error" sx={{ px: 2, maxWidth: 280 }}>
+            {tourText.failed}
+          </Typography>
+        )}
         <MenuItem
           onClick={() => {
             setShopMenu(null)
