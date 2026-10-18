@@ -47,8 +47,9 @@ class Settings(BaseSettings):
     frontend_dist: str = ""
     release_commit: str = "local"
     customer_origin: str = ""
+    # The public landing at "/": the frozen classic page, or the new one. The owner flips it.
+    landing_variant: Literal["classic", "new"] = "classic"
     ga_measurement_id: str = Field(default="", pattern=r"^(|G-[A-Z0-9]+)$")
-    landing_variant: Literal["new", "classic"] = "classic"
     v1_enabled: bool = False
     guest_customer: bool = False
     feature_google_guide: bool = True

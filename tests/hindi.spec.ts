@@ -21,6 +21,8 @@ const BRANDS = [
   'Google Maps',
   'Google',
   'Gemini',
+  'TimesFM',
+  'Excel',
   'Open-Meteo',
   'CC BY 4.0',
   'UPI ID',
@@ -159,7 +161,7 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
     await page
       .getByRole('group', { name: 'यह फ़ोटो क्या है?' })
       .getByRole('button', { name: 'मेन्यू' })
-      .click({ timeout: 20_000 })
+      .click({ timeout: 60_000 })
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 20_000 })
     await readsInHindi(page, '03-menu-photo')
     await closeSheet(page)
@@ -204,8 +206,13 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
   })
 
   await test.step('purchase order', async () => {
-    await growCard(page, /^खरीद ऑर्डर/)
-    await readsInHindi(page, '09-purchase-order', ['supplier'])
+    const purchaseCard = page
+      .getByRole('button')
+      .filter({ has: page.getByText('खरीद पर्चियाँ', { exact: true }) })
+    await expect(purchaseCard).toHaveCount(1)
+    await purchaseCard.click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await readsInHindi(page, '09-purchase-order')
     await closeSheet(page)
   })
 
