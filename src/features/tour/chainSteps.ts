@@ -46,7 +46,10 @@ export function chainStep(
     },
     {
       title: c.wholesaler.title,
-      body: c.wholesaler.body(short(s.wholesaler.name), short(s.wholesaler.restock?.partner ?? '')),
+      // Never a sentence with a blank name: before the wholesaler's books are seeded, say so.
+      body: s.wholesaler.restock
+        ? c.wholesaler.body(short(s.wholesaler.name), short(s.wholesaler.restock.partner))
+        : c.failed,
     },
     {
       title: c.chain.title,
