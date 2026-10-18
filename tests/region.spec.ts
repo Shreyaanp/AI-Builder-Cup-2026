@@ -80,7 +80,7 @@ test('PayNow payloads match the backend SGQR builder', () => {
 // Read as text: the copy modules import React state, which the node test project cannot type-check.
 test('Hindi copy keeps interface terms in Devanagari', () => {
   const source = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8')
-  expect(source('../src/features/connect/strings.ts')).toContain("connectType: 'पीओएस / ईआरपी'")
+  expect(source('../src/features/connect/strings.ts')).toContain("connectType: 'बिक्री और हिसाब'")
   expect(source('../src/features/passport/locales/indic.ts')).toContain('एक क्यूआर दूर है')
   expect(source('../src/features/customer/copyLocales.ts')).toContain('एआई')
 })

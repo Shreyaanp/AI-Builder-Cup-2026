@@ -63,10 +63,14 @@ for (const width of [360, 390, 412]) {
       await expect(
         video.locator('xpath=../..').getByRole('button', { name: t.sound }),
       ).toBeVisible()
-      // The steps are the video's captions, without the end card.
+      // The steps are the video's captions, without the end card. Phones leave the list out (the
+      // video already tells each step), so it stays in the page but is not shown.
       const label = flow === 'vendor' ? t.forShops : t.forCustomers
-      const steps = page.getByRole('list', { name: `${label}: ${t.steps}` }).getByRole('listitem')
-      await expect(steps).toHaveText(captions.slice(0, -1))
+      const list = page.getByRole('list', { name: `${label}: ${t.steps}`, includeHidden: true })
+      await expect(list).toBeHidden()
+      await expect(list.getByRole('listitem', { includeHidden: true })).toHaveText(
+        captions.slice(0, -1),
+      )
       for (const caption of captions) expect(caption.split(/\s+/).length).toBeLessThanOrEqual(8)
     }
     // Nothing downloads until the customer video nears the screen.
@@ -98,12 +102,15 @@ for (const appearance of ['light', 'dark'] as const) {
       'poster',
       '/how-it-works/vendor-hi.jpg',
     )
-    await expect(
-      page
-        .getByRole('list', { name: `${t.forShops}: ${t.steps}` })
-        .getByRole('listitem')
-        .first(),
-    ).toHaveText(t.vendorCaptions[0]!)
+    // Phones hide the step list: the video tells the steps; the list keeps the Hindi text.
+    const steps = page.getByRole('list', {
+      name: `${t.forShops}: ${t.steps}`,
+      includeHidden: true,
+    })
+    await expect(steps).toBeHidden()
+    await expect(steps.getByRole('listitem', { includeHidden: true }).first()).toHaveText(
+      t.vendorCaptions[0]!,
+    )
     await noOverflow(page)
     expect(
       (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,

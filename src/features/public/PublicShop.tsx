@@ -665,6 +665,9 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   const menu = [...shop.products].sort((a, b) => Number(b.available) - Number(a.available))
   const openLabel = shop.open_now == null ? null : shop.open_now ? discovery.open : discovery.closed
   const stampsEnabled = shop.stamps_enabled ?? Boolean(shop.reward_text?.trim())
+  // The stamp card, games and badges read and write this customer's own account, which the
+  // read-only public demo never touches.
+  const showStamps = stampsEnabled && !previewApi
   // Demo shops' numbers are fictional; never offer to call or message them.
   const phone = shop.demo ? '' : shop.phone
   const actions = previewApi
@@ -885,7 +888,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         }}
       >
         {!previewApi && <FollowButton id={id} name={shop.name} />}
-        {stampsEnabled && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
+        {showStamps && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
         {actions.map((action) => (
           <Button
             key={action.label}
@@ -1161,7 +1164,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         </CategoryGroups>
       )}
       {/* Rewards after the menu: earned, not in the way. */}
-      {stampsEnabled && (
+      {showStamps && (
         <StampCard
           shop={id}
           name={shop.name}
@@ -1170,7 +1173,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           needed={shop.stamps_needed ?? 8}
         />
       )}
-      {stampsEnabled && (
+      {showStamps && (
         <ShopStamp
           shop={{
             id,
@@ -1182,9 +1185,9 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           }}
         />
       )}
-      {stampsEnabled && <ShopGames shop={id} />}
+      {showStamps && <ShopGames shop={id} />}
       {!previewApi && !stale && <BackInStock shop={id} products={shop.products} />}
-      {stampsEnabled && <BadgeRow shop={id} />}
+      {showStamps && <BadgeRow shop={id} />}
       {!previewApi && <Tips shop={id} />}
       {!previewApi && (
         <SimilarNearby
