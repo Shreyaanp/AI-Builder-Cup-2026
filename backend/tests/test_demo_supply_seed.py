@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from app import supply_chain, supply_io
+from app import demo_supply_seed, supply_chain, supply_io
 from app.demo_chains import FRESHMART, METRO
 from app.demo_data import SHOPS
 from app.merchant import MerchantStore
@@ -31,16 +31,18 @@ def formats(store: MerchantStore, bid: str) -> set[str]:
         for row in rows
         for doc in row["documents"]
         if doc.get("direction") != "out"
-    } | {entry["format"] for entry in supply_io.inbox(store, bid) if entry.get("format")}
+    } | {entry["raw_format"] for entry in supply_io.inbox(store, bid)}
 
 
 def test_seed_is_idempotent_and_every_shop_uses_its_size_channel(tmp_path: Path) -> None:
     store = MerchantStore(str(tmp_path / "merchant.sqlite3"))
     seed(store)
     before = {bid: orders(store, bid) for bid in CHANNEL}
+    inbox_before = {bid: supply_io.inbox(store, bid) for bid in CHANNEL}
     assert all(len(rows) >= 2 for rows in before.values())
     seed(store)
     assert {bid: orders(store, bid) for bid in CHANNEL} == before
+    assert {bid: supply_io.inbox(store, bid) for bid in CHANNEL} == inbox_before
     for bid, channel in CHANNEL.items():
         assert formats(store, bid) == {channel}, bid
         for order in before[bid]:
@@ -66,6 +68,15 @@ def test_stall_orders_by_whatsapp_with_everyday_items(tmp_path: Path) -> None:
         assert len(first["lines"]) >= 3 and first["total"] < 100_000_00
         assert first["documents"][0]["raw"].startswith("*Purchase order")
         assert {d["kind"] for d in first["documents"]} == {"ORDERS", "RECEIPT"}
+
+
+@pytest.mark.parametrize("bid", [*SMALL, FRESHMART.id])
+def test_next_demo_document_keeps_the_shops_channel(tmp_path: Path, bid: str) -> None:
+    store = MerchantStore(str(tmp_path / "merchant.sqlite3"))
+    seed(store)
+    result = demo_supply_seed.next_document(store, "demo-world-owner", bid)
+    assert result["entry"]["raw_format"] == CHANNEL[bid]
+    assert result["entry"]["partner"]["system"] == CHANNEL[bid]
 
 
 def test_minimart_emails_csv_with_a_change_and_a_receipt(tmp_path: Path) -> None:

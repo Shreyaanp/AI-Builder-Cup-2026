@@ -21,6 +21,7 @@ from . import supply_chain, supply_io, supply_outbound
 from .demo_chains import CHAINS
 from .demo_data import SHOPS
 from .merchant import MerchantRepository
+from .region import profile
 from .supply_docs import DocLine, Format, Party, SupplyDoc, parse, render
 from .supply_rules import SIZE_FORMAT, SIZE_TERMS, Size, business_size
 
@@ -60,7 +61,10 @@ def script(
     tag = _tag(context)
     product = _item(context)
     shop = supply_io.shop_party(context)
-    partner = partner or buyer(tag)
+    partner = partner or {
+        **buyer(tag),
+        "system": SIZE_FORMAT[business_size(context["business"]["fields"])],
+    }
     scale = int(partner.get("scale", 1))  # a chain's store orders in cases, not singles
     price = round(product["price"] * 0.8)  # the trade price a regular buyer gets
     currency = supply_chain.shop_currency(context["business"]["fields"])
@@ -75,7 +79,7 @@ def script(
             issued=today.isoformat(),
             delivery=day.isoformat(),
             currency=currency,
-            buyer=Party(id=partner["id"], name=partner["name"], system="idoc"),
+            buyer=Party(id=partner["id"], name=partner["name"], system=partner["system"]),
             supplier=Party(id=shop["id"], name=shop["name"]),
             lines=[
                 DocLine(
@@ -105,7 +109,7 @@ def script(
 def next_document(
     store: MerchantRepository, uid: str, bid: str, partner: dict[str, Any] | None = None
 ) -> dict[str, Any]:
-    """The demo buyer sends its next document (as an SAP IDoc) through the real pipeline."""
+    """The demo buyer sends its next document in the shop's size-appropriate channel."""
     context = store.context(uid, bid)
     if not context["inventory"]:
         raise HTTPException(409, "NO_ITEMS")
@@ -114,8 +118,10 @@ def next_document(
     for doc in script(context, today, partner):
         if (doc.kind, doc.number) in seen:
             continue
-        raw = render(doc, "idoc")
+        raw = render(doc, SIZE_FORMAT[business_size(context["business"]["fields"])])
         read, fmt, _ = parse(raw, today)
+        # A WhatsApp message's sender/recipient come from the conversation, not its body.
+        read.buyer, read.supplier = doc.buyer, doc.supplier
         return supply_io.process(store, bid, context, read, fmt, raw, "parser")
     raise HTTPException(409, "DEMO_DONE")
 
@@ -153,12 +159,12 @@ PLANS: dict[tuple[Size, str], Plan] = {
                 ("Milk", "litre", 30, 5400),
                 ("Arabica-chicory blend", "kg", 5, 52000),
                 ("Sugar", "kg", 10, 4400),
-                ("Paper cups", "pack", 10, 4000),
+                ("Paper cups (50)", "pack", 10, 4000),
             ],
-            [("Milk", "litre", 20, 5400), ("Paper cups", "pack", 6, 4000)],
+            [("Milk", "litre", 20, 5400), ("Paper cups (50)", "pack", 6, 4000)],
         ],
     ),
-    ("small", "SGD"): Plan(
+    ("small", profile("SG").currency): Plan(
         "Ah Huat Provision (Demo)",
         "wholesaler",
         [
@@ -167,7 +173,7 @@ PLANS: dict[tuple[Size, str], Plan] = {
                 ("Evaporated milk", "pack", 24, 165),
                 ("Sugar", "kg", 10, 190),
             ],
-            [("Sliced bread", "pack", 12, 240), ("Paper cups", "pack", 8, 250)],
+            [("Sliced bread", "pack", 12, 240), ("Paper cups (50)", "pack", 8, 250)],
         ],
     ),
     # Three outlets: the regional distributor, a week's credit, spreadsheet orders by email.

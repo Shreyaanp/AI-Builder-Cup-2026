@@ -19,6 +19,7 @@ from collections import Counter
 from datetime import date
 from typing import Any
 
+from app.demo_chains import CHAINS
 from app.demo_data import SHOPS, customer_activity, sales_history
 from app.merchant import MerchantRepository
 from app.sales import today_for
@@ -147,6 +148,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.owner_uid and demo.city not in attached:
             print(f"    Also attach this demo shop to owner {args.owner_uid}")
             attached.add(demo.city)
+    for chain in CHAINS:
+        if args.city and chain.city != args.city:
+            continue
+        print(f"  {chain.id}: {chain.fields.name} · supply-chain showcase")
+        if args.owner_uid:
+            print(f"    Also attach this demo chain to owner {args.owner_uid}")
     if args.dry_run:
         print("Dry run: nothing written.")
         return 0

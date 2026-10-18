@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
+from app.demo_chains import CHAINS
 from app.forecast import ForecastService
 from app.main import create_app
 from app.merchant import BusinessFields, MerchantRepository, MerchantStore, ProductFields
@@ -127,15 +128,19 @@ def test_dry_run_writes_nothing(tmp_path: Path) -> None:
 def test_city_filter_and_owner_attachment_preserve_real_shops(store: MerchantRepository) -> None:
     real = create(store, "real-owner", "Real shop")
     seed(store, owner_uid="real-owner", city="bengaluru")
-    assert len(store.shared_shops()) == 4
+    assert len(store.shared_shops()) == 5  # Four local shops plus FreshMart.
     owned = store.list_businesses("real-owner")
-    assert {s["id"] for s in owned} == {real, "demo-bengaluru-indiranagar-coffee"}
+    assert {s["id"] for s in owned} == {
+        real,
+        "demo-bengaluru-indiranagar-coffee",
+        "demo-chain-freshmart",
+    }
     seed(store, owner_uid="real-owner")
     owned = store.list_businesses("real-owner")
-    assert len(owned) == 9  # One real shop plus one demo per city, Singapore included.
+    assert len(owned) == 11  # One real shop, one demo per city, and the two chains.
     assert all(not changed for _, changed in seed(store, owner_uid="real-owner"))
     assert store.context("real-owner", real)["business"]["fields"]["name"] == "Real shop"
-    assert len(store.list_businesses("demo-world-owner")) == len(SHOPS)
+    assert len(store.list_businesses("demo-world-owner")) == len(SHOPS) + len(CHAINS)
     demo_id = "demo-bengaluru-indiranagar-coffee"
     thread = store.inquiries("real-owner", demo_id)[0]
     store.complete_inquiry("real-owner", demo_id, thread.id)
@@ -240,7 +245,9 @@ def test_discovery_forecast_prep_and_recap_use_seeded_records(
                 "radius": 10000,
             },
         ).json()["places"]
-        assert {p["id"] for p in wider} == {s.id for s in SHOPS if s.city == "bengaluru"}
+        assert {p["id"] for p in wider} == {
+            s.id for s in [*SHOPS, *CHAINS] if s.city == "bengaluru"
+        }
         assert all(p["demo_shop"] and p["currency"] == "INR" for p in wider)
         response = client.get(f"/api/v1/businesses/{bid}/forecast")
         assert response.status_code == 200
