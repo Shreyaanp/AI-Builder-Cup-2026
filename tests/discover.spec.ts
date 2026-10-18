@@ -123,6 +123,7 @@ test('Google sheet, live directions link, lazy fixture map, area and known-only 
   await expect(page.getByText('No matches. Try another area or clear your filters.')).toBeVisible()
   await page.getByRole('switch', { name: 'Halal if known' }).uncheck()
   // Any city or neighbourhood worldwide; demo mode knows the fixture areas.
+  await page.getByRole('button', { name: 'Change area' }).click()
   await page.getByRole('textbox', { name: 'City or area' }).fill('Tampines')
   await page.getByRole('textbox', { name: 'City or area' }).press('Enter')
   await expect(page.getByText('No matches. Try another area or clear your filters.')).toBeVisible()
@@ -149,6 +150,7 @@ test('GPS explanation, denial fallback, budget and recovery', async ({ page }) =
     })
   })
   await page.goto('/discover')
+  await page.getByRole('button', { name: 'Change area' }).click()
   await expect(
     page.getByText('Use your location to find nearby shops. Choose an area if you prefer.'),
   ).toBeVisible()
