@@ -34,6 +34,7 @@ from .merchant import MerchantRepository
 from .region import shop_currency
 from .supply_docs import MAPPING, Format, Party, SupplyDoc, map_line, parse, render
 from .supply_docs import unit_from_code as unit_of
+from .supply_rules import business_size
 
 log = structlog.get_logger()
 
@@ -443,7 +444,12 @@ def _order_create(
     if direction == "in":
         try:
             supply_chain.ensure_relationship(
-                store, bid, partner, doc.currency, len(known_partners(store, bid))
+                store,
+                bid,
+                partner,
+                doc.currency,
+                len(known_partners(store, bid)),
+                business_size(context["business"]["fields"]),
             )
         except HTTPException:
             pass

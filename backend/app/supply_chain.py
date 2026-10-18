@@ -56,9 +56,11 @@ from .supply_rules import (
     ItemRule,
     RuleChange,
     RuleSet,
+    Size,
     apply_change,
     arrival,
     blocking,
+    business_size,
     default_rules,
     evaluate,
     item_rule,
@@ -186,12 +188,14 @@ def ensure_relationship(
     supplier: dict[str, Any],
     currency: str,
     index: int,
+    size: Size = "small",
 ) -> dict[str, Any]:
-    """The stored relationship, or one with sensible starting rules (the owner edits them)."""
+    """The stored relationship, or one with sensible starting rules (the owner edits them).
+    The channel and credit terms follow the buyer's size."""
     existing = relationship(store, bid, supplier["id"])
     if existing:
         return existing
-    rules = default_rules(supplier, currency, index, 10 ** exponent(currency))
+    rules = default_rules(supplier, currency, index, 10 ** exponent(currency), size)
     now = time.time()
     data = {
         "supplier": {
@@ -443,7 +447,7 @@ async def draft_reorder(
             shop = await anyio.to_thread.run_sync(store.public_shop, card["id"])
             if shop:
                 await anyio.to_thread.run_sync(
-                    ensure_relationship, store, bid, shop, currency, index
+                    ensure_relationship, store, bid, shop, currency, index, business_size(fields)
                 )
         candidates = await anyio.to_thread.run_sync(
             supplier_candidates, store, bid, target, currency
