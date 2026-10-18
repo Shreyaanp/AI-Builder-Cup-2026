@@ -81,6 +81,9 @@ jobs:
       FEATURE_GOOGLE_GUIDE: ${{ vars.FEATURE_GOOGLE_GUIDE || 'true' }}
       GA_MEASUREMENT_ID: ${{ vars.GA_MEASUREMENT_ID || '' }}
       LANDING_VARIANT: ${{ vars.LANDING_VARIANT || 'classic' }}
+      PUBLIC_DEMO_ENABLED: ${{ vars.PUBLIC_DEMO_ENABLED || 'true' }}
+      MAPS_GROUNDING: ${{ vars.MAPS_GROUNDING || 'live' }}
+      MAPS_GROUNDING_CACHE_SECONDS: ${{ vars.MAPS_GROUNDING_CACHE_SECONDS || '86400' }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:

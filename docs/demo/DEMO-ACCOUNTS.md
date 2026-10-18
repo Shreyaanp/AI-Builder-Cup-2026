@@ -37,9 +37,18 @@ world from the phone's time zone: `Asia/Kolkata` gives Bengaluru, everything els
 `Asia/Singapore`) gives Singapore. To film the other world, change the device time zone, or
 select the other shop under You → Your shops and tap Take the tour again.
 
-The tour is eight steps: shop at a glance, menu by category, tomorrow's prep plan, close the day,
-find suppliers, just talk or type, get on Google, share your page. It ends with "Start my own
-shop" or "Keep exploring".
+The tour is fourteen steps. After "Your shop at a glance" it follows one order on the seeded
+records (`GET /api/v1/demo/chain/{business_id}`): Today's forecast card (Tea dust / Kopi powder
+runs out), the WhatsApp PO 4500000001 to Sri Lakshmi / Ah Huat, the same order in the
+wholesaler's books and its CSV restock (PO-SL-2210 to Anand Distributors, PO-AH-2210 to Katong
+Trading), Metro Foods' SAP loop 4500091500 with Bharat FMCG, the goods arriving (stock before and
+after) and today's stamps. Then menu, close the day, just talk, Google, import, first customers
+and new shop ready. It ends with "Start my own shop" or "Keep exploring".
+
+Production needs one owner-run reseed after this release for the wholesaler step:
+`seed_tour_story --project ichiropractic --owner-uid <owner UID>` (idempotent; adds the
+wholesalers' incoming order and CSV restock, and recognises the existing Metro Foods records).
+Until then that step says the demo order could not be loaded; the other steps are unaffected.
 
 Bottom tabs: Coach, Shop, Grow, You.
 
