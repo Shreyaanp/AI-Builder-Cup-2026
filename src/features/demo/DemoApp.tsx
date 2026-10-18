@@ -11,14 +11,11 @@ import {
   Alert,
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   List,
   ListItemButton,
   ListItemText,
   Skeleton,
+  Snackbar,
   Stack,
   Typography,
 } from '@mui/material'
@@ -28,10 +25,11 @@ import { useDemoCopy } from '../frontdoors/strings'
 import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
 import { LanguagePicker } from '../frontdoors/LanguagePicker'
 import { WorkspaceProvider } from '../v1/WorkspaceProvider'
-import { ShopScreen } from '../v1/screens/ShopScreen'
+import { AppShell } from '../v1/AppShell'
 import { BackHistory } from '../v1/backStack'
 import { ApiError, type Api } from '../v1/api'
-import { PrepPlanTile } from '../forecast/PrepPlan'
+import { setCoachEndpoint } from '../../api/stream'
+import { DemoWelcome } from './DemoWelcome'
 import { currentPath, subscribePath, customerNavigate } from '../frontdoors/navigation'
 
 type Session = { session_id: string; expires_at: number }
@@ -47,14 +45,13 @@ const demoIdentity = {
   signIn: async () => undefined,
   signOut: async () => undefined,
 }
-const demoMe = { legal_version: '', consent: null, consent_current: false }
+const demoMe = { legal_version: '', consent: null, consent_current: true }
 
 export default function DemoApp() {
   const t = useDemoCopy()
   const [session, setSession] = useState<Session | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'failed' | 'expired'>('loading')
   const [attempt, setAttempt] = useState(0)
-  const [ask, setAsk] = useState<{ text: string; send: boolean } | null>(null)
   const [shops, setShops] = useState<DemoShop[]>([])
   const path = useSyncExternalStore(subscribePath, currentPath)
   const customer = path.startsWith('/explore/demo')
@@ -100,11 +97,13 @@ export default function DemoApp() {
     )
     return () => clearTimeout(timer)
   }, [session])
+  const [note, setNote] = useState(false)
+  // Customer-side snapshot reads.
   const api = useMemo<Api>(
     () =>
       async <T,>(path: string, init: RequestInit & { raw?: boolean } = {}) => {
         if (!session) throw new ApiError(t.expired, 410, 'DEMO_EXPIRED')
-        if ((init.method ?? 'GET') !== 'GET') throw new ApiError(t.readOnly, 403, 'DEMO_READ_ONLY')
+        if ((init.method ?? 'GET') !== 'GET') throw new ApiError(t.readOnly, 403, 'DEMO_NOT_SENT')
         const response = await fetch(
           `/api/v1/demo/sessions/${session.session_id}?path=${encodeURIComponent(path.split('?')[0]!)}`,
           {
@@ -118,11 +117,53 @@ export default function DemoApp() {
             setState('expired')
           })
         }
-        if (!response.ok) throw new ApiError(t.readOnly, response.status, 'DEMO_READ_ONLY')
+        if (!response.ok) throw new ApiError(t.readOnly, response.status, 'DEMO_NOT_SENT')
         return (await response.json()) as T
       },
     [session, t.expired, t.readOnly],
   )
+  // The owner app on the visitor's own sandbox: reads and safe writes run there and reset
+  // with it; anything that would leave the demo (a message, push, payment) is not sent.
+  const ownerApi = useMemo<Api>(
+    () =>
+      async <T,>(path: string, init: RequestInit & { raw?: boolean } = {}) => {
+        if (!session) throw new ApiError(t.expired, 410, 'DEMO_EXPIRED')
+        const { raw, ...requestInit } = init
+        const response = await fetch(`/api/v1/demo/sessions/${session.session_id}/api${path}`, {
+          ...requestInit,
+          credentials: 'omit',
+          signal: init.signal ?? AbortSignal.timeout(25_000),
+          headers: {
+            ...(typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
+            ...init.headers,
+          },
+        })
+        if (response.status === 410) {
+          queueMicrotask(() => {
+            setSession(null)
+            setState('expired')
+          })
+        }
+        if (!response.ok) {
+          const detail = await response
+            .json()
+            .then((body: { detail?: unknown }) =>
+              typeof body.detail === 'string' ? body.detail : '',
+            )
+            .catch(() => '')
+          if (detail === 'DEMO_NOT_SENT') setNote(true)
+          throw new ApiError(t.readOnly, response.status, detail)
+        }
+        if (raw) return response as T
+        return (await response.json()) as T
+      },
+    [session, t.expired, t.readOnly],
+  )
+  useEffect(() => {
+    if (!session || customer) return
+    setCoachEndpoint(`/api/v1/demo/sessions/${session.session_id}/coach`)
+    return () => setCoachEndpoint(null)
+  }, [session, customer])
   useEffect(() => {
     if (!session || !customer) return
     const abort = new AbortController()
@@ -147,7 +188,13 @@ export default function DemoApp() {
   }, [session, customer])
   return (
     <IdentityContext value={demoIdentity}>
-      <Box sx={{ minHeight: '100dvh', pb: 'env(safe-area-inset-bottom)' }}>
+      <Box
+        sx={{
+          minHeight: '100dvh',
+          pb: 'env(safe-area-inset-bottom)',
+          '--app-viewport': 'calc(100dvh - 48px - env(safe-area-inset-top))',
+        }}
+      >
         <Box
           component="header"
           sx={{
@@ -157,30 +204,33 @@ export default function DemoApp() {
             color: (theme) => theme.material.onSecondaryContainer,
           }}
         >
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 1, height: 36 }}>
+          {/* One slim line: what this is, the other side, and the way out. */}
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minHeight: 48 }}>
             <Typography variant="bodySmall" noWrap sx={{ flex: 1, minWidth: 0 }}>
               {t.banner}
             </Typography>
             <Button
               size="small"
+              href={customer ? '/demo' : '/explore/demo'}
+              onClick={customerNavigate}
+              sx={{ minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }}
+            >
+              {customer ? t.owner : t.customer}
+            </Button>
+            <Button
+              size="small"
               onClick={() => void exit()}
-              sx={{ minHeight: 36, minWidth: 0, py: 0, px: 1, fontSize: 13 }}
+              sx={{ minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }}
             >
               {t.exit}
             </Button>
           </Stack>
-          <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            <Button
-              href={customer ? '/demo' : '/explore/demo'}
-              onClick={customerNavigate}
-              sx={{ minHeight: 40 }}
-            >
-              {customer ? t.owner : t.customer}
-            </Button>
-            <Box sx={{ flex: 1 }} />
-            {!shop && <LanguagePicker variant="inline" />}
-            {!shop && <AppearanceToggle inline />}
-          </Stack>
+          {customer && !shop && (
+            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
+              <LanguagePicker variant="inline" />
+              <AppearanceToggle inline />
+            </Stack>
+          )}
         </Box>
         {state === 'loading' ? (
           <Stack spacing={2} sx={{ p: 2 }} aria-busy="true">
@@ -227,39 +277,19 @@ export default function DemoApp() {
           )
         ) : (
           <BackHistory value>
-            <WorkspaceProvider
-              api={api}
-              me={demoMe}
-              readOnlyMessage={t.readOnly}
-              onDemoAsk={setAsk}
-            >
-              <Box component="main" sx={{ px: 2, pb: 4 }}>
-                <ShopScreen />
-                <Box sx={{ maxWidth: 760, mx: 'auto', mt: 4 }}>
-                  <PrepPlanTile />
-                </Box>
-              </Box>
+            <WorkspaceProvider api={ownerApi} me={demoMe} readOnlyMessage={t.readOnly}>
+              <AppShell />
+              <DemoWelcome />
             </WorkspaceProvider>
           </BackHistory>
         )}
-        <Dialog open={ask !== null} onClose={() => setAsk(null)} fullWidth maxWidth="xs">
-          <DialogTitle>{t.askTitle}</DialogTitle>
-          <DialogContent>
-            <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 1.5 }}>
-              {ask?.text}
-            </Typography>
-            <Typography variant="bodyLarge">
-              {ask?.send
-                ? t.askSuppliers
-                : /\s/.test(ask?.text ?? '') && !/:\s*$/.test(ask?.text ?? '')
-                  ? t.askPrep
-                  : t.askOther}
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setAsk(null)}>{t.close}</Button>
-          </DialogActions>
-        </Dialog>
+        <Snackbar
+          open={note}
+          message={t.readOnly}
+          autoHideDuration={3000}
+          onClose={() => setNote(false)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        />
       </Box>
     </IdentityContext>
   )

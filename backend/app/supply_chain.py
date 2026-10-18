@@ -105,6 +105,10 @@ translator: DocumentTranslator | None = None
 
 
 def _translator() -> DocumentTranslator:
+    from .demo_context import services
+
+    if service := services.get().get("supply_translator"):
+        return service
     global translator
     if translator is None:
         from .settings import Settings

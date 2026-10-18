@@ -4,8 +4,9 @@ import { useLocale } from '../../state/hooks'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import type { components } from '../../api/generated'
+import { useDemoCopy } from '../frontdoors/strings'
 
-type Status = components['schemas']['ReminderStatus']
+type Status = components['schemas']['ReminderStatus'] & { demo?: boolean }
 
 async function subscriptionId(subscription: PushSubscription): Promise<string> {
   const digest = await crypto.subtle.digest(
@@ -26,6 +27,7 @@ function supported() {
 
 export function ReminderSettings() {
   const t = useCopy()
+  const demoCopy = useDemoCopy()
   const locale = useLocale()
   const { api, active } = useWorkspace()
   const [status, setStatus] = useState<Status | null>(null)
@@ -40,12 +42,13 @@ export function ReminderSettings() {
     async function load() {
       try {
         const next = await api<Status>('/reminders')
-        const registration = supported() ? await navigator.serviceWorker.getRegistration('/') : null
+        const registration =
+          !next.demo && supported() ? await navigator.serviceWorker.getRegistration('/') : null
         const subscription = await registration?.pushManager.getSubscription()
         const id = subscription ? await subscriptionId(subscription) : null
         if (!cancelled) {
           setStatus(next)
-          setSid(id)
+          setSid(next.demo && next.subscriptions.includes('demo') ? 'demo' : id)
           setMessage('')
         }
       } catch {
@@ -63,6 +66,15 @@ export function ReminderSettings() {
     setBusy(true)
     setMessage('')
     try {
+      if (status.demo) {
+        const next = await api<Status>('/reminders', {
+          method: 'PUT',
+          body: JSON.stringify({ enabled: checked }),
+        })
+        setStatus(next)
+        setSid(checked ? 'demo' : null)
+        return
+      }
       if (!checked && sid) {
         // Remove on the server first. A failed browser cleanup must not keep sending pushes.
         await api('/reminders/' + sid, { method: 'DELETE' })
@@ -130,7 +142,11 @@ export function ReminderSettings() {
         control={
           <Switch
             checked={enabled}
-            disabled={busy || !status || (!enabled && (!status.enabled || !active || !supported()))}
+            disabled={
+              busy ||
+              !status ||
+              (!enabled && (!status.enabled || !active || (!status.demo && !supported())))
+            }
             onChange={(_, checked) => void toggle(checked)}
             slotProps={{ input: { 'aria-describedby': 'reminder-status' } }}
             sx={{ height: 48, py: '17px', '& .MuiSwitch-switchBase': { p: '14px' } }}
@@ -140,17 +156,19 @@ export function ReminderSettings() {
       <Stack spacing={1}>
         <Typography id="reminder-status" role="status" variant="bodySmall" color="text.secondary">
           {message ||
-            (busy
-              ? t.reminderSaving
-              : !status
-                ? t.reminderLoading
-                : !status.enabled
-                  ? t.reminderOff
-                  : !supported()
-                    ? t.reminderUnsupported
-                    : !active
-                      ? t.reminderShop
-                      : t.reminderTiming)}
+            (status?.demo
+              ? demoCopy.readOnly
+              : busy
+                ? t.reminderSaving
+                : !status
+                  ? t.reminderLoading
+                  : !status.enabled
+                    ? t.reminderOff
+                    : !supported()
+                      ? t.reminderUnsupported
+                      : !active
+                        ? t.reminderShop
+                        : t.reminderTiming)}
         </Typography>
         {message && (
           <Button onClick={() => setAttempt(attempt + 1)} sx={{ alignSelf: 'flex-start' }}>

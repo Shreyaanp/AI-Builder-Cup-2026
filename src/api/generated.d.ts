@@ -1634,12 +1634,32 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read Demo */
+        /**
+         * Read Demo
+         * @description Customer-side snapshot reads (the owner side goes through /api/...).
+         */
         get: operations["read_demo_api_v1_demo_sessions__session_id__get"];
         put?: never;
         post?: never;
         /** Exit Demo */
         delete: operations["exit_demo_api_v1_demo_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/demo/sessions/{session_id}/coach": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Demo Coach */
+        post: operations["demo_coach_api_v1_demo_sessions__session_id__coach_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4088,6 +4108,20 @@ export interface components {
             demo: boolean;
             /** Countdown Seconds */
             countdown_seconds: number;
+        };
+        /** DemoTurn */
+        DemoTurn: {
+            /** Message */
+            message: string;
+            /**
+             * Language
+             * @default en
+             */
+            language: string;
+            /** Currency */
+            currency?: string | null;
+            /** Business Id */
+            business_id?: string | null;
         };
         /** DiscoveryPlace */
         DiscoveryPlace: {
@@ -10342,6 +10376,41 @@ export interface operations {
                     "application/json": {
                         [key: string]: boolean;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_coach_api_v1_demo_sessions__session_id__coach_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoTurn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
