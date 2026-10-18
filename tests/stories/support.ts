@@ -155,7 +155,7 @@ export async function createShopFromReview(page: Page) {
   }
   await expect(page.getByTestId('shop-live')).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Your shop is ready' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
   await page.getByRole('button', { name: 'Continue with my shop' }).click()
   await expect(page.getByTestId('new-shop-flow')).toHaveCount(0)
 }

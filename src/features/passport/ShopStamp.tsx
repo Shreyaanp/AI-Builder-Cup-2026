@@ -6,6 +6,7 @@ import { holdAt } from '../rescue/holds'
 import { StampMoment } from './StampMoment'
 import { demoKey } from './store'
 import { landStamp } from '../rewards/storage'
+import { track } from '../../app/analytics'
 
 /**
  * The passport on a shop page. A scan of the shop's QR (`?source=qr&k=…`) opens the stamp
@@ -33,16 +34,20 @@ export function ShopStamp({
     return params.get('source') === 'qr' && key ? key : null
   })
   const [key, setKey] = useState(scan ?? '')
-  const [open, setOpen] = useState(scan !== null)
+  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   useEffect(() => {
     if (scan === null) return
+    track('qr_scanned')
     // After the shop card has counted the visit: a reload must not stamp again.
     const timer = setTimeout(() => {
       const url = new URL(location.href)
       url.searchParams.delete('source')
       url.searchParams.delete('k')
       history.replaceState(history.state, '', url)
+      // The moment is a sheet with its own history entry: open it on the cleaned address, so
+      // closing it never lands back on a link with the spent key.
+      setOpen(true)
     }, 0)
     return () => clearTimeout(timer)
   }, [scan])
@@ -81,7 +86,10 @@ export function ShopStamp({
           open={open}
           onClose={(stamped) => {
             setOpen(false)
-            if (stamped) landStamp(shop.id)
+            if (stamped) {
+              landStamp(shop.id)
+              track('stamp_added')
+            }
           }}
           // A scan where this phone holds a rescue collects it (checked against the shop chat).
           rescue={holdAt(shop.id)?.rescue ?? null}

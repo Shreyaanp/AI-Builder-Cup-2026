@@ -43,6 +43,7 @@ from .money import to_minor
 from .product_categories import suggest_category
 from .region import shop_currency
 from .sales import daily_sales
+from .screen_photos import PHOTO_TYPE, CellFlag, merge_readings, read_batch
 
 router = APIRouter(prefix="/api/v1/businesses/{business_id}/connect")
 
@@ -115,7 +116,8 @@ async def _read_payload(request: Request) -> tuple[bytes, str, str]:
     buffer = bytearray()
     async with asyncio.timeout(120):
         async for chunk in request.stream():
-            if len(buffer) + len(chunk) > MAX_IMPORT_BYTES:
+            limit = 28_000_000 if content_type == PHOTO_TYPE else MAX_IMPORT_BYTES
+            if len(buffer) + len(chunk) > limit:
                 raise HTTPException(413, "FILE_TOO_LARGE")
             buffer.extend(chunk)
     data = bytes(buffer)
@@ -160,10 +162,33 @@ async def analyze_export(
     if source_label:
         resolved_source = source_label
 
+    photo_content = None
+    readings = None
+    flags: list[CellFlag] = []
+    detected_currency = None
     try:
-        headers, rows = parse_any(data, content_type)
+        if content_type == PHOTO_TYPE:
+            async with asyncio.timeout(180):
+                readings = await read_batch(
+                    request.app.state.column_mapper, request.app.state.document_ai, data
+                )
+            headers, rows, flags, detected_currency, detected_source = merge_readings(readings)
+            if detected_currency and detected_currency != shop_currency(business["fields"]):
+                raise ImportRejected(422, "PHOTO_CURRENCY_MISMATCH")
+            resolved_source = detected_source or resolved_source
+            # Preserve all columns in the normalized export; absent columns cannot bias mapping.
+            active = [i for i in range(len(headers)) if any(row[i] for row in rows)]
+            headers = [headers[i] for i in active]
+            rows = [[row[i] for i in active] for row in rows]
+            # qty has the same meaning as quantity in existing file mappings.
+            headers = ["quantity" if h == "qty" else h for h in headers]
+            photo_content = json.dumps([dict(zip(headers, row, strict=True)) for row in rows])
+        else:
+            headers, rows = parse_any(data, content_type)
     except ImportRejected as rejected:
         raise HTTPException(rejected.status, rejected.code) from None
+    except TimeoutError:
+        raise HTTPException(504, "PHOTO_READ_TIMEOUT") from None
 
     if not rows:
         raise HTTPException(422, "EMPTY_FILE")
@@ -208,7 +233,13 @@ async def analyze_export(
         reused=reused,
         last_synced=last_synced,
         diff=diff,
-        warnings=[],
+        warnings=["OFFLINE_PHOTO_FIXTURE"]
+        if readings and request.app.state.column_mapper.settings.coach_mode != "gemini"
+        else [],
+        photo_content=photo_content,
+        photo_readings=[r.model_dump() for r in readings] if readings else None,
+        cell_flags=[flag.model_dump() for flag in flags],
+        detected_currency=detected_currency,
     )
 
 
