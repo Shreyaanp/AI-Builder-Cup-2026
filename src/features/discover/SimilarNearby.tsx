@@ -39,7 +39,10 @@ export function SimilarNearby({ shop, items }: { shop: string; items: string[] }
   const loading = result?.key !== key
   const places = result?.data?.places ?? []
   // A secondary section: when the lookup fails it simply stays out of the way.
-  if (!loading && result?.data == null) return null
+  // Nothing to show until the first lookup says there is something: no grey placeholders for an
+  // empty section.
+  if (result === null) return null
+  if (!loading && result.data == null) return null
   if (!loading && !item && places.length === 0) return null
   const choices = ['', ...items.slice(0, 3)]
   return (
