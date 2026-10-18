@@ -1,5 +1,5 @@
-import react from '@vitejs/plugin-react'
 import { realpathSync } from 'node:fs'
+import react from '@vitejs/plugin-react'
 import { defineConfig, searchForWorkspaceRoot } from 'vite'
 
 // Each worktree can run its own dev servers (WEB_PORT/API_PORT), so parallel workers never test
@@ -25,9 +25,8 @@ export default defineConfig({
     host: '127.0.0.1',
     port: web,
     strictPort: true,
-    fs: {
-      allow: [searchForWorkspaceRoot(process.cwd()), realpathSync('node_modules')],
-    },
+    // Linked dependencies can resolve outside this worktree; Vite must allow their real path.
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), realpathSync('node_modules')] },
     proxy: { '/api': { target: `http://127.0.0.1:${api}`, ws: true } },
   },
   preview: { host: '127.0.0.1', port: web, strictPort: true },

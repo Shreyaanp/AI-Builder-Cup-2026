@@ -3,6 +3,7 @@ import type { Locale } from '../../i18n/locales'
 
 const en = {
   connectTitle: 'Connect your system',
+  connectType: 'POS / ERP',
   connectSubtitle: 'Plug in your POS, ERP or billing software instead of re-entering data',
   pickSystem: 'Pick your system',
   uploadOrPaste: 'Upload export or paste sample',
@@ -60,99 +61,83 @@ export const extraConnectCopy: Record<
   {
     uploadExport: string
     retry: string
-    connected: string
     salesImported: (rows: string, items: string) => string
   }
 > = {
   en: {
     uploadExport: 'Upload an export file',
     retry: 'Try again',
-    connected: 'Connected',
     salesImported: (rows, items) =>
       `${rows} sales · ${items} ${items === '1' ? 'item' : 'items'} imported`,
   },
   hi: {
     uploadExport: 'निर्यात फ़ाइल अपलोड करें',
     retry: 'फिर कोशिश करें',
-    connected: 'जुड़ा हुआ',
     salesImported: (rows, items) => `${rows} बिक्री · ${items} चीज़ें आयात की गईं`,
   },
   'zh-Hans': {
     uploadExport: '上传导出文件',
     retry: '再试一次',
-    connected: '已连接',
     salesImported: (rows, items) => `已导入 ${rows} 笔销售、${items} 个商品`,
   },
   ms: {
     uploadExport: 'Muat naik fail eksport',
     retry: 'Cuba lagi',
-    connected: 'Disambungkan',
     salesImported: (rows, items) => `${rows} jualan · ${items} item diimport`,
   },
   ta: {
     uploadExport: 'ஏற்றுமதி கோப்பைப் பதிவேற்றவும்',
     retry: 'மீண்டும் முயற்சி செய்',
-    connected: 'இணைக்கப்பட்டது',
     salesImported: (rows, items) => `${rows} விற்பனை · ${items} பொருட்கள் இறக்குமதி செய்யப்பட்டன`,
   },
   ja: {
     uploadExport: 'エクスポートファイルをアップロード',
     retry: 'もう一度試す',
-    connected: '接続済み',
     salesImported: (rows, items) => `${rows}件の売上・${items}品目を取り込みました`,
   },
   ko: {
     uploadExport: '내보낸 파일 업로드',
     retry: '다시 시도',
-    connected: '연결됨',
     salesImported: (rows, items) => `${rows}건의 판매 · ${items}개 항목을 가져왔어요`,
   },
   id: {
     uploadExport: 'Unggah file ekspor',
     retry: 'Coba lagi',
-    connected: 'Terhubung',
     salesImported: (rows, items) => `${rows} penjualan · ${items} barang diimpor`,
   },
   th: {
     uploadExport: 'อัปโหลดไฟล์ส่งออก',
     retry: 'ลองอีกครั้ง',
-    connected: 'เชื่อมต่อแล้ว',
     salesImported: (rows, items) => `นำเข้าการขาย ${rows} รายการ · สินค้า ${items} รายการ`,
   },
   vi: {
     uploadExport: 'Tải tệp xuất lên',
     retry: 'Thử lại',
-    connected: 'Đã kết nối',
     salesImported: (rows, items) => `Đã nhập ${rows} lượt bán · ${items} mặt hàng`,
   },
   fil: {
     uploadExport: 'I-upload ang export file',
     retry: 'Subukan muli',
-    connected: 'Nakakonekta',
     salesImported: (rows, items) => `Na-import ang ${rows} benta · ${items} item`,
   },
   bn: {
     uploadExport: 'এক্সপোর্ট ফাইল আপলোড করুন',
     retry: 'আবার চেষ্টা করুন',
-    connected: 'সংযুক্ত',
     salesImported: (rows, items) => `${rows}টি বিক্রি · ${items}টি পণ্য আনা হয়েছে`,
   },
   te: {
     uploadExport: 'ఎగుమతి ఫైల్‌ను అప్‌లోడ్ చేయండి',
     retry: 'మళ్లీ ప్రయత్నించండి',
-    connected: 'అనుసంధానమైంది',
     salesImported: (rows, items) => `${rows} అమ్మకాలు · ${items} వస్తువులు దిగుమతి అయ్యాయి`,
   },
   mr: {
     uploadExport: 'एक्सपोर्ट फाइल अपलोड करा',
     retry: 'पुन्हा प्रयत्न करा',
-    connected: 'जोडलेले',
     salesImported: (rows, items) => `${rows} विक्री · ${items} वस्तू आयात केल्या`,
   },
   kn: {
     uploadExport: 'ರಫ್ತು ಫೈಲ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ',
     retry: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
-    connected: 'ಸಂಪರ್ಕಿಸಲಾಗಿದೆ',
     salesImported: (rows, items) => `${rows} ಮಾರಾಟ · ${items} ಐಟಂಗಳನ್ನು ಆಮದು ಮಾಡಲಾಗಿದೆ`,
   },
 }
@@ -161,7 +146,8 @@ const translations: Record<Locale, Copy> = {
   en,
   hi: {
     connectTitle: 'अपना सिस्टम जोड़ें',
-    connectSubtitle: 'डेटा दोबारा दर्ज करने के बजाय अपना POS, ERP या बिलिंग सॉफ़्टवेयर जोड़ें',
+    connectType: 'पीओएस / ईआरपी',
+    connectSubtitle: 'डेटा दोबारा दर्ज किए बिना अपना बिक्री सिस्टम जोड़ें।',
     pickSystem: 'अपना सिस्टम चुनें',
     uploadOrPaste: 'फ़ाइल अपलोड करें या नमूना चिपकाएँ',
     mappingTitle: 'कॉलम मैपिंग',
@@ -205,6 +191,7 @@ const translations: Record<Locale, Copy> = {
   },
   'zh-Hans': {
     connectTitle: '连接您的系统',
+    connectType: 'POS / ERP',
     connectSubtitle: '直接接入您的 POS、ERP 或开票系统，无需重复录入数据',
     pickSystem: '选择您的系统',
     uploadOrPaste: '上传导出文件或粘贴样例',
@@ -248,6 +235,7 @@ const translations: Record<Locale, Copy> = {
   },
   ms: {
     connectTitle: 'Sambungkan sistem anda',
+    connectType: 'POS / ERP',
     connectSubtitle:
       'Palamkan perisian POS, ERP atau invois anda tanpa perlu memasukkan semula data',
     pickSystem: 'Pilih sistem anda',
@@ -293,6 +281,7 @@ const translations: Record<Locale, Copy> = {
   },
   ta: {
     connectTitle: 'உங்கள் அமைப்பை இணைக்கவும்',
+    connectType: 'POS / ERP',
     connectSubtitle: 'தரவை மீண்டும் உள்ளிடாமல் உங்கள் POS அல்லது பில்லிங் மென்பொருளை இணைக்கவும்',
     pickSystem: 'உங்கள் அமைப்பைத் தேர்ந்தெடுக்கவும்',
     uploadOrPaste: 'கோப்பைப் பதிவேற்றவும் அல்லது மாதிரியை ஒட்டவும்',
@@ -336,6 +325,7 @@ const translations: Record<Locale, Copy> = {
   },
   ja: {
     connectTitle: '外部システムと連携',
+    connectType: 'POS / ERP',
     connectSubtitle: 'POSや販売管理・ERPのエクスポートを直接取り込みます',
     pickSystem: 'システムを選択',
     uploadOrPaste: 'ファイルをアップロードまたは貼り付け',
@@ -379,6 +369,7 @@ const translations: Record<Locale, Copy> = {
   },
   ko: {
     connectTitle: '기존 시스템 연결',
+    connectType: 'POS / ERP',
     connectSubtitle: 'POS, ERP 또는 결제 소프트웨어 데이터를 직접 연동하세요',
     pickSystem: '시스템 선택',
     uploadOrPaste: '내보내기 파일 업로드 또는 샘플 붙여넣기',
@@ -422,6 +413,7 @@ const translations: Record<Locale, Copy> = {
   },
   id: {
     connectTitle: 'Hubungkan sistem Anda',
+    connectType: 'POS / ERP',
     connectSubtitle: 'Hubungkan POS, ERP atau software kasir Anda tanpa perlu input manual',
     pickSystem: 'Pilih sistem Anda',
     uploadOrPaste: 'Unggah ekspor atau tempel sampel',
@@ -465,6 +457,7 @@ const translations: Record<Locale, Copy> = {
   },
   th: {
     connectTitle: 'เชื่อมต่อระบบของคุณ',
+    connectType: 'POS / ERP',
     connectSubtitle: 'เชื่อมต่อโปรแกรม POS, ERP หรือระบบบิลโดยไม่ต้องป้อนข้อมูลซ้ำ',
     pickSystem: 'เลือกระบบของคุณ',
     uploadOrPaste: 'อัปโหลดไฟล์หรือวางข้อมูลตัวอย่าง',
@@ -508,6 +501,7 @@ const translations: Record<Locale, Copy> = {
   },
   vi: {
     connectTitle: 'Kết nối hệ thống của bạn',
+    connectType: 'POS / ERP',
     connectSubtitle: 'Tích hợp phần mềm POS, ERP hoặc tính tiền mà không cần nhập lại',
     pickSystem: 'Chọn hệ thống của bạn',
     uploadOrPaste: 'Tải tệp lên hoặc dán dữ liệu mẫu',
@@ -551,6 +545,7 @@ const translations: Record<Locale, Copy> = {
   },
   fil: {
     connectTitle: 'Ikonekta ang iyong sistema',
+    connectType: 'POS / ERP',
     connectSubtitle:
       'I-plug in ang iyong POS, ERP o software sa pagsingil nang hindi muling nag-e-encode',
     pickSystem: 'Piliin ang iyong sistema',
@@ -596,6 +591,7 @@ const translations: Record<Locale, Copy> = {
   },
   bn: {
     connectTitle: 'আপনার সিস্টেম সংযুক্ত করুন',
+    connectType: 'POS / ERP',
     connectSubtitle: 'নতুন করে ডেটা এন্ট্রি না করে আপনার POS, ERP বা বিলিং সফটওয়্যার যুক্ত করুন',
     pickSystem: 'আপনার সিস্টেম নির্বাচন করুন',
     uploadOrPaste: 'ফাইল আপলোড করুন বা নমুনা পেস্ট করুন',
@@ -640,6 +636,7 @@ const translations: Record<Locale, Copy> = {
   },
   te: {
     connectTitle: 'మీ సిస్టమ్‌ను కనెక్ట్ చేయండి',
+    connectType: 'POS / ERP',
     connectSubtitle:
       'డేటాను మళ్లీ నమోదు చేయకుండా మీ POS, ERP లేదా బిల్లింగ్ సాఫ్ట్‌వేర్‌ను కనెక్ట్ చేయండి',
     pickSystem: 'మీ సిస్టమ్‌ను ఎంచుకోండి',
@@ -684,6 +681,7 @@ const translations: Record<Locale, Copy> = {
   },
   mr: {
     connectTitle: 'तुमची प्रणाली जोडा',
+    connectType: 'POS / ERP',
     connectSubtitle: 'डेटा पुन्हा भरण्याऐवजी तुमचे POS, ERP किंवा बिलिंग सॉफ्टवेअर जोडा',
     pickSystem: 'तुमची प्रणाली निवडा',
     uploadOrPaste: 'फाइल अपलोड करा किंवा नमुना पेस्ट करा',
@@ -728,6 +726,7 @@ const translations: Record<Locale, Copy> = {
   },
   kn: {
     connectTitle: 'ನಿಮ್ಮ ಸಿಸ್ಟಮ್ ಸಂಪರ್ಕಿಸಿ',
+    connectType: 'POS / ERP',
     connectSubtitle:
       'ಡೇಟಾವನ್ನು ಪುನಃ ನಮೂದಿಸದೆ ನಿಮ್ಮ POS, ERP ಅಥವಾ ಬಿಲ್ಲಿಂಗ್ ತಂತ್ರಾಂಶವನ್ನು ಸಂಪರ್ಕಿಸಿ',
     pickSystem: 'ನಿಮ್ಮ ಸಿಸ್ಟಮ್ ಆಯ್ಕೆಮಾಡಿ',
@@ -774,5 +773,9 @@ const translations: Record<Locale, Copy> = {
 
 export function useConnectCopy(): Copy {
   const locale = useLocale()
+  return connectCopyFor(locale)
+}
+
+export function connectCopyFor(locale: Locale): Copy {
   return translations[locale] ?? en
 }

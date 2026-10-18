@@ -16,6 +16,8 @@ const en = {
   verifiedOn: 'Checked on {date}. Customers see “Verified owner” on your shop page.',
   inReview:
     'Your face looks like one already used by another account. A person will take a quick look. Your shop stays live and nothing changes meanwhile.',
+  livenessReview:
+    'We could not be fully sure from this capture that it is a live person, so a person will take a quick look. You do not need to try again. Your shop stays live and nothing changes meanwhile.',
   notVerified:
     'A reviewer could not confirm this check, so the badge is off. Your shop is unchanged.',
   start: 'Verify it’s you',
@@ -104,6 +106,8 @@ const en = {
   scanned: '{n} listings to review',
   duplicate: 'Possible duplicate owner',
   listing: 'Listing check',
+  liveness: 'Live check unsure',
+  livenessScore: 'Live score {n} (passes from 0.30)',
   similarity: 'Face similarity {n}',
   newer: 'Newer account',
   earlier: 'Earlier account',
@@ -136,6 +140,8 @@ const zhHans: TrustCopy = {
   verifiedOn: '已于 {date} 检查。顾客会在你的店铺页面看到“已验证店主”。',
   inReview:
     '你的面部与另一个账户已使用的面部相似。工作人员会快速查看。你的店铺照常上线，期间不会有任何变化。',
+  livenessReview:
+    '这次拍摄无法完全确认是真人，工作人员会快速查看。你不需要再试一次。你的店铺照常上线，期间不会有任何变化。',
   notVerified: '审核人员无法确认这次检查，因此不显示徽章。你的店铺保持不变。',
   start: '验证是你本人',
   again: '重新检查',
@@ -220,6 +226,8 @@ const zhHans: TrustCopy = {
   scanned: '{n} 家店铺待审核',
   duplicate: '可能是重复店主',
   listing: '店铺信息检查',
+  liveness: '真人检查不确定',
+  livenessScore: '真人分数 {n}（0.30 起通过）',
   similarity: '面部相似度 {n}',
   newer: '较新的账户',
   earlier: '较早的账户',
@@ -246,6 +254,8 @@ const ms: TrustCopy = {
   verifiedOn: 'Disemak pada {date}. Pelanggan melihat “Pemilik disahkan” di halaman kedai anda.',
   inReview:
     'Wajah anda kelihatan seperti wajah yang sudah digunakan oleh akaun lain. Seorang petugas akan menyemak sebentar. Kedai anda kekal aktif dan tiada apa yang berubah.',
+  livenessReview:
+    'Kami tidak dapat memastikan sepenuhnya daripada rakaman ini bahawa ia orang sebenar, jadi seorang petugas akan menyemak sebentar. Anda tidak perlu mencuba lagi. Kedai anda kekal aktif dan tiada apa yang berubah.',
   notVerified:
     'Penyemak tidak dapat mengesahkan semakan ini, jadi lencana tidak dipaparkan. Kedai anda tidak berubah.',
   start: 'Sahkan diri anda',
@@ -339,6 +349,8 @@ const ms: TrustCopy = {
   scanned: '{n} kedai untuk disemak',
   duplicate: 'Kemungkinan pemilik pendua',
   listing: 'Semakan maklumat kedai',
+  liveness: 'Semakan langsung tidak pasti',
+  livenessScore: 'Skor langsung {n} (lulus mulai 0.30)',
   similarity: 'Persamaan wajah {n}',
   newer: 'Akaun lebih baharu',
   earlier: 'Akaun lebih awal',
@@ -371,6 +383,8 @@ const ta: TrustCopy = {
     '{date} அன்று சரிபார்க்கப்பட்டது. உங்கள் கடைப் பக்கத்தில் வாடிக்கையாளர்கள் “உறுதிசெய்யப்பட்ட உரிமையாளர்” எனப் பார்ப்பார்கள்.',
   inReview:
     'உங்கள் முகம் வேறொரு கணக்கு ஏற்கனவே பயன்படுத்திய முகம் போலத் தெரிகிறது. ஒருவர் விரைவில் பார்ப்பார். உங்கள் கடை தொடர்ந்து இயங்கும்; இடையில் எதுவும் மாறாது.',
+  livenessReview:
+    'இந்தப் பதிவில் நேரடி நபர் என்பதை முழுமையாக உறுதிசெய்ய முடியவில்லை, எனவே ஒருவர் விரைவாகப் பார்ப்பார். மீண்டும் முயற்சிக்க வேண்டியதில்லை. உங்கள் கடை தொடர்ந்து இயங்கும், இடையில் எதுவும் மாறாது.',
   notVerified:
     'பார்வையாளரால் இந்தச் சரிபார்ப்பை உறுதிசெய்ய முடியவில்லை, அதனால் பேட்ஜ் இல்லை. உங்கள் கடை மாறவில்லை.',
   start: 'இது நீங்கள்தான் என உறுதிசெய்யுங்கள்',
@@ -466,6 +480,8 @@ const ta: TrustCopy = {
   scanned: 'மதிப்பாய்வுக்கு {n} கடைகள்',
   duplicate: 'இரட்டை உரிமையாளராக இருக்கலாம்',
   listing: 'கடை விவரச் சரிபார்ப்பு',
+  liveness: 'நேரடி சோதனை உறுதியில்லை',
+  livenessScore: 'நேரடி மதிப்பெண் {n} (0.30 முதல் தேர்ச்சி)',
   similarity: 'முக ஒற்றுமை {n}',
   newer: 'புதிய கணக்கு',
   earlier: 'முந்தைய கணக்கு',
@@ -498,6 +514,8 @@ const ja: TrustCopy = {
     '{date} に確認しました。お客様にはお店のページで「確認済みのオーナー」と表示されます。',
   inReview:
     'お顔が別のアカウントですでに使われている顔に似ています。担当者が簡単に確認します。お店は公開されたままで、その間何も変わりません。',
+  livenessReview:
+    'この撮影では本人がその場にいることを完全には確認できなかったため、担当者が確認します。もう一度試す必要はありません。お店はそのまま公開され、その間も何も変わりません。',
   notVerified:
     '担当者がこのチェックを確認できなかったため、バッジは表示されません。お店は変わりません。',
   start: 'ご本人確認',
@@ -587,6 +605,8 @@ const ja: TrustCopy = {
   scanned: '審査対象 {n} 件',
   duplicate: '重複オーナーの可能性',
   listing: '掲載内容のチェック',
+  liveness: 'ライブ確認が不確か',
+  livenessScore: 'ライブスコア {n}（0.30 以上で合格）',
   similarity: '顔の類似度 {n}',
   newer: '新しいアカウント',
   earlier: '以前のアカウント',
@@ -618,6 +638,8 @@ const ko: TrustCopy = {
   verifiedOn: '{date}에 확인했습니다. 손님은 가게 페이지에서 “확인된 사장님”을 볼 수 있습니다.',
   inReview:
     '얼굴이 다른 계정에서 이미 사용된 얼굴과 비슷합니다. 담당자가 잠깐 살펴봅니다. 가게는 계속 공개되며 그동안 아무것도 바뀌지 않습니다.',
+  livenessReview:
+    '이번 촬영으로는 실제 사람인지 완전히 확인하지 못해 담당자가 잠시 살펴봐요. 다시 시도하지 않아도 돼요. 가게는 계속 공개되고 그동안 바뀌는 것은 없어요.',
   notVerified: '검토자가 이 확인을 승인하지 못해 배지가 표시되지 않습니다. 가게는 그대로입니다.',
   start: '본인 확인',
   again: '다시 확인',
@@ -706,6 +728,8 @@ const ko: TrustCopy = {
   scanned: '검토할 가게 {n}곳',
   duplicate: '중복 사장님 가능성',
   listing: '가게 정보 확인',
+  liveness: '실시간 확인 불확실',
+  livenessScore: '실시간 점수 {n} (0.30부터 통과)',
   similarity: '얼굴 유사도 {n}',
   newer: '더 최근 계정',
   earlier: '이전 계정',
@@ -738,6 +762,8 @@ const id: TrustCopy = {
     'Diperiksa pada {date}. Pelanggan melihat “Pemilik terverifikasi” di halaman toko Anda.',
   inReview:
     'Wajah Anda mirip dengan wajah yang sudah dipakai akun lain. Petugas akan melihat sebentar. Toko Anda tetap tayang dan tidak ada yang berubah.',
+  livenessReview:
+    'Kami belum bisa memastikan sepenuhnya dari rekaman ini bahwa ini orang sungguhan, jadi seorang petugas akan memeriksa sebentar. Anda tidak perlu mencoba lagi. Toko Anda tetap aktif dan tidak ada yang berubah.',
   notVerified:
     'Peninjau tidak dapat memastikan pemeriksaan ini, jadi lencana tidak ditampilkan. Toko Anda tidak berubah.',
   start: 'Verifikasi bahwa ini Anda',
@@ -830,6 +856,8 @@ const id: TrustCopy = {
   scanned: '{n} toko perlu ditinjau',
   duplicate: 'Kemungkinan pemilik ganda',
   listing: 'Pemeriksaan info toko',
+  liveness: 'Pemeriksaan langsung belum pasti',
+  livenessScore: 'Skor langsung {n} (lulus mulai 0,30)',
   similarity: 'Kemiripan wajah {n}',
   newer: 'Akun lebih baru',
   earlier: 'Akun lebih lama',
@@ -860,6 +888,8 @@ const th: TrustCopy = {
   verifiedOn: 'ตรวจเมื่อ {date} ลูกค้าจะเห็น “เจ้าของที่ยืนยันแล้ว” ในหน้าร้านของคุณ',
   inReview:
     'ใบหน้าของคุณดูคล้ายใบหน้าที่บัญชีอื่นใช้อยู่แล้ว เจ้าหน้าที่จะตรวจดูสักครู่ ร้านของคุณยังเปิดแสดงตามปกติและไม่มีอะไรเปลี่ยนแปลง',
+  livenessReview:
+    'เรายังไม่แน่ใจเต็มที่จากการถ่ายครั้งนี้ว่าเป็นคนจริง จึงจะมีเจ้าหน้าที่ตรวจดูสักครู่ คุณไม่ต้องลองใหม่ ร้านของคุณยังเปิดอยู่และไม่มีอะไรเปลี่ยนแปลง',
   notVerified:
     'ผู้ตรวจสอบยืนยันการตรวจครั้งนี้ไม่ได้ จึงไม่แสดงตราสัญลักษณ์ ร้านของคุณไม่เปลี่ยนแปลง',
   start: 'ยืนยันว่าเป็นคุณ',
@@ -946,6 +976,8 @@ const th: TrustCopy = {
   scanned: 'มี {n} ร้านรอตรวจ',
   duplicate: 'อาจเป็นเจ้าของซ้ำ',
   listing: 'ตรวจข้อมูลร้าน',
+  liveness: 'การตรวจคนจริงยังไม่แน่ชัด',
+  livenessScore: 'คะแนนคนจริง {n} (ผ่านตั้งแต่ 0.30)',
   similarity: 'ความคล้ายของใบหน้า {n}',
   newer: 'บัญชีที่ใหม่กว่า',
   earlier: 'บัญชีที่เก่ากว่า',
@@ -978,6 +1010,8 @@ const vi: TrustCopy = {
     'Đã kiểm tra ngày {date}. Khách thấy “Chủ cửa hàng đã xác minh” trên trang cửa hàng của bạn.',
   inReview:
     'Khuôn mặt của bạn giống một khuôn mặt mà tài khoản khác đã dùng. Nhân viên sẽ xem nhanh. Cửa hàng vẫn hiển thị và không có gì thay đổi trong lúc này.',
+  livenessReview:
+    'Chúng tôi chưa thể chắc chắn hoàn toàn từ lần quay này rằng đây là người thật, nên một người sẽ xem nhanh. Bạn không cần thử lại. Cửa hàng của bạn vẫn hoạt động và không có gì thay đổi.',
   notVerified:
     'Người duyệt không thể xác nhận lần kiểm tra này nên huy hiệu bị tắt. Cửa hàng của bạn không thay đổi.',
   start: 'Xác minh đó là bạn',
@@ -1068,6 +1102,8 @@ const vi: TrustCopy = {
   scanned: '{n} cửa hàng cần xem xét',
   duplicate: 'Có thể trùng chủ',
   listing: 'Kiểm tra thông tin cửa hàng',
+  liveness: 'Kiểm tra người thật chưa chắc chắn',
+  livenessScore: 'Điểm người thật {n} (đạt từ 0,30)',
   similarity: 'Độ giống khuôn mặt {n}',
   newer: 'Tài khoản mới hơn',
   earlier: 'Tài khoản cũ hơn',
@@ -1095,6 +1131,8 @@ const fil: TrustCopy = {
     'Nasuri noong {date}. Nakikita ng mga customer ang “Beripikadong may-ari” sa page ng tindahan mo.',
   inReview:
     'Kahawig ng mukha mo ang mukhang ginagamit na ng ibang account. Sandaling titingnan ito ng isang tao. Mananatiling live ang tindahan mo at walang magbabago habang hinihintay.',
+  livenessReview:
+    'Hindi kami lubos na nakatiyak mula sa kuhang ito na buhay na tao ito, kaya may taong titingin sandali. Hindi mo kailangang subukan ulit. Mananatiling live ang tindahan mo at walang magbabago.',
   notVerified:
     'Hindi makumpirma ng reviewer ang check na ito, kaya walang badge. Walang nagbago sa tindahan mo.',
   start: 'Patunayang ikaw ito',
@@ -1189,6 +1227,8 @@ const fil: TrustCopy = {
   scanned: '{n} tindahang ire-review',
   duplicate: 'Posibleng dobleng may-ari',
   listing: 'Pagsusuri ng listing',
+  liveness: 'Hindi tiyak ang live check',
+  livenessScore: 'Live score {n} (pasado mula 0.30)',
   similarity: 'Pagkakahawig ng mukha {n}',
   newer: 'Mas bagong account',
   earlier: 'Mas naunang account',
@@ -1220,6 +1260,8 @@ const hi: TrustCopy = {
   verifiedOn: '{date} को जाँचा गया। ग्राहक आपकी दुकान के पेज पर “पुष्ट मालिक” देखते हैं।',
   inReview:
     'आपका चेहरा किसी दूसरे खाते में पहले से इस्तेमाल हुए चेहरे जैसा लगता है। एक व्यक्ति जल्दी से देखेगा। आपकी दुकान चालू रहेगी और तब तक कुछ नहीं बदलेगा।',
+  livenessReview:
+    'इस कैप्चर से हम पूरी तरह पक्का नहीं कर पाए कि यह जीवित व्यक्ति है, इसलिए एक व्यक्ति जल्दी से देखेगा। आपको दोबारा कोशिश करने की ज़रूरत नहीं है। आपकी दुकान चालू रहेगी और इस बीच कुछ नहीं बदलेगा।',
   notVerified:
     'समीक्षक इस जाँच की पुष्टि नहीं कर सके, इसलिए बैज नहीं दिखेगा। आपकी दुकान में कोई बदलाव नहीं।',
   start: 'पुष्टि करें कि यह आप हैं',
@@ -1308,6 +1350,8 @@ const hi: TrustCopy = {
   scanned: 'समीक्षा के लिए दुकानें: {n}',
   duplicate: 'संभावित दोहरा मालिक',
   listing: 'दुकान की जानकारी की जाँच',
+  liveness: 'लाइव जांच अनिश्चित',
+  livenessScore: 'लाइव स्कोर {n} (0.30 से पास)',
   similarity: 'चेहरे की समानता {n}',
   newer: 'नया खाता',
   earlier: 'पुराना खाता',
@@ -1339,6 +1383,8 @@ const bn: TrustCopy = {
   verifiedOn: '{date} তারিখে যাচাই হয়েছে। ক্রেতারা আপনার দোকানের পেজে “যাচাইকৃত মালিক” দেখেন।',
   inReview:
     'আপনার মুখ অন্য একটি অ্যাকাউন্টে আগে ব্যবহৃত মুখের মতো দেখাচ্ছে। একজন দ্রুত দেখে নেবেন। আপনার দোকান চালু থাকবে, এর মধ্যে কিছুই বদলাবে না।',
+  livenessReview:
+    'এই ক্যাপচার থেকে আমরা পুরোপুরি নিশ্চিত হতে পারিনি যে এটি জীবিত মানুষ, তাই একজন ব্যক্তি দ্রুত দেখে নেবেন। আবার চেষ্টা করার দরকার নেই। আপনার দোকান চালু থাকবে এবং এর মধ্যে কিছুই বদলাবে না।',
   notVerified: 'পর্যালোচক এই যাচাই নিশ্চিত করতে পারেননি, তাই ব্যাজ বন্ধ। আপনার দোকান অপরিবর্তিত।',
   start: 'যাচাই করুন যে এটা আপনি',
   again: 'আবার যাচাই করুন',
@@ -1425,6 +1471,8 @@ const bn: TrustCopy = {
   scanned: 'পর্যালোচনার জন্য {n}টি দোকান',
   duplicate: 'সম্ভাব্য দ্বৈত মালিক',
   listing: 'দোকানের তথ্য যাচাই',
+  liveness: 'লাইভ যাচাই অনিশ্চিত',
+  livenessScore: 'লাইভ স্কোর {n} (0.30 থেকে পাস)',
   similarity: 'মুখের মিল {n}',
   newer: 'নতুন অ্যাকাউন্ট',
   earlier: 'আগের অ্যাকাউন্ট',
@@ -1451,6 +1499,8 @@ const te: TrustCopy = {
   verifiedOn: '{date}న తనిఖీ చేశారు. మీ దుకాణ పేజీలో కస్టమర్లు “ధృవీకరించిన యజమాని” అని చూస్తారు.',
   inReview:
     'మీ ముఖం మరో ఖాతా ఇప్పటికే వాడిన ముఖంలా కనిపిస్తోంది. ఒకరు త్వరగా పరిశీలిస్తారు. మీ దుకాణం కొనసాగుతుంది, ఈలోగా ఏదీ మారదు.',
+  livenessReview:
+    'ఈ క్యాప్చర్ నుండి ఇది ప్రత్యక్ష వ్యక్తి అని పూర్తిగా నిర్ధారించలేకపోయాం, కాబట్టి ఒక వ్యక్తి త్వరగా చూస్తారు. మీరు మళ్లీ ప్రయత్నించాల్సిన అవసరం లేదు. మీ షాప్ లైవ్‌లోనే ఉంటుంది, ఈలోగా ఏమీ మారదు.',
   notVerified:
     'సమీక్షకుడు ఈ తనిఖీని నిర్ధారించలేకపోయారు, అందుకే బ్యాడ్జ్ లేదు. మీ దుకాణంలో మార్పు లేదు.',
   start: 'ఇది మీరేనని ధృవీకరించండి',
@@ -1540,6 +1590,8 @@ const te: TrustCopy = {
   scanned: 'సమీక్షకు {n} దుకాణాలు',
   duplicate: 'ద్వంద్వ యజమాని కావచ్చు',
   listing: 'దుకాణ వివరాల తనిఖీ',
+  liveness: 'లైవ్ తనిఖీ అనిశ్చితం',
+  livenessScore: 'లైవ్ స్కోర్ {n} (0.30 నుండి పాస్)',
   similarity: 'ముఖ సారూప్యత {n}',
   newer: 'కొత్త ఖాతా',
   earlier: 'పాత ఖాతా',
@@ -1571,6 +1623,8 @@ const mr: TrustCopy = {
   verifiedOn: '{date} रोजी तपासले. ग्राहक तुमच्या दुकानाच्या पेजवर “पडताळलेले मालक” पाहतात.',
   inReview:
     'तुमचा चेहरा दुसऱ्या खात्याने आधीच वापरलेल्या चेहऱ्यासारखा दिसतो. एक व्यक्ती थोडक्यात पाहील. तुमचे दुकान चालू राहील आणि तोपर्यंत काहीही बदलणार नाही.',
+  livenessReview:
+    'या कॅप्चरवरून ही जिवंत व्यक्ती आहे याची आम्हाला पूर्ण खात्री करता आली नाही, म्हणून एक व्यक्ती पटकन पाहील. तुम्हाला पुन्हा प्रयत्न करण्याची गरज नाही. तुमचे दुकान सुरू राहील आणि दरम्यान काहीही बदलणार नाही.',
   notVerified:
     'समीक्षक ही तपासणी निश्चित करू शकले नाहीत, म्हणून बॅज बंद आहे. तुमच्या दुकानात बदल नाही.',
   start: 'हे तुम्हीच आहात याची खात्री करा',
@@ -1661,6 +1715,8 @@ const mr: TrustCopy = {
   scanned: 'पुनरावलोकनासाठी {n} दुकाने',
   duplicate: 'संभाव्य दुहेरी मालक',
   listing: 'दुकान माहिती तपासणी',
+  liveness: 'लाइव्ह तपासणी अनिश्चित',
+  livenessScore: 'लाइव्ह स्कोअर {n} (0.30 पासून पास)',
   similarity: 'चेहऱ्याचे साम्य {n}',
   newer: 'नवीन खाते',
   earlier: 'आधीचे खाते',
@@ -1693,6 +1749,8 @@ const kn: TrustCopy = {
     '{date} ರಂದು ಪರಿಶೀಲಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಅಂಗಡಿ ಪುಟದಲ್ಲಿ ಗ್ರಾಹಕರು “ದೃಢೀಕೃತ ಮಾಲೀಕರು” ಎಂದು ನೋಡುತ್ತಾರೆ.',
   inReview:
     'ನಿಮ್ಮ ಮುಖ ಬೇರೆ ಖಾತೆ ಈಗಾಗಲೇ ಬಳಸಿದ ಮುಖದಂತೆ ಕಾಣುತ್ತದೆ. ಒಬ್ಬರು ಬೇಗ ನೋಡುತ್ತಾರೆ. ನಿಮ್ಮ ಅಂಗಡಿ ಮುಂದುವರಿಯುತ್ತದೆ, ಅಷ್ಟರಲ್ಲಿ ಏನೂ ಬದಲಾಗುವುದಿಲ್ಲ.',
+  livenessReview:
+    'ಈ ಕ್ಯಾಪ್ಚರ್‌ನಿಂದ ಇದು ನೇರ ವ್ಯಕ್ತಿ ಎಂದು ನಮಗೆ ಸಂಪೂರ್ಣವಾಗಿ ಖಚಿತಪಡಿಸಲು ಆಗಲಿಲ್ಲ, ಆದ್ದರಿಂದ ಒಬ್ಬರು ಬೇಗ ನೋಡುತ್ತಾರೆ. ನೀವು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸುವ ಅಗತ್ಯವಿಲ್ಲ. ನಿಮ್ಮ ಅಂಗಡಿ ಲೈವ್ ಆಗಿಯೇ ಇರುತ್ತದೆ, ಈ ನಡುವೆ ಏನೂ ಬದಲಾಗುವುದಿಲ್ಲ.',
   notVerified:
     'ಪರಿಶೀಲಕರಿಗೆ ಈ ಪರಿಶೀಲನೆಯನ್ನು ದೃಢಪಡಿಸಲಾಗಲಿಲ್ಲ, ಹಾಗಾಗಿ ಬ್ಯಾಡ್ಜ್ ಇಲ್ಲ. ನಿಮ್ಮ ಅಂಗಡಿಯಲ್ಲಿ ಬದಲಾವಣೆ ಇಲ್ಲ.',
   start: 'ಇದು ನೀವೇ ಎಂದು ದೃಢೀಕರಿಸಿ',
@@ -1783,6 +1841,8 @@ const kn: TrustCopy = {
   scanned: 'ಪರಿಶೀಲನೆಗೆ {n} ಅಂಗಡಿಗಳು',
   duplicate: 'ಇಬ್ಬದಿ ಮಾಲೀಕರಿರಬಹುದು',
   listing: 'ಅಂಗಡಿ ವಿವರ ಪರಿಶೀಲನೆ',
+  liveness: 'ಲೈವ್ ಪರಿಶೀಲನೆ ಅನಿಶ್ಚಿತ',
+  livenessScore: 'ಲೈವ್ ಸ್ಕೋರ್ {n} (0.30 ರಿಂದ ಪಾಸ್)',
   similarity: 'ಮುಖದ ಹೋಲಿಕೆ {n}',
   newer: 'ಹೊಸ ಖಾತೆ',
   earlier: 'ಹಳೆಯ ಖಾತೆ',

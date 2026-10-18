@@ -285,6 +285,15 @@ export default function Marketing() {
                 >
                   {t.find}
                 </Button>
+                <Button
+                  className="lp-cta-business"
+                  variant="outlined"
+                  size="large"
+                  href={businessUrl}
+                  endIcon={<ArrowUpRight size={18} />}
+                >
+                  {t.business}
+                </Button>
               </div>
             </div>
             <div className="lp-hero-phone">

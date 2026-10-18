@@ -1,0 +1,63 @@
+.shop-qr-print {
+  display: none;
+}
+
+@media print {
+  body:has(> .shop-qr-print) > :not(.shop-qr-print) {
+    display: none !important;
+  }
+
+  html:has(.shop-qr-print),
+  body:has(> .shop-qr-print) {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  .shop-qr-print {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8mm;
+    box-sizing: border-box;
+    padding: 12mm;
+    width: 210mm;
+    min-height: 296mm;
+    background: white;
+    color: black;
+    text-align: center;
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .shop-qr-a5 {
+    width: 148mm;
+    min-height: 209mm;
+    gap: 6mm;
+  }
+
+  .shop-qr-print .shop-qr-name {
+    font-size: 28pt;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .shop-qr-print .shop-qr-caption {
+    font-size: 20pt;
+  }
+
+  .shop-qr-print .shop-qr-code {
+    width: 120mm;
+    height: 120mm;
+  }
+
+  .shop-qr-a5 .shop-qr-code {
+    width: 88mm;
+    height: 88mm;
+  }
+}

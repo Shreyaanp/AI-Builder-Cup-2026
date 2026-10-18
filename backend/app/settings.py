@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     app_env: Literal["local", "test", "production"] = "local"
+    public_demo_enabled: bool = False
     coach_mode: Literal["offline", "gemini"] = "offline"
     forecast_backend: Literal["weekday_average", "bigquery"] = "weekday_average"
     # Till receipts and supplier invoices: Document AI first, Gemini vision as the fallback.
@@ -32,8 +33,13 @@ class Settings(BaseSettings):
     frontend_dist: str = ""
     release_commit: str = "local"
     customer_origin: str = ""
+    ga_measurement_id: str = Field(default="", pattern=r"^(|G-[A-Z0-9]+)$")
     v1_enabled: bool = False
+    guest_customer: bool = False
     feature_google_guide: bool = True
+    qr_poster_enabled: bool = False
+    feature_trust_strip: bool = False
+    support_whatsapp: str = Field(default="", pattern=r"^(|https://wa\.me/[1-9][0-9]{6,14})$")
     merchant_backend: Literal["sqlite", "firestore"] = "sqlite"
     embedding_model: str = "gemini-embedding-2"
     # The shared search engine: Vertex embeddings when Gemini runs on Vertex ("auto"), or the

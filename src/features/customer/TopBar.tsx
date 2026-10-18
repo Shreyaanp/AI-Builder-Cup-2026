@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
 import { LanguagePicker } from '../frontdoors/LanguagePicker'
 import { customerBack } from '../frontdoors/navigation'
-import { useFrontCopy } from '../frontdoors/strings'
+import { useDemoCopy, useFrontCopy } from '../frontdoors/strings'
 import { ProfileButton } from './Profile'
 
 /**
@@ -15,6 +15,7 @@ import { ProfileButton } from './Profile'
 export function CustomerTopBar({ back = false }: { back?: boolean }) {
   const roles = useTheme().material
   const t = useFrontCopy()
+  const demo = useDemoCopy()
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     const update = () => setScrolled(window.scrollY > 4)
@@ -56,7 +57,9 @@ export function CustomerTopBar({ back = false }: { back?: boolean }) {
           {t.back}
         </Button>
       ) : (
-        <span />
+        <Button href="/explore/demo" sx={{ minHeight: 48 }}>
+          {demo.tryDemo}
+        </Button>
       )}
       <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
         {!back && <ProfileButton inline />}

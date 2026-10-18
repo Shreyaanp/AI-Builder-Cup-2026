@@ -11,7 +11,10 @@ import { LanguageStep } from '../language/LanguageStep'
 import { useNeedsLanguage } from '../language/needsLanguage'
 import { CustomerNav } from '../customer/CustomerNav'
 import type { CustomerTab } from '../customer/CustomerNav'
+import { BackHistory, overlayHandled } from '../v1/backStack'
+import { lastDirection, restoreScroll } from '../../app/history'
 import { CustomerTopBar } from '../customer/TopBar'
+import { track } from '../../app/analytics'
 
 const Discover = lazy(() => import('../discover/Discover'))
 const AskHome = lazy(() => import('../discover/AskHome'))
@@ -28,6 +31,7 @@ export type CustomerLocation = { gps: [number, number] | null; place: FoundPlace
 export default function CustomerApp() {
   const mode = useTheme().palette.mode
   const theme = useMemo(() => customerTheme(mode), [mode])
+  useEffect(() => track('customer_first_open'), [])
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]')
     const previous = meta?.getAttribute('content')
@@ -43,9 +47,12 @@ export default function CustomerApp() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <CustomerAccountProvider>
-        <Box data-customer>
-          <CustomerPages />
-        </Box>
+        {/* The phone's Back closes the customer's sheets and dialogs first, as in the owner app. */}
+        <BackHistory value>
+          <Box data-customer>
+            <CustomerPages />
+          </Box>
+        </BackHistory>
       </CustomerAccountProvider>
     </ThemeProvider>
   )
@@ -73,13 +80,10 @@ function CustomerPages() {
       new URLSearchParams(location.search).has(key),
     )
   useEffect(() => {
-    const restore = () =>
-      requestAnimationFrame(() =>
-        window.scrollTo({
-          top: (history.state as { scrollY?: number } | null)?.scrollY ?? 0,
-          behavior: 'instant',
-        }),
-      )
+    // Back/Forward land where that page was; closing a sheet with Back leaves the page as it is.
+    const restore = (event: PopStateEvent) => {
+      if (!overlayHandled(event) && lastDirection() !== 0) restoreScroll()
+    }
     window.addEventListener('popstate', restore)
     return () => window.removeEventListener('popstate', restore)
   }, [])

@@ -14,7 +14,7 @@ def test_feature_switch_uses_server_environment(monkeypatch, enabled):
         create_app(Settings(app_env="test", _env_file=None), InMemorySessionService())
     ) as client:
         response = client.get("/api/v1/bootstrap")
-        assert response.json()["features"] == {"google_guide": enabled}
+        assert response.json()["features"] == {"google_guide": enabled, "guest_customer": False}
         assert response.headers["cache-control"] == "no-store"
         # A visibility switch never changes authentication requirements.
         # Local bootstrap issued a preview identity; remove it to exercise an anonymous call.

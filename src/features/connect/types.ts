@@ -36,6 +36,9 @@ export interface ConnectorResult {
   last_synced: number | null
   diff: ConnectorDiff | null
   warnings: string[]
+  photo_content?: string | null
+  detected_currency?: string | null
+  cell_flags?: { photo: number; table: number; row: number; field: string; confidence: number }[]
 }
 
 export interface SavedMappingSummary {

@@ -21,7 +21,7 @@ test('owner connects a POS export, reviews mappings, and sees imported menu item
   const connect = page.getByRole('dialog', { name: 'Connect your system' })
   await expect(connect).toBeVisible()
   await connect.getByRole('button', { name: 'Petpooja', exact: true }).click()
-  await connect.locator('input[type="file"]').setInputFiles({
+  await connect.getByTestId('connector-file').setInputFiles({
     name: 'pos-menu.csv',
     mimeType: 'text/csv',
     buffer: readFileSync(posExport),
@@ -82,7 +82,7 @@ test('POS connection labels stay in the selected Hindi locale', async ({ page })
   await expect(connect.getByText('अपना सिस्टम चुनें')).toBeVisible()
   await expect(connect.getByRole('button', { name: 'बंद करें' })).toBeVisible()
   await expect(connect.getByText('Close', { exact: true })).toHaveCount(0)
-  await expect(connect.getByText('जुड़ा हुआ', { exact: true })).toBeVisible()
+  await expect(connect.getByText('जुड़ा है', { exact: true })).toBeVisible()
   await expect(connect.getByText('Connected', { exact: true })).toHaveCount(0)
 })
 
@@ -114,7 +114,7 @@ test('owner confirms a POS sales export and sees it in Grow', async ({ page }) =
   await page.getByRole('button', { name: /Connect your system/i }).click()
   const connect = page.getByRole('dialog', { name: 'Connect your system' })
   await connect.getByRole('button', { name: 'Tally', exact: true }).click()
-  await connect.locator('input[type="file"]').setInputFiles({
+  await connect.getByTestId('connector-file').setInputFiles({
     name: 'pos-sales.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from(salesFixture),
