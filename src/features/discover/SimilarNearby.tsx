@@ -70,7 +70,18 @@ export function SimilarNearby({ shop, items }: { shop: string; items: string[] }
         ))}
       </Box>
       {loading ? (
-        <Box sx={{ display: 'flex', gap: 3, mt: 3 }}>
+        <Box
+          aria-hidden="true"
+          sx={{
+            display: 'flex',
+            gap: 3,
+            mt: 3,
+            minWidth: 0,
+            maxWidth: '100%',
+            overflowX: 'auto',
+            ...scrollArea,
+          }}
+        >
           {[0, 1].map((i) => (
             <Skeleton key={i} variant="rounded" width={200} height={168} sx={{ flexShrink: 0 }} />
           ))}

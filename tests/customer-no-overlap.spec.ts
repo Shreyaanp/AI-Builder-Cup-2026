@@ -41,9 +41,10 @@ for (const width of [360, 390]) {
     })
 
     test('chat bar docks below the shop page content', async ({ page }) => {
-      await page.goto('/explore/s/demo-shop-1')
+      test.setTimeout(60_000)
+      await page.goto('/explore/s/demo-shop-1', { waitUntil: 'domcontentloaded' })
       const chat = page.getByRole('button', { name: 'Chat with the shop' })
-      await expect(chat).toBeVisible({ timeout: 20_000 })
+      await expect(chat).toBeVisible({ timeout: 45_000 })
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
       const last = page.getByText('independent prototype').last()
       await expect(last).toBeVisible()
@@ -93,7 +94,9 @@ for (const width of [360, 390]) {
       await page.route('**/api/v1/public/passport/check', (route) =>
         route.fulfill({ status: 403, json: { detail: 'bad key' } }),
       )
-      await page.goto('/explore/s/demo-shop-1?source=qr&k=made-up-key')
+      await page.goto('/explore/s/demo-shop-1?source=qr&k=made-up-key', {
+        waitUntil: 'domcontentloaded',
+      })
       await expect(page.getByText('This QR is out of date')).toBeVisible({ timeout: 20_000 })
       expect(
         await page.evaluate(

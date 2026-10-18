@@ -712,7 +712,7 @@ export default function AskHome({
         // The page ends just above the dock and the navigation bar, never under them.
         // The measured chat dock, customer navigation, and a 24px reading gap all sit below
         // the final chips or result card.
-        pb: `calc(${dockHeight + NAV + 24}px + env(safe-area-inset-bottom, 0px))`,
+        pb: `calc(${dockHeight + NAV + 48}px + env(safe-area-inset-bottom, 0px))`,
       }}
     >
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
