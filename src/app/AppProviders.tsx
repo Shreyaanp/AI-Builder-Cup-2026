@@ -25,6 +25,7 @@ function readPreferences(): Preferences {
   let saved: Partial<Preferences> = {}
   let chosen = false
   try {
+    // Pre-split device-wide records are read first, so a signed-in device keeps its language.
     chosen =
       (localStorage.getItem('niva.language.chosen') ?? localStorage.getItem(LANGUAGE_CHOSEN)) ===
       '1'
@@ -90,14 +91,17 @@ function Providers({
     document.documentElement.lang = locale
     void loadScriptFont(locale)
     try {
-      localStorage.setItem(
-        PREFERENCES,
-        JSON.stringify({ language: preferences.language, appearance: preferences.appearance }),
-      )
+      const display = JSON.stringify({
+        language: preferences.language,
+        appearance: preferences.appearance,
+      })
+      localStorage.setItem(PREFERENCES, display)
       if (preferences.languageChosen) localStorage.setItem(LANGUAGE_CHOSEN, '1')
-      // Migrate only nonpersonal display preferences; never copy identity or app data.
-      localStorage.removeItem('niva.starter.preferences')
-      localStorage.removeItem('niva.language.chosen')
+      // Old device-wide records are not erased (the other side may not have read them yet),
+      // but they are kept current so they never override a newer choice. Only nonpersonal
+      // display preferences are involved; sign-out erases the old keys.
+      if (localStorage.getItem('niva.starter.preferences') !== null)
+        localStorage.setItem('niva.starter.preferences', display)
     } catch {
       /* App remains usable without storage. */
     }
