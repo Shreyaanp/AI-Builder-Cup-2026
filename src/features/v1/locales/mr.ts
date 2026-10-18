@@ -1,6 +1,21 @@
 import type { Copy } from '../strings'
 
 export const mr: Copy = {
+  firstCustomers: 'पहिले ग्राहक मिळवा',
+  printPoster: 'पोस्टर छापा',
+  downloadPdf: 'PDF डाउनलोड करा',
+  shareWhatsApp: 'WhatsApp वर पाठवा',
+  scanStamps: 'स्टॅम्पसाठी स्कॅन करा',
+  paperSize: 'कागदाचा आकार',
+  trustFree: 'सुरुवात मोफत',
+  trustLanguage: 'तुमची भाषा',
+  trustData: 'तुमचा डेटा तुमचाच',
+  trustHuman: 'व्यक्तीशी बोला',
+  trustFreeBody: 'मोफत सुरू करा; पैसे देणे आवश्यक नाही.',
+  trustLanguageBody: 'सेटिंग्जमध्ये हिंदी, इंग्रजी किंवा दुसरी भाषा निवडा.',
+  trustDataBody: 'डेटा कधीही मिटवा; साठवलेला चेहऱ्याचा डेटा एन्क्रिप्टेड आहे.',
+  trustHumanBody: 'WhatsApp वर आमच्या मदत टीमशी बोला.',
+  trustWhatsapp: 'WhatsApp उघडा',
   newShopMode: 'नवीन दुकान',
   newShopReady: 'तुमचे नवीन दुकान तयार आहे',
   newShopReadyBody: 'आता तुम्ही नवीन दुकानात काम करत आहात. तयार झाल्यावर ग्राहक पान शेअर करा.',

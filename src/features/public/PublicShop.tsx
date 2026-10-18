@@ -28,9 +28,8 @@ import { loadScriptFont } from '../../i18n/fonts'
 import { formatPrice } from '../v1/format'
 import { factName } from '../v1/factNames'
 import { Sheet } from '../v1/Sheet'
-import type { ShopFacts } from '../v1/api'
-import { en as ownerEnglish } from '../v1/strings'
-import { translations as ownerTranslations } from '../v1/locales'
+import type { Api, ShopFacts } from '../v1/api'
+import { useCopy as useOwnerCopy } from '../v1/strings'
 import { HAND_FONT, shape } from '../../design/theme'
 import { chalkDust } from '../../design/chalkboard'
 import { chalkWrite } from '../../design/chalkMotion'
@@ -54,6 +53,7 @@ import { unitLabel } from '../shop/units'
 import { rememberOpened } from '../discover/opened'
 import { SimilarNearby } from '../discover/SimilarNearby'
 import { shopRegion, shopZone } from '../../region/region'
+import { track } from '../../app/analytics'
 
 interface PublicShopData {
   id: string
@@ -88,6 +88,61 @@ interface PublicShopData {
   demo?: boolean
   /** The owner passed the optional live face check (when; never who). */
   verified_owner?: { checked?: number | null }
+}
+
+function safePublicShop(value: unknown): PublicShopData {
+  const data = value && typeof value === 'object' ? (value as Partial<PublicShopData>) : {}
+  const products = Array.isArray(data.products)
+    ? data.products
+        .filter(
+          (item): item is PublicShopData['products'][number] =>
+            !!item &&
+            typeof item.name === 'string' &&
+            typeof item.unit === 'string' &&
+            typeof item.price === 'number',
+        )
+        .map((item) => ({
+          ...item,
+          available: item.available !== false,
+          name_local: typeof item.name_local === 'string' ? item.name_local : undefined,
+          category: typeof item.category === 'string' ? item.category : undefined,
+        }))
+    : []
+  const rawFacts = data.facts && typeof data.facts === 'object' ? data.facts : {}
+  const facts: ShopFacts = {
+    ...rawFacts,
+    delivery_note: typeof rawFacts.delivery_note === 'string' ? rawFacts.delivery_note : undefined,
+    preorder_lead_time:
+      typeof rawFacts.preorder_lead_time === 'string' ? rawFacts.preorder_lead_time : undefined,
+    busy_hours: typeof rawFacts.busy_hours === 'string' ? rawFacts.busy_hours : undefined,
+    payment_methods: Array.isArray(rawFacts.payment_methods)
+      ? rawFacts.payment_methods.filter((method): method is string => typeof method === 'string')
+      : [],
+    custom_facts: Array.isArray(rawFacts.custom_facts)
+      ? rawFacts.custom_facts.filter(
+          (fact) =>
+            fact &&
+            typeof fact.key === 'string' &&
+            typeof fact.label === 'string' &&
+            typeof fact.value === 'string',
+        )
+      : [],
+  }
+  return {
+    ...data,
+    id: typeof data.id === 'string' ? data.id : '',
+    name: typeof data.name === 'string' ? data.name : '',
+    category: typeof data.category === 'string' ? data.category : '',
+    location: typeof data.location === 'string' ? data.location : '',
+    hours: typeof data.hours === 'string' ? data.hours : '',
+    phone: typeof data.phone === 'string' ? data.phone : '',
+    products,
+    gallery: Array.isArray(data.gallery)
+      ? data.gallery.filter((item): item is string => typeof item === 'string')
+      : [],
+    weekly_hours: Array.isArray(data.weekly_hours) ? data.weekly_hours : [],
+    facts,
+  }
 }
 
 const PAYMENT_BRANDS = { paynow: 'PayNow', grabpay: 'GrabPay', nets: 'NETS' } as const
@@ -410,12 +465,12 @@ const publicTranslations: Record<Locale, Omit<typeof en, keyof CustomerCopy>> = 
 }
 
 /** Customer-facing, read-only page for a shop the owner chose to share. No sign-in. */
-export default function PublicShop({ id }: { id: string }) {
+export default function PublicShop({ id, previewApi }: { id: string; previewApi?: Api }) {
   const locale = useLocale()
   const shopCopy = useShopCopy()
   const o = useOnboardingCopy()
   const discovery = discoverCopy(locale)
-  const freshnessCopy = locale === 'en' ? ownerEnglish : ownerTranslations[locale]
+  const freshnessCopy = useOwnerCopy()
   const t = {
     ...en,
     ...publicTranslations[locale],
@@ -445,39 +500,44 @@ export default function PublicShop({ id }: { id: string }) {
 
   const fetchShop = useCallback(
     (signal?: AbortSignal) =>
-      // Categories, sections and the demo story come back in the customer's language (English
-      // is the source, so it needs no parameter).
-      fetch(
-        `/api/v1/public/shops/${encodeURIComponent(id)}${locale === 'en' ? '' : `?lang=${locale}`}`,
-        { signal },
-      ).then(async (response) => {
-        // 404 = owner stopped sharing; anything else is a transient failure.
-        if (response.status === 404) throw new Error('missing')
-        if (!response.ok) throw new Error('error')
-        return (await response.json()) as PublicShopData
-      }),
-    [id, locale],
+      previewApi
+        ? previewApi<unknown>(`/public/shops/${id}`, { signal }).then(safePublicShop)
+        : // Categories, sections and the demo story come back in the customer's language (English
+          // is the source, so it needs no parameter).
+          fetch(
+            `/api/v1/public/shops/${encodeURIComponent(id)}${locale === 'en' ? '' : `?lang=${locale}`}`,
+            { signal },
+          ).then(async (response) => {
+            // 404 = owner stopped sharing; anything else is a transient failure.
+            if (response.status === 404) throw new Error('missing')
+            if (!response.ok) throw new Error('error')
+            return safePublicShop(await response.json())
+          }),
+    [id, locale, previewApi],
   )
-  const apply = useCallback((data: PublicShopData) => {
-    const old = previous.current
-    const changed = data.products.filter(
-      (product) =>
-        old?.id === data.id &&
-        old.products.some(
-          (before) =>
-            before.name === product.name &&
-            before.unit === product.unit &&
-            before.price !== product.price,
-        ),
-    )
-    if (changed.length) setChangedPrices(changed.map((product) => product.name + product.unit))
-    previous.current = data
-    // A personal signal for this person's own search and Today's 7, kept on this device.
-    rememberOpened(data.id)
-    setShop(data)
-    setStale(false)
-    setState('ready')
-  }, [])
+  const apply = useCallback(
+    (data: PublicShopData) => {
+      const old = previous.current
+      const changed = data.products.filter(
+        (product) =>
+          old?.id === data.id &&
+          old.products.some(
+            (before) =>
+              before.name === product.name &&
+              before.unit === product.unit &&
+              before.price !== product.price,
+          ),
+      )
+      if (changed.length) setChangedPrices(changed.map((product) => product.name + product.unit))
+      previous.current = data
+      // A personal signal for this person's own search and Today's 7, kept on this device.
+      if (!previewApi) rememberOpened(data.id)
+      setShop(data)
+      setStale(false)
+      setState('ready')
+    },
+    [previewApi],
+  )
   const failRefresh = useCallback((error: unknown) => {
     if (error instanceof Error && error.message === 'missing') {
       setShop(null)
@@ -490,8 +550,10 @@ export default function PublicShop({ id }: { id: string }) {
       .then((data) => {
         if (abort.signal.aborted) return
         apply(data)
+        const country = shopRegion(data).country
+        track('shop_opened', { region: country === 'SG' ? 'SG' : 'IN' })
         document.title = `${data.name} · ${t.menu}`
-        recsEvent({ kind: 'shop_open', shop_id: data.id })
+        if (!previewApi) recsEvent({ kind: 'shop_open', shop_id: data.id })
       })
       .catch((error: unknown) => {
         if (!abort.signal.aborted)
@@ -500,7 +562,7 @@ export default function PublicShop({ id }: { id: string }) {
     return () => {
       abort.abort()
     }
-  }, [fetchShop, t.menu, apply, failRefresh])
+  }, [fetchShop, t.menu, apply, failRefresh, previewApi])
   useEffect(() => {
     let pending: AbortController | null = null
     const refresh = () => {
@@ -565,7 +627,7 @@ export default function PublicShop({ id }: { id: string }) {
         </Typography>
         <Button
           component="a"
-          href="/explore/"
+          href={previewApi ? '/explore/demo' : '/explore/'}
           onClick={customerNavigate}
           variant="contained"
           startIcon={<ArrowLeft size={20} />}
@@ -578,16 +640,25 @@ export default function PublicShop({ id }: { id: string }) {
 
   const currency = shop.currency ?? shopRegion(shop).currency
   // The public API names owner-written facts `custom` (owner records use `custom_facts`).
-  const custom =
+  const customValue =
     (shop.facts as (ShopFacts & { custom?: ShopFacts['custom_facts'] }) | undefined)?.custom ??
     shop.facts?.custom_facts ??
     []
+  const custom = Array.isArray(customValue)
+    ? customValue.filter(
+        (fact) =>
+          fact &&
+          typeof fact.key === 'string' &&
+          typeof fact.label === 'string' &&
+          typeof fact.value === 'string',
+      )
+    : []
   const chips = [
     ...factChips(shop.facts ?? {}, t),
     // Type-specific facts the owner confirmed (e.g. a salon's walk-ins), label: value.
     ...custom
       // The story has its own line; the demo label is already in the header.
-      .filter((fact) => fact.key !== 'story' && fact.key !== 'demo_data')
+      .filter((fact) => !['story', 'demo_data', 'demo_verified'].includes(fact.key))
       .map((fact) => `${fact.label}: ${fact.value}`),
   ]
   // Available items first; sold-out items stay listed (customers ask about them) but last.
@@ -597,25 +668,27 @@ export default function PublicShop({ id }: { id: string }) {
   const stampsEnabled = shop.stamps_enabled ?? Boolean(shop.reward_text?.trim())
   // Demo shops' numbers are fictional; never offer to call or message them.
   const phone = shop.demo ? '' : shop.phone
-  const actions = [
-    shop.location && {
-      label: t.directions,
-      icon: <MapPin size={20} />,
-      href:
-        'https://www.google.com/maps/search/?api=1&query=' +
-        encodeURIComponent(`${shop.name} ${shop.location}`),
-    },
-    phone && {
-      label: t.call,
-      icon: <Phone size={20} />,
-      href: `tel:${phone.replace(/[^\d+]/g, '')}`,
-    },
-    phone && {
-      label: t.whatsapp,
-      icon: <MessageCircle size={20} />,
-      href: whatsappUrl(phone, shop.name, t.whatsappMessage),
-    },
-  ].filter(Boolean) as { label: string; icon: ReactNode; href: string }[]
+  const actions = previewApi
+    ? []
+    : ([
+        shop.location && {
+          label: t.directions,
+          icon: <MapPin size={20} />,
+          href:
+            'https://www.google.com/maps/search/?api=1&query=' +
+            encodeURIComponent(`${shop.name} ${shop.location}`),
+        },
+        phone && {
+          label: t.call,
+          icon: <Phone size={20} />,
+          href: `tel:${phone.replace(/[^\d+]/g, '')}`,
+        },
+        phone && {
+          label: t.whatsapp,
+          icon: <MessageCircle size={20} />,
+          href: whatsappUrl(phone, shop.name, t.whatsappMessage),
+        },
+      ].filter(Boolean) as { label: string; icon: ReactNode; href: string }[])
 
   return (
     <Box
@@ -627,7 +700,7 @@ export default function PublicShop({ id }: { id: string }) {
         // Phones: the photo runs to the screen's top edge, under the status bar.
         pt: { xs: 0, sm: 'calc(16px + env(safe-area-inset-top))' },
         // Room for the pinned chat bar (prevents occlusion at 200% font zoom).
-        pb: 'calc(148px + env(safe-area-inset-bottom))',
+        pb: previewApi ? 4 : 'calc(148px + env(safe-area-inset-bottom))',
       }}
     >
       {/* Back and controls: on phones they float over the photo in frosted circles and stay
@@ -650,8 +723,8 @@ export default function PublicShop({ id }: { id: string }) {
       >
         <IconButton
           component="a"
-          href="/explore/"
-          onClick={customerBack}
+          href={previewApi ? '/explore/demo' : '/explore/'}
+          onClick={previewApi ? customerNavigate : customerBack}
           aria-label={t.back}
           sx={{ width: 48, height: 48, flexShrink: 0, ...frosted }}
         >
@@ -771,9 +844,14 @@ export default function PublicShop({ id }: { id: string }) {
           {shop.verified_owner && !shop.demo && (
             <VerifiedBadge checked={shop.verified_owner.checked} />
           )}
-          {shop.demo && (
-            <Chip label={t.demoShop} size="small" variant="outlined" sx={{ height: 24 }} />
-          )}
+          {shop.demo &&
+            !previewApi &&
+            (custom.some((fact) => fact.key === 'demo_verified') ? (
+              <VerifiedBadge demoLabel={t.demoShop} />
+            ) : (
+              // Honest but quiet: one outlined label, not a second accent colour.
+              <Chip label={t.demoShop} size="small" variant="outlined" sx={{ height: 24 }} />
+            ))}
         </Stack>
       </Box>
       {/* One line a neighbour would say about the place, in chalk. */}
@@ -793,7 +871,7 @@ export default function PublicShop({ id }: { id: string }) {
         </Typography>
       )}
       {/* Sample shops say so in words, not only with a chip. */}
-      {shop.demo && (
+      {shop.demo && !previewApi && (
         <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
           {t.demoShopNote}
         </Typography>
@@ -814,7 +892,7 @@ export default function PublicShop({ id }: { id: string }) {
           '& > *': { flexShrink: 0 },
         }}
       >
-        <FollowButton id={id} name={shop.name} />
+        {!previewApi && <FollowButton id={id} name={shop.name} />}
         {stampsEnabled && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
         {actions.map((action) => (
           <Button
@@ -1017,11 +1095,11 @@ export default function PublicShop({ id }: { id: string }) {
                       )
                     }
                     secondary={
-                      product.available ? (
-                        `/ ${unitLabel(product.unit, shopCopy)}`
-                      ) : (
-                        <StockReminder shop={id} name={product.name} unit={product.unit} />
-                      )
+                      product.available
+                        ? `/ ${unitLabel(product.unit, shopCopy)}`
+                        : !previewApi && (
+                            <StockReminder shop={id} name={product.name} unit={product.unit} />
+                          )
                     }
                     slotProps={{
                       primary: {
@@ -1108,14 +1186,16 @@ export default function PublicShop({ id }: { id: string }) {
         />
       )}
       {stampsEnabled && <ShopGames shop={id} />}
-      {!stale && <BackInStock shop={id} products={shop.products} />}
+      {!previewApi && !stale && <BackInStock shop={id} products={shop.products} />}
       {stampsEnabled && <BadgeRow shop={id} />}
-      <Tips shop={id} />
-      <SimilarNearby
-        key={id}
-        shop={id}
-        items={menu.filter((product) => product.available).map((product) => product.name)}
-      />
+      {!previewApi && <Tips shop={id} />}
+      {!previewApi && (
+        <SimilarNearby
+          key={id}
+          shop={id}
+          items={menu.filter((product) => product.available).map((product) => product.name)}
+        />
+      )}
       <Stack
         direction="row"
         spacing={1}
@@ -1127,50 +1207,54 @@ export default function PublicShop({ id }: { id: string }) {
         </Typography>
       </Stack>
       {/* One way to reach the shop: instant answers first, the owner when needed. */}
-      <Box
-        sx={{
-          position: 'fixed',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          px: 2,
-          pt: 2,
-          pb: 'calc(12px + env(safe-area-inset-bottom))',
-          bgcolor: roles.surfaceContainer,
-          borderTop: `1px solid ${roles.outlineVariant}`,
-          zIndex: 2,
-        }}
-      >
-        <Button
-          fullWidth
-          variant="contained"
-          size="large"
-          startIcon={<MessageCircle size={20} />}
-          onClick={() => setChatOpen(true)}
-          sx={{ maxWidth: 720, mx: 'auto', display: 'flex', minHeight: 52 }}
+      {!previewApi && (
+        <Box
+          sx={{
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            px: 2,
+            pt: 2,
+            pb: 'calc(12px + env(safe-area-inset-bottom))',
+            bgcolor: roles.surfaceContainer,
+            borderTop: `1px solid ${roles.outlineVariant}`,
+            zIndex: 2,
+          }}
         >
-          {t.chatTitle}
-        </Button>
-      </Box>
-      <Sheet
-        keepMounted
-        open={chatOpen}
-        onClose={() => setChatOpen(false)}
-        titleId="shop-chat-title"
-        title={t.chatTitle}
-      >
-        <Typography variant="bodyMedium" color="text.secondary">
-          {t.chatIntro}
-        </Typography>
-        <ShopChat
-          key={`chat-${id}`}
-          id={id}
-          facts={stale ? '' : JSON.stringify(shop)}
-          item={menu[0]?.name}
-          currency={currency}
-          copy={t}
-        />
-      </Sheet>
+          <Button
+            fullWidth
+            variant="contained"
+            size="large"
+            startIcon={<MessageCircle size={20} />}
+            onClick={() => setChatOpen(true)}
+            sx={{ maxWidth: 720, mx: 'auto', display: 'flex', minHeight: 52 }}
+          >
+            {t.chatTitle}
+          </Button>
+        </Box>
+      )}
+      {!previewApi && (
+        <Sheet
+          keepMounted
+          open={!previewApi && chatOpen}
+          onClose={() => setChatOpen(false)}
+          titleId="shop-chat-title"
+          title={t.chatTitle}
+        >
+          <Typography variant="bodyMedium" color="text.secondary">
+            {t.chatIntro}
+          </Typography>
+          <ShopChat
+            key={`chat-${id}`}
+            id={id}
+            facts={stale ? '' : JSON.stringify(shop)}
+            item={menu[0]?.name}
+            currency={currency}
+            copy={t}
+          />
+        </Sheet>
+      )}
     </Box>
   )
 }

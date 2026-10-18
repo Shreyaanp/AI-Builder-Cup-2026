@@ -40,6 +40,7 @@ class ParsedLine(BaseModel):
     unit: str = Field(default="", max_length=20)
     unit_price: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     code: str = Field(default="", max_length=40)
+    cell_confidence: dict[str, float] = Field(default_factory=dict)
 
 
 class ParsedDocument(BaseModel):
@@ -47,6 +48,7 @@ class ParsedDocument(BaseModel):
 
     processor: Processor
     date: str = ""
+    date_confidence: float = Field(default=0, ge=0, le=1)
     currency: str = ""
     number: str = ""
     supplier: str = ""
@@ -132,12 +134,16 @@ def parse_document(document: dict[str, Any], processor: Processor) -> ParsedDocu
                         unit=_text(fields.get("unit", {}))[:20],
                         unit_price=unit_price,
                         code=_text(fields.get("product_code", {}))[:40],
+                        cell_confidence={
+                            key: float(prop.get("confidence") or 0) for key, prop in fields.items()
+                        },
                     )
                 )
             except ValueError:
                 continue  # a negative or nonsense number: skip the line, keep the rest
         elif kind in ("receipt_date", "invoice_date", "purchase_date") and not parsed.date:
             parsed.date = _date(entity)
+            parsed.date_confidence = float(entity.get("confidence") or 0)
         elif kind == "currency" and not parsed.currency:
             code = (entity.get("normalizedValue") or {}).get("text") or _text(entity)
             parsed.currency = code.upper()[:3] if len(code) == 3 else ""

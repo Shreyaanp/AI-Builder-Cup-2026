@@ -17,6 +17,7 @@ from .agent import asks_to_end, ui_language
 from .auth import Principal
 from .contracts import NewShopVoiceContext, StreamEvent, VoiceControl
 from .coordinator import current
+from .firestore_memory import pending_writes, settle_writes
 from .latency import FirstOutput
 from .new_shop_resume import merge_drafts, question_in
 from .new_shop_tools import end_conversation, go_live
@@ -49,6 +50,17 @@ AUDIO_BYTES_PER_SECOND = 40_000
 AUDIO_BURST_BYTES = 1_000_000
 # Fresh Live connections one socket may open after the provider ended one.
 MAX_ROTATIONS = 12
+# Teardown waits this long for in-flight saves (the owner's last answer, the draft).
+SAVE_SETTLE_SECONDS = 8
+
+
+async def settle_saves() -> None:
+    """Let the socket's in-flight saves land before its tasks are cancelled (shielded: the
+    teardown may itself be running under a cancellation)."""
+    with anyio.CancelScope(shield=True):
+        running = await settle_writes(SAVE_SETTLE_SECONDS)
+    if running:
+        log.warning("voice_saves_unsettled", writes=running)
 
 
 def is_new_shop() -> bool:
@@ -495,6 +507,8 @@ async def gemini_voice(
         for task in done:
             task.result()
     finally:
+        # The owner's last answer may be mid-save: it lands before the tasks are cancelled.
+        await settle_saves()
         link.queue.close()
         for task in tasks:
             task.cancel()
@@ -522,6 +536,8 @@ async def serve_voice(
     language = reply_language(lang)
     # The session's tasks inherit the owner's language for the coach instruction.
     ui_language.set(language.locale)
+    # This socket's own in-flight saves, waited for at teardown (tasks below inherit the set).
+    saves_token = pending_writes.set(set())
 
     async def heartbeat() -> None:
         while True:
@@ -582,11 +598,15 @@ async def serve_voice(
         stats.end("provider_failed")
         code, reason, error = 1011, "PROVIDER_UNAVAILABLE", "PROVIDER_UNAVAILABLE"
     finally:
+        await settle_saves()
         for task in tasks:
             task.cancel()
         with anyio.CancelScope(shield=True):
             async with asyncio.timeout(5):
                 await asyncio.gather(*tasks, return_exceptions=True)
+            # A save the cancellation cut off goes on by itself: the socket stays until it lands.
+            await settle_saves()
+            pending_writes.reset(saves_token)
             with suppress(RuntimeError, WebSocketDisconnect):
                 if error:
                     await websocket.send_json(StreamEvent(kind="error", code=error).payload())

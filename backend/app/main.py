@@ -12,6 +12,7 @@ import structlog
 from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from google.adk.sessions import BaseSessionService, DatabaseSessionService
 from google.cloud import firestore
@@ -81,6 +82,7 @@ from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
 from .playbook import PlaybookWriter
 from .playbook_routes import router as playbook_router
+from .public_demo import router as public_demo_router
 from .recap import RecapWriter
 from .recs_routes import router as recs_router
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
@@ -293,6 +295,7 @@ def create_app(
     app.include_router(discover_ask_router)
     app.include_router(day_close_router)
     app.include_router(demo_workspace_router)
+    app.include_router(public_demo_router)
     app.include_router(demo_world_router)
     app.include_router(recs_router)
     app.include_router(passport_router)
@@ -314,6 +317,7 @@ def create_app(
     )
 
     app.add_middleware(RequestBoundary, allowed_origins=settings.allowed_origins)
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(_request: Request, error: RequestValidationError) -> JSONResponse:
@@ -356,12 +360,19 @@ def create_app(
             **get_services(request).identity.bootstrap(request, response),
             "v1_enabled": settings.v1_enabled,
             "features": FeatureFlags(google_guide=settings.feature_google_guide).model_dump(),
+            "trust_strip": {
+                "enabled": settings.feature_trust_strip,
+                "support_whatsapp": settings.support_whatsapp
+                if settings.feature_trust_strip
+                else "",
+            },
             "customer_origin": settings.customer_origin
             or (
                 "https://chalkboard.shreyaan.work"
                 if settings.app_env == "production"
                 else "http://127.0.0.1:3200"
             ),
+            "ga_measurement_id": settings.ga_measurement_id,
             "coach_mode": settings.coach_mode,
             "maps_browser_key": (
                 settings.maps_browser_key.get_secret_value() if settings.maps_browser_key else ""

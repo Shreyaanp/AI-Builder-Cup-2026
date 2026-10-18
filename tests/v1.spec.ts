@@ -216,7 +216,7 @@ test('customer facts: the card starts the chat, the owner confirms, customers se
   await expect(
     page.getByRole('img', { name: 'QR code for Halal Corner’s customer page' }),
   ).toBeVisible()
-  await expect(page.getByText('Scan for today’s menu')).toBeVisible()
+  await expect(page.getByRole('dialog').getByText('Scan for stamps')).toBeVisible()
   const url = await page.getByRole('link', { name: 'Open page' }).getAttribute('href')
   await page.goto(url!)
   await expect(page.getByRole('list', { name: 'Good to know' })).toContainText('Halal')
