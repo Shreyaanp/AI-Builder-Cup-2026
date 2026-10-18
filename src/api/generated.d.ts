@@ -10555,6 +10555,7 @@ export interface operations {
                 lat?: number | null;
                 lng?: number | null;
                 tz?: string;
+                lang?: string | null;
             };
             header?: never;
             path?: never;
@@ -10592,6 +10593,7 @@ export interface operations {
                 lat?: number | null;
                 lng?: number | null;
                 tz?: string;
+                lang?: string | null;
             };
             header?: never;
             path?: never;
@@ -10629,6 +10631,7 @@ export interface operations {
                 lat?: number | null;
                 lng?: number | null;
                 tz?: string;
+                lang?: string | null;
             };
             header?: never;
             path?: never;
