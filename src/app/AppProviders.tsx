@@ -15,18 +15,33 @@ import { useIdentity } from '../auth/useIdentity'
 import { isLanguagePref, resolveLocale } from '../i18n/locales'
 import { loadScriptFont } from '../i18n/fonts'
 import { configureAnalytics, watchRouteChanges } from './analytics'
+import { sideKey } from '../auth/appSide'
 
 /** Kept apart from the preferences object, which older code and tests overwrite whole. */
-const LANGUAGE_CHOSEN = 'niva.language.chosen'
+const languageChosenKey = () => sideKey('language.chosen')
+const preferencesKey = () => sideKey('preferences')
+
+/**
+ * The pre-split device-wide records. A value not seen before (an older app version or a test
+ * wrote it) is copied to both sides once; after that each side's own record wins.
+ */
+function adoptLegacy(legacy: string, name: string) {
+  const value = localStorage.getItem(legacy)
+  const seen = `chalkboard.legacy.${name}`
+  if (value === null || localStorage.getItem(seen) === value) return
+  for (const side of ['owner', 'customer'])
+    localStorage.setItem(`chalkboard.${side}.${name}`, value)
+  localStorage.setItem(seen, value)
+}
 
 function readPreferences(): Preferences {
   let saved: Partial<Preferences> = {}
   let chosen = false
   try {
-    chosen = localStorage.getItem(LANGUAGE_CHOSEN) === '1'
-    saved = JSON.parse(
-      localStorage.getItem('niva.starter.preferences') || '{}',
-    ) as Partial<Preferences>
+    adoptLegacy('niva.language.chosen', 'language.chosen')
+    adoptLegacy('niva.starter.preferences', 'preferences')
+    chosen = localStorage.getItem(languageChosenKey()) === '1'
+    saved = JSON.parse(localStorage.getItem(preferencesKey()) ?? '{}') as Partial<Preferences>
   } catch {
     /* Storage may be disabled. */
   }
@@ -86,11 +101,12 @@ function Providers({
     document.documentElement.lang = locale
     void loadScriptFont(locale)
     try {
-      localStorage.setItem(
-        'niva.starter.preferences',
-        JSON.stringify({ language: preferences.language, appearance: preferences.appearance }),
-      )
-      if (preferences.languageChosen) localStorage.setItem(LANGUAGE_CHOSEN, '1')
+      const display = JSON.stringify({
+        language: preferences.language,
+        appearance: preferences.appearance,
+      })
+      localStorage.setItem(preferencesKey(), display)
+      if (preferences.languageChosen) localStorage.setItem(languageChosenKey(), '1')
     } catch {
       /* App remains usable without storage. */
     }
