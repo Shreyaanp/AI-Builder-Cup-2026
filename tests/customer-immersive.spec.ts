@@ -149,6 +149,9 @@ test('customer app at 390 px: photos first, bars not floating, full-bleed shop, 
     await c.goto(`${origin}/explore/s/${new URL(qr).pathname.split('/').pop()}`)
     const heading = c.getByRole('heading', { level: 1, name })
     await expect(heading).toBeVisible()
+    // Boxes are measured against the visual viewport, which the phone emulation can still have
+    // panned from the previous page for a few frames after load; measure once it has settled.
+    await c.waitForFunction(() => window.visualViewport?.offsetTop === 0)
     const hero = await box(c.getByTestId('shop-hero-banner'))
     expect(hero.x).toBeLessThanOrEqual(0.5)
     expect(hero.width).toBeGreaterThanOrEqual(389)
