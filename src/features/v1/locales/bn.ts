@@ -328,6 +328,7 @@ export const bn: Copy = {
   importFailed: 'ফাইল পড়া যায়নি। পণ্যের নাম ও দামসহ CSV বা Excel ফাইল পাঠান।',
   salesSummary: 'বিক্রির সারাংশ',
   salesNotSaved: 'আপনার ফাইল থেকে। কিছু সেভ হয়নি।',
+  salesCurrencyMismatch: 'অন্য মুদ্রার সারিগুলি বাদ দেওয়া হয়েছে।',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} দিন · ${from} – ${to}` : 'ফাইলে তারিখ নেই',
   topItems: 'বেশি বিক্রি হওয়া পণ্য',

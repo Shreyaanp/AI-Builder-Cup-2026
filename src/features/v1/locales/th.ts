@@ -311,6 +311,7 @@ export const th: Copy = {
   importFailed: 'อ่านไฟล์นี้ไม่ได้ กรุณาส่งไฟล์ CSV หรือ Excel ที่มีชื่อสินค้าและราคา',
   salesSummary: 'สรุปยอดขาย',
   salesNotSaved: 'จากไฟล์ของคุณ ไม่ได้บันทึกอะไร',
+  salesCurrencyMismatch: 'ไม่นับแถวที่ใช้สกุลเงินอื่น',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} วัน · ${from} – ${to}` : 'ไม่มีวันที่ในไฟล์',
   topItems: 'ขายดี',

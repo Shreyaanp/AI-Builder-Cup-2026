@@ -603,6 +603,16 @@ def view_document_as_sap(order: str = "", document: str = "") -> dict[str, Any]:
         }
     chosen = docs[-1]
     sap = next((text for text in (chosen["translated"], chosen["raw"]) if "<IDOCTYP>" in text), "")
+    if not sap:
+        from .supply_docs import SupplyDoc, render
+
+        # This is a requested preview; keep the stored document in the partner's channel.
+        sap = render(SupplyDoc.model_validate(chosen["canonical"]), "idoc")
+        preview = {**chosen, "translated": sap, "translated_format": "idoc"}
+        po = {
+            **po,
+            "documents": [preview if d["id"] == chosen["id"] else d for d in po["documents"]],
+        }
     basic = re.search(r"<IDOCTYP>(\w+)</IDOCTYP>", sap)
     return {
         **_plain_order(po),

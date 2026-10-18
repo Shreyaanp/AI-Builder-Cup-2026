@@ -480,12 +480,6 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   }
   const theme = useTheme()
   const roles = theme.material
-  // Controls over the photo: a frosted surface keeps them legible on any picture.
-  const frosted = {
-    bgcolor: `color-mix(in srgb, ${roles.surface} 78%, transparent)`,
-    backdropFilter: 'blur(10px)',
-    '&:hover': { bgcolor: roles.surface },
-  }
   const [shop, setShop] = useState<PublicShopData | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
   // Data shown may be older than the last attempt when a refresh failed (network/server).
@@ -707,8 +701,9 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         pb: previewApi ? 4 : 'calc(148px + env(safe-area-inset-bottom))',
       }}
     >
-      {/* Back and controls: on phones they float over the photo in frosted circles and stay
-          pinned while the page scrolls, so Back is always one thumb away. 48px targets. */}
+      {/* Back and controls: one solid bar in the page flow, pinned while the page scrolls, so
+          Back is always one thumb away and nothing scrolls through or under the buttons.
+          48px targets. */}
       <Stack
         direction="row"
         sx={{
@@ -718,11 +713,11 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           alignItems: 'center',
           justifyContent: 'space-between',
           minHeight: 64,
-          mx: { xs: -2, sm: 0 },
+          mx: { xs: -4, sm: 0 },
+          px: { xs: 2, sm: 0 },
           pt: { xs: 'env(safe-area-inset-top, 0px)', sm: 0 },
-          mb: { xs: 'calc(-64px - env(safe-area-inset-top, 0px))', sm: 2 },
-          pointerEvents: 'none',
-          '& > *': { pointerEvents: 'auto' },
+          mb: { xs: 0, sm: 2 },
+          bgcolor: 'background.default',
         }}
       >
         <IconButton
@@ -730,15 +725,11 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           href={previewApi ? '/explore/demo' : '/explore/'}
           onClick={previewApi ? customerNavigate : customerBack}
           aria-label={t.back}
-          sx={{ width: 48, height: 48, flexShrink: 0, ...frosted }}
+          sx={{ width: 48, height: 48, flexShrink: 0 }}
         >
           <ArrowLeft size={20} />
         </IconButton>
-        <Stack
-          direction="row"
-          spacing={0.5}
-          sx={{ alignItems: 'center', flexShrink: 0, borderRadius: 999, ...frosted }}
-        >
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
           <LanguagePicker variant="inline" />
           <AppearanceToggle inline />
         </Stack>
@@ -880,20 +871,16 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           {t.demoShopNote}
         </Typography>
       )}
-      {/* Follow, stamps and how to get there in one row the thumb can swipe, never a stack. */}
+      {/* Follow, stamps and how to get there wrap onto a second line, never cut at the edge. */}
       <Stack
         direction="row"
         sx={{
           mt: 3,
           gap: 1.5,
           alignItems: 'center',
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
-          mx: -4,
-          px: 4,
+          flexWrap: 'wrap',
           py: 0.5,
-          '& > *': { flexShrink: 0 },
+          '& > *': { minWidth: 0, maxWidth: '100%' },
         }}
       >
         {!previewApi && <FollowButton id={id} name={shop.name} />}
@@ -1013,7 +1000,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           mt: 3,
           py: 1,
           position: 'sticky',
-          top: 'env(safe-area-inset-top)',
+          top: 'calc(64px + env(safe-area-inset-top, 0px))',
           zIndex: 1,
           bgcolor: 'background.default',
         }}

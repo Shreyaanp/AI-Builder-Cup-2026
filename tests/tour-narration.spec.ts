@@ -67,6 +67,8 @@ test('narration queue: late responses, cancellation, fallback and autoplay rejec
   expect(events.slice(-2)).toEqual(['play:offline phone', 'stop:offline phone'])
 })
 
+test.skip(({ isMobile }) => !isMobile, '390px phone narration flow')
+
 test('390px phone: owner menu, optional Hindi narration, interruption and remembered choice', async ({
   page,
 }) => {
