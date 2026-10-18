@@ -509,23 +509,23 @@ Recording rules:
 The effort scale: S ≤ ½ day, M ≈ 1 day, L ≈ 2 days for one worker. This fits the PLAN-V2 days
 (16 Oct passport + rescue + generator polish, 17 Oct UX pass).
 
-| P   | Item                                                                                                                                                     | Effort | Day   | Depends on     | Owner (suggested)  |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | -------------- | ------------------ |
-| 1   | Generator v0: the deterministic template generator by geohash (reuses `neighbourhood()`/`MENUS`), `gen-*` IDs, a `shared_shops` merge, the rewards regex | M      | 15–16 | none           | Codex              |
-| 2   | Generator v1: the Gemini area pack + daily pulse with `response_schema`, validation, a Documents cache, a lock, a daily budget, fallback to v0           | M      | 16    | 1              | Codex              |
-| 3   | Pre-generated fixtures for the 9 demo areas (G7)                                                                                                         | S      | 16    | 2              | Codex              |
-| 4   | Today feed backend: card candidates for types 1, 2, 6, 7, 9 from DB + generated data; ranking + assembly; `seen_finds`                                   | M      | 16    | 1              | Account 2          |
+| P   | Item                                                                                                                                                     | Effort | Day   | Depends on     | Owner (suggested)         |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | -------------- | ------------------------- |
+| 1   | Generator v0: the deterministic template generator by geohash (reuses `neighbourhood()`/`MENUS`), `gen-*` IDs, a `shared_shops` merge, the rewards regex | M      | 15–16 | none           | Codex                     |
+| 2   | Generator v1: the Gemini area pack + daily pulse with `response_schema`, validation, a Documents cache, a lock, a daily budget, fallback to v0           | M      | 16    | 1              | Codex                     |
+| 3   | Pre-generated fixtures for the 9 demo areas (G7)                                                                                                         | S      | 16    | 2              | Codex                     |
+| 4   | Today feed backend: card candidates for types 1, 2, 6, 7, 9 from DB + generated data; ranking + assembly; `seen_finds`                                   | M      | 16    | 1              | Account 2                 |
 | 5   | Today UI: card stack, 1/7 dots, docked Ask, done state + 7 am countdown, every state, motion                                                             | L      | 16–17 | 4, theme (A)   | The assistant / Account 2 |
-| 6   | Nav option A (Today · Rescue · Passport · Chats); update S3/S7/C-7 tests                                                                                 | S      | 16    | owner decision | Account 2          |
-| 7   | Passport backend: server stamps (QR token + location + once a day + daily cap), points ledger, levels, weekly streak + rain check, signed-out merge      | M      | 16    | none           | Codex              |
+| 6   | Nav option A (Today · Rescue · Passport · Chats); update S3/S7/C-7 tests                                                                                 | S      | 16    | owner decision | Account 2                 |
+| 7   | Passport backend: server stamps (QR token + location + once a day + daily cap), points ledger, levels, weekly streak + rain check, signed-out merge      | M      | 16    | none           | Codex                     |
 | 8   | Passport UI: level ring, streak row, area stamp book, stamp moment + level-up celebrations                                                               | L      | 16–17 | 7, A           | The assistant             |
-| 9   | Rescue: owner one-tap post (with track C), customer map + sheet + countdown, Hold → chat template, Collected → stamp, impact meter                       | L      | 16–17 | 7              | Account 2          |
-| 10  | External facts: Wikipedia geosearch + Open-Meteo + Nager.Date clients with caching → card types 4, 8, 10                                                 | M      | 17    | 4              | Codex              |
-| 11  | Quests: crawl + rescue + weekly breakthrough + one festival trail (Deepavali, plus Thai vegetarian festival for Bangkok)                                 | M      | 17    | 7, 2           | Codex              |
-| 12  | Perks the owner funds: perk picker in the owner app + perk card for the customer (reuses `claimReward`)                                                  | S      | 17    | 7              | Account 2          |
-| 13  | Opt-in leaderboard with demo residents                                                                                                                   | S      | 17    | 7, 2           | Account 2          |
-| 14  | Overpass "hidden gem" (type 3) + "busiest hour" (type 5)                                                                                                 | S      | 17    | 10             | Codex              |
-| 15  | Story walkthrough tests, axe, reduced motion, 15-locale copy keys                                                                                        | M      | 17    | all            | everyone           |
+| 9   | Rescue: owner one-tap post (with track C), customer map + sheet + countdown, Hold → chat template, Collected → stamp, impact meter                       | L      | 16–17 | 7              | Account 2                 |
+| 10  | External facts: Wikipedia geosearch + Open-Meteo + Nager.Date clients with caching → card types 4, 8, 10                                                 | M      | 17    | 4              | Codex                     |
+| 11  | Quests: crawl + rescue + weekly breakthrough + one festival trail (Deepavali, plus Thai vegetarian festival for Bangkok)                                 | M      | 17    | 7, 2           | Codex                     |
+| 12  | Perks the owner funds: perk picker in the owner app + perk card for the customer (reuses `claimReward`)                                                  | S      | 17    | 7              | Account 2                 |
+| 13  | Opt-in leaderboard with demo residents                                                                                                                   | S      | 17    | 7, 2           | Account 2                 |
+| 14  | Overpass "hidden gem" (type 3) + "busiest hour" (type 5)                                                                                                 | S      | 17    | 10             | Codex                     |
+| 15  | Story walkthrough tests, axe, reduced motion, 15-locale copy keys                                                                                        | M      | 17    | all            | everyone                  |
 | 16  | Demo video recording (§5.4)                                                                                                                              | M      | 18    | all            | The assistant             |
 
 **Cut order if late** (cut first at the top):

@@ -51,6 +51,8 @@ config = {
     "FIRESTORE_NAMESPACE": target["firestoreNamespace"],
     # Share links and QR codes made in the business app point customers here.
     "CUSTOMER_ORIGIN": "https://chalkboard.shreyaan.work",
+    # Customer front door: "new" one-story page or "classic" (docs/LANDING-REVERT.md).
+    "LANDING_VARIANT": os.environ.get("LANDING_VARIANT", "classic").strip(),
     "GA_MEASUREMENT_ID": os.environ.get("GA_MEASUREMENT_ID", "").strip(),
     # Hand-set on the live revision before; the env file replaces all env, so keep them here.
     "PUBLIC_DEMO_ENABLED": os.environ.get("PUBLIC_DEMO_ENABLED", "true").strip(),
@@ -69,6 +71,8 @@ config = {
 output = Path(".deployment/runtime.json")
 if config["FEATURE_GOOGLE_GUIDE"] not in {"true", "false"}:
     raise SystemExit("FEATURE_GOOGLE_GUIDE must be true or false.")
+if config["LANDING_VARIANT"] not in {"new", "classic"}:
+    raise SystemExit("LANDING_VARIANT must be new or classic.")
 output.parent.mkdir(exist_ok=True)
 output.write_text(json.dumps(config), encoding="utf-8")
 print("Prepared ignored Cloud Run runtime configuration; Vertex Gemini uses the runtime identity.")

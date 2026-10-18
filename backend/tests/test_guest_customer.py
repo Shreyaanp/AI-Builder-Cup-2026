@@ -229,7 +229,13 @@ def test_unblock_reopens_existing_guest_conversation(client: TestClient) -> None
     ).is_success
 
 
-def test_guest_chat_rate_limit_across_shops(client: TestClient) -> None:
+def test_guest_chat_rate_limit_across_shops(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Keep every request in the same fixed-window bucket, even when the test starts
+    # immediately before a wall-clock minute boundary.
+    fixed_time = time.time()
+    monkeypatch.setattr("app.limits.time.time", lambda: fixed_time)
     client.app.state.v1_settings.rate_limits_enabled = True
     iid = start(client)["id"]
     path = f"/api/v1/customer/shops/{DEMO}/threads/{iid}/messages"
