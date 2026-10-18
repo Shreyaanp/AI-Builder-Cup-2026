@@ -1,341 +1,421 @@
-﻿import { useEffect, useState } from 'react'
-import { Box, Button, IconButton, Stack, Typography, useMediaQuery, useTheme } from '@mui/material'
+﻿import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { Button, Typography, useTheme } from '@mui/material'
+import type { Theme } from '@mui/material'
 import {
+  ArrowRight,
+  ArrowUpRight,
   Camera,
-  Check,
   Coffee,
+  Footprints,
+  Heart,
+  Languages,
+  LayoutList,
+  MessageCircle,
   Mic,
-  Moon,
-  Pause,
-  Play,
   QrCode,
-  RotateCcw,
-  ScanLine,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Stamp,
+  Store,
   Sun,
   Truck,
 } from 'lucide-react'
-import { visuallyHidden } from '@mui/utils'
-import { chalkWrite, dealIn, stampThud } from '../../design/chalkMotion'
-import { copy } from '../../design/copy'
-import { HAND_FONT, layout, shape } from '../../design/theme'
-import { LOCALE_NAMES } from '../../i18n/locales'
-import { useLocale, usePreferencesDispatch } from '../../state/hooks'
-import { useFrontCopy } from './strings'
-import { useHowCopy, type HowCopy } from './howItWorksCopy'
+import { useLocale } from '../../state/hooks'
+import { AppearanceToggle } from './AppearanceToggle'
+import { LanguagePicker } from './LanguagePicker'
+import { pagesCopyFor, posterSrc, videoSrc, type PagesCopy } from './howItWorksCopy'
 import './how-it-works.css'
 
-const starts = [0, 10, 18, 30]
-const sceneAt = (second: number) => (second < 10 ? 0 : second < 18 ? 1 : second < 30 ? 2 : 3)
+type Flow = 'vendor' | 'customer'
+type Page = 'how' | 'features' | 'preview'
 
-/** A local, silent storyboard: no camera, microphone, account or API access. */
-export default function HowItWorks() {
-  const t = useHowCopy()
-  const front = useFrontCopy()
+const businessUrl = 'https://business.chalkboard.shreyaan.work'
+const demoUrl = `${businessUrl}/demo`
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches
+
+// The app's semantic roles (and its remembered light/dark choice), as on the landing.
+const brandVars = (roles: Theme['material'], mode: Theme['palette']['mode']) =>
+  ({
+    colorScheme: mode,
+    '--ink': roles.onSurface,
+    '--muted': roles.onSurfaceVariant,
+    '--surface': roles.surface,
+    '--surface-low': roles.surfaceContainerLow,
+    '--surface-high': roles.surfaceContainerHigh,
+    '--primary': roles.primary,
+    '--on-primary': roles.onPrimary,
+    '--primary-c': roles.primaryContainer,
+    '--on-primary-c': roles.onPrimaryContainer,
+    '--secondary-c': roles.secondaryContainer,
+    '--on-secondary-c': roles.onSecondaryContainer,
+    '--tertiary-c': roles.tertiaryContainer,
+    '--on-tertiary-c': roles.onTertiaryContainer,
+    '--outline': roles.outlineVariant,
+  }) as CSSProperties
+
+const pageFor = (path: string): Page =>
+  /^\/features\/?$/.test(path)
+    ? 'features'
+    : /^\/landing-preview\/?$/.test(path)
+      ? 'preview'
+      : 'how'
+
+/**
+ * A muted, phone-shaped demo video. Nothing downloads until it nears the screen; it plays while
+ * visible (never with reduced motion) and keeps its controls.
+ */
+export function FlowVideo({ flow, label }: { flow: Flow; label: string }) {
   const locale = useLocale()
-  const dispatch = usePreferencesDispatch()
-  const theme = useTheme()
-  const r = theme.material
-  const reduced = useMediaQuery('(prefers-reduced-motion: reduce)', { noSsr: true })
-  const [second, setSecond] = useState(0)
-  const [playing, setPlaying] = useState(true)
-  const [preview, setPreview] = useState(false)
-  const [visible, setVisible] = useState(() => !document.hidden)
-  const running = playing && !reduced && visible
-  const scene = sceneAt(second)
-  const phase = reduced || preview ? 12 : second - starts[scene]
-  const captions = [t.start, t.reward, t.stock, t.import]
-
+  const ref = useRef<HTMLVideoElement>(null)
+  const src = videoSrc(flow, locale)
   useEffect(() => {
-    const update = () => setVisible(!document.hidden)
-    document.addEventListener('visibilitychange', update)
-    return () => document.removeEventListener('visibilitychange', update)
-  }, [])
-  useEffect(() => {
-    if (!running) return
-    const timer = window.setInterval(() => setSecond((value) => (value + 1) % 40), 1000)
-    return () => window.clearInterval(timer)
-  }, [running])
-  useEffect(() => {
-    const previous = document.title
-    document.title = `${t.title} · Chalkboard`
-    return () => {
-      document.title = previous
-    }
-  }, [t.title])
-
-  const descriptions = [
-    [t.speech, t.shop, t.near, t.chai, t.samosa, t.live],
-    [t.scan, t.shop, t.stamp],
-    [t.low, t.reorder, t.supplier, t.restocked],
-    [t.photo, t.chai, t.samosa, t.items],
-  ]
+    const video = ref.current
+    if (!video) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return
+        if (entry.isIntersecting) {
+          if (!video.getAttribute('src')) {
+            video.src = src
+            video.preload = 'auto'
+          }
+          if (!reducedMotion()) void video.play().catch(() => undefined)
+        } else if (!video.paused) video.pause()
+      },
+      { rootMargin: '200px 0px', threshold: 0.35 },
+    )
+    observer.observe(video)
+    return () => observer.disconnect()
+  }, [src])
   return (
-    <Box
-      className="how-page"
-      data-static={reduced || preview}
-      sx={{
-        '--how-surface': r.surfaceContainerLow,
-        '--how-container': r.surfaceContainerHigh,
-        '--how-ink': r.onSurface,
-        '--how-muted': r.onSurfaceVariant,
-        '--how-line': r.outlineVariant,
-        '--how-accent': r.primaryContainer,
-        '--how-on-accent': r.onPrimaryContainer,
-        '--how-primary': r.primary,
-        '--how-on-primary': r.onPrimary,
-        '--how-radius': `${shape.lg}px`,
-        '--how-phone-radius': `${shape.xl}px`,
-        '--how-play-state': running ? 'running' : 'paused',
-        maxWidth: layout.pageWidth,
-        mx: 'auto',
-        '& .how-enter': dealIn,
-        '& .how-write': chalkWrite,
-        '& .how-stamp': stampThud,
-        '& .how-animated': { animationPlayState: 'var(--how-play-state)' },
-      }}
-    >
-      <a className="skip-link" href="#how-main">
-        {front.skip}
-      </a>
-      <Stack
-        component="header"
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        gap={2}
-      >
-        <Typography
-          component="a"
-          href="/"
-          variant="titleLarge"
-          color="inherit"
-          sx={{ textDecoration: 'none' }}
-          translate="no"
-        >
-          Chalkboard
-        </Typography>
-        <Stack direction="row">
-          <Button
-            onClick={() => dispatch({ type: 'language', language: locale === 'hi' ? 'en' : 'hi' })}
-          >
-            {LOCALE_NAMES[locale === 'hi' ? 'en' : 'hi']}
-          </Button>
-          <IconButton
-            aria-label={theme.palette.mode === 'dark' ? copy[locale].light : copy[locale].dark}
-            onClick={() =>
-              dispatch({
-                type: 'appearance',
-                appearance: theme.palette.mode === 'dark' ? 'light' : 'dark',
-              })
-            }
-          >
-            {theme.palette.mode === 'dark' ? <Sun aria-hidden /> : <Moon aria-hidden />}
-          </IconButton>
-        </Stack>
-      </Stack>
-      <Box component="main" id="how-main" tabIndex={-1}>
-        <Box className="how-heading">
-          <Typography variant="headlineLarge" component="h1">
-            {t.title}
-          </Typography>
-          <Typography variant="bodyMedium" color="text.secondary">
-            {t.demo}
-          </Typography>
-        </Box>
-        <Box className="how-layout">
-          <Box component="figure" className="how-figure" sx={{ m: 0 }}>
-            <div className="how-phone" aria-hidden="true" data-scene={scene} data-second={second}>
-              <div className="how-speaker" />
-              <div className="how-phone-top">
-                <Coffee size={20} />
-                <span>{scene === 2 ? t.today : t.shop}</span>
-              </div>
-              <PhoneScene key={scene} scene={scene} phase={phase} t={t} />
-              <div className="how-home-line" />
-            </div>
-            <Typography component="figcaption" variant="titleLarge" className="how-caption">
-              {captions[scene]}
-            </Typography>
-            <Box sx={visuallyHidden}>{descriptions[scene].join('. ')}</Box>
-            <Stack
-              direction="row"
-              justifyContent="center"
-              alignItems="center"
-              gap={2}
-              className="how-controls"
-            >
-              <Button
-                variant="outlined"
-                disabled={reduced}
-                onClick={() => {
-                  setPreview(false)
-                  setPlaying((value) => !value)
-                }}
-                startIcon={
-                  playing && !reduced ? (
-                    <Pause aria-hidden size={18} />
-                  ) : (
-                    <Play aria-hidden size={18} />
-                  )
-                }
-              >
-                {playing && !reduced ? t.pause : t.play}
-              </Button>
-              <IconButton
-                aria-label={t.replay}
-                onClick={() => {
-                  setPreview(false)
-                  setSecond(0)
-                  setPlaying(true)
-                }}
-              >
-                <RotateCcw aria-hidden size={20} />
-              </IconButton>
-              <span className="how-time" aria-hidden="true">
-                {String(second).padStart(2, '0')} / 40
-              </span>
-            </Stack>
-            <Stack direction="row" justifyContent="center" component="nav" aria-label={t.title}>
-              {captions.map((caption, index) => (
-                <IconButton
-                  key={caption}
-                  aria-label={caption}
-                  aria-current={scene === index ? 'step' : undefined}
-                  onClick={() => {
-                    setPreview(true)
-                    setSecond(starts[index])
-                    setPlaying(false)
-                  }}
-                >
-                  <span className={`how-dot${scene === index ? ' how-dot-current' : ''}`} />
-                </IconButton>
-              ))}
-            </Stack>
-          </Box>
-          <Stack component="section" className="how-next" aria-labelledby="how-next" gap={3}>
-            <Typography
-              id="how-next"
-              variant="headlineSmall"
-              component="h2"
-              sx={{ fontFamily: HAND_FONT }}
-            >
-              {t.next}
-            </Typography>
-            <Button component="a" href="/explore" variant="contained">
-              {front.find}
-            </Button>
-            <Button component="a" href="/?app=business" variant="outlined">
-              {t.business}
-            </Button>
-            <Button component="a" href="/demo" variant="outlined">
-              {t.try}
-            </Button>
-          </Stack>
-        </Box>
-      </Box>
-    </Box>
+    <div className="hw-phone">
+      <video
+        key={src}
+        ref={ref}
+        className="hw-video"
+        data-testid={`${flow}-video`}
+        data-src={src}
+        poster={posterSrc(flow, locale)}
+        aria-label={label}
+        muted
+        loop
+        playsInline
+        controls
+        preload="none"
+        width={720}
+        height={1280}
+      />
+    </div>
   )
 }
 
-function PhoneScene({ scene, phase, t }: { scene: number; phase: number; t: HowCopy }) {
-  const show = (at: number) => (phase >= at ? 'how-animated how-enter' : 'how-pending')
+function Header({ t, page }: { t: PagesCopy; page: Page }) {
   return (
-    <div className="how-screen">
-      {scene === 0 && (
-        <>
-          <div className="how-speech">
-            <Mic size={24} />
-            <p>{t.speech}</p>
-          </div>
-          <div className={`how-shop ${show(2)}`}>
-            <Coffee size={32} />
-            <h2 className={phase >= 3 ? 'how-write how-animated' : 'how-pending'}>{t.shop}</h2>
-            <p className={phase >= 4 ? 'how-write how-animated' : 'how-pending'}>{t.near}</p>
-            <div className={`how-menu ${show(5)}`}>
-              <span>{t.chai}</span>
-              <span>{t.samosa}</span>
-            </div>
-          </div>
-          <div className={`how-success ${show(7)}`}>
-            <Check size={20} />
-            <strong>{t.live}</strong>
-            <QrCode size={64} />
-          </div>
-        </>
-      )}
-      {scene === 1 && (
-        <>
-          <div className="how-scanner">
-            <QrCode size={120} />
-            <ScanLine size={152} className={phase >= 2 ? 'how-scan-done' : ''} />
-            <p>{t.scan}</p>
-          </div>
-          <div className={`how-shop ${show(3)}`}>
-            <Coffee size={24} />
-            <h2>{t.shop}</h2>
-            <div className="how-stamps">
-              {[0, 1, 2, 3].map((n) => (
-                <span key={n} className="how-stamp-slot">
-                  {n === 0 && phase >= 5 && <Check className="how-stamp how-animated" size={32} />}
-                </span>
-              ))}
-            </div>
-            <strong className={phase >= 5 ? '' : 'how-pending'}>{t.stamp}</strong>
-          </div>
-        </>
-      )}
-      {scene === 2 && (
-        <>
-          <div className="how-shop">
-            <span className="how-milk">
-              <Truck size={40} />
+    <header className="hw-nav">
+      <a className="hw-logo" href="/">
+        <span className="hw-logo-mark" aria-hidden="true" />
+        {t.brand}
+      </a>
+      <nav aria-label={t.brand}>
+        {page !== 'how' && (
+          <a className="hw-nav-link" href="/how-it-works">
+            {t.seeHow}
+          </a>
+        )}
+        {page !== 'features' && (
+          <a className="hw-nav-link" href="/features">
+            {t.seeFeatures}
+          </a>
+        )}
+        <LanguagePicker variant="nav" />
+        <AppearanceToggle inline />
+      </nav>
+    </header>
+  )
+}
+
+/** One flow: who it is for, one line, the video, its steps and the next step. */
+function FlowSection({ flow, t, cta }: { flow: Flow; t: PagesCopy; cta: ReactNode }) {
+  const shops = flow === 'vendor'
+  // The last caption is the end card, not a step.
+  const steps = (shops ? t.vendorCaptions : t.customerCaptions).slice(0, -1)
+  const id = `${flow}-title`
+  return (
+    <section className={`hw-flow ${flow}`} aria-labelledby={id}>
+      <div className="hw-flow-copy">
+        <span className="hw-chip">
+          {shops ? (
+            <Store size={18} aria-hidden="true" />
+          ) : (
+            <Footprints size={18} aria-hidden="true" />
+          )}
+          {shops ? t.forShops : t.forCustomers}
+        </span>
+        <Typography id={id} component="h2" className="hw-flow-line">
+          {shops ? t.shopsLine : t.customersLine}
+        </Typography>
+      </div>
+      <figure className="hw-figure">
+        <FlowVideo flow={flow} label={shops ? t.shopsVideo : t.customersVideo} />
+        <figcaption className="hw-note">{t.videoNote}</figcaption>
+      </figure>
+      <ol className="hw-steps" aria-label={`${shops ? t.forShops : t.forCustomers}: ${t.steps}`}>
+        {steps.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ol>
+      <div className="hw-cta">{cta}</div>
+    </section>
+  )
+}
+
+function ShopsCta({ t }: { t: PagesCopy }) {
+  return (
+    <>
+      <Button variant="contained" size="large" href={demoUrl} endIcon={<ArrowRight size={18} />}>
+        {t.tryDemo}
+      </Button>
+      <Button
+        variant="outlined"
+        size="large"
+        href={businessUrl}
+        endIcon={<ArrowUpRight size={18} />}
+      >
+        {t.forBusiness}
+      </Button>
+    </>
+  )
+}
+
+function CustomersCta({ t }: { t: PagesCopy }) {
+  return (
+    <Button variant="contained" size="large" href="/explore/" endIcon={<ArrowRight size={18} />}>
+      {t.findPlaces}
+    </Button>
+  )
+}
+
+export function Trust({ t }: { t: PagesCopy }) {
+  const items = [
+    { label: t.free, icon: Sparkles },
+    { label: t.language, icon: Languages },
+    { label: t.data, icon: ShieldCheck },
+    { label: t.human, icon: MessageCircle },
+  ]
+  return (
+    <ul className="hw-trust" data-testid="trust-strip">
+      {items.map(({ label, icon: Icon }) => (
+        <li key={label}>
+          <Icon size={18} aria-hidden="true" />
+          {label}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function How({ t }: { t: PagesCopy }) {
+  return (
+    <>
+      <section className="hw-hero">
+        <Typography component="h1" className="hw-title">
+          {t.howTitle}
+        </Typography>
+        <Typography className="hw-lead">{t.lead}</Typography>
+        <nav className="hw-jump" aria-label={t.watch}>
+          <a href="#vendor">
+            <Store size={20} aria-hidden="true" />
+            <span>
+              <strong>{t.forShops}</strong>
+              {t.shopsLine}
             </span>
-            <h2>{t.low}</h2>
-            <span className={`how-faux-button ${phase >= 3 ? 'how-ordered' : ''}`}>
-              {phase >= 3 ? <Check size={18} /> : null}
-              {t.reorder}
+          </a>
+          <a href="#customer">
+            <Footprints size={20} aria-hidden="true" />
+            <span>
+              <strong>{t.forCustomers}</strong>
+              {t.customersLine}
             </span>
+          </a>
+        </nav>
+      </section>
+      <div id="vendor" className="hw-anchor">
+        <FlowSection flow="vendor" t={t} cta={<ShopsCta t={t} />} />
+      </div>
+      <div id="customer" className="hw-anchor">
+        <FlowSection flow="customer" t={t} cta={<CustomersCta t={t} />} />
+      </div>
+      <section className="hw-more">
+        <Trust t={t} />
+        <Button variant="text" size="large" href="/features" endIcon={<ArrowRight size={18} />}>
+          {t.seeFeatures}
+        </Button>
+      </section>
+    </>
+  )
+}
+
+const shopIcons = [Mic, QrCode, Sun, Truck, Camera, Stamp]
+const customerIcons = [Search, LayoutList, Heart, Stamp]
+
+function FeatureGrid({ flow, t, items }: { flow: Flow; t: PagesCopy; items: string[][] }) {
+  const shops = flow === 'vendor'
+  const icons = shops ? shopIcons : customerIcons
+  const id = `${flow}-features`
+  return (
+    <section className={`hw-features ${flow}`} aria-labelledby={id}>
+      <span className="hw-chip">
+        {shops ? (
+          <Store size={18} aria-hidden="true" />
+        ) : (
+          <Footprints size={18} aria-hidden="true" />
+        )}
+        {shops ? t.forShops : t.forCustomers}
+      </span>
+      <Typography id={id} component="h2" className="hw-flow-line">
+        {shops ? t.shopsLine : t.customersLine}
+      </Typography>
+      <ul className="hw-grid">
+        {items.map(([title, line], index) => {
+          const Icon = icons[index] ?? Coffee
+          return (
+            <li key={title} className="hw-card">
+              <Icon size={28} aria-hidden="true" />
+              <Typography component="h3" variant="titleLarge">
+                {title}
+              </Typography>
+              <Typography variant="bodyLarge">{line}</Typography>
+            </li>
+          )
+        })}
+      </ul>
+      <div className="hw-cta">
+        {shops ? <ShopsCta t={t} /> : <CustomersCta t={t} />}
+        <Button
+          variant="text"
+          size="large"
+          href={`/how-it-works#${flow}`}
+          endIcon={<ArrowRight size={18} />}
+        >
+          {t.watch}
+        </Button>
+      </div>
+    </section>
+  )
+}
+
+function Features({ t }: { t: PagesCopy }) {
+  return (
+    <>
+      <section className="hw-hero">
+        <Typography component="h1" className="hw-title">
+          {t.featuresTitle}
+        </Typography>
+        <Typography className="hw-lead">{t.lead}</Typography>
+      </section>
+      <FeatureGrid flow="vendor" t={t} items={t.shopFeatures} />
+      <FeatureGrid flow="customer" t={t} items={t.customerFeatures} />
+      <section className="hw-more">
+        <Trust t={t} />
+      </section>
+    </>
+  )
+}
+
+/** The landing proposal (docs/LANDING-PLAN.md), for the owner to approve before it ships. */
+function Preview({ t }: { t: PagesCopy }) {
+  return (
+    <>
+      <p className="hw-banner" role="note">
+        {t.previewBanner}
+      </p>
+      <section className="hw-hero preview">
+        <Typography component="h1" className="hw-title">
+          {t.previewHero}
+        </Typography>
+        <Typography className="hw-lead">{t.lead}</Typography>
+      </section>
+      <div className="hw-split">
+        <section className="hw-side vendor" aria-labelledby="side-vendor">
+          <span className="hw-chip">
+            <Store size={18} aria-hidden="true" />
+            {t.forShops}
+          </span>
+          <Typography id="side-vendor" component="h2" className="hw-flow-line">
+            {t.shopsLine}
+          </Typography>
+          <FlowVideo flow="vendor" label={t.shopsVideo} />
+          <div className="hw-cta">
+            <ShopsCta t={t} />
           </div>
-          <div className={`how-receipt ${show(5)}`}>
-            <Truck size={24} />
-            <strong>{t.supplier}</strong>
+        </section>
+        <section className="hw-side customer" aria-labelledby="side-customer">
+          <span className="hw-chip">
+            <Footprints size={18} aria-hidden="true" />
+            {t.forCustomers}
+          </span>
+          <Typography id="side-customer" component="h2" className="hw-flow-line">
+            {t.customersLine}
+          </Typography>
+          <FlowVideo flow="customer" label={t.customersVideo} />
+          <div className="hw-cta">
+            <CustomersCta t={t} />
           </div>
-          <div className={`how-success ${show(8)}`}>
-            <Check size={36} />
-            <h2>{t.restocked}</h2>
-          </div>
-        </>
-      )}
-      {scene === 3 && (
-        <>
-          <div className="how-camera">
-            <div className={`how-pos ${phase >= 2 ? 'how-animated how-write' : ''}`}>
-              <span>{t.chai}</span>
-              <i />
-              <span>{t.samosa}</span>
-              <i />
-            </div>
-            <Camera size={32} />
-            <p>{t.photo}</p>
-          </div>
-          <div className={`how-shop ${show(3)}`}>
-            <div className={`how-item ${show(3)}`}>
-              <Coffee size={24} />
-              <span>{t.chai}</span>
-              <Check size={20} />
-            </div>
-            <div className={`how-item ${show(5)}`}>
-              <span className="how-samosa" />
-              <span>{t.samosa}</span>
-              <Check size={20} />
-            </div>
-          </div>
-          <div className={`how-success ${show(7)}`}>
-            <Check size={24} />
-            <strong>{t.items}</strong>
-          </div>
-        </>
-      )}
+        </section>
+      </div>
+      <section className="hw-more" aria-label={t.previewTrust}>
+        <Trust t={t} />
+        <div className="hw-cta">
+          <Button variant="outlined" size="large" href="/how-it-works">
+            {t.previewHow}
+          </Button>
+          <Button variant="text" size="large" href="/features" endIcon={<ArrowRight size={18} />}>
+            {t.seeFeatures}
+          </Button>
+        </div>
+      </section>
+    </>
+  )
+}
+
+/** /how-it-works, /features and /landing-preview: public, on both hosts, no API calls. */
+export default function HowItWorks() {
+  const theme = useTheme()
+  const t = pagesCopyFor(useLocale())
+  const page = pageFor(location.pathname)
+  const title =
+    page === 'features' ? t.featuresTitle : page === 'preview' ? t.previewBanner : t.howTitle
+  useEffect(() => {
+    document.title = `${title} · Chalkboard`
+    if (page !== 'preview') return
+    // The proposal must never be indexed or mistaken for the live landing.
+    const robots = document.createElement('meta')
+    robots.name = 'robots'
+    robots.content = 'noindex'
+    document.head.appendChild(robots)
+    return () => robots.remove()
+  }, [title, page])
+  return (
+    <div className="hw" style={brandVars(theme.material, theme.palette.mode)}>
+      <a className="hw-skip" href="#hw-main">
+        {t.skip}
+      </a>
+      <Header t={t} page={page} />
+      <main id="hw-main" tabIndex={-1}>
+        {page === 'features' ? (
+          <Features t={t} />
+        ) : page === 'preview' ? (
+          <Preview t={t} />
+        ) : (
+          <How t={t} />
+        )}
+      </main>
+      <footer className="hw-footer">
+        <a href="/">{t.home}</a>
+        <a href="/how-it-works">{t.seeHow}</a>
+        <a href="/features">{t.seeFeatures}</a>
+      </footer>
     </div>
   )
 }
