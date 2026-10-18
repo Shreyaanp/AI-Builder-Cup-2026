@@ -51,7 +51,7 @@ TTL_SECONDS = 900
 MAX_SESSIONS = 128
 # New sandboxes per network address. Judges often share one office or venue address, and one
 # visitor reuses a sandbox per tab, so these allow a room of people without inviting abuse.
-OPEN_PER_MINUTE = 20
+OPEN_PER_MINUTE = 10
 OPEN_PER_HOUR = 200
 MAX_COACH_TURNS = 40
 CHAIN_OWNER = "demo-world-owner"
