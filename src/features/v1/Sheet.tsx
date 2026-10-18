@@ -34,6 +34,7 @@ export function Sheet({
   children,
   actions,
   onEntered,
+  onExited,
   keepMounted = false,
   dirty = false,
   dismissInActions = false,
@@ -47,6 +48,7 @@ export function Sheet({
   children: ReactNode
   actions?: ReactNode
   onEntered?: () => void
+  onExited?: () => void
   /** Keep content (and typed drafts) mounted while closed. */
   keepMounted?: boolean
   /** Unsaved input inside: Back asks before closing. */
@@ -87,7 +89,7 @@ export function Sheet({
         slotProps={{
           // A sheet mounted already open still slides in (and calls onEntered): the Drawer
           // otherwise skips that first transition.
-          transition: { onEntered, appear: true },
+          transition: { onEntered, onExited, appear: true },
           paper: {
             role: 'dialog',
             'aria-modal': true,
@@ -186,7 +188,7 @@ export function Sheet({
       onClose={onClose}
       aria-labelledby={titleId}
       transitionDuration={timing}
-      slotProps={{ transition: { onEntered } }}
+      slotProps={{ transition: { onEntered, onExited } }}
     >
       {close}
       {title && (
