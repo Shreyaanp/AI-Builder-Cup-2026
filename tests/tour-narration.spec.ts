@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { narrationQueue } from '../src/features/tour/narrationQueue.js'
 import type { NarrationPlayback, NarrationVoice } from '../src/features/tour/narrationQueue.js'
+import { chainCopy } from '../src/features/tour/chainCopy.js'
 import { tourCopy } from '../src/features/tour/strings.js'
 
 test('narration queue: late responses, cancellation, fallback and autoplay rejection', async () => {
@@ -181,7 +182,7 @@ test('390px phone: owner menu, optional Hindi narration, interruption and rememb
   await page.getByRole('button', { name: /preview|प्रीव्यू|पूर्वावलोकन/i }).tap()
   const openTour = async () => {
     await page.getByRole('button', { name: /^दुकान चुनें/ }).tap()
-    await page.getByRole('menuitem', { name: 'टूर लें' }).tap()
+    await page.getByRole('menuitem', { name: 'दौरा शुरू करें' }).tap()
     await expect(page.getByRole('dialog', { name: tourCopy('hi').steps[0]!.title })).toBeVisible()
   }
   await openTour()
@@ -243,19 +244,16 @@ test('390px phone: owner menu, optional Hindi narration, interruption and rememb
   await speaker.tap()
   const before = requests.length
   await page.getByRole('button', { name: 'आगे', exact: true }).tap()
-  await expect(page.getByRole('dialog', { name: tourCopy('hi').steps[1]!.title })).toBeVisible()
+  // The order story comes next. This offline fixture has no seeded story, so the step says so
+  // rather than showing a number it does not have (tests/tour-chain.spec.ts walks the real one).
+  await expect(page.getByRole('dialog', { name: chainCopy('hi').forecast })).toBeVisible()
+  await expect(page.locator('[data-tour="feature"]')).toContainText(chainCopy('hi').failed)
   expect(requests).toHaveLength(before)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: 'output/playwright/tour-narration-hi-390.png' })
-  // Walk every new feature stop with the selected demo order, without importing or publishing.
-  for (let i = 1; i < 8; i++) await page.getByRole('button', { name: 'आगे', exact: true }).tap()
-  await expect(page.locator('[data-tour="feature"]')).toContainText('Milk')
-  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
-  await expect(page.locator('[data-tour="feature"]')).toContainText('Seeded demo supplier')
-  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
-  await expect(page.locator('[data-tour="feature"]')).toContainText('<ORDERS05>demo</ORDERS05>')
-  await page.screenshot({ path: 'output/playwright/tour-sap-hi-390.png' })
-  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
+  // Walk the rest of the story and the spotlights to the feature stops, without importing or
+  // publishing.
+  for (let i = 0; i < 10; i++) await page.getByRole('button', { name: 'आगे', exact: true }).tap()
   await expect(page.locator('[data-tour="feature"] #import-panel')).toBeVisible()
   await page.getByRole('button', { name: 'आगे', exact: true }).tap()
   await expect(page.locator('[data-tour="feature"] [data-testid="first-customers"]')).toBeVisible()

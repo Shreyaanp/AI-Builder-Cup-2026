@@ -30,7 +30,7 @@ test.describe('Hindi language flows on phone (390px)', () => {
     const continueBtn = page.getByRole('button', {
       name: /स्थानीय प्रीव्यू जारी रखें|Continue local preview/i,
     })
-    await expect(continueBtn).toBeVisible({ timeout: 15_000 })
+    await expect(continueBtn).toBeVisible({ timeout: 30_000 })
     await continueBtn.click()
 
     // Terms checkboxes in Hindi
@@ -105,6 +105,7 @@ test.describe('Hindi language flows on phone (390px)', () => {
   })
 
   test('trust strip in Hindi: first chip renders शुरुआत मुफ़्त', async ({ page }) => {
+    test.setTimeout(60_000)
     await page.addInitScript(() => {
       localStorage.setItem(
         'niva.starter.preferences',

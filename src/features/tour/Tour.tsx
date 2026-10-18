@@ -24,20 +24,42 @@ import { narrationVoice } from './narrationVoice'
 
 import { motion } from '../../design/theme'
 import { TourFeature } from './TourFeatures'
+import { TourChain } from './TourChain'
+import { CHAIN_STEPS, chainStep } from './chainSteps'
+import { chainCopy } from './chainCopy'
+import { useChainStory } from './chainData'
 import { useFeatureSteps } from './useFeatureSteps'
 
 const EASE = motion.easing.emphasized
-// Where each step's spotlight lands (data-tour anchors) and which screen it lives on.
-const STEPS: { target: string; destination: Destination }[] = [
-  { target: 'menu', destination: 'shop' },
-  { target: 'menu', destination: 'shop' },
-  { target: 'prep', destination: 'grow' },
-  { target: 'closeday', destination: 'grow' },
-  { target: 'orders', destination: 'grow' },
-  { target: 'composer', destination: 'coach' },
-  { target: 'google', destination: 'grow' },
-  { target: 'customer', destination: 'shop' },
-  ...Array.from({ length: 6 }, () => ({ target: 'feature', destination: 'coach' as const })),
+// Where each step's spotlight lands (data-tour anchors), which screen it lives on and whose
+// copy it reads: a translated spotlight, the order story (seeded records) or a feature preview.
+type Step = {
+  target: string
+  destination: Destination
+  kind: 'spot' | 'chain' | 'feature'
+  index: number
+}
+const spot = (index: number, target: string, destination: Destination): Step => ({
+  target,
+  destination,
+  kind: 'spot',
+  index,
+})
+const panel = (kind: 'chain' | 'feature', index: number): Step => ({
+  target: 'feature',
+  destination: 'coach',
+  kind,
+  index,
+})
+const STEPS: Step[] = [
+  spot(0, 'menu', 'shop'),
+  // One order, from the tea stall to the wholesaler to the chain, then back to the customer.
+  ...Array.from({ length: CHAIN_STEPS }, (_, i) => panel('chain', i)),
+  spot(1, 'menu', 'shop'),
+  spot(3, 'closeday', 'grow'),
+  spot(5, 'composer', 'coach'),
+  spot(6, 'google', 'grow'),
+  ...Array.from({ length: 3 }, (_, i) => panel('feature', i)),
 ]
 const PAD = 8
 const NARRATION_PREF = 'chalkboard.tour.narration'
@@ -54,9 +76,10 @@ export function TourHost() {
   const running = useTourRunning()
   const ws = useWorkspace()
   const language = useLocale()
-  const base = tourCopy(language)
+  const t = tourCopy(language)
   const features = useFeatureSteps()
-  const t = { ...base, steps: [...base.steps, ...features] }
+  const story = useChainStory(running)
+  const chain = chainCopy(language)
   const roles = useTheme().material
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [narrated, setNarrated] = useState(() => {
@@ -70,7 +93,14 @@ export function TourHost() {
   const [step, setStep] = useState(0)
   const [rect, setRect] = useState<Rect | null>(null)
   const done = step >= STEPS.length
-  const copy = done ? null : t.steps[step]
+  const current = done ? null : STEPS[step]
+  const copy = !current
+    ? null
+    : current.kind === 'spot'
+      ? t.steps[current.index]
+      : current.kind === 'chain'
+        ? chainStep(current.index, story, chain, language)
+        : features[current.index]
   const spokenText = copy ? `${copy.title}. ${copy.body}` : ''
 
   // Tours are opened by a tap on an offer/menu control. A saved preference alone never starts one.
@@ -172,7 +202,8 @@ export function TourHost() {
 
   return (
     <>
-      {step >= 8 && !done && <TourFeature key={step} index={step - 8} />}
+      {current?.kind === 'chain' && <TourChain index={current.index} state={story} />}
+      {current?.kind === 'feature' && <TourFeature key={step} index={current.index} />}
       <Box
         role="dialog"
         aria-modal="true"

@@ -1607,6 +1607,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/demo/chain/{business_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demo Chain
+         * @description The tour's order story on the owner's own tour shop: seeded demo records, read only.
+         */
+        get: operations["demo_chain_api_v1_demo_chain__business_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/demo/sessions/{session_id}": {
         parameters: {
             query?: never;
@@ -5588,9 +5608,8 @@ export interface components {
             /**
              * Locale
              * @default en
-             * @enum {string}
              */
-            locale: "en" | "hi";
+            locale: string;
             subscription: components["schemas"]["Subscription"];
         };
         /** ReminderResult */
@@ -10237,6 +10256,39 @@ export interface operations {
             };
         };
     };
+    demo_chain_api_v1_demo_chain__business_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_demo_api_v1_demo_sessions__session_id__get: {
         parameters: {
             query: {
@@ -10503,6 +10555,7 @@ export interface operations {
                 lat?: number | null;
                 lng?: number | null;
                 tz?: string;
+                lang?: string | null;
             };
             header?: never;
             path?: never;
@@ -10540,6 +10593,7 @@ export interface operations {
                 lat?: number | null;
                 lng?: number | null;
                 tz?: string;
+                lang?: string | null;
             };
             header?: never;
             path?: never;
@@ -10577,6 +10631,7 @@ export interface operations {
                 lat?: number | null;
                 lng?: number | null;
                 tz?: string;
+                lang?: string | null;
             };
             header?: never;
             path?: never;

@@ -8,12 +8,15 @@ import { localOnly } from './stories/support.js'
 const endpoint = 'https://fcm.googleapis.com/fcm/send/fixture-only'
 const sid = createHash('sha256').update(endpoint).digest('hex')
 
-async function reminderCopy(page: Page, locale: 'en' | 'hi') {
+async function reminderCopy(page: Page, locale: string) {
   return page.evaluate(async (locale) => {
-    const path = locale === 'hi' ? '/src/features/v1/locales/hi.ts' : '/src/features/v1/strings.ts'
+    const path =
+      locale === 'en' ? '/src/features/v1/strings.ts' : `/src/features/v1/locales/${locale}.ts`
     const source = await import(path)
-    const t = locale === 'hi' ? source.hi : source.en
+    const localeExport = locale === 'zh-Hans' ? 'zhHans' : locale
+    const t = locale === 'en' ? source.en : source[localeExport]
     return {
+      getStarted: String(t.getStarted),
       remindMe: String(t.remindMe),
       reminderTiming: String(t.reminderTiming),
       reminderDenied: String(t.reminderDenied),
@@ -28,6 +31,7 @@ async function setup(page: Page, permission: 'granted' | 'denied' = 'granted') {
   await localOnly(page)
   await page.addInitScript(
     ({ endpoint, permission }) => {
+      localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'en' }))
       let subscription: object | null = null
       const item = {
         endpoint,
@@ -63,6 +67,7 @@ async function setup(page: Page, permission: 'granted' | 'denied' = 'granted') {
   )
   const saved: string[] = []
   let writes = 0
+  let savedLocale = ''
   let fail = false
   let enabled = true
   await page.route('**/api/v1/reminders**', async (route) => {
@@ -72,12 +77,14 @@ async function setup(page: Page, permission: 'granted' | 'denied' = 'granted') {
     if (fail) return route.fulfill({ status: 503, json: { detail: 'fixture failure' } })
     if (method === 'PUT') {
       writes++
+      savedLocale = route.request().postDataJSON().locale
       saved.push(sid)
     } else if (method === 'DELETE') saved.splice(0)
     return route.fulfill({ json: { ok: true } })
   })
   await page.goto('/?app=business')
-  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  const copy = await reminderCopy(page, 'en')
+  await page.getByRole('button', { name: copy.getStarted, exact: true }).click()
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
@@ -109,11 +116,12 @@ async function setup(page: Page, permission: 'granted' | 'denied' = 'granted') {
     ).toBe(true)
   }
   await page.reload()
-  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await page.getByRole('button', { name: copy.getStarted, exact: true }).click()
   await page.getByRole('button', { name: 'You', exact: true }).click()
   return {
     saved,
     writes: () => writes,
+    locale: () => savedLocale,
     fail: (value: boolean) => {
       fail = value
     },
@@ -155,6 +163,7 @@ test.describe('owner reminders on a phone', () => {
           await expect(toggle).toBeChecked()
           expect(await page.locator('html').getAttribute('data-permission-requests')).toBe('1')
           expect(state.writes()).toBe(1)
+          expect(state.locale()).toBe(locale)
           await expect(page.locator('#reminder-status')).toContainText(t.reminderTiming)
           expect(
             await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -173,6 +182,21 @@ test.describe('owner reminders on a phone', () => {
           expect(await page.locator('html').getAttribute('data-permission-requests')).toBe('1')
         })
       }
+
+  for (const locale of ['ta', 'zh-Hans'] as const) {
+    test(`${locale} is sent with the push subscription`, async ({ page }) => {
+      const state = await setup(page)
+      await page.getByRole('combobox', { name: 'Language', exact: true }).click()
+      await page
+        .getByRole('option', { name: locale === 'ta' ? 'தமிழ்' : '简体中文', exact: true })
+        .click()
+      const copy = await reminderCopy(page, locale)
+      const toggle = page.getByRole('switch', { name: copy.remindMe, exact: true })
+      await toggle.click()
+      await expect(toggle).toBeChecked()
+      expect(state.locale()).toBe(locale)
+    })
+  }
 
   test('denied permission has recovery and no subscription write', async ({ page }) => {
     const state = await setup(page, 'denied')
