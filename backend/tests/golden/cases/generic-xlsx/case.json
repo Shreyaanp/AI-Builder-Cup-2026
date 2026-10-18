@@ -1,0 +1,8 @@
+{
+  "adapter": "connector",
+  "input": "input.xlsx",
+  "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "source": "generic-xlsx",
+  "currency": "INR",
+  "notes": "SKU is present in input but unsupported by connector target schema."
+}

@@ -1,0 +1,8 @@
+{
+  "adapter": "connector",
+  "input": "input.csv",
+  "mime": "text/csv",
+  "source": "square-sales",
+  "currency": "INR",
+  "notes": ""
+}

@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "name": "Steel nails",
+      "price": 4500,
+      "size": "pack",
+      "category": "Tools"
+    },
+    {
+      "name": "Hammer",
+      "price": 22000,
+      "size": "piece",
+      "category": "Tools"
+    }
+  ]
+}
