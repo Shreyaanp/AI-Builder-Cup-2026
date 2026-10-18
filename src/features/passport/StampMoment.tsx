@@ -7,6 +7,7 @@ import { HAND_FONT } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { useCustomer } from '../customer/account'
 import { SignInSheet } from '../customer/SignIn'
+import { goTo } from '../frontdoors/navigation'
 import { Sheet } from '../v1/Sheet'
 import { useRescueCopy } from '../rescue/copy'
 import { dropHold } from '../rescue/holds'
@@ -61,7 +62,7 @@ export function StampMoment({
   qrKey: string
   open: boolean
   /** `stamped`: a verified stamp landed, so the page can show it pressing onto the card. */
-  onClose: (stamped: boolean) => void
+  onClose: (stamped: boolean, answered: boolean) => void
   rescue?: string | null
 }) {
   const t = usePassportCopy()
@@ -135,10 +136,51 @@ export function StampMoment({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, attempt, account.status, shop.id, qrKey, signedIn, rescue])
 
-  const finish = () => onClose(phase.step === 'result' && phase.outcome.verdict === 'stamped')
+  const answered = phase.step === 'result' || phase.step === 'bad-key'
+  const stamped = phase.step === 'result' && phase.outcome.verdict === 'stamped'
+  const finish = () => onClose(stamped, answered)
+  // "See your Passport": the same close, then the stamp is there to look at.
+  const toPassport = () => {
+    finish()
+    goTo('/explore/passport')
+  }
   return (
     // A bottom sheet on phones (slides up into the thumb zone), a dialog on wide screens.
-    <Sheet open={open} onClose={finish} titleId="stamp-moment-title" dismissInActions>
+    <Sheet
+      open={open}
+      onClose={finish}
+      titleId="stamp-moment-title"
+      dismissInActions
+      // Pinned under the scrolling content, so the way on is always in the thumb zone.
+      actions={
+        // One primary action, in the thumb zone; the way out is a plain text button.
+        <Stack spacing={2} sx={{ width: 1 }}>
+          {stamped && (
+            <Button variant="contained" size="large" onClick={toPassport} sx={{ minHeight: 52 }}>
+              {t.seePassport}
+            </Button>
+          )}
+          {phase.step === 'failed' && (
+            <Button variant="contained" size="large" onClick={() => setAttempt((n) => n + 1)}>
+              {t.retry}
+            </Button>
+          )}
+          {!signedIn && phase.step === 'result' && (
+            <Button onClick={() => setSignIn(true)} sx={{ minHeight: 48 }}>
+              {t.signIn}
+            </Button>
+          )}
+          <Button
+            variant={stamped || phase.step === 'failed' ? 'text' : 'contained'}
+            size={stamped || phase.step === 'failed' ? 'medium' : 'large'}
+            onClick={finish}
+            sx={{ minHeight: 48 }}
+          >
+            {t.keepBrowsing}
+          </Button>
+        </Stack>
+      }
+    >
       <Box sx={{ pt: 1, pb: 2, textAlign: 'center' }} aria-live="polite">
         {phase.step === 'locating' || phase.step === 'sending' ? (
           <Stack spacing={3} sx={{ alignItems: 'center', py: 4 }}>
@@ -184,25 +226,6 @@ export function StampMoment({
         ) : (
           <Problem phase={phase} />
         )}
-        <Stack spacing={2} sx={{ mt: 4 }}>
-          {phase.step === 'failed' && (
-            <Button variant="contained" onClick={() => setAttempt((n) => n + 1)}>
-              {t.retry}
-            </Button>
-          )}
-          {!signedIn && phase.step === 'result' && (
-            <Button variant="outlined" onClick={() => setSignIn(true)}>
-              {t.signIn}
-            </Button>
-          )}
-          <Button
-            variant={phase.step === 'result' ? 'contained' : 'text'}
-            onClick={finish}
-            autoFocus
-          >
-            {t.done}
-          </Button>
-        </Stack>
       </Box>
       <SignInSheet
         open={signIn}
@@ -326,10 +349,9 @@ function Celebration({
         )
         .fromTo(
           root.querySelectorAll('.stamp-line'),
-          { y: 12, opacity: 0 },
+          { y: 12 },
           {
             y: 0,
-            opacity: 1,
             duration: 0.25,
             stagger: 0.08,
           },
@@ -447,7 +469,7 @@ function Celebration({
         )}
         {!signedIn && (
           <Typography className="stamp-line" variant="bodyMedium" color="text.secondary">
-            {t.keptOnPhone} {g.signInScratch}
+            {t.keptOnPhone}
           </Typography>
         )}
       </Stack>
