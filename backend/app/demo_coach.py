@@ -81,7 +81,8 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         )
         estimate = prediction.quantity if prediction else 0
         return (
-            f"The demo forecast for {name} tomorrow is {estimate:g} {product.get('unit', 'items')}. "  # noqa: E501
+            f"The demo forecast for {name} tomorrow is {estimate:g} {product.get('unit', 'items')} "
+            "(method: weekday average of past sales). "
             "In your real shop, this guides prep only; open Grow → Prep plan next."
         )
     if any(
