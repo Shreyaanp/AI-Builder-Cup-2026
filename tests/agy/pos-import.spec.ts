@@ -34,7 +34,7 @@ test.describe('POS import flows on phone (390px)', () => {
     await page.getByRole('button', { name: 'You', exact: true }).click()
     await page.getByRole('combobox', { name: 'Language', exact: true }).click()
     await page.getByRole('option', { name: 'हिन्दी', exact: true }).click()
-    await page.getByRole('button', { name: 'मेरी दुकान', exact: true }).click()
+    await page.getByRole('button', { name: 'दुकान', exact: true }).click()
     await page.getByRole('button', { name: /बिक्री का हिसाब जोड़ें/ }).click()
 
     const connectDialog = page.getByRole('dialog', { name: 'बिक्री का हिसाब जोड़ें' })
@@ -49,7 +49,9 @@ test.describe('POS import flows on phone (390px)', () => {
       timeout: 15_000,
     })
     await expect(connectDialog.getByText('सामान का नाम', { exact: true })).toBeVisible()
-    await expect(connectDialog.getByRole('button', { name: 'पुष्टि करें और समीक्षा करें' })).toBeVisible()
+    await expect(
+      connectDialog.getByRole('button', { name: 'पुष्टि करें और समीक्षा करें' }),
+    ).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
       true,
     )
