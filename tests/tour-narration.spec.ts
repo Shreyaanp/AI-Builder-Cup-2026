@@ -244,22 +244,14 @@ test('390px phone: owner menu, optional Hindi narration, interruption and rememb
   await speaker.tap()
   const before = requests.length
   await page.getByRole('button', { name: 'आगे', exact: true }).tap()
-  // The order story comes next. This offline fixture has no seeded story, so the step says so
+  // The supply card comes next. This offline fixture has no seeded story, so the step says so
   // rather than showing a number it does not have (tests/tour-chain.spec.ts walks the real one).
   await expect(page.getByRole('dialog', { name: chainCopy('hi').forecast })).toBeVisible()
-  await expect(page.locator('[data-tour="feature"]')).toContainText(chainCopy('hi').failed)
+  // OB-51: no preview copy of any screen is ever drawn over the page.
+  await expect(page.locator('[data-tour="feature"]')).toHaveCount(0)
   expect(requests).toHaveLength(before)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: 'output/playwright/tour-narration-hi-390.png' })
-  // Walk the rest of the story and the spotlights to the feature stops, without importing or
-  // publishing.
-  for (let i = 0; i < 10; i++) await page.getByRole('button', { name: 'आगे', exact: true }).tap()
-  await expect(page.locator('[data-tour="feature"] #import-panel')).toBeVisible()
-  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
-  await expect(page.locator('[data-tour="feature"] [data-testid="first-customers"]')).toBeVisible()
-  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
-  await expect(page.locator('[data-tour="feature"]')).toContainText('Demo (Tour)')
-  expect(requests).toHaveLength(before)
   await page.getByRole('button', { name: tourCopy('hi').close }).tap()
   for (const step of tourCopy('hi').steps)
     expect(`${step.title} ${step.body}`).not.toMatch(/[A-Za-z]/)
