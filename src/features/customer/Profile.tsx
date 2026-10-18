@@ -9,13 +9,13 @@ import {
   Divider,
   IconButton,
   Stack,
-  Tooltip,
   Typography,
   useTheme,
 } from '@mui/material'
 import { SeeAgain } from '../first-run/FirstRun'
 import { History, UserRound } from 'lucide-react'
 import { Sheet } from '../v1/Sheet'
+import { HoverTip } from '../frontdoors/HoverTip'
 import { useCustomer } from './account'
 import { useGuestCopy } from './guestCopy'
 import type { Profile } from './types'
@@ -36,7 +36,7 @@ export function ProfileButton({ inline = false }: { inline?: boolean }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Tooltip title={t.profileButton}>
+      <HoverTip title={t.profileButton}>
         <IconButton
           aria-label={t.profileButton}
           onClick={() => setOpen(true)}
@@ -76,7 +76,7 @@ export function ProfileButton({ inline = false }: { inline?: boolean }) {
             <UserRound size={20} />
           )}
         </IconButton>
-      </Tooltip>
+      </HoverTip>
       <ProfileSheet open={open} onClose={() => setOpen(false)} />
     </>
   )
