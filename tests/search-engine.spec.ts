@@ -26,12 +26,12 @@ async function seedCafe(page: Page, name: string) {
   const response = await page.request.post('/api/v1/proposals', {
     data: {
       kind: 'business',
+      // Coordinates in the fields are never trusted from a client; the owner's map pin is.
+      owner_location: { lat: INDIRANAGAR.lat, lng: INDIRANAGAR.lng, accuracy_m: 0, source: 'pin' },
       business: {
         name,
         category: 'Cafe',
         location: INDIRANAGAR.label,
-        lat: INDIRANAGAR.lat,
-        lng: INDIRANAGAR.lng,
         currency: 'INR',
         timezone: 'Asia/Kolkata',
         phone: '',

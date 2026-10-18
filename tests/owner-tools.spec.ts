@@ -116,7 +116,7 @@ for (const appearance of ['light', 'dark']) {
     await expect(
       page.getByRole('log').getByRole('link', { name: 'Open UPI', exact: true }),
     ).toHaveAttribute('href', /am=240.00/)
-    await page.goto('/?app=landing')
+    await page.goto('/?app=landing&landing=classic')
     await expect(
       page.getByRole('heading', { name: 'Small shops. Big neighbourhood energy.', level: 1 }),
     ).toBeVisible()
@@ -153,7 +153,7 @@ test('settings errors recover, no-pin rides explain next step, all guide chips s
   await expect(upi).toHaveValue('shop@bank')
   await page.getByRole('button', { name: 'Save settings', exact: true }).click()
   await page.getByRole('button', { name: 'Create link', exact: true }).click()
-  await expect(page.getByRole('textbox', { name: 'Amount (INR)' })).toBeFocused()
+  await expect(page.getByRole('textbox', { name: 'Amount (₹)' })).toBeFocused()
   await expect(page.getByText(/Enter ₹0.01/)).toBeVisible()
   await page.getByText('Send a rider', { exact: true }).click()
   await expect(page.getByText('Add a shop pin in your shop details first.')).toBeVisible()
@@ -238,7 +238,7 @@ test('native sharing and clipboard failure preserve a selectable link', async ({
 test('15 locale copy contracts preserve placeholders and render Indic/CJK screens', async ({
   page,
 }) => {
-  await page.goto('/?app=landing')
+  await page.goto('/?app=landing&landing=classic')
   const values = await page.evaluate(async () => {
     const path = '/src/features/owner-tools/copy.ts'
     const mod = await import(path)

@@ -17,7 +17,9 @@ async function seedTestShop(request: APIRequestContext, name: string) {
   })
   const business = {
     name,
-    category: 'Bakery & Coffee',
+    // Not a bakery: the shared test world's Tiong Bahru bakeries stay closed for
+    // tests/discover.spec.ts ("Bakery" + "Open now" finds nothing there).
+    category: 'Coffee & pastries',
     location: 'Tiong Bahru, Singapore',
     hours: '08:00–20:00',
     currency: 'SGD',
