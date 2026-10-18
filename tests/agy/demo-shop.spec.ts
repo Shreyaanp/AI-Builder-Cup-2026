@@ -39,24 +39,15 @@ test.describe('Try the demo shop flow on phone (390px)', () => {
     await expect(page.getByText(banner, { exact: true })).toBeVisible({ timeout: 30_000 })
     await expect(page).toHaveURL(/\/demo$/)
 
-    // 2. Interacting with edit triggers demo alert: "Demo only. Changes are turned off."
-    const editBtn = page.locator('[data-tour="customer"] button').first()
-    if (await editBtn.isVisible()) {
-      await editBtn.click()
-      await expect(
-        page.getByText('Demo only. Changes are turned off.', { exact: true }),
-      ).toBeVisible()
-    }
+    // 2. /demo is the full owner app: dismiss the welcome tour and see the owner navigation
+    const welcome = page.getByRole('dialog')
+    await expect(welcome.getByRole('button', { name: 'Skip' })).toBeVisible({ timeout: 30_000 })
+    await welcome.getByRole('button', { name: 'Skip' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
 
-    // 3. Inspect demo menu
-    const menuTile = page.locator('[data-tour="menu"]')
-    await expect(menuTile).toBeVisible()
-    await menuTile.click()
-    const menuDialog = page.getByRole('dialog')
-    await expect(menuDialog).toBeVisible()
-    await expect(menuDialog.locator('li').first()).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(menuDialog).toHaveCount(0)
+    // 3. Inspect the demo owner app
+    for (const id of ['coach', 'shop', 'grow', 'you'])
+      await expect(page.locator(`[data-tour="nav-${id}"]`)).toBeVisible()
 
     // 4. Browse shops link in demo mode
     const browseLink = page.getByRole('link', { name: 'Browse shops', exact: true })
