@@ -998,7 +998,7 @@ function CoachScreen({
         flexDirection: 'column',
         height: '100%',
         minHeight: 0,
-        maxWidth: 760,
+        maxWidth: 720,
         mx: 'auto',
       }}
     >
