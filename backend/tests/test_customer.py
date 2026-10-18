@@ -1,4 +1,5 @@
 import asyncio
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
@@ -237,7 +238,11 @@ def test_changed_public_facts_discard_inflight_answer(app, unshare) -> None:
         assert "Old availability" not in response.text
 
 
-def test_public_rate_limit_and_validation(app) -> None:
+def test_public_rate_limit_and_validation(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Hold the clock inside one minute window: on the wall clock a burst that straddles a
+    # minute boundary legitimately restarts the count (it flaked on the Firestore emulator).
+    now = time.time() // 60 * 60 + 30
+    monkeypatch.setattr("app.limits.time.time", lambda: now)
     with TestClient(app) as client:
         bid = create_shop(app.state.merchant)
         app.state.merchant.share("alice", bid, True)
