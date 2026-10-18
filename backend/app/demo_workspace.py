@@ -6,6 +6,7 @@ and sourcing all show real behaviour on filled data. It can be deleted like any 
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import anyio
@@ -19,6 +20,7 @@ from .tour_catalogue import CENTRES, TOUR_SHOPS
 from .tour_story import seed_customer, seed_story, seed_workspace
 
 router = APIRouter(prefix="/api/v1/demo")
+log = logging.getLogger(__name__)
 
 # Phone timezone → the demo city whose currency and food feel local.
 ZONE_CITY = {
@@ -62,7 +64,12 @@ async def demo_workspace(
         )
         return result
 
-    bid, created = await anyio.to_thread.run_sync(create)
+    try:
+        bid, created = await anyio.to_thread.run_sync(create)
+    except HTTPException as error:
+        # The status alone left prod logs unreadable (a bare 404); record why.
+        log.warning("demo workspace refused: %s %s", error.status_code, error.detail)
+        raise
     return {"business_id": bid, "created": created}
 
 

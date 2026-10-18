@@ -21,6 +21,7 @@ import { FlowVideo, TrustTags } from './HowItWorks'
 import { LanguagePicker } from './LanguagePicker'
 import { pagesCopyFor, type PagesCopy } from './howItWorksCopy'
 import './landing-v2.css'
+import './landing-v2-desktop.css'
 
 const businessUrl = 'https://business.chalkboard.shreyaan.work'
 const demoUrl = `${businessUrl}/demo`
@@ -108,8 +109,13 @@ function useJourney(stops: number) {
 function Actions({ t, className = '' }: { t: PagesCopy; className?: string }) {
   return (
     <div className={`l2-actions ${className}`}>
-      <Button variant="contained" size="large" href={demoUrl} endIcon={<ArrowRight size={18} />}>
-        {t.tryShort}
+      <Button
+        variant="contained"
+        size="large"
+        href={businessUrl}
+        endIcon={<ArrowUpRight size={18} />}
+      >
+        {t.businessShort}
       </Button>
       <Button variant="outlined" size="large" href="/explore/">
         {t.findShort}
@@ -316,18 +322,30 @@ export default function LandingV2({ preview = false }: { preview?: boolean }) {
               <Actions t={t} />
             </div>
           </div>
+          {/* Wide screens only: two moments from the story beside the headline. */}
+          <div className="l2-hero-visual" aria-hidden="true">
+            {t.story.slice(0, 2).map(([stop, line]) => (
+              <p key={stop}>
+                <span>{stop}</span>
+                <strong>{line}</strong>
+              </p>
+            ))}
+          </div>
         </section>
 
         <Does t={t} />
         <Journey t={t} />
-        <Videos t={t} />
+        {/* Wide screens: the videos and the trust tags sit side by side; phones stack them. */}
+        <div className="l2-pair">
+          <Videos t={t} />
 
-        <section className="l2-trust" aria-labelledby="l2-trust-title">
-          <Typography id="l2-trust-title" component="h2" className="l2-h2" data-reveal>
-            {t.trustTitle}
-          </Typography>
-          <TrustTags t={t} />
-        </section>
+          <section className="l2-trust" aria-labelledby="l2-trust-title">
+            <Typography id="l2-trust-title" component="h2" className="l2-h2" data-reveal>
+              {t.trustTitle}
+            </Typography>
+            <TrustTags t={t} />
+          </section>
+        </div>
 
         <figure className="l2-founder" data-reveal>
           <blockquote>{t.founder}</blockquote>

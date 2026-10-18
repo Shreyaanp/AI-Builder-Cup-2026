@@ -13,6 +13,7 @@ import {
   Stack,
   Typography,
   useTheme,
+  Link,
 } from '@mui/material'
 import { ArrowLeft, ChevronDown, Leaf, MapPin, MessageCircle, Phone, RefreshCw } from 'lucide-react'
 import { customerBack, customerNavigate } from '../frontdoors/navigation'
@@ -49,6 +50,7 @@ import { HoursList } from '../shop/Hours'
 import type { DayHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
 import { useShopCopy } from '../shop/strings'
+import { useDemoCopy } from '../frontdoors/strings'
 import { VerifiedBadge } from '../trust/VerifiedBadge'
 import { unitLabel } from '../shop/units'
 import { rememberOpened } from '../discover/opened'
@@ -471,6 +473,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
 export default function PublicShop({ id, previewApi }: { id: string; previewApi?: Api }) {
   const locale = useLocale()
   const shopCopy = useShopCopy()
+  const demoCopy = useDemoCopy()
   const o = useOnboardingCopy()
   const discovery = discoverCopy(locale)
   const freshnessCopy = useOwnerCopy()
@@ -665,6 +668,9 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   const menu = [...shop.products].sort((a, b) => Number(b.available) - Number(a.available))
   const openLabel = shop.open_now == null ? null : shop.open_now ? discovery.open : discovery.closed
   const stampsEnabled = shop.stamps_enabled ?? Boolean(shop.reward_text?.trim())
+  // The stamp card, games and badges read and write this customer's own account, which the
+  // read-only public demo never touches.
+  const showStamps = stampsEnabled && !previewApi
   // Demo shops' numbers are fictional; never offer to call or message them.
   const phone = shop.demo ? '' : shop.phone
   const actions = previewApi
@@ -885,7 +891,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         }}
       >
         {!previewApi && <FollowButton id={id} name={shop.name} />}
-        {stampsEnabled && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
+        {showStamps && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
         {actions.map((action) => (
           <Button
             key={action.label}
@@ -1161,7 +1167,15 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         </CategoryGroups>
       )}
       {/* Rewards after the menu: earned, not in the way. */}
-      {stampsEnabled && (
+      {stampsEnabled && previewApi && (
+        <Link
+          href="/explore/s/demo-story-bengaluru-chai?source=qr"
+          sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 48, mt: 2 }}
+        >
+          {demoCopy.stampAtStall}
+        </Link>
+      )}
+      {showStamps && (
         <StampCard
           shop={id}
           name={shop.name}
@@ -1170,7 +1184,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           needed={shop.stamps_needed ?? 8}
         />
       )}
-      {stampsEnabled && (
+      {showStamps && (
         <ShopStamp
           shop={{
             id,
@@ -1182,9 +1196,9 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           }}
         />
       )}
-      {stampsEnabled && <ShopGames shop={id} />}
+      {showStamps && <ShopGames shop={id} />}
       {!previewApi && !stale && <BackInStock shop={id} products={shop.products} />}
-      {stampsEnabled && <BadgeRow shop={id} />}
+      {showStamps && <BadgeRow shop={id} />}
       {!previewApi && <Tips shop={id} />}
       {!previewApi && (
         <SimilarNearby

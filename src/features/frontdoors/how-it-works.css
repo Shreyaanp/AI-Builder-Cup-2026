@@ -408,3 +408,11 @@
   padding-inline: 12px;
   white-space: nowrap;
 }
+
+/* Phones: the video already tells each step, so the step list is left out (owner, 19 Oct).
+   Last in the file so it wins over the .hw-steps layout above. */
+@media (max-width: 599px) {
+  .hw-steps {
+    display: none;
+  }
+}
