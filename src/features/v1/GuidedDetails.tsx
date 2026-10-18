@@ -678,7 +678,10 @@ export function GuidedDetails({
         </Typography>
         {body}
         {(problem || error) && (
-          <Alert severity="error" sx={{ mt: 3 }}>
+          <Alert
+            severity={error && error.toLowerCase().includes('demo') ? 'info' : 'error'}
+            sx={{ mt: 3 }}
+          >
             {problem || error}
           </Alert>
         )}
