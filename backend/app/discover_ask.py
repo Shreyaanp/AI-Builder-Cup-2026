@@ -792,6 +792,9 @@ async def match_local_shops(
         # Results near an Indian location never show SGD
         if in_india and shop.get("currency") == "SGD":
             continue
+        # Results near a Singapore location never show INR
+        if in_sg and shop.get("currency") == "INR":
+            continue
         if distance(lat, lng, shop["lat"], shop["lng"]) > radius:
             continue
         reachable.append(shop)

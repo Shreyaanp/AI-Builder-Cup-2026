@@ -200,11 +200,13 @@ const en = {
   errorBody: 'Check your connection and try again.',
   retry: 'Try again',
   stale: 'Couldn’t refresh — showing the last menu we loaded.',
+  qrNoStamps:
+    'You’re at {name}. This shop doesn’t have a stamp card yet, but you can browse the menu.',
 }
 
 /** Native customer-page translations per locale (filled per language; English fallback). */
 // Customer Q&A/contact keys come from customerLocales.ts.
-const publicTranslations: Record<Locale, Omit<typeof en, keyof CustomerCopy>> = {
+const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerCopy>>> = {
   hi: {
     menu: 'मेन्यू और दाम',
     soldOut: 'खत्म',
@@ -490,6 +492,8 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   const [stale, setStale] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
+  // A counter QR scan, read once: a shop without stamps has no stamp moment to answer it.
+  const [scannedQr] = useState(() => new URLSearchParams(location.search).get('source') === 'qr')
   const [detailsOpen, setDetailsOpen] = useState(false)
   const previous = useRef<PublicShopData | null>(null)
   const [changedPrices, setChangedPrices] = useState<string[]>([])
@@ -1039,6 +1043,11 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           {refreshing ? <CircularProgress size={18} /> : <RefreshCw size={18} />}
         </IconButton>
       </Stack>
+      {scannedQr && !stampsEnabled && (
+        <Alert severity="info" data-testid="qr-no-stamps" sx={{ mb: 2 }}>
+          {t.qrNoStamps.replace('{name}', shop.name)}
+        </Alert>
+      )}
       {stale && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           {t.stale}
