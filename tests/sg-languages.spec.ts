@@ -356,6 +356,8 @@ for (const lang of LANGS) {
               origin: new URL(baseURL!).origin,
               localStorage: [
                 { name: 'niva.language.chosen', value: '1' },
+                // The first-run explainer was already seen (playwright.config.ts does the same).
+                { name: 'chalkboard.explainer.customer.v1', value: '1' },
                 { name: 'chalkboard.customer.journey', value: 'done' },
                 {
                   name: 'niva.starter.preferences',
