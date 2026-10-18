@@ -63,6 +63,23 @@ def test_ask_matches_real_menu_items_prices_and_facts(
         assert all(p["id"] != bid for g in local["groups"] for p in g["places"])
 
 
+def test_singapore_ask_hides_inr_shops(
+    store: MerchantRepository, tmp_path: Path, monkeypatch
+) -> None:
+    shared_shop(store)
+    shops = store.shared_shops()
+    inr_shop = {**shops[0], "id": "inr-in-singapore", "currency": "INR"}
+    monkeypatch.setattr(store, "shared_shops", lambda: [*shops, inr_shop])
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        app.state.merchant = store
+        answer = client.post(
+            "/api/v1/discover/ask", json={"q": "kopi", **TIONG_BAHRU}
+        ).json()
+        ids = {p["id"] for group in answer["groups"] for p in group["places"]}
+        assert "inr-in-singapore" not in ids
+
+
 def test_follow_up_keeps_the_subject_and_adds_the_refinement() -> None:
     from app.discover_ask import follow_up
 
