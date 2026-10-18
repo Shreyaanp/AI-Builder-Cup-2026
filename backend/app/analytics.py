@@ -548,9 +548,13 @@ async def shop_analytics(business_id: str, request: Request) -> Analytics:
     return await reader.read(store(request), uid, business_id)
 
 
-async def verify_scheduler(request: Request, settings: Settings) -> None:
+async def verify_scheduler(
+    request: Request, settings: Settings, *, caller: str | None = None, audience: str | None = None
+) -> None:
     """Only the configured scheduler service account may run the export (Google OIDC token)."""
-    if not (settings.analytics_export_caller and settings.analytics_export_audience):
+    caller = settings.analytics_export_caller if caller is None else caller
+    audience = settings.analytics_export_audience if audience is None else audience
+    if not (caller and audience):
         raise HTTPException(404, "Not found.")
     header = request.headers.get("authorization", "")
     if not header.startswith("Bearer "):
@@ -564,7 +568,7 @@ async def verify_scheduler(request: Request, settings: Settings) -> None:
             id_token.verify_oauth2_token(
                 header.removeprefix("Bearer "),
                 AuthRequest(),
-                audience=settings.analytics_export_audience,
+                audience=audience,
             )
         )
 
@@ -572,7 +576,7 @@ async def verify_scheduler(request: Request, settings: Settings) -> None:
         claims = await anyio.to_thread.run_sync(check)
     except Exception:
         raise HTTPException(401, "Invalid token.") from None
-    if claims.get("email") != settings.analytics_export_caller or not claims.get("email_verified"):
+    if claims.get("email") != caller or not claims.get("email_verified"):
         raise HTTPException(403, "Not allowed.")
 
 

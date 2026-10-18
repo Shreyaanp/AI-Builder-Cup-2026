@@ -57,3 +57,36 @@ self.addEventListener('fetch', (event) => {
     )
   }
 })
+
+// Only owner reminders; never ask for permission from a worker or during page load.
+self.addEventListener('push', (event) => {
+  if (CUSTOMER || !event.data) return
+  let data
+  try {
+    data = event.data.json()
+  } catch {
+    return
+  }
+  if (!['morning', 'evening'].includes(data.kind) || typeof data.title !== 'string') return
+  event.waitUntil(
+    self.registration.showNotification(data.title.slice(0, 100), {
+      icon: '/icons/business-192.png',
+      tag: data.tag,
+      data: { url: '/?app=business' },
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (windows) => {
+      const client = windows.find((item) => {
+        const url = new URL(item.url)
+        return url.origin === self.location.origin && url.searchParams.get('app') === 'business'
+      })
+      if (client) return client.focus()
+      return self.clients.openWindow('/?app=business')
+    }),
+  )
+})
