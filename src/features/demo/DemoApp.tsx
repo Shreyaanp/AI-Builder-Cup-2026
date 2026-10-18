@@ -33,6 +33,31 @@ import { DemoWelcome } from './DemoWelcome'
 import { currentPath, subscribePath, customerNavigate } from '../frontdoors/navigation'
 
 type Session = { session_id: string; expires_at: number }
+const SESSION_KEY = 'chalkboard.demo.session'
+
+/** This tab's demo sandbox, while it has at least a minute left. */
+function savedSession(): Session | null {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null') as Session | null
+    return value && value.expires_at * 1000 - Date.now() > 60_000 ? value : null
+  } catch {
+    return null
+  }
+}
+function rememberSession(value: Session) {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(value))
+  } catch {
+    /* Without storage the next page simply opens a new sandbox. */
+  }
+}
+function forgetSession() {
+  try {
+    sessionStorage.removeItem(SESSION_KEY)
+  } catch {
+    /* Nothing was stored. */
+  }
+}
 type DemoShop = { id: string; name: string }
 const PublicShop = lazy(() => import('../public/PublicShop'))
 const demoIdentity = {
@@ -63,6 +88,14 @@ export default function DemoApp() {
     // Strict Mode's first effect is cancelled before allocating a workspace.
     const abort = new AbortController()
     const start = window.setTimeout(() => {
+      // Moving around the demo (owner, Browse shops, a reload) keeps this tab's sandbox, so a
+      // visitor never spends the per-network allocation limit just by clicking.
+      const saved = savedSession()
+      if (saved) {
+        setSession(saved)
+        setState('ready')
+        return
+      }
       const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
       void fetch(`/api/v1/demo/workspace?public=true&zone=${encodeURIComponent(zone)}`, {
         method: 'POST',
@@ -72,6 +105,7 @@ export default function DemoApp() {
         .then(async (response) => {
           if (!response.ok) throw new Error('demo')
           const value = (await response.json()) as Session
+          rememberSession(value)
           if (!abort.signal.aborted) {
             setSession(value)
             setState('ready')
@@ -90,6 +124,7 @@ export default function DemoApp() {
     if (!session) return
     const timer = window.setTimeout(
       () => {
+        forgetSession()
         setSession(null)
         setState('expired')
       },
@@ -113,6 +148,7 @@ export default function DemoApp() {
         )
         if (response.status === 410) {
           queueMicrotask(() => {
+            forgetSession()
             setSession(null)
             setState('expired')
           })
@@ -140,6 +176,7 @@ export default function DemoApp() {
         })
         if (response.status === 410) {
           queueMicrotask(() => {
+            forgetSession()
             setSession(null)
             setState('expired')
           })
@@ -173,6 +210,7 @@ export default function DemoApp() {
     return () => abort.abort()
   }, [session, customer, api])
   const exit = useCallback(async () => {
+    forgetSession()
     try {
       if (session)
         await fetch(`/api/v1/demo/sessions/${session.session_id}`, {

@@ -49,6 +49,10 @@ from .tour_story import (
 router = APIRouter(prefix="/api/v1/demo/sessions")
 TTL_SECONDS = 900
 MAX_SESSIONS = 128
+# New sandboxes per network address. Judges often share one office or venue address, and one
+# visitor reuses a sandbox per tab, so these allow a room of people without inviting abuse.
+OPEN_PER_MINUTE = 20
+OPEN_PER_HOUR = 200
 MAX_COACH_TURNS = 40
 CHAIN_OWNER = "demo-world-owner"
 
@@ -197,8 +201,8 @@ async def open_workspace(request: Request, zone: str) -> dict[str, Any]:
         retry = await anyio.to_thread.run_sync(
             request.app.state.rate_limiter.take,
             [
-                Bucket("public-demo", client_ip(request), 5, 60),
-                Bucket("public-demo", client_ip(request), 20, 3600),
+                Bucket("public-demo", client_ip(request), OPEN_PER_MINUTE, 60),
+                Bucket("public-demo", client_ip(request), OPEN_PER_HOUR, 3600),
             ],
             time.time(),
         )

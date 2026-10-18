@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from fastapi.testclient import TestClient
 
+from app import public_demo
 from tests.test_photos import app  # noqa: F401
 
 
@@ -128,7 +129,7 @@ def test_rate_limit_per_ip_even_when_owner_limits_are_disabled(app):  # noqa: F8
     with TestClient(app) as client:
         app.state.v1_settings.public_demo_enabled = True
         app.state.v1_settings.rate_limits_enabled = False
-        for _ in range(5):
+        for _ in range(public_demo.OPEN_PER_MINUTE):
             assert open_demo(client).status_code == 200
         blocked = open_demo(client)
         assert blocked.status_code == 429
