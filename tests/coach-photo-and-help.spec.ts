@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { enter, localOnly, seedShop } from './stories/support.js'
+import { enter, gpsBoardPath, localOnly, seedShop } from './stories/support.js'
 
 // OB-37: a large phone photo in the coach chat was sent whole to /photos/classify (413 in
 // production) and the coach then looked lost. It is now shrunk first and the coach names the kind.
@@ -101,4 +101,22 @@ test('OB-38: How this works shows on a fresh chat, goes after 2 messages and sta
     .catch(() => undefined)
   await expect(page.getByLabel('Message', { exact: true })).toBeVisible()
   await expect(card).toHaveCount(0)
+})
+
+test('OB-37: the photo picked after classify is the original, so its GPS still reaches the upload', async ({
+  page,
+}) => {
+  await ready(page)
+  await page.locator('input[type=file]').first().setInputFiles(gpsBoardPath)
+  await expect(page.getByRole('group', { name: 'What is this photo?' })).toBeVisible({
+    timeout: 20_000,
+  })
+  const upload = page.waitForRequest(
+    (request) => /\/photos\?/.test(request.url()) && request.method() === 'POST',
+  )
+  await page
+    .getByRole('group', { name: 'What is this photo?' })
+    .getByRole('button', { name: 'Menu', exact: true })
+    .click()
+  expect((await upload).headers()['x-photo-gps']).toBeTruthy()
 })

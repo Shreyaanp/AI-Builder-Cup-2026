@@ -787,10 +787,10 @@ function CoachScreen({
     const operation = new AbortController()
     photoController.current = operation
     let guess: PhotoRoute | null = null
-    let sent = file
     try {
-      // OB-37: a phone original is megabytes; shrink it before it is classified.
-      sent = (await preparePhoto(file)).file
+      // OB-37: a phone original is megabytes; only a shrunk copy is classified. The original goes
+      // on to the chosen action, which shrinks it itself and keeps the photo's GPS for the pin.
+      const sent = (await preparePhoto(file)).file
       if (!alive.current || operation.signal.aborted) return
       const result = await api<{ kind: string }>('/photos/classify', {
         method: 'POST',
@@ -811,7 +811,7 @@ function CoachScreen({
       setBusy('idle')
       if (photoInput.current) photoInput.current.value = ''
     }
-    if (alive.current && !operation.signal.aborted) setSorting({ file: sent, guess })
+    if (alive.current && !operation.signal.aborted) setSorting({ file, guess })
   }
 
   function routePhoto(kind: PhotoRoute) {
