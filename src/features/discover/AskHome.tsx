@@ -283,6 +283,7 @@ export default function AskHome({
     void ensureDemoWorld(place.lat, place.lng, place.label)
       .catch(() => undefined)
       .then(() => prefetchAreaShops(place.lat, place.lng))
+      .catch((): AskPick[] => [])
       .then((shops) => {
         if (live) setNearby({ key, shops: nearbyFirst(shops, place.lat, place.lng) })
       })
