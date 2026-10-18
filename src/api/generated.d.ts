@@ -5588,9 +5588,8 @@ export interface components {
             /**
              * Locale
              * @default en
-             * @enum {string}
              */
-            locale: "en" | "hi";
+            locale: string;
             subscription: components["schemas"]["Subscription"];
         };
         /** ReminderResult */
