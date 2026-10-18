@@ -509,7 +509,7 @@ export function ConnectSheet({
                   <Divider />
                   <Box>
                     <Typography variant="titleSmall" sx={{ mb: 1.5, display: 'block' }}>
-                      Pull straight from {selectedSystem}
+                      {ui.pullFrom.replace('{system}', selectedSystem)}
                     </Typography>
                     <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
                       <Button
@@ -517,18 +517,18 @@ export function ConnectSheet({
                         disabled={busy}
                         onClick={() => void pullLive('menu')}
                       >
-                        Pull menu
+                        {ui.pullMenu}
                       </Button>
                       <Button
                         variant="outlined"
                         disabled={busy}
                         onClick={() => void pullLive('sales')}
                       >
-                        Pull last 28 days of sales
+                        {ui.pullSales}
                       </Button>
                     </Stack>
                     <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
-                      You review everything before it is saved.
+                      {ui.reviewFirst}
                     </Typography>
                   </Box>
                 </>
