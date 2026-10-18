@@ -13,6 +13,24 @@
       content="Chalkboard keeps small shops visible: snap your chalkboard or speak in any language, approve every detail, and share a live menu with customers."
     />
     <title>Chalkboard — your shop, live and up to date</title>
+    <script>
+      // /how-it-works: the first demo poster is the page's largest paint; fetch it with the HTML,
+      // not after the app boots. Same language rule as videoLanguage() (Hindi or English).
+      if (/^\/how-it-works\/?$/.test(location.pathname)) {
+        var lang = 'en'
+        try {
+          var pref = JSON.parse(localStorage.getItem('niva.starter.preferences') || '{}').language
+          var phone = (navigator.languages && navigator.languages[0]) || navigator.language || ''
+          if (pref === 'hi' || ((!pref || pref === 'system') && /^hi\b/i.test(phone))) lang = 'hi'
+        } catch (e) {}
+        var poster = document.createElement('link')
+        poster.rel = 'preload'
+        poster.as = 'image'
+        poster.href = '/how-it-works/vendor-' + lang + '.jpg'
+        poster.setAttribute('fetchpriority', 'high')
+        document.head.appendChild(poster)
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

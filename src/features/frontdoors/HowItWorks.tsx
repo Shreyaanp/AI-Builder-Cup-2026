@@ -62,8 +62,9 @@ const pageFor = (path: string): Page =>
       : 'how'
 
 /**
- * A muted, phone-shaped demo video. Nothing downloads until it nears the screen; it plays while
- * visible (never with reduced motion) and keeps its controls.
+ * A muted, phone-shaped demo video. Nothing downloads until the page has loaded and the video
+ * nears the screen (the poster is the first paint, never the 1 MB video); it plays while visible
+ * (never with reduced motion) and keeps its controls.
  */
 export function FlowVideo({ flow, label }: { flow: Flow; label: string }) {
   const locale = useLocale()
@@ -72,21 +73,29 @@ export function FlowVideo({ flow, label }: { flow: Flow; label: string }) {
   useEffect(() => {
     const video = ref.current
     if (!video) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry) return
-        if (entry.isIntersecting) {
-          if (!video.getAttribute('src')) {
-            video.src = src
-            video.preload = 'auto'
-          }
-          if (!reducedMotion()) void video.play().catch(() => undefined)
-        } else if (!video.paused) video.pause()
-      },
-      { rootMargin: '200px 0px', threshold: 0.35 },
-    )
-    observer.observe(video)
-    return () => observer.disconnect()
+    let observer: IntersectionObserver | undefined
+    const watch = () => {
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          if (!entry) return
+          if (entry.isIntersecting) {
+            if (!video.getAttribute('src')) {
+              video.src = src
+              video.preload = 'auto'
+            }
+            if (!reducedMotion()) void video.play().catch(() => undefined)
+          } else if (!video.paused) video.pause()
+        },
+        { rootMargin: '200px 0px', threshold: 0.35 },
+      )
+      observer.observe(video)
+    }
+    if (document.readyState === 'complete') watch()
+    else addEventListener('load', watch, { once: true })
+    return () => {
+      removeEventListener('load', watch)
+      observer?.disconnect()
+    }
   }, [src])
   return (
     <div className="hw-phone">
