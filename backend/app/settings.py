@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     customer_origin: str = ""
     ga_measurement_id: str = Field(default="", pattern=r"^(|G-[A-Z0-9]+)$")
     v1_enabled: bool = False
+    guest_customer: bool = False
     feature_google_guide: bool = True
     qr_poster_enabled: bool = False
     feature_trust_strip: bool = False
