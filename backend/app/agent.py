@@ -54,6 +54,7 @@ from .settings import Settings
 from .sourcing_offline import sourcing_call, sourcing_reply
 from .supply_offline import supply_call, supply_reply
 from .supply_tools import SUPPLY_TOOLS
+from .text_model import SteadyGemini
 from .vendor_profile import food_segment, profile_for, vocabulary
 from .voice_tools import (
     explain_app,
@@ -1353,16 +1354,22 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
             if settings.gemini_backend == "vertex"
             else {"api_key": settings.google_api_key.get_secret_value(), "vertexai": False}
         )
-        model = (LiveGemini if live else Gemini)(
-            model=settings.google_live_model if live else settings.google_text_model,
-            client_kwargs=client_kwargs,
-            # A busy model (429/503) is refused before anything streams, so the text coach tries
-            # again briefly instead of breaking the owner's turn; Live reconnects on its own.
-            retry_options=types.HttpRetryOptions(attempts=1)
+        # A busy model (429/503) is refused before anything streams, so the text coach tries
+        # again briefly, then the fallback model, instead of breaking the owner's turn
+        # (text_model.py, logged); Live reconnects on its own.
+        model = (
+            LiveGemini(
+                model=settings.google_live_model,
+                client_kwargs=client_kwargs,
+                retry_options=types.HttpRetryOptions(attempts=1),
+            )
             if live
-            else types.HttpRetryOptions(
-                attempts=3, initial_delay=0.5, max_delay=2.0, http_status_codes=[429, 503]
-            ),
+            else SteadyGemini(
+                model=settings.google_text_model,
+                fallback_model=settings.google_text_fallback_model,
+                client_kwargs=client_kwargs,
+                retry_options=types.HttpRetryOptions(attempts=1),
+            )
         )
     # V1 merchants get only the record-backed tools; the classic starter keeps its draft tools.
     tools: list[Callable[..., Any]] = (

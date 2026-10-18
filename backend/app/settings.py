@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     maps_server_key: SecretStr | None = None
     maps_browser_key: SecretStr | None = None
     google_text_model: str = ""
+    # A busy text model (429/503 after its retries) hands chat, search and close the day to this
+    # lighter model (e.g. gemini-3.5-flash-lite); empty: no fallback. See text_model.py.
+    google_text_fallback_model: str = ""
     google_live_model: str = ""
     # One voice for the whole app (owner choice, 16 Oct): Gemini Live and Cloud TTS (Chirp 3 HD)
     # share these names; other TTS tiers fall back to a female voice.
