@@ -39,6 +39,12 @@ test('shown once per device and app; unavailable storage still allows dismissal'
 
 for (const app of ['owner', 'customer'] as const) {
   test(`${app} phone: introduction, swipe, skip, reload and replay`, async ({ page }) => {
+    // The shared Playwright storage state marks both introductions as already seen.
+    // This scenario explicitly exercises the first-run state, so clear its flag first.
+    await page.addInitScript(() => {
+      localStorage.removeItem('chalkboard.explainer.owner.v1')
+      localStorage.removeItem('chalkboard.explainer.customer.v1')
+    })
     await page.route('**/*', (route) => {
       const url = new URL(route.request().url())
       if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort()
