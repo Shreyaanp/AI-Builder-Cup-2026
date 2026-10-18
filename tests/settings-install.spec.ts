@@ -133,6 +133,6 @@ test('B36 install strings exist in all ten locales', async ({ page }) => {
     return { en, ...translations } as Record<string, Record<string, string>>
   })
   for (const locale of LOCALES)
-    for (const key of ['installApp', 'installIos', 'installUnavailable'])
+    for (const key of ['installApp', 'installIos', 'installUnavailable'] as const)
       expect(dictionaries[locale]?.[key], `${locale}.${key}`).toEqual(expect.any(String))
 })
