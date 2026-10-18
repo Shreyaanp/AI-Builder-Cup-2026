@@ -128,8 +128,9 @@ for (const app of ['owner', 'customer'] as const) {
         ({ app, language }) => {
           localStorage.removeItem(`chalkboard.explainer.${app}.v1`)
           document.cookie = `chalkboard.explainer.${app}.v1=; Path=/; Max-Age=0`
+          // Each side keeps its own preferences record.
           localStorage.setItem(
-            'niva.starter.preferences',
+            `chalkboard.${app}.preferences`,
             JSON.stringify({ language, appearance: 'dark' }),
           )
         },
