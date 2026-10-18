@@ -185,7 +185,7 @@ for (const width of [360, 390]) {
       timeout: 20_000,
     })
     await expect(page.locator('meta[name="robots"]')).toHaveCount(0)
-    await expect(page.getByRole('link', { name: t.tryShort }).first()).toBeInViewport()
+    await expect(page.getByRole('link', { name: t.businessShort }).first()).toBeInViewport()
     await expect(page.getByRole('link', { name: t.findShort }).first()).toBeInViewport()
     await noOverflow(page)
   })
