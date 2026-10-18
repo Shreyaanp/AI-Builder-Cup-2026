@@ -387,3 +387,33 @@ def test_tour_reorder_drafts_from_the_wholesaler(world, city, item, supplier) ->
     assert [line["item"] for line in result["order"]["lines"]] == [item]
     # The kilos on the shelf follow the kilos sold, never the cups of chai or kopi.
     assert result["order"]["reason"]["daily"] < 5
+
+
+def test_wholesaler_books_the_stall_order_and_restocks_by_csv(world) -> None:
+    """Vendor to vendor: PO 4500000001 is an order coming in for the wholesaler, and the
+    wholesaler's own spreadsheet order goes to its distributor. Reruns add nothing."""
+    store, community = world
+    for _ in range(2):
+        seed_story(store, community, today=DAY)
+    from app import supply_io
+
+    for city, stall, distributor, item in [
+        ("bengaluru", "Lantern Chai Corner (Demo)", "Anand Distributors (Demo)", "Tea dust"),
+        (
+            "singapore",
+            "Sunny Side Kopitiam (Demo)",
+            "Katong Wholesale Distributors (Demo)",
+            "Kopi powder",
+        ),
+    ]:
+        sid = f"demo-story-{city}-supplier"
+        orders = {po["number"]: po for po in supply_chain.all_orders(store, sid)}
+        assert len(orders) == 2 and len(supply_io.inbox(store, sid)) == 2
+        sold = next(po for po in orders.values() if supply_io.direction_of(po) == "out")
+        bought = next(po for po in orders.values() if supply_io.direction_of(po) == "in")
+        assert sold["number"] == "4500000001"
+        assert supply_io.partner_of(sold)["name"] == stall
+        assert sold["lines"][0]["item"] == item
+        assert supply_io.partner_of(bought)["name"] == distributor
+        assert bought["documents"][0]["raw_format"] == "csv"
+        assert bought["documents"][0]["raw"].startswith("doc_type,doc_number")
