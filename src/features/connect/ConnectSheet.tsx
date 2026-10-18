@@ -42,6 +42,7 @@ const KNOWN_SYSTEMS = [
   { key: 'tally', label: 'Tally' },
   { key: 'zoho', label: 'Zoho' },
   { key: 'square', label: 'Square' },
+  { key: 'loyverse', label: 'Loyverse' },
   { key: 'shopify', label: 'Shopify' },
   { key: 'sap', label: 'SAP' },
   { key: 'other', label: 'Other POS' },
@@ -61,6 +62,18 @@ const TARGET_ROLE_KEYS = [
 
 const ACCEPT_FILES =
   '.csv,.xlsx,.json,.xml,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/json,application/xml,text/xml'
+
+type SyncResult = {
+  kind: 'menu' | 'sales'
+  status: string
+  proposal?: Proposal
+  import_id?: string
+  digest?: string
+  diff?: ConnectorDiff
+  summary?: SalesImport['summary']
+  currency?: string
+  sales?: SalesImport['sales']
+}
 
 export function ConnectSheet({
   open,
@@ -254,6 +267,55 @@ export function ConnectSheet({
     setEditingIndex(null)
   }
 
+  function openReview(syncResult: SyncResult) {
+    // Close connect sheet and open proposal review before saving
+    handleClose()
+    if (syncResult.kind === 'menu' && syncResult.proposal) {
+      ws.review(syncResult.proposal)
+    } else if (
+      syncResult.kind === 'sales' &&
+      syncResult.import_id &&
+      syncResult.digest &&
+      syncResult.summary &&
+      syncResult.currency &&
+      syncResult.sales
+    ) {
+      setSalesImport({
+        kind: 'sales',
+        import_id: syncResult.import_id,
+        digest: syncResult.digest,
+        summary: syncResult.summary,
+        currency: syncResult.currency,
+        sales: syncResult.sales,
+      })
+    } else {
+      ws.notify(t.mappingSaved)
+    }
+  }
+
+  async function pullLive(kind: 'menu' | 'sales') {
+    if (!shop) return
+    setBusy(true)
+    setError('')
+    try {
+      const provider = selectedSystem.toLowerCase()
+      const pulled = await ws.api<SyncResult & { simulated: boolean; via: string }>(
+        `/businesses/${encodeURIComponent(shop.id)}/connect/live/${provider}/${kind}`,
+        { method: 'POST' },
+      )
+      openReview(pulled)
+      if (pulled.simulated)
+        ws.notify('Recorded sample data: no live ' + selectedSystem + ' link yet')
+      else if (pulled.via === 'google-connectors')
+        ws.notify('Pulled via Google Cloud Integration Connectors')
+      ws.notify('Recorded sample data: no live ' + selectedSystem + ' link yet')
+    } catch {
+      setError('Could not pull from ' + selectedSystem + '. Upload an export instead.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function handleConfirmAndSync() {
     if (!shop || !currentMapping) return
     setBusy(true)
@@ -270,17 +332,7 @@ export function ConnectSheet({
       })
 
       // 2. Perform sync with the current mapping and payload
-      let syncResult: {
-        kind: 'menu' | 'sales'
-        status: string
-        proposal?: Proposal
-        import_id?: string
-        digest?: string
-        diff?: ConnectorDiff
-        summary?: SalesImport['summary']
-        currency?: string
-        sales?: SalesImport['sales']
-      }
+      let syncResult: SyncResult
 
       if (analysis?.photo_content) {
         syncResult = await ws.api(`/businesses/${encodeURIComponent(shop.id)}/connect/sync`, {
@@ -325,29 +377,7 @@ export function ConnectSheet({
         throw new Error(ui.noData)
       }
 
-      // Close connect sheet and open proposal review before saving
-      handleClose()
-      if (syncResult.kind === 'menu' && syncResult.proposal) {
-        ws.review(syncResult.proposal)
-      } else if (
-        syncResult.kind === 'sales' &&
-        syncResult.import_id &&
-        syncResult.digest &&
-        syncResult.summary &&
-        syncResult.currency &&
-        syncResult.sales
-      ) {
-        setSalesImport({
-          kind: 'sales',
-          import_id: syncResult.import_id,
-          digest: syncResult.digest,
-          summary: syncResult.summary,
-          currency: syncResult.currency,
-          sales: syncResult.sales,
-        })
-      } else {
-        ws.notify(t.mappingSaved)
-      }
+      openReview(syncResult)
     } catch {
       setError(ui.syncFailed)
     } finally {
@@ -473,6 +503,36 @@ export function ConnectSheet({
                   </Typography>
                 )}
               </Box>
+
+              {(selectedSystem === 'Square' || selectedSystem === 'Loyverse') && (
+                <>
+                  <Divider />
+                  <Box>
+                    <Typography variant="titleSmall" sx={{ mb: 1.5, display: 'block' }}>
+                      {ui.pullFrom.replace('{system}', selectedSystem)}
+                    </Typography>
+                    <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+                      <Button
+                        variant="outlined"
+                        disabled={busy}
+                        onClick={() => void pullLive('menu')}
+                      >
+                        {ui.pullMenu}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        disabled={busy}
+                        onClick={() => void pullLive('sales')}
+                      >
+                        {ui.pullSales}
+                      </Button>
+                    </Stack>
+                    <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
+                      {ui.reviewFirst}
+                    </Typography>
+                  </Box>
+                </>
+              )}
 
               <Divider />
 
