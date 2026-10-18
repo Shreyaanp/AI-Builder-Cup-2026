@@ -63,8 +63,6 @@ const en = {
     face_too_small: 'Your face was too far away. Hold the phone a little closer.',
     too_short: 'The video was too short. Keep the camera on until the ring fills.',
     movement_not_seen: 'We didn’t see the head movements. Follow each prompt slowly.',
-    not_live:
-      'We couldn’t confirm a live camera. Use your camera directly, not a photo or a screen.',
     capture_not_usable: 'The video couldn’t be read. Please try again.',
     busy: 'Another check is running. Try again in a minute.',
     worker_unavailable: 'Our checking service didn’t answer. Nothing changed; try again later.',
@@ -186,7 +184,6 @@ const zhHans: TrustCopy = {
     face_too_small: '你的脸离得太远。请把手机拿近一点。',
     too_short: '视频太短。请保持相机开启，直到圆环填满。',
     movement_not_seen: '我们没有看到转头动作。请慢慢按每个提示做。',
-    not_live: '无法确认是实时相机画面。请直接使用相机，不要用照片或屏幕。',
     capture_not_usable: '无法读取视频。请再试一次。',
     busy: '另一项检查正在进行。请一分钟后再试。',
     worker_unavailable: '检查服务没有响应。没有任何变化，请稍后再试。',
@@ -303,8 +300,6 @@ const ms: TrustCopy = {
     face_too_small: 'Wajah anda terlalu jauh. Pegang telefon lebih dekat sedikit.',
     too_short: 'Video terlalu pendek. Biarkan kamera terbuka sehingga cincin penuh.',
     movement_not_seen: 'Kami tidak nampak gerakan kepala. Ikut setiap arahan perlahan-lahan.',
-    not_live:
-      'Kami tidak dapat mengesahkan kamera secara langsung. Gunakan kamera terus, bukan foto atau skrin.',
     capture_not_usable: 'Video tidak dapat dibaca. Sila cuba lagi.',
     busy: 'Semakan lain sedang berjalan. Cuba lagi dalam seminit.',
     worker_unavailable:
@@ -432,8 +427,6 @@ const ta: TrustCopy = {
     face_too_small: 'உங்கள் முகம் தொலைவில் இருந்தது. போனை கொஞ்சம் அருகில் பிடியுங்கள்.',
     too_short: 'வீடியோ மிகக் குறைவு. வளையம் நிரம்பும் வரை கேமராவைத் திறந்து வையுங்கள்.',
     movement_not_seen: 'தலை அசைவுகள் தெரியவில்லை. ஒவ்வொரு குறிப்பையும் மெதுவாகப் பின்பற்றுங்கள்.',
-    not_live:
-      'நேரடி கேமராவை உறுதிசெய்ய முடியவில்லை. புகைப்படம் அல்லது திரை அல்ல, கேமராவையே நேரடியாகப் பயன்படுத்துங்கள்.',
     capture_not_usable: 'வீடியோவைப் படிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
     busy: 'வேறொரு சரிபார்ப்பு நடக்கிறது. ஒரு நிமிடத்தில் மீண்டும் முயற்சிக்கவும்.',
     worker_unavailable:
@@ -561,8 +554,6 @@ const ja: TrustCopy = {
     face_too_small: 'お顔が遠すぎました。スマホを少し近づけてください。',
     too_short: '動画が短すぎました。リングがいっぱいになるまでカメラを開いたままにしてください。',
     movement_not_seen: '頭の動きが確認できませんでした。指示に合わせてゆっくり動いてください。',
-    not_live:
-      'ライブカメラであることを確認できませんでした。写真や画面ではなく、カメラを直接使ってください。',
     capture_not_usable: '動画を読み取れませんでした。もう一度お試しください。',
     busy: '別のチェックが実行中です。1 分後にもう一度お試しください。',
     worker_unavailable:
@@ -684,8 +675,6 @@ const ko: TrustCopy = {
     face_too_small: '얼굴이 너무 멀었습니다. 휴대폰을 조금 더 가까이 들어 주세요.',
     too_short: '영상이 너무 짧았습니다. 원이 다 찰 때까지 카메라를 켜 두세요.',
     movement_not_seen: '머리 동작이 보이지 않았습니다. 안내에 따라 천천히 움직이세요.',
-    not_live:
-      '실시간 카메라인지 확인하지 못했습니다. 사진이나 화면이 아닌 카메라를 직접 사용하세요.',
     capture_not_usable: '영상을 읽을 수 없었습니다. 다시 시도하세요.',
     busy: '다른 확인이 진행 중입니다. 1분 후에 다시 시도하세요.',
     worker_unavailable:
@@ -810,8 +799,6 @@ const id: TrustCopy = {
     face_too_small: 'Wajah Anda terlalu jauh. Pegang ponsel sedikit lebih dekat.',
     too_short: 'Videonya terlalu pendek. Biarkan kamera menyala sampai lingkaran penuh.',
     movement_not_seen: 'Gerakan kepala tidak terlihat. Ikuti setiap petunjuk perlahan.',
-    not_live:
-      'Kami tidak dapat memastikan kamera langsung. Gunakan kamera secara langsung, bukan foto atau layar.',
     capture_not_usable: 'Video tidak dapat dibaca. Silakan coba lagi.',
     busy: 'Pemeriksaan lain sedang berjalan. Coba lagi dalam satu menit.',
     worker_unavailable:
@@ -935,7 +922,6 @@ const th: TrustCopy = {
     face_too_small: 'ใบหน้าอยู่ไกลเกินไป ถือโทรศัพท์ให้ใกล้ขึ้นอีกนิด',
     too_short: 'วิดีโอสั้นเกินไป เปิดกล้องไว้จนวงแหวนเต็ม',
     movement_not_seen: 'ไม่เห็นการขยับศีรษะ ทำตามคำแนะนำแต่ละข้ออย่างช้าๆ',
-    not_live: 'ยืนยันไม่ได้ว่าเป็นกล้องสด ใช้กล้องโดยตรง ไม่ใช่รูปถ่ายหรือหน้าจอ',
     capture_not_usable: 'อ่านวิดีโอไม่ได้ โปรดลองอีกครั้ง',
     busy: 'มีการตรวจอื่นกำลังทำงาน ลองอีกครั้งในอีกหนึ่งนาที',
     worker_unavailable: 'บริการตรวจไม่ตอบสนอง ไม่มีอะไรเปลี่ยนแปลง ลองอีกครั้งภายหลัง',
@@ -1059,8 +1045,6 @@ const vi: TrustCopy = {
     too_short: 'Video quá ngắn. Giữ camera bật cho đến khi vòng tròn đầy.',
     movement_not_seen:
       'Chúng tôi không thấy các cử động đầu. Hãy làm theo từng hướng dẫn thật chậm.',
-    not_live:
-      'Không xác nhận được camera trực tiếp. Hãy dùng camera trực tiếp, không dùng ảnh hay màn hình.',
     capture_not_usable: 'Không đọc được video. Vui lòng thử lại.',
     busy: 'Đang có một lượt kiểm tra khác. Hãy thử lại sau một phút.',
     worker_unavailable: 'Dịch vụ kiểm tra không phản hồi. Không có gì thay đổi; hãy thử lại sau.',
@@ -1180,8 +1164,6 @@ const fil: TrustCopy = {
     too_short:
       'Masyadong maikli ang video. Panatilihing bukas ang camera hanggang mapuno ang bilog.',
     movement_not_seen: 'Hindi nakita ang mga galaw ng ulo. Sundan nang dahan-dahan ang bawat utos.',
-    not_live:
-      'Hindi makumpirma na live na camera ito. Gamitin mismo ang camera, hindi larawan o screen.',
     capture_not_usable: 'Hindi mabasa ang video. Pakisubukan ulit.',
     busy: 'May ibang check na tumatakbo. Subukan ulit pagkalipas ng isang minuto.',
     worker_unavailable:
@@ -1307,7 +1289,6 @@ const hi: TrustCopy = {
     face_too_small: 'आपका चेहरा बहुत दूर था। फ़ोन थोड़ा पास रखें।',
     too_short: 'वीडियो बहुत छोटा था। घेरा भरने तक कैमरा चालू रखें।',
     movement_not_seen: 'सिर की हरकतें नहीं दिखीं। हर निर्देश धीरे-धीरे करें।',
-    not_live: 'लाइव कैमरे की पुष्टि नहीं हुई। फ़ोटो या स्क्रीन नहीं, सीधे कैमरा इस्तेमाल करें।',
     capture_not_usable: 'वीडियो पढ़ा नहीं जा सका। कृपया फिर से कोशिश करें।',
     busy: 'एक और जाँच चल रही है। एक मिनट बाद फिर कोशिश करें।',
     worker_unavailable: 'हमारी जाँच सेवा ने जवाब नहीं दिया। कुछ नहीं बदला; बाद में कोशिश करें।',
@@ -1429,7 +1410,6 @@ const bn: TrustCopy = {
     face_too_small: 'মুখ খুব দূরে ছিল। ফোন একটু কাছে ধরুন।',
     too_short: 'ভিডিও খুব ছোট ছিল। বৃত্ত পূর্ণ না হওয়া পর্যন্ত ক্যামেরা চালু রাখুন।',
     movement_not_seen: 'মাথার নড়াচড়া দেখা যায়নি। প্রতিটি নির্দেশ ধীরে ধীরে মানুন।',
-    not_live: 'লাইভ ক্যামেরা নিশ্চিত করা যায়নি। ছবি বা স্ক্রিন নয়, সরাসরি ক্যামেরা ব্যবহার করুন।',
     capture_not_usable: 'ভিডিও পড়া যায়নি। আবার চেষ্টা করুন।',
     busy: 'আরেকটি যাচাই চলছে। এক মিনিট পরে আবার চেষ্টা করুন।',
     worker_unavailable: 'আমাদের যাচাই পরিষেবা সাড়া দেয়নি। কিছুই বদলায়নি; পরে চেষ্টা করুন।',
@@ -1547,8 +1527,6 @@ const te: TrustCopy = {
     face_too_small: 'మీ ముఖం చాలా దూరంగా ఉంది. ఫోన్‌ను కొంచెం దగ్గరగా పట్టుకోండి.',
     too_short: 'వీడియో చాలా చిన్నది. వలయం నిండే వరకు కెమెరా తెరిచి ఉంచండి.',
     movement_not_seen: 'తల కదలికలు కనిపించలేదు. ప్రతి సూచనను నెమ్మదిగా పాటించండి.',
-    not_live:
-      'లైవ్ కెమెరా అని నిర్ధారించలేకపోయాం. ఫోటో లేదా స్క్రీన్ కాకుండా నేరుగా కెమెరా వాడండి.',
     capture_not_usable: 'వీడియో చదవలేకపోయాం. దయచేసి మళ్లీ ప్రయత్నించండి.',
     busy: 'మరో తనిఖీ జరుగుతోంది. ఒక నిమిషం తర్వాత మళ్లీ ప్రయత్నించండి.',
     worker_unavailable: 'మా తనిఖీ సేవ స్పందించలేదు. ఏదీ మారలేదు; తర్వాత ప్రయత్నించండి.',
@@ -1671,7 +1649,6 @@ const mr: TrustCopy = {
     face_too_small: 'तुमचा चेहरा खूप दूर होता. फोन थोडा जवळ धरा.',
     too_short: 'व्हिडिओ खूप छोटा होता. वर्तुळ भरेपर्यंत कॅमेरा चालू ठेवा.',
     movement_not_seen: 'डोक्याच्या हालचाली दिसल्या नाहीत. प्रत्येक सूचना हळूहळू पाळा.',
-    not_live: 'लाइव्ह कॅमेऱ्याची खात्री झाली नाही. फोटो किंवा स्क्रीन नव्हे, थेट कॅमेरा वापरा.',
     capture_not_usable: 'व्हिडिओ वाचता आला नाही. कृपया पुन्हा प्रयत्न करा.',
     busy: 'दुसरी तपासणी सुरू आहे. एक मिनिटाने पुन्हा प्रयत्न करा.',
     worker_unavailable:
@@ -1797,7 +1774,6 @@ const kn: TrustCopy = {
     face_too_small: 'ನಿಮ್ಮ ಮುಖ ತುಂಬಾ ದೂರವಿತ್ತು. ಫೋನ್ ಅನ್ನು ಸ್ವಲ್ಪ ಹತ್ತಿರ ಹಿಡಿಯಿರಿ.',
     too_short: 'ವೀಡಿಯೊ ತುಂಬಾ ಚಿಕ್ಕದಾಗಿತ್ತು. ವೃತ್ತ ತುಂಬುವವರೆಗೆ ಕ್ಯಾಮೆರಾ ತೆರೆದಿಡಿ.',
     movement_not_seen: 'ತಲೆಯ ಚಲನೆಗಳು ಕಾಣಲಿಲ್ಲ. ಪ್ರತಿ ಸೂಚನೆಯನ್ನು ನಿಧಾನವಾಗಿ ಅನುಸರಿಸಿ.',
-    not_live: 'ಲೈವ್ ಕ್ಯಾಮೆರಾ ಎಂದು ದೃಢಪಡಿಸಲಾಗಲಿಲ್ಲ. ಫೋಟೋ ಅಥವಾ ಪರದೆ ಅಲ್ಲ, ನೇರವಾಗಿ ಕ್ಯಾಮೆರಾ ಬಳಸಿ.',
     capture_not_usable: 'ವೀಡಿಯೊ ಓದಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
     busy: 'ಇನ್ನೊಂದು ಪರಿಶೀಲನೆ ನಡೆಯುತ್ತಿದೆ. ಒಂದು ನಿಮಿಷದ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
     worker_unavailable: 'ನಮ್ಮ ಪರಿಶೀಲನಾ ಸೇವೆ ಉತ್ತರಿಸಲಿಲ್ಲ. ಏನೂ ಬದಲಾಗಿಲ್ಲ; ನಂತರ ಪ್ರಯತ್ನಿಸಿ.',
