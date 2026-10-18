@@ -417,7 +417,7 @@ export function GoogleRows({
               href={mapsLink(place.google_maps_uri) ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
-              sx={rowSx(roles)}
+              sx={{ ...rowSx(roles), gap: 1, px: 2, py: 2 }}
             >
               <Thumb pick={place} />
               <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -428,14 +428,19 @@ export function GoogleRows({
                   {[
                     formatDistance(place.distance_m, locale),
                     place.open_now === null ? null : place.open_now ? ask.openNow : ask.closed,
-                    // Google's own rating, live and attributed.
-                    place.rating != null && place.user_rating_count
-                      ? ratingLine(place.rating, place.user_rating_count, locale, search)
-                      : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')}
                 </Typography>
+                {place.rating != null && place.user_rating_count != null && (
+                  <Typography
+                    variant="bodySmall"
+                    color="text.secondary"
+                    sx={{ fontVariantNumeric: 'tabular-nums', lineHeight: 1.25 }}
+                  >
+                    {ratingLine(place.rating, place.user_rating_count, locale, search)}
+                  </Typography>
+                )}
                 {/* Google's attribution: the words "Google Maps", never translated, and the
                     photo's author. */}
                 <Typography
