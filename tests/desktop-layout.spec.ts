@@ -82,7 +82,7 @@ test('owner Today, Shop, Supply, Grow and You fit a 1280px desktop', async ({ pa
       .locator(`main#main section[aria-label="${section}"]`)
       .evaluate((element) => element.getBoundingClientRect().width)
     expect(afterWidth).toBe(beforeWidth)
-    await phoneBaseline.evaluate((style) => style.remove())
+    await phoneBaseline.evaluate((style) => (style as Element).remove())
   }
   await page.getByRole('button', { name: 'You', exact: true }).click()
   const you = await page.screenshot({
