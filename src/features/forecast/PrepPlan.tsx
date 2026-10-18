@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Stack, Typography } from '@mui/material'
+import { Button, Stack, Typography } from '@mui/material'
 import { CalendarClock, PackageSearch } from 'lucide-react'
 import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
@@ -7,6 +7,8 @@ import { Tile, Supporting } from '../v1/ShopTiles'
 import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useSourcingCopy } from '../sourcing/copy'
+import { Sheet } from '../v1/Sheet'
+import { dayLabel } from '../supply/supplyData'
 
 type Forecast = components['schemas']['Forecast']
 const LOW_STOCK = 5
@@ -23,6 +25,7 @@ export function PrepPlanTile() {
     error?: boolean
   } | null>(null)
   const [attempt, retry] = useState(0)
+  const [open, setOpen] = useState(false)
   const id = active?.id
   const revision = active?.revision
   useEffect(() => {
@@ -42,12 +45,13 @@ export function PrepPlanTile() {
   const state = loaded?.id === id && loaded?.revision === revision ? loaded : null
   const value = state?.value
   const tomorrow = value?.predictions?.[0]?.date
-  const rows = value?.predictions?.filter((row) => row.date === tomorrow).slice(0, 3) ?? []
+  const tomorrowRows = value?.predictions?.filter((row) => row.date === tomorrow) ?? []
+  const rows = tomorrowRows.slice(0, 3)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   // Runs out: the first forecast day on which the week's predicted demand passes a counted
-  // stock ("Croissant runs out Thu"). With no forecast for it, a stock of at most 5 is running
-  // low. Items without a stock count never show here.
-  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' })
+  // stock ("Croissant runs out Thu, Oct 23"). Same rule and same date format as the supply card
+  // on Today (the forecast's upper bound), so the two never disagree. With no forecast for it,
+  // a stock of at most 5 is running low. Items without a stock count never show here.
   const low = products.flatMap((product) => {
     if (product.stock == null) return []
     const days = (value?.predictions ?? [])
@@ -55,9 +59,8 @@ export function PrepPlanTile() {
       .sort((a, b) => a.date.localeCompare(b.date))
     let demand = 0
     for (const row of days) {
-      demand += row.quantity
-      if (demand >= product.stock)
-        return [{ name: product.name, day: weekday.format(new Date(`${row.date}T00:00:00Z`)) }]
+      demand += row.upper ?? row.quantity
+      if (demand > product.stock) return [{ name: product.name, day: dayLabel(row.date, locale) }]
     }
     return days.length === 0 && product.stock <= LOW_STOCK ? [{ name: product.name, day: '' }] : []
   })
@@ -80,7 +83,7 @@ export function PrepPlanTile() {
         }
         onClick={() => {
           if (state?.error) retry((n) => n + 1)
-          else startCoachDraft(t.prepQuestion)
+          else setOpen(true)
         }}
       >
         {rows.length > 0 && (
@@ -102,6 +105,57 @@ export function PrepPlanTile() {
         )}
         {state?.error && <Supporting>{t.retry}</Supporting>}
       </Tile>
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        titleId="prep-plan-title"
+        title={t.prepPlan}
+        actions={
+          <Button
+            variant="contained"
+            sx={{ minHeight: 48 }}
+            onClick={() => {
+              setOpen(false)
+              startCoachDraft(t.prepQuestion)
+            }}
+          >
+            {t.navCoach}
+          </Button>
+        }
+      >
+        <Typography variant="titleSmall" color="text.secondary" sx={{ mb: 2 }}>
+          {t.prepTomorrow}
+        </Typography>
+        {tomorrowRows.length > 0 ? (
+          <Stack component="ul" spacing={2} sx={{ listStyle: 'none', m: 0, p: 0 }}>
+            {tomorrowRows.map((row) => (
+              <Stack
+                component="li"
+                key={row.item}
+                direction="row"
+                sx={{ gap: 2, justifyContent: 'space-between', alignItems: 'baseline' }}
+              >
+                <Typography variant="bodyLarge" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                  {row.item}
+                </Typography>
+                <Typography
+                  variant="bodyLarge"
+                  sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {number.format(row.quantity)} {row.unit}
+                </Typography>
+              </Stack>
+            ))}
+          </Stack>
+        ) : (
+          <Typography variant="bodyLarge">{t.prepEmpty}</Typography>
+        )}
+        {value && (
+          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 3 }}>
+            {value.method === 'timesfm' ? t.prepTimesfm : t.prepWeekday}
+          </Typography>
+        )}
+      </Sheet>
       {first && (
         <Tile
           icon={<PackageSearch size={20} />}
