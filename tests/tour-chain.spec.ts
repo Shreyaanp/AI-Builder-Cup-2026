@@ -55,7 +55,7 @@ async function start(page: Page, language?: string) {
 }
 
 async function next(page: Page, label = 'Next') {
-  await page.locator('#tour-title').locator('..').locator('button').last().click()
+  await page.getByRole('dialog').getByRole('button', { name: label, exact: true }).click()
 }
 
 async function noSideScroll(page: Page) {
@@ -73,6 +73,9 @@ async function noSideScroll(page: Page) {
   ).toBeTruthy()
 }
 
+// The tour now runs on the public demo, whose tour shop is the Bengaluru chai stall for every
+// visitor (backend/app/public_demo.py). The Singapore story seed is still checked in
+// backend/tests/test_tour_story.py.
 for (const world of [
   {
     zone: 'Asia/Kolkata',
@@ -82,15 +85,6 @@ for (const world of [
     stall: 'Lantern Chai Corner (Demo)',
     distributor: 'Anand Distributors (Demo)',
     reward: 'A free chai',
-  },
-  {
-    zone: 'Asia/Singapore',
-    locale: 'en-SG',
-    item: 'Kopi powder',
-    wholesaler: 'Ah Huat Provision (Demo)',
-    stall: 'Sunny Side Kopitiam (Demo)',
-    distributor: 'Katong Trading (Demo)',
-    reward: 'A free kopi',
   },
 ]) {
   test.describe(world.zone, () => {
@@ -127,8 +121,7 @@ for (const world of [
           `${qty(story.today.stock, story.today.unit)} left, about ${qty(story.today.daily, story.today.unit)} a day`,
         )
         await expect(panel).toContainText(`${world.item} runs out`)
-        // The public demo keeps the sandbox read-only; the seeded forecast remains visible.
-        await expect(panel.getByRole('button', { name: 'Reorder' })).toHaveCount(0)
+        await expect(panel.getByRole('button', { name: 'Reorder' })).toBeVisible()
         await noSideScroll(page)
         await shot(1)
       })
@@ -222,7 +215,7 @@ for (const world of [
         await expect(page.locator('#tour-title')).toContainText(title)
       }
       await next(page)
-      await page.locator('#tour-title').locator('..').locator('button').last().click()
+      await page.getByRole('dialog').getByRole('button', { name: 'Keep exploring' }).click()
       await expect(page.locator('#tour-title')).toHaveCount(0)
     })
   })

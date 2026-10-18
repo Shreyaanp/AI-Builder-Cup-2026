@@ -11,17 +11,21 @@ import { startDemoTour } from '../tour/tourActions'
 export function DemoWelcome() {
   const ws = useWorkspace()
   const t = tourCopy(useLocale())
-  const [open, setOpen] = useState(true)
+  // Arriving from 'Take the tour' in the owner app (/demo?tour=1) starts the tour without asking again.
+  const [tourAsked] = useState(
+    () => new URLSearchParams(window.location.search).get('tour') === '1',
+  )
+  const asked = useRef(tourAsked)
+  // The offer never opens then: a sheet closing as the tour opens left the app (and the tour
+  // card inside it) aria-hidden, so screen readers lost the whole tour.
+  const [open, setOpen] = useState(!tourAsked)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const startAfterClose = useRef(false)
-  // Arriving from 'Take the tour' in the owner app (/demo?tour=1) starts the tour without asking again.
-  const asked = useRef(new URLSearchParams(window.location.search).get('tour') === '1')
   useEffect(() => {
     if (!asked.current || !ws.active) return
     asked.current = false
     history.replaceState(history.state, '', window.location.pathname)
-    setOpen(false)
     void startDemoTour(ws, setBusy, setFailed).then((started) => {
       if (!started) setOpen(true)
     })

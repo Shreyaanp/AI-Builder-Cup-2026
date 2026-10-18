@@ -72,14 +72,20 @@ test.skip(({ isMobile }) => !isMobile, '390px phone narration flow')
 test('390px phone: public demo, optional Hindi narration, interruption and remembered choice', async ({
   page,
 }) => {
-  const requests: { text: string; language: string }[] = []
+  // The demo plays recorded clips (#356); it never calls /tts.
+  const tts: unknown[] = []
+  const clips = () =>
+    page.evaluate(() =>
+      (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents
+        .filter((event) => event.startsWith('load:'))
+        .map((event) => event.slice(5)),
+    )
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url())
     if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort()
     if (url.pathname.endsWith('/tts')) {
-      requests.push(route.request().postDataJSON())
-      // Successful cloud bytes; playback itself is deterministic below.
-      return route.fulfill({ status: 200, contentType: 'audio/mpeg', body: 'mock audio' })
+      tts.push(route.request().postDataJSON())
+      return route.fulfill({ status: 410, json: {} })
     }
     return route.continue()
   })
@@ -95,6 +101,9 @@ test('390px phone: public demo, optional Hindi narration, interruption and remem
     let id = 0
     window.Audio = class {
       id = ++id
+      constructor(src: string) {
+        events.push(`load:${src}`)
+      }
       onended = null
       onerror = null
       async play() {
@@ -114,15 +123,13 @@ test('390px phone: public demo, optional Hindi narration, interruption and remem
     })
   }
   await openTour()
-  const speaker = page.locator('#tour-title').locator('..').locator('button[aria-pressed]')
+  const speaker = page.getByRole('dialog').getByRole('button', { name: tourCopy('hi').narration })
   await expect(speaker).toHaveAttribute('aria-pressed', 'false')
-  expect(requests).toHaveLength(0)
+  expect(await clips()).toHaveLength(0)
   await speaker.tap()
-  await expect.poll(() => requests.length).toBe(1)
-  expect(requests[0]).toEqual({
-    text: `${tourCopy('hi').steps[0]!.title}. ${tourCopy('hi').steps[0]!.body}`,
-    language: 'hi',
-  })
+  await expect.poll(async () => (await clips()).length).toBe(1)
+  // The first spotlight line, recorded in Hindi.
+  expect((await clips())[0]).toBe('/audio/demo/hi/step-0.mp3')
   await expect
     .poll(() =>
       page.evaluate(
@@ -133,61 +140,72 @@ test('390px phone: public demo, optional Hindi narration, interruption and remem
       ),
     )
     .toBe(1)
-  await page.locator('#tour-title').locator('..').locator('button').last().tap()
-  await expect.poll(() => requests.length).toBe(2)
+  // Skip voice stops the line being read and keeps the tour open.
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: tourCopy('hi').skipVoice, exact: true })
+    .tap()
   await expect
     .poll(() =>
       page.evaluate(() => (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents),
     )
     .toContain('stop:1')
-  await page.locator('#tour-title').locator('..').locator('button').nth(2).tap()
   await expect(page.locator('#tour-title')).toBeVisible()
-  expect(requests).toHaveLength(2)
-  await expect
-    .poll(() =>
-      page.evaluate(() => (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents),
-    )
-    .toContain('stop:2')
-  await page.locator('#tour-title').locator('..').locator('button').last().tap()
-  await expect.poll(() => requests.length).toBe(3)
-  await expect
-    .poll(() =>
-      page.evaluate(() => (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents),
-    )
-    .toContain('play:3')
-  await page.locator('#tour-title').locator('..').locator('button').first().tap()
+  // The story step carries live numbers, so it has no recording and stays silent rather than
+  // falling back to the phone's voice.
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: tourCopy('hi').next, exact: true })
+    .tap()
+  await expect(page.locator('#tour-title')).not.toContainText(tourCopy('hi').steps[0]!.title)
+  await page.waitForTimeout(500)
+  expect(await clips()).toHaveLength(1)
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: tourCopy('hi').close, exact: true })
+    .tap()
   await expect(page.locator('#tour-title')).toHaveCount(0)
-  await expect
-    .poll(() =>
-      page.evaluate(() => (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents),
-    )
-    .toContain('stop:3')
   expect(await page.evaluate(() => localStorage.getItem('chalkboard.tour.narration'))).toBe('true')
-  await page.reload({ waitUntil: 'domcontentloaded' })
-  expect(requests).toHaveLength(3)
+  // The choice is remembered: the next tour reads its first line again by itself.
   await openTour()
   await expect(speaker).toHaveAttribute('aria-pressed', 'true')
-  await expect.poll(() => requests.length).toBe(4)
+  await expect.poll(async () => (await clips()).length).toBe(1)
   await speaker.tap()
-  const before = requests.length
-  await page.locator('#tour-title').locator('..').locator('button').last().tap()
+  const before = (await clips()).length
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: tourCopy('hi').next, exact: true })
+    .tap()
   // The seeded order is presented without a narration request until narration is enabled again.
   await expect(page.locator('#tour-title')).toContainText('Tea dust')
   await expect(page.locator('[data-tour="feature"]')).toContainText('Tea dust')
-  expect(requests).toHaveLength(before)
+  expect(await clips()).toHaveLength(before)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: 'output/playwright/tour-narration-hi-390.png' })
   // Walk the rest of the story and the spotlights to the feature stops, without importing or
   // publishing.
   for (let i = 0; i < 10; i++)
-    await page.locator('#tour-title').locator('..').locator('button').last().tap()
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: tourCopy('hi').next, exact: true })
+      .tap()
   await expect(page.locator('[data-tour="feature"] #import-panel')).toBeVisible()
-  await page.locator('#tour-title').locator('..').locator('button').last().tap()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: tourCopy('hi').next, exact: true })
+    .tap()
   await expect(page.locator('[data-tour="feature"] [data-testid="first-customers"]')).toBeVisible()
-  await page.locator('#tour-title').locator('..').locator('button').last().tap()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: tourCopy('hi').next, exact: true })
+    .tap()
   await expect(page.locator('[data-tour="feature"]')).toContainText('Lantern Chai Corner (Demo)')
-  expect(requests).toHaveLength(before)
-  await page.locator('#tour-title').locator('..').locator('button').first().tap()
+  expect(await clips()).toHaveLength(before)
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: tourCopy('hi').close, exact: true })
+    .tap()
+  expect(tts).toEqual([])
   for (const step of tourCopy('hi').steps)
     expect(`${step.title} ${step.body}`).not.toMatch(/[A-Za-z]/)
 })
