@@ -91,27 +91,25 @@
   color: var(--muted);
 }
 
-/* Two big doors: who is this for? */
+/* Two compact doors: who is this for? One row of two pills, also on 360 px phones. */
 .hw-jump {
-  display: grid;
-  gap: 12px;
+  display: flex;
+  gap: 8px;
   margin-top: 24px;
 }
-@media (min-width: 720px) {
-  .hw-jump {
-    grid-template-columns: 1fr 1fr;
-  }
-}
 .hw-jump a {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  min-height: 48px;
-  padding: 16px 18px;
-  border-radius: 24px;
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 999px;
   text-decoration: none;
-  font-size: 1.05rem;
-  line-height: 1.35;
+  font-size: 1rem;
+  line-height: 1.2;
 }
 .hw-jump a:first-child {
   background: var(--primary-c);
@@ -123,12 +121,16 @@
 }
 .hw-jump svg {
   flex: none;
-  margin-top: 3px;
 }
 .hw-jump strong {
-  display: block;
-  font-size: 1.3rem;
-  margin-bottom: 2px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+@media (min-width: 900px) {
+  .hw-jump a {
+    flex: 0 0 auto;
+    padding: 0 24px;
+  }
 }
 
 .hw-anchor {
@@ -283,11 +285,17 @@
 .hw-cta {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  align-self: start;
   gap: 12px;
   margin-top: 24px;
 }
 .hw-cta .MuiButton-root {
+  height: 48px;
   min-height: 48px;
+  align-self: flex-start;
+  font-size: 1rem;
 }
 
 .hw-grid {
@@ -400,6 +408,7 @@
 .hw-cta-pair {
   display: flex;
   flex: 1 1 100%;
+  align-items: flex-start;
   gap: 12px;
 }
 .hw-cta-pair .MuiButton-root {
@@ -407,6 +416,15 @@
   min-width: 0;
   padding-inline: 12px;
   white-space: nowrap;
+}
+@media (min-width: 600px) {
+  .hw-cta-pair {
+    flex: 0 1 auto;
+  }
+  .hw-cta-pair .MuiButton-root {
+    flex: 0 0 auto;
+    padding-inline: 24px;
+  }
 }
 
 /* Phones: the video already tells each step, so the step list is left out (owner, 19 Oct).
