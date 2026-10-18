@@ -292,8 +292,10 @@ test('guide and payment settings render in all 15 locales', async ({ page }, inf
         en: english.en,
         ...Object.fromEntries(
           await Promise.all(
-            Object.entries(shell.loaders as Record<string, () => Promise<Record<string, string>>>)
-              .map(async ([locale, load]) => [locale, await load()]),
+            Object.entries(shell.loaders).map(async ([locale, load]) => [
+              locale,
+              await (load as () => Promise<Record<string, string>>)(),
+            ]),
           ),
         ),
       },

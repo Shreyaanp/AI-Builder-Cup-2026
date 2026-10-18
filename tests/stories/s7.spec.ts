@@ -35,6 +35,7 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
         spoken.push({ lang: utterance.lang, text: utterance.text })
       }
     })
+    await page.route('**/api/v1/tts', (route) => route.fulfill({ status: 503 }))
     await page.getByRole('switch', { name: 'Read replies aloud' }).check()
     await page.getByRole('combobox', { name: 'Language' }).click()
     await expect(page.getByRole('option', { name: /தமிழ்/ })).toBeVisible()

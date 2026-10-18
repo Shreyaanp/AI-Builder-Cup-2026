@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "name": "Coffee small",
+      "price": 250,
+      "size": "cup",
+      "category": "Drinks"
+    },
+    {
+      "name": "Coffee large",
+      "price": 350,
+      "size": "cup",
+      "category": "Drinks"
+    }
+  ]
+}

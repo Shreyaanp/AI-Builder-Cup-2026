@@ -1,0 +1,2 @@
+doc_type,doc_number,po_ref,doc_date,deliver_on,currency,payment_terms,line,item_code,your_code,description,qty,uom,unit_price,line_total,status,backorder_qty,backorder_date,substitute_for
+DESADV,GOLD-1001,PO-100,2026-10-18,2026-10-21,INR,,10,,,Sugar,15,kg,44.00,660.00,accepted,,,

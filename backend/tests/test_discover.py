@@ -198,6 +198,18 @@ def test_public_discovery_both_stores(
         )
 
 
+def test_singapore_discovery_hides_inr_shops(store, tmp_path: Path, monkeypatch) -> None:
+    shared_shop(store)
+    shops = store.shared_shops()
+    inr_shop = {**shops[0], "id": "inr-in-singapore", "currency": "INR"}
+    monkeypatch.setattr(store, "shared_shops", lambda: [*shops, inr_shop])
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        app.state.merchant = store
+        places = client.get("/api/v1/discover?lat=1.2847&lng=103.832").json()["places"]
+        assert "inr-in-singapore" not in {place["id"] for place in places}
+
+
 def test_pin_consent_sealed_review_and_changed_location_both_stores(
     store: MerchantRepository, tmp_path: Path
 ) -> None:

@@ -22,3 +22,11 @@ export function orderTotal(order: Pick<PurchaseOrder, 'total' | 'lines'>): numbe
   }
   return sum
 }
+
+/** The credit-terms phrase, or '' when the supplier's rules leave the days out. */
+export function termsLabel(
+  terms: (days: number) => string,
+  days: number | null | undefined,
+): string {
+  return days == null ? '' : terms(days)
+}

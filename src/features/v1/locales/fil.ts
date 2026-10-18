@@ -329,6 +329,7 @@ export const fil: Copy = {
     'Hindi mabasa ang file. Magpadala ng CSV o Excel na may pangalan ng item at presyo.',
   salesSummary: 'Buod ng benta',
   salesNotSaved: 'Mula sa file mo. Walang na-save.',
+  salesCurrencyMismatch: 'Hindi isinama ang mga row na ibang currency.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} araw · ${from} – ${to}` : 'Walang petsa sa file',
   topItems: 'Pinakamabenta',

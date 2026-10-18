@@ -34,6 +34,9 @@ export interface SalesImport {
   import_id: string
   digest: string
   currency: string
+  currency_mismatches?: number
+  status?: 'needs_review' | 'nothing_to_propose'
+  source_label?: string
   sales: { date: string; item: string; quantity: number; revenue: number }[]
 }
 

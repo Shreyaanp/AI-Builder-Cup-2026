@@ -418,11 +418,14 @@ for (const locale of LOCALES) {
       const app = (await import('/src/features/v1/strings.ts' as string)) as {
         en: { addShop: string; continuePreview: string }
       }
-      const translations = (await import('/src/features/v1/locales/index.ts' as string)) as {
-        loaders: Record<string, () => Promise<{ addShop: string; continuePreview: string }>>
+      const locales = (await import('/src/features/v1/locales/index.ts' as string)) as {
+        loaders: Record<
+          string,
+          (() => Promise<{ addShop: string; continuePreview: string }>) | undefined
+        >
       }
       const { addShop, continuePreview } =
-        locale === 'en' ? app.en : await translations.loaders[locale]!()
+        locale === 'en' ? app.en : (await locales.loaders[locale]?.())!
       return {
         ...voice.voiceModeCopyFor(locale),
         begin: flow.newShopCopyFor(locale).begin,

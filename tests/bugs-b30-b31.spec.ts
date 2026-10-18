@@ -304,3 +304,14 @@ for (const [locale, t] of Object.entries({ en: rewardCardEnglish, ...rewardCardT
     await axe(page)
   })
 }
+
+test('#205: a QR scan at a shop without stamps says so', async ({ page }) => {
+  await page.route(`**/api/v1/public/shops/${id}*`, (route) =>
+    route.fulfill({ json: { ...shop, reward_text: '', stamps_enabled: false } }),
+  )
+  await page.goto(`/explore/s/${id}?source=qr`)
+  await expect(page.getByTestId('qr-no-stamps')).toContainText('doesn’t have a stamp card')
+  await page.goto(`/explore/s/${id}`)
+  await expect(page.getByRole('heading', { name: shop.name }).first()).toBeVisible()
+  await expect(page.getByTestId('qr-no-stamps')).toHaveCount(0)
+})
