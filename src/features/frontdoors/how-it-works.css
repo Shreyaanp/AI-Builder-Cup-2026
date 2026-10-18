@@ -249,6 +249,12 @@
   color: var(--muted);
 }
 
+/* Phones: the video already tells each step, so the step list is left out (owner, 19 Oct). */
+@media (max-width: 599px) {
+  .hw-steps {
+    display: none;
+  }
+}
 .hw-steps {
   list-style: none;
   counter-reset: step;
