@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { LOCALE_NAMES, LOCALES } from '../../i18n/locales'
 import { LanguagePicker } from './LanguagePicker'
-import { useFrontCopy, useStoryCopy } from './strings'
+import { useDemoCopy, useFrontCopy, useStoryCopy } from './strings'
 import './landing.css'
 
 const businessUrl = 'https://business.chalkboard.shreyaan.work'
@@ -208,6 +208,7 @@ function StoryScreen({ step }: { step: number }) {
 export default function Marketing() {
   const theme = useTheme()
   const t = useFrontCopy()
+  const demo = useDemoCopy()
   const s = useStoryCopy()
   const page = useRef<HTMLDivElement>(null)
   const [step, setStep] = useState(0)
@@ -293,6 +294,9 @@ export default function Marketing() {
                   endIcon={<ArrowUpRight size={18} />}
                 >
                   {t.business}
+                </Button>
+                <Button variant="text" size="large" href={businessUrl + '/demo'}>
+                  {demo.tryDemo}
                 </Button>
               </div>
             </div>
@@ -507,9 +511,6 @@ export default function Marketing() {
             </div>
           </section>
         </main>
-        <footer className="lp-footer">
-          <Typography variant="bodyMedium">{t.independent}</Typography>
-        </footer>
       </div>
     </ThemeProvider>
   )

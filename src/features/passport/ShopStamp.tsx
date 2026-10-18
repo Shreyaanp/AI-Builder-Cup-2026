@@ -27,20 +27,29 @@ export function ShopStamp({
 }) {
   const t = usePassportCopy()
   const [scan] = useState(() => {
-    // Only a signed QR opens the moment. A bare `?source=qr` (posters printed before the key)
-    // still counts on this phone's card, as it always did, without a check that must fail.
     const params = new URLSearchParams(location.search)
     const key = params.get('k')
-    return params.get('source') === 'qr' && key ? key : null
+    return params.get('source') === 'qr' ? (key ?? '') : null
   })
   const [key, setKey] = useState(scan ?? '')
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   useEffect(() => {
-    if (scan === null) return
+    if (scan === null || (!scan && !shop.demo)) return
+    let live = true
     track('qr_scanned')
-    // After the shop card has counted the visit: a reload must not stamp again.
-    const timer = setTimeout(() => {
+    async function openScan() {
+      let qrKey = scan
+      if (!qrKey) {
+        try {
+          qrKey = await demoKey(shop.id)
+        } catch {
+          return
+        }
+      }
+      if (!live) return
+      setKey(qrKey)
+      // After the shop card has counted the visit: a reload must not stamp again.
       const url = new URL(location.href)
       url.searchParams.delete('source')
       url.searchParams.delete('k')
@@ -48,9 +57,12 @@ export function ShopStamp({
       // The moment is a sheet with its own history entry: open it on the cleaned address, so
       // closing it never lands back on a link with the spent key.
       setOpen(true)
-    }, 0)
-    return () => clearTimeout(timer)
-  }, [scan])
+    }
+    void openScan()
+    return () => {
+      live = false
+    }
+  }, [scan, shop.demo, shop.id])
   async function tryDemo() {
     setBusy(true)
     try {

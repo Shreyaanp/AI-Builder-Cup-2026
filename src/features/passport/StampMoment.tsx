@@ -13,7 +13,7 @@ import { dropHold } from '../rescue/holds'
 import { visit } from '../rewards/storage'
 import { Sticker } from './art'
 import { fill, requirementText, usePassportCopy } from './copy'
-import { keepReceipt, receipts, setPassport } from './store'
+import { keepReceipt, receipts, refreshPassport, setPassport } from './store'
 import type { Outcome, StampResult } from './store'
 import { SetComplete } from './games/CollectionSets'
 import { useGamesCopy } from './games/copy'
@@ -118,6 +118,7 @@ export function StampMoment({
         if (!signedIn && result.outcome.verdict === 'stamped')
           visit(shop.id, true, shop.timezone ?? 'Asia/Singapore', shop.needed)
         if (result.receipt) keepReceipt(result.receipt)
+        if (result.outcome.verdict === 'stamped') refreshPassport()
         if (result.outcome.verdict === 'stamped') navigator.vibrate?.(30)
         const rescued = collected && result.outcome.verdict === 'stamped'
         if (rescued && rescue) dropHold(rescue)
