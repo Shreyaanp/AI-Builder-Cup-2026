@@ -153,7 +153,7 @@ test('settings errors recover, no-pin rides explain next step, all guide chips s
   await expect(upi).toHaveValue('shop@bank')
   await page.getByRole('button', { name: 'Save settings', exact: true }).click()
   await page.getByRole('button', { name: 'Create link', exact: true }).click()
-  await expect(page.getByRole('textbox', { name: 'Amount (INR)' })).toBeFocused()
+  await expect(page.getByRole('textbox', { name: 'Amount (₹)' })).toBeFocused()
   await expect(page.getByText(/Enter ₹0.01/)).toBeVisible()
   await page.getByText('Send a rider', { exact: true }).click()
   await expect(page.getByText('Add a shop pin in your shop details first.')).toBeVisible()

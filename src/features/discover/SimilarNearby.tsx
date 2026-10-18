@@ -70,7 +70,9 @@ export function SimilarNearby({ shop, items }: { shop: string; items: string[] }
         ))}
       </Box>
       {loading ? (
-        <Box sx={{ display: 'flex', gap: 3, mt: 3 }}>
+        // Clipped like the list it stands in for: two 200px cards are wider than a phone, and an
+        // overflowing placeholder made the whole page zoom out while it loaded.
+        <Box sx={{ display: 'flex', gap: 3, mt: 3, overflow: 'hidden' }}>
           {[0, 1].map((i) => (
             <Skeleton key={i} variant="rounded" width={200} height={168} sx={{ flexShrink: 0 }} />
           ))}
