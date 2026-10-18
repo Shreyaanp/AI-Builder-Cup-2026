@@ -235,12 +235,24 @@ def test_routes_disabled_isolation_unsubscribe_erasure(push_settings: Settings) 
         assert client.get("/api/v1/reminders").json()["subscriptions"] == []
 
 
-async def test_dispatch_dedup_retry_expiry_and_hindi(
-    push_settings: Settings, monkeypatch: Any
+@pytest.mark.parametrize(
+    ("locale", "expected_title", "expected_close_title"),
+    [
+        ("hi", "1 कामों पर ध्यान दें", "दिन पूरा करें"),
+        ("ta", "1 விஷயங்களைக் கவனியுங்கள்", "நாளை முடிக்கவும்"),
+        ("zh-Hans", "有1件事需要您处理", "结束今天"),
+    ],
+)
+async def test_dispatch_localized_titles_and_dedup(
+    locale: str,
+    expected_title: str,
+    expected_close_title: str,
+    push_settings: Settings,
+    monkeypatch: Any,
 ) -> None:
     repository = MerchantStore(push_settings.merchant_database)
     bid = seed(repository)
-    value = reminders.ReminderInput.model_validate(valid_body(bid, "hi"))
+    value = reminders.ReminderInput.model_validate(valid_body(bid, locale))
     reminders.save(repository.feature_docs, "owner", value)
     sender = AsyncMock(return_value=503)
     monkeypatch.setattr(web_push, "send", sender)
@@ -251,12 +263,25 @@ async def test_dispatch_dedup_retry_expiry_and_hindi(
         *[reminders.dispatch(repository, push_settings, now) for _ in range(3)]
     )
     assert sum(r.sent for r in results) == 1
-    assert "\u0915\u093e\u092e\u094b\u0902" in sender.call_args.args[2]["title"]
+    assert sender.call_args.args[2]["title"] == expected_title
     assert (await reminders.dispatch(repository, push_settings, now)).sent == 0
     sender.return_value = 410
     evening = datetime(2026, 10, 12, 12, 30, tzinfo=UTC)
     assert (await reminders.dispatch(repository, push_settings, evening)).expired == 1
+    assert sender.call_args.args[2]["title"] == expected_close_title
     assert not repository.feature_docs.get(reminders.KIND, "owner")["entries"]
+
+
+def test_push_title_falls_back_to_english_for_missing_translation() -> None:
+    assert reminders.push_title("missing", "morning", 2) == "2 things need you"
+    assert reminders.push_title("missing", "evening", 0) == "Close the day"
+
+
+def test_reminder_locale_accepts_app_locales_and_rejects_unknown() -> None:
+    for locale in ("hi", "ta", "zh-Hans"):
+        assert reminders.ReminderInput.model_validate(valid_body("shop", locale)).locale == locale
+    with pytest.raises(ValueError):
+        reminders.ReminderInput.model_validate(valid_body("shop", "fr"))
 
 
 def test_atomic_lease_and_no_resurrection(push_settings: Settings) -> None:
