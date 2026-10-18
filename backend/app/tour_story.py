@@ -568,12 +568,13 @@ def seed_workspace(
     today: date | None = None,
     *,
     reset: bool = False,
+    label: str = " (Tour)",
 ) -> tuple[str, bool]:
     """One private, explicitly fictional owner shop per world and account."""
     bid = tour_id(uid, city)
     existing = next((b for b in store.list_businesses(uid) if b["id"] == bid), None)
     original = next(s for s in TOUR_SHOPS if s.city == city)
-    fields = original.fields.model_copy(update={"name": original.fields.name + " (Tour)"})
+    fields = original.fields.model_copy(update={"name": original.fields.name + label})
     if city == "bengaluru":
         # An invalid provider is deliberate: the sample QR must never route real money.
         fields.upi_id = "chalkboard-demo@example.invalid"

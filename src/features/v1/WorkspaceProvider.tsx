@@ -177,10 +177,6 @@ export function WorkspaceProvider({
 
   const setAvailability = useCallback(
     async (product: Product, available: boolean) => {
-      if (readOnlyMessage) {
-        setToast(readOnlyMessage)
-        return
-      }
       if (!activeId || !product.id) return
       // Optimistic: the switch moves at once; a failure restores the saved state.
       setInventory((current) => ({
@@ -205,7 +201,7 @@ export function WorkspaceProvider({
         setToast(t.actionFailed)
       }
     },
-    [activeId, api, reload, t.actionFailed, readOnlyMessage],
+    [activeId, api, reload, t.actionFailed],
   )
   const confirm = useCallback(
     async (proposal: Proposal) => {
@@ -299,10 +295,6 @@ export function WorkspaceProvider({
         }
       },
       go: (next) => {
-        if (readOnlyMessage) {
-          setToast(readOnlyMessage)
-          return
-        }
         setShopReady(false)
         setDestination(next)
       },
@@ -330,10 +322,6 @@ export function WorkspaceProvider({
       photoPending,
       consumePhotoRequest,
       startCoachDraft: (text: string, options?: { send?: boolean }) => {
-        if (readOnlyMessage) {
-          setToast(readOnlyMessage)
-          return
-        }
         setDestination('coach')
         setCoachDraftSend(Boolean(options?.send))
         setCoachDraft(text)
@@ -346,7 +334,7 @@ export function WorkspaceProvider({
       faceOpen,
       setFaceOpen: readOnlyMessage ? () => setToast(readOnlyMessage) : setFaceOpen,
       editor,
-      openEditor: readOnlyMessage ? () => setToast(readOnlyMessage) : setEditor,
+      openEditor: setEditor,
     }),
     [
       api,
