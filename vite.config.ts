@@ -25,11 +25,8 @@ export default defineConfig({
     host: '127.0.0.1',
     port: web,
     strictPort: true,
-    fs: {
-      // npm may be linked to a shared dependency directory outside this checkout. Keep Vite's
-      // strict file serving, while allowing that resolved dependency root for font assets.
-      allow: [searchForWorkspaceRoot(process.cwd()), realpathSync('node_modules')],
-    },
+    // Linked dependencies can resolve outside this worktree; Vite must allow their real path.
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), realpathSync('node_modules')] },
     proxy: { '/api': { target: `http://127.0.0.1:${api}`, ws: true } },
   },
   preview: { host: '127.0.0.1', port: web, strictPort: true },
