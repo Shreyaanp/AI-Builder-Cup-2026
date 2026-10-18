@@ -1,4 +1,4 @@
-import { Component, lazy, Suspense } from 'react'
+import { Component, lazy, Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { resolveApp } from './router'
 import { BrandSplash } from '../features/frontdoors/Splash'
@@ -11,6 +11,37 @@ const Marketing = lazy(() => import('../features/frontdoors/Marketing'))
 const HowItWorks = lazy(() => import('../features/frontdoors/HowItWorks'))
 const DemoApp = lazy(() => import('../features/demo/DemoApp'))
 const ArchitecturePage = lazy(() => import('../architecture/ArchitecturePage'))
+
+/**
+ * The customer front door. The server's LANDING_VARIANT decides between the one-story page and
+ * the classic Marketing page, so a revert is one env-var change with no rebuild.
+ */
+function Landing() {
+  // ?landing=classic|new previews either page without touching the server setting.
+  const forced = new URLSearchParams(location.search).get('landing')
+  const [variant, setVariant] = useState<'new' | 'classic' | null>(
+    forced === 'classic' || forced === 'new' ? forced : null,
+  )
+  useEffect(() => {
+    if (variant !== null) return
+    const abort = new AbortController()
+    void fetch('/api/v1/bootstrap', { signal: abort.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((config: { landing_variant?: string } | null) =>
+        setVariant(config?.landing_variant === 'new' ? 'new' : 'classic'),
+      )
+      .catch(() => {
+        if (!abort.signal.aborted) setVariant('classic')
+      })
+    return () => abort.abort()
+  }, [variant])
+  if (variant === null) return <BrandSplash />
+  return (
+    <Suspense fallback={<BrandSplash />}>
+      {variant === 'classic' ? <Marketing /> : <HowItWorks front />}
+    </Suspense>
+  )
+}
 
 class LoadBoundary extends Component<
   { children: ReactNode; business?: boolean },
@@ -54,12 +85,7 @@ export default function Root() {
         <HowItWorks />
       </Suspense>
     )
-  if (kind === 'landing')
-    return (
-      <Suspense fallback={null}>
-        <Marketing />
-      </Suspense>
-    )
+  if (kind === 'landing') return <Landing />
   if (kind === 'customer') {
     return (
       <LoadBoundary>

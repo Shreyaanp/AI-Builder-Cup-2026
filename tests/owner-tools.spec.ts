@@ -116,7 +116,7 @@ for (const appearance of ['light', 'dark']) {
     await expect(
       page.getByRole('log').getByRole('link', { name: 'Open UPI', exact: true }),
     ).toHaveAttribute('href', /am=240.00/)
-    await page.goto('/?app=landing')
+    await page.goto('/?app=landing&landing=classic')
     await expect(
       page.getByRole('heading', { name: 'Small shops. Big neighbourhood energy.', level: 1 }),
     ).toBeVisible()
@@ -238,7 +238,7 @@ test('native sharing and clipboard failure preserve a selectable link', async ({
 test('15 locale copy contracts preserve placeholders and render Indic/CJK screens', async ({
   page,
 }) => {
-  await page.goto('/?app=landing')
+  await page.goto('/?app=landing&landing=classic')
   const values = await page.evaluate(async () => {
     const path = '/src/features/owner-tools/copy.ts'
     const mod = await import(path)
