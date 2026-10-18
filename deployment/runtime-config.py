@@ -18,6 +18,9 @@ config = {
     # Chat + photo reading: the model the live coach evaluation passed with.
     "GOOGLE_CLOUD_LOCATION": "global",
     "GOOGLE_TEXT_MODEL": "gemini-3.5-flash",
+    # Chat, search and close the day go here when the text model stays busy (429/503 after
+    # three tries); served at `global` for this project (checked 18 Oct).
+    "GOOGLE_TEXT_FALLBACK_MODEL": "gemini-3.5-flash-lite",
     # Live voice models are regional (not served at `global`). gemini-3.8-live is served only in
     # us-central1 for this project: no closer region to asia-south1 (checked 18 Oct, all regions).
     "GOOGLE_LIVE_LOCATION": "us-central1",

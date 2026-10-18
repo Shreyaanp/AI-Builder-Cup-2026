@@ -14,6 +14,7 @@ import type { CustomerTab } from '../customer/CustomerNav'
 import { BackHistory, overlayHandled } from '../v1/backStack'
 import { lastDirection, restoreScroll } from '../../app/history'
 import { CustomerTopBar } from '../customer/TopBar'
+import { FirstRun } from '../first-run/FirstRun'
 import { track } from '../../app/analytics'
 
 const Discover = lazy(() => import('../discover/Discover'))
@@ -50,7 +51,9 @@ export default function CustomerApp() {
         {/* The phone's Back closes the customer's sheets and dialogs first, as in the owner app. */}
         <BackHistory value>
           <Box data-customer>
-            <CustomerPages />
+            <FirstRun app="customer">
+              <CustomerPages />
+            </FirstRun>
           </Box>
         </BackHistory>
       </CustomerAccountProvider>

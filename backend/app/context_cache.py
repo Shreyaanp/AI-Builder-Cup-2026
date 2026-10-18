@@ -29,6 +29,7 @@ from google.genai import types
 from pydantic import PrivateAttr
 
 from .settings import Settings
+from .text_model import SteadyGemini
 
 log = structlog.get_logger()
 
@@ -73,8 +74,8 @@ def split_instruction(text: str, stable_parts: list[str]) -> tuple[str, str] | N
     return stable, dynamic.strip()
 
 
-class CachedGemini(Gemini):
-    """Gemini for the text coach with the stable prefix in a shared Vertex context cache."""
+class CachedGemini(SteadyGemini):
+    """Text coach with the shared Vertex cache and the ordinary busy-model fallback."""
 
     stable_parts: list[str]
     cache_ttl: int = 3600
@@ -219,7 +220,9 @@ class CachedGemini(Gemini):
             key, plan = cached
             started = False
             try:
-                async for response in super().generate_content_async(plan, stream):
+                # The cached prefix already contains the per-turn language rule. Bypass the
+                # steady wrapper for this request so it does not append that rule again.
+                async for response in Gemini.generate_content_async(self, plan, stream):
                     started = True
                     yield response
                 return
