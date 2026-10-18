@@ -187,7 +187,7 @@ function FlowSection({ flow, t, cta }: { flow: Flow; t: PagesCopy; cta: ReactNod
 
 function ShopsCta({ t }: { t: PagesCopy }) {
   return (
-    <>
+    <div className="hw-cta-pair">
       <Button variant="contained" size="large" href={demoUrl} endIcon={<ArrowRight size={18} />}>
         {t.tryDemo}
       </Button>
@@ -199,7 +199,7 @@ function ShopsCta({ t }: { t: PagesCopy }) {
       >
         {t.forBusiness}
       </Button>
-    </>
+    </div>
   )
 }
 

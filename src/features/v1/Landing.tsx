@@ -1,18 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert, Box, Button, Link, Stack, Typography, useTheme } from '@mui/material'
-import {
-  Camera,
-  CheckCircle2,
-  Languages,
-  Leaf,
-  MapPin,
-  MessageCircle,
-  Search,
-  Share2,
-  ShieldCheck,
-  Trash2,
-} from 'lucide-react'
+import { Languages, Leaf, MapPin, MessageCircle, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { useIdentity } from '../../auth/useIdentity'
 import { shape } from '../../design/theme'
 import { LegalDialog } from './LegalDialog'
@@ -20,7 +9,6 @@ import type { LegalDocument } from './LegalDialog'
 import { useCopy } from './strings'
 import { formatPrice, toMinor } from './format'
 import { regionAt } from '../../region/region'
-import { JourneyProgress } from '../frontdoors/OwnerJourney'
 
 /** Public landing page (signed-out). Phone-first; two-column hero with a live-preview mock on wide screens. */
 /** The sample item fits where the phone is: kopi in Singapore, chai in India. */
@@ -75,7 +63,6 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
           }}
         >
           <Stack spacing={3} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-            <JourneyProgress step={1} />
             <Typography variant="labelLarge" sx={{ color: roles.primary }}>
               {t.landingEyebrow}
             </Typography>
@@ -92,30 +79,6 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
             <SignInActions onPreview={onPreview} />
           </Stack>
           <PhonePreview />
-        </Box>
-
-        {/* How it works */}
-        <Box sx={{ bgcolor: roles.surfaceContainerLow, py: { xs: 6, md: 9 } }}>
-          <Box sx={section}>
-            <Typography component="h2" variant="headlineMedium" sx={{ mb: 4 }}>
-              {t.howTitle}
-            </Typography>
-            <Box
-              component="ol"
-              sx={{
-                m: 0,
-                p: 0,
-                listStyle: 'none',
-                display: 'grid',
-                gap: 3,
-                gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
-              }}
-            >
-              <Step n={1} icon={<Camera size={24} />} title={t.step1} body={t.step1Body} />
-              <Step n={2} icon={<CheckCircle2 size={24} />} title={t.step2} body={t.step2Body} />
-              <Step n={3} icon={<Share2 size={24} />} title={t.step3} body={t.step3Body} />
-            </Box>
-          </Box>
         </Box>
 
         {/* Customers + trust */}
@@ -230,49 +193,6 @@ function SignInActions({
         </Button>
       )}
     </Stack>
-  )
-}
-
-function Step({
-  n,
-  icon,
-  title,
-  body,
-}: {
-  n: number
-  icon: ReactNode
-  title: string
-  body: string
-}) {
-  const roles = useTheme().material
-  return (
-    <Box component="li" sx={{ bgcolor: roles.surface, borderRadius: `${shape.lg}px`, p: 3 }}>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 1.5 }}>
-        <Box
-          aria-hidden="true"
-          sx={{
-            width: 44,
-            height: 44,
-            borderRadius: `${shape.md}px`,
-            display: 'grid',
-            placeItems: 'center',
-            bgcolor: roles.secondaryContainer,
-            color: roles.onSecondaryContainer,
-          }}
-        >
-          {icon}
-        </Box>
-        <Typography variant="labelLarge" color="text.secondary">
-          {n}
-        </Typography>
-      </Stack>
-      <Typography component="h3" variant="titleLarge">
-        {title}
-      </Typography>
-      <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
-        {body}
-      </Typography>
-    </Box>
   )
 }
 
