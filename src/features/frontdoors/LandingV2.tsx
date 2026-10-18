@@ -21,6 +21,7 @@ import { FlowVideo, TrustTags } from './HowItWorks'
 import { LanguagePicker } from './LanguagePicker'
 import { pagesCopyFor, type PagesCopy } from './howItWorksCopy'
 import './landing-v2.css'
+import './landing-v2-desktop.css'
 
 const businessUrl = 'https://business.chalkboard.shreyaan.work'
 const demoUrl = `${businessUrl}/demo`
