@@ -105,6 +105,31 @@ Purchase orders. Two orders each:
 Order 1 shows the full inbound loop: partner forecast, order, a change, goods receipt. Order 2
 shows an open order waiting for its advance ship notice.
 
+**Supply chain tile: inbound and outbound taps (release `8eef6519`, reseeded 2026-10-18).** On
+each showcase shop (SGD and INR), Grow → Supply chain opens four screens: Needs me now, Coming
+in, Received, Must send. Data per shop, all synthetic and labelled Demo, pushed through the real
+inbound pipeline:
+
+| Tap | What you should see |
+|---|---|
+| Inbound: Coming in / Received | Order SO-SGD-2210 (SGD) or SO-INR-2210 (INR) from Sunrise Supply (Demo), JSON, goods receipt sent, status closed. Orders 4500091500 and 4500091501 (INR: 4500091400, 4500091401) as in the table above. |
+| Inbound: partner documents | Inbox of 4 entries: FORECAST 5500000301, ORDERS 4700001201, ORDER_CHANGE 4700001202 (Harbour Café (Demo), SAP IDoc) and ORDERS SO-…-2210 (Sunrise Supply, JSON). |
+| Outbound: Must send | Order 4700001201 (shop ships to Harbour Café): shipping notice DESADV prepared, not yet sent. Tap it for the preview, "View as SAP" for the DELVRY07 document. |
+| Order timeline | Open any order: Created → Changed → Shipped → Received → Closed. 4700001201 shows Changed (the change was accepted). SO-…-2210 shows Received and Closed. |
+| Close the day | Grow → Close the day shows "Before you close: 2 not sent" (the DESADV for 4700001201 and the goods receipt for 4500091500, INR 4500091400) with Send all. After Send all it shows "Everything is sent"; reseed to bring it back. |
+| "Partner sends next document (demo)" | Plays forecast → order → change on a demo shop. Once all three are in, it answers DEMO_DONE. |
+| Coach chat | Try "show inbound", or "received everything except 5 milk" on an order awaiting receipt; a supply card appears. |
+
+Caveats found while reseeding:
+- The Inbox and Tasks lists mark ORDERS 4700001201 and SO-…-2210 as status "problem". Open one
+  to see what the shop says before filming.
+- Orders 4500091400/01 and 4500091500/01 (seeded before this release) had documents without an
+  `at` timestamp, which made the supply board fail for those shops. On 2026-10-18 the missing
+  `at` was filled in directly in Firestore (backup of the four orders: `legacy-po-backup.json` in the
+  seeding session's temp folder). New code should tolerate such documents; check that a fix has
+  landed before relying on this for other accounts.
+- Seeding logs `community_index_missing kind=supply_po`; the board still loads.
+
 The other four currencies have the same showcase on shops the owner account does not own
 (THB `demo-bangkok-kitchen`, JPY `demo-tokyo-coffee`, IDR `demo-jakarta-warung`, MYR
 `demo-kuala-lumpur-kopi`). Attach the account with
@@ -169,3 +194,9 @@ python -m scripts.seed_tour_story --project ichiropractic --owner-uid <uid>
 belong to that owner, and the script's default (`demo-world-owner`) is refused with a 404.
 Add `--dry-run` to either to print the plan without writing. `--reset` on the tour seed restores
 only labelled tour fixtures.
+
+Reseed of 2026-10-18 (after release `8eef6519`, revision `ogoogle-ai-00082-njj`): run from
+`backend/` of a checkout at `8eef6519` or newer, because the supply seed moved into
+`app/demo_supply_seed.py`. Command: `uv run python -m scripts.seed_demo_shops --project ichiropractic --seed-owner-uid chalkboard-demo-owner`
+(set `PYTHONPATH=.` for ad-hoc scripts). Do not add `--owner-uid` unless you want one shop per city
+attached to that account. A second run reported "already up to date" for all 28 shops.
