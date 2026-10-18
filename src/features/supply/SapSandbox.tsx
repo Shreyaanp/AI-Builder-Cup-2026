@@ -94,7 +94,7 @@ export function SapSandboxOrders({ open }: { open: boolean }) {
           color={data.source === 'live' ? 'success' : 'default'}
           label={data.source === 'live' ? copy.live : copy.recorded}
         />
-        <Typography variant="bodySmall" color="text.secondary">
+        <Typography variant="bodyMedium" color="text.secondary">
           {data.source === 'recorded' && data.reason ? `${copy.recordedWhy[data.reason]} ` : ''}
           {copy.readOnly}
         </Typography>
