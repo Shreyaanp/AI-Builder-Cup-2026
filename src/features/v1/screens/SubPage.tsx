@@ -32,7 +32,7 @@ export function SubPage({
   }
   return (
     // Entry motion (a step sliding in) must not widen a phone's page.
-    <Box sx={{ maxWidth: 760, mx: 'auto', overflowX: 'clip', overflowClipMargin: '8px' }}>
+    <Box sx={{ maxWidth: 720, mx: 'auto', overflowX: 'clip', overflowClipMargin: '8px' }}>
       <Button
         startIcon={<ArrowLeft size={18} />}
         onClick={back}
