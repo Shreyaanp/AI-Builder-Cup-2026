@@ -1110,8 +1110,6 @@ class OfflineCoachModel(BaseLlm):
         )
 
 
-
-
 # Products listed in the instruction snapshot; larger menus still use get_business_context.
 SNAPSHOT_PRODUCTS = 60
 
