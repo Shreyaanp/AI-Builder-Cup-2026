@@ -19,6 +19,7 @@ from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.genai import types
 
+from .reply_language import language_rule, reply_language
 from .settings import Settings
 
 log = structlog.get_logger()
@@ -132,6 +133,15 @@ class SteadyGemini(Gemini):
     async def generate_content_async(
         self, llm_request: LlmRequest, stream: bool = False
     ) -> AsyncGenerator[LlmResponse]:
+        # The agent normally supplies this per-turn instruction. Keep the model wrapper safe
+        # when it is called with a request that does not include that instruction as well.
+        from .agent import ui_language
+
+        rule = language_rule(reply_language(ui_language.get()))
+        system_instruction = llm_request.config.system_instruction
+        if not isinstance(system_instruction, str) or rule not in system_instruction:
+            llm_request.append_instructions([rule])
+
         plan = Tries("chat", llm_request.model or self.model, self.fallback_model)
         while True:
             llm_request.model = plan.model

@@ -222,3 +222,32 @@ def test_coach_agent_uses_the_steady_model() -> None:
     )
     assert isinstance(agent.model, SteadyGemini)
     assert agent.model.fallback_model == "lite"
+
+
+@pytest.mark.asyncio
+async def test_steady_model_pins_the_selected_reply_language(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.agent import ui_language
+
+    seen: list[str | None] = []
+
+    async def fake(self: Gemini, llm_request: LlmRequest, stream: bool = False):
+        seen.append(llm_request.config.system_instruction)
+        yield reply("नमस्ते")
+
+    monkeypatch.setattr(Gemini, "generate_content_async", fake)
+    token = ui_language.set("hi")
+    try:
+        model = SteadyGemini(model="main")
+        output = [
+            response
+            async for response in model.generate_content_async(LlmRequest(model="main"), True)
+        ]
+    finally:
+        ui_language.reset(token)
+
+    assert output
+    assert seen[0] is not None
+    assert "Reply language: Always speak and write in Hindi (hi-IN)" in seen[0]
+    assert "Devanagari script" in seen[0]
