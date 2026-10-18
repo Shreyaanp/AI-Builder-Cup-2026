@@ -328,6 +328,7 @@ export const mr: Copy = {
   importFailed: 'फाइल वाचता आली नाही. उत्पादनांची नावे आणि दर असलेली CSV किंवा Excel फाइल पाठवा.',
   salesSummary: 'विक्रीचा सारांश',
   salesNotSaved: 'तुमच्या फाइलमधून. काहीही जतन झाले नाही.',
+  salesCurrencyMismatch: 'वेगळ्या चलनाच्या ओळी वगळल्या आहेत.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} दिवस · ${from} – ${to}` : 'फाइलमध्ये तारखा नाहीत',
   topItems: 'सर्वाधिक खपणारा माल',
