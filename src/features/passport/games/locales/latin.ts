@@ -56,7 +56,8 @@ export const latin: Record<'ms' | 'id' | 'vi' | 'fil', GamesStrings> = {
     freezeNone: 'Tiada perlindungan lagi. Anda dapat satu setiap 4 minggu aktif.',
     freezeFailed: 'Tidak tersimpan. Cuba lagi.',
     freezeSignIn: 'Log masuk untuk menyimpan perlindungan rentetan anda.',
-    nudge: 'Teruskan rentetan anda: setem di mana-mana kedai minggu ini dikira, atau guna perlindungan.',
+    nudge:
+      'Teruskan rentetan anda: setem di mana-mana kedai minggu ini dikira, atau guna perlindungan.',
     weekFrozen: 'Dibekukan',
     weekCovered: 'Minggu dilindungi',
     setsTitle: 'Set koleksi',
