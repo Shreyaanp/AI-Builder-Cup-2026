@@ -166,3 +166,27 @@ test('every demo video and poster ships, small enough for a phone (< 3 MB), with
       expect(poster.ok(), `${flow}-${lang}.jpg`).toBe(true)
     }
 })
+
+for (const width of [360, 390]) {
+  test(`${width}px: the new "/" front door fits and shows both primary actions`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto('/?app=landing&landing=new', { waitUntil: 'domcontentloaded' })
+    const t = pagesEnglish
+    await expect(page.getByRole('heading', { level: 1, name: t.hero })).toBeVisible({
+      timeout: 20_000,
+    })
+    await expect(page.locator('meta[name="robots"]')).toHaveCount(0)
+    await expect(page.getByRole('link', { name: t.tryShort }).first()).toBeInViewport()
+    await expect(page.getByRole('link', { name: t.findShort }).first()).toBeInViewport()
+    await noOverflow(page)
+  })
+}
+
+test('classic landing remains at "/" when selected', async ({ page }) => {
+  await page.goto('/?app=landing&landing=classic')
+  await expect(
+    page.getByRole('heading', { name: 'Small shops. Big neighbourhood energy.' }),
+  ).toBeVisible({ timeout: 20_000 })
+})

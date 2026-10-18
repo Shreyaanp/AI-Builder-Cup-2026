@@ -116,7 +116,7 @@ test('B36 iOS Safari shows instructions and supports Back, Escape and focus retu
 })
 
 test('B36 install strings exist in all ten locales', async ({ page }) => {
-  await page.goto('/?app=landing')
+  await page.goto('/?app=landing&landing=classic')
   const dictionaries = await page.evaluate(async () => {
     const source = '/src/features/v1/strings.ts'
     const registry = '/src/features/v1/locales/index.ts'
