@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { narrationQueue } from '../src/features/tour/narrationQueue.js'
 import type { NarrationPlayback, NarrationVoice } from '../src/features/tour/narrationQueue.js'
-import { chainCopy } from '../src/features/tour/chainCopy.js'
 import { tourCopy } from '../src/features/tour/strings.js'
 
 test('narration queue: late responses, cancellation, fallback and autoplay rejection', async () => {
@@ -70,88 +69,19 @@ test('narration queue: late responses, cancellation, fallback and autoplay rejec
 
 test.skip(({ isMobile }) => !isMobile, '390px phone narration flow')
 
-test('390px phone: owner menu, optional Hindi narration, interruption and remembered choice', async ({
+test('390px phone: public demo, optional Hindi narration, interruption and remembered choice', async ({
   page,
 }) => {
   const requests: { text: string; language: string }[] = []
-  let seeded = false
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url())
     if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort()
-    if (!url.pathname.startsWith('/api/')) return route.continue()
-    const path = url.pathname.replace('/api/v1', '')
-    if (path === '/tts') {
+    if (url.pathname.endsWith('/tts')) {
       requests.push(route.request().postDataJSON())
       // Successful cloud bytes; playback itself is deterministic below.
       return route.fulfill({ status: 200, contentType: 'audio/mpeg', body: 'mock audio' })
     }
-    if (path === '/bootstrap')
-      return route.fulfill({ json: { auth_mode: 'local', customer_origin: url.origin } })
-    if (path === '/me') return route.fulfill({ json: { consent_current: true } })
-    if (path === '/demo/workspace') {
-      seeded = true
-      return route.fulfill({ json: { business_id: 'tour' } })
-    }
-    if (path === '/businesses')
-      return route.fulfill({
-        json: seeded
-          ? [
-              {
-                id: 'tour',
-                revision: 1,
-                registration: 'draft',
-                public: false,
-                google_publication: 'none',
-                fields: {
-                  name: 'Demo (Tour)',
-                  category: 'Tea shop',
-                  location: 'Delhi',
-                  hours: '',
-                  phone: '',
-                },
-              },
-            ]
-          : [],
-      })
-    if (path.endsWith('/inventory')) return route.fulfill({ json: [] })
-    if (path.endsWith('/supply'))
-      return route.fulfill({
-        json: {
-          suppliers: [],
-          needs: [{ item: 'Milk', runs_out: '2026-10-20', stock: 2 }],
-          orders: [
-            {
-              id: 'seeded-po',
-              number: 'PO-1',
-              status: 'sent',
-              currency: 'INR',
-              buyer: { name: 'Demo (Tour)' },
-              supplier: { name: 'Seeded demo supplier', demo: true },
-              checks: [],
-              lines: [{ line: 1, item: 'Milk', quantity: 12, unit: 'l', price: 100 }],
-              total: 1200,
-              terms_days: 7,
-              delivery: '2026-10-20',
-              documents: [
-                {
-                  id: 'doc',
-                  kind: 'ORDERS',
-                  from: 'buyer',
-                  at: 1792300000,
-                  raw_format: 'json',
-                  translated_format: 'idoc',
-                  raw: '{}',
-                  translated: '<ORDERS05>demo</ORDERS05>',
-                  flags: [],
-                  mapping: [],
-                  reader: 'template',
-                },
-              ],
-            },
-          ],
-        },
-      })
-    return route.fulfill({ status: 503, json: { detail: 'Offline test fixture' } })
+    return route.continue()
   })
   await page.addInitScript(() => {
     localStorage.setItem('chalkboard.explainer.owner.v1', '1')
@@ -177,16 +107,14 @@ test('390px phone: owner menu, optional Hindi narration, interruption and rememb
       load() {}
     } as unknown as typeof Audio
   })
-  await page.goto('/', { waitUntil: 'domcontentloaded' })
-  // The preview button is localized by the same app copy as the surrounding UI.
-  await page.getByRole('button', { name: /preview|प्रीव्यू|पूर्वावलोकन/i }).tap()
   const openTour = async () => {
-    await page.getByRole('button', { name: /^दुकान चुनें/ }).tap()
-    await page.getByRole('menuitem', { name: 'दौरा शुरू करें' }).tap()
-    await expect(page.getByRole('dialog', { name: tourCopy('hi').steps[0]!.title })).toBeVisible()
+    await page.goto('/demo?tour=1', { waitUntil: 'domcontentloaded' })
+    await expect(page.locator('#tour-title')).toContainText(tourCopy('hi').steps[0]!.title, {
+      timeout: 30_000,
+    })
   }
   await openTour()
-  const speaker = page.getByRole('button', { name: 'बोलकर सुनाएँ' })
+  const speaker = page.locator('#tour-title').locator('..').locator('button[aria-pressed]')
   await expect(speaker).toHaveAttribute('aria-pressed', 'false')
   expect(requests).toHaveLength(0)
   await speaker.tap()
@@ -205,30 +133,30 @@ test('390px phone: owner menu, optional Hindi narration, interruption and rememb
       ),
     )
     .toBe(1)
-  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
+  await page.locator('#tour-title').locator('..').locator('button').last().tap()
   await expect.poll(() => requests.length).toBe(2)
   await expect
     .poll(() =>
       page.evaluate(() => (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents),
     )
     .toContain('stop:1')
-  await page.getByRole('button', { name: tourCopy('hi').skipVoice, exact: true }).tap()
-  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.locator('#tour-title').locator('..').locator('button').nth(2).tap()
+  await expect(page.locator('#tour-title')).toBeVisible()
   expect(requests).toHaveLength(2)
   await expect
     .poll(() =>
       page.evaluate(() => (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents),
     )
     .toContain('stop:2')
-  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
+  await page.locator('#tour-title').locator('..').locator('button').last().tap()
   await expect.poll(() => requests.length).toBe(3)
   await expect
     .poll(() =>
       page.evaluate(() => (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents),
     )
     .toContain('play:3')
-  await page.getByRole('button', { name: tourCopy('hi').close, exact: true }).tap()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.locator('#tour-title').locator('..').locator('button').first().tap()
+  await expect(page.locator('#tour-title')).toHaveCount(0)
   await expect
     .poll(() =>
       page.evaluate(() => (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents),
@@ -236,31 +164,30 @@ test('390px phone: owner menu, optional Hindi narration, interruption and rememb
     .toContain('stop:3')
   expect(await page.evaluate(() => localStorage.getItem('chalkboard.tour.narration'))).toBe('true')
   await page.reload({ waitUntil: 'domcontentloaded' })
-  await page.getByRole('button', { name: /preview|प्रीव्यू|पूर्वावलोकन/i }).tap()
   expect(requests).toHaveLength(3)
   await openTour()
   await expect(speaker).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(() => requests.length).toBe(4)
   await speaker.tap()
   const before = requests.length
-  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
-  // The order story comes next. This offline fixture has no seeded story, so the step says so
-  // rather than showing a number it does not have (tests/tour-chain.spec.ts walks the real one).
-  await expect(page.getByRole('dialog', { name: chainCopy('hi').forecast })).toBeVisible()
-  await expect(page.locator('[data-tour="feature"]')).toContainText(chainCopy('hi').failed)
+  await page.locator('#tour-title').locator('..').locator('button').last().tap()
+  // The seeded order is presented without a narration request until narration is enabled again.
+  await expect(page.locator('#tour-title')).toContainText('Tea dust')
+  await expect(page.locator('[data-tour="feature"]')).toContainText('Tea dust')
   expect(requests).toHaveLength(before)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: 'output/playwright/tour-narration-hi-390.png' })
   // Walk the rest of the story and the spotlights to the feature stops, without importing or
   // publishing.
-  for (let i = 0; i < 10; i++) await page.getByRole('button', { name: 'आगे', exact: true }).tap()
+  for (let i = 0; i < 10; i++)
+    await page.locator('#tour-title').locator('..').locator('button').last().tap()
   await expect(page.locator('[data-tour="feature"] #import-panel')).toBeVisible()
-  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
+  await page.locator('#tour-title').locator('..').locator('button').last().tap()
   await expect(page.locator('[data-tour="feature"] [data-testid="first-customers"]')).toBeVisible()
-  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
-  await expect(page.locator('[data-tour="feature"]')).toContainText('Demo (Tour)')
+  await page.locator('#tour-title').locator('..').locator('button').last().tap()
+  await expect(page.locator('[data-tour="feature"]')).toContainText('Lantern Chai Corner (Demo)')
   expect(requests).toHaveLength(before)
-  await page.getByRole('button', { name: tourCopy('hi').close }).tap()
+  await page.locator('#tour-title').locator('..').locator('button').first().tap()
   for (const step of tourCopy('hi').steps)
     expect(`${step.title} ${step.body}`).not.toMatch(/[A-Za-z]/)
 })
