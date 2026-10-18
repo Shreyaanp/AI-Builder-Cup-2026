@@ -362,3 +362,28 @@ def test_private_tour_stays_private_during_seeding_and_resumes_a_partial_seed(
     assert len({row["date"] for row in store.sales_history("owner", bid)}) == 56
     assert len(supply_chain.orders(store, "owner", bid)) == 1
     assert store.public_shop(bid) is None
+
+
+@pytest.mark.parametrize(
+    ("city", "item", "supplier"),
+    [
+        ("bengaluru", "Tea dust", "Sri Lakshmi Provisions (Demo)"),
+        ("singapore", "Kopi powder", "Ah Huat Provision (Demo)"),
+    ],
+)
+def test_tour_reorder_drafts_from_the_wholesaler(world, city, item, supplier) -> None:
+    """#264: Reorder on the tour shop drafts the stocked supply, not the chai brewed from it."""
+    store, community = world
+    seed_story(store, community, owner_uid="owner", today=DAY)
+    bid = tour_id("owner", city)
+    forecaster = ForecastService(Settings(_env_file=None, forecast_backend="weekday_average"))
+
+    result = asyncio.run(
+        supply_chain.draft_reorder(store, "owner", bid, "", None, forecaster, None, "demo")
+    )
+
+    assert result["status"] == "drafted"
+    assert result["order"]["supplier"]["name"] == supplier
+    assert [line["item"] for line in result["order"]["lines"]] == [item]
+    # The kilos on the shelf follow the kilos sold, never the cups of chai or kopi.
+    assert result["order"]["reason"]["daily"] < 5

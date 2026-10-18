@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import math
 import time
+from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any, Literal
 from uuid import uuid4
@@ -375,6 +376,10 @@ def need_from_forecast(
         and row.get("quantity") is not None
         and (matches(row["item"], item) or matches(item, row["item"]))
     ]
+    # "Tea dust" also matches the chai brewed from it; its own sales rows, when there are any,
+    # are the demand for the kilos on the shelf, not the cups sold.
+    exact = [row for row in rows if row["item"].casefold() == item.casefold()]
+    rows = exact or rows
     rows.sort(key=lambda row: row["date"])
     stock = (product or {}).get("stock")
     known = stock is not None
@@ -421,7 +426,17 @@ async def draft_reorder(
         mode="json"
     )
     inventory = context["inventory"]
-    target = pick_item(item, inventory, forecast, today)
+    target = await anyio.to_thread.run_sync(
+        lambda: pick_item(
+            item,
+            inventory,
+            forecast,
+            today,
+            lambda name: any(
+                can_supply(store, bid, p, currency) for p in inventory if p["name"] == name
+            ),
+        )
+    )
     if not target:
         return {"status": "needs_item"}
     product = next(
@@ -541,9 +556,14 @@ async def draft_reorder(
 
 
 def pick_item(
-    item: str, inventory: list[dict[str, Any]], forecast: dict[str, Any], today: date
+    item: str,
+    inventory: list[dict[str, Any]],
+    forecast: dict[str, Any],
+    today: date,
+    supplied: Callable[[str], bool] = lambda _: False,
 ) -> str:
-    """The named item, else the stocked item that runs out first."""
+    """The named item, else the stocked item that runs out first. Items a linked supplier
+    stocks come first: a tea stall reorders tea dust, not the chai it brews from it (#264)."""
     from .sourcing import matches
 
     if item.strip():
@@ -554,14 +574,17 @@ def pick_item(
         return named or next(
             (p["name"] for p in inventory if matches(p["name"], item)), item.strip()[:80]
         )
-    soonest: tuple[str, str] | None = None
+    soonest: tuple[bool, str, str] | None = None
     for product in inventory:
         if product.get("stock") is None:
             continue
         need = need_from_forecast(product, forecast, product["name"], today)
-        if need["runs_out"] and (soonest is None or need["runs_out"] < soonest[0]):
-            soonest = (need["runs_out"], product["name"])
-    return soonest[1] if soonest else ""
+        if not need["runs_out"]:
+            continue
+        rank = (not supplied(product["name"]), need["runs_out"], product["name"])
+        if soonest is None or rank[:2] < soonest[:2]:
+            soonest = rank
+    return soonest[2] if soonest else ""
 
 
 def supplier_candidates(
@@ -579,6 +602,17 @@ def supplier_candidates(
         if products:
             found.append({"row": row, "shop": shop, "product": products[0]})
     return found
+
+
+def can_supply(store: MerchantRepository, bid: str, product: dict[str, Any], currency: str) -> bool:
+    """A linked supplier stocks this item in a unit it converts to (cups never become kg)."""
+    from .sourcing import convert
+
+    unit = product.get("unit") or "kg"
+    return any(
+        convert(1, unit, c["product"]["unit"]) is not None
+        for c in supplier_candidates(store, bid, product["name"], currency)
+    )
 
 
 def quote(
