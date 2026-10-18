@@ -1,0 +1,76 @@
+{
+  "started_at": "2026-10-17T23:56:19.550Z",
+  "origin": "https://chalkboard.shreyaan.work",
+  "vus": 50,
+  "explorer_vus": 1,
+  "seconds": 60.7,
+  "think_ms": 100,
+  "explore_every_ms": 2500,
+  "total": {
+    "requests": 11378,
+    "errors": 10902,
+    "status": {
+      "200": 476,
+      "429": 10902
+    },
+    "rps": 187.6,
+    "p50_ms": 153.2,
+    "p95_ms": 187.4,
+    "p99_ms": 403.4,
+    "max_ms": 4290.3
+  },
+  "endpoints": {
+    "health": {
+      "requests": 3786,
+      "errors": 3637,
+      "status": {
+        "200": 149,
+        "429": 3637
+      },
+      "rps": 62.4,
+      "p50_ms": 152.8,
+      "p95_ms": 176,
+      "p99_ms": 239.7,
+      "max_ms": 574.2
+    },
+    "shop_page": {
+      "requests": 3785,
+      "errors": 3625,
+      "status": {
+        "200": 160,
+        "429": 3625
+      },
+      "rps": 62.4,
+      "p50_ms": 153.4,
+      "p95_ms": 195.9,
+      "p99_ms": 282.1,
+      "max_ms": 760.4
+    },
+    "bundle": {
+      "requests": 3784,
+      "errors": 3619,
+      "status": {
+        "200": 165,
+        "429": 3619
+      },
+      "rps": 62.4,
+      "p50_ms": 153.7,
+      "p95_ms": 216.7,
+      "p99_ms": 551.5,
+      "max_ms": 1119.2
+    },
+    "explore_list": {
+      "requests": 23,
+      "errors": 21,
+      "status": {
+        "200": 2,
+        "429": 21
+      },
+      "rps": 0.4,
+      "p50_ms": 157.1,
+      "p95_ms": 188.9,
+      "p99_ms": 3704.9,
+      "max_ms": 4290.3
+    }
+  }
+}
