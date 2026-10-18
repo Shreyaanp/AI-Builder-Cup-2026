@@ -335,6 +335,10 @@ for (const language of LANGUAGES) {
       await say(page, copy, 'bas')
       const ended = page.getByTestId('conversation-ended')
       await expect(ended).toContainText(copy.endedTitle!)
+      const review = page.getByRole('dialog', { name: copy.soFar! })
+      await expect(review).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(review).toHaveCount(0)
       const asked = (await askedTopics(page)).length
       await page.waitForTimeout(2_000)
       expect((await askedTopics(page)).length).toBe(asked)
