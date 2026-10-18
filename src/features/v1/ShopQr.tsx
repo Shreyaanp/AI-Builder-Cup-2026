@@ -1,10 +1,21 @@
 import { useEffect, useState } from 'react'
-import { Box, Button, CircularProgress, Stack, Typography } from '@mui/material'
+import { createPortal } from 'react-dom'
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Stack,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from '@mui/material'
 import { Download, Share2 } from 'lucide-react'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { shape } from '../../design/theme'
 import { FONT_STACK } from '../../i18n/fonts'
+import './shopQr.css'
 
 const SIZE = 1024
 // Print-friendly: black on white in every theme, generous quiet zone, medium error correction.
@@ -39,12 +50,23 @@ async function poster(qr: string, name: string, caption: string): Promise<Blob> 
   )
 }
 
-/** QR code for the shared customer page, with share (Web Share) or download of a print PNG. */
-export function ShopQr({ url, name }: { url: string; name: string }) {
+/** Shared stamp QR, A4/A5 browser printing, and the existing PNG share/download actions. */
+export function ShopQr({
+  url,
+  name,
+  printOnly = false,
+}: {
+  url: string
+  name: string
+  printOnly?: boolean
+}) {
   const t = useCopy()
   const ws = useWorkspace()
   const shopId = ws.active?.id
   const api = ws.api
+  const [paper, setPaper] = useState<'A4' | 'A5'>('A4')
+  const [attempt, retry] = useState(0)
+  const [failed, setFailed] = useState(false)
   // The passport key printed into the QR: a scan plus a location fix at the shop earns a stamp.
   const [passportKey, setPassportKey] = useState<{ shop: string; key: string } | null>(null)
   useEffect(() => {
@@ -52,11 +74,11 @@ export function ShopQr({ url, name }: { url: string; name: string }) {
     let live = true
     api<{ key: string }>(`/businesses/${encodeURIComponent(shopId)}/qr-key`)
       .then((value) => live && setPassportKey({ shop: shopId, key: value.key }))
-      .catch(() => live && setPassportKey({ shop: shopId, key: '' }))
+      .catch(() => live && setFailed(true))
     return () => {
       live = false
     }
-  }, [shopId, api])
+  }, [shopId, api, attempt])
   const key = passportKey && passportKey.shop === shopId ? passportKey.key : null
   const qrUrl = new URL(url, location.origin)
   qrUrl.searchParams.set('source', 'qr')
@@ -70,23 +92,23 @@ export function ShopQr({ url, name }: { url: string; name: string }) {
     void import('qrcode')
       .then((module) => module.toDataURL(stampedUrl, QR_OPTIONS))
       .then((data) => {
-        if (live) setQr({ url, data })
+        if (live) setQr({ url: stampedUrl, data })
       })
-      .catch(() => undefined)
+      .catch(() => live && setFailed(true))
     return () => {
       live = false
     }
-  }, [url, stampedUrl, key, shopId])
-  const data = qr?.url === url ? qr.data : null
+  }, [stampedUrl, key, shopId, attempt])
+  const data = qr?.url === stampedUrl ? qr.data : null
   const file = `${name.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'shop'}-qr.png`
 
   async function shareOrDownload(share: boolean) {
     if (!data) return
     try {
-      const blob = await poster(data, name, t.qrCaption)
+      const blob = await poster(data, name, t.scanStamps)
       const png = new File([blob], file, { type: 'image/png' })
       if (share && navigator.canShare?.({ files: [png] })) {
-        await navigator.share({ files: [png], title: name, text: t.qrCaption })
+        await navigator.share({ files: [png], title: name, text: t.scanStamps })
         return
       }
       const link = document.createElement('a')
@@ -100,9 +122,68 @@ export function ShopQr({ url, name }: { url: string; name: string }) {
     }
   }
 
-  const canShareFiles = typeof navigator.canShare === 'function'
+  const canShareFiles = !printOnly && typeof navigator.canShare === 'function'
+  const artwork = (
+    <>
+      <Typography
+        component="h2"
+        variant="headlineSmall"
+        className="shop-qr-name"
+        sx={{ overflowWrap: 'anywhere' }}
+      >
+        {name}
+      </Typography>
+      <Typography component="p" variant="titleLarge" className="shop-qr-caption">
+        {t.scanStamps}
+      </Typography>
+      {data ? (
+        <Box
+          component="img"
+          className="shop-qr-code"
+          src={data}
+          alt={t.qrAlt(name)}
+          width={SIZE}
+          height={SIZE}
+          sx={{
+            display: 'block',
+            width: '100%',
+            height: 'auto',
+            aspectRatio: '1',
+            imageRendering: 'pixelated',
+          }}
+        />
+      ) : (
+        <Box sx={{ aspectRatio: '1', display: 'grid', placeItems: 'center' }}>
+          <CircularProgress aria-label={t.qrAlt(name)} sx={{ color: '#000000' }} />
+        </Box>
+      )}
+      <Stack direction="row" sx={{ gap: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <img src="/icons/customer.svg" width={32} height={32} alt="" />
+        <Typography component="span" variant="titleMedium" translate="no">
+          {t.appName}
+        </Typography>
+      </Stack>
+    </>
+  )
   return (
     <Stack spacing={3} sx={{ alignItems: 'center' }}>
+      {failed && (
+        <Alert
+          severity="error"
+          action={
+            <Button
+              onClick={() => {
+                setFailed(false)
+                retry((n) => n + 1)
+              }}
+            >
+              {t.retry}
+            </Button>
+          }
+        >
+          {t.actionFailed}
+        </Alert>
+      )}
       <Box
         sx={{
           bgcolor: '#ffffff',
@@ -114,43 +195,58 @@ export function ShopQr({ url, name }: { url: string; name: string }) {
           textAlign: 'center',
         }}
       >
-        {data ? (
-          <Box
-            component="img"
-            src={data}
-            alt={t.qrAlt(name)}
-            sx={{ display: 'block', width: '100%', aspectRatio: '1', imageRendering: 'pixelated' }}
-          />
-        ) : (
-          <Box sx={{ aspectRatio: '1', display: 'grid', placeItems: 'center' }}>
-            <CircularProgress aria-label={t.qrAlt(name)} sx={{ color: '#000000' }} />
-          </Box>
-        )}
-        <Typography variant="titleMedium" sx={{ mt: 2, overflowWrap: 'anywhere' }}>
-          {name}
-        </Typography>
-        <Typography variant="bodyMedium">{t.qrCaption}</Typography>
+        {artwork}
       </Box>
-      <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
-        {canShareFiles && (
-          <Button
-            variant="contained"
-            startIcon={<Share2 size={18} />}
-            disabled={!data}
-            onClick={() => void shareOrDownload(true)}
-          >
-            {t.qrShare}
-          </Button>
+      <ToggleButtonGroup
+        exclusive
+        value={paper}
+        aria-label={t.paperSize}
+        sx={{ '& .MuiToggleButton-root': { color: 'text.primary', minWidth: 48, minHeight: 48 } }}
+        onChange={(_, value: 'A4' | 'A5' | null) => {
+          if (value) setPaper(value)
+        }}
+      >
+        <ToggleButton value="A4">A4</ToggleButton>
+        <ToggleButton value="A5">A5</ToggleButton>
+      </ToggleButtonGroup>
+      <Button
+        variant="contained"
+        startIcon={<Download size={18} />}
+        disabled={!data || failed}
+        onClick={() => window.print()}
+      >
+        {t.downloadPdf}
+      </Button>
+      {data &&
+        createPortal(
+          <div className={`shop-qr-print shop-qr-${paper.toLowerCase()}`} aria-hidden="true">
+            <style>{`@media print { @page { size: ${paper} portrait; margin: 0; } }`}</style>
+            {artwork}
+          </div>,
+          document.body,
         )}
-        <Button
-          variant={canShareFiles ? 'outlined' : 'contained'}
-          startIcon={<Download size={18} />}
-          disabled={!data}
-          onClick={() => void shareOrDownload(false)}
-        >
-          {t.qrDownload}
-        </Button>
-      </Stack>
+      {!printOnly && (
+        <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {canShareFiles && (
+            <Button
+              variant="outlined"
+              startIcon={<Share2 size={18} />}
+              disabled={!data}
+              onClick={() => void shareOrDownload(true)}
+            >
+              {t.qrShare}
+            </Button>
+          )}
+          <Button
+            variant="outlined"
+            startIcon={<Download size={18} />}
+            disabled={!data}
+            onClick={() => void shareOrDownload(false)}
+          >
+            {t.qrDownload}
+          </Button>
+        </Stack>
+      )}
     </Stack>
   )
 }

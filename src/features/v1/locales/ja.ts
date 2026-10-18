@@ -1,6 +1,12 @@
 import type { Copy } from '../strings'
 
 export const ja: Copy = {
+  firstCustomers: '最初のお客様を迎えよう',
+  printPoster: 'ポスターを印刷',
+  downloadPdf: 'PDFをダウンロード',
+  shareWhatsApp: 'WhatsAppで共有',
+  scanStamps: 'スキャンしてスタンプ獲得',
+  paperSize: '用紙サイズ',
   trustFree: '無料で開始',
   trustLanguage: 'あなたの言語',
   trustData: 'データはあなたのもの',

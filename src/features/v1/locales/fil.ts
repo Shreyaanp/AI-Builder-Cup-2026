@@ -1,6 +1,12 @@
 import type { Copy } from '../strings'
 
 export const fil: Copy = {
+  firstCustomers: 'Kunin ang unang customer',
+  printPoster: 'Mag-print ng poster',
+  downloadPdf: 'I-download ang PDF',
+  shareWhatsApp: 'Ibahagi sa WhatsApp',
+  scanStamps: 'Mag-scan para sa stamp',
+  paperSize: 'Laki ng papel',
   trustFree: 'Libreng magsimula',
   trustLanguage: 'Wika mo',
   trustData: 'Sa iyo ang datos',

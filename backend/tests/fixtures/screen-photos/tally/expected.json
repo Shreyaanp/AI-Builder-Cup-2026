@@ -1,0 +1,49 @@
+{
+  "source_app": "Tally",
+  "currency": "INR",
+  "page_kind": "screen",
+  "tables": [
+    {
+      "header_row": ["name", "sku", "category", "price", "qty", "date", "total"],
+      "rows": [
+        {
+          "name": {
+            "value": "Filter Coffee",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "sku": {
+            "value": "FC01",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "category": {
+            "value": "Drinks",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "price": {
+            "value": "30",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "qty": {
+            "value": "2",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "date": {
+            "value": "2026-10-17",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "total": {
+            "value": "60",
+            "confidence": 0.98,
+            "unreadable": false
+          }
+        }
+      ]
+    }
+  ]
+}

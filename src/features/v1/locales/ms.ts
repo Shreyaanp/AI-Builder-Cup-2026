@@ -1,6 +1,12 @@
 import type { Copy } from '../strings'
 
 export const ms: Copy = {
+  firstCustomers: 'Dapatkan pelanggan pertama',
+  printPoster: 'Cetak poster',
+  downloadPdf: 'Muat turun PDF',
+  shareWhatsApp: 'Kongsi di WhatsApp',
+  scanStamps: 'Imbas untuk cop',
+  paperSize: 'Saiz kertas',
   trustFree: 'Mula percuma',
   trustLanguage: 'Bahasa anda',
   trustData: 'Data milik anda',

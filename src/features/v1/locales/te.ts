@@ -1,6 +1,12 @@
 import type { Copy } from '../strings'
 
 export const te: Copy = {
+  firstCustomers: 'మొదటి కస్టమర్లను పొందండి',
+  printPoster: 'పోస్టర్ ముద్రించండి',
+  downloadPdf: 'PDF డౌన్‌లోడ్ చేయండి',
+  shareWhatsApp: 'WhatsAppలో పంచండి',
+  scanStamps: 'స్టాంపుల కోసం స్కాన్ చేయండి',
+  paperSize: 'కాగితం పరిమాణం',
   trustFree: 'ఉచితంగా ప్రారంభించండి',
   trustLanguage: 'మీ భాష',
   trustData: 'మీ డేటా మీదే',

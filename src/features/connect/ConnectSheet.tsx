@@ -26,6 +26,8 @@ import type { SalesImport } from '../v1/useImport'
 import { Sheet } from '../v1/Sheet'
 import { useWorkspace } from '../v1/workspaceContext'
 import { extraConnectCopy, useConnectCopy } from './strings'
+import { photoCopy } from './photoCopy'
+import { ScreenPhotoInput } from './ScreenPhotoInput'
 import { useConnectUiCopy } from './uiStrings'
 import type {
   ConnectorDiff,
@@ -86,6 +88,7 @@ export function ConnectSheet({
   const ui = useConnectUiCopy()
   const locale = useLocale()
   const extra = extraConnectCopy[locale]
+  const photoText = photoCopy[locale]
   const ws = useWorkspace()
   const roles = useTheme().material
   const shop = ws.active
@@ -98,6 +101,7 @@ export function ConnectSheet({
   const [tab, setTab] = useState<'upload' | 'paste'>('upload')
   const [pastedText, setPastedText] = useState('')
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [photos, setPhotos] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [error, setError] = useState('')
@@ -110,6 +114,7 @@ export function ConnectSheet({
   const [currentMapping, setCurrentMapping] = useState<ConnectorMapping | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const operation = useRef(0)
 
   // Load saved mappings for this shop
   useEffect(() => {
@@ -126,6 +131,7 @@ export function ConnectSheet({
   }, [open, shop, ws])
 
   function handleClose() {
+    operation.current += 1
     setAnalysis(null)
     setCurrentMapping(null)
     setError('')
@@ -133,6 +139,7 @@ export function ConnectSheet({
     setAnalyzing(false)
     setPastedText('')
     setUploadedFile(null)
+    setPhotos([])
     setEditingIndex(null)
     onClose()
   }
@@ -142,6 +149,41 @@ export function ConnectSheet({
   const savedForSelected = savedMappings.find(
     (m) => m.source_label.toLowerCase() === selectedSystem.toLowerCase(),
   )
+
+  async function readPhotos() {
+    if (!shop || analyzing || !photos.length) return
+    const current = ++operation.current
+    setError('')
+    setAnalyzing(true)
+    try {
+      const encoded = await Promise.all(
+        photos.map(
+          (file) =>
+            new Promise<string>((resolve, reject) => {
+              const reader = new FileReader()
+              reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '')
+              reader.onerror = () => reject(new Error('Photo read failed'))
+              reader.readAsDataURL(file)
+            }),
+        ),
+      )
+      const result = await ws.api<ConnectorResult>(
+        `/businesses/${encodeURIComponent(shop.id)}/connect/analyze?source_label=${encodeURIComponent(selectedSystem)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/vnd.chalkboard.screen-photos+json' },
+          body: JSON.stringify({ photos: encoded }),
+        },
+      )
+      if (operation.current !== current) return
+      setAnalysis(result)
+      setCurrentMapping(result.mapping)
+    } catch {
+      if (operation.current === current) setError(photoText.failed)
+    } finally {
+      if (operation.current === current) setAnalyzing(false)
+    }
+  }
 
   async function handleFileSelected(file: File) {
     if (!shop) return
@@ -292,7 +334,17 @@ export function ConnectSheet({
       // 2. Perform sync with the current mapping and payload
       let syncResult: SyncResult
 
-      if (tab === 'paste' && pastedText.trim()) {
+      if (analysis?.photo_content) {
+        syncResult = await ws.api(`/businesses/${encodeURIComponent(shop.id)}/connect/sync`, {
+          method: 'POST',
+          body: JSON.stringify({
+            content: analysis.photo_content,
+            content_type: 'application/json',
+            source_label: currentMapping.source_label,
+            mapping: currentMapping,
+          }),
+        })
+      } else if (tab === 'paste' && pastedText.trim()) {
         const isJson = pastedText.trim().startsWith('{') || pastedText.trim().startsWith('[')
         const isXml = pastedText.trim().startsWith('<')
         const mime = isJson ? 'application/json' : isXml ? 'application/xml' : 'text/csv'
@@ -491,8 +543,11 @@ export function ConnectSheet({
                 </Typography>
 
                 <Tabs
+                  aria-label={t.uploadOrPaste}
+                  onClick={() => setError('')}
                   variant="fullWidth"
                   value={tab}
+                  textColor="primary"
                   onChange={(_, v) => setTab(v as 'upload' | 'paste')}
                   sx={{ mb: 2, minHeight: 48 }}
                 >
@@ -512,6 +567,7 @@ export function ConnectSheet({
                   <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
                     <input
                       ref={fileInputRef}
+                      data-testid="connector-file"
                       type="file"
                       accept={ACCEPT_FILES}
                       hidden
@@ -539,6 +595,13 @@ export function ConnectSheet({
                     >
                       {analyzing ? t.analyzing : t.uploadFile}
                     </Button>
+                    <ScreenPhotoInput
+                      photos={photos}
+                      busy={analyzing}
+                      onPhotos={setPhotos}
+                      onRead={() => void readPhotos()}
+                      onError={setError}
+                    />
                     {error && uploadedFile && (
                       <Button
                         variant="text"
@@ -606,6 +669,21 @@ export function ConnectSheet({
                 </Alert>
               )}
 
+              {analysis?.photo_content && (
+                <>
+                  {analysis.warnings.includes('OFFLINE_PHOTO_FIXTURE') && (
+                    <Alert severity="info">{photoText.offline}</Alert>
+                  )}
+                  <Typography variant="bodyMedium">
+                    {analysis.detected_currency
+                      ? `${photoText.currency}: ${analysis.detected_currency}`
+                      : photoText.unknown}
+                  </Typography>
+                  {!!analysis.cell_flags?.length && (
+                    <Alert severity="warning">{photoText.warning}</Alert>
+                  )}
+                </>
+              )}
               <Box>
                 <Typography variant="titleMedium">{t.mappingTitle}</Typography>
                 <Typography variant="bodySmall" color="text.secondary" sx={{ mb: 2 }}>

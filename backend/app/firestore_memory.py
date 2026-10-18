@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import time
+from contextvars import ContextVar
 from typing import Any
 from uuid import uuid4
 
@@ -44,6 +45,26 @@ def scope_state(state: dict[str, Any]) -> tuple[dict, dict, dict]:
 def transient(error: BaseException) -> bool:
     """Firestore unreachable or contended (also after its own retries), not a conversation rule."""
     return isinstance(error, GoogleAPIError) or isinstance(error.__cause__, GoogleAPIError)
+
+
+# A socket's event writes in flight (the owner's last answer, the new-shop draft): each voice
+# socket sets its own set, so its teardown can wait for them (`settle_writes`).
+pending_writes: ContextVar[set[asyncio.Future] | None] = ContextVar("pending_writes", default=None)
+# How long a cancelled caller waits for its own write before the cancellation goes on.
+CANCELLED_WRITE_SECONDS = 3
+
+
+async def settle_writes(seconds: float) -> int:
+    """Wait for this socket's in-flight event writes to land before its tasks are cancelled.
+
+    A write cut off by the socket's teardown used to be left running on its own; once the
+    request ended, Cloud Run throttled the instance and the owner's last answer could be lost.
+    Returns how many writes were still running after `seconds` (logged by the caller)."""
+    writes = [write for write in (pending_writes.get() or ()) if not write.done()]
+    if not writes:
+        return 0
+    _, running = await asyncio.wait(writes, timeout=seconds)
+    return len(running)
 
 
 def report_late_write(write: asyncio.Future) -> None:
@@ -227,11 +248,15 @@ class FirestoreSessionService(BaseSessionService):
         task = asyncio.current_task()
         for attempt in (1, 2):
             write = asyncio.ensure_future(append(self.client.transaction()))
+            pending = pending_writes.get()
+            if pending is not None:
+                pending.add(write)
+                write.add_done_callback(pending.discard)
             try:
                 return await asyncio.shield(write)
             except asyncio.CancelledError:
                 if not write.done():
-                    await asyncio.wait([write], timeout=3)
+                    await asyncio.wait([write], timeout=CANCELLED_WRITE_SECONDS)
                     write.add_done_callback(report_late_write)
                     raise
                 if task and task.cancelling():
