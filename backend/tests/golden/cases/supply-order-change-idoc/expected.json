@@ -1,0 +1,20 @@
+{
+  "document": {
+    "kind": "ORDERS",
+    "number": "GOLD-1001",
+    "issued": "2026-10-18",
+    "delivery": "2026-10-21",
+    "currency": "INR",
+    "lines": [
+      {
+        "item": "Sugar",
+        "quantity": 25,
+        "unit": "kg",
+        "price": 4400,
+        "total": 110000
+      }
+    ]
+  },
+  "format": "idoc",
+  "ambiguous": []
+}

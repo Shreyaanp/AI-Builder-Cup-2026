@@ -1,6 +1,16 @@
 import type { Copy } from '../strings'
 
 export const te: Copy = {
+  remindMe: 'గుర్తు చేయండి',
+  reminderTiming: 'ఈ పరికరంలో, మీ దుకాణం తెరిచే, మూసే సమయాల్లో.',
+  reminderOff: 'ప్రస్తుతం రిమైండర్లు ఆఫ్‌లో ఉన్నాయి.',
+  reminderUnsupported: 'ఇన్‌స్టాల్ చేసిన యాప్ లేదా నోటిఫికేషన్లు ఉన్న బ్రౌజర్ వాడండి.',
+  reminderShop: 'గుర్తు చేయడానికి దుకాణం జోడించండి.',
+  reminderDenied:
+    'నోటిఫికేషన్లు బ్లాక్ అయ్యాయి. బ్రౌజర్ సెట్టింగ్‌లలో అనుమతించి మళ్లీ ప్రయత్నించండి.',
+  reminderFailed: 'మార్చలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
+  reminderSaving: 'మారుస్తున్నాం…',
+  reminderLoading: 'తనిఖీ చేస్తున్నాం…',
   firstCustomers: 'మొదటి కస్టమర్లను పొందండి',
   printPoster: 'పోస్టర్ ముద్రించండి',
   downloadPdf: 'PDF డౌన్‌లోడ్ చేయండి',
@@ -322,6 +332,7 @@ export const te: Copy = {
   importFailed: 'ఫైల్ చదవలేకపోయాం. వస్తువుల పేర్లు, ధరలతో CSV లేదా Excel ఫైల్ పంపండి.',
   salesSummary: 'అమ్మకాల సారాంశం',
   salesNotSaved: 'మీ ఫైల్ నుంచి. ఏదీ సేవ్ కాలేదు.',
+  salesCurrencyMismatch: 'వేరే కరెన్సీ వరుసలు వదిలివేయబడ్డాయి.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} రోజులు · ${from} – ${to}` : 'ఫైల్‌లో తేదీలు లేవు',
   topItems: 'ఎక్కువ అమ్ముడయ్యేవి',
@@ -428,6 +439,7 @@ export const te: Copy = {
   eraseFailed: 'తొలగింపు పూర్తి కాలేదు. కనెక్షన్ చూసి మళ్లీ ప్రయత్నించండి.',
   eraseRetry: 'మళ్లీ ప్రయత్నించండి',
   eraseSteps: {
+    reminders: 'గుర్తు చేయండి',
     face: 'ముఖ డేటా',
     photos: 'ఫోటోలు',
     records: 'దుకాణాలు, ఉత్పత్తులు',

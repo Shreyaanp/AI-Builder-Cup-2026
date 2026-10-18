@@ -79,12 +79,15 @@ from .new_shop_tools import go_live
 from .owner_routes import router as owner_router
 from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
+from .places_cache import shared_places
 from .planning_routes import router as planning_router
 from .playbook import PlaybookWriter
 from .playbook_routes import router as playbook_router
+from .pos_live_routes import router as pos_live_router
 from .public_demo import router as public_demo_router
 from .recap import RecapWriter
 from .recs_routes import router as recs_router
+from .reminders import router as reminders_router
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
 from .reply_language import reply_language
 from .retail_recs import (
@@ -95,6 +98,7 @@ from .retail_recs import (
     configure_recommender,
 )
 from .sales_routes import router as sales_router
+from .sap_sandbox import SapSandbox
 from .search_engine import build_engine
 from .settings import Settings
 from .shop_language import ShopTranslator
@@ -204,6 +208,7 @@ def create_app(
         app.state.fraud_reviewer = FraudReviewer(settings)
         app.state.forecaster = ForecastService(settings)
         app.state.document_ai = DocumentAIReader(settings)
+        app.state.sap_sandbox = SapSandbox(settings)
         app.state.analytics = AnalyticsReader(settings)
         app.state.weather = WeatherService(settings)
         app.state.brief_writer = BriefWriter(settings)
@@ -212,6 +217,8 @@ def create_app(
         app.state.playbook_writer = PlaybookWriter(settings)
         app.state.speech = Speech(settings)
         app.state.maps = maps_service or MapsService(settings)
+        if app.state.maps.shared is None:
+            app.state.maps.shared = shared_places(client, settings)
         app.state.grounding = AreaGrounding(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
         retail = (
@@ -283,6 +290,7 @@ def create_app(
     app.include_router(merchant_router)
     app.include_router(icon_router)
     app.include_router(connector_router)
+    app.include_router(pos_live_router)
     app.include_router(google_sim_router)
     app.include_router(planning_router)
     app.include_router(sales_router)
@@ -305,6 +313,7 @@ def create_app(
     app.include_router(sourcing_router)
     app.include_router(supply_router)
     app.include_router(owner_router)
+    app.include_router(reminders_router)
     app.include_router(trust_router)
     app.add_middleware(
         CORSMiddleware,
@@ -601,10 +610,14 @@ def create_app(
         try:
             async with asyncio.timeout(5):
                 principal = await services.identity.require_websocket(websocket)
-            await enforce_limits(websocket, [("voice", principal.uid)])
             requested = websocket.query_params.get("session_id")
             if requested:
                 requested = str(UUID(requested))
+            # A reconnect of an open conversation (a phone on flaky data reconnects often) has its
+            # own, larger budget, so a bad network never ends in "too many voice sessions".
+            await enforce_limits(
+                websocket, [("voice:resume" if requested else "voice", principal.uid)]
+            )
             bid = websocket.query_params.get("business_id")
             new_shop = websocket.query_params.get("new_shop") == "true"
             if new_shop and bid:

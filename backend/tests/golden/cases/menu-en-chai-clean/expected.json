@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "name": "Masala Chai",
+      "price": 1500,
+      "size": "cup",
+      "category": "Drinks"
+    },
+    {
+      "name": "Ginger Chai",
+      "price": 2000,
+      "size": "cup",
+      "category": "Drinks"
+    }
+  ]
+}

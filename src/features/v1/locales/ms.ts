@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const ms: Copy = {
+  remindMe: 'Ingatkan saya',
+  reminderTiming: 'Pada peranti ini, ketika kedai dibuka dan ditutup.',
+  reminderOff: 'Peringatan dimatikan buat masa ini.',
+  reminderUnsupported: 'Cuba aplikasi dipasang atau pelayar yang menyokong pemberitahuan.',
+  reminderShop: 'Tambah kedai untuk peringatan.',
+  reminderDenied: 'Pemberitahuan disekat. Benarkan dalam tetapan pelayar dan cuba lagi.',
+  reminderFailed: 'Gagal mengemas kini. Cuba lagi.',
+  reminderSaving: 'Mengemas kini…',
+  reminderLoading: 'Menyemak peringatan…',
   firstCustomers: 'Dapatkan pelanggan pertama',
   printPoster: 'Cetak poster',
   downloadPdf: 'Muat turun PDF',
@@ -313,6 +322,7 @@ export const ms: Copy = {
     'Fail itu tidak dapat dibaca. Hantar eksport CSV atau Excel dengan nama item dan harga.',
   salesSummary: 'Ringkasan jualan',
   salesNotSaved: 'Daripada fail anda. Tiada apa-apa disimpan.',
+  salesCurrencyMismatch: 'Baris dalam mata wang lain telah diketepikan.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} hari · ${from} – ${to}` : 'Tiada tarikh dalam fail',
   topItems: 'Paling laris',
@@ -416,6 +426,7 @@ export const ms: Copy = {
   eraseFailed: 'Pemadaman tidak selesai. Semak sambungan dan cuba lagi.',
   eraseRetry: 'Cuba lagi',
   eraseSteps: {
+    reminders: 'Ingatkan saya',
     face: 'data wajah',
     photos: 'foto',
     records: 'kedai dan produk',

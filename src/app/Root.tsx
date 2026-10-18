@@ -2,6 +2,7 @@ import { Component, lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { resolveApp } from './router'
 import { BrandSplash } from '../features/frontdoors/Splash'
+import { FirstRun } from '../features/first-run/FirstRun'
 
 const App = lazy(() => import('./App'))
 const V1App = lazy(() => import('../features/v1/V1App'))
@@ -9,6 +10,7 @@ const CustomerApp = lazy(() => import('../features/frontdoors/CustomerApp'))
 const Marketing = lazy(() => import('../features/frontdoors/Marketing'))
 const HowItWorks = lazy(() => import('../features/frontdoors/HowItWorks'))
 const DemoApp = lazy(() => import('../features/demo/DemoApp'))
+const ArchitecturePage = lazy(() => import('../architecture/ArchitecturePage'))
 
 class LoadBoundary extends Component<
   { children: ReactNode; business?: boolean },
@@ -35,6 +37,15 @@ export default function Root() {
       <Suspense fallback={<BrandSplash business />}>
         <DemoApp />
       </Suspense>
+    )
+  // The judges' architecture page, on every host.
+  if (/^\/architecture\/?$/.test(location.pathname))
+    return (
+      <LoadBoundary>
+        <Suspense fallback={<BrandSplash />}>
+          <ArchitecturePage />
+        </Suspense>
+      </LoadBoundary>
     )
   const kind = resolveApp(new URL(location.href))
   if (kind === 'pages')
@@ -69,9 +80,11 @@ export default function Root() {
     )
   return (
     <LoadBoundary business>
-      <Suspense fallback={<BrandSplash business />}>
-        <V1App />
-      </Suspense>
+      <FirstRun app="owner">
+        <Suspense fallback={<BrandSplash business />}>
+          <V1App />
+        </Suspense>
+      </FirstRun>
     </LoadBoundary>
   )
 }

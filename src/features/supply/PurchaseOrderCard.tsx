@@ -128,7 +128,9 @@ function Panel({ children, tone = 'plain' }: { children: ReactNode; tone?: 'plai
 export function PurchaseOrderCard({
   order,
   onChange,
+  preview,
 }: {
+  preview?: 'timeline' | 'sap'
   order: PurchaseOrder
   onChange: (order: PurchaseOrder) => void
 }) {
@@ -156,6 +158,17 @@ export function PurchaseOrderCard({
   }
   const spinner = (key: string, icon: ReactNode) =>
     busy === key ? <CircularProgress size={16} color="inherit" /> : icon
+  if (preview === 'timeline')
+    return <Timeline order={order} busy={null} act={act} actions={actions} />
+  if (preview === 'sap')
+    return (
+      <Stack spacing={3}>
+        <Typography variant="titleMedium">{showcase.plain}</Typography>
+        <Typography>{headline(order, s, f)}</Typography>
+        {sap && <Code label={s.system.idoc} text={sap.translated} />}
+        <Typography>{showcase.simulated}</Typography>
+      </Stack>
+    )
   return (
     <Box
       component="article"
@@ -174,7 +187,11 @@ export function PurchaseOrderCard({
         <Box aria-hidden="true" sx={{ display: 'flex', color: roles.primary }}>
           <FileText size={20} />
         </Box>
-        <Typography variant="labelLarge" color="text.secondary" sx={{ flex: 1, minWidth: 0 }}>
+        <Typography
+          variant="labelLarge"
+          color="text.secondary"
+          sx={{ flex: 1, minWidth: 'max-content' }}
+        >
           {s.po(poNumber(order.number))}
         </Typography>
         {order.simulated && (
