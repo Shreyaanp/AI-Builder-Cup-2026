@@ -1,8 +1,10 @@
 import asyncio
+import contextlib
 import json
 import re
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import Any
 
 from google.adk.agents import LlmAgent
@@ -54,6 +56,7 @@ from .settings import Settings
 from .sourcing_offline import sourcing_call, sourcing_reply
 from .supply_offline import supply_call, supply_reply
 from .supply_tools import SUPPLY_TOOLS
+from .text_model import SteadyGemini
 from .vendor_profile import food_segment, profile_for, vocabulary
 from .voice_tools import (
     explain_app,
@@ -468,6 +471,7 @@ COURTESY_CLAUSE = re.compile(rf"^(?:(?:{COURTESY})\s*)+$", re.I)
 # Clause breaks; "?" is never here: a question is never the end ("that's all?", "हो गया?").
 CLAUSE_BREAK = re.compile(r"[,.!;:…，。！；、\n\-–—]+")
 QUESTION = re.compile(r"[?？]")
+MAX_CLAUSE = 40
 
 # https://ai.google.dev/gemini-api/docs/thought-signatures: function calls not made by the model.
 APP_CALL_SIGNATURE = b"skip_thought_signature_validator"
@@ -482,6 +486,10 @@ def asks_to_end(text: str) -> bool:
     if not said or QUESTION.search(said) or len(said) > 120:
         return False
     clauses = [c.strip() for c in CLAUSE_BREAK.split(said) if c.strip()]
+    # A real finishing clause is short; longer ones would make the alternations above backtrack
+    # exponentially ("bye bye bye ... x").
+    if any(len(c) > MAX_CLAUSE for c in clauses):
+        return False
     return all(FINISH_CLAUSE.match(c) for c in clauses) and not all(
         COURTESY_CLAUSE.match(c) for c in clauses
     )
@@ -1336,12 +1344,43 @@ def live_history(contents: list[types.Content]) -> list[types.Content]:
     return cleaned
 
 
-class LiveGemini(Gemini):
-    """Gemini for voice sessions: connects with history the Live model accepts."""
+@dataclass
+class LiveClose:
+    """How the voice socket's last Live connection closed: the provider's websocket close code
+    and reason, or `by="app"` when this side closed it first (logged with voice_closed)."""
 
-    def connect(self, llm_request: LlmRequest) -> Any:
+    code: int | None = None
+    reason: str = ""
+    by: str = ""
+
+    def note(self, connection: Any) -> None:
+        ws = getattr(getattr(connection, "_gemini_session", None), "_ws", None)
+        code = getattr(ws, "close_code", None)
+        if code is None:
+            self.code, self.reason, self.by = None, "", "app"
+            return
+        self.code, self.by = code, "provider"
+        self.reason = (getattr(ws, "close_reason", None) or "")[:200]
+
+
+# The voice socket's own record (set by serve_voice; the Live connections run in its tasks).
+live_close: ContextVar[LiveClose | None] = ContextVar("live_close", default=None)
+
+
+class LiveGemini(Gemini):
+    """Gemini for voice sessions: connects with history the Live model accepts, and notes how
+    each Live connection closed (the provider's code and reason)."""
+
+    @contextlib.asynccontextmanager
+    async def connect(self, llm_request: LlmRequest) -> AsyncIterator[Any]:
         llm_request.contents = live_history(llm_request.contents or [])
-        return super().connect(llm_request)
+        async with super().connect(llm_request) as connection:
+            try:
+                yield connection
+            finally:
+                # Before this side closes it: a code here is the provider's own close.
+                if (record := live_close.get()) is not None:
+                    record.note(connection)
 
 
 def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) -> LlmAgent:
@@ -1362,16 +1401,22 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
             if settings.gemini_backend == "vertex"
             else {"api_key": settings.google_api_key.get_secret_value(), "vertexai": False}
         )
-        model = (LiveGemini if live else Gemini)(
-            model=settings.google_live_model if live else settings.google_text_model,
-            client_kwargs=client_kwargs,
-            # A busy model (429/503) is refused before anything streams, so the text coach tries
-            # again briefly instead of breaking the owner's turn; Live reconnects on its own.
-            retry_options=types.HttpRetryOptions(attempts=1)
+        # A busy model (429/503) is refused before anything streams, so the text coach tries
+        # again briefly, then the fallback model, instead of breaking the owner's turn
+        # (text_model.py, logged); Live reconnects on its own.
+        model = (
+            LiveGemini(
+                model=settings.google_live_model,
+                client_kwargs=client_kwargs,
+                retry_options=types.HttpRetryOptions(attempts=1),
+            )
             if live
-            else types.HttpRetryOptions(
-                attempts=3, initial_delay=0.5, max_delay=2.0, http_status_codes=[429, 503]
-            ),
+            else SteadyGemini(
+                model=settings.google_text_model,
+                fallback_model=settings.google_text_fallback_model,
+                client_kwargs=client_kwargs,
+                retry_options=types.HttpRetryOptions(attempts=1),
+            )
         )
     # V1 merchants get only the record-backed tools; the classic starter keeps its draft tools.
     tools: list[Callable[..., Any]] = (

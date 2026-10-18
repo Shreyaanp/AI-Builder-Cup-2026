@@ -2,6 +2,15 @@ import { lazyCopy } from '../../i18n/lazyCopy'
 import { loaders } from './locales'
 
 export const en = {
+  remindMe: 'Remind me',
+  reminderTiming: 'On this device, at your shop’s opening and closing times.',
+  reminderOff: 'Reminders are off for now.',
+  reminderUnsupported: 'Try an installed app or a browser that supports notifications.',
+  reminderShop: 'Add a shop to set reminders.',
+  reminderDenied: 'Notifications are blocked. Allow them in browser settings, then try again.',
+  reminderFailed: 'Couldn’t update reminders. Try again.',
+  reminderSaving: 'Updating reminders…',
+  reminderLoading: 'Checking reminders…',
   firstCustomers: 'Get your first customers',
   printPoster: 'Print a poster',
   downloadPdf: 'Download PDF',
@@ -434,6 +443,7 @@ export const en = {
   eraseRetry: 'Try again',
   // Erase steps the server reports as still pending (backend/app/erasure.py STEPS).
   eraseSteps: {
+    reminders: 'Remind me',
     face: 'face data',
     photos: 'photos',
     records: 'shops and products',

@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const ko: Copy = {
+  remindMe: '알려 주세요',
+  reminderTiming: '이 기기에서 가게가 열고 닫을 때 알려 드려요.',
+  reminderOff: '현재 알림이 꺼져 있어요.',
+  reminderUnsupported: '설치한 앱이나 알림을 지원하는 브라우저를 사용해 주세요.',
+  reminderShop: '알림을 설정하려면 가게를 추가하세요.',
+  reminderDenied: '알림이 차단됐어요. 브라우저 설정에서 허용한 뒤 다시 시도하세요.',
+  reminderFailed: '변경하지 못했어요. 다시 시도하세요.',
+  reminderSaving: '변경 중…',
+  reminderLoading: '확인 중…',
   firstCustomers: '첫 고객을 맞이하세요',
   printPoster: '포스터 인쇄',
   downloadPdf: 'PDF 다운로드',
@@ -406,6 +415,7 @@ export const ko: Copy = {
   eraseFailed: '삭제를 마치지 못했어요. 연결을 확인하고 다시 시도하세요.',
   eraseRetry: '다시 시도',
   eraseSteps: {
+    reminders: '알려 주세요',
     face: '얼굴 데이터',
     photos: '사진',
     records: '가게와 상품',

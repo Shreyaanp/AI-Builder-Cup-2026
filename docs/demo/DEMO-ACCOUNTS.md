@@ -47,18 +47,22 @@ Bottom tabs: Coach, Shop, Grow, You.
 
 Both worlds have the same shape.
 
-|                               | Bengaluru: Lantern Chai Corner                                                                                            | Singapore: Sunny Side Kopitiam                                                                                                    |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Currency, zone                | INR, Asia/Kolkata                                                                                                         | SGD, Asia/Singapore                                                                                                               |
-| Sales                         | 56 days (2026-08-23 to 2026-10-17), 336 rows, about ₹3.17 lakh                                                            | 56 days, 336 rows, about S$27,366                                                                                                 |
-| Menu                          | Masala chai ₹20/cup, Ginger chai ₹25/cup, Bun maska ₹35, Samosa ₹20, Tea dust ₹320/kg, Ragi biscuit ₹15 (sold out)        | Kopi S$1.70, Kopi O S$1.50, Kaya toast set S$5.20, Soft-boiled eggs S$1.80, Kopi powder S$18/kg, Curry puff S$1.80 (sold out)     |
-| Customer chats                | 3: Priya unread, Wei and Asha replied                                                                                     | same 3                                                                                                                            |
-| Reviews                       | 2 (4.5 average), marked Demo                                                                                              | same                                                                                                                              |
-| Rescue deal (today)           | Bun maska ₹24.50, was ₹35, 6 left                                                                                         | Kaya toast set S$3.64, was S$5.20, 6 left                                                                                         |
-| Prep plan / playbook          | stored offline playbook                                                                                                   | same                                                                                                                              |
-| Purchase order (after reseed) | PO 4500000001: forecast-based Tea dust, Milk 30 litres, Sugar 10 kg, ten 50-cup packs, from Sri Lakshmi Provisions (Demo) | PO 4500000001: forecast-based Kopi powder, Evaporated milk 24 packs, Sugar 10 kg, ten 50-cup packs, from Ah Huat Provision (Demo) |
-| PO documents (after reseed)   | WhatsApp draft, text confirmation, dispatch note and bill; invoiced, awaiting receipt; cash on delivery                   | same, in SGD                                                                                                                      |
-| Gallery                       | 1 photo                                                                                                                   | 1 photo                                                                                                                           |
+|                      | Bengaluru: Lantern Chai Corner                                                                                       | Singapore: Sunny Side Kopitiam                                                                                                 |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Currency, zone       | INR, Asia/Kolkata                                                                                                    | SGD, Asia/Singapore                                                                                                            |
+| Sales                | 56 days (2026-08-23 to 2026-10-17), 336 rows, about ₹3.17 lakh                                                       | 56 days, 336 rows, about S$27,366                                                                                              |
+| Menu                 | Masala chai ₹20/cup, Ginger chai ₹25/cup, Bun maska ₹35, Samosa ₹20, Tea dust ₹320/kg, Ragi biscuit ₹15 (sold out) | Kopi S$1.70, Kopi O S$1.50, Kaya toast set S$5.20, Soft-boiled eggs S$1.80, Kopi powder S$18/kg, Curry puff S$1.80 (sold out) |
+| Customer chats       | 3: Priya unread, Wei and Asha replied                                                                                | same 3                                                                                                                         |
+| Reviews              | 2 (4.5 average), marked Demo                                                                                         | same                                                                                                                           |
+| Rescue deal (today)  | Bun maska ₹24.50, was ₹35, 6 left                                                                                    | Kaya toast set S$3.64, was S$5.20, 6 left                                                                                      |
+| Prep plan / playbook | stored offline playbook                                                                                              | same                                                                                                                           |
+| Purchase order       | PO 4500000001: forecast-based Tea dust, Milk 30 litres, Sugar 10 kg, ten 50-cup packs, from Sri Lakshmi Provisions (Demo) | PO 4500000001: forecast-based Kopi powder, Evaporated milk 24 packs, Sugar 10 kg, ten 50-cup packs, from Ah Huat Provision (Demo) |
+| PO documents         | WhatsApp draft, text confirmation, dispatch note and bill; invoiced, awaiting receipt; cash on delivery             | same, in SGD                                                                                                                   |
+| Gallery              | 1 photo                                                                                                              | 1 photo                                                                                                                        |
+
+The older showcase PO snapshot was 10 kg from Lantern Tea Wholesale / Dawn Bean Supply
+(₹2,240 / S$126; ORDERS, ORDRSP, DESADV, INVOIC). It is retained here as legacy seed history;
+the current post-reseed PO details above apply to the tour shops.
 
 Eight Bengaluru and five Singapore public tour shops exist as well (ids `demo-story-*`, owner
 `chalkboard-tour-story-owner`), plus two suppliers, so Explore and the stamp passport have
@@ -106,6 +110,15 @@ Existing shop IDs and tour PO 4500000001 remain unchanged.
 After release and reseed with `--owner-uid`, select the shop under **You > Your shops**,
 then **Grow > Supply chain** (or **Purchase orders**):
 
+Legacy public showcase PO records from the earlier seed:
+
+|           | Order 1                                                                                  | Order 2                                                     |
+| --------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Partner   | Sunrise Supply (Demo), JSON                                                              | Harbour Trade (Demo), IDoc                                  |
+| SGD shop  | 4500091500, 15 Kopi at S$1.70 = S$20.40, status received                                 | 4500091501, 16 Kopi O at S$1.50 = S$24.00, status confirmed |
+| INR shop  | 4500091400, 15 Filter coffee at ₹60 = ₹720, status received                              | 4500091401, 16 Masala chai at ₹35 = ₹560, status confirmed  |
+| Documents | FORECAST (received), ORDERS, ORDER_CHANGE (quantity and date, processed), RECEIPT (sent) | ORDERS, DESADV (pending)                                    |
+
 - Tour shops: PO 4500000001 shows a WhatsApp draft and text replies, awaiting Mark as received.
   No SAP. The AI draft and all supplier replies are offline simulations.
 - Small public showcases: Received shows the first text order; Coming in shows the second.
@@ -125,6 +138,34 @@ must review legacy fixture cleanup before filming production; reseeding alone do
 Other currency showcases retain their IDs: `demo-bangkok-kitchen`, `demo-tokyo-coffee`,
 `demo-jakarta-warung`, `demo-kuala-lumpur-kopi`. Their text channel is updated, but only INR and
 SGD plans have tailored prices; local price plans are still needed before filming other regions.
+
+Legacy showcase tap paths:
+
+| Tap                                  | What you should see                                                                                                                                                                                                              |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Inbound: Coming in / Received        | Order SO-SGD-2210 (SGD) or SO-INR-2210 (INR) from Sunrise Supply (Demo), JSON, goods receipt sent, status closed. Orders 4500091500 and 4500091501 (INR: 4500091400, 4500091401) as in the table above.                          |
+| Inbound: partner documents           | Inbox of 4 entries: FORECAST 5500000301, ORDERS 4700001201, ORDER_CHANGE 4700001202 (Harbour Café (Demo), SAP IDoc) and ORDERS SO-…-2210 (Sunrise Supply, JSON).                                                                 |
+| Outbound: Must send                  | Order 4700001201 (shop ships to Harbour Café): shipping notice DESADV prepared, not yet sent. Tap it for the preview, "View as SAP" for the DELVRY07 document.                                                                   |
+| Order timeline                       | Open any order: Created → Changed → Shipped → Received → Closed. 4700001201 shows Changed (the change was accepted). SO-…-2210 shows Received and Closed.                                                                        |
+| Close the day                        | Grow → Close the day shows "Before you close: 2 not sent" (the DESADV for 4700001201 and the goods receipt for 4500091500, INR 4500091400) with Send all. After Send all it shows "Everything is sent"; reseed to bring it back. |
+| "Partner sends next document (demo)" | Plays forecast → order → change on a demo shop. Once all three are in, it answers DEMO_DONE.                                                                                                                                     |
+| Coach chat                           | Try "show inbound", or "received everything except 5 milk" on an order awaiting receipt; a supply card appears.                                                                                                                  |
+
+Caveats found while reseeding:
+
+- The Inbox and Tasks lists mark ORDERS 4700001201 and SO-…-2210 as status "problem". Open one
+  to see what the shop says before filming.
+- Orders 4500091400/01 and 4500091500/01 (seeded before this release) had documents without an
+  `at` timestamp, which made the supply board fail for those shops. On 2026-10-18 the missing
+  `at` was filled in directly in Firestore (backup of the four orders: `legacy-po-backup.json` in the
+  seeding session's temp folder). New code should tolerate such documents; check that a fix has
+  landed before relying on this for other accounts.
+- Seeding logs `community_index_missing kind=supply_po`; the board still loads.
+
+The other four currencies have the same legacy showcase on shops the owner account does not own
+(THB `demo-bangkok-kitchen`, JPY `demo-tokyo-coffee`, IDR `demo-jakarta-warung`, MYR
+`demo-kuala-lumpur-kopi`). Attach the account with
+`seed_demo_shops --city <city> --owner-uid <uid>` if needed.
 
 **POS import.** Not seeded. There is no demo POS file in the data set. Use the 56 days of sales
 that already exist, or upload a till report photo under Grow → Close the day.

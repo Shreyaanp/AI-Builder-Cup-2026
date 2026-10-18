@@ -17,6 +17,9 @@ export async function startDemoTour(
     )
     await ws.reload()
     ws.select(made.business_id)
+    ws.cancelNewShop()
+    ws.dismissNewShopReady()
+    ws.go('coach')
     tour.start()
     return true
   } catch {
