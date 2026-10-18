@@ -109,8 +109,13 @@ function useJourney(stops: number) {
 function Actions({ t, className = '' }: { t: PagesCopy; className?: string }) {
   return (
     <div className={`l2-actions ${className}`}>
-      <Button variant="contained" size="large" href={demoUrl} endIcon={<ArrowRight size={18} />}>
-        {t.tryShort}
+      <Button
+        variant="contained"
+        size="large"
+        href={businessUrl}
+        endIcon={<ArrowUpRight size={18} />}
+      >
+        {t.businessShort}
       </Button>
       <Button variant="outlined" size="large" href="/explore/">
         {t.findShort}
