@@ -1,0 +1,12 @@
+{
+  "locations": [
+    {
+      "id": "LSBX0001",
+      "name": "Sandbox Cafe",
+      "timezone": "Asia/Singapore",
+      "currency": "SGD",
+      "status": "ACTIVE",
+      "country": "SG"
+    }
+  ]
+}

@@ -8,6 +8,7 @@ const V1App = lazy(() => import('../features/v1/V1App'))
 const CustomerApp = lazy(() => import('../features/frontdoors/CustomerApp'))
 const Marketing = lazy(() => import('../features/frontdoors/Marketing'))
 const DemoApp = lazy(() => import('../features/demo/DemoApp'))
+const ArchitecturePage = lazy(() => import('../architecture/ArchitecturePage'))
 
 class LoadBoundary extends Component<
   { children: ReactNode; business?: boolean },
@@ -34,6 +35,15 @@ export default function Root() {
       <Suspense fallback={<BrandSplash business />}>
         <DemoApp />
       </Suspense>
+    )
+  // The judges' architecture page, on every host.
+  if (/^\/architecture\/?$/.test(location.pathname))
+    return (
+      <LoadBoundary>
+        <Suspense fallback={<BrandSplash />}>
+          <ArchitecturePage />
+        </Suspense>
+      </LoadBoundary>
     )
   const kind = resolveApp(new URL(location.href))
   if (kind === 'landing')

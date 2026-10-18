@@ -44,6 +44,8 @@ for (const width of [360, 390]) {
     await page.keyboard.press('Escape')
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    // The Shop screen loads on demand: wait for its sections before measuring.
+    await page.locator('main section, main [role="region"]').last().waitFor()
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
     const nav = await page.getByRole('navigation', { name: 'Main' }).boundingBox()
     const last = await page.locator('main section, main [role="region"]').last().boundingBox()
