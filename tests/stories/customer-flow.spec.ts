@@ -301,7 +301,7 @@ for (const mode of ['light', 'dark'] as const) {
           animations: 'disabled',
         })
       }
-      await customer.goto('/?app=landing')
+      await customer.goto('/?app=landing&landing=classic')
       await expect(customer.getByRole('heading', { level: 1 })).toBeVisible()
       await expect
         .poll(() => customer.evaluate(() => getComputedStyle(document.body).backgroundColor))

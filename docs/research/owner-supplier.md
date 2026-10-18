@@ -461,18 +461,18 @@ Honesty in the video: a persistent "Demo activity" caption whenever generated da
 
 Assumes the theme and generator base land on 15–16 Oct (track A/B). Effort: S ≤ 3 h, M ≈ half day, L ≈ 1 day (one worker).
 
-| #   | Work item                                                                                            | Effort | Depends on                 | Day   | Owner suggestion    |
-| --- | ---------------------------------------------------------------------------------------------------- | ------ | -------------------------- | ----- | ------------------- |
-| 1   | `demand_signals` capture in `/discover/ask` + normalisation (`demand_terms.py`) + privacy rules      | M      | —                          | 16    | Codex               |
-| 2   | Rescue backend: `/rescue/suggest` (formula), deal CRUD, `rescue_deal` update kind, `/public/rescue`  | M      | forecast, day_close        | 16    | Codex               |
-| 3   | Rescue owner UI: coach chip, Rescue card, live countdown/holds; coach tool `send_rescue_deal`        | M      | 2                          | 16    | account 2           |
+| #   | Work item                                                                                            | Effort | Depends on                 | Day   | Owner suggestion           |
+| --- | ---------------------------------------------------------------------------------------------------- | ------ | -------------------------- | ----- | -------------------------- |
+| 1   | `demand_signals` capture in `/discover/ask` + normalisation (`demand_terms.py`) + privacy rules      | M      | —                          | 16    | Codex                      |
+| 2   | Rescue backend: `/rescue/suggest` (formula), deal CRUD, `rescue_deal` update kind, `/public/rescue`  | M      | forecast, day_close        | 16    | Codex                      |
+| 3   | Rescue owner UI: coach chip, Rescue card, live countdown/holds; coach tool `send_rescue_deal`        | M      | 2                          | 16    | account 2                  |
 | 4   | Morning brief endpoint (slides + best-action rules + Open-Meteo) and swipeable card                  | M      | PrepPlan logic server-side | 16    | The assistant lead / Codex |
-| 5   | Radar endpoint (scoring, k-threshold, bands) + "Asked nearby" tile/sheet + `get_demand_radar`        | M      | 1, generator signals       | 16–17 | account 2           |
-| 6   | Generator: demand signals, live rescue deals, open group buy (deterministic seed + Gemini once/week) | M      | generator base (B)         | 16–17 | Codex               |
-| 7   | Price check endpoint (comparables, median/IQR) + menu chips + review-card hint + `check_price`       | S–M    | canonical()                | 17    | Codex               |
-| 8   | Supplier view: segmented My shop, Demand nearby tile, offers                                         | M      | 6                          | 17    | account 2           |
-| 9   | Group buying: model, invite, join, progress, close → per-member orders; supplier respond             | L      | sourcing, 8                | 17    | Codex               |
-| 10  | Story walkthrough tests (`tests/stories/s8-rescue`, `s9-radar`, `s10-brief`) + 15-language strings   | M      | 2–7                        | 17    | account 2           |
+| 5   | Radar endpoint (scoring, k-threshold, bands) + "Asked nearby" tile/sheet + `get_demand_radar`        | M      | 1, generator signals       | 16–17 | account 2                  |
+| 6   | Generator: demand signals, live rescue deals, open group buy (deterministic seed + Gemini once/week) | M      | generator base (B)         | 16–17 | Codex                      |
+| 7   | Price check endpoint (comparables, median/IQR) + menu chips + review-card hint + `check_price`       | S–M    | canonical()                | 17    | Codex                      |
+| 8   | Supplier view: segmented My shop, Demand nearby tile, offers                                         | M      | 6                          | 17    | account 2                  |
+| 9   | Group buying: model, invite, join, progress, close → per-member orders; supplier respond             | L      | sourcing, 8                | 17    | Codex                      |
+| 10  | Story walkthrough tests (`tests/stories/s8-rescue`, `s9-radar`, `s10-brief`) + 15-language strings   | M      | 2–7                        | 17    | account 2                  |
 | 11  | Demo video capture (storyboard above)                                                                | M      | all                        | 18    | The assistant + owner      |
 
 **Critical path:** 2 → 3 (rescue, feeds the customer map in track B) and 1 → 6 → 5 (radar needs generated volume).

@@ -296,8 +296,11 @@ test('S10 · entries: tour end and an empty My shop open the same flow', async (
   })
   await test.step('end of the tour: "Start my own shop"', async () => {
     await page.getByRole('button', { name: 'Take the tour' }).click()
-    await expect(page.getByRole('dialog', { name: 'Your shop at a glance' })).toBeVisible()
-    for (let step = 0; step < 8; step++)
+    const tour = page.getByRole('dialog', { name: 'Your shop at a glance' })
+    await expect(tour).toBeVisible()
+    // Every step, including the feature steps added after the spotlights ("1 of 14").
+    const total = Number((await tour.getByText(/^1 of \d+$/).textContent())!.split(' of ')[1])
+    for (let step = 0; step < total; step++)
       await page.getByRole('button', { name: 'Next', exact: true }).click()
     await page.getByRole('button', { name: 'Start my own shop' }).click()
     await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
