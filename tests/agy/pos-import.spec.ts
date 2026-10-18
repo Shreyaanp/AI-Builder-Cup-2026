@@ -48,8 +48,10 @@ test.describe('POS import flows on phone (390px)', () => {
       buffer: readFileSync(posMenuCsv),
     })
 
-    // AI column mapping appears
-    await expect(connectDialog.getByText('AI column mapping')).toBeVisible({ timeout: 15_000 })
+    // Column mapping appears
+    await expect(
+      connectDialog.getByRole('heading', { name: /Column mapping/i }),
+    ).toBeVisible({ timeout: 15_000 })
     await expect(connectDialog.getByText('Item name: Masala Dosa', { exact: true })).toBeVisible()
 
     // Confirm & review import
@@ -90,8 +92,10 @@ test.describe('POS import flows on phone (390px)', () => {
       buffer: readFileSync(petpoojaJson),
     })
 
-    // AI column mapping for JSON
-    await expect(connectDialog.getByText('AI column mapping')).toBeVisible({ timeout: 15_000 })
+    // Column mapping for JSON
+    await expect(
+      connectDialog.getByRole('heading', { name: /Column mapping/i }),
+    ).toBeVisible({ timeout: 15_000 })
     await connectDialog.getByRole('button', { name: 'Confirm & review import' }).click()
 
     const review = page.getByRole('dialog', { name: reviewName })
@@ -128,7 +132,9 @@ test.describe('POS import flows on phone (390px)', () => {
     await connectDialog.getByRole('button', { name: 'Read photos', exact: true }).click()
 
     // Mapping review appears
-    await expect(connectDialog.getByText('AI column mapping')).toBeVisible({ timeout: 20_000 })
+    await expect(
+      connectDialog.getByRole('heading', { name: /Column mapping/i }),
+    ).toBeVisible({ timeout: 20_000 })
     await expect(connectDialog.getByText('Sample photos only: no AI read these images.')).toBeVisible()
 
     // Confirm & review
