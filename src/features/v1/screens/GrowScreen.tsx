@@ -42,7 +42,7 @@ export function GrowScreen() {
   const ws = useWorkspace()
   return (
     <ShopGate>
-      <Box component="section" aria-label={tabs.navGrow} sx={{ maxWidth: 760, mx: 'auto', pt: 2 }}>
+      <Box component="section" aria-label={tabs.navGrow} sx={{ maxWidth: 720, mx: 'auto', pt: 2 }}>
         <Typography component="h1" sx={visuallyHidden}>
           {tabs.growTitle}
         </Typography>
