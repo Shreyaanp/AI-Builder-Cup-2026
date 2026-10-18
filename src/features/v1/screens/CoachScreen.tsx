@@ -280,6 +280,12 @@ function CoachScreen({
   const connectCopy = useConnectCopy()
   // A chat photo waiting for the owner's one-line confirmation (kept until they choose).
   const [sorting, setSorting] = useState<{ file: File; guess: PhotoRoute | null } | null>(null)
+  // OB-37: the question sits above the conversation; on a phone the chat was scrolled to the
+  // bottom, so the owner saw only the last choices. Bring the whole question into view.
+  const sortingCard = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (sorting) sortingCard.current?.scrollIntoView({ block: 'nearest' })
+  }, [sorting])
   const [dayPhoto, setDayPhoto] = useState<{ kind: DayKind; file: File } | null>(null)
   const routeText = photoRouteCopy(language)
   const importer = useImport({ onSales: setSales })
@@ -516,7 +522,8 @@ function CoachScreen({
     end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
   }, [messages, reply, reveal.shown, reducedMotion])
   const revealReply = useEffectEvent(() => {
-    if (visible && (messages.length || reply || reveal.shown))
+    // An open photo question (top of the chat) keeps the owner's attention; don't scroll past it.
+    if (visible && !sorting && (messages.length || reply || reveal.shown))
       end.current?.scrollIntoView({ block: 'end', behavior: 'instant' })
   })
   useEffect(() => {
@@ -1109,7 +1116,7 @@ function CoachScreen({
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', pb: 4 }}>
         {ws.loadError && <LoadError />}
         {sorting && (
-          <Alert severity="info" icon={false} sx={{ mb: 2 }}>
+          <Alert ref={sortingCard} severity="info" icon={false} sx={{ mb: 2 }}>
             <Typography variant="titleSmall" role="status">
               {sorting.guess ? routeText.looks(routeText.kinds[sorting.guess]) : routeText.unsure}
             </Typography>
