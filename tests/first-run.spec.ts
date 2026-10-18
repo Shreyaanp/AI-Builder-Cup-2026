@@ -39,6 +39,7 @@ test('shown once per device and app; unavailable storage still allows dismissal'
 
 for (const app of ['owner', 'customer'] as const) {
   test(`${app} phone: introduction, swipe, skip, reload and replay`, async ({ page }) => {
+    test.setTimeout(90_000)
     await page.route('**/*', (route) => {
       const url = new URL(route.request().url())
       if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort()
@@ -49,14 +50,19 @@ for (const app of ['owner', 'customer'] as const) {
       if (url.pathname.endsWith('/businesses')) return route.fulfill({ json: [] })
       return route.fulfill({ status: 503, json: { detail: 'Offline fixture' } })
     })
-    await page.addInitScript(() => {
+    await page.addInitScript((audience) => {
+      // The shared browser state marks both intros as seen; this case tests first visit.
+      if (!sessionStorage.getItem('first-run-test-initialized')) {
+        localStorage.removeItem(`chalkboard.explainer.${audience}.v1`)
+        sessionStorage.setItem('first-run-test-initialized', '1')
+      }
       localStorage.setItem('niva.language.chosen', '1')
       if (!localStorage.getItem('niva.starter.preferences'))
         localStorage.setItem(
           'niva.starter.preferences',
           JSON.stringify({ language: 'en', appearance: 'light' }),
         )
-    })
+    }, app)
     const path = app === 'owner' ? '/' : '/explore/'
     await page.goto(path, { waitUntil: 'domcontentloaded' })
     const copy = explainerCopy.en
@@ -93,7 +99,15 @@ for (const app of ['owner', 'customer'] as const) {
     await page.screenshot({ path: `output/playwright/first-run-${app}-light.png` })
     await page.getByRole('button', { name: 'Start', exact: true }).click()
     await expect(page.getByRole('heading', { name: copy[offset], exact: true })).toHaveCount(0)
+    const nextAction =
+      app === 'owner'
+        ? page.getByRole('button', { name: /preview/i })
+        : page.getByRole('button', { name: /profile/i }).first()
+    // Wait for the child app after dismissing the lazy-loaded first-run screen. A reload before
+    // it mounts cancels its initial module request and leaves the test on the loading splash.
+    await expect(nextAction).toBeVisible()
     await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(nextAction).toBeVisible()
     await expect(page.getByRole('heading', { name: copy[offset], exact: true })).toHaveCount(0)
     if (app === 'owner') {
       await page.getByRole('button', { name: /preview/i }).click()
