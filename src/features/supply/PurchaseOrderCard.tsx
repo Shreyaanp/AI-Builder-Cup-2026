@@ -652,7 +652,7 @@ function DocumentDetail({
   )
 }
 
-function Code({ label, text }: { label: string; text: string }) {
+export function Code({ label, text }: { label: string; text: string }) {
   const roles = useTheme().material
   return (
     <Box sx={{ minWidth: 0 }}>
