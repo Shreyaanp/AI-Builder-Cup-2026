@@ -41,6 +41,8 @@ export interface Workspace {
   /** True once products for the active shop have finished loading. */
   productsLoaded: boolean
   destination: Destination
+  /** The public read-only demo: it speaks only pre-recorded lines, never the live or phone voice. */
+  demo: boolean
   speakReplies: boolean
   setSpeakReplies: (value: boolean) => void
   go: (destination: Destination) => void
