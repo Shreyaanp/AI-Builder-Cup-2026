@@ -80,7 +80,7 @@ jobs:
       FIREBASE_WEB_APP_ID: ${{ vars.FIREBASE_WEB_APP_ID }}
       FEATURE_GOOGLE_GUIDE: ${{ vars.FEATURE_GOOGLE_GUIDE || 'true' }}
       GA_MEASUREMENT_ID: ${{ vars.GA_MEASUREMENT_ID || '' }}
-      LANDING_VARIANT: ${{ vars.LANDING_VARIANT || 'classic' }}
+      LANDING_VARIANT: ${{ vars.LANDING_VARIANT || 'new' }}
       PUBLIC_DEMO_ENABLED: ${{ vars.PUBLIC_DEMO_ENABLED || 'true' }}
       MAPS_GROUNDING: ${{ vars.MAPS_GROUNDING || 'live' }}
       MAPS_GROUNDING_CACHE_SECONDS: ${{ vars.MAPS_GROUNDING_CACHE_SECONDS || '86400' }}
@@ -117,6 +117,15 @@ jobs:
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: '24'
+      # First check after sign-in, before anything is built or pushed: stop if the live service
+      # holds an env var this release would not carry (names only are printed).
+      - name: Check live environment drift
+        run: |
+          FACE_WORKER_URL=$(gcloud run services describe ogoogle-face --project=ichiropractic --region=asia-south1 --format='value(status.url)')
+          export FACE_WORKER_URL
+          test -n "$FACE_WORKER_URL"
+          python deployment/runtime-config.py
+          python scripts/check-env-drift.py
       - name: Publish exact image assets to Firebase CDN (opt-in)
         if: vars.CDN_HOSTING_SITE != ''
         env:
@@ -178,15 +187,40 @@ jobs:
           url=$(gcloud run services describe ogoogle-face --project=ichiropractic --region=asia-south1 --format='value(status.url)')
           test -n "$url"
           echo "FACE_WORKER_URL=$url" >> "$GITHUB_ENV"
-      - name: Release main service
+      # Safe rollout: the new revision gets no traffic and a "candidate" tag URL, is smoke-tested
+      # there, and only then takes 100%. Any failure stops here and traffic stays where it was.
+      # --update-env-vars / --update-secrets merge into the live service, so variables set by
+      # hand are never dropped (the old --env-vars-file replaced the whole environment).
+      - name: Deploy candidate revision (no traffic)
         run: |
           python deployment/runtime-config.py
-          gcloud run deploy ogoogle-ai --project=ichiropractic --region=asia-south1 \
-            --image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA" \
-            --service-account=ogoogle-runtime@ichiropractic.iam.gserviceaccount.com \
-            --env-vars-file=.deployment/runtime.json --allow-unauthenticated \
-            --update-secrets=FACE_WORKER_TOKEN=ogoogle-face-token:1,MAPS_SERVER_KEY=maps-server-key:1,MAPS_BROWSER_KEY=maps-browser-key:1 \
-            --cpu-boost --quiet
+          secrets=$(python -c 'import json; print(",".join(f"{k}={v}" for k, v in json.load(open("deployment/secrets.json")).items()))')
+          gcloud run deploy ogoogle-ai --project=ichiropractic --region=asia-south1             --image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA"             --service-account=ogoogle-runtime@ichiropractic.iam.gserviceaccount.com             --update-env-vars="$(cat .deployment/update-env-vars.txt)"             --update-secrets="$secrets" --allow-unauthenticated             --min=1 --max=20 --concurrency=40 --timeout=3600 --cpu=1 --memory=2Gi             --no-cpu-throttling --session-affinity --cpu-boost             --no-traffic --tag=candidate --quiet
+          gcloud run services describe ogoogle-ai --project=ichiropractic --region=asia-south1 --format=json > .deployment/service.json
+          python - <<'PY' >> "$GITHUB_ENV"
+          import json
+          service = json.load(open(".deployment/service.json"))
+          url = next(t["url"] for t in service["status"]["traffic"] if t.get("tag") == "candidate")
+          print(f"CANDIDATE_URL={url}")
+          print(f"CANDIDATE_REVISION={service['status']['latestCreatedRevisionName']}")
+          PY
+      - name: Smoke-test the candidate revision
+        env:
+          SMOKE_ORIGIN: ${{ env.CANDIDATE_URL }}
+          SMOKE_COACH_MODE: gemini
+        run: |
+          node scripts/hosting-smoke.mjs
+          if [[ -f scripts/prod-smoke.mjs ]]; then
+            node scripts/prod-smoke.mjs "$CANDIDATE_URL"
+          else
+            echo "scripts/prod-smoke.mjs is not on this commit; skipping it."
+          fi
+      - name: Send all traffic to the candidate
+        run: |
+          gcloud run services update-traffic ogoogle-ai --project=ichiropractic --region=asia-south1             --to-revisions="$CANDIDATE_REVISION=100" --quiet
+          # Back to "always the latest revision", as before, and drop the test URL.
+          gcloud run services update-traffic ogoogle-ai --project=ichiropractic --region=asia-south1 --to-latest --quiet
+          gcloud run services update-traffic ogoogle-ai --project=ichiropractic --region=asia-south1 --remove-tags=candidate --quiet
       - name: Verify the released revision
         env:
           SMOKE_ORIGIN: https://ogoogle-ai-176787245026.asia-south1.run.app
@@ -194,4 +228,4 @@ jobs:
         run: node scripts/hosting-smoke.mjs
       - name: Remove generated credential configuration
         if: always()
-        run: rm -f .deployment/runtime.json
+        run: rm -f .deployment/runtime.json .deployment/update-env-vars.txt .deployment/service.json
