@@ -239,7 +239,8 @@ def test_unsafe_or_foreign_documents_are_refused() -> None:
 
 
 def test_shipped_samples_parse_with_flags_where_real_files_are_messy() -> None:
-    files = sorted(SAMPLES.iterdir())
+    # The recorded SAP sandbox payload (.json) is an OData response for sap_sandbox, not a document.
+    files = sorted(f for f in SAMPLES.iterdir() if f.suffix in {".xml", ".csv", ".txt"})
     assert {f.suffix for f in files} >= {".xml", ".csv", ".txt"}
     for path in files:
         doc, _, _ = supply_docs.parse(path.read_text(encoding="utf-8"), date(2026, 10, 16))
@@ -645,3 +646,10 @@ def test_coach_drafts_reorders_and_rule_changes_as_cards(settings) -> None:  # n
         )
         events = stream("Where is my flour order?")
         assert "PO 4500012345" in next(e["text"] for e in events if e["kind"] == "reply")
+
+
+def test_sap_sandbox_route_shows_the_recorded_sample_when_off(client) -> None:
+    bid = http_shop(client)
+    answer = client.get(f"/api/v1/businesses/{bid}/supply/sap-sandbox").json()
+    assert answer["source"] == "recorded" and answer["reason"] == "off"
+    assert answer["orders"] and "<IDOC" in answer["orders"][0]["idoc"]
