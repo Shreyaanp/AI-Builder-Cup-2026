@@ -52,6 +52,7 @@ def test_demo_without_identity_is_filled_private_and_read_only(app, monkeypatch)
         public = read(client, session, f"/public/shops/{shops[0]['id']}").json()
         assert public["demo"] is True and public["products"]
         assert public["phone"] == ""
+        assert public["stamps_enabled"] is True and public["reward_text"]
         assert read(client, session, "/me").status_code == 403
         assert read(client, session, "/businesses/someone-else/inventory").status_code == 403
         assert client.post(f"/api/v1/demo/sessions/{session}").status_code == 405
