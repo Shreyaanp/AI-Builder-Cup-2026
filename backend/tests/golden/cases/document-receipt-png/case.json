@@ -1,0 +1,11 @@
+{
+  "adapter": "document",
+  "input": "input.png",
+  "processor": "receipt",
+  "mime": "image/png",
+  "render": {
+    "title": "RETAIL RECEIPT",
+    "variant": "clean"
+  },
+  "notes": "Tax 5.00 is printed; parser omits tax."
+}

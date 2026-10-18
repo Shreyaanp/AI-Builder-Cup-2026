@@ -322,6 +322,7 @@ export const ms: Copy = {
     'Fail itu tidak dapat dibaca. Hantar eksport CSV atau Excel dengan nama item dan harga.',
   salesSummary: 'Ringkasan jualan',
   salesNotSaved: 'Daripada fail anda. Tiada apa-apa disimpan.',
+  salesCurrencyMismatch: 'Baris dalam mata wang lain telah diketepikan.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} hari · ${from} – ${to}` : 'Tiada tarikh dalam fail',
   topItems: 'Paling laris',

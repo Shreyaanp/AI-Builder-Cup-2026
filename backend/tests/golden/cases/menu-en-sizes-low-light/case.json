@@ -1,0 +1,25 @@
+{
+  "adapter": "menu",
+  "input": "input.png",
+  "mime": "image/png",
+  "currency": "SGD",
+  "render": {
+    "title": "Synthetic Bakery",
+    "variant": "low-light",
+    "items": [
+      {
+        "name": "Coffee small",
+        "price": 250,
+        "size": "cup",
+        "category": "Drinks"
+      },
+      {
+        "name": "Coffee large",
+        "price": 350,
+        "size": "cup",
+        "category": "Drinks"
+      }
+    ]
+  },
+  "notes": "Second item is marked SOLD OUT. Availability is not in extraction schema."
+}

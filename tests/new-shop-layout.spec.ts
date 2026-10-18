@@ -124,11 +124,12 @@ for (const width of [360, 390, 412] as const)
           const locales = (await import('/src/features/v1/locales/index.ts' as string)) as {
             loaders: Record<
               string,
-              () => Promise<{ addShop: string; continuePreview: string; send: string }>
+              | (() => Promise<{ addShop: string; continuePreview: string; send: string }>)
+              | undefined
             >
           }
           const { addShop, continuePreview, send } =
-            language === 'en' ? app.en : await locales.loaders[language]!()
+            language === 'en' ? app.en : (await locales.loaders[language]?.())!
           const { begin, review } = flow.newShopCopyFor(language)
           return { addShop, continuePreview, send, begin, review }
         }, language)

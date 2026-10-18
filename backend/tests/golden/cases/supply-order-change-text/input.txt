@@ -1,0 +1,5 @@
+*Purchase order GOLD-1001*
+Ref PO PO-100
+1) Sugar 25 kg @ INR 44.00
+Delivery: Wed 21 Oct
+Total INR 1,100.00

@@ -59,6 +59,7 @@ PRESETS: tuple[Preset, ...] = (
             "quantity": ("qty",),
             "total": ("net sales",),
             "category": ("category",),
+            "currency": ("currency",),
         },
         variant="price point name",
     ),

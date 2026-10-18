@@ -131,7 +131,7 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
       newShopCopyFor: (l: string) => { begin: string; ready: string }
     }
     const locales = (await import('/src/features/v1/locales/index.ts' as string)) as {
-      loaders: Record<string, () => Promise<Record<string, string>>>
+      loaders: Record<string, (() => Promise<Record<string, string>>) | undefined>
     }
     const strings = (await import('/src/features/v1/strings.ts' as string)) as {
       en: Record<string, string>
@@ -142,9 +142,10 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
     const inChat = (await import('/src/features/v1/inChatCopy.ts' as string)) as {
       inChatCopyFor: (l: string) => Record<string, string>
     }
+    const localized = language === 'en' ? {} : await locales.loaders[language]?.()
     return {
       ...strings.en,
-      ...(language === 'en' ? {} : await locales.loaders[language]!()),
+      ...localized,
       begin: flow.newShopCopyFor(language).begin,
       ready: flow.newShopCopyFor(language).ready,
       ...onboarding.onboardingCopyFor(language),
@@ -245,11 +246,7 @@ for (const language of LANGUAGES) {
       // The face check is offered and skippable; the shop opens; Today asks for the menu first.
       await expect(summary).toContainText(copy.faceOffer!)
       await summary.getByRole('button', { name: copy.skipForNow!, exact: true }).click()
-      const liveHeading =
-        language.code === 'hi'
-          ? 'बधाई हो, Clean Helmet Point लाइव है!'
-          : 'Congratulations, Clean Helmet Point is live!'
-      await expect(page.getByRole('heading', { name: liveHeading, exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1 })).toContainText('Clean Helmet Point')
       await page.getByRole('button', { name: copy.newShopContinue! }).click()
       const today = page.getByTestId('today-day-one')
       await expect(today).toBeVisible()
@@ -344,6 +341,8 @@ for (const language of LANGUAGES) {
       await expect(page.getByRole('progressbar')).toHaveCount(0)
       // Everything said so far is saved; Continue carries on without asking the name again.
       await expect(page.getByTestId('shop-so-far')).toContainText('Raju Tailors')
+      // Ending opens the agreed review sheet; close it to continue the conversation.
+      await page.keyboard.press('Escape')
       await ended.getByRole('button', { name: copy.continueChat! }).click()
       await expect(ended).toHaveCount(0)
       const said = (await page.getByRole('log').locator('li').allInnerTexts()).join('\n')

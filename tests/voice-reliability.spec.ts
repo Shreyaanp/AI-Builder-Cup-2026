@@ -81,7 +81,10 @@ async function hindiFlow(page: Page): Promise<Copy> {
       newShopCopyFor: (l: string) => { begin: string }
     }
     const locales = (await import('/src/features/v1/locales/index.ts' as string)) as {
-      loaders: Record<string, () => Promise<{ addShop: string; continuePreview: string }>>
+      loaders: Record<
+        string,
+        (() => Promise<{ addShop: string; continuePreview: string }>) | undefined
+      >
     }
     const voice = (await import('/src/features/v1/voiceModeCopy.ts' as string)) as {
       voiceModeCopyFor: (l: string) => Record<string, string>
@@ -90,7 +93,7 @@ async function hindiFlow(page: Page): Promise<Copy> {
       onboardingCopyFor: (l: string) => Record<string, string>
     }
     return {
-      ...(await locales.loaders.hi!()),
+      ...(await locales.loaders.hi?.()),
       begin: flow.newShopCopyFor('hi').begin,
       ...voice.voiceModeCopyFor('hi'),
       ...onboarding.onboardingCopyFor('hi'),

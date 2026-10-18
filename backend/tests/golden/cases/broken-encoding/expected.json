@@ -1,0 +1,10 @@
+{
+  "kind": "menu",
+  "count": 1,
+  "rows": [
+    {
+      "name": "Café",
+      "price": 1200
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "adapter": "connector",
+  "input": "input.csv",
+  "mime": "text/csv",
+  "source": "zoho-inventory",
+  "currency": "INR",
+  "notes": "SKU is present in input but unsupported by connector target schema."
+}
