@@ -1,43 +1,51 @@
 {
-  "capturedAt": "2026-10-18T04:02:58.146Z",
+  "capturedAt": "2026-10-18T10:43:11.948Z",
   "mode": "audit",
   "scope": "390×844 offline audit; annotated gaps and live-only paths are not verified story outcomes",
   "stories": [
     {
-      "story": "S7 · Indian language, local currency and eight-city discovery audit",
+      "story": "S2 · daily upkeep and customer-page connection",
       "project": "phone",
       "status": "passed",
       "retry": 0,
       "steps": [
         {
-          "title": "1 · Tamil language and read-aloud path",
+          "title": "1 · natural text and voice path",
           "status": "passed"
         },
         {
-          "title": "2 · shop prices use INR on an Indian phone",
+          "title": "2 · one review card for both changes, one tap to confirm",
           "status": "passed"
         },
         {
-          "title": "3 · eight city demo discovery availability",
+          "title": "3 · already-open customer page updates within five seconds",
+          "status": "passed"
+        },
+        {
+          "title": "4 · sold-out switch reaches customer page",
+          "status": "passed"
+        },
+        {
+          "title": "5 · daily still-the-same check",
+          "status": "passed"
+        },
+        {
+          "title": "6 · tap a price, review inline and save",
+          "status": "passed"
+        },
+        {
+          "title": "7 · document import uses exact review before saving",
           "status": "passed"
         }
       ],
       "annotations": [
         {
-          "type": "gap",
-          "description": "S7/1: only 10 language choices in this snapshot; Hindi and the other planned Indian languages are worker-owned"
-        },
-        {
-          "type": "gap",
-          "description": "S7/1: Tamil UI and speech locale work, but offline coach reply is English; speech stub does not prove audible Tamil"
+          "type": "live-only",
+          "description": "Speech recognition and live voice tool execution"
         },
         {
           "type": "live-only",
-          "description": "Actual multilingual Gemini replies and audible TTS/ASR quality"
-        },
-        {
-          "type": "live-only",
-          "description": "Catalogue shops are seeded on the hosted demo; the local preview stays unseeded"
+          "description": "Photo/PDF extraction requires live AI; CSV review is the offline import path"
         }
       ]
     }
