@@ -50,13 +50,15 @@ for (const app of ['owner', 'customer'] as const) {
       if (url.pathname.endsWith('/businesses')) return route.fulfill({ json: [] })
       return route.fulfill({ status: 503, json: { detail: 'Offline fixture' } })
     })
-    await page.addInitScript((audience) => {
-      // The shared browser state marks both intros as seen; this case tests first visit.
-      if (!sessionStorage.getItem('first-run-test-initialized')) {
-        localStorage.removeItem(`chalkboard.explainer.${audience}.v1`)
-        sessionStorage.setItem('first-run-test-initialized', '1')
-      }
+    await page.addInitScript((app) => {
       localStorage.setItem('niva.language.chosen', '1')
+      // The shared Playwright storage state marks both tours complete for the rest of the suite.
+      // Start this isolated first-run scenario with only its own tour unseen.
+      const freshTourKey = `first-run-spec.${app}`
+      if (!sessionStorage.getItem(freshTourKey)) {
+        localStorage.removeItem(`chalkboard.explainer.${app}.v1`)
+        sessionStorage.setItem(freshTourKey, '1')
+      }
       if (!localStorage.getItem('niva.starter.preferences'))
         localStorage.setItem(
           'niva.starter.preferences',
