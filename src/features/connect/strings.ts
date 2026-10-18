@@ -151,8 +151,7 @@ const translations: Record<Locale, Copy> = {
     pickSystem: 'अपना हिसाब चुनें',
     uploadOrPaste: 'फ़ाइल भेजें या नमूना चिपकाएँ',
     mappingTitle: 'खानों का मिलान',
-    mappingSubtitle:
-      'फ़ाइल के खाने दुकान की जानकारी से मिले हैं। बदलने के लिए कोई पंक्ति चुनें।',
+    mappingSubtitle: 'फ़ाइल के खाने दुकान की जानकारी से मिले हैं। बदलने के लिए कोई पंक्ति चुनें।',
     sourceColumn: 'फ़ाइल का खाना',
     targetField: 'दुकान की जानकारी',
     confidence: 'मिलान की सटीकता',
