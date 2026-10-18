@@ -29,6 +29,7 @@ from .money import exponent
 from .photos import PhotoRejected, sanitize
 from .region import shop_currency
 from .sales import today_for
+from .text_model import generate
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/businesses")
@@ -139,8 +140,10 @@ async def read_photo(
         request.app.state.day_genai = client
     try:
         async with asyncio.timeout(60):
-            response = await client.aio.models.generate_content(
-                model=settings.google_text_model,
+            response = await generate(
+                client,
+                settings,
+                "close_day",
                 contents=types.Content(
                     role="user",
                     parts=[

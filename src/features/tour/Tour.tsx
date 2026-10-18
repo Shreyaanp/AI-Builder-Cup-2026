@@ -11,7 +11,8 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
-import { Sparkles, Volume2, VolumeX } from 'lucide-react'
+import { X, Sparkles, Volume2, VolumeX } from 'lucide-react'
+import FocusTrap from '@mui/material/Unstable_TrapFocus'
 import { useLocale } from '../../state/hooks'
 import { useWorkspace } from '../v1/workspaceContext'
 import type { Destination } from '../v1/workspaceContext'
@@ -21,7 +22,11 @@ import { tour, useTourRunning } from './tourStore'
 import { narrationQueue } from './narrationQueue'
 import { narrationVoice } from './narrationVoice'
 
-const EASE = 'cubic-bezier(0.2, 0, 0, 1)'
+import { motion } from '../../design/theme'
+import { TourFeature } from './TourFeatures'
+import { useFeatureSteps } from './useFeatureSteps'
+
+const EASE = motion.easing.emphasized
 // Where each step's spotlight lands (data-tour anchors) and which screen it lives on.
 const STEPS: { target: string; destination: Destination }[] = [
   { target: 'menu', destination: 'shop' },
@@ -32,6 +37,7 @@ const STEPS: { target: string; destination: Destination }[] = [
   { target: 'composer', destination: 'coach' },
   { target: 'google', destination: 'grow' },
   { target: 'customer', destination: 'shop' },
+  ...Array.from({ length: 6 }, () => ({ target: 'feature', destination: 'coach' as const })),
 ]
 const PAD = 8
 const NARRATION_PREF = 'chalkboard.tour.narration'
@@ -48,7 +54,9 @@ export function TourHost() {
   const running = useTourRunning()
   const ws = useWorkspace()
   const language = useLocale()
-  const t = tourCopy(language)
+  const base = tourCopy(language)
+  const features = useFeatureSteps()
+  const t = { ...base, steps: [...base.steps, ...features] }
   const roles = useTheme().material
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [narrated, setNarrated] = useState(() => {
@@ -135,13 +143,17 @@ export function TourHost() {
 
   useLayoutEffect(() => {
     if (!running) return
+    const observer = new ResizeObserver(measure)
+    const target = STEPS[step] && find(STEPS[step]!.target)
+    if (target) observer.observe(target)
     window.addEventListener('resize', measure)
     window.addEventListener('scroll', measure, true)
     return () => {
+      observer.disconnect()
       window.removeEventListener('resize', measure)
       window.removeEventListener('scroll', measure, true)
     }
-  }, [running, measure])
+  }, [running, measure, step])
 
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
@@ -159,145 +171,168 @@ export function TourHost() {
   const cardTop = rect ? (below ? rect.top + rect.height + 12 : Math.max(12, rect.top - 212)) : 0
 
   return (
-    <Box
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="tour-title"
-      sx={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1500,
-        '@keyframes tourRise': {
-          from: { opacity: 0, transform: 'translateY(12px)' },
-          to: { opacity: 1, transform: 'none' },
-        },
-      }}
-    >
-      {/* The scrim with a moving cut-out around the highlighted element. */}
+    <>
+      {step >= 8 && !done && <TourFeature key={step} index={step - 8} />}
       <Box
-        aria-hidden="true"
-        onClick={() => move(1)}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tour-title"
         sx={{
           position: 'fixed',
-          borderRadius: '20px',
-          boxShadow: '0 0 0 9999px rgba(0,0,0,0.62)',
-          pointerEvents: 'auto',
-          transition: reducedMotion ? 'none' : `opacity 300ms ${EASE}`,
-          outline: rect ? `2px solid ${roles.primary}` : 'none',
-          ...(rect
-            ? { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
-            : { top: '50%', left: '50%', width: 0, height: 0 }),
-        }}
-      />
-      <Card
-        key={step}
-        elevation={8}
-        sx={{
-          position: 'fixed',
-          left: 16,
-          right: 16,
-          mx: 'auto',
-          maxWidth: 420,
-          p: { xs: 3, sm: 4 },
-          borderRadius: '24px',
-          bgcolor: roles.surfaceContainerHigh,
-          animation: reducedMotion ? 'none' : `tourRise 360ms ${EASE} both`,
-          maxHeight: 'calc(100dvh - 32px - env(safe-area-inset-bottom))',
-          overflowY: 'auto',
-          ...(done || !rect
-            ? { top: '50%', transform: 'translateY(-50%)' }
-            : {
-                top: { xs: 'auto', sm: cardTop },
-                bottom: { xs: 'calc(16px + env(safe-area-inset-bottom))', sm: 'auto' },
-              }),
+          inset: 0,
+          zIndex: 1500,
+          '@keyframes tourRise': {
+            from: { opacity: 0, transform: 'translateY(12px)' },
+            to: { opacity: 1, transform: 'none' },
+          },
         }}
       >
-        {done ? (
-          <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
-            <Box sx={{ color: roles.primary }}>
-              <Sparkles size={28} />
-            </Box>
-            <Typography id="tour-title" variant="titleLarge">
-              {t.doneTitle}
-            </Typography>
-            <Typography color="text.secondary">{t.doneBody}</Typography>
-            <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap', pt: 1 }}>
-              <Button
-                variant="contained"
-                onClick={() => {
-                  close()
-                  ws.startNewShop()
-                }}
-              >
-                {t.startMine}
-              </Button>
-              <Button onClick={close}>{t.keepExploring}</Button>
-            </Stack>
-          </Stack>
-        ) : (
-          <>
-            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-              <Typography variant="labelMedium" color="text.secondary">
-                {t.stepOf.replace('{n}', String(step + 1)).replace('{total}', String(STEPS.length))}
-              </Typography>
-              <IconButton
-                aria-label={t.narration}
-                aria-pressed={narrated}
-                onClick={toggleNarration}
-                sx={{
-                  width: 48,
-                  height: 48,
-                  color: narrated ? roles.primary : roles.onSurfaceVariant,
-                }}
-              >
-                {narrated ? <Volume2 size={22} /> : <VolumeX size={22} />}
-              </IconButton>
-            </Stack>
-            <Typography id="tour-title" variant="titleLarge" sx={{ mt: 0.5 }}>
-              {copy?.title}
-            </Typography>
-            <Typography color="text.secondary" sx={{ mt: 1 }}>
-              {copy?.body}
-            </Typography>
-            <Stack
-              direction="row"
-              sx={{
-                mt: 3,
-                alignItems: 'center',
-                gap: 1,
-                flexWrap: 'wrap',
-                '& button': { minHeight: 48 },
-              }}
-            >
-              <Stack direction="row" sx={{ gap: 0.75, flex: 1 }} aria-hidden="true">
-                {STEPS.map((_, i) => (
-                  <Box
-                    key={i}
-                    sx={{
-                      width: i === step ? 18 : 6,
-                      height: 6,
-                      borderRadius: 3,
-                      bgcolor: i <= step ? roles.primary : roles.outlineVariant,
+        {/* The scrim with a moving cut-out around the highlighted element. */}
+        <Box
+          aria-hidden="true"
+          onClick={() => move(1)}
+          sx={{
+            position: 'fixed',
+            borderRadius: '20px',
+            boxShadow: '0 0 0 9999px rgba(0,0,0,0.62)',
+            pointerEvents: 'auto',
+            transition: reducedMotion ? 'none' : `opacity 300ms ${EASE}`,
+            outline: rect ? `2px solid ${roles.primary}` : 'none',
+            ...(rect
+              ? { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
+              : { top: '50%', left: '50%', width: 0, height: 0 }),
+          }}
+        />
+        <FocusTrap open>
+          <Card
+            key={step}
+            tabIndex={-1}
+            elevation={8}
+            sx={{
+              position: 'fixed',
+              left: 16,
+              right: 16,
+              mx: 'auto',
+              maxWidth: 420,
+              p: { xs: 3, sm: 4 },
+              borderRadius: '24px',
+              bgcolor: roles.surfaceContainerHigh,
+              animation: reducedMotion ? 'none' : `tourRise 360ms ${EASE} both`,
+              maxHeight: 'calc(100dvh - 32px - env(safe-area-inset-bottom))',
+              overflowY: 'auto',
+              ...(done || !rect
+                ? { top: '50%', transform: 'translateY(-50%)' }
+                : {
+                    top: { xs: 'auto', sm: cardTop },
+                    bottom: { xs: 'calc(16px + env(safe-area-inset-bottom))', sm: 'auto' },
+                  }),
+            }}
+          >
+            {done ? (
+              <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
+                <Box sx={{ color: roles.primary }}>
+                  <Sparkles size={28} />
+                </Box>
+                <Typography id="tour-title" variant="titleLarge">
+                  {t.doneTitle}
+                </Typography>
+                <Typography color="text.secondary">{t.doneBody}</Typography>
+                <Stack
+                  direction="row"
+                  sx={{ gap: 2, flexWrap: 'wrap', pt: 1, '& button': { minHeight: 48 } }}
+                >
+                  <Button
+                    variant="contained"
+                    onClick={() => {
+                      close()
+                      ws.startNewShop()
                     }}
-                  />
-                ))}
+                  >
+                    {t.startMine}
+                  </Button>
+                  <Button onClick={close}>{t.keepExploring}</Button>
+                </Stack>
               </Stack>
-              <Button size="small" onClick={close}>
-                {t.skip}
-              </Button>
-              {step > 0 && (
-                <Button size="small" onClick={() => move(-1)}>
-                  {t.back}
-                </Button>
-              )}
-              <Button variant="contained" size="small" onClick={() => move(1)}>
-                {t.next}
-              </Button>
-            </Stack>
-          </>
-        )}
-      </Card>
-    </Box>
+            ) : (
+              <>
+                <Stack
+                  direction="row"
+                  sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <Typography variant="labelMedium" color="text.secondary">
+                    {t.stepOf
+                      .replace('{n}', String(step + 1))
+                      .replace('{total}', String(STEPS.length))}
+                  </Typography>
+                  <IconButton aria-label={t.close} onClick={close} sx={{ width: 48, height: 48 }}>
+                    <X size={22} />
+                  </IconButton>
+                  <IconButton
+                    aria-label={t.narration}
+                    aria-pressed={narrated}
+                    onClick={toggleNarration}
+                    sx={{
+                      width: 48,
+                      height: 48,
+                      color: narrated ? roles.primary : roles.onSurfaceVariant,
+                    }}
+                  >
+                    {narrated ? <Volume2 size={22} /> : <VolumeX size={22} />}
+                  </IconButton>
+                </Stack>
+                <Typography id="tour-title" variant="titleLarge" sx={{ mt: 0.5 }}>
+                  {copy?.title}
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 1 }}>
+                  {copy?.body}
+                </Typography>
+                <Stack
+                  direction="row"
+                  sx={{
+                    mt: 3,
+                    alignItems: 'center',
+                    gap: 1,
+                    flexWrap: 'wrap',
+                    '& button': { minHeight: 48 },
+                  }}
+                >
+                  <Stack direction="row" sx={{ gap: 0.75, flex: 1 }} aria-hidden="true">
+                    {STEPS.map((_, i) => (
+                      <Box
+                        key={i}
+                        sx={{
+                          width: i === step ? 18 : 6,
+                          height: 6,
+                          borderRadius: 3,
+                          bgcolor: i <= step ? roles.primary : roles.outlineVariant,
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                  {narrated ? (
+                    <Button size="small" onClick={() => narration.stop()}>
+                      {t.skipVoice}
+                    </Button>
+                  ) : (
+                    <Button size="small" onClick={close}>
+                      {t.skip}
+                    </Button>
+                  )}
+                  {step > 0 && (
+                    <Button size="small" onClick={() => move(-1)}>
+                      {t.back}
+                    </Button>
+                  )}
+                  <Button variant="contained" size="small" onClick={() => move(1)}>
+                    {t.next}
+                  </Button>
+                </Stack>
+              </>
+            )}
+          </Card>
+        </FocusTrap>
+      </Box>
+    </>
   )
 }
 
