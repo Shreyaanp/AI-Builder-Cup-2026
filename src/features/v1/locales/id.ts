@@ -322,6 +322,7 @@ export const id: Copy = {
     'File itu tidak bisa dibaca. Kirim ekspor CSV atau Excel dengan nama item dan harga.',
   salesSummary: 'Ringkasan penjualan',
   salesNotSaved: 'Dari file Anda. Tidak ada yang disimpan.',
+  salesCurrencyMismatch: 'Baris dengan mata uang lain tidak disertakan.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} hari · ${from} – ${to}` : 'Tidak ada tanggal di file',
   topItems: 'Terlaris',

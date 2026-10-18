@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
-from app import pos_connectors, pos_live
+from app import pos_connectors, pos_live, pos_live_routes
 from app.pos_presets import detect_preset, parse_day, prepare_rows, preset_mapping
 from app.settings import Settings
 from tests.test_imports import make_shop
@@ -158,6 +158,50 @@ def test_routes_pull_into_review_without_saving(app) -> None:  # noqa: F811
         assert sales.json()["kind"] == "sales"
 
         assert client.post(f"{base}/shopify/menu").status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("shop_currency", "row_currency", "expected_status", "expected_revenue", "mismatches"),
+    [
+        ("INR", "USD", "nothing_to_propose", 0, 1),
+        ("SGD", "SGD", "needs_review", 54, 0),
+    ],
+)
+def test_square_sales_respect_row_currency(
+    app,  # noqa: F811
+    monkeypatch,
+    shop_currency,
+    row_currency,
+    expected_status,
+    expected_revenue,
+    mismatches,
+) -> None:  # noqa: F811
+    async def pull(*args, **kwargs):  # noqa: ANN002, ANN003
+        return pos_live.Pull(
+            headers=[
+                "Date",
+                "Category",
+                "Item",
+                "Qty",
+                "Price Point Name",
+                "SKU",
+                "Net Sales",
+                "Currency",
+            ],
+            rows=[["2026-10-12", "Drinks", "Kopi", "1", "Cup", "", "54.00", row_currency]],
+            simulated=False,
+        )
+
+    monkeypatch.setattr(pos_live_routes, "pull", pull)
+    with TestClient(app) as client:
+        join(client)
+        bid = make_shop(client, currency=shop_currency)
+        body = client.post(f"/api/v1/businesses/{bid}/connect/live/square/sales").json()
+        assert body["currency"] == shop_currency
+        assert body["status"] == expected_status
+        assert body["currency_mismatches"] == mismatches
+        assert body["summary"]["total_revenue"] == expected_revenue
+        assert (body["sales"][0]["revenue"] if body["sales"] else 0) == expected_revenue * 100
 
 
 def _entity_pages(seen: list[httpx.Request], fail: int = 0) -> httpx.MockTransport:

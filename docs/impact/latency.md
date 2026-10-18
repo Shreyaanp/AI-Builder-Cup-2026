@@ -70,6 +70,10 @@ This runs the 8 common requests through Gemini without the instant path, and 4-t
 conversations with caching off and on (`conversation_cache_off` / `_on`, p50/p95). Turn it on in
 production only if `_on` is faster; it changes only the text coach.
 
+For cost, prefer `GEMINI_CONTEXT_CACHE` ([cost.md](cost.md#gemini-context-caching-text-coach)):
+one cache shared by every shop instead of one per session, created in the background, with a
+fallback on any cache error. Live A/B: same tool calls, −75.7% input tokens at full rate.
+
 ## Gemini Live region (voice)
 
 Production runs Cloud Run in **asia-south1 (Mumbai)** but Gemini Live in **us-central1**

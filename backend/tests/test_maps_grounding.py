@@ -241,7 +241,10 @@ def test_demo_mode_returns_labelled_sample_answers_with_pins(tmp_path: Path) -> 
         assert all(p["distance_m"] < 400 for p in area["places"])
 
 
-def test_live_switch_requires_a_model_and_project(tmp_path: Path) -> None:
+def test_live_switch_requires_a_model_and_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
     with pytest.raises(ValueError, match="model"):
         Settings(app_env="test", maps_grounding="live", _env_file=None)
     with pytest.raises(ValueError, match="project"):

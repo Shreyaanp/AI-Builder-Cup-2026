@@ -26,7 +26,7 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await hub.getByRole('button', { name: /^Coming in/ }).click()
   await expect(hub.getByRole('heading', { name: 'What’s coming in?' })).toBeVisible()
 
-  // INBOUND: the demo buyer (an SAP system) sends a forecast, an order and an order change.
+  // INBOUND: the local demo buyer sends text in the small shop's WhatsApp channel.
   const next = hub.getByRole('button', { name: 'Partner sends next document (demo)' })
   await next.click()
   await expect(hub).toContainText('Forecast')
@@ -72,20 +72,22 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await expect(dairy).toContainText(/Sending in \d s/)
   await expect(dairy.getByRole('button', { name: 'Undo', exact: true })).toBeVisible()
   await expect(dairy.getByText('Done', { exact: true })).toBeVisible({ timeout: 15_000 })
-  await dairy.getByRole('button', { name: 'Close', exact: true }).click()
-
-  // OUTBOUND 2: the shipping notice for the café, written as an SAP DELVRY07; not sent yet.
-  await hub.getByRole('button', { name: /New order/ }).click()
-  await cafe.getByRole('button', { name: 'Send shipping notice', exact: true }).click()
-  await expect(cafe).toContainText('Shipping notice to Harbour Café (Demo) · SAP IDoc')
-  await cafe.getByRole('button', { name: 'View as SAP', exact: true }).click()
+  // The explicitly configured SAP dairy still has a real STPPOD/DELVRY07 receipt preview.
+  await dairy.getByRole('button', { name: 'View as SAP', exact: true }).click()
   const sap = page.getByRole('dialog', { name: 'View as SAP' })
   await expect(sap.getByLabel('SAP IDoc')).toContainText('<IDOCTYP>DELVRY07</IDOCTYP>')
   await expect(sap).toContainText('In plain words')
-  await expect(sap).toContainText('15 l Milk')
   await noSideScroll(page)
   await page.keyboard.press('Escape')
   await expect(sap).toHaveCount(0)
+  await dairy.getByRole('button', { name: 'Close', exact: true }).click()
+
+  // OUTBOUND 2: the café gets WhatsApp text; not SAP.
+  await hub.getByRole('button', { name: /New order/ }).click()
+  await cafe.getByRole('button', { name: 'Send shipping notice', exact: true }).click()
+  await expect(cafe).toContainText('Shipping notice to Harbour Café (Demo) · Message')
+  await expect(cafe).toContainText('15 l Milk')
+  await noSideScroll(page)
   await cafe.getByRole('button', { name: 'Close', exact: true }).click()
   await hub.getByRole('button', { name: /^Must send/ }).click()
   await expect(hub).toContainText('Shipping notice')
