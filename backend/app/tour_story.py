@@ -480,7 +480,9 @@ def seed_chain(store: MerchantRepository) -> None:
     from .demo_chains import METRO
     from .demo_supply_seed import seed_shop as seed_chain_supply
 
-    owner = "demo-world-owner"
+    # Production's chains belong to whoever ran the supply seed (`chalkboard-demo-owner`), not to
+    # the default fixture owner; seeding as anyone else is refused as "Business not found".
+    owner = next(iter(store.owners(METRO.id)), "demo-world-owner")
     store.seed_demo_shop(owner, METRO.id, METRO.fields, METRO.products)
     seed_chain_supply(store, owner, METRO.id)
 
