@@ -1,0 +1,30 @@
+# Antigravity Local Flow Tests
+
+Date: 2026-10-18. Scope: Local Playwright end-to-end flow tests on PHONE project (390px viewport, touch enabled, reduced motion) covering user flows merged in the last 24h: Onboarding, Customer immersive, Supply chain, POS import, Trust strip, Demo shop, Back button behaviour, and Hindi language flows. Run against local offline fixture mode (`WEB_PORT=4501`, `API_PORT=4601`).
+
+## Results Summary
+
+| Spec | Test Case | Result | Issue / Notes |
+| --- | --- | --- | --- |
+| `tests/agy/onboarding.spec.ts` | typed flow: partial details → stop/finish → Review my shop → supply missing location → List my shop → Congratulations | PASS | Covers name/category entry, manual stop/finish, missing location guard in review sheet, map pin location placement, and shop go-live congratulations. |
+| `tests/agy/onboarding.spec.ts` | typed flow: providing all 3 fields upfront marks shop live automatically | PASS | Verifies live chip appears in chat, review transitions directly to congratulations with live link and QR code. |
+| `tests/agy/onboarding.spec.ts` | typed flow: typing stop word ending conversation | PASS | Verifies conversational stop intent ("I'm finished") signals completion. |
+| `tests/agy/customer-immersive.spec.ts` | location → shop → follow → QR stamp → passport | PASS | Tests selecting location on discover map, navigating to shop detail, following shop, claiming loyalty stamp via QR scanner simulation, and checking updated passport progress. |
+| `tests/agy/supply-chain.spec.ts` | Today supply card → reorder → order timeline → goods arrived → restocked | PASS | Tests Today screen supply shortage alert, tapping reorder, previewing SAP IDoc reorder payload, receiving goods through timeline simulation, and verifying restock. |
+| `tests/agy/supply-chain.spec.ts` | Purchase orders inbound and outbound flow in Supply hub | PASS | Covers opening Supply hub, reviewing forecast and recommended purchase orders, modifying quantities, sending dispatch notice, and tracking outbound shipping updates. |
+| `tests/agy/pos-import.spec.ts` | POS import via CSV file → column mapping → review → menu updated | PASS | Covers Petpooja system selection, uploading CSV file, column mapping review, confirm import, and verifying menu updated. |
+| `tests/agy/pos-import.spec.ts` | POS import via JSON file (Petpooja export) → column mapping → review | PASS | Covers uploading JSON export file, column mapping confirmation, and review. |
+| `tests/agy/pos-import.spec.ts` | POS import via screen photo (photo of a screen/printout) → AI mapping → review | PASS | Covers uploading sample screen photos, reading photos, mapping review, and menu update confirmation. |
+| `tests/agy/trust-strip.spec.ts` | displays all trust chips, opens informative modal sheets, and links to support | PASS | Covers all 4 trust chips, modal bottom sheets, WhatsApp support link, graceful drop when support disabled, and full hide when trust strip disabled. |
+| `tests/agy/demo-shop.spec.ts` | unauthenticated visitor opens /demo, inspects demo shop, browses shops, and exits demo | PASS | Tests `/demo` labelled banner, read-only guard alert on edit attempt, demo menu inspection, browsing demo shops, and exiting demo back to base routes. |
+| `tests/agy/back-button.spec.ts` | owner tabs preserve history across Back, Forward, and sub-pages | PASS | Verifies browser back/forward navigation preserves tab history, sub-page history (menu dialog), and prevents unexpected app exit. |
+| `tests/agy/back-button.spec.ts` | customer profile sheet closes on Back and shop page navigates back cleanly | PASS | Verifies sheet dismissal on back button and browser history popstate navigation between discover and shop views. |
+| `tests/agy/hindi.spec.ts` | onboarding in Hindi: greeting, typing, stop, and congratulations in Hindi | PASS | Verifies terms consent in Hindi, coach greeting, chat input, stop action, and congratulations confirmation in Hindi without horizontal overflow. |
+| `tests/agy/hindi.spec.ts` | public demo in Hindi: banner and exit demo in Hindi | PASS | Verifies demo banner copy in Hindi and exiting demo mode without horizontal overflow. |
+| `tests/agy/hindi.spec.ts` | trust strip in Hindi: first chip renders शुरुआत मुफ़्त | PASS | Verifies Hindi localization of trust chips without horizontal overflow. |
+
+## Notes on Bugs & Fixmes
+
+- All 16 specs across 8 test suites passed cleanly with single-worker execution (`--workers=1`).
+- No active product defects required `test.fixme` markings or new GitHub issue filings.
+- All test suites verify layout responsiveness on 390px phone viewports with no horizontal scroll overflow (`scrollWidth <= innerWidth + 1`).
