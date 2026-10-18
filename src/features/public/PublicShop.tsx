@@ -19,6 +19,7 @@ import { customerBack, customerNavigate } from '../frontdoors/navigation'
 import type { ReactNode } from 'react'
 import { type Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
+import { leadTimeText } from './leadTime'
 import { ShopSkeleton } from '../customer/Skeletons'
 import { PlaceImage } from '../frontdoors/PlaceImage'
 import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
@@ -149,7 +150,7 @@ const PAYMENT_BRANDS = { paynow: 'PayNow', grabpay: 'GrabPay', nets: 'NETS' } as
 const DELIVERY_BRANDS = { grab: 'GrabFood', foodpanda: 'foodpanda' } as const
 
 /** Small, plain chips for what customers ask most (halal, payment, delivery…). */
-function factChips(facts: ShopFacts, t: CustomerCopy): string[] {
+function factChips(facts: ShopFacts, t: CustomerCopy, locale: Locale): string[] {
   const chips: string[] = []
   if (facts.halal === 'yes') chips.push(t.factHalal)
   if (facts.halal === 'muslim_owned') chips.push(t.factMuslimOwned)
@@ -163,7 +164,7 @@ function factChips(facts: ShopFacts, t: CustomerCopy): string[] {
   if (facts.preorders)
     chips.push(
       facts.preorder_lead_time
-        ? t.factPreordersLead.replace('{lead}', facts.preorder_lead_time)
+        ? t.factPreordersLead.replace('{lead}', leadTimeText(facts.preorder_lead_time, locale))
         : t.factPreorders,
     )
   for (const method of facts.payment_methods ?? [])
@@ -652,7 +653,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
       )
     : []
   const chips = [
-    ...factChips(shop.facts ?? {}, t),
+    ...factChips(shop.facts ?? {}, t, locale),
     // Type-specific facts the owner confirmed (e.g. a salon's walk-ins), label: value.
     ...custom
       // The story has its own line; the demo label is already in the header.

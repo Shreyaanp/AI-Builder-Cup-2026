@@ -145,6 +145,10 @@ def sandbox(zone: str) -> tuple[DemoSession, date]:
             seed_supply(store, CHAIN_OWNER, chain.id)
         store.record_consent(uid, LEGAL_VERSION)
         business = store.context(uid, bid)["business"]
+        # One "(Demo)" label, never "(Demo) (Demo)" or "(Demo) (Tour)".
+        business["fields"]["name"] = re.sub(
+            r"(s*((?:Demo|Tour)))+$", " (Demo)", business["fields"]["name"]
+        )
         today = today_for(business["fields"])
         city = ZONE_CITY.get(zone, "singapore")
         city = city if city in {"bengaluru", "singapore"} else "singapore"
