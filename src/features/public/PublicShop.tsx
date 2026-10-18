@@ -7,13 +7,13 @@ import {
   CircularProgress,
   Collapse,
   IconButton,
-  Link,
   List,
   ListItem,
   ListItemText,
   Stack,
   Typography,
   useTheme,
+  Link,
 } from '@mui/material'
 import { ArrowLeft, ChevronDown, Leaf, MapPin, MessageCircle, Phone, RefreshCw } from 'lucide-react'
 import { customerBack, customerNavigate } from '../frontdoors/navigation'
@@ -57,7 +57,6 @@ import { rememberOpened } from '../discover/opened'
 import { SimilarNearby } from '../discover/SimilarNearby'
 import { shopRegion, shopZone } from '../../region/region'
 import { track } from '../../app/analytics'
-import { CustomerAccountProvider } from '../customer/account'
 
 interface PublicShopData {
   id: string
@@ -471,17 +470,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
 }
 
 /** Customer-facing, read-only page for a shop the owner chose to share. No sign-in. */
-export default function PublicShop(props: { id: string; previewApi?: Api }) {
-  return props.previewApi ? (
-    <CustomerAccountProvider>
-      <PublicShopContent {...props} />
-    </CustomerAccountProvider>
-  ) : (
-    <PublicShopContent {...props} />
-  )
-}
-
-function PublicShopContent({ id, previewApi }: { id: string; previewApi?: Api }) {
+export default function PublicShop({ id, previewApi }: { id: string; previewApi?: Api }) {
   const locale = useLocale()
   const shopCopy = useShopCopy()
   const demoCopy = useDemoCopy()
@@ -679,6 +668,9 @@ function PublicShopContent({ id, previewApi }: { id: string; previewApi?: Api })
   const menu = [...shop.products].sort((a, b) => Number(b.available) - Number(a.available))
   const openLabel = shop.open_now == null ? null : shop.open_now ? discovery.open : discovery.closed
   const stampsEnabled = shop.stamps_enabled ?? Boolean(shop.reward_text?.trim())
+  // The stamp card, games and badges read and write this customer's own account, which the
+  // read-only public demo never touches.
+  const showStamps = stampsEnabled && !previewApi
   // Demo shops' numbers are fictional; never offer to call or message them.
   const phone = shop.demo ? '' : shop.phone
   const actions = previewApi
@@ -899,7 +891,7 @@ function PublicShopContent({ id, previewApi }: { id: string; previewApi?: Api })
         }}
       >
         {!previewApi && <FollowButton id={id} name={shop.name} />}
-        {stampsEnabled && !previewApi && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
+        {showStamps && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
         {actions.map((action) => (
           <Button
             key={action.label}
@@ -1175,15 +1167,6 @@ function PublicShopContent({ id, previewApi }: { id: string; previewApi?: Api })
         </CategoryGroups>
       )}
       {/* Rewards after the menu: earned, not in the way. */}
-      {stampsEnabled && !previewApi && (
-        <StampCard
-          shop={id}
-          name={shop.name}
-          timezone={shopZone(shop)}
-          reward={shop.reward_text}
-          needed={shop.stamps_needed ?? 8}
-        />
-      )}
       {stampsEnabled && previewApi && (
         <Link
           href="/explore/s/demo-story-bengaluru-chai?source=qr"
@@ -1192,7 +1175,16 @@ function PublicShopContent({ id, previewApi }: { id: string; previewApi?: Api })
           {demoCopy.stampAtStall}
         </Link>
       )}
-      {stampsEnabled && !previewApi && (
+      {showStamps && (
+        <StampCard
+          shop={id}
+          name={shop.name}
+          timezone={shopZone(shop)}
+          reward={shop.reward_text}
+          needed={shop.stamps_needed ?? 8}
+        />
+      )}
+      {showStamps && (
         <ShopStamp
           shop={{
             id,
@@ -1204,9 +1196,9 @@ function PublicShopContent({ id, previewApi }: { id: string; previewApi?: Api })
           }}
         />
       )}
-      {stampsEnabled && <ShopGames shop={id} />}
+      {showStamps && <ShopGames shop={id} />}
       {!previewApi && !stale && <BackInStock shop={id} products={shop.products} />}
-      {stampsEnabled && <BadgeRow shop={id} />}
+      {showStamps && <BadgeRow shop={id} />}
       {!previewApi && <Tips shop={id} />}
       {!previewApi && (
         <SimilarNearby
