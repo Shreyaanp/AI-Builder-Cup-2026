@@ -45,9 +45,9 @@ class RequestBoundary:
             if message["type"] == "http.response.start":
                 headers = MutableHeaders(scope=message)
                 # Default no-store; static assets and routes that chose a cache policy (e.g.
-                # immutable shop photos) keep theirs.
+                # immutable shop photos) keep theirs, also on video range (206) and 304 replies.
                 cached = scope["path"].startswith("/assets/") or "cache-control" in headers
-                if not (cached and message["status"] == 200):
+                if not (cached and message["status"] in (200, 206, 304)):
                     headers["Cache-Control"] = "no-store"
                 headers["X-Content-Type-Options"] = "nosniff"
                 headers["Referrer-Policy"] = "same-origin"

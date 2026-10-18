@@ -86,3 +86,29 @@ def test_text_is_gzipped_but_streams_and_small_bodies_are_not(tmp_path: Path) ->
         assert "content-encoding" not in small.headers
         assert small.headers["cache-control"] == "no-store"
         assert client.get("/sw.js").headers["cache-control"] == "no-store"
+
+
+def test_public_media_and_fonts_are_cached_for_a_year(tmp_path: Path) -> None:
+    (tmp_path / "index.html").write_text("<html>oGoogle AI</html>")
+    (tmp_path / "how-it-works").mkdir()
+    (tmp_path / "how-it-works" / "vendor-en.mp4").write_bytes(b"\0" * 4096)
+    (tmp_path / "how-it-works" / "vendor-en.jpg").write_bytes(b"\xff\xd8fixture")
+    (tmp_path / "fonts").mkdir()
+    (tmp_path / "fonts" / "fixture.woff2").write_bytes(b"wOF2fixture")
+    (tmp_path / "manifest.webmanifest").write_text("{}")
+    year = "public, max-age=31536000, immutable"
+    with TestClient(
+        create_app(
+            Settings(app_env="test", frontend_dist=str(tmp_path), _env_file=None),
+            InMemorySessionService(),
+        )
+    ) as client:
+        assert client.get("/how-it-works/vendor-en.jpg").headers["cache-control"] == year
+        assert client.get("/fonts/fixture.woff2").headers["cache-control"] == year
+        # Browsers fetch video in byte ranges; the partial reply keeps the same policy.
+        part = client.get("/how-it-works/vendor-en.mp4", headers={"Range": "bytes=0-1023"})
+        assert part.status_code == 206
+        assert part.headers["cache-control"] == year
+        assert client.get("/how-it-works").headers["cache-control"] == "no-store"
+        assert client.get("/manifest.webmanifest").headers["cache-control"] == "no-store"
+        assert client.get("/how-it-works/missing.mp4").headers["cache-control"] == "no-store"
