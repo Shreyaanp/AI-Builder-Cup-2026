@@ -17,7 +17,7 @@ import { History, UserRound } from 'lucide-react'
 import { Sheet } from '../v1/Sheet'
 import { HoverTip } from '../frontdoors/HoverTip'
 import { useCustomer } from './account'
-import { useGuestCopy } from './guestCopy'
+import { PrivacyLinks } from './PrivacyLinks'
 import type { Profile } from './types'
 import { useLocale } from '../../state/hooks'
 import { TourStoryButton } from './TourStoryButton'
@@ -85,7 +85,6 @@ export function ProfileButton({ inline = false }: { inline?: boolean }) {
 export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const roles = useTheme().material
   const account = useCustomer()
-  const guest = useGuestCopy()
   const t = useAccountCopy()
   const locale = useLocale()
   // A deletion the server refused is said out loud, with a way to try it again.
@@ -158,11 +157,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
               </Typography>
             </Box>
           </Stack>
-          {account.status === 'guest' && (
-            <Typography variant="bodySmall" color="text.secondary">
-              {guest.privacy}
-            </Typography>
-          )}
+          <PrivacyLinks />
           <Divider />
           <TourStoryButton onReady={onClose} />
           <Box>

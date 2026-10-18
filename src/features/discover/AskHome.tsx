@@ -1,5 +1,6 @@
 import { carried, pushEntry } from '../../app/history'
 import { AiInfo } from '../v1/AiInfo'
+import { Details } from '../v1/Sheet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
@@ -694,7 +695,7 @@ export default function AskHome({
   const nearbyShops = nearby?.key === placeKey ? nearby.shops : null
   const opening = turns.length === 0
   // Chips appear once this area's suggestions are in (they grow up from the dock: no shift).
-  const showChips = opening && suggestions !== null && !draft.trim() && !busy
+  const showChips = opening && located && suggestions !== null && !draft.trim() && !busy
 
   function submit() {
     send(draft)
@@ -792,24 +793,24 @@ export default function AskHome({
                 : visuallyHidden
             }
           >
-            {c.hello}
+            {located ? c.hello : front.location}
           </Typography>
           {opening && (
             <>
-              <Typography
-                variant="bodyMedium"
-                color="text.secondary"
-                // Two lines kept for the shop count, so it never pushes the page when it arrives.
-                sx={{ mt: 2, minHeight: '2lh' }}
-              >
-                {suggestions?.shops
-                  ? fillIn(c.helloBody, { count: suggestions.shops, place: place.label })
-                  : fillIn(c.helloBodyEmpty, { place: place.label })}
-              </Typography>
+              {located && (
+                <Typography
+                  variant="bodyMedium"
+                  color="text.secondary"
+                  // Two lines kept for the shop count, so it never pushes the page when it arrives.
+                  sx={{ mt: 2, minHeight: '2lh' }}
+                >
+                  {fillIn(c.helloBodyEmpty, { place: place.label })}
+                </Typography>
+              )}
               {!located && (
                 <Box
                   component="section"
-                  aria-labelledby="ask-where"
+                  aria-labelledby="ask-hello"
                   className="c-rise"
                   sx={{
                     mt: 5,
@@ -819,9 +820,6 @@ export default function AskHome({
                     color: roles.onSecondaryContainer,
                   }}
                 >
-                  <Typography id="ask-where" component="h2" variant="titleMedium">
-                    {front.location}
-                  </Typography>
                   {denied && (
                     <Alert severity="info" sx={{ mt: 3 }}>
                       {discover.gpsError}
@@ -842,55 +840,64 @@ export default function AskHome({
                   </Box>
                 </Box>
               )}
-              <NearbyShops shops={nearbyShops} copy={c} locale={locale} browse={t.browse} />
-              <TodayEntry
-                copy={c}
-                onOpen={() => send(c.today, { kind: 'today' })}
-                disabled={busy}
-              />
-              {showChips && (
-                <Box
-                  component="ul"
-                  aria-label={c.composer}
-                  data-chips
-                  sx={{
-                    listStyle: 'none',
-                    p: 0,
-                    m: 0,
-                    mt: 5,
-                    // In the page, not over it: they never cover the cards above them.
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                    gap: 2,
-                  }}
-                >
-                  {chips.map((chip, index) => (
+              {located && (
+                <Details title={c.nearbyNow}>
+                  {suggestions?.shops ? (
+                    <Typography variant="bodyLarge">
+                      {fillIn(c.helloBody, { count: suggestions.shops, place: place.label })}
+                    </Typography>
+                  ) : null}
+                  <NearbyShops shops={nearbyShops} copy={c} locale={locale} browse={t.browse} />
+                  <TodayEntry
+                    copy={c}
+                    onOpen={() => send(c.today, { kind: 'today' })}
+                    disabled={busy}
+                  />
+                  {showChips && (
                     <Box
-                      component="li"
-                      key={chip.label}
-                      sx={{ display: 'flex', ...dealIn, '--deal-index': index }}
+                      component="ul"
+                      aria-label={c.composer}
+                      data-chips
+                      sx={{
+                        listStyle: 'none',
+                        p: 0,
+                        m: 0,
+                        mt: 5,
+                        // In the page, not over it: they never cover the cards above them.
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                        gap: 2,
+                      }}
                     >
-                      <Button
-                        variant="outlined"
-                        fullWidth
-                        onClick={() => send(chip.q, chip)}
-                        sx={{
-                          minHeight: 52,
-                          borderRadius: '16px',
-                          px: 3,
-                          py: 2,
-                          lineHeight: 1.25,
-                          whiteSpace: 'normal',
-                          overflowWrap: 'anywhere',
-                          bgcolor: roles.surfaceContainerLow,
-                          '&:hover': { bgcolor: roles.surfaceContainer },
-                        }}
-                      >
-                        {chip.label}
-                      </Button>
+                      {chips.map((chip, index) => (
+                        <Box
+                          component="li"
+                          key={chip.label}
+                          sx={{ display: 'flex', ...dealIn, '--deal-index': index }}
+                        >
+                          <Button
+                            variant="outlined"
+                            fullWidth
+                            onClick={() => send(chip.q, chip)}
+                            sx={{
+                              minHeight: 52,
+                              borderRadius: '16px',
+                              px: 3,
+                              py: 2,
+                              lineHeight: 1.25,
+                              whiteSpace: 'normal',
+                              overflowWrap: 'anywhere',
+                              bgcolor: roles.surfaceContainerLow,
+                              '&:hover': { bgcolor: roles.surfaceContainer },
+                            }}
+                          >
+                            {chip.label}
+                          </Button>
+                        </Box>
+                      ))}
                     </Box>
-                  ))}
-                </Box>
+                  )}
+                </Details>
               )}
             </>
           )}
@@ -952,6 +959,7 @@ export default function AskHome({
         ref={dock}
         data-testid="customer-chat-dock"
         sx={{
+          display: opening && !located ? 'none' : undefined,
           position: 'fixed',
           left: 0,
           right: 0,
@@ -1319,12 +1327,12 @@ function Summary({
   copy: ConversationCopy
 }) {
   const [open, setOpen] = useState(false)
-  const long = !streaming && text.length > 220
+  const long = text.length > 90
   const clamp =
     long && !open
       ? {
           display: '-webkit-box',
-          WebkitLineClamp: 4,
+          WebkitLineClamp: 3,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
         }
@@ -1337,7 +1345,7 @@ function Summary({
           streaming={streaming}
           sx={{
             ...chalkWrite,
-            ...(long && !open ? { maxHeight: '6.5em', overflow: 'hidden' } : {}),
+            ...(long && !open ? { maxHeight: '3lh', overflow: 'hidden' } : {}),
           }}
         />
       ) : (
@@ -1412,6 +1420,7 @@ function AssistantTurn({
   const accountCopy = accountCopyFor(locale)
   // Pins and cards are linked both ways: tap a pin, its card lights up; focus a card, its pin.
   const [selected, setSelected] = useState<MapSelection>(null)
+  const [showAll, setShowAll] = useState(false)
   if (turn.kind === 'today')
     return (
       // The deck carries its own title ("Today near …"): no second heading above it.
@@ -1618,17 +1627,19 @@ function AssistantTurn({
       )}
       {/* Where first (a short map strip, pins numbered like the rows), then the list: our
           shops, then Google's, in one row shape that fits a 360px phone five to a screen. */}
-      <AnswerMap
-        answer={answer}
-        ours={ours.slice(0, 8)}
-        center={turn.place}
-        locale={locale}
-        selected={selected}
-        onSelect={setSelected}
-      />
+      <Details title={discoverCopy(locale).map}>
+        <AnswerMap
+          answer={answer}
+          ours={ours.slice(0, 8)}
+          center={turn.place}
+          locale={locale}
+          selected={selected}
+          onSelect={setSelected}
+        />
+      </Details>
       {ours.length > 0 && (
         <PickList label={fillIn(copy.found, { place: turn.place.label })}>
-          {ours.slice(0, 8).map((pick, index) => (
+          {(showAll ? ours : ours.slice(0, 5)).map((pick, index) => (
             <PickCard
               key={pick.id}
               pick={pick}
@@ -1642,11 +1653,20 @@ function AssistantTurn({
           ))}
         </PickList>
       )}
+      {ours.length > 5 && !showAll && (
+        <Button onClick={() => setShowAll(true)} sx={{ minHeight: 48 }}>
+          {copy.more}
+        </Button>
+      )}
       {/* Google's area answer follows our shops, never above them. */}
-      {area && <AreaAnswerCard area={area} locale={locale} />}
-      {google.length > 0 && <GoogleRows places={google} copy={copy} locale={locale} />}
+      {(area || google.length > 0) && (
+        <Details title={copy.more}>
+          {area && <AreaAnswerCard area={area} locale={locale} />}
+          {google.length > 0 && <GoogleRows places={google} copy={copy} locale={locale} />}
+        </Details>
+      )}
       {latest && (
-        <>
+        <Details title={copy.composer}>
           <Box
             component="ul"
             sx={{ listStyle: 'none', p: 0, m: 0, mt: 6, display: 'flex', flexWrap: 'wrap', gap: 2 }}
@@ -1672,7 +1692,7 @@ function AssistantTurn({
           >
             {t.browse}
           </Button>
-        </>
+        </Details>
       )}
     </Box>
   )

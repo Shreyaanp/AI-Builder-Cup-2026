@@ -19,7 +19,8 @@ import { BadgeRow } from '../rewards/Rewards'
 import { useRewards } from '../rewards/storage'
 import { customerNavigate } from '../frontdoors/navigation'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
-import { Sheet } from '../v1/Sheet'
+import { Details, Sheet } from '../v1/Sheet'
+import { usePacingCopy } from '../customer/pacingCopy'
 import { PickCard, PickList, PickSkeleton } from './AnswerCards'
 import { useConversationCopy } from './conversationCopy'
 import { useRewardCopy } from '../rewards/strings'
@@ -162,6 +163,8 @@ export default function Discover({
   const [lat, lng] = filters.place ? [filters.place.lat, filters.place.lng] : areas[filters.area]
   const currency = areaCurrency(lat, lng, filters.place?.label ?? filters.area)
   const conversation = useConversationCopy(currency)
+  const pacing = usePacingCopy()
+  const [allResults, setAllResults] = useState(false)
   const rewardCopy = useRewardCopy()
   useEffect(() => {
     if (filters.place) onLocationChange?.({ gps: null, place: filters.place })
@@ -438,116 +441,121 @@ export default function Discover({
             <Search aria-hidden size={22} />
           </Button>
         </Stack>
-        <Stack
-          direction="row"
-          sx={{
-            gap: 2,
-            overflowX: 'auto',
-            py: 2,
-            // Runs to the screen edges, so a cut-off chip reads as "swipe for more". Doubled
-            // specificity: the Stack's own child rule resets margins.
-            '&&': { mx: -4 },
-            px: 4,
-            position: 'sticky',
-            // Pinned just under the app bar (CustomerTopBar, 64px).
-            top: 'calc(64px + env(safe-area-inset-top, 0px))',
-            zIndex: 2,
-            bgcolor: roles.surface,
-            scrollbarWidth: 'none',
-            '&::-webkit-scrollbar': { display: 'none' },
-          }}
-        >
-          {[
-            { label: t.open, on: filters.open, set: (open: boolean) => ({ open }) },
-            { label: t.halal, on: filters.halal, set: (halal: boolean) => ({ halal }) },
-            { label: t.budget, on: filters.budget, set: (budget: boolean) => ({ budget }) },
-          ].map((toggle) => (
-            <Chip
-              key={toggle.label}
-              role="switch"
-              aria-checked={toggle.on}
-              label={toggle.label}
-              clickable
-              variant={toggle.on ? 'filled' : 'outlined'}
-              color={toggle.on ? 'primary' : 'default'}
-              sx={{ ...controlSx, flexShrink: 0 }}
-              onClick={() => setFilters({ ...filters, ...toggle.set(!toggle.on) })}
-            />
-          ))}
-          <Chip
-            label={front.all}
-            clickable
-            aria-pressed={!filters.category && !interestsActive}
-            color={!filters.category && !interestsActive ? 'primary' : 'default'}
-            sx={{ ...controlSx, flexShrink: 0 }}
-            onClick={() => {
-              setInterestsActive(false)
-              setFilters({ ...filters, category: '' })
+        <Details title={pacing.more}>
+          <Stack
+            direction="row"
+            sx={{
+              gap: 2,
+              overflowX: 'auto',
+              py: 2,
+              // Runs to the screen edges, so a cut-off chip reads as "swipe for more". Doubled
+              // specificity: the Stack's own child rule resets margins.
+              '&&': { mx: -4 },
+              px: 4,
+              position: 'sticky',
+              // Pinned just under the app bar (CustomerTopBar, 64px).
+              top: 'calc(64px + env(safe-area-inset-top, 0px))',
+              zIndex: 2,
+              bgcolor: roles.surface,
+              scrollbarWidth: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
             }}
-          />
-          {categories.map((category) => (
+          >
+            {[
+              { label: t.open, on: filters.open, set: (open: boolean) => ({ open }) },
+              { label: t.halal, on: filters.halal, set: (halal: boolean) => ({ halal }) },
+              { label: t.budget, on: filters.budget, set: (budget: boolean) => ({ budget }) },
+            ].map((toggle) => (
+              <Chip
+                key={toggle.label}
+                role="switch"
+                aria-checked={toggle.on}
+                label={toggle.label}
+                clickable
+                variant={toggle.on ? 'filled' : 'outlined'}
+                color={toggle.on ? 'primary' : 'default'}
+                sx={{ ...controlSx, flexShrink: 0 }}
+                onClick={() => setFilters({ ...filters, ...toggle.set(!toggle.on) })}
+              />
+            ))}
             <Chip
-              key={category}
-              label={t[category]}
+              label={front.all}
               clickable
-              aria-pressed={filters.category === category}
-              color={filters.category === category ? 'primary' : 'default'}
+              aria-pressed={!filters.category && !interestsActive}
+              color={!filters.category && !interestsActive ? 'primary' : 'default'}
               sx={{ ...controlSx, flexShrink: 0 }}
               onClick={() => {
                 setInterestsActive(false)
-                setFilters({ ...filters, category: filters.category === category ? '' : category })
+                setFilters({ ...filters, category: '' })
               }}
             />
-          ))}
-        </Stack>
-        {filters.place && !changingArea ? (
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 2, flexWrap: 'wrap', py: 1 }}>
-            <Typography
-              variant="bodyMedium"
-              color="text.secondary"
-              sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}
-            >
-              <MapPin size={16} aria-hidden="true" />
-              <span>{filters.place.label}</span>
-            </Typography>
-            <Button
-              size="small"
-              onClick={() => setChangingArea(true)}
-              sx={{ minHeight: 48, textDecoration: 'underline', px: 2 }}
-            >
-              {t.changeArea}
-            </Button>
-          </Stack>
-        ) : (
-          <>
-            <Typography variant="bodyMedium" color="text.secondary">
-              {t.reason}
-            </Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
-              <PlaceSearch
-                key={filters.place ? `${filters.place.lat},${filters.place.lng}` : filters.area}
-                value={filters.place?.label ?? filters.area}
-                onFound={(place) => {
-                  setGpsError(false)
-                  setFilters({ ...filters, place })
-                  setChangingArea(false)
+            {categories.map((category) => (
+              <Chip
+                key={category}
+                label={t[category]}
+                clickable
+                aria-pressed={filters.category === category}
+                color={filters.category === category ? 'primary' : 'default'}
+                sx={{ ...controlSx, flexShrink: 0 }}
+                onClick={() => {
+                  setInterestsActive(false)
+                  setFilters({
+                    ...filters,
+                    category: filters.category === category ? '' : category,
+                  })
                 }}
               />
-              <Button
-                variant="outlined"
-                disabled={gpsBusy}
-                onClick={() => locate()}
-                startIcon={
-                  gpsBusy ? <CircularProgress size={18} /> : <MapPin aria-hidden size={18} />
-                }
-                sx={{ flexShrink: 0, minHeight: 48 }}
+            ))}
+          </Stack>
+          {filters.place && !changingArea ? (
+            <Stack direction="row" sx={{ alignItems: 'center', gap: 2, flexWrap: 'wrap', py: 1 }}>
+              <Typography
+                variant="bodyMedium"
+                color="text.secondary"
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}
               >
-                {t.gps}
+                <MapPin size={16} aria-hidden="true" />
+                <span>{filters.place.label}</span>
+              </Typography>
+              <Button
+                size="small"
+                onClick={() => setChangingArea(true)}
+                sx={{ minHeight: 48, textDecoration: 'underline', px: 2 }}
+              >
+                {t.changeArea}
               </Button>
             </Stack>
-          </>
-        )}
-        {gpsError && <Alert severity="info">{t.gpsError}</Alert>}
+          ) : (
+            <>
+              <Typography variant="bodyMedium" color="text.secondary">
+                {t.reason}
+              </Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
+                <PlaceSearch
+                  key={filters.place ? `${filters.place.lat},${filters.place.lng}` : filters.area}
+                  value={filters.place?.label ?? filters.area}
+                  onFound={(place) => {
+                    setGpsError(false)
+                    setFilters({ ...filters, place })
+                    setChangingArea(false)
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  disabled={gpsBusy}
+                  onClick={() => locate()}
+                  startIcon={
+                    gpsBusy ? <CircularProgress size={18} /> : <MapPin aria-hidden size={18} />
+                  }
+                  sx={{ flexShrink: 0, minHeight: 48 }}
+                >
+                  {t.gps}
+                </Button>
+              </Stack>
+            </>
+          )}
+          {gpsError && <Alert severity="info">{t.gpsError}</Alert>}
+        </Details>
         {result?.mode === 'demo' && (
           <Alert severity="info">
             <strong>{t.demo}</strong>
@@ -557,7 +565,7 @@ export default function Discover({
         )}
         {result?.google_unavailable && <Alert severity="warning">{t.partial}</Alert>}
         {(usuals.length > 0 || Object.keys(rewards.data.shops).length > 0) && (
-          <Box>
+          <Details title={t.usuals}>
             <Typography variant="titleLarge" component="h2">
               {t.usuals}
             </Typography>
@@ -587,7 +595,7 @@ export default function Discover({
                 ),
               )}
             </Stack>
-          </Box>
+          </Details>
         )}
         {/* List or map: one pill in the thumb zone, floating over the results (not a title). */}
         <Box
@@ -694,7 +702,7 @@ export default function Discover({
         </Sheet>
         {status === 'ready' && places.length > 0 && (
           <PickList label={t.title}>
-            {places.map((place, index) => (
+            {(allResults ? places : places.slice(0, 5)).map((place, index) => (
               <PickCard
                 key={place.id}
                 pick={asPick(place)}
@@ -711,6 +719,11 @@ export default function Discover({
               />
             ))}
           </PickList>
+        )}
+        {places.length > 5 && !allResults && (
+          <Button onClick={() => setAllResults(true)} sx={{ minHeight: 48 }}>
+            {pacing.more}
+          </Button>
         )}
       </Stack>
       <Sheet
