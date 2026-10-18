@@ -27,7 +27,8 @@ import { useLocale } from '../../state/hooks'
 import type { Locale } from '../../i18n/locales'
 import { chalkWrite, dealIn } from '../../design/chalkMotion'
 import { RichText } from '../../design/RichText'
-import { HAND_FONT, motion } from '../../design/theme'
+import { motion } from '../../design/theme'
+import { sentenceSummary } from './summary'
 import { customerNavigate, goTo } from '../frontdoors/navigation'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { useCustomer } from '../customer/account'
@@ -1276,7 +1277,8 @@ function TodayEntry({
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography
           sx={{
-            fontFamily: HAND_FONT,
+            // Keep numerals on the same baseline as Indic scripts; Caveat's Latin metrics
+            // lift ASCII digits above Noto Sans Tamil glyphs.
             fontSize: 'clamp(1.125rem, 5vw, 1.5rem)',
             fontWeight: 700,
             lineHeight: 1.15,
@@ -1309,29 +1311,14 @@ function Summary({
 }) {
   const [open, setOpen] = useState(false)
   const long = !streaming && text.length > 220
-  const clamp =
-    long && !open
-      ? {
-          display: '-webkit-box',
-          WebkitLineClamp: 4,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        }
-      : {}
+  const visibleText = long && !open ? sentenceSummary(text) : text
   return (
     <>
       {markdown ? (
-        <RichText
-          content={text}
-          streaming={streaming}
-          sx={{
-            ...chalkWrite,
-            ...(long && !open ? { maxHeight: '6.5em', overflow: 'hidden' } : {}),
-          }}
-        />
+        <RichText content={visibleText} streaming={streaming} sx={chalkWrite} />
       ) : (
-        <Typography variant="bodyLarge" sx={{ ...chalkWrite, ...clamp }}>
-          {text}
+        <Typography variant="bodyLarge" sx={chalkWrite}>
+          {visibleText}
         </Typography>
       )}
       {long && (

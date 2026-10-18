@@ -2,6 +2,7 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import type { components } from '../../api/generated'
 import { useCustomer } from '../customer/account'
 import { useRewards } from '../rewards/storage'
+import { useLocale } from '../../state/hooks'
 
 type Schemas = components['schemas']
 export type PassportView = Schemas['PassportView']
@@ -67,8 +68,9 @@ function clearReceipts() {
 }
 
 /** The phone's own timezone and, when known, where the person is browsing. */
-export function where(place?: { lat: number; lng: number } | null) {
+export function where(place?: { lat: number; lng: number } | null, language = 'en') {
   const params = new URLSearchParams({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone })
+  params.set('lang', language)
   if (place) {
     params.set('lat', place.lat.toFixed(5))
     params.set('lng', place.lng.toFixed(5))
@@ -165,10 +167,11 @@ async function load(api: Api, signedIn: boolean, cards: Record<string, number>, 
 export function usePassport(place?: { lat: number; lng: number } | null) {
   const account = useCustomer()
   const { data } = useRewards()
+  const language = useLocale()
   const current = useSyncExternalStore(subscribe, () => state)
   const signedIn = account.status === 'signed-in'
   const identified = signedIn || account.status === 'guest'
-  const query = where(place)
+  const query = where(place, language)
   const cards = identified
     ? {}
     : Object.fromEntries(
