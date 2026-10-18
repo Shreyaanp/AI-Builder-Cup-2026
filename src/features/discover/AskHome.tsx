@@ -40,7 +40,7 @@ import { openedShops } from './opened'
 import { ProfileButton, ProfileSheet } from '../customer/Profile'
 import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
 import { LanguagePicker } from '../frontdoors/LanguagePicker'
-import { useFrontCopy } from '../frontdoors/strings'
+import { useDemoCopy, useFrontCopy } from '../frontdoors/strings'
 import { usePassportCopy } from '../passport/copy'
 import { TodayDeck } from '../passport/TodayDeck'
 import { AreaAnswerCard, GoogleRows, PickCard, PickList, PickSkeleton } from './AnswerCards'
@@ -155,6 +155,7 @@ export default function AskHome({
   const locale = useLocale()
   const t = askCopy(locale)
   const front = useFrontCopy()
+  const demo = useDemoCopy()
   const discover = discoverCopy(locale)
   const passport = usePassportCopy()
   const roles = useTheme().material
@@ -764,6 +765,9 @@ export default function AskHome({
             </Box>
           </Button>
           <Stack direction="row" sx={{ ml: 'auto', flexShrink: 0, alignItems: 'center' }}>
+            <Button component="a" href="/explore/demo" size="small" sx={{ minHeight: 44, px: 1 }}>
+              {demo.tryDemo}
+            </Button>
             <ProfileButton inline />
             <LanguagePicker variant="inline" />
             <AppearanceToggle inline />
