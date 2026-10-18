@@ -86,3 +86,20 @@ def test_text_is_gzipped_but_streams_and_small_bodies_are_not(tmp_path: Path) ->
         assert "content-encoding" not in small.headers
         assert small.headers["cache-control"] == "no-store"
         assert client.get("/sw.js").headers["cache-control"] == "no-store"
+
+
+def test_landing_variant_marks_the_page_only_when_new(tmp_path: Path) -> None:
+    (tmp_path / "index.html").write_text("<html><head><title>Chalkboard</title></head></html>")
+    marker = '<meta name="chalkboard-landing" content="new" />'
+    for variant, marked in (("classic", False), ("new", True)):
+        settings = Settings(
+            app_env="test", frontend_dist=str(tmp_path), landing_variant=variant, _env_file=None
+        )
+        with TestClient(create_app(settings, InMemorySessionService())) as client:
+            for path in ("/", "/index.html", "/explore/"):
+                response = client.get(path)
+                assert response.status_code == 200
+                assert (marker in response.text) is marked
+                assert response.headers["cache-control"] == "no-store"
+    with pytest.raises(ValidationError):
+        Settings(app_env="test", landing_variant="fancy", _env_file=None)
