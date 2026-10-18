@@ -704,6 +704,7 @@ async def build_view(
     lat: float | None = None,
     lng: float | None = None,
     timezone: str = "UTC",
+    language: str | None = None,
     device_only: bool = False,
     uid: str | None = None,
 ) -> PassportView:
@@ -741,12 +742,19 @@ async def build_view(
     run = streak(state, this_week)
     quests = quest_views(state, today, nearby)
     sets = set_views(state, quests, nearby)
+    reward = next_reward(state, data, sets, level_view)
+    translator = getattr(request.app.state, "shop_translator", None)
+    if reward and reward.kind == "card" and language and translator:
+        translated = await translator.translate(language, {reward.shop_id: [reward.reward]})
+        reward = reward.model_copy(
+            update={"reward": translated.get(reward.shop_id, {}).get(reward.reward, reward.reward)}
+        )
     games = GamesView(
         scratch=[scratch_view(t) for t in state.scratch if not t.revealed][:5],
         sets=sets,
         coop=await coop_view(request, state, today, nearby, lat, lng),
         won_perks=state.won_perks[:20],
-        next_reward=next_reward(state, data, sets, level_view),
+        next_reward=reward,
         # Gentle and rare: from Friday, only while a streak runs and this week has no visit.
         nudge=bool(
             run.weeks
@@ -983,6 +991,7 @@ async def preview(
     lat: float | None = None,
     lng: float | None = None,
     tz: str = "UTC",
+    lang: str | None = None,
 ) -> PassportView:
     """The passport drawn from this phone's receipts (signed out: "on this phone")."""
     await enforce_limits(request, [("discover", client_ip(request))], anonymous=True)
@@ -996,7 +1005,14 @@ async def preview(
             shops[bid] = await anyio.to_thread.run_sync(store(request).public_shop, bid)
     apply_cards(state, body.cards, {k: v for k, v in shops.items() if v}, exact=True)
     return await build_view(
-        request, state, signed_in=False, device_only=True, lat=lat, lng=lng, timezone=tz
+        request,
+        state,
+        signed_in=False,
+        device_only=True,
+        lat=lat,
+        lng=lng,
+        timezone=tz,
+        language=lang,
     )
 
 
@@ -1007,6 +1023,7 @@ async def merge(
     lat: float | None = None,
     lng: float | None = None,
     tz: str = "UTC",
+    lang: str | None = None,
 ) -> PassportView:
     """Once on sign-in: this phone's receipts are re-checked and each counts once, ever."""
     principal = await customer(request)
@@ -1039,13 +1056,18 @@ async def merge(
         lat=lat,
         lng=lng,
         timezone=tz,
+        language=lang,
         uid=principal.uid,
     )
 
 
 @router.get("/customer/passport", response_model=PassportView)
 async def passport(
-    request: Request, lat: float | None = None, lng: float | None = None, tz: str = "UTC"
+    request: Request,
+    lat: float | None = None,
+    lng: float | None = None,
+    tz: str = "UTC",
+    lang: str | None = None,
 ) -> PassportView:
     principal = await customer(request)
     state = await anyio.to_thread.run_sync(passports(request).get, principal.uid)
@@ -1056,6 +1078,7 @@ async def passport(
         lat=lat,
         lng=lng,
         timezone=tz,
+        language=lang,
         uid=principal.uid,
     )
 

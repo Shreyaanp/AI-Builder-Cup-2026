@@ -55,7 +55,7 @@ async function ask(page: Page, text: string) {
 }
 
 /** A deterministic answer with one Chalkboard shop, for UI-state tests. */
-function answer(name = 'Fixture Kopi') {
+function answer(name = 'Fixture Kopi', why?: string) {
   return {
     intent: {
       summary: '',
@@ -91,6 +91,7 @@ function answer(name = 'Fixture Kopi') {
             sold_out: [],
             demo_shop: true,
             deal: null,
+            ...(why && { why }),
           },
         ],
       },
@@ -118,6 +119,27 @@ test('duplicate model follow-up is shown once and raises no React key error', as
   await expect(page.getByRole('article', { name: 'kopi' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Cheaper?', exact: true })).toHaveCount(1)
   expect(keyErrors).toEqual([])
+})
+
+test('search result reasons wrap to a complete sentence instead of an ellipsis', async ({
+  page,
+}) => {
+  const fullReason =
+    "If you're looking for a great cup, Nawabi Chai House is a lovely nearby choice."
+  await page.route('**/api/v1/discover/ask', (route) =>
+    route.fulfill({ json: answer('Nawabi Chai House', fullReason) }),
+  )
+  await page.goto('/explore/')
+  await ask(page, 'chai near me')
+  const reason = page.getByTestId('pick-because')
+  await expect(reason).toHaveText(fullReason)
+  const style = await reason.evaluate((element) => ({
+    whiteSpace: getComputedStyle(element).whiteSpace,
+    textOverflow: getComputedStyle(element).textOverflow,
+  }))
+  expect(style.whiteSpace).not.toBe('nowrap')
+  expect(style.textOverflow).not.toBe('ellipsis')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
 
 test('front door: the conversation opens with real local suggestions and Today’s 7', async ({
