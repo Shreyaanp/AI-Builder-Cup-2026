@@ -245,7 +245,16 @@ const hi: IoCopy = {
 
 // Hindi and English are complete; other languages show English until translated.
 const tables: Record<string, IoCopy> = { en, hi }
+const localeLabels: Record<string, { title: string; sent: string }> = {
+  'zh-Hans': { title: '供应链', sent: '全部已发送。' },
+  ta: { title: 'விநியோகத் தொடர்', sent: 'அனைத்தும் அனுப்பப்பட்டன.' },
+}
 
 export function useIoCopy(): IoCopy {
-  return tables[useLocale()] ?? en
+  const locale = useLocale()
+  const copy = tables[locale] ?? en
+  const labels = localeLabels[locale]
+  return labels
+    ? { ...copy, title: labels.title, empty: { ...copy.empty, send: labels.sent } }
+    : copy
 }

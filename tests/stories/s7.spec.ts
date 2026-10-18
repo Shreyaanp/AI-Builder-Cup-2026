@@ -35,7 +35,7 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
         spoken.push({ lang: utterance.lang, text: utterance.text })
       }
     })
-    await page.getByRole('switch').check()
+    await page.getByRole('switch', { name: 'Read replies aloud' }).check()
     await page.getByRole('combobox', { name: 'Language' }).click()
     await expect(page.getByRole('option', { name: /தமிழ்/ })).toBeVisible()
     gap(
@@ -93,6 +93,7 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
       )
       await discovery.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/browse`)
       await expect(discovery.getByText('Demo data', { exact: true })).toBeVisible()
+      await discovery.getByRole('button', { name: 'Change area' }).click()
       const place = discovery.getByRole('textbox', { name: 'City or area' })
       for (const city of cities) {
         // Typed loosely, found and named properly: the offline map knows every demo city.

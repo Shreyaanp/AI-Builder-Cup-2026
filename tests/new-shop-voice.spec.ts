@@ -419,10 +419,10 @@ for (const locale of LOCALES) {
         en: { addShop: string; continuePreview: string }
       }
       const translations = (await import('/src/features/v1/locales/index.ts' as string)) as {
-        translations: Record<string, { addShop: string; continuePreview: string }>
+        loaders: Record<string, () => Promise<{ addShop: string; continuePreview: string }>>
       }
       const { addShop, continuePreview } =
-        locale === 'en' ? app.en : translations.translations[locale]!
+        locale === 'en' ? app.en : await translations.loaders[locale]!()
       return {
         ...voice.voiceModeCopyFor(locale),
         begin: flow.newShopCopyFor(locale).begin,

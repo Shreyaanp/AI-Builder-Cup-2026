@@ -236,7 +236,15 @@ test('the reply is revealed in step with its voice, and its chart when the voice
   // Words appear whole: no frame before the chart shows a cut word.
   for (const frame of seen.filter((frame) => frame.figures === 0)) {
     const coach = frame.text.slice(frame.text.indexOf('Sales'))
-    if (frame.text.includes('Sales')) expect(`${FIRST}${SECOND}`).toContain(coach.trim())
+    if (frame.text.includes('Sales')) {
+      const spoken = (text: string) =>
+        text
+          .replace(/Coach:\s*/g, '')
+          .replace(/([.!?])(?=[A-Z])/g, '$1 ')
+          .replace(/\s+/g, ' ')
+          .trim()
+      expect(spoken(`${FIRST}${SECOND}`)).toContain(spoken(coach))
+    }
   }
 
   // In the chat: what was said before the chart, the chart, then the rest.

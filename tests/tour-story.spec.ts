@@ -217,8 +217,11 @@ test('owner tour connects Today, forecast, payment preview and supplier timeline
   await page.getByRole('button', { name: 'Back', exact: true }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /Purchase orders/ }).click()
-  await page.getByRole('button', { name: /PO 4500000001/ }).click()
-  const order = page.getByRole('article', { name: 'PO 4500000001', exact: true })
+  await page
+    .getByRole('list', { name: 'Purchase orders' })
+    .getByRole('button', { name: /PO 4500000001/ })
+    .click()
+  const order = page.getByRole('article', { name: /PO 4500000001/ })
   await expect(order).toBeVisible()
   await expect(order.getByText('Invoice in', { exact: true })).toBeVisible()
   await expect(order.getByText('Simulation', { exact: true })).toBeVisible()

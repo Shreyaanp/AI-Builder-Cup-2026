@@ -288,7 +288,15 @@ test('guide and payment settings render in all 15 locales', async ({ page }, inf
     const english = await import(englishPath)
     return {
       tools: { en: copy.english, ...copy.translations },
-      shell: { en: english.en, ...shell.translations },
+      shell: {
+        en: english.en,
+        ...Object.fromEntries(
+          await Promise.all(
+            Object.entries(shell.loaders as Record<string, () => Promise<Record<string, string>>>)
+              .map(async ([locale, load]) => [locale, await load()]),
+          ),
+        ),
+      },
     }
   })
   for (const language of LOCALES) {

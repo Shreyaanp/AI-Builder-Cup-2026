@@ -130,8 +130,8 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
     const flow = (await import('/src/features/v1/newShopCopy.ts' as string)) as {
       newShopCopyFor: (l: string) => { begin: string; ready: string }
     }
-    const translations = (await import('/src/features/v1/locales/index.ts' as string)) as {
-      translations: Record<string, Record<string, string>>
+    const locales = (await import('/src/features/v1/locales/index.ts' as string)) as {
+      loaders: Record<string, () => Promise<Record<string, string>>>
     }
     const strings = (await import('/src/features/v1/strings.ts' as string)) as {
       en: Record<string, string>
@@ -144,9 +144,8 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
     }
     return {
       ...strings.en,
-      ...translations.translations[language],
-      begin: flow.newShopCopyFor(language).begin,
-      ready: flow.newShopCopyFor(language).ready,
+      ...(language === 'en' ? {} : await locales.loaders[language]!()),
+      ...flow.newShopCopyFor(language),
       ...onboarding.onboardingCopyFor(language),
       confirmPin: inChat.inChatCopyFor(language).confirmPin!,
     } as Record<string, string>
@@ -245,7 +244,14 @@ for (const language of LANGUAGES) {
       // The face check is offered and skippable; the shop opens; Today asks for the menu first.
       await expect(summary).toContainText(copy.faceOffer!)
       await summary.getByRole('button', { name: copy.skipForNow!, exact: true }).click()
-      await expect(page.getByRole('heading', { name: copy.ready! })).toBeVisible()
+      await expect(
+        page.getByRole('heading', {
+          name:
+            language.code === 'en'
+              ? 'Congratulations, Clean Helmet Point is live!'
+              : 'बधाई हो, Clean Helmet Point लाइव है!',
+        }),
+      ).toBeVisible()
       await page.getByRole('button', { name: copy.newShopContinue! }).click()
       const today = page.getByTestId('today-day-one')
       await expect(today).toBeVisible()
@@ -334,13 +340,17 @@ for (const language of LANGUAGES) {
       await say(page, copy, 'bas')
       const ended = page.getByTestId('conversation-ended')
       await expect(ended).toContainText(copy.endedTitle!)
+      const review = page.getByRole('dialog', { name: copy.soFar! })
+      await expect(review).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(review).toHaveCount(0)
       const asked = (await askedTopics(page)).length
       await page.waitForTimeout(2_000)
       expect((await askedTopics(page)).length).toBe(asked)
       await expect(page.getByRole('progressbar')).toHaveCount(0)
       // Everything said so far is saved; Continue carries on without asking the name again.
       await expect(page.getByTestId('shop-so-far')).toContainText('Raju Tailors')
-      await ended.getByRole('button', { name: copy.continueChat! }).click()
+      await ended.getByRole('button', { name: copy.continueChat!, exact: true }).click()
       await expect(ended).toHaveCount(0)
       const said = (await page.getByRole('log').locator('li').allInnerTexts()).join('\n')
       expect(said.split(ASKED.name).length - 1).toBeLessThanOrEqual(1)

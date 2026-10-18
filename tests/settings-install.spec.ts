@@ -2,6 +2,10 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { LOCALES } from '../src/i18n/locales.ts'
 
+type InstallCopy = Pick<Record<'installApp' | 'installIos' | 'installUnavailable', string>,
+  'installApp' | 'installIos' | 'installUnavailable'
+>
+
 async function openOwner(page: Page) {
   await page.goto('/?app=business')
   await page.getByRole('button', { name: 'Continue local preview' }).click()
@@ -121,10 +125,15 @@ test('B36 install strings exist in all ten locales', async ({ page }) => {
     const source = '/src/features/v1/strings.ts'
     const registry = '/src/features/v1/locales/index.ts'
     const { en } = await import(source)
-    const { translations } = await import(registry)
-    return { en, ...translations } as Record<string, Record<string, string>>
+    const { loaders } = (await import(registry)) as {
+      loaders: Record<string, () => Promise<InstallCopy>>
+    }
+    const locales = await Promise.all(
+      Object.entries(loaders).map(async ([locale, load]) => [locale, await load()]),
+    )
+    return { en, ...Object.fromEntries(locales) } as Record<string, InstallCopy>
   })
   for (const locale of LOCALES)
-    for (const key of ['installApp', 'installIos', 'installUnavailable'])
+    for (const key of ['installApp', 'installIos', 'installUnavailable'] as const)
       expect(dictionaries[locale]?.[key], `${locale}.${key}`).toEqual(expect.any(String))
 })

@@ -1525,14 +1525,24 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                 <Box component="li" sx={{ ml: { xs: 0, sm: 6 } }}>
                   <Paper
                     variant="outlined"
-                    role="status"
+                    role="region"
+                    aria-labelledby="conversation-ended-title"
                     data-testid="conversation-ended"
                     sx={{ p: 3, borderRadius: `${shape.lg}px` }}
                   >
-                    <Typography variant="titleMedium" component="h3">
+                    <Typography
+                      variant="titleMedium"
+                      component="h3"
+                      id="conversation-ended-title"
+                    >
                       {o.endedTitle}
                     </Typography>
-                    <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 0.5 }}>
+                    <Typography
+                      variant="bodyMedium"
+                      color="text.secondary"
+                      role="status"
+                      sx={{ mt: 0.5 }}
+                    >
                       {o.endedBody}
                     </Typography>
                     <Stack sx={{ mt: 2, gap: 1.5 }}>
