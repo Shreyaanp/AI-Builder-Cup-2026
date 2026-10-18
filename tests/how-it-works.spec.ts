@@ -185,3 +185,34 @@ test('every demo video and poster ships, small enough for a phone (< 3 MB)', asy
       expect(poster.ok(), `${flow}-${lang}.jpg`).toBe(true)
     }
 })
+
+for (const width of [360, 390]) {
+  test(`${width}px: the new "/" front door fits and shows both primary actions`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await page.route('**/api/v1/bootstrap', (route) =>
+      route.fulfill({ json: { landing_variant: 'new' } }),
+    )
+    await page.goto('/?app=landing', { waitUntil: 'domcontentloaded' })
+    const t = pagesEnglish
+    await expect(page.getByRole('heading', { level: 1, name: t.previewHero })).toBeVisible({
+      timeout: 20_000,
+    })
+    await expect(page.getByRole('note')).toHaveCount(0)
+    await expect(page.locator('meta[name="robots"]')).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Find places near me' }).first()).toBeInViewport()
+    await expect(page.getByRole('link', { name: t.forBusiness }).first()).toBeInViewport()
+    await noOverflow(page)
+  })
+}
+
+test('LANDING_VARIANT=classic serves the classic landing at "/"', async ({ page }) => {
+  await page.route('**/api/v1/bootstrap', (route) =>
+    route.fulfill({ json: { landing_variant: 'classic' } }),
+  )
+  await page.goto('/?app=landing')
+  await expect(
+    page.getByRole('heading', { name: 'Small shops. Big neighbourhood energy.' }),
+  ).toBeVisible({ timeout: 20_000 })
+})
