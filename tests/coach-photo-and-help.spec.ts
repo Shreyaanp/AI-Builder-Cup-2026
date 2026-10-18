@@ -120,3 +120,18 @@ test('OB-37: the photo picked after classify is the original, so its GPS still r
     .click()
   expect((await upload).headers()['x-photo-gps']).toBeTruthy()
 })
+
+test('OB-37: on a phone with a conversation going, the photo question and its choices are on screen', async ({
+  page,
+}) => {
+  await ready(page)
+  await say(page, 'what sells best')
+  await say(page, 'and on weekends')
+  await page.locator('input[type=file]').first().setInputFiles(gpsBoardPath)
+  const group = page.getByRole('group', { name: 'What is this photo?' })
+  await expect(group).toBeVisible({ timeout: 20_000 })
+  await expect(
+    page.getByText(/^Looks like: .+\. Is that right\?$|^I couldn’t tell/),
+  ).toBeInViewport()
+  await expect(group.getByRole('button', { name: 'Shop photo' })).toBeInViewport()
+})
