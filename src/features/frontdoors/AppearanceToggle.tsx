@@ -1,4 +1,5 @@
-import { IconButton, Tooltip, useTheme } from '@mui/material'
+import { IconButton, useTheme } from '@mui/material'
+import { HoverTip } from './HoverTip'
 import { Moon, Sun } from 'lucide-react'
 import type { Locale } from '../../i18n/locales'
 import { useLocale, usePreferencesDispatch } from '../../state/hooks'
@@ -29,7 +30,7 @@ export function AppearanceToggle({ inline = false }: { inline?: boolean }) {
   const t = labels[useLocale()] ?? labels.en
   const label = dark ? t.light : t.dark
   return (
-    <Tooltip title={label}>
+    <HoverTip title={label}>
       <IconButton
         aria-label={label}
         onClick={() => dispatch({ type: 'appearance', appearance: dark ? 'light' : 'dark' })}
@@ -52,6 +53,6 @@ export function AppearanceToggle({ inline = false }: { inline?: boolean }) {
       >
         {dark ? <Sun size={20} /> : <Moon size={20} />}
       </IconButton>
-    </Tooltip>
+    </HoverTip>
   )
 }
