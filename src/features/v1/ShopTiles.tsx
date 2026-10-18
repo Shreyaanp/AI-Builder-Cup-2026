@@ -596,7 +596,7 @@ export function ShopSheets({
                       slotProps={{
                         primary: { variant: 'bodyLarge' },
                         secondary: {
-                          variant: 'bodySmall',
+                          variant: 'bodyMedium',
                           color: available ? 'text.secondary' : 'error',
                         },
                       }}
@@ -673,7 +673,7 @@ export function ShopSheets({
                   secondary={check.done ? t.ready : t.missing}
                   slotProps={{
                     primary: { variant: 'bodyLarge' },
-                    secondary: { variant: 'bodySmall' },
+                    secondary: { variant: 'bodyMedium' },
                   }}
                 />
               </ListItem>
@@ -699,7 +699,7 @@ function CustomerPage() {
   return (
     <Box>
       <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
-        <Typography variant="bodySmall" color="text.secondary" sx={{ flex: 1 }}>
+        <Typography variant="bodyMedium" color="text.secondary" sx={{ flex: 1 }}>
           {shop.public ? t.customerPageOn : t.customerPageOff}
         </Typography>
         <Switch
