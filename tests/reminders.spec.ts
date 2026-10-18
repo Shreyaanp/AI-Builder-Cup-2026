@@ -194,11 +194,14 @@ test.describe('owner reminders on a phone', () => {
     await toggle.click()
     await expect(toggle).toBeChecked()
     await toggle.click()
+    await expect(toggle).not.toBeChecked()
     state.enabled(false)
-    await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    // Tabs keep their state, so a fresh load is what re-reads the backend setting.
+    await page.reload()
+    await page.getByRole('button', { name: 'Continue local preview' }).click()
     await page.getByRole('button', { name: 'You', exact: true }).click()
-    await expect(toggle).toBeDisabled()
     await expect(page.locator('#reminder-status')).toHaveText(en.reminderOff)
+    await expect(toggle).toBeDisabled()
   })
 })
 
