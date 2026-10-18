@@ -113,10 +113,7 @@ for (const app of ['owner', 'customer'] as const) {
       await page.getByRole('button', { name: /preview/i }).click()
       await page.getByRole('button', { name: 'You', exact: true }).click()
     } else {
-      await page
-        .getByRole('button', { name: /profile/i })
-        .first()
-        .click()
+      await page.getByRole('button', { name: 'Profile and preferences' }).click()
     }
     await page.getByRole('button', { name: 'See again', exact: true }).click()
     await expect(page.getByRole('heading', { name: copy[offset], exact: true })).toBeVisible()
