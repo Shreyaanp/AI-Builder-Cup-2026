@@ -13,6 +13,7 @@ import {
   Stack,
   Typography,
   useTheme,
+  Link,
 } from '@mui/material'
 import { ArrowLeft, ChevronDown, Leaf, MapPin, MessageCircle, Phone, RefreshCw } from 'lucide-react'
 import { customerBack, customerNavigate } from '../frontdoors/navigation'
@@ -49,6 +50,7 @@ import { HoursList } from '../shop/Hours'
 import type { DayHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
 import { useShopCopy } from '../shop/strings'
+import { useDemoCopy } from '../frontdoors/strings'
 import { VerifiedBadge } from '../trust/VerifiedBadge'
 import { unitLabel } from '../shop/units'
 import { rememberOpened } from '../discover/opened'
@@ -471,6 +473,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
 export default function PublicShop({ id, previewApi }: { id: string; previewApi?: Api }) {
   const locale = useLocale()
   const shopCopy = useShopCopy()
+  const demoCopy = useDemoCopy()
   const o = useOnboardingCopy()
   const discovery = discoverCopy(locale)
   const freshnessCopy = useOwnerCopy()
@@ -1164,6 +1167,14 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         </CategoryGroups>
       )}
       {/* Rewards after the menu: earned, not in the way. */}
+      {stampsEnabled && previewApi && (
+        <Link
+          href="/explore/s/demo-story-bengaluru-chai?source=qr"
+          sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 48, mt: 2 }}
+        >
+          {demoCopy.stampAtStall}
+        </Link>
+      )}
       {showStamps && (
         <StampCard
           shop={id}
