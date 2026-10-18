@@ -30,6 +30,36 @@ const genericXlsx = fileURLToPath(
 )
 
 test.describe('POS import flows on phone (390px)', () => {
+  test('Hindi import uses shop Hindi for file and column mapping', async ({ page }) => {
+    test.setTimeout(90_000)
+    await enter(page)
+    await seedShop(page)
+    await page.getByRole('button', { name: 'You', exact: true }).click()
+    await page.getByRole('combobox', { name: 'Language', exact: true }).click()
+    await page.getByRole('option', { name: 'हिन्दी', exact: true }).click()
+    await page.getByRole('button', { name: 'दुकान', exact: true }).click()
+    await page.getByRole('button', { name: /बिक्री का हिसाब जोड़ें/ }).click()
+
+    const connectDialog = page.getByRole('dialog', { name: 'बिक्री का हिसाब जोड़ें' })
+    await expect(connectDialog.getByText('स्क्रीन या प्रिंटआउट की फ़ोटो लें')).toBeVisible()
+    await connectDialog.getByRole('button', { name: 'Petpooja', exact: true }).click()
+    await connectDialog.getByTestId('connector-file').setInputFiles({
+      name: 'pos-menu.csv',
+      mimeType: 'text/csv',
+      buffer: readFileSync(posMenuCsv),
+    })
+    await expect(connectDialog.getByRole('heading', { name: 'खानों का मिलान' })).toBeVisible({
+      timeout: 15_000,
+    })
+    await expect(connectDialog.getByText('सामान का नाम', { exact: true })).toBeVisible()
+    await expect(
+      connectDialog.getByRole('button', { name: 'पुष्टि करें और समीक्षा करें' }),
+    ).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+      true,
+    )
+  })
+
   test('POS import via CSV file → column mapping → review → menu updated', async ({ page }) => {
     test.setTimeout(90_000)
     await enter(page)

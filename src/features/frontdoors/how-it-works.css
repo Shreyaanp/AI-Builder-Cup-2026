@@ -196,6 +196,7 @@
   margin: 20px 0 0;
 }
 .hw-phone {
+  position: relative;
   width: min(100%, 320px);
   margin: 0 auto;
   border-radius: 36px;
@@ -210,6 +211,36 @@
   aspect-ratio: 9 / 16;
   object-fit: cover;
   background: var(--surface-high);
+}
+/* The videos have a voiceover: one clear button under the phone turns it on (from the top). */
+.hw-player {
+  display: grid;
+  justify-items: center;
+}
+.hw-player .hw-phone {
+  width: min(100%, 320px);
+}
+.hw-sound {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font: inherit;
+  font-weight: 600;
+  font-size: 1rem;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 8px 20px -10px rgb(0 0 0 / 0.5);
+}
+.hw-sound:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
 }
 .hw-note {
   margin-top: 10px;
@@ -288,167 +319,81 @@
   margin: 0 auto;
   padding: 28px 20px;
 }
+/* The four promises: big tags, two by two, each its own colour. */
 .hw-trust {
   list-style: none;
-  margin: 0 0 12px;
+  margin: 0 0 16px;
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (min-width: 900px) {
+  .hw-trust {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 .hw-trust li {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--outline);
-  color: var(--muted);
-  font-size: 0.95rem;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 24px;
+  background: var(--primary-c);
+  color: var(--on-primary-c);
 }
-.hw-trust svg {
-  color: var(--primary);
+.hw-trust li:nth-child(2) {
+  background: var(--tertiary-c);
+  color: var(--on-tertiary-c);
 }
-
-/* Landing proposal */
-.hw-banner {
-  margin: 0;
-  padding: 10px 16px;
-  text-align: center;
-  font-weight: 600;
+.hw-trust li:nth-child(3) {
   background: var(--secondary-c);
   color: var(--on-secondary-c);
 }
-.hw-split {
-  max-width: 960px;
-  margin: 16px auto 0;
-  display: grid;
-  gap: 16px;
-  padding: 0 12px;
+.hw-trust li:nth-child(4) {
+  background: var(--surface-high);
+  color: var(--ink);
 }
-@media (min-width: 720px) {
-  .hw-split {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-.hw-side {
-  padding: 20px 16px 24px;
-  border-radius: 28px;
-}
-.hw-side.vendor {
-  background: color-mix(in srgb, var(--primary-c) 45%, var(--surface));
-}
-.hw-side.customer {
-  background: color-mix(in srgb, var(--tertiary-c) 45%, var(--surface));
-}
-.hw-side .hw-phone {
-  margin-top: 16px;
-  width: min(100%, 280px);
-}
-
-.hw-footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px 20px;
-  padding: 24px 16px 40px;
-  color: var(--muted);
-}
-.hw-footer a {
-  min-height: 48px;
-  display: inline-flex;
-  align-items: center;
-}
-
-/* Landing proposal: one cup of chai, step by step, with the Google technology doing each step. */
-.hw-story,
-.hw-numbers {
-  max-width: 960px;
-  margin: 16px auto 0;
-  padding: 24px 16px;
-}
-.hw-story-steps {
-  list-style: none;
-  counter-reset: story;
-  margin: 16px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 12px;
-}
-@media (min-width: 720px) {
-  .hw-story-steps {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
-}
-.hw-story-steps li {
-  counter-increment: story;
-  position: relative;
-  display: grid;
-  gap: 4px;
-  padding: 16px 16px 16px 56px;
-  border-radius: 24px;
-  background: var(--surface-low);
-  font-size: 1rem;
-  line-height: 1.35;
-}
-.hw-story-steps li::before {
-  content: counter(story);
-  position: absolute;
-  left: 16px;
-  top: 16px;
+.hw-trust-icon {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: var(--on-primary);
-  font-weight: 700;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 6px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
 }
-.hw-story-who {
-  color: var(--muted);
+.hw-trust strong {
+  font-size: clamp(1.15rem, 4.8vw, 1.4rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
-.hw-story-steps strong {
-  font-size: 1.15rem;
+.hw-trust li > span:last-child {
+  font-size: 0.95rem;
+  line-height: 1.35;
+  opacity: 0.85;
 }
-.hw-tech {
-  justify-self: start;
-  margin-top: 4px;
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: var(--primary-c);
-  color: var(--on-primary-c);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-.hw-numbers dl {
-  margin: 16px 0 0;
-  display: grid;
-  gap: 12px;
-}
-@media (min-width: 720px) {
-  .hw-numbers dl {
-    grid-template-columns: repeat(3, 1fr);
+/* Each tag rises in as it scrolls into view, where the browser supports scroll timelines. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .hw-trust li {
+      animation: hw-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
   }
 }
-.hw-numbers dl > div {
-  padding: 16px;
-  border-radius: 24px;
-  border: 1px solid var(--outline);
-}
-.hw-numbers dt {
-  font-size: 2rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--primary);
-}
-.hw-numbers dd {
-  margin: 4px 0 0;
-  font-size: 1rem;
-}
-.hw-numbers .hw-note {
-  text-align: left;
+@keyframes hw-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Two primary actions: equal, side by side, also on 360 px phones. */
