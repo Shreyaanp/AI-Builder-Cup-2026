@@ -239,10 +239,11 @@ def test_changed_public_facts_discard_inflight_answer(app, unshare) -> None:
 
 
 def test_public_rate_limit_and_validation(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    # Hold the clock inside one minute window: on the wall clock a burst that straddles a
-    # minute boundary legitimately restarts the count (it flaked on the Firestore emulator).
+    # Hold the limiter's clock inside one minute window: on the wall clock a burst that straddles
+    # a minute boundary legitimately restarts the count (it flaked on the Firestore emulator).
+    # Only the limiter's view of time: a frozen global clock breaks the Firestore client.
     now = time.time() // 60 * 60 + 30
-    monkeypatch.setattr("app.limits.time.time", lambda: now)
+    monkeypatch.setattr("app.limits.time", SimpleNamespace(time=lambda: now))
     with TestClient(app) as client:
         bid = create_shop(app.state.merchant)
         app.state.merchant.share("alice", bid, True)
