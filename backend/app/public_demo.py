@@ -11,16 +11,17 @@ import json
 import re
 import sqlite3
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field, replace
 from datetime import date
 from pathlib import Path
 from secrets import token_urlsafe
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Annotated, Any
 from uuid import uuid4
 
 import anyio
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 from sse_starlette import EventSourceResponse
 from starlette.datastructures import State
@@ -29,6 +30,7 @@ from starlette.types import Receive, Scope, Send
 from .auth import Principal
 from .demo_chains import CHAINS
 from .demo_data import SHOPS
+from .demo_sessions import KIND, repository, restore_files, save
 from .demo_workspace import ZONE_CITY
 from .limits import Bucket, client_ip
 from .merchant import MerchantStore
@@ -106,6 +108,7 @@ class DemoSession:
     coach: str | None = None
     turns: int = 0
     reminders: dict[str, Any] = field(default_factory=dict)
+    revision: int = 0
 
     def close(self) -> None:
         if self.directory is not None:
@@ -183,6 +186,7 @@ async def open_workspace(request: Request, zone: str) -> dict[str, Any]:
         retry = 60
     if retry:
         raise HTTPException(429, "RATE_LIMITED", headers={"Retry-After": str(retry)})
+    await anyio.to_thread.run_sync(repository(request).purge_before, KIND, time.time())
     # Reserve before yielding so concurrent allocations cannot exceed the memory bound.
     if len(saved) >= MAX_SESSIONS:
         raise HTTPException(429, "DEMO_BUSY", headers={"Retry-After": "60"})
@@ -198,14 +202,55 @@ async def open_workspace(request: Request, zone: str) -> dict[str, Any]:
         saved[key] = entry
     else:
         entry.close()
+    try:
+        await anyio.to_thread.run_sync(lambda: save(repository(request), key, entry, create=True))
+    except BaseException:
+        saved.pop(key, None)
+        entry.close()
+        raise
     return {"session_id": key, "expires_at": entry.expires}
 
 
-def live(request: Request, session_id: str) -> DemoSession:
-    entry = sessions(request).get(session_id)
-    if entry is None or entry.store is None:
-        raise HTTPException(410, "DEMO_EXPIRED")
-    return entry
+async def live(request: Request, session_id: str) -> AsyncIterator[DemoSession]:
+    prior = getattr(request.app.state, "public_demos", {}).get(session_id)
+    if prior is not None and prior.expires <= time.time():
+        await anyio.to_thread.run_sync(repository(request).delete, KIND, session_id)
+    saved = sessions(request)
+    # Local mode keeps its cache for developer previews. Hosted requests always
+    # restore the shared revision, including writes made by another instance.
+    cached = saved.get(session_id)
+    hosted = request.app.state.v1_settings.merchant_backend == "firestore"
+    if cached is not None and not hosted:
+        yield cached
+        return
+
+    def load() -> DemoSession:
+        data = repository(request).get(KIND, session_id)
+        if not data or data["expires"] <= time.time():
+            raise HTTPException(410, "DEMO_EXPIRED")
+        directory = TemporaryDirectory(prefix="chalkboard-demo-", ignore_cleanup_errors=True)
+        try:
+            store = SandboxStore(restore_files(data, directory.name))
+            return DemoSession(
+                data["expires"],
+                data["reads"],
+                data["uid"],
+                data["bid"],
+                store,
+                directory,
+                turns=data["turns"],
+                reminders=data["reminders"],
+                revision=data["revision"],
+            )
+        except BaseException:
+            directory.cleanup()
+            raise
+
+    entry = await anyio.to_thread.run_sync(load)
+    try:
+        yield entry
+    finally:
+        entry.close()
 
 
 @router.get("/{session_id}")
@@ -213,12 +258,10 @@ async def read_demo(
     session_id: str,
     request: Request,
     response: Response,
+    entry: Annotated[DemoSession, Depends(live)],
     path: str = Query(max_length=256),
 ) -> Any:
     """Customer-side snapshot reads (the owner side goes through /api/...)."""
-    entry = sessions(request).get(session_id)
-    if entry is None:
-        raise HTTPException(410, "DEMO_EXPIRED")
     response.headers["Cache-Control"] = "no-store"
     if path not in entry.reads:
         raise HTTPException(403, "DEMO_READ_ONLY")
@@ -230,6 +273,7 @@ async def exit_demo(session_id: str, request: Request) -> dict[str, bool]:
     entry = sessions(request).pop(session_id, None)
     if entry:
         entry.close()
+    await anyio.to_thread.run_sync(repository(request).delete, KIND, session_id)
     return {"exited": True}
 
 
@@ -264,6 +308,7 @@ def offline(app: Any) -> dict[str, Any]:
         return cached
     from .analytics import AnalyticsReader
     from .brief import BriefWriter, WeatherService
+    from .business_profile import QuestionPlanner
     from .discover import MapsService
     from .forecast import ForecastService
     from .fraud import FraudReviewer
@@ -272,6 +317,8 @@ def offline(app: Any) -> dict[str, Any]:
     from .playbook import PlaybookWriter
     from .recap import RecapWriter
     from .sap_sandbox import SapSandbox
+    from .sourcing import SupplierGenerator
+    from .supply_docs import DocumentTranslator
 
     settings = app.state.v1_settings.model_copy(
         update={
@@ -301,6 +348,9 @@ def offline(app: Any) -> dict[str, Any]:
     cached = {
         "v1_settings": settings,
         "forecaster": ForecastService(settings),
+        "question_planner": QuestionPlanner(settings),
+        "supplier_generator": SupplierGenerator(settings),
+        "supply_translator": DocumentTranslator(settings),
         "weather": WeatherService(settings),
         "brief_writer": BriefWriter(settings),
         "recap_writer": RecapWriter(settings),
@@ -322,12 +372,30 @@ def offline(app: Any) -> dict[str, Any]:
 class Forward(Response):
     """Runs the real route for the sandbox scope and streams its response unchanged."""
 
-    def __init__(self, scope: Scope) -> None:
+    def __init__(self, scope: Scope, request: Request, entry: DemoSession, key: str) -> None:
         super().__init__()
         self.inner = scope
+        self.request = request
+        self.entry = entry
+        self.key = key
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        await scope["app"].router(self.inner, receive, send)
+        async def persist(message: Any) -> None:
+            if message["type"] == "http.response.start":
+                message["headers"].append((b"cache-control", b"no-store"))
+                if self.request.method != "GET" and message["status"] < 400:
+                    await anyio.to_thread.run_sync(
+                        save, repository(self.request), self.key, self.entry
+                    )
+            await send(message)
+
+        from .demo_context import services
+
+        token = services.set(offline(scope["app"]))
+        try:
+            await scope["app"].router(self.inner, receive, persist)
+        finally:
+            services.reset(token)
 
 
 def allowed(method: str, path: str) -> bool:
@@ -339,19 +407,25 @@ def allowed(method: str, path: str) -> bool:
 @router.api_route(
     "/{session_id}/api/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"]
 )
-async def owner_api(session_id: str, path: str, request: Request) -> Any:
-    entry = live(request, session_id)
+async def owner_api(
+    session_id: str, path: str, request: Request, entry: Annotated[DemoSession, Depends(live)]
+) -> Any:
     method = request.method
     path = path.strip("/") if path != "reminders/" else path
     # Owner-app calls with a sandbox answer of their own.
     if method == "GET" and path == "bootstrap":
-        return {}
+        return {"customer_origin": str(request.base_url).rstrip("/")}
     if method == "GET" and path == "conversations":
         return []
     if method == "POST" and path == "demo/workspace":
         return {"business_id": entry.bid, "created": False}
-    if path.startswith("reminders"):
-        return reminders(entry, method, await request.body())
+    if path in {"reminders", "reminders/demo"} and method in {"GET", "PUT", "DELETE"}:
+        if method != "GET":
+            await limit(request, "public-demo-write", 120)
+        result = reminders(entry, method, await request.body())
+        if method != "GET":
+            await anyio.to_thread.run_sync(save, repository(request), session_id, entry)
+        return result
     if not allowed(method, path):
         raise HTTPException(403, "DEMO_NOT_SENT")
     if method != "GET":
@@ -373,7 +447,7 @@ async def owner_api(session_id: str, path: str, request: Request) -> Any:
             (k, v) for k, v in request.scope["headers"] if k not in (b"authorization", b"cookie")
         ],
     )
-    return Forward(inner)
+    return Forward(inner, request, entry, session_id)
 
 
 def reminders(entry: DemoSession, method: str, body: bytes) -> Any:
@@ -385,12 +459,10 @@ def reminders(entry: DemoSession, method: str, body: bytes) -> Any:
             raise HTTPException(422, "Invalid reminder.") from None
         if not isinstance(value, dict) or len(body) > 4000:
             raise HTTPException(422, "Invalid reminder.")
-        entry.reminders = {**value, "demo": True}
-        return entry.reminders
+        entry.reminders = {"subscriptions": ["demo"] if value.get("enabled", True) else []}
     if method == "DELETE":
         entry.reminders = {}
-        return {"deleted": True}
-    return entry.reminders or {"subscriptions": [], "demo": True}
+    return {"enabled": True, "public_key": "", "subscriptions": [], **entry.reminders, "demo": True}
 
 
 async def limit(request: Request, name: str, per_ten_minutes: int) -> None:
@@ -428,12 +500,14 @@ def coach_runtime(app: Any) -> Any:
 
 
 @router.post("/{session_id}/coach")
-async def demo_coach(session_id: str, body: DemoTurn, request: Request) -> EventSourceResponse:
-    entry = live(request, session_id)
+async def demo_coach(
+    session_id: str, body: DemoTurn, request: Request, entry: Annotated[DemoSession, Depends(live)]
+) -> EventSourceResponse:
     await limit(request, "public-demo-coach", 30)
     entry.turns += 1
     if entry.turns > MAX_COACH_TURNS:
         raise HTTPException(429, "RATE_LIMITED", headers={"Retry-After": "600"})
+    await anyio.to_thread.run_sync(save, repository(request), session_id, entry)
     from .coordinator import MerchantContext, current
 
     runtime = coach_runtime(request.scope["app"])
@@ -448,6 +522,9 @@ async def demo_coach(session_id: str, body: DemoTurn, request: Request) -> Event
     turn = str(uuid4())
 
     async def frames() -> Any:
+        from .demo_context import services
+
+        service_token = services.set(offline(request.scope["app"]))
         token = current.set(MerchantContext(store, entry.uid, bid, [], body.message))
         sequence = 0
         try:
@@ -460,10 +537,13 @@ async def demo_coach(session_id: str, body: DemoTurn, request: Request) -> Event
             async for event in runtime.text_events(
                 principal, sid, body.message, body.language, body.currency
             ):
+                if event.kind == "turn_complete":
+                    await anyio.to_thread.run_sync(save, repository(request), session_id, entry)
                 sequence += 1
                 yield frame(turn, sequence, event)
         finally:
             current.reset(token)
+            services.reset(service_token)
 
     return EventSourceResponse(
         frames(), headers={"X-Accel-Buffering": "no", "Cache-Control": "no-store"}

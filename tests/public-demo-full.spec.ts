@@ -50,19 +50,29 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
     await expect(page.locator(`[data-tour="nav-${id}"]`)).toBeVisible()
   await expect(nav).toBeVisible()
   await noSideScroll(page)
+  const dock = await page.getByRole('textbox', { name: 'Message', exact: true }).boundingBox()
+  const navigation = await nav.boundingBox()
+  expect(dock!.y + dock!.height).toBeLessThanOrEqual(navigation!.y)
 
   // #280: the coach answers in the demo (offline instant answers).
   const box = page.getByRole('textbox').last()
-  await box.fill('Show my purchase orders')
-  await box.press('Enter')
-  await expect(page.locator('main')).toContainText(/purchase order|Purchase orders/i, {
+  await box.fill('Forecast demand for Masala chai.')
+  const answer = page.waitForResponse(
+    (response) => response.url().endsWith('/coach') && response.request().method() === 'POST',
+  )
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  const reply = await answer
+  expect(reply.status()).toBe(200)
+  await expect(page.getByRole('log')).toContainText(/weekday average/i, {
     timeout: 30_000,
   })
+  await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
   await page.screenshot({ path: 'output/playwright/demo-full-02-coach.png' })
 
   // #286, #281, #283, #284: Grow → Purchase orders with the WhatsApp PO, timeline and SAP view.
   await page.locator('[data-tour="nav-grow"]').click()
   await noSideScroll(page)
+  await expect(page.locator('[data-tour="supply"]')).toBeVisible()
   await page.screenshot({ path: 'output/playwright/demo-full-03-grow.png', fullPage: true })
   await page.locator('[data-tour="supply"]').click()
   const sheet = page.getByRole('dialog')
@@ -94,8 +104,16 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   // #287, #288: You → settings with the reminders control; #289: Take the tour.
   await page.locator('[data-tour="nav-you"]').click()
   await noSideScroll(page)
-  await page.screenshot({ path: 'output/playwright/demo-full-08-you.png', fullPage: true })
   await expect(page.getByText(/Remind/i).first()).toBeVisible()
+  const reminders = page.getByRole('switch', { name: 'Remind me', exact: true })
+  await expect(reminders).toBeEnabled()
+  await page.screenshot({ path: 'output/playwright/demo-full-08-you.png', fullPage: true })
+  await reminders.click()
+  await expect(reminders).toBeChecked()
+  await expect(page.getByText('Demo: not sent').first()).toBeVisible()
+  await expect(reminders).toBeEnabled()
+  await reminders.click()
+  await expect(reminders).not.toBeChecked()
   await page.getByRole('button', { name: 'Take the tour' }).first().click()
   await expect(page.getByRole('button', { name: 'Next' })).toBeVisible({ timeout: 30_000 })
   await page.screenshot({ path: 'output/playwright/demo-full-09-tour.png' })

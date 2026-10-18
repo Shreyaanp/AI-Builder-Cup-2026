@@ -188,7 +188,13 @@ export default function DemoApp() {
   }, [session, customer])
   return (
     <IdentityContext value={demoIdentity}>
-      <Box sx={{ minHeight: '100dvh', pb: 'env(safe-area-inset-bottom)' }}>
+      <Box
+        sx={{
+          minHeight: '100dvh',
+          pb: 'env(safe-area-inset-bottom)',
+          '--app-viewport': 'calc(100dvh - 48px - env(safe-area-inset-top))',
+        }}
+      >
         <Box
           component="header"
           sx={{
@@ -199,22 +205,22 @@ export default function DemoApp() {
           }}
         >
           {/* One slim line: what this is, the other side, and the way out. */}
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minHeight: 40 }}>
-            <Typography variant="bodySmall" sx={{ flex: 1, minWidth: 0 }}>
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minHeight: 48 }}>
+            <Typography variant="bodySmall" noWrap sx={{ flex: 1, minWidth: 0 }}>
               {t.banner}
             </Typography>
             <Button
               size="small"
               href={customer ? '/demo' : '/explore/demo'}
               onClick={customerNavigate}
-              sx={{ minHeight: 40, minWidth: 0, px: 1, flexShrink: 0 }}
+              sx={{ minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }}
             >
               {customer ? t.owner : t.customer}
             </Button>
             <Button
               size="small"
               onClick={() => void exit()}
-              sx={{ minHeight: 40, minWidth: 0, px: 1, flexShrink: 0 }}
+              sx={{ minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }}
             >
               {t.exit}
             </Button>

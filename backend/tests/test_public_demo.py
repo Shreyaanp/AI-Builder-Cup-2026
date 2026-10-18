@@ -3,6 +3,7 @@
 import time
 from unittest.mock import AsyncMock, Mock
 
+import pytest
 from fastapi.testclient import TestClient
 
 from tests.test_photos import app  # noqa: F401
@@ -76,15 +77,20 @@ def test_demo_is_the_full_owner_app_on_a_private_sandbox(app, monkeypatch):  # n
         provider.assert_not_called()
 
 
-def test_demo_coach_answers_offline(app):  # noqa: F811
+def test_demo_coach_answers_offline(app, monkeypatch):  # noqa: F811
     with TestClient(app) as client:
         app.state.v1_settings.public_demo_enabled = True
         session = open_demo(client).json()["session_id"]
+        paid_forecast = Mock(forecast=AsyncMock(side_effect=AssertionError("live tool")))
+        monkeypatch.setattr("app.coordinator.forecaster", paid_forecast)
         reply = client.post(
-            f"/api/v1/demo/sessions/{session}/coach", json={"message": "Show my purchase orders"}
+            f"/api/v1/demo/sessions/{session}/coach",
+            json={"message": "Forecast demand for Masala chai."},
         )
         assert reply.status_code == 200, reply.text
         assert "turn_complete" in reply.text
+        assert "weekday average" in reply.text.lower()
+        paid_forecast.forecast.assert_not_called()
 
 
 def test_customer_snapshot_reads(app):  # noqa: F811
@@ -144,3 +150,98 @@ def test_failed_seed_releases_capacity(app, monkeypatch):  # noqa: F811
         assert app.state.public_demos == {}
         monkeypatch.setattr("app.public_demo.MAX_SESSIONS", 0)
         assert open_demo(client).status_code == 429
+
+
+def test_session_and_safe_writes_survive_instance_cache_loss(app):  # noqa: F811
+    from tests.test_photos import jpeg
+
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        session = open_demo(client).json()["session_id"]
+        bid = owner(client, session, "businesses").json()[0]["id"]
+        drafted = owner(client, session, f"businesses/{bid}/supply/reorder", "POST", json={})
+        assert drafted.status_code == 200, drafted.text
+        supply = owner(client, session, f"businesses/{bid}/supply").json()
+        incoming = next(o for o in supply["orders"] if o["status"] in {"dispatched", "invoiced"})
+        received = owner(
+            client,
+            session,
+            f"businesses/{bid}/supply/orders/{incoming['id']}/received",
+            "POST",
+            json={"version": incoming["version"]},
+        )
+        assert received.status_code == 200, received.text
+        assert received.json()["order"]["received"] is True
+        supply = owner(client, session, f"businesses/{bid}/supply").json()
+        photo = owner(
+            client,
+            session,
+            f"businesses/{bid}/day/read?kind=sales",
+            "POST",
+            content=jpeg(),
+            headers={"Content-Type": "image/jpeg"},
+        )
+        assert photo.status_code == 200 and photo.json()["fixture"] is True
+        prepared = owner(
+            client,
+            session,
+            f"businesses/{bid}/day/prepare",
+            "POST",
+            json={
+                "date": photo.json()["date"],
+                "sales": [{"item": "Masala chai", "quantity": 12, "amount": 240}],
+            },
+        )
+        assert prepared.status_code == 200, prepared.text
+        sales = prepared.json()["sales"]
+        saved = owner(
+            client,
+            session,
+            f"businesses/{bid}/import/{sales['import_id']}/approve",
+            "POST",
+            json={"digest": sales["digest"]},
+        )
+        assert saved.status_code == 200, saved.text
+        history = owner(client, session, f"businesses/{bid}/sales").json()
+        supply = owner(client, session, f"businesses/{bid}/supply").json()
+        assert owner(client, session, "reminders", "PUT", json={"enabled": True}).status_code == 200
+        before = read(client, session, "/shops").json()
+        for entry in app.state.public_demos.values():
+            entry.close()
+        app.state.public_demos.clear()
+        # Every following request reconstructs from storage, as on a fresh instance.
+        assert owner(client, session, "businesses").json()[0]["id"] == bid
+        assert owner(client, session, f"businesses/{bid}/supply").json() == supply
+        assert owner(client, session, f"businesses/{bid}/sales").json() == history
+        assert owner(client, session, "reminders").json()["subscriptions"] == ["demo"]
+        assert read(client, session, "/shops").json() == before
+        reply = client.post(f"/api/v1/demo/sessions/{session}/coach", json={"message": "Hello"})
+        assert reply.status_code == 200 and "turn_complete" in reply.text
+        assert client.delete(f"/api/v1/demo/sessions/{session}").status_code == 200
+        assert owner(client, session, "businesses").status_code == 410
+
+
+def test_snapshot_rejects_stale_writes_and_expired_sessions(app):  # noqa: F811
+    from fastapi import HTTPException
+    from starlette.requests import Request
+
+    from app.demo_sessions import KIND, repository, save
+
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        session = open_demo(client).json()["session_id"]
+        request = Request({"type": "http", "app": app})
+        docs = repository(request)
+        entry = app.state.public_demos[session]
+        revision = entry.revision
+        save(docs, session, entry)
+        entry.revision = revision
+        with pytest.raises(HTTPException) as conflict:
+            save(docs, session, entry)
+        assert conflict.value.status_code == 409
+        data = docs.get(KIND, session)
+        data["expires"] = time.time() - 1
+        docs.put(KIND, session, session, data["expires"], data)
+        entry.close()
+        app.state.public_demos.clear()
+        assert owner(client, session, "businesses").status_code == 410

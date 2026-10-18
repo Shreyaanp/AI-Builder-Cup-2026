@@ -362,3 +362,36 @@ def test_private_tour_stays_private_during_seeding_and_resumes_a_partial_seed(
     assert len({row["date"] for row in store.sales_history("owner", bid)}) == 56
     assert len(supply_chain.orders(store, "owner", bid)) == 1
     assert store.public_shop(bid) is None
+
+
+@pytest.mark.parametrize("city", CENTRES)
+async def test_today_reorder_on_the_tour_shop_drafts_from_its_wholesaler(world, city) -> None:
+    # #264: the Today card's item is a drink sold by the cup; its wholesaler sells the
+    # ingredient by the kg. The draft orders that ingredient instead of finding no supplier.
+    from app.coordinator import DEMO_OWNER_UID, SupplierGenerator
+
+    store, community = world
+    seed_story(store, community, owner_uid="owner", customer_uid="customer", today=DAY)
+    bid = tour_id("owner", city)
+    settings = Settings(_env_file=None, forecast_backend="weekday_average", coach_mode="offline")
+    result = await supply_chain.draft_reorder(
+        store,
+        "owner",
+        bid,
+        "",
+        None,
+        ForecastService(settings),
+        SupplierGenerator(settings),
+        DEMO_OWNER_UID,
+    )
+    assert result["status"] == "drafted", result
+    order = result["order"]
+    assert order["supplier"]["name"] == (
+        "Sri Lakshmi Provisions (Demo)" if city == "bengaluru" else "Ah Huat Provision (Demo)"
+    )
+    line = order["lines"][0]
+    assert line["quantity"] > 0 and line["total"] > 0
+    assert line["unit"] == "kg" and line["quantity"] <= 20
+    # A stall-sized order (the seeded stall orders stay under 1 lakh / S$1,000 too).
+    assert order["total"] < 100_000_00
+    assert order["reason"]["item"]
