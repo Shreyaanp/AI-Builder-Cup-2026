@@ -312,7 +312,7 @@ def test_demo_partner_plays_the_story_through_the_real_pipeline(shop) -> None:
         demo_supply_seed.next_document(store, "alice", bid)
     board = supply_outbound.board(store, "alice", bid)
     assert board["demo"] and board["orders"][0]["partner"]["demo"]
-    assert board["inbox"][0]["raw"].startswith("<?xml")
+    assert board["inbox"][0]["raw_format"] == "text"  # A kirana uses WhatsApp, not SAP.
 
 
 def test_routes_run_inbound_and_outbound_and_stay_owner_scoped(app) -> None:  # noqa: F811
@@ -426,6 +426,14 @@ def test_coach_runs_the_story_by_chat(app) -> None:  # noqa: F811
         reply, events = say("Show the shipping notice in SAP")
         card = next(e["data"] for e in events if e["kind"] == "supply")
         assert card["view"] == "sap" and "DELVRY07" in reply
+        # Explicit SAP preview converts a copy; it must not change the WhatsApp exchange.
+        shipped = next(
+            o for o in client.get(f"{base}/board").json()["orders"] if o["direction"] == "out"
+        )
+        assert (
+            next(d for d in shipped["documents"] if d["kind"] == "DESADV")["translated_format"]
+            == "text"
+        )
 
         reply, _ = say("Send everything")
         assert "already sent" in reply
