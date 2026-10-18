@@ -9,6 +9,8 @@ const api = Number(process.env.API_PORT ?? 3300)
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Worktrees share node_modules here; port-scoped caches keep Vite workers isolated.
+  cacheDir: `node_modules/.vite-${web}`,
   base: process.env.ASSET_BASE_URL || '/',
   // Hosting publishes hashed assets only. Public files (icon, manifest, models) stay
   // on Cloud Run and must not inherit the optional cross-origin asset base.
