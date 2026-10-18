@@ -36,3 +36,11 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 - A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
+
+## Owner rules for every AI tool
+
+These apply to every agent working in this repository (Antigravity, Gemini CLI and any other tool):
+
+1. **Log every issue at once.** Any bug or issue you notice, or that the owner mentions, is added immediately to the owner's bug list (`C:/Users/pshre/work/orchestrator-tools/OWNER-BUGS.md` on the owner's machine) as a new `OB-xx` row. Never keep it only in memory.
+2. **Logging is not fixing.** Fix only what your task assigns, or what the owner explicitly says to fix now. Everything else stays in the list; the orchestrator packs it into a batch and schedules it by availability.
+3. **Every fix has a regression test** tagged with its `OB-xx` id, so it cannot silently break again.
