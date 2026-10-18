@@ -39,11 +39,13 @@ for (const width of [360, 390, 412]) {
   test(`${width}px: /how-it-works splits shops and customers, one lazy muted video each`, async ({
     page,
   }) => {
+    // The first page of a cold dev server can take a while to compile.
+    test.setTimeout(90_000)
     await page.setViewportSize({ width, height: 800 })
     await open(page, '/how-it-works', 'en', 'light')
     const t = pagesEnglish
     await expect(page.getByRole('heading', { level: 1, name: t.howTitle })).toBeVisible({
-      timeout: 20_000,
+      timeout: 50_000,
     })
     await expect(page.getByText(t.lead)).toBeVisible()
     await expect(page.getByRole('heading', { level: 2, name: t.shopsLine })).toBeAttached()
@@ -157,7 +159,15 @@ test('/landing-preview: labelled proposal, noindex, both videos inline', async (
     'href',
     '/how-it-works',
   )
+  // One story: a cup of chai, each step with the Google technology doing it.
+  const steps = page.getByRole('region', { name: t.storyTitle }).getByRole('listitem')
+  await expect(steps).toHaveCount(t.story.length)
+  await expect(steps.first()).toContainText(t.story[0]![2]!)
+  await expect(page.getByRole('region', { name: t.numbersTitle })).toContainText('132 ms')
   await noOverflow(page)
+  // The mock the owner approves (docs/LANDING-PLAN.md).
+  await page.evaluate(() => document.fonts.ready)
+  await page.screenshot({ path: 'docs/landing-preview-390.png', fullPage: true })
   expect(
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
   ).toEqual([])
