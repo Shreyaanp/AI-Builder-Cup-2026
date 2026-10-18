@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const fil: Copy = {
+  remindMe: 'Paalalahanan ako',
+  reminderTiming: 'Sa device na ito, sa pagbubukas at pagsasara ng tindahan.',
+  reminderOff: 'Naka-off muna ang mga paalala.',
+  reminderUnsupported: 'Subukan ang naka-install na app o browser na may notifications.',
+  reminderShop: 'Magdagdag ng tindahan para sa paalala.',
+  reminderDenied: 'Naka-block ang notifications. Payagan sa browser settings at subukan muli.',
+  reminderFailed: 'Hindi na-update. Subukan muli.',
+  reminderSaving: 'Ina-update…',
+  reminderLoading: 'Tinitingnan…',
   firstCustomers: 'Kunin ang unang customer',
   printPoster: 'Mag-print ng poster',
   downloadPdf: 'I-download ang PDF',
@@ -427,6 +436,7 @@ export const fil: Copy = {
   eraseFailed: 'Hindi natapos ang pagbura. Tingnan ang koneksyon at subukan muli.',
   eraseRetry: 'Subukan muli',
   eraseSteps: {
+    reminders: 'Paalalahanan ako',
     face: 'face data',
     photos: 'mga larawan',
     records: 'mga tindahan at produkto',
