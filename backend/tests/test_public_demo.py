@@ -47,6 +47,10 @@ def test_demo_is_the_full_owner_app_on_a_private_sandbox(app, monkeypatch):  # n
         assert business["public"] is False
         assert {"demo-chain-freshmart", "demo-chain-metro-foods"} <= {b["id"] for b in businesses}
         bid = business["id"]
+        story = owner(client, session, f"demo/chain/{bid}")
+        assert story.status_code == 200, story.text
+        assert story.json()["wholesaler"]["name"]
+        assert story.json()["wholesaler"]["restock"]
         inventory = owner(client, session, f"businesses/{bid}/inventory").json()
         sales = owner(client, session, f"businesses/{bid}/sales").json()
         assert len(sales) >= 42 * len(inventory)
