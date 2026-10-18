@@ -147,7 +147,7 @@ def sandbox(zone: str) -> tuple[DemoSession, date]:
         business = store.context(uid, bid)["business"]
         # One "(Demo)" label, never "(Demo) (Demo)" or "(Demo) (Tour)".
         business["fields"]["name"] = re.sub(
-            r"(s*((?:Demo|Tour)))+$", " (Demo)", business["fields"]["name"]
+            r"(\s*\((?:Demo|Tour)\))+$", " (Demo)", business["fields"]["name"]
         )
         today = today_for(business["fields"])
         city = ZONE_CITY.get(zone, "singapore")
