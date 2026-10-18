@@ -1388,13 +1388,13 @@ class LiveGemini(Gemini):
 # Voice (owner decision, 17 Oct: first audio was 1.5-2.5 s, target under 800 ms): in a Live
 # session these tools run in the background. The model speaks at once while the draft is saved,
 # the business profile is read or a card opens; the result reaches it later, with the same
-# content a blocking call returns. SILENT: added to the model's context without a new turn (it
-# already said its next question; a second turn would repeat it). WHEN_IDLE: the model needs
-# the result to answer, so it speaks again once its current words are done.
+# content a blocking call returns. (18 Oct: SILENT left the owner in dead air - Gemini Live did not
+# speak alongside the call - so every background tool now uses WHEN_IDLE.) WHEN_IDLE: the model gets
+# the result and speaks again once its current words are done.
 BACKGROUND_TOOLS: dict[str, types.FunctionResponseScheduling] = {
-    "update_shop": types.FunctionResponseScheduling.SILENT,
-    "show_step": types.FunctionResponseScheduling.SILENT,
-    "remember_note": types.FunctionResponseScheduling.SILENT,
+    "update_shop": types.FunctionResponseScheduling.WHEN_IDLE,
+    "show_step": types.FunctionResponseScheduling.WHEN_IDLE,
+    "remember_note": types.FunctionResponseScheduling.WHEN_IDLE,
     "get_business_context": types.FunctionResponseScheduling.WHEN_IDLE,
     "get_question_plan": types.FunctionResponseScheduling.WHEN_IDLE,
 }
