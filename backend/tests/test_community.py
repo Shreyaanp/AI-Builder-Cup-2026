@@ -421,8 +421,23 @@ def test_demo_reply_understands_plurals_and_sold_out() -> None:
             {"name": "Kaya bun", "available": False, "price": 220, "unit": "piece"},
         ],
     }
-    assert "Butter croissant is on today (SGD 4.50 per" in demo_reply_text(
+    assert "Butter croissant is on today (S$4.50 per" in demo_reply_text(
         shop, "Any croissants this afternoon?"
     )
     assert "sold out" in demo_reply_text(shop, "Do you have kaya buns?")
     assert "08:00–18:00" in demo_reply_text(shop, "Are you open on Sunday?")
+
+
+@pytest.mark.parametrize(
+    ("currency", "price", "expected"), [("INR", 54000, "₹540"), ("SGD", 54050, "S$540.50")]
+)
+def test_customer_reply_uses_the_shop_currency_symbol(
+    currency: str, price: int, expected: str
+) -> None:
+    from app.community_routes import demo_reply_text
+
+    shop = {
+        "currency": currency,
+        "products": [{"name": "Flour", "available": True, "price": price, "unit": "kg"}],
+    }
+    assert expected in demo_reply_text(shop, "Do you have flour?")

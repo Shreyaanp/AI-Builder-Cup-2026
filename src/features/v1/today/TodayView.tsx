@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AiInfo } from '../AiInfo'
 import type { ReactNode } from 'react'
 import {
   Box,
@@ -59,7 +60,13 @@ export interface TodayActions {
 const LEAVE_MS = 320
 
 /** The first view of the Coach tab: how the shop is doing and what to do now. */
-export function TodayView({ actions }: { actions: TodayActions }) {
+export function TodayView({
+  actions,
+  showAiInfo = true,
+}: {
+  actions: TodayActions
+  showAiInfo?: boolean
+}) {
   const ws = useWorkspace()
   const tt = useTodayCopy()
   const roles = useTheme().material
@@ -124,7 +131,12 @@ export function TodayView({ actions }: { actions: TodayActions }) {
       {firstCustomers && ws.shareUrl && (
         <FirstCustomers url={ws.shareUrl} name={shop.fields.name} />
       )}
-      {(plan.pulse || plan.forecast) && <PulseCard plan={plan} actions={actions} />}
+      {(plan.pulse || plan.forecast) && (
+        <Box>
+          <PulseCard plan={plan} actions={actions} />
+          {plan.forecast && showAiInfo && <AiInfo feature="forecast" />}
+        </Box>
+      )}
     </Stack>
   )
 }
