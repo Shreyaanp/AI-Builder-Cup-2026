@@ -103,7 +103,7 @@ export function ReminderSettings() {
           method: 'PUT',
           body: JSON.stringify({
             business_id: active.id,
-            locale: locale === 'hi' ? 'hi' : 'en',
+            locale,
             subscription: subscription.toJSON(),
           }),
         })
