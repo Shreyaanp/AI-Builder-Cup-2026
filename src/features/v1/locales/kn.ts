@@ -1,6 +1,12 @@
 import type { Copy } from '../strings'
 
 export const kn: Copy = {
+  firstCustomers: 'ಮೊದಲ ಗ್ರಾಹಕರನ್ನು ಪಡೆಯಿರಿ',
+  printPoster: 'ಪೋಸ್ಟರ್ ಮುದ್ರಿಸಿ',
+  downloadPdf: 'PDF ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ',
+  shareWhatsApp: 'WhatsApp ನಲ್ಲಿ ಹಂಚಿ',
+  scanStamps: 'ಸ್ಟ್ಯಾಂಪ್‌ಗಾಗಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ',
+  paperSize: 'ಕಾಗದದ ಗಾತ್ರ',
   trustFree: 'ಉಚಿತವಾಗಿ ಆರಂಭಿಸಿ',
   trustLanguage: 'ನಿಮ್ಮ ಭಾಷೆ',
   trustData: 'ನಿಮ್ಮ ಡೇಟಾ ನಿಮ್ಮದೇ',

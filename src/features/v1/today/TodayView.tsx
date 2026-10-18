@@ -39,7 +39,9 @@ import { useOnboardingCopy } from '../onboardingCopy'
 import { useTodayCopy, type Festival } from './todayCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
+import { FirstCustomers } from '../FirstCustomers'
 import { TodaySupply } from '../../supply/TodaySupply'
+import { TodaySupplyNeeds } from '../../supply/SupplyEntry'
 
 /** What the Coach screen lets Today do: talk to the coach, open sheets, start the mic. */
 export interface TodayActions {
@@ -62,7 +64,7 @@ export function TodayView({ actions }: { actions: TodayActions }) {
   const tt = useTodayCopy()
   const roles = useTheme().material
   const { name } = useIdentity()
-  const { plan, answerMenu } = useTodayPlan(actions.unread)
+  const { plan, answerMenu, firstCustomers } = useTodayPlan(actions.unread)
   const shop = ws.active
   if (!shop) return null
   if (!plan) {
@@ -116,8 +118,12 @@ export function TodayView({ actions }: { actions: TodayActions }) {
         </Box>
       )}
       <TodaySupply key={shop.id} />
+      <TodaySupplyNeeds key={`needs-${shop.id}`} />
       {plan.dayOne && <DayOne step={plan.dayOne.step} food={plan.food} actions={actions} />}
       <NeedsCard plan={plan} actions={actions} answerMenu={answerMenu} />
+      {firstCustomers && ws.shareUrl && (
+        <FirstCustomers url={ws.shareUrl} name={shop.fields.name} />
+      )}
       {(plan.pulse || plan.forecast) && <PulseCard plan={plan} actions={actions} />}
     </Stack>
   )

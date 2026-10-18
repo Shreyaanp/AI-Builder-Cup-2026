@@ -1,6 +1,12 @@
 import type { Copy } from '../strings'
 
 export const th: Copy = {
+  firstCustomers: 'ต้อนรับลูกค้ากลุ่มแรก',
+  printPoster: 'พิมพ์โปสเตอร์',
+  downloadPdf: 'ดาวน์โหลด PDF',
+  shareWhatsApp: 'แชร์ทาง WhatsApp',
+  scanStamps: 'สแกนเพื่อสะสมแสตมป์',
+  paperSize: 'ขนาดกระดาษ',
   trustFree: 'เริ่มฟรี',
   trustLanguage: 'ภาษาของคุณ',
   trustData: 'ข้อมูลเป็นของคุณ',

@@ -44,6 +44,7 @@ Change = Callable[[dict[str, Any] | None], tuple[float, dict[str, Any]] | None]
 
 
 class Documents(Protocol):
+    def any_positive(self, kind: str, scope: str, field: str) -> bool: ...
     def purge_before(self, kind: str, cutoff: float) -> None: ...
     def get(self, kind: str, key: str) -> dict[str, Any] | None: ...
     def put(
@@ -62,6 +63,17 @@ class Documents(Protocol):
 
 
 class SqliteDocuments:
+    def any_positive(self, kind: str, scope: str, field: str) -> bool:
+        with self.connect() as db:
+            return (
+                db.execute(
+                    "SELECT 1 FROM community WHERE kind=? AND scope=? "
+                    "AND json_extract(fields, ?) > 0 LIMIT 1",
+                    (kind, scope, f"$.{field}"),
+                ).fetchone()
+                is not None
+            )
+
     def purge_before(self, kind: str, cutoff: float) -> None:
         with self.connect() as db:
             db.execute("DELETE FROM community WHERE kind=? AND created<?", (kind, cutoff))
@@ -145,6 +157,22 @@ class FirestoreDocuments:
     """
 
     FALLBACK_LIMIT = 500
+
+    def any_positive(self, kind: str, scope: str, field: str) -> bool:
+        from google.cloud.firestore_v1.base_query import FieldFilter
+
+        # Equality-only query needs no new composite index. Project just the aggregate;
+        # stop at the first match and bound the RPC time for a shop with a long history.
+        rows = (
+            self.root.collection(kind)
+            .where(filter=FieldFilter("scope", "==", scope))
+            .select([f"data.{field}"])
+            .stream(timeout=10)
+        )
+        try:
+            return any((row.to_dict() or {}).get("data", {}).get(field, 0) > 0 for row in rows)
+        finally:
+            rows.close()
 
     def purge_before(self, kind: str, cutoff: float) -> None:
         from google.cloud.firestore_v1.base_query import FieldFilter

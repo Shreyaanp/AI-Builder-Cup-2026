@@ -421,7 +421,7 @@ def demo_product_id(bid: str, product: ProductFields) -> str:
 
 PROPOSAL_SECONDS = 600
 # Supply-chain records (supply_chain.py) kept in feature_docs; erased with the shop.
-SUPPLY_KINDS = ("supply_rules", "supply_po", "supply_seq")
+SUPPLY_KINDS = ("supply_rules", "supply_po", "supply_seq", "supply_inbox")
 CHALLENGE_SECONDS = 90
 
 
@@ -1515,6 +1515,11 @@ class MerchantStore:
                     "UPDATE inquiries SET fields=? WHERE business_id=? AND id=?",
                     (json.dumps({**data, **record.model_dump()}), bid, iid),
                 )
+                if action == "unblock":
+                    for key in (contact_hash(record.contact), data.get("token_hash", "")):
+                        db.execute(
+                            "DELETE FROM inquiry_blocks WHERE business_id=? AND key=?", (bid, key)
+                        )
                 if action == "block":
                     for key in (contact_hash(record.contact), data.get("token_hash", "")):
                         db.execute("INSERT OR IGNORE INTO inquiry_blocks VALUES(?,?)", (bid, key))
