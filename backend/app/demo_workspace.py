@@ -35,8 +35,14 @@ TOUR_SUFFIX = " (Tour)"
 
 @router.post("/workspace")
 async def demo_workspace(
-    request: Request, zone: str = Query(default="Asia/Singapore", max_length=64)
+    request: Request,
+    zone: str = Query(default="Asia/Singapore", max_length=64),
+    public: bool = False,
 ) -> dict[str, Any]:
+    if public:
+        from .public_demo import open_workspace
+
+        return await open_workspace(request, zone)
     uid = await consented_owner(request)
     await enforce_limits(request, [("proposal", uid)])
     service = store(request)

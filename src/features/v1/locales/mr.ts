@@ -1,6 +1,12 @@
 import type { Copy } from '../strings'
 
 export const mr: Copy = {
+  firstCustomers: 'पहिले ग्राहक मिळवा',
+  printPoster: 'पोस्टर छापा',
+  downloadPdf: 'PDF डाउनलोड करा',
+  shareWhatsApp: 'WhatsApp वर पाठवा',
+  scanStamps: 'स्टॅम्पसाठी स्कॅन करा',
+  paperSize: 'कागदाचा आकार',
   trustFree: 'सुरुवात मोफत',
   trustLanguage: 'तुमची भाषा',
   trustData: 'तुमचा डेटा तुमचाच',

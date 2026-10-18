@@ -8,6 +8,47 @@ from tests.test_community import app  # noqa: F401
 from tests.test_owner_features import save_history, setup  # noqa: F401
 
 
+def test_first_customer_card_is_gated_and_checks_old_owned_stamps(setup):  # noqa: F811
+    client, repository, bid, fixed = setup
+    endpoint = f"/api/v1/businesses/{bid}/today"
+    assert client.get(endpoint).json()["has_customer_stamp"] is None
+    client.app.state.v1_settings.qr_poster_enabled = True
+    assert client.get(endpoint).json()["has_customer_stamp"] is False
+    old = fixed - timedelta(days=30)
+    repository.feature_docs.put("shop_daily", "other:old", "other", old.timestamp(), {"stamps": 1})
+    assert client.get(endpoint).json()["has_customer_stamp"] is False
+    repository.feature_docs.put("shop_daily", f"{bid}:old", bid, old.timestamp(), {"stamps": 1})
+    assert client.get(endpoint).json()["has_customer_stamp"] is True
+    # Daily counters alone cannot establish whether an earlier customer exists.
+    assert client.get(endpoint).json()["today"]["stamps"] is None
+
+
+def test_first_customer_history_includes_stamps_beyond_the_daily_list_limit(setup):  # noqa: F811
+    _, repository, bid, fixed = setup
+    repository.feature_docs.put("shop_daily", f"{bid}:old", bid, 0, {"stamps": 1})
+    for i in range(201):
+        repository.feature_docs.put(
+            "shop_daily", f"{bid}:{i}", bid, fixed.timestamp(), {"views": 1}
+        )
+    assert shop_today.has_customer_stamp(repository, bid) is True
+    repository.feature_docs.delete("shop_daily", f"{bid}:old")
+    assert shop_today.has_customer_stamp(repository, bid) is False
+
+
+def test_optional_stamp_history_failure_preserves_today(setup, monkeypatch):  # noqa: F811
+    client, repository, bid, _ = setup
+    client.app.state.v1_settings.qr_poster_enabled = True
+
+    def unavailable(*args):
+        raise TimeoutError
+
+    monkeypatch.setattr(repository.feature_docs, "any_positive", unavailable)
+    response = client.get(f"/api/v1/businesses/{bid}/today")
+    assert response.status_code == 200
+    assert response.json()["has_customer_stamp"] is None
+    assert response.json()["low_stock"][0]["name"] == "Milk"
+
+
 def test_today_is_owner_only_and_empty_numbers_stay_missing(setup):  # noqa: F811
     client, _, bid, _ = setup
     data = client.get(f"/api/v1/businesses/{bid}/today").json()

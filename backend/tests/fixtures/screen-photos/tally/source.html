@@ -1,0 +1,87 @@
+<!doctype html><meta charset="utf-8" /><title>Tally</title>
+<style>
+  body {
+    margin: 0;
+    background: #373330;
+    font: 22px Arial;
+    perspective: 1400px;
+    padding: 85px 55px;
+  }
+  .monitor {
+    position: relative;
+    background: #fff3b5;
+    border: 24px solid #181818;
+    border-radius: 16px;
+    padding: 28px;
+    transform: rotateY(-9deg) rotateX(7deg) rotateZ(-2deg);
+    filter: blur(0.35px);
+    overflow: hidden;
+    box-shadow: 12px 22px 20px #0008;
+    min-height: 440px;
+  }
+  h1 {
+    font-size: 28px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 19px;
+  }
+  td,
+  th {
+    border: 1px solid #999;
+    padding: 12px;
+    text-align: left;
+  }
+  .moire,
+  .glare {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .moire {
+    background: repeating-linear-gradient(3deg, #0002 0px, transparent 1px, transparent 3px);
+    opacity: 0.38;
+  }
+  .glare {
+    background: linear-gradient(125deg, transparent 40%, #fff9 62%, transparent 80%);
+  }
+  .cutoff {
+    position: absolute;
+    right: 0;
+    bottom: 85px;
+    width: 300px;
+    height: 52px;
+    background: #fff;
+    opacity: 0.95;
+  }
+</style>
+<section class="monitor">
+  <h1>Tally — INR</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>name</th>
+        <th>sku</th>
+        <th>category</th>
+        <th>price</th>
+        <th>qty</th>
+        <th>date</th>
+        <th>total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Filter Coffee</td>
+        <td>FC01</td>
+        <td>Drinks</td>
+        <td>30</td>
+        <td>2</td>
+        <td>2026-10-17</td>
+        <td>60</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="moire"></div>
+  <div class="glare"></div>
+</section>

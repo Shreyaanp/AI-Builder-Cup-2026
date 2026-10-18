@@ -13,6 +13,7 @@ import { useWorkspace } from './workspaceContext'
 import { ShopSheets } from './ShopTiles'
 import { MapsHandoff } from './MapsHandoff'
 import { ShopQr } from './ShopQr'
+import { FirstCustomers } from './FirstCustomers'
 import { useGoLiveCopy } from './goLiveCopy'
 
 /** The "Your shop is ready" moment that ends the new-shop flow (full screen, no dialog). */
@@ -109,6 +110,7 @@ export function NewShopReady() {
           <Box data-testid="shop-qr">
             <ShopQr url={link} name={name} />
           </Box>
+          <FirstCustomers url={link} name={name} />
         </Stack>
       )}
       <Stack
