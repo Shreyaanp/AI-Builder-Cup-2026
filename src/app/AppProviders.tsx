@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useReducer } from 'react'
-import type { ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import type { Dispatch, ReactNode } from 'react'
 import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material'
 import { nivaTheme } from '../design/theme'
 import {
@@ -9,10 +9,13 @@ import {
   PreferencesDispatchContext,
 } from '../state/contexts'
 import { businessReducer, initialBusiness, preferencesReducer } from '../state/model'
-import type { Preferences } from '../state/model'
+import type { Preferences, PreferencesAction } from '../state/model'
 import { IdentityProvider } from '../auth/IdentityProvider'
 import { useIdentity } from '../auth/useIdentity'
+import { useLocale } from '../state/hooks'
 import { isLanguagePref, resolveLocale } from '../i18n/locales'
+import type { Locale } from '../i18n/locales'
+import { loadPack, packReady } from '../i18n/packs'
 import { loadScriptFont } from '../i18n/fonts'
 import { configureAnalytics, watchRouteChanges } from './analytics'
 
@@ -38,6 +41,26 @@ function readPreferences(): Preferences {
       saved?.appearance === 'dark' || saved?.appearance === 'light' ? saved.appearance : 'light',
     destination: 'coach',
   }
+}
+
+/** Keep the app hidden until its saved language's copy chunk is ready. */
+function LocalePackGate({ children }: { children: ReactNode }) {
+  const locale = useLocale()
+  const [readyLocale, setReadyLocale] = useState<Locale | null>(() =>
+    packReady(locale) ? locale : null,
+  )
+
+  useEffect(() => {
+    let active = true
+    void loadPack(locale).then(() => {
+      if (active) setReadyLocale(locale)
+    })
+    return () => {
+      active = false
+    }
+  }, [locale])
+
+  return readyLocale === locale || packReady(locale) ? children : null
 }
 function BusinessWorkspace({ children }: { children: ReactNode }) {
   const [business, businessDispatch] = useReducer(businessReducer, initialBusiness)
@@ -70,6 +93,20 @@ function Providers({
     preferencesReducer,
     undefined,
     readPreferences,
+  )
+  const languageRequest = useRef(0)
+  const dispatchPreferences = useCallback<Dispatch<PreferencesAction>>(
+    (action) => {
+      if (action.type !== 'language') {
+        preferencesDispatch(action)
+        return
+      }
+      const request = ++languageRequest.current
+      void loadPack(resolveLocale(action.language)).then(() => {
+        if (request === languageRequest.current) preferencesDispatch(action)
+      })
+    },
+    [preferencesDispatch],
   )
   const systemDark = useMediaQuery('(prefers-color-scheme: dark)', { noSsr: true })
   const resolved =
@@ -118,10 +155,10 @@ function Providers({
   }, [analyticsApp])
   return (
     <PreferencesContext value={preferences}>
-      <PreferencesDispatchContext value={preferencesDispatch}>
+      <PreferencesDispatchContext value={dispatchPreferences}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          {children}
+          <LocalePackGate>{children}</LocalePackGate>
         </ThemeProvider>
       </PreferencesDispatchContext>
     </PreferencesContext>
