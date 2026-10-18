@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
+import { AiInfo } from './AiInfo'
 import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react'
 import {
   Alert,
@@ -2037,6 +2038,7 @@ function Hero({ onBegin, onCancel }: { onBegin: () => void; onCancel: () => void
         >
           {f.heroBody}
         </Typography>
+        <AiInfo feature="voice" />
         <Button
           data-hero-rise
           variant="contained"

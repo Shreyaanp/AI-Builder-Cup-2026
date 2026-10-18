@@ -219,10 +219,10 @@ test('owner tour connects Today, forecast, payment preview and supplier timeline
   await page.getByRole('button', { name: /Purchase orders/ }).click()
   await expect(page.getByText('Recorded sample of SAP’s sandbox, not live')).toBeVisible()
   await page
-    .getByRole('list', { name: 'Purchase orders' })
-    .getByRole('button', { name: /PO 4500000001/ })
+    .getByRole('list', { name: 'Purchase orders', exact: true })
+    .getByRole('button', { name: /PO 4500000001.*Sri Lakshmi Provisions/ })
     .click()
-  const order = page.getByRole('article', { name: /PO 4500000001/ })
+  const order = page.getByRole('article', { name: 'PO 4500000001', exact: true })
   await expect(order).toBeVisible()
   await expect(order).toContainText('Invoice in')
   await page.screenshot({

@@ -381,9 +381,9 @@ def test_forecast_drafts_a_po_to_the_best_supplier_with_the_reason(shop) -> None
     assert "new_supplier" in {c["code"] for c in po["checks"]}
     assert len(po["alternatives"]) >= 2
     assert po["supplier"]["demo"] and po["simulated"]
-    # Every relationship got editable starting rules; demo suppliers run different systems.
+    # A kirana starts with WhatsApp for every supplier; owners can edit those rules.
     rows = supply_chain.relationships(store, "alice", bid)
-    assert {row["rules"]["system_format"] for row in rows} >= {"idoc", "csv", "text"}
+    assert {row["rules"]["system_format"] for row in rows} == {"text"}
     assert draft(store, bid)["order"]["number"] == "4500012346"
 
 
