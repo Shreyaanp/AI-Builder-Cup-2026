@@ -136,6 +136,16 @@ export default function Discover({
   const [result, setResult] = useState<Discovery | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [retry, setRetry] = useState(0)
+  // A first load that drags on gets a way forward, not placeholder rows forever.
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    if (status !== 'loading') return
+    const timer = setTimeout(() => setSlow(true), 8000)
+    return () => {
+      clearTimeout(timer)
+      setSlow(false)
+    }
+  }, [status, retry])
   const [map, setMapOpen] = useState(
     () => new URLSearchParams(location.search).get('view') === 'map',
   )
@@ -370,6 +380,15 @@ export default function Discover({
             <PickSkeleton key={n} />
           ))}
         </Box>
+        {slow && (
+          <Alert
+            severity="info"
+            sx={{ mt: 3 }}
+            action={<Button onClick={() => setRetry(retry + 1)}>{t.retry}</Button>}
+          >
+            {t.loading}
+          </Alert>
+        )}
       </Box>
     )
   return (
