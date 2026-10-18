@@ -2,9 +2,9 @@
 
 Two changes, each behind a switch:
 
-| Switch                 | Default | What it does                                                                  |
-| ---------------------- | ------- | ----------------------------------------------------------------------------- |
-| `PLACES_CACHE`         | on      | Places search/details results shared by every Cloud Run instance (Firestore)  |
+| Switch                 | Default | What it does                                                                    |
+| ---------------------- | ------- | ------------------------------------------------------------------------------- |
+| `PLACES_CACHE`         | on      | Places search/details results shared by every Cloud Run instance (Firestore)    |
 | `GEMINI_CONTEXT_CACHE` | **off** | Coach rules + tool schemas in one shared Vertex context cache (text coach only) |
 
 ## Places
@@ -14,12 +14,12 @@ Two changes, each behind a switch:
 Every Places (New) call is in [discover.py](../../backend/app/discover.py) (`MapsService`), plus
 photo media in [place_photos.py](../../backend/app/place_photos.py):
 
-| Call                                   | Used by                      | Field mask (SKU)                                                              |
-| -------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------- |
-| Nearby / Text Search                   | Discover list, customer Ask  | `PLACES_MASK`: everything the cards show (Enterprise: rating, open now, price) |
-| Text Search "metro train station"      | Ask "near the MRT" anchor    | `STATION_MASK`: id, name, location, type (**Pro**, was Enterprise)            |
-| Place Details by id                    | Pins for grounded answers    | `DETAILS_MASK`: id, name, location, open now, rating, Maps link (no photos, price, review count, type) |
-| Photo media                            | Card photos                  | unchanged (no field mask; 60 s memory only, see terms below)                  |
+| Call                              | Used by                     | Field mask (SKU)                                                                                       |
+| --------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Nearby / Text Search              | Discover list, customer Ask | `PLACES_MASK`: everything the cards show (Enterprise: rating, open now, price)                         |
+| Text Search "metro train station" | Ask "near the MRT" anchor   | `STATION_MASK`: id, name, location, type (**Pro**, was Enterprise)                                     |
+| Place Details by id               | Pins for grounded answers   | `DETAILS_MASK`: id, name, location, open now, rating, Maps link (no photos, price, review count, type) |
+| Photo media                       | Card photos                 | unchanged (no field mask; 60 s memory only, see terms below)                                           |
 
 The search mask was already limited to displayed fields: every field in it is shown (rating
 line, open/closed, budget filter, Maps link, photo). The station anchor and the pins asked for
@@ -56,11 +56,11 @@ memory cache; photo resource names expire on Google's side, so they are not cach
 
 ### Expected savings (list prices, first tier)
 
-| SKU                         | Price / 1,000 | Free / month |
-| --------------------------- | ------------- | ------------ |
-| Text/Nearby Search Enterprise | $35         | 1,000        |
-| Text Search Pro             | $32           | 5,000        |
-| Place Details Enterprise    | $20           | 1,000        |
+| SKU                           | Price / 1,000 | Free / month |
+| ----------------------------- | ------------- | ------------ |
+| Text/Nearby Search Enterprise | $35           | 1,000        |
+| Text Search Pro               | $32           | 5,000        |
+| Place Details Enterprise      | $20           | 1,000        |
 
 - Every shared hit avoids one $0.035 search or $0.020 details call. A Firestore read +
   write costs about $0.0000024, so a hit pays for ~14,000 cache lookups.
@@ -117,19 +117,19 @@ cached requests produce the same turns as cache off.
 Live A/B ([cost-cache-ab.json](cost-cache-ab.json), `scripts/context_cache_ab.py`, 18 Oct, 8
 model calls + 1 cache create, `gemini-3.5-flash` on Vertex, cache deleted afterwards):
 
-| Owner says         | Tool calls, cache off            | Tool calls, cache on             |
-| ------------------ | -------------------------------- | -------------------------------- |
+| Owner says         | Tool calls, cache off             | Tool calls, cache on              |
+| ------------------ | --------------------------------- | --------------------------------- |
 | Share my page      | `open_screen({"screen":"share"})` | `open_screen({"screen":"share"})` |
 | What are my hours? | `get_business_context({})`        | `get_business_context({})`        |
 
 Replies differed only in wording (temperature 0.1); both were correct.
 
-| Tokens over 4 calls (usage metadata) | Cache off | Cache on |
-| ------------------------------------ | --------- | -------- |
-| Prompt tokens                        | 41,854    | 41,801   |
-| Of which cached                      | 19,338 (46%, Vertex implicit caching) | 39,840 (95%) |
-| Output (incl. thinking)              | 486       | 411      |
-| Input at full-rate equivalent        | 24,450    | 5,945 (**−75.7%**) |
+| Tokens over 4 calls (usage metadata) | Cache off                             | Cache on           |
+| ------------------------------------ | ------------------------------------- | ------------------ |
+| Prompt tokens                        | 41,854                                | 41,801             |
+| Of which cached                      | 19,338 (46%, Vertex implicit caching) | 39,840 (95%)       |
+| Output (incl. thinking)              | 486                                   | 411                |
+| Input at full-rate equivalent        | 24,450                                | 5,945 (**−75.7%**) |
 
 That run created the cache before the first call. The background creation added since means
 the first call per instance per hour goes uncached; the fixture tests cover that path.

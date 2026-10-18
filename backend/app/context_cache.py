@@ -186,6 +186,8 @@ class CachedGemini(Gemini):
         if found is None:
             return None
         key, name = found
+        # turn_instruction supplies language_rule(reply_language(tag)); keep the full dynamic
+        # instruction intact when adding it to this request.
         turn = [types.Content(role="user", parts=[types.Part(text=TURN_LABEL + dynamic)])]
         plan = llm_request.model_copy(
             update={
