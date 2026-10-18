@@ -131,7 +131,7 @@ function release(id: string) {
   stack.splice(index, 1)
   // A route may already have been pushed above this overlay. Never pop that new page
   // while cleaning up a hidden coach's draft guard or an older sheet.
-  if (entryState().overlay !== id) return
+  if (entryState().sheet !== id) return
   handoff += 1
   queueMicrotask(flushReleases)
 }
