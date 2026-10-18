@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box,
@@ -59,6 +60,20 @@ export function Sheet({
   const roles = useTheme().material
   const t = useCopy()
   const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
+  const [viewportWidth, setViewportWidth] = useState<number | undefined>(() =>
+    typeof window === 'undefined' ? undefined : window.visualViewport?.width,
+  )
+  useEffect(() => {
+    const updateWidth = () =>
+      setViewportWidth(window.visualViewport?.width ?? document.documentElement.clientWidth)
+    updateWidth()
+    window.visualViewport?.addEventListener('resize', updateWidth)
+    window.addEventListener('resize', updateWidth)
+    return () => {
+      window.visualViewport?.removeEventListener('resize', updateWidth)
+      window.removeEventListener('resize', updateWidth)
+    }
+  }, [])
   useBackClose(open && ownsHistory, onClose, dirty)
   // Swipe, Esc and the scrim also close; the button makes it obvious and works for everyone.
   // Desktop keeps the corner X; a phone gets Close in the bottom row, inside the thumb zone.
@@ -85,6 +100,7 @@ export function Sheet({
         // Unmount when closed, like a dialog: no hidden copy left in the page.
         ModalProps={{ keepMounted }}
         slotProps={{
+          root: { style: { width: viewportWidth } },
           // A sheet mounted already open still slides in (and calls onEntered): the Drawer
           // otherwise skips that first transition.
           transition: { onEntered, appear: true },
@@ -92,7 +108,9 @@ export function Sheet({
             role: 'dialog',
             'aria-modal': true,
             'aria-labelledby': titleId,
+            style: { width: viewportWidth, maxWidth: viewportWidth },
             sx: {
+              boxSizing: 'border-box',
               borderTopLeftRadius: `${shape.xl}px`,
               borderTopRightRadius: `${shape.xl}px`,
               bgcolor: roles.surfaceContainerLow,

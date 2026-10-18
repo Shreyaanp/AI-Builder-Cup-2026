@@ -370,7 +370,13 @@ export default function Discover({
         role="status"
         aria-label={front.loading}
         aria-busy="true"
-        sx={{ maxWidth: 720, mx: 'auto', px: 4, pt: 1 }}
+        sx={{
+          maxWidth: 720,
+          mx: 'auto',
+          px: 4,
+          pt: 1,
+          pb: 'calc(160px + env(safe-area-inset-bottom, 0px))',
+        }}
       >
         <Typography variant="headlineMedium" component="h1" sx={{ mb: 3 }}>
           {t.title}
