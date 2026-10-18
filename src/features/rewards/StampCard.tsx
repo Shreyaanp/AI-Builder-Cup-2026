@@ -118,7 +118,10 @@ export function StampCard({
   const [failedClaim, setFailedClaim] = useState(false)
   const target = validTarget(needed)
   useEffect(() => {
-    visit(shop, new URLSearchParams(location.search).get('source') === 'qr', timezone, target)
+    // A keyed scan (`k`) is counted by the stamp moment once the server verifies it; counting it
+    // here too would show a stamp beside an "out of date" answer for a bad key.
+    const params = new URLSearchParams(location.search)
+    visit(shop, params.get('source') === 'qr' && !params.get('k'), timezone, target)
   }, [shop, timezone, target])
   useEffect(() => {
     if (!redeeming) return
