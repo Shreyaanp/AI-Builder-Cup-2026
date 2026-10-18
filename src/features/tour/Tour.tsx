@@ -89,7 +89,10 @@ export function TourHost() {
       return false
     }
   })
-  const narration = useMemo(() => narrationQueue(narrationVoice(ws.api)), [ws.api])
+  const narration = useMemo(
+    () => narrationQueue(narrationVoice(ws.api, ws.demo)),
+    [ws.api, ws.demo],
+  )
   const [step, setStep] = useState(0)
   const [rect, setRect] = useState<Rect | null>(null)
   const done = step >= STEPS.length
