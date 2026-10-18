@@ -95,8 +95,10 @@ for (const width of [360, 390, 412]) {
             exact: true,
           })
           .click()
-        await expect(page.locator('main a').first()).toBeVisible()
-        await page.locator('main a').first().click()
+        // The guide's stamp step leaves the sandbox on purpose; open a demo shop card instead.
+        const card = page.locator('main a[href^="/explore/demo/"]').first()
+        await expect(card).toBeVisible()
+        await card.click()
         await expect(page.getByTestId('shop-hero-banner')).toBeVisible()
         await expect(page.locator('main li').first()).toBeVisible()
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
