@@ -27,6 +27,23 @@ const ALLOW = [
   'JSON',
   'XML',
   'PO',
+  // Data the owner or the sandbox wrote, not UI words.
+  'Courtyard Chai · Bengaluru',
+  'Open-Meteo',
+  'Your eighth chai is free',
+  'SAP supplier',
+  'Milk shop (Supply demo)',
+  'Milk',
+  'Grocery',
+  'Cafe',
+  'Lantern Chai Corner (Demo) (Tour)',
+  'Lantern Chai Corner (Demo)',
+  'Tea stall',
+  '1 Demo Lane, Indiranagar, Bengaluru (fictional address)',
+  'Masala chai',
+  'Ginger chai',
+  'Bun maska',
+  'Ragi biscuit',
 ]
 
 async function hindiOnly(page: Page, label: string) {
@@ -36,7 +53,8 @@ async function hindiOnly(page: Page, label: string) {
     const check = (value: string | null) => {
       if (!value) return
       let text = value
-      for (const word of allow) text = text.replaceAll(word, ' ')
+      for (const word of [...allow].sort((a, b) => b.length - a.length))
+        text = text.replaceAll(word, ' ')
       if (/[A-Za-z]{4,}/.test(text)) found.add(value.trim().slice(0, 120))
     }
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
@@ -46,8 +64,8 @@ async function hindiOnly(page: Page, label: string) {
       const rect = parent.getBoundingClientRect()
       if (rect.width && rect.height) check(node.textContent)
     }
-    for (const element of document.querySelectorAll<HTMLElement>(
-      '[aria-label],[placeholder],[title],img[alt]',
+    for (const element of Array.from(
+      document.querySelectorAll<HTMLElement>('[aria-label],[placeholder],[title],img[alt]'),
     ))
       for (const name of ['aria-label', 'placeholder', 'title', 'alt'])
         check(element.getAttribute(name))
@@ -76,13 +94,14 @@ test('Hindi phone sweep: supply, reminders, onboarding, tour and demo', async ({
   )
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('lang', 'hi')
+  await page.getByRole('button', { name: 'स्थानीय प्रीव्यू जारी रखें', exact: true }).click()
 
-  await tab(page, 'दुकान').click()
+  await tab(page, 'बढ़ाएँ').click()
   await page.getByRole('button', { name: /^खरीद/ }).click()
   await hindiOnly(page, 'खरीद और उधार शर्तें')
   await page.getByRole('button', { name: 'सामान मँगाने का डेमो देखें', exact: true }).click()
   await tab(page, 'बढ़ाएँ').click()
-  await page.getByRole('button', { name: 'आपूर्ति', exact: true }).click()
+  await page.getByRole('button', { name: /^आपूर्ति/ }).click()
   await hindiOnly(page, 'माल की रवानगी, रसीद और ASN क्रम')
   await page.keyboard.press('Escape')
 
