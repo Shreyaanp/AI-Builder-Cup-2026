@@ -28,6 +28,7 @@ import { factName, factSuggestions } from './factNames'
 import { CURRENCIES, currencySymbol, toMajor, toMinor } from './format'
 import { useInChatCopy, type DetailStep } from './inChatCopy'
 import { MapCard, type PinChoice } from './MapCard'
+import { useWorkspace } from './workspaceContext'
 import { useNewShopCopy } from './newShopCopy'
 import { useCopy } from './strings'
 import { shopRegion } from '../../region/region'
@@ -91,6 +92,7 @@ export function GuidedDetails({
   onSubmit: (result: GuidedResult) => void
   onDirty?: (dirty: boolean) => void
 }) {
+  const { readOnlyMessage } = useWorkspace()
   const t = useCopy()
   const c = useInChatCopy()
   const f = useNewShopCopy()
@@ -678,10 +680,7 @@ export function GuidedDetails({
         </Typography>
         {body}
         {(problem || error) && (
-          <Alert
-            severity={error && error.toLowerCase().includes('demo') ? 'info' : 'error'}
-            sx={{ mt: 3 }}
-          >
+          <Alert severity={readOnlyMessage ? 'info' : 'error'} sx={{ mt: 3 }}>
             {problem || error}
           </Alert>
         )}

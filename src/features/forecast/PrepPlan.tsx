@@ -14,7 +14,9 @@ type Forecast = components['schemas']['Forecast']
 const LOW_STOCK = 5
 
 export function PrepPlanTile() {
-  const { api, active, products, startCoachDraft } = useWorkspace()
+  const { api, active, products, startCoachDraft, readOnlyMessage } = useWorkspace()
+  // Only the public demo (a read-only workspace) gets the shared rule and the detail sheet.
+  const demo = Boolean(readOnlyMessage)
   const t = useCopy()
   const s = useSourcingCopy()
   const locale = useLocale()
@@ -52,6 +54,7 @@ export function PrepPlanTile() {
   // stock ("Croissant runs out Thu, Oct 23"). Same rule and same date format as the supply card
   // on Today (the forecast's upper bound), so the two never disagree. With no forecast for it,
   // a stock of at most 5 is running low. Items without a stock count never show here.
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' })
   const low = products.flatMap((product) => {
     if (product.stock == null) return []
     const days = (value?.predictions ?? [])
@@ -59,8 +62,14 @@ export function PrepPlanTile() {
       .sort((a, b) => a.date.localeCompare(b.date))
     let demand = 0
     for (const row of days) {
-      demand += row.upper ?? row.quantity
-      if (demand > product.stock) return [{ name: product.name, day: dayLabel(row.date, locale) }]
+      if (demo) {
+        demand += row.upper ?? row.quantity
+        if (demand > product.stock) return [{ name: product.name, day: dayLabel(row.date, locale) }]
+      } else {
+        demand += row.quantity
+        if (demand >= product.stock)
+          return [{ name: product.name, day: weekday.format(new Date(`${row.date}T00:00:00Z`)) }]
+      }
     }
     return days.length === 0 && product.stock <= LOW_STOCK ? [{ name: product.name, day: '' }] : []
   })
@@ -83,7 +92,8 @@ export function PrepPlanTile() {
         }
         onClick={() => {
           if (state?.error) retry((n) => n + 1)
-          else setOpen(true)
+          else if (demo) setOpen(true)
+          else startCoachDraft(t.prepQuestion)
         }}
       >
         {rows.length > 0 && (
@@ -106,7 +116,7 @@ export function PrepPlanTile() {
         {state?.error && <Supporting>{t.retry}</Supporting>}
       </Tile>
       <Sheet
-        open={open}
+        open={demo && open}
         onClose={() => setOpen(false)}
         titleId="prep-plan-title"
         title={t.prepPlan}

@@ -220,7 +220,15 @@ export function MorningBrief({
               </Typography>
               {typeof row.runs_out === 'string' && (
                 <Typography variant="bodySmall" color="text.secondary">
-                  {fill(t.runsOut, { date: dayLabel(row.runs_out, locale) })}
+                  {fill(t.runsOut, {
+                    date: ws.readOnlyMessage
+                      ? dayLabel(row.runs_out, locale)
+                      : new Intl.DateTimeFormat(locale, {
+                          weekday: 'short',
+                          day: 'numeric',
+                          timeZone: 'UTC',
+                        }).format(new Date(`${row.runs_out}T00:00:00Z`)),
+                  })}
                 </Typography>
               )}
             </Stack>
