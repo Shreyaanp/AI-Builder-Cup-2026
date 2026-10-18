@@ -235,3 +235,13 @@ html[data-typing] .c-nav {
     transition: none;
   }
 }
+
+/* The page never scrolls sideways, and anchors or focused fields scroll clear of the pinned
+   bars (chat bar, composer, Map view) and the navigation bar. */
+html,
+body {
+  overflow-x: clip;
+}
+html {
+  scroll-padding-bottom: calc(184px + env(safe-area-inset-bottom, 0px));
+}
