@@ -319,6 +319,7 @@ export const vi: Copy = {
   importFailed: 'Không đọc được tệp. Hãy gửi tệp CSV hoặc Excel có tên món và giá.',
   salesSummary: 'Tóm tắt doanh số',
   salesNotSaved: 'Từ tệp của bạn. Chưa lưu gì.',
+  salesCurrencyMismatch: 'Đã bỏ qua các dòng dùng tiền tệ khác.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} ngày · ${from} – ${to}` : 'Tệp không có ngày',
   topItems: 'Bán chạy',
