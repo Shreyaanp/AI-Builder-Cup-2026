@@ -184,7 +184,7 @@ def test_live_agent_runs_profile_draft_location_and_photo_tools_in_the_backgroun
     }
     assert set(live) == set(BACKGROUND_TOOLS)
     assert live["update_shop"].behavior == types.Behavior.NON_BLOCKING
-    assert live["show_step"].response_scheduling == types.FunctionResponseScheduling.SILENT
+    assert live["show_step"].response_scheduling == types.FunctionResponseScheduling.WHEN_IDLE
     assert (
         live["get_business_context"].response_scheduling
         == types.FunctionResponseScheduling.WHEN_IDLE
@@ -220,7 +220,7 @@ async def test_first_audio_does_not_wait_for_the_draft_save(
     # The result still reaches the model, complete, as a silent background result.
     [result] = tool_results(connection)
     assert result.name == "update_shop" and result.id == "call-1"
-    assert result.scheduling == types.FunctionResponseScheduling.SILENT
+    assert result.scheduling == types.FunctionResponseScheduling.WHEN_IDLE
     body = result.response or {}
     assert body["status"] == "saved"
     assert "name" in str(body["known_never_ask_again"])
@@ -235,7 +235,7 @@ async def test_first_audio_does_not_wait_for_the_draft_save(
     assert merchant.new_shop_draft.business.name == "Lakshmi Tea Stall"
     # Logged with what it carried, and timed.
     [logged] = [entry for entry in logs if entry["event"] == "voice_tool_result"]
-    assert logged["tool"] == "update_shop" and logged["scheduling"] == "SILENT"
+    assert logged["tool"] == "update_shop" and logged["scheduling"] == "WHEN_IDLE"
     assert logged["ms"] >= SAVE_SECONDS * 1000 and logged["missing"]
     assert "still_missing" in logged["fields"]
     assert any(

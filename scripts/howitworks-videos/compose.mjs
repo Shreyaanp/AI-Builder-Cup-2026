@@ -3,11 +3,13 @@
 // posters to public/how-it-works/. Foreground only:
 //   node scripts/howitworks-videos/compose.mjs [vendor|customer] [en|hi]
 // Captions and labels come from src/features/frontdoors/howItWorksCopy.ts (Node strips its types).
+// Each scene lasts as long as its voiceover line (voice.mjs) needs; slower footage, never cut words.
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pagesEnglish, pagesHindi } from '../../src/features/frontdoors/howItWorksCopy.ts'
+import { voiceover } from './voice.mjs'
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const work = process.env.HIW_WORK ?? 'C:/Users/pshre/work/hiw-video'
@@ -44,13 +46,18 @@ const FLOWS = {
     label: (t) => t.forCustomers,
     line: (t) => t.customersLine,
     captions: (t) => t.customerCaptions,
-    scenes: ['find', 'shop', 'follow', 'scan', 'stamp', 'passport'],
+    scenes: ['find', 'shop', 'scan', 'passport'],
     rates: {},
-    poster: 'stamp',
+    poster: 'scan',
   },
 }
 const INTRO = 1.8
 const END = 2.4
+// Breath before each line starts, and after it ends before the next scene.
+const LEAD = 0.25
+const TAIL = 0.45
+// Footage never plays slower than this to fit a line; the scene holds its last frame instead.
+const SLOWEST = 0.6
 
 const esc = (text) =>
   String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -69,9 +76,18 @@ function orderMessage() {
     .split('\n')
 }
 
-function build(flowName, lang) {
+async function build(flowName, lang) {
   const flow = FLOWS[flowName]
   const t = lang === 'hi' ? pagesHindi : pagesEnglish
+  // [intro, ...scenes, end]: one spoken line each.
+  const voice = await voiceover(flowName, lang)
+  if (voice.length !== flow.scenes.length + 2)
+    throw new Error(
+      `${flowName}-${lang}: ${voice.length} voice lines for ${flow.scenes.length} scenes`,
+    )
+  const needs = (clip) => LEAD + clip.seconds + TAIL
+  const intro = Math.max(INTRO, needs(voice[0]))
+  const endHold = Math.max(END, needs(voice.at(-1)) + 0.4)
   const marks = JSON.parse(readFileSync(join(raw, `${flowName}.json`), 'utf8'))
   const byName = Object.fromEntries(marks.map((m) => [m.name, m]))
   const captions = flow.captions(t)
@@ -87,31 +103,49 @@ function build(flowName, lang) {
     join(dir, 'assets/google-sans-flex.woff2'),
   )
 
-  let at = INTRO
+  let at = intro
   const shots = []
   const caps = []
+  // When each voice line starts: [intro, ...scenes, end].
+  const lines = [LEAD]
   const steps = flow.scenes.length
   flow.scenes.forEach((scene, index) => {
+    const need = needs(voice[index + 1])
+    lines.push(at + LEAD)
     if (typeof scene === 'object') {
-      shots.push({ card: scene.card, start: at, duration: scene.duration })
-      caps.push({ index, start: at, duration: scene.duration })
-      at += scene.duration
+      const duration = +Math.max(scene.duration, need).toFixed(3)
+      shots.push({ card: scene.card, start: at, duration })
+      caps.push({ index, start: at, duration })
+      at += duration
       return
     }
     const mark = byName[scene]
     if (!mark) throw new Error(`No recording mark for ${flowName}/${scene}`)
-    const rate = flow.rates[scene] ?? 1
-    const duration = +((mark.end - mark.start) / rate).toFixed(3)
+    const footage = mark.end - mark.start
+    // Slow the footage to fit the line (never below SLOWEST), then hold its last frame.
+    const rate = +Math.max(SLOWEST, Math.min(flow.rates[scene] ?? 1, footage / need)).toFixed(3)
+    const duration = +(footage / rate).toFixed(3)
+    const length = +Math.max(duration, need).toFixed(3)
     shots.push({ scene, start: at, duration, media: mark.start, rate })
-    caps.push({ index, start: at, duration })
-    at += duration
+    if (length - duration > 0.05)
+      shots.push({
+        hold: scene,
+        start: at + duration,
+        duration: +(length - duration).toFixed(3),
+        media: mark.end - 0.1,
+      })
+    caps.push({ index, start: at, duration: length })
+    at += length
   })
   const endStart = +at.toFixed(3)
-  const total = +(at + END).toFixed(3)
-  const footageEnd = shots.filter((s) => !s.card).at(-1)
+  lines.push(endStart + LEAD)
+  const total = +(at + endHold).toFixed(3)
+  const footageEnd = shots.filter((s) => s.scene).at(-1)
 
   const video = (s) =>
-    `<video id="shot-${s.scene}" class="clip shot" src="assets/${flowName}.mp4" muted playsinline data-start="${s.start.toFixed(3)}" data-duration="${s.duration}" data-media-start="${s.media.toFixed(3)}"${s.rate !== 1 ? ` data-playback-rate="${s.rate}"` : ''} data-track-index="1"></video>`
+    s.hold
+      ? `<video id="hold-${s.hold}" class="clip shot" src="assets/${flowName}.mp4" muted playsinline data-start="${s.start.toFixed(3)}" data-duration="${s.duration}" data-media-start="${s.media.toFixed(3)}" data-track-index="1"></video>`
+      : `<video id="shot-${s.scene}" class="clip shot" src="assets/${flowName}.mp4" muted playsinline data-start="${s.start.toFixed(3)}" data-duration="${s.duration}" data-media-start="${s.media.toFixed(3)}"${s.rate !== 1 ? ` data-playback-rate="${s.rate}"` : ''} data-track-index="1"></video>`
   const message = orderMessage()
   const channels = (s) => `
       <section id="channels" class="clip card-scene" data-start="${s.start.toFixed(3)}" data-duration="${s.duration}" data-track-index="2">
@@ -193,16 +227,16 @@ function build(flowName, lang) {
       <div id="phone">
         <div id="screen">
           ${shots.map((s) => (s.card ? channels(s) : video(s))).join('\n          ')}
-          <video id="shot-hold" class="clip shot" src="assets/${flowName}.mp4" muted playsinline data-start="${endStart}" data-duration="${END}" data-media-start="${(footageEnd.media + footageEnd.duration * footageEnd.rate - 0.1).toFixed(3)}" data-track-index="1"></video>
+          <video id="shot-hold" class="clip shot" src="assets/${flowName}.mp4" muted playsinline data-start="${endStart}" data-duration="${endHold.toFixed(3)}" data-media-start="${(footageEnd.media + footageEnd.duration * footageEnd.rate - 0.1).toFixed(3)}" data-track-index="1"></video>
         </div>
       </div>
       <div class="dots">${caps.map((c) => `<i id="dot-${c.index}"></i>`).join('')}</div>
-      <section class="clip intro" id="intro" data-start="0" data-duration="${INTRO}" data-track-index="5">
+      <section class="clip intro" id="intro" data-start="0" data-duration="${intro.toFixed(3)}" data-track-index="5">
         <span class="chip" id="intro-chip">${esc(flow.label(t))}</span>
         <h1 id="intro-line">${esc(flow.line(t))}</h1>
         <p id="intro-note">${esc(t.videoNote)}</p>
       </section>
-      <section class="clip end" id="end" data-start="${endStart}" data-duration="${END}" data-track-index="5">
+      <section class="clip end" id="end" data-start="${endStart}" data-duration="${endHold.toFixed(3)}" data-track-index="5">
         <span class="mark" id="end-mark"></span>
         <h2 id="end-line">${esc(captions.at(-1))}</h2>
         <p class="site" id="end-site">${esc(t.site)}</p>
@@ -213,8 +247,8 @@ function build(flowName, lang) {
       tl.fromTo('#intro-chip', { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out' }, 0.1);
       tl.fromTo('#intro-line', { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power2.out' }, 0.2);
       tl.fromTo('#intro-note', { opacity: 0 }, { opacity: 1, duration: 0.25 }, 0.45);
-      tl.to('#intro-line', { opacity: 0, y: -16, duration: 0.2, ease: 'power2.in' }, ${INTRO - 0.25});
-      tl.fromTo('#phone', { y: 90, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: 'power3.out' }, ${INTRO - 0.15});
+      tl.to('#intro-line', { opacity: 0, y: -16, duration: 0.2, ease: 'power2.in' }, ${(intro - 0.25).toFixed(3)});
+      tl.fromTo('#phone', { y: 90, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: 'power3.out' }, ${(intro - 0.15).toFixed(3)});
       ${caps
         .map(
           (
@@ -230,8 +264,8 @@ function build(flowName, lang) {
             s,
           ) => `tl.fromTo('#ch-small', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power2.out' }, ${(s.start + 0.15).toFixed(3)});
       tl.fromTo('#ch-small .msg', { opacity: 0 }, { opacity: 1, duration: 0.2, stagger: 0.15 }, ${(s.start + 0.45).toFixed(3)});
-      tl.fromTo('#ch-mid', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out' }, ${(s.start + 2.0).toFixed(3)});
-      tl.fromTo('#ch-big', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out' }, ${(s.start + 2.7).toFixed(3)});`,
+      tl.fromTo('#ch-mid', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out' }, ${(s.start + s.duration * 0.5).toFixed(3)});
+      tl.fromTo('#ch-big', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out' }, ${(s.start + s.duration * 0.7).toFixed(3)});`,
         )
         .join('\n      ')}
       tl.fromTo('#end-mark', { scale: 0.6, opacity: 0, rotation: -20 }, { scale: 1, opacity: 1, rotation: -8, duration: 0.3, ease: 'back.out(2)' }, ${(endStart + 0.1).toFixed(3)});
@@ -244,14 +278,15 @@ function build(flowName, lang) {
 `
   writeFileSync(join(dir, 'index.html'), html)
   const posterShot = shots.find((s) => s.scene === flow.poster)
-  return { dir, total, poster: posterShot.start + posterShot.duration * 0.7 }
+  return { dir, total, poster: posterShot.start + posterShot.duration * 0.7, voice, lines }
 }
 
 function run(cmd, args, cwd) {
   const result = spawnSync(cmd, args, {
     cwd,
     stdio: 'inherit',
-    shell: process.platform === 'win32',
+    // npx is a .cmd shim on Windows; ffmpeg runs directly, so its filter graphs need no quoting.
+    shell: process.platform === 'win32' && cmd === 'npx',
   })
   if (result.status !== 0) throw new Error(`${cmd} ${args.join(' ')} failed`)
 }
@@ -261,7 +296,7 @@ const langs = process.argv[3] ? [process.argv[3]] : ['en', 'hi']
 mkdirSync(out, { recursive: true })
 for (const flow of flows)
   for (const lang of langs) {
-    const { dir, total, poster } = build(flow, lang)
+    const { dir, total, poster, voice, lines } = await build(flow, lang)
     const name = `${flow}-${lang}`
     console.log(`\n▶ ${name}: ${total.toFixed(1)} s`)
     if (process.env.HIW_SKIP_RENDER) continue
@@ -311,11 +346,29 @@ for (const flow of flows)
         join(dir, 'render.mp4'),
         '-i',
         jpg,
+        ...voice.flatMap((clip) => ['-i', clip.file]),
         '-filter_complex',
-        "[0:v][1:v]overlay=0:0:enable='eq(n,0)'[v]",
+        [
+          "[0:v][1:v]overlay=0:0:enable='eq(n,0)'[v]",
+          // Each line starts on its scene; mixed, levelled, and padded to the video's length.
+          ...voice.map(
+            (_, index) =>
+              `[${index + 2}:a]adelay=${Math.round(lines[index] * 1000)}:all=1[a${index}]`,
+          ),
+          `${voice.map((_, index) => `[a${index}]`).join('')}amix=inputs=${voice.length}:normalize=0,loudnorm=I=-16:TP=-1.5,apad,atrim=0:${total.toFixed(3)}[a]`,
+        ].join(';'),
         '-map',
         '[v]',
-        '-an',
+        '-map',
+        '[a]',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '64k',
+        '-ac',
+        '1',
+        '-ar',
+        '44100',
         '-c:v',
         'libx264',
         '-preset',
