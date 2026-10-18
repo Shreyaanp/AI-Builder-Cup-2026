@@ -549,6 +549,10 @@
     margin: 0;
     padding-inline: 0;
   }
+  /* Half the width next to the video: two cards per row so words never break. */
+  .l2-pair .hw-trust {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .l2-trust .hw-trust {
   margin-top: 16px;
