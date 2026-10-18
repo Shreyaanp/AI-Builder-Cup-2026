@@ -1,7 +1,8 @@
-export type AppKind = 'landing' | 'customer' | 'business'
+export type AppKind = 'landing' | 'customer' | 'business' | 'how-it-works'
 
 /** The only host/path policy. Overrides also make local browser tests explicit. */
 export function resolveApp(url: URL): AppKind {
+  if (/^\/how-it-works\/?$/.test(url.pathname)) return 'how-it-works'
   const override = url.searchParams.get('app')
   if (override === 'landing' || override === 'customer' || override === 'business') return override
   if (url.hostname === 'business.chalkboard.shreyaan.work' || url.hostname.endsWith('.run.app'))

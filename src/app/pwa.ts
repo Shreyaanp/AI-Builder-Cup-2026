@@ -35,7 +35,7 @@ export function subscribeInstall(listener: () => void) {
 
 export function setupPwa(app: AppKind) {
   document.querySelector('link[rel="manifest"]')?.remove()
-  if (app === 'landing') return
+  if (app === 'landing' || app === 'how-it-works') return
   dismissedKey = `chalkboard.${app}.installDismissed`
   const manifest = document.createElement('link')
   manifest.rel = 'manifest'
