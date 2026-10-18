@@ -94,13 +94,14 @@ for (const width of [360, 390]) {
         route.fulfill({ status: 403, json: { detail: 'bad key' } }),
       )
       await page.goto('/explore/s/demo-shop-1?source=qr&k=made-up-key')
+      await page.getByRole('button', { name: 'Collect your stamp' }).click()
       await expect(page.getByText('This QR is out of date')).toBeVisible({ timeout: 20_000 })
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
         ),
       ).toBe(0)
-      await page.getByRole('button', { name: 'Done' }).click()
+      await page.getByRole('button', { name: 'Keep browsing' }).click()
       // The shop page's own card keeps the count it had before the scan.
       await expect(page.getByRole('link', { name: 'Stamp card · 2 of 10 stamps' })).toBeVisible()
     })

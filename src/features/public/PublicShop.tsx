@@ -492,6 +492,9 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   const [chatOpen, setChatOpen] = useState(false)
   // A counter QR scan, read once: a shop without stamps has no stamp moment to answer it.
   const [scannedQr] = useState(() => new URLSearchParams(location.search).get('source') === 'qr')
+  // Set once the shop has answered the QR scan; until then the bottom bar is "Collect your stamp".
+  const [qrAnswered, setQrAnswered] = useState(false)
+  const [qrKeyed] = useState(() => Boolean(new URLSearchParams(location.search).get('k')))
   const [detailsOpen, setDetailsOpen] = useState(false)
   const previous = useRef<PublicShopData | null>(null)
   const [changedPrices, setChangedPrices] = useState<string[]>([])
@@ -671,6 +674,8 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   // The stamp card, games and badges read and write this customer's own account, which the
   // read-only public demo never touches.
   const showStamps = stampsEnabled && !previewApi
+  // A counter scan with a signed key (or a demo shop's on-screen QR) waits for the stamp tap.
+  const qrArmed = scannedQr && !qrAnswered && (qrKeyed || Boolean(shop.demo))
   // Demo shops' numbers are fictional; never offer to call or message them.
   const phone = shop.demo ? '' : shop.phone
   const actions = previewApi
@@ -1194,6 +1199,10 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
             timezone: shopZone(shop),
             needed: shop.stamps_needed ?? 8,
           }}
+          armed={qrArmed}
+          onSpent={() => setQrAnswered(true)}
+          onChat={() => setChatOpen(true)}
+          chatLabel={t.chatTitle}
         />
       )}
       {showStamps && <ShopGames shop={id} />}
@@ -1218,7 +1227,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         </Typography>
       </Stack>
       {/* One way to reach the shop: instant answers first, the owner when needed. */}
-      {!previewApi && (
+      {!previewApi && !(showStamps && qrArmed) && (
         <Box
           sx={{
             position: 'fixed',
