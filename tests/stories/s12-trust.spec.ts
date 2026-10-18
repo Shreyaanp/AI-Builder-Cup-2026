@@ -267,3 +267,46 @@ test('S12 trust: an unsure live check goes to a person, never back to Try again'
   await review.getByRole('button', { name: 'Looks fine' }).click()
   await expect(card).toContainText('Verified owner')
 })
+
+test('S12 trust: client captures and uploads sampled JPEG frames as JSON', async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  const suffix = Date.now().toString().slice(-6)
+  const shop = `Capture Test Chai ${suffix}`
+  await open(page, 'light')
+  let capturedContentType = ''
+  let capturedPayload: { frames?: Array<{ timestamp: number; data: string }> } | null = null
+  await page.route('**/api/v1/face/challenges/*/capture', async (route) => {
+    const request = route.request()
+    capturedContentType = request.headers()['content-type'] ?? ''
+    const postData = request.postData()
+    if (capturedContentType.startsWith('application/json') && postData) {
+      try {
+        capturedPayload = JSON.parse(postData)
+      } catch {
+        capturedPayload = null
+      }
+    }
+    await route.continue({
+      headers: { ...request.headers(), 'x-face-fixture': `owner-light-capture-${suffix}` },
+    })
+  })
+  await enter(page)
+  await seedShop(page, false, shop)
+  await openPrivacy(page)
+  const card = page.getByRole('region', { name: 'Verify it’s you' })
+  await card.getByRole('button', { name: 'Verify it’s you' }).click()
+  const dialog = await verify(page, async () => {}, 'capture-check')
+  await expect(dialog.getByRole('heading', { name: 'You’re verified' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Done' }).click()
+
+  expect(capturedContentType).toMatch(/^(application\/json|video\/)/)
+  if (capturedContentType.startsWith('application/json') && capturedPayload?.frames) {
+    expect(capturedPayload.frames.length).toBeGreaterThanOrEqual(6)
+    const first = capturedPayload.frames[0]
+    expect(typeof first.timestamp).toBe('number')
+    expect(first.data).toMatch(/^data:image\/jpeg;base64,/)
+  }
+})
+
