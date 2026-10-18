@@ -162,3 +162,16 @@ test('/landing-preview: labelled proposal, noindex, both videos inline', async (
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
   ).toEqual([])
 })
+
+test('every demo video and poster ships, small enough for a phone (< 3 MB)', async ({
+  request,
+}) => {
+  for (const flow of ['vendor', 'customer'])
+    for (const lang of ['en', 'hi']) {
+      const video = await request.get(`/how-it-works/${flow}-${lang}.mp4`)
+      expect(video.ok(), `${flow}-${lang}.mp4`).toBe(true)
+      expect((await video.body()).length).toBeLessThan(3_000_000)
+      const poster = await request.get(`/how-it-works/${flow}-${lang}.jpg`)
+      expect(poster.ok(), `${flow}-${lang}.jpg`).toBe(true)
+    }
+})
