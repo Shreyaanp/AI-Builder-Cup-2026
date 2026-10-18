@@ -14,6 +14,7 @@ from google.adk.models.llm_response import LlmResponse
 from google.genai import types
 from pydantic import ValidationError
 
+from .context_cache import CachedGemini, uses_gemini_context_cache
 from .contracts import BusinessProposal
 from .coordinator import (
     cancel_order,
@@ -1353,17 +1354,26 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
             if settings.gemini_backend == "vertex"
             else {"api_key": settings.google_api_key.get_secret_value(), "vertexai": False}
         )
-        model = (LiveGemini if live else Gemini)(
-            model=settings.google_live_model if live else settings.google_text_model,
-            client_kwargs=client_kwargs,
+        model_kwargs: dict[str, Any] = {
+            "model": settings.google_live_model if live else settings.google_text_model,
+            "client_kwargs": client_kwargs,
             # A busy model (429/503) is refused before anything streams, so the text coach tries
             # again briefly instead of breaking the owner's turn; Live reconnects on its own.
-            retry_options=types.HttpRetryOptions(attempts=1)
+            "retry_options": types.HttpRetryOptions(attempts=1)
             if live
             else types.HttpRetryOptions(
                 attempts=3, initial_delay=0.5, max_delay=2.0, http_status_codes=[429, 503]
             ),
-        )
+        }
+        if not live and uses_gemini_context_cache(settings):
+            # The rules (and new-shop rules) + tool schemas from one shared Vertex cache.
+            model = CachedGemini(
+                **model_kwargs,
+                stable_parts=[INSTRUCTION, NEW_SHOP_INSTRUCTION],
+                cache_ttl=settings.gemini_context_cache_ttl_seconds,
+            )
+        else:
+            model = (LiveGemini if live else Gemini)(**model_kwargs)
     # V1 merchants get only the record-backed tools; the classic starter keeps its draft tools.
     tools: list[Callable[..., Any]] = (
         [
