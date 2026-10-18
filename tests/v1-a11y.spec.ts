@@ -24,8 +24,9 @@ async function consent(page: Page) {
 async function open(page: Page) {
   await consent(page)
   const agree = page.getByRole('button', { name: 'Agree and continue' })
-  await expect(agree).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeDisabled()
   await page.getByLabel('I agree to the Terms').check()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.getByLabel('I have read the Privacy Notice').check()
   await agree.click()
   await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
@@ -128,6 +129,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
           const shared = await sharedShop(page)
           if (screen === 'Grow' || screen === 'You') {
             await page.getByRole('button', { name: screen, exact: true }).click()
+            if (screen === 'You')
+              await page.locator('summary').filter({ hasText: /Verify it/ }).click()
             await expect(
               screen === 'Grow'
                 ? page.getByRole('button', { name: /^Rescue deals/ })
@@ -142,6 +145,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
             await page.getByRole('button', { name: /^Privacy & your data/ }).click()
             await expect(page.getByRole('heading', { name: 'Privacy & data' })).toBeVisible()
             if (screen === 'Delete confirmation') {
+              if (!(await page.getByRole('button', { name: 'Delete all my data' }).isVisible()))
+                await page.locator('summary').filter({ hasText: /^Your data$/ }).click()
               await page.getByRole('button', { name: 'Delete all my data' }).click()
               await expect(page.getByRole('dialog', { name: 'Delete everything?' })).toBeVisible()
             }

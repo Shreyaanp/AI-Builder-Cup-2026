@@ -21,6 +21,7 @@ async function enter(page: Page) {
     )
   ) {
     await terms.check()
+    await page.getByRole('button', { name: 'Next', exact: true }).click()
     await page.getByLabel('I have read the Privacy Notice').check()
     await page.getByRole('button', { name: 'Agree and continue' }).click()
   }

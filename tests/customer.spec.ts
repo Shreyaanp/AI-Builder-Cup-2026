@@ -27,6 +27,7 @@ async function sharedShop(page: Page, phone = '+65 6123 4567') {
   await page.goto('/')
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByLabel('I agree to the Terms').check()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
   await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()

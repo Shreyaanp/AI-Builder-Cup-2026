@@ -71,6 +71,8 @@ test('delete all owner data requires confirmation; cancel keeps shop; erase remo
   await publish(page, id)
   await page.getByRole('button', { name: 'You', exact: true }).click()
   await page.getByRole('button', { name: /^Privacy & your data/ }).click()
+  if (!(await page.getByRole('button', { name: 'Delete all my data' }).isVisible()))
+    await page.locator('summary').filter({ hasText: /^Your data$/ }).click()
   await page.getByRole('button', { name: 'Delete all my data' }).click()
   await expect(page.getByRole('dialog', { name: 'Delete everything?' })).toBeVisible()
   await audit(page)
@@ -98,6 +100,8 @@ for (const appearance of ['light', 'dark'] as const) {
       await held
       await route.fallback()
     })
+    if (!(await page.getByRole('button', { name: 'Delete all my data' }).isVisible()))
+      await page.locator('summary').filter({ hasText: /^Your data$/ }).click()
     await page.getByRole('button', { name: 'Delete all my data' }).click()
     await page.getByRole('button', { name: 'Delete permanently' }).click()
     await expect(page.getByRole('progressbar', { name: /Deleting your data/ })).toBeVisible()
@@ -138,6 +142,8 @@ for (const appearance of ['light', 'dark'] as const) {
         }),
       { times: 1 },
     )
+    if (!(await page.getByRole('button', { name: 'Delete all my data' }).isVisible()))
+      await page.locator('summary').filter({ hasText: /^Your data$/ }).click()
     await page.getByRole('button', { name: 'Delete all my data' }).click()
     await page.getByRole('button', { name: 'Delete permanently' }).click()
     const alert = page.getByRole('alert').filter({ hasText: 'still being deleted' })
@@ -158,6 +164,8 @@ test('failed erase request offers Try again', async ({ page }) => {
   await page.getByRole('button', { name: 'You', exact: true }).click()
   await page.getByRole('button', { name: /^Privacy & your data/ }).click()
   await page.route('**/api/v1/me/data', (route) => route.abort(), { times: 1 })
+  if (!(await page.getByRole('button', { name: 'Delete all my data' }).isVisible()))
+    await page.locator('summary').filter({ hasText: /^Your data$/ }).click()
   await page.getByRole('button', { name: 'Delete all my data' }).click()
   await page.getByRole('button', { name: 'Delete permanently' }).click()
   const alert = page.getByRole('alert').filter({ hasText: 'Deletion didn’t finish' })

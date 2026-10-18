@@ -79,6 +79,7 @@ async function setup(page: Page, permission: 'granted' | 'denied' = 'granted') {
   await page.goto('/?app=business')
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByLabel('I agree to the Terms').check()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
   const businesses = (await (await page.request.get('/api/v1/businesses')).json()) as unknown[]

@@ -18,7 +18,7 @@ import { readiness } from '../shopProgress'
 import { ShopSheets, Supporting, Tile, type ShopSheetKind } from '../ShopTiles'
 import { tileGrid } from '../tileSpan'
 import { useCopy } from '../strings'
-import { useInChatCopy } from '../inChatCopy'
+import { usePaceCopy } from '../paceCopy'
 import { useTabsCopy } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
 import { ShopGate } from './ShopScreen'
@@ -73,6 +73,8 @@ function byGrowOrder(grow: string[], tools: [string, ReactNode][]): ReactNode[] 
     .map((tool) => tool.node)
 }
 
+const SHOW_ALL = 'niva.grow.all'
+
 function GrowTiles() {
   const t = useCopy()
   const tabs = useTabsCopy()
@@ -82,8 +84,9 @@ function GrowTiles() {
   const ws = useWorkspace()
   const roles = useTheme().material
   const { state: playbook } = usePlaybook()
-  const c = useInChatCopy()
-  const [page, setPage] = useState(0)
+  const pace = usePaceCopy()
+  // Four tools first; Show more is remembered so a returning owner sees everything.
+  const [all, setAll] = useState(() => localStorage.getItem(SHOW_ALL) === '1')
   const [planOpen, setPlanOpen] = useState(false)
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
   const [radarOpen, setRadarOpen] = useState(false)
@@ -180,13 +183,19 @@ function GrowTiles() {
     <Stack spacing={4}>
       <MorningBrief key={shop.id} onSheet={setSheet} onRadar={() => setRadarOpen(true)} />
       <Box data-testid="grow-tiles" sx={tileGrid}>
-        {cards.slice(page * 4, page * 4 + 4)}
+        {all ? cards : cards.slice(0, 4)}
       </Box>
-      <Stack direction="row" sx={{ gap: 2, alignItems: 'center', pb: 2 }}>
-        <Button disabled={page === 0} onClick={() => setPage(page - 1)} sx={{ minHeight: 48 }}>{c.back}</Button>
-        <Typography variant="bodyMedium" role="status">{c.stepOf(page + 1, Math.ceil(cards.length / 4))}</Typography>
-        <Button variant="contained" disabled={(page + 1) * 4 >= cards.length} onClick={() => setPage(page + 1)} sx={{ minHeight: 48, flex: 1 }}>{c.next}</Button>
-      </Stack>
+      {!all && cards.length > 4 && (
+        <Button
+          onClick={() => {
+            localStorage.setItem(SHOW_ALL, '1')
+            setAll(true)
+          }}
+          sx={{ minHeight: 48, alignSelf: 'center' }}
+        >
+          {pace.more}
+        </Button>
+      )}
       <ShopSheets
         kind={sheet ?? (planOpen ? 'plan' : null)}
         onClose={() => {

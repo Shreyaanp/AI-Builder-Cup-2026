@@ -20,7 +20,6 @@ import { BrandSplash } from '../frontdoors/Splash'
 import { JourneyProgress } from '../frontdoors/OwnerJourney'
 import { Disclosure } from './Disclosure'
 import { useInChatCopy } from './inChatCopy'
-import { usePaceCopy } from './paceCopy'
 
 function Frame({ children }: { children: ReactNode }) {
   return (
@@ -97,7 +96,6 @@ export function ConsentScreen({
 }) {
   const t = useCopy()
   const c = useInChatCopy()
-  const pace = usePaceCopy()
   const [step, setStep] = useState(0)
   const [terms, setTerms] = useState(false)
   const [privacy, setPrivacy] = useState(false)
@@ -108,9 +106,7 @@ export function ConsentScreen({
     <Frame>
       <Mark />
       <JourneyProgress step={2} />
-      <Typography component="h1" variant="headlineMedium">
-        {step === 0 ? t.viewTerms : t.viewPrivacy}
-      </Typography>
+      <Typography component="h1" variant="headlineMedium">{t.consentTitle}</Typography>
       <Typography variant="bodyLarge" color="text.secondary">
         {step === 0 ? t.consentPurpose : t.consentStore}
       </Typography>
@@ -147,7 +143,7 @@ export function ConsentScreen({
               })
             }}
             sx={{ minHeight: 56 }}
-          >{pace.agree}</Button>
+          >{t.agree}</Button>
         )}
         {step === 1 && <Button disabled={busy} onClick={() => setStep(0)}>{c.back}</Button>}
         <Button onClick={onDecline} disabled={busy}>{t.notNow}</Button>

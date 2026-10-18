@@ -60,7 +60,7 @@ test('phone: configured GA4 does not request gtag before legal consent', async (
   )
   await page.goto('/', { waitUntil: 'commit' })
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await expect(page.getByRole('button', { name: 'Agree and continue' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeVisible()
   await page.waitForTimeout(300)
   expect(gtagRequests).toEqual([])
 })

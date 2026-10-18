@@ -14,6 +14,7 @@ test('guided tour: demo shop is created, fourteen spotlights, then start your ow
   await page.goto('/')
   await page.getByRole('button', { name: 'Continue local preview' }).tap()
   await page.getByLabel('I agree to the Terms').check()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).tap()
   await expect(page.getByText('See it working first')).toBeVisible()

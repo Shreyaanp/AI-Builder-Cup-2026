@@ -79,6 +79,7 @@ test('Malay passport calls streak freezes protection, not a freezer', async ({ p
 test('the Settings override wins over the phone and survives reload', async ({ page }) => {
   await consentScreen(page, 'Continue local preview', 'Before we start')
   await page.getByLabel('I agree to the Terms').check()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
   await page.getByRole('button', { name: 'You', exact: true }).click()
@@ -93,6 +94,7 @@ test('the Settings override wins over the phone and survives reload', async ({ p
 test('the customer page follows the customer’s phone language', async ({ page, browser }) => {
   await consentScreen(page, 'Continue local preview', 'Before we start')
   await page.getByLabel('I agree to the Terms').check()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
   await createShop(page, 'name: Ah Ming Kopi')
