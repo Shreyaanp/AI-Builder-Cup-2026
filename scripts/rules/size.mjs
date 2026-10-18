@@ -5,7 +5,7 @@ export const id = 'size'
 const MAX_NEW = 800
 const MAX_GROWTH = 150
 const SKIP =
-  /(^|\/)(package-lock\.json|uv\.lock|openapi\.json|generated\.d\.ts|material-roles\.generated\.json)$|^graphify-out\/|^docs\/|\.(png|jpe?g|webp|svg|woff2?|lock)$/
+  /(^|\/)(package-lock\.json|uv\.lock|openapi\.json|generated\.d\.ts|material-roles\.generated\.json)$|^graphify-out\/|^docs\/|\.(png|jpe?g|webp|svg|mp4|woff2?|lock)$/
 
 const lines = (s) => (s.length ? s.split('\n').length : 0)
 
