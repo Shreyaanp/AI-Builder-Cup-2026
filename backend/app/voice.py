@@ -13,7 +13,7 @@ from google.adk.live.live_request_queue import LiveRequestQueue
 from google.genai import types
 from pydantic import ValidationError
 
-from .agent import asks_to_end, ui_language
+from .agent import LiveClose, asks_to_end, live_close, ui_language
 from .auth import Principal
 from .contracts import NewShopVoiceContext, StreamEvent, VoiceControl
 from .coordinator import current
@@ -93,6 +93,8 @@ class VoiceStats:
     rotations: int = 0
     # The coach's last question (for a fresh Live connection's instruction).
     last_question: str = ""
+    # How the last Live connection closed (the provider's code and reason).
+    provider: LiveClose = field(default_factory=LiveClose)
 
     def end(self, reason: str) -> None:
         self.reason = self.reason or reason
@@ -104,6 +106,14 @@ class VoiceStats:
             "turns": self.turns,
             "tool_calls": self.tool_calls,
             "rotations": self.rotations,
+            **self.provider_fields(),
+        }
+
+    def provider_fields(self) -> dict[str, Any]:
+        return {
+            "provider_code": self.provider.code,
+            "provider_reason": self.provider.reason,
+            "closed_by": self.provider.by or "none",
         }
 
 
@@ -484,7 +494,9 @@ async def gemini_voice(
             # Seamless: a fresh Live connection on the same conversation. It starts from the
             # saved turns and draft, and the instruction says where the conversation stood.
             stats.rotations += 1
-            log.info("voice_rotated", reason=ended, rotation=stats.rotations)
+            log.info(
+                "voice_rotated", reason=ended, rotation=stats.rotations, **stats.provider_fields()
+            )
             fresh(resumed=True)
 
     def fresh(resumed: bool) -> None:
@@ -538,6 +550,7 @@ async def serve_voice(
     ui_language.set(language.locale)
     # This socket's own in-flight saves, waited for at teardown (tasks below inherit the set).
     saves_token = pending_writes.set(set())
+    live_close.set(stats.provider)
 
     async def heartbeat() -> None:
         while True:

@@ -1,8 +1,10 @@
 import asyncio
+import contextlib
 import json
 import re
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import Any
 
 from google.adk.agents import LlmAgent
@@ -1328,12 +1330,43 @@ def live_history(contents: list[types.Content]) -> list[types.Content]:
     return cleaned
 
 
-class LiveGemini(Gemini):
-    """Gemini for voice sessions: connects with history the Live model accepts."""
+@dataclass
+class LiveClose:
+    """How the voice socket's last Live connection closed: the provider's websocket close code
+    and reason, or `by="app"` when this side closed it first (logged with voice_closed)."""
 
-    def connect(self, llm_request: LlmRequest) -> Any:
+    code: int | None = None
+    reason: str = ""
+    by: str = ""
+
+    def note(self, connection: Any) -> None:
+        ws = getattr(getattr(connection, "_gemini_session", None), "_ws", None)
+        code = getattr(ws, "close_code", None)
+        if code is None:
+            self.code, self.reason, self.by = None, "", "app"
+            return
+        self.code, self.by = code, "provider"
+        self.reason = (getattr(ws, "close_reason", None) or "")[:200]
+
+
+# The voice socket's own record (set by serve_voice; the Live connections run in its tasks).
+live_close: ContextVar[LiveClose | None] = ContextVar("live_close", default=None)
+
+
+class LiveGemini(Gemini):
+    """Gemini for voice sessions: connects with history the Live model accepts, and notes how
+    each Live connection closed (the provider's code and reason)."""
+
+    @contextlib.asynccontextmanager
+    async def connect(self, llm_request: LlmRequest) -> AsyncIterator[Any]:
         llm_request.contents = live_history(llm_request.contents or [])
-        return super().connect(llm_request)
+        async with super().connect(llm_request) as connection:
+            try:
+                yield connection
+            finally:
+                # Before this side closes it: a code here is the provider's own close.
+                if (record := live_close.get()) is not None:
+                    record.note(connection)
 
 
 def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) -> LlmAgent:
