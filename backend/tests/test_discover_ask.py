@@ -73,9 +73,7 @@ def test_singapore_ask_hides_inr_shops(
     app = create_app(settings(tmp_path), InMemorySessionService())
     with TestClient(app) as client:
         app.state.merchant = store
-        answer = client.post(
-            "/api/v1/discover/ask", json={"q": "kopi", **TIONG_BAHRU}
-        ).json()
+        answer = client.post("/api/v1/discover/ask", json={"q": "kopi", **TIONG_BAHRU}).json()
         ids = {p["id"] for group in answer["groups"] for p in group["places"]}
         assert "inr-in-singapore" not in ids
 

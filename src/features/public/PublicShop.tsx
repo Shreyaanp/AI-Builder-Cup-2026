@@ -200,7 +200,8 @@ const en = {
   errorBody: 'Check your connection and try again.',
   retry: 'Try again',
   stale: 'Couldn’t refresh — showing the last menu we loaded.',
-  qrNoStamps: 'You’re at {name}. This shop doesn’t have a stamp card yet, but you can browse the menu.',
+  qrNoStamps:
+    'You’re at {name}. This shop doesn’t have a stamp card yet, but you can browse the menu.',
 }
 
 /** Native customer-page translations per locale (filled per language; English fallback). */
