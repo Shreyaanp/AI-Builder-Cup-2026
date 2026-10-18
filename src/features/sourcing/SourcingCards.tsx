@@ -24,6 +24,7 @@ import {
 import { useLocale } from '../../state/hooks'
 import { enterRise, fieldFade, motion, scrollArea, shape } from '../../design/theme'
 import { formatPrice, toMinor } from '../v1/format'
+import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { useSourcingCopy } from './copy'
 import { deliveryLabel } from './orderData'
 import type { Order, OrderStatus, SupplierCard, SupplierResult } from './types'
@@ -550,7 +551,7 @@ export function OrderCard({
                 }}
               >
                 <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
-                  {reply.text}
+                  {formatMoneyText(reply.text, locale)}
                 </Typography>
                 {reply.auto && (
                   <Typography variant="labelSmall" color="text.secondary">
