@@ -23,6 +23,11 @@ export async function startDemoTour(
     tour.start()
     return true
   } catch {
+    // The private tour copy could not be made: the public demo shows the same story to any account.
+    if (!window.location.pathname.startsWith('/demo')) {
+      window.location.assign('/demo')
+      return false
+    }
     setFailed(true)
     return false
   } finally {

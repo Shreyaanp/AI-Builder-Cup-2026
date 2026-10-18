@@ -7,6 +7,7 @@ import { shape } from '../../design/theme'
 import { LegalDialog } from './LegalDialog'
 import type { LegalDocument } from './LegalDialog'
 import { useCopy } from './strings'
+import { useDemoCopy } from '../frontdoors/strings'
 import { formatPrice, toMinor } from './format'
 import { regionAt } from '../../region/region'
 
@@ -108,25 +109,6 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
             ]}
           />
         </Box>
-
-        {/* Closing call to action */}
-        <Box sx={{ ...section, pb: { xs: 6, md: 10 } }}>
-          <Stack
-            spacing={2.5}
-            sx={{
-              bgcolor: roles.primaryContainer,
-              color: roles.onPrimaryContainer,
-              borderRadius: `${shape.xl}px`,
-              p: { xs: 3, md: 6 },
-              alignItems: { md: 'flex-start' },
-            }}
-          >
-            <Typography component="h2" variant="headlineMedium">
-              {t.ctaTitle}
-            </Typography>
-            <SignInActions onPreview={onPreview} compact />
-          </Stack>
-        </Box>
       </Box>
 
       <Box
@@ -134,7 +116,6 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
         sx={{ ...section, pb: 'calc(24px + env(safe-area-inset-bottom))', textAlign: 'center' }}
       >
         <Typography variant="bodySmall" color="text.secondary">
-          {t.independent} ·{' '}
           <Link
             component="button"
             type="button"
@@ -168,6 +149,7 @@ function SignInActions({
 }) {
   const t = useCopy()
   const identity = useIdentity()
+  const demo = useDemoCopy()
   return (
     <Stack spacing={1.5} sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}>
       {identity.error && !compact && <Alert severity="error">{identity.error}</Alert>}
@@ -188,9 +170,15 @@ function SignInActions({
           {t.retry}
         </Button>
       ) : (
-        <Button variant="contained" size="large" onClick={() => void identity.signIn()}>
-          {compact ? t.getStarted : t.signIn}
-        </Button>
+        <>
+          <Button variant="contained" size="large" onClick={() => void identity.signIn()}>
+            {compact ? t.getStarted : t.signIn}
+          </Button>
+          {/* No account needed: the public demo shop is the way in for anyone just looking. */}
+          <Button variant="outlined" size="large" href="/demo">
+            {demo.tryDemo}
+          </Button>
+        </>
       )}
     </Stack>
   )
