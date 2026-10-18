@@ -49,6 +49,20 @@ def test_misses_of_many_shops_are_one_cached_batch(tmp_path: Path) -> None:
     asyncio.run(run())
 
 
+def test_shop_reward_uses_customer_language_translation(tmp_path: Path) -> None:
+    async def model(language: str, texts: list[str]) -> list[str]:
+        return [f"{language}:{text}" for text in texts]
+
+    async def run() -> None:
+        translator = ShopTranslator(settings(tmp_path), model)
+        shop = {"id": "chai-shop", "reward_text": "A free chai", "products": []}
+        localized = await translator.localize_shop(shop, "ta")
+        assert localized["reward_text"] == "ta:A free chai"
+        assert shop["reward_text"] == "A free chai"
+
+    asyncio.run(run())
+
+
 def test_a_slow_model_never_holds_the_page(tmp_path: Path) -> None:
     release = asyncio.Event()
 
