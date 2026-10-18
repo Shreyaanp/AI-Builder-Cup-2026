@@ -2,7 +2,7 @@ import { lazy, Suspense, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, LinearProgress, Stack, Typography, useTheme } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
-import { CalendarClock, Globe, IndianRupee, Stamp } from 'lucide-react'
+import { CalendarClock, Globe, Stamp, Wallet } from 'lucide-react'
 import { useIdentity } from '../../../auth/useIdentity'
 import { CloseDayTile } from '../../closeday/CloseDay'
 import { openOwnerFeature } from '../../owner-tools/entry'
@@ -125,7 +125,7 @@ function GrowTiles() {
       'payments',
       <Tile
         key="payments"
-        icon={<IndianRupee size={20} />}
+        icon={<Wallet size={20} />}
         label={tools.payTitle}
         value={tools.create}
         onClick={() => openOwnerFeature('payments')}

@@ -17,7 +17,7 @@ import { FirstCustomers } from './FirstCustomers'
 import { useGoLiveCopy } from './goLiveCopy'
 
 /** The "Your shop is ready" moment that ends the new-shop flow (full screen, no dialog). */
-export function NewShopReady() {
+export function NewShopReady({ preview = false }: { preview?: boolean }) {
   const ws = useWorkspace()
   const t = useCopy()
   const f = useNewShopCopy()
@@ -32,6 +32,7 @@ export function NewShopReady() {
   const name = ws.active?.fields.name ?? ''
   const link = ws.shareUrl ? new URL(ws.shareUrl, location.origin).href : null
   useChalkTimeline(root, () => {
+    if (preview) return
     gsap.from('[data-ready-shop]', {
       scale: 1.3,
       rotate: -8,
@@ -42,8 +43,8 @@ export function NewShopReady() {
     gsap.from('[data-chalk-spark]', { scale: 0.3, opacity: 0, duration: 0.5, stagger: 0.12 })
   })
   useEffect(() => {
-    title.current?.focus()
-  }, [])
+    if (!preview) title.current?.focus()
+  }, [preview])
   return (
     <Box
       ref={root}

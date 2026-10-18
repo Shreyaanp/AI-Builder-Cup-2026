@@ -312,7 +312,7 @@ test('session end: the app reconnects to the same conversation and it carries on
 test('lost connection: retries by itself, then a calm "Voice paused" with Retry; typing carries on', async ({
   page,
 }) => {
-  test.setTimeout(90_000)
+  test.setTimeout(150_000)
   await quietMicrophone(page)
   let fail = false
   let sockets = 0
@@ -329,10 +329,10 @@ test('lost connection: retries by itself, then a calm "Voice paused" with Retry;
   await page.evaluate(() => window.dispatchEvent(new Event('offline')))
   await expect(orb(page)).toHaveAttribute('data-phase', 'reconnecting')
   const alert = page.getByTestId('voice-alert')
-  // Six retries with growing pauses (about half a minute), then a calm pause, never a dead end.
-  await expect(alert).toContainText('Voice paused', { timeout: 45_000 })
+  // Eight retries with growing pauses (about 45 seconds), then a calm pause, never a dead end.
+  await expect(alert).toContainText('Voice paused', { timeout: 60_000 })
   await expect(alert).toContainText('We carry on from the same question')
-  expect(sockets).toBe(7)
+  expect(sockets).toBe(9)
   await expect(alert.getByRole('button', { name: 'Type instead' })).toBeVisible()
   await expect(page.getByLabel('Message', { exact: true })).toBeVisible()
   await audit(page)
@@ -418,11 +418,14 @@ for (const locale of LOCALES) {
       const app = (await import('/src/features/v1/strings.ts' as string)) as {
         en: { addShop: string; continuePreview: string }
       }
-      const translations = (await import('/src/features/v1/locales/index.ts' as string)) as {
-        translations: Record<string, { addShop: string; continuePreview: string }>
+      const locales = (await import('/src/features/v1/locales/index.ts' as string)) as {
+        loaders: Record<
+          string,
+          (() => Promise<{ addShop: string; continuePreview: string }>) | undefined
+        >
       }
       const { addShop, continuePreview } =
-        locale === 'en' ? app.en : translations.translations[locale]!
+        locale === 'en' ? app.en : (await locales.loaders[locale]?.())!
       return {
         ...voice.voiceModeCopyFor(locale),
         begin: flow.newShopCopyFor(locale).begin,

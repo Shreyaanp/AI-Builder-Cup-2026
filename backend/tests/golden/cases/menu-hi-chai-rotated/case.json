@@ -1,0 +1,25 @@
+{
+  "adapter": "menu",
+  "input": "input.png",
+  "mime": "image/png",
+  "currency": "INR",
+  "render": {
+    "title": "नमूना चाय दुकान",
+    "variant": "rotated",
+    "items": [
+      {
+        "name": "मसाला चाय",
+        "price": 1500,
+        "size": "cup",
+        "category": "पेय"
+      },
+      {
+        "name": "अदरक चाय",
+        "price": 2000,
+        "size": "cup",
+        "category": "पेय"
+      }
+    ]
+  },
+  "notes": "Second item is marked SOLD OUT. Availability is not in extraction schema."
+}

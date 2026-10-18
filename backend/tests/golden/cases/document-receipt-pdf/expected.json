@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-18",
+  "currency": "INR",
+  "supplier": "Test Wholesale",
+  "total": 105.0,
+  "lines": [
+    {
+      "item": "Sugar",
+      "quantity": 2,
+      "amount": 100.0
+    }
+  ]
+}

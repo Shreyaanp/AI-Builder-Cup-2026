@@ -24,6 +24,20 @@ class Settings(BaseSettings):
     # The Cloud Scheduler service account allowed to run the export, and its OIDC audience.
     analytics_export_caller: str = ""
     analytics_export_audience: str = ""
+    # Live POS pulls (Square sandbox, Loyverse). "offline" (default) answers every pull from
+    # recorded sample responses; "live" calls the vendor API when its token is set, and falls
+    # back to the samples when it is not or when the call fails. Tokens come from the
+    # environment (Secret Manager on Cloud Run), never from the repository.
+    pos_live: Literal["offline", "live"] = "offline"
+    square_sandbox_token: SecretStr = SecretStr("")
+    square_sandbox_location_id: str = ""
+    # "google-connectors": the Square pull goes through an existing Google Cloud Integration
+    # Connectors connection (pos_connectors.py), then falls back to the direct API, then to
+    # the samples. Connections are created and suspended by the owner, never by the app.
+    pos_source: Literal["direct", "google-connectors"] = "direct"
+    connectors_location: str = Field(default="asia-south1", pattern=r"^[a-z0-9-]{3,40}$")
+    square_connection: str = Field(default="square-sandbox", pattern=r"^[a-z0-9-]{1,63}$")
+    loyverse_token: SecretStr = SecretStr("")
     weather_backend: Literal["disabled", "offline", "open_meteo"] = "offline"
     auth_mode: Literal["local", "firebase"] = "local"
     session_database_url: str = "sqlite+aiosqlite:///./data/sessions.sqlite3"
@@ -37,6 +51,12 @@ class Settings(BaseSettings):
     v1_enabled: bool = False
     guest_customer: bool = False
     feature_google_guide: bool = True
+    web_push_enabled: bool = False
+    web_push_public_key: str = ""
+    web_push_private_key: SecretStr = SecretStr("")
+    web_push_subject: str = ""
+    reminders_caller: str = ""
+    reminders_audience: str = ""
     qr_poster_enabled: bool = False
     feature_trust_strip: bool = False
     support_whatsapp: str = Field(default="", pattern=r"^(|https://wa\.me/[1-9][0-9]{6,14})$")
@@ -81,6 +101,9 @@ class Settings(BaseSettings):
     maps_server_key: SecretStr | None = None
     maps_browser_key: SecretStr | None = None
     google_text_model: str = ""
+    # A busy text model (429/503 after its retries) hands chat, search and close the day to this
+    # lighter model (e.g. gemini-3.5-flash-lite); empty: no fallback. See text_model.py.
+    google_text_fallback_model: str = ""
     google_live_model: str = ""
     # One voice for the whole app (owner choice, 16 Oct): Gemini Live and Cloud TTS (Chirp 3 HD)
     # share these names; other TTS tiers fall back to a female voice.
@@ -99,6 +122,16 @@ class Settings(BaseSettings):
     # until measured in production; without it the coach runs exactly as before.
     context_cache_enabled: bool = False
     context_cache_ttl_seconds: int = Field(default=1800, ge=60, le=86_400)
+    # One shared Vertex cache of the coach rules + tool schemas (text coach and new-shop
+    # onboarding, never Live voice), reused by every shop; any cache error sends the normal
+    # request. Off by default: turn on with GEMINI_CONTEXT_CACHE=true (see docs/impact/cost.md).
+    gemini_context_cache: bool = False
+    gemini_context_cache_ttl_seconds: int = Field(default=3600, ge=300, le=86_400)
+    # Places results shared across instances (Firestore, when the app runs on it) for a short
+    # time. Google Maps Platform terms allow only short-term caching of Places content, so the
+    # TTL is capped at one hour; place ids alone may be kept indefinitely.
+    places_cache: bool = True
+    places_cache_ttl_seconds: int = Field(default=1800, ge=60, le=3600)
     # Customer AI answers about the area with Gemini's Google Maps grounding tool (Vertex).
     # "off" keeps the honest fallback (our list + straight-line distances); "demo" returns
     # labelled sample answers for offline previews and browser tests; "live" calls Gemini.
@@ -113,6 +146,16 @@ class Settings(BaseSettings):
     shop_icon_daily_limit: int = Field(default=3, ge=1, le=20)
     # GCP credit is limited: one grounded call per question per ~1 km area for this long.
     maps_grounding_cache_seconds: int = Field(default=3600, ge=60, le=86_400)
+    # Purchase orders read from the SAP Business Accelerator Hub sandbox (sap_sandbox.py). Off,
+    # or with no key, the app shows the recorded sandbox sample, labelled as such. The key
+    # comes from the SAP_SANDBOX_API_KEY env var (Secret Manager in Cloud Run), never Git.
+    supply_sap_live: bool = False
+    sap_sandbox_api_key: SecretStr = SecretStr("")
+    sap_sandbox_url: str = Field(
+        default="https://sandbox.api.sap.com/s4hanacloud/sap/opu/odata/sap/API_PURCHASEORDER_PROCESS_SRV",
+        pattern=r"^https://[A-Za-z0-9.-]+(/[A-Za-z0-9_./-]*)?$",
+    )
+    sap_sandbox_odata: Literal["v2", "v4"] = "v2"
     max_turn_seconds: int = Field(default=30, ge=1, le=120)
     max_voice_seconds: int = Field(default=120, ge=1, le=600)
     max_active_runs: int = Field(default=8, ge=1, le=32)

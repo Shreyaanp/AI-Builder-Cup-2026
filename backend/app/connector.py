@@ -34,9 +34,20 @@ JSON_TYPES = {"application/json", "text/json"}
 XML_TYPES = {"application/xml", "text/xml"}
 
 # ── Target schema roles ─────────────────────────────────────────────────────
-TARGET_FIELDS = ("name", "price", "unit", "stock", "quantity", "date", "total", "category")
+TARGET_FIELDS = (
+    "name",
+    "price",
+    "unit",
+    "stock",
+    "quantity",
+    "date",
+    "total",
+    "category",
+    "currency",
+)
 
 CONNECTOR_HEADER_HINTS: dict[str, tuple[str, ...]] = {
+    "currency": ("currency", "currency code"),
     "category": (
         "category",
         "categoryname",
@@ -156,6 +167,7 @@ class ConnectorResult(BaseModel):
     last_synced: float | None = None
     diff: dict[str, list[dict[str, Any]]] | None = None
     warnings: list[str] = Field(default_factory=list)
+    preset: str | None = Field(default=None, description="Built-in mapping used, e.g. Square")
     photo_content: str | None = None
     photo_readings: list[dict[str, Any]] | None = None
     cell_flags: list[dict[str, Any]] = Field(default_factory=list)
@@ -481,6 +493,15 @@ def apply_mapping(
         idx = header_index.get(fm.source_field)
         if idx is not None and fm.target_field in col_kwargs:
             col_kwargs[fm.target_field] = idx
+    if col_kwargs["currency"] is None:
+        col_kwargs["currency"] = next(
+            (
+                i
+                for i, header in enumerate(headers)
+                if header.casefold().strip() in {"currency", "currency code"}
+            ),
+            None,
+        )
     col_map = ColumnMap(kind=mapping.kind, **col_kwargs)
     return headers, rows, col_map
 

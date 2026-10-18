@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { orderTotal, poNumber } from '../src/features/supply/orderFormat.ts'
+import { orderTotal, poNumber, termsLabel } from '../src/features/supply/orderFormat.ts'
 
 test('poNumber drops a leading PO- so the label reads "PO 2026-0042"', () => {
   expect(poNumber('PO-2026-0042')).toBe('2026-0042')
@@ -18,4 +18,12 @@ test('orderTotal uses the stated total, then the line sum, never NaN', () => {
   expect(orderTotal({ total: undefined, lines: [line(null)] } as never)).toBeNull()
   expect(orderTotal({ total: undefined, lines: [] } as never)).toBeNull()
   expect(orderTotal({ total: NaN, lines: undefined } as never)).toBeNull()
+})
+
+test('termsLabel never prints "undefined-day credit" when the rules omit terms_days', () => {
+  const terms = (d: number) => (d === 0 ? 'cash' : `${d}-day credit`)
+  expect(termsLabel(terms, 7)).toBe('7-day credit')
+  expect(termsLabel(terms, 0)).toBe('cash')
+  expect(termsLabel(terms, undefined)).toBe('')
+  expect(termsLabel(terms, null)).toBe('')
 })

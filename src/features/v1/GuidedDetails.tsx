@@ -632,6 +632,8 @@ export function GuidedDetails({
           py: 2,
           mx: { xs: -4, sm: 0 },
           px: { xs: 4, sm: 0 },
+          // Fade the right edge so a clipped chip reads as "scroll for more".
+          maskImage: 'linear-gradient(to right, #000 calc(100% - 32px), transparent)',
           ...scrollArea,
         }}
       >

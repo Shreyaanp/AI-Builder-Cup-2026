@@ -1,0 +1,34 @@
+{
+  "kind": "sales",
+  "count": 4,
+  "rows": [
+    {
+      "date": "20261014",
+      "name": "Filter Coffee",
+      "price": 3000,
+      "quantity": 5,
+      "total": 15000
+    },
+    {
+      "date": "20261014",
+      "name": "Masala Dosa",
+      "price": 8000,
+      "quantity": 3,
+      "total": 24000
+    },
+    {
+      "date": "20261015",
+      "name": "Filter Coffee",
+      "price": 3000,
+      "quantity": 7,
+      "total": 21000
+    },
+    {
+      "date": "20261015",
+      "name": "Paneer Butter Masala",
+      "price": 18000,
+      "quantity": 2,
+      "total": 36000
+    }
+  ]
+}

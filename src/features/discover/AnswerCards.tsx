@@ -367,9 +367,15 @@ export function PickCard({
   )
 }
 
-/** A same-size placeholder row while the area's shops load, so nothing below moves. */
+/**
+ * A same-size placeholder row while the area's shops load, so nothing below moves. It draws
+ * the card's own shape (photo, name, details) so it never reads as an empty outline.
+ */
 export function PickSkeleton({ tile = false }: { tile?: boolean }) {
   const roles = useTheme().material
+  const bar = (width: string) => (
+    <Box sx={{ height: 12, width, borderRadius: 1, bgcolor: roles.surfaceContainerHighest }} />
+  )
   return (
     <Box
       component="li"
@@ -377,6 +383,11 @@ export function PickSkeleton({ tile = false }: { tile?: boolean }) {
       className="c-shimmer"
       sx={{
         listStyle: 'none',
+        display: 'flex',
+        flexDirection: tile ? 'column' : 'row',
+        gap: 2,
+        p: tile ? 0 : 2,
+        overflow: 'hidden',
         // A carousel card: the photo's 4:3 plus its three text lines.
         ...(tile && { flex: '0 0 min(72%, 264px)', aspectRatio: '4/4.4' }),
         height: tile ? 'auto' : 88,
@@ -384,7 +395,21 @@ export function PickSkeleton({ tile = false }: { tile?: boolean }) {
         bgcolor: roles.surfaceContainerLow,
         border: `1px solid ${roles.outlineVariant}`,
       }}
-    />
+    >
+      <Box
+        sx={{
+          bgcolor: roles.surfaceContainerHighest,
+          ...(tile
+            ? { aspectRatio: '4/3', width: '100%' }
+            : { width: 56, height: 56, flex: 'none' }),
+          borderRadius: tile ? 0 : '12px',
+        }}
+      />
+      <Box sx={{ display: 'grid', gap: 2, alignContent: 'center', flex: 1, p: tile ? 2 : 0 }}>
+        {bar('70%')}
+        {bar('45%')}
+      </Box>
+    </Box>
   )
 }
 
@@ -417,7 +442,7 @@ export function GoogleRows({
               href={mapsLink(place.google_maps_uri) ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
-              sx={rowSx(roles)}
+              sx={{ ...rowSx(roles), gap: 1, px: 2, py: 2 }}
             >
               <Thumb pick={place} />
               <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -428,14 +453,19 @@ export function GoogleRows({
                   {[
                     formatDistance(place.distance_m, locale),
                     place.open_now === null ? null : place.open_now ? ask.openNow : ask.closed,
-                    // Google's own rating, live and attributed.
-                    place.rating != null && place.user_rating_count
-                      ? ratingLine(place.rating, place.user_rating_count, locale, search)
-                      : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')}
                 </Typography>
+                {place.rating != null && place.user_rating_count != null && (
+                  <Typography
+                    variant="bodySmall"
+                    color="text.secondary"
+                    sx={{ fontVariantNumeric: 'tabular-nums', lineHeight: 1.25 }}
+                  >
+                    {ratingLine(place.rating, place.user_rating_count, locale, search)}
+                  </Typography>
+                )}
                 {/* Google's attribution: the words "Google Maps", never translated, and the
                     photo's author. */}
                 <Typography

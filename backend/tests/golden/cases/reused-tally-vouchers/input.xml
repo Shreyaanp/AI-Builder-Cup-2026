@@ -1,0 +1,66 @@
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Export Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Sales" ACTION="Create">
+            <DATE>20261014</DATE>
+            <VOUCHERNUMBER>VCH-001</VOUCHERNUMBER>
+            <PARTYLEDGERNAME>Counter Cash</PARTYLEDGERNAME>
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>Filter Coffee</STOCKITEMNAME>
+              <RATE>30.00/cup</RATE>
+              <AMOUNT>150.00</AMOUNT>
+              <BILLEDQTY>5 cup</BILLEDQTY>
+            </ALLINVENTORYENTRIES.LIST>
+          </VOUCHER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Sales" ACTION="Create">
+            <DATE>20261014</DATE>
+            <VOUCHERNUMBER>VCH-002</VOUCHERNUMBER>
+            <PARTYLEDGERNAME>Counter Cash</PARTYLEDGERNAME>
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>Masala Dosa</STOCKITEMNAME>
+              <RATE>80.00/plate</RATE>
+              <AMOUNT>240.00</AMOUNT>
+              <BILLEDQTY>3 plate</BILLEDQTY>
+            </ALLINVENTORYENTRIES.LIST>
+          </VOUCHER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Sales" ACTION="Create">
+            <DATE>20261015</DATE>
+            <VOUCHERNUMBER>VCH-003</VOUCHERNUMBER>
+            <PARTYLEDGERNAME>Counter Cash</PARTYLEDGERNAME>
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>Filter Coffee</STOCKITEMNAME>
+              <RATE>30.00/cup</RATE>
+              <AMOUNT>210.00</AMOUNT>
+              <BILLEDQTY>7 cup</BILLEDQTY>
+            </ALLINVENTORYENTRIES.LIST>
+          </VOUCHER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Sales" ACTION="Create">
+            <DATE>20261015</DATE>
+            <VOUCHERNUMBER>VCH-004</VOUCHERNUMBER>
+            <PARTYLEDGERNAME>Counter Cash</PARTYLEDGERNAME>
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>Paneer Butter Masala</STOCKITEMNAME>
+              <RATE>180.00/portion</RATE>
+              <AMOUNT>360.00</AMOUNT>
+              <BILLEDQTY>2 portion</BILLEDQTY>
+            </ALLINVENTORYENTRIES.LIST>
+          </VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>

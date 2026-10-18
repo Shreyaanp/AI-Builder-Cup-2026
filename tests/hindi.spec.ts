@@ -27,6 +27,8 @@ const BRANDS = [
   'UPI',
   'POS',
   'ERP',
+  'SAP',
+  'IDoc',
   'QR',
   'AI',
   'Swiggy',
@@ -203,7 +205,7 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
 
   await test.step('purchase order', async () => {
     await growCard(page, /^खरीद ऑर्डर/)
-    await readsInHindi(page, '09-purchase-order')
+    await readsInHindi(page, '09-purchase-order', ['supplier'])
     await closeSheet(page)
   })
 
@@ -302,7 +304,7 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
     await customer.keyboard.press('Escape')
 
     await customer.goto('/explore/passport')
-    await expect(customer.getByText('आपका पहला स्टैंप बस एक QR दूर है')).toBeVisible()
+    await expect(customer.getByText('आपका पहला स्टैंप बस एक क्यूआर दूर है')).toBeVisible()
     await readsInHindi(customer, '24-passport')
   } finally {
     await context.close()

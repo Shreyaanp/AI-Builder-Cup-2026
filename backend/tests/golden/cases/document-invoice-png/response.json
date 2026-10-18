@@ -1,0 +1,47 @@
+{
+  "entities": [
+    {
+      "type": "supplier_name",
+      "mentionText": "Test Wholesale"
+    },
+    {
+      "type": "currency",
+      "mentionText": "INR"
+    },
+    {
+      "type": "invoice_date",
+      "normalizedValue": {
+        "dateValue": {
+          "year": 2026,
+          "month": 10,
+          "day": 18
+        }
+      }
+    },
+    {
+      "type": "total_amount",
+      "mentionText": "105.00"
+    },
+    {
+      "type": "total_tax_amount",
+      "mentionText": "5.00"
+    },
+    {
+      "type": "line_item",
+      "properties": [
+        {
+          "type": "line_item/description",
+          "mentionText": "Sugar"
+        },
+        {
+          "type": "line_item/quantity",
+          "mentionText": "2"
+        },
+        {
+          "type": "line_item/amount",
+          "mentionText": "100.00"
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const th: Copy = {
+  remindMe: 'เตือนฉัน',
+  reminderTiming: 'บนอุปกรณ์นี้ เมื่อร้านเปิดและปิด',
+  reminderOff: 'ปิดการเตือนอยู่ในขณะนี้',
+  reminderUnsupported: 'ลองใช้แอปที่ติดตั้งหรือเบราว์เซอร์ที่รองรับการแจ้งเตือน',
+  reminderShop: 'เพิ่มร้านเพื่อตั้งการเตือน',
+  reminderDenied: 'การแจ้งเตือนถูกบล็อก โปรดอนุญาตในการตั้งค่าเบราว์เซอร์แล้วลองอีกครั้ง',
+  reminderFailed: 'อัปเดตไม่ได้ โปรดลองอีกครั้ง',
+  reminderSaving: 'กำลังอัปเดต…',
+  reminderLoading: 'กำลังตรวจสอบ…',
   firstCustomers: 'ต้อนรับลูกค้ากลุ่มแรก',
   printPoster: 'พิมพ์โปสเตอร์',
   downloadPdf: 'ดาวน์โหลด PDF',
@@ -302,6 +311,7 @@ export const th: Copy = {
   importFailed: 'อ่านไฟล์นี้ไม่ได้ กรุณาส่งไฟล์ CSV หรือ Excel ที่มีชื่อสินค้าและราคา',
   salesSummary: 'สรุปยอดขาย',
   salesNotSaved: 'จากไฟล์ของคุณ ไม่ได้บันทึกอะไร',
+  salesCurrencyMismatch: 'ไม่นับแถวที่ใช้สกุลเงินอื่น',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} วัน · ${from} – ${to}` : 'ไม่มีวันที่ในไฟล์',
   topItems: 'ขายดี',
@@ -403,6 +413,7 @@ export const th: Copy = {
   eraseFailed: 'ลบไม่สำเร็จ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง',
   eraseRetry: 'ลองอีกครั้ง',
   eraseSteps: {
+    reminders: 'เตือนฉัน',
     face: 'ข้อมูลใบหน้า',
     photos: 'รูปภาพ',
     records: 'ร้านค้าและสินค้า',
