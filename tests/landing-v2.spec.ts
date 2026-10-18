@@ -57,11 +57,11 @@ for (const width of [360, 390, 412]) {
 
     // The first screen: what it is, who it is for, and both actions, side by side.
     const hero = page.locator('.l2-hero')
-    const demo = hero.getByRole('link', { name: t.tryShort })
+    const business = hero.getByRole('link', { name: t.businessShort })
     const find = hero.getByRole('link', { name: t.findShort })
-    await expect(demo).toHaveAttribute('href', 'https://business.chalkboard.shreyaan.work/demo')
+    await expect(business).toHaveAttribute('href', 'https://business.chalkboard.shreyaan.work')
     await expect(find).toHaveAttribute('href', '/explore/')
-    const [a, b] = [(await demo.boundingBox())!, (await find.boundingBox())!]
+    const [a, b] = [(await business.boundingBox())!, (await find.boundingBox())!]
     expect(Math.abs(a.y - b.y)).toBeLessThan(2)
     expect(a.y + a.height).toBeLessThan(800)
     expect(a.height).toBeGreaterThanOrEqual(48)
@@ -141,7 +141,7 @@ test('the thumb bar: the two actions follow the reader, then step aside at the e
   await expect(dock).not.toHaveClass(/\bon\b/)
   await page.getByRole('region', { name: pagesEnglish.storyTitle }).scrollIntoViewIfNeeded()
   await expect(dock).toHaveClass(/\bon\b/)
-  await expect(dock.getByRole('link', { name: pagesEnglish.tryShort })).toBeVisible()
+  await expect(dock.getByRole('link', { name: pagesEnglish.businessShort })).toBeVisible()
   await page
     .getByRole('heading', { level: 2, name: pagesEnglish.finalTitle })
     .scrollIntoViewIfNeeded()
