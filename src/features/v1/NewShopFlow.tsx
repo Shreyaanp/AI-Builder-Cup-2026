@@ -1530,11 +1530,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                     data-testid="conversation-ended"
                     sx={{ p: 3, borderRadius: `${shape.lg}px` }}
                   >
-                    <Typography
-                      variant="titleMedium"
-                      component="h3"
-                      id="conversation-ended-title"
-                    >
+                    <Typography variant="titleMedium" component="h3" id="conversation-ended-title">
                       {o.endedTitle}
                     </Typography>
                     <Typography

@@ -2,10 +2,6 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { LOCALES } from '../src/i18n/locales.ts'
 
-type InstallCopy = Pick<Record<'installApp' | 'installIos' | 'installUnavailable', string>,
-  'installApp' | 'installIos' | 'installUnavailable'
->
-
 async function openOwner(page: Page) {
   await page.goto('/?app=business')
   await page.getByRole('button', { name: 'Continue local preview' }).click()
