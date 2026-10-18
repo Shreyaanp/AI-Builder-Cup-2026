@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     release_commit: str = "local"
     customer_origin: str = ""
     ga_measurement_id: str = Field(default="", pattern=r"^(|G-[A-Z0-9]+)$")
+    landing_variant: Literal["new", "classic"] = "classic"
     v1_enabled: bool = False
     guest_customer: bool = False
     feature_google_guide: bool = True
