@@ -6,9 +6,16 @@ const App = lazy(() => import('./App'))
 const V1App = lazy(() => import('../features/v1/V1App'))
 const CustomerApp = lazy(() => import('../features/frontdoors/CustomerApp'))
 const Marketing = lazy(() => import('../features/frontdoors/Marketing'))
+const HowItWorks = lazy(() => import('../features/frontdoors/HowItWorks'))
 
 export default function Root() {
   const kind = resolveApp(new URL(location.href))
+  if (kind === 'how-it-works')
+    return (
+      <Suspense fallback={<BrandSplash />}>
+        <HowItWorks />
+      </Suspense>
+    )
   if (kind === 'landing')
     return (
       <Suspense fallback={null}>
