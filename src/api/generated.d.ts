@@ -610,6 +610,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/connect/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live Status */
+        get: operations["live_status_api_v1_businesses__business_id__connect_live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/connect/live/{provider}/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Live Sync */
+        post: operations["live_sync_api_v1_businesses__business_id__connect_live__provider___kind__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/google-sim": {
         parameters: {
             query?: never;
@@ -1003,6 +1037,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/inquiries/{inquiry_id}/unblock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unblock Conversation */
+        post: operations["unblock_conversation_api_v1_businesses__business_id__inquiries__inquiry_id__unblock_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/shops/{business_id}/inquiries/{inquiry_id}/messages/{message_id}/translation": {
         parameters: {
             query?: never;
@@ -1104,6 +1155,23 @@ export interface paths {
         post: operations["local_sign_in_api_v1_customer_session_post"];
         /** Local Sign Out */
         delete: operations["local_sign_out_api_v1_customer_session_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/guest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Local Guest */
+        post: operations["local_guest_api_v1_customer_guest_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2255,6 +2323,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/supply/sap-sandbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sap Sandbox Orders
+         * @description Real purchase orders from the SAP sandbox (read only), or the recorded sample.
+         */
+        get: operations["sap_sandbox_orders_api_v1_businesses__business_id__supply_sap_sandbox_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/supply/suppliers/{supplier_id}/rules": {
         parameters: {
             query?: never;
@@ -2462,6 +2550,175 @@ export interface paths {
          * @description Goods arrived; returns the order and, when menu items match, a stock review.
          */
         post: operations["received_api_v1_businesses__business_id__supply_orders__order_id__received_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Board
+         * @description What needs the owner, what came in, what was received and what must go out.
+         */
+        get: operations["board_api_v1_businesses__business_id__supply_board_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/inbound": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Partner Document
+         * @description A partner's order create, order change or forecast (IDoc XML, CSV, JSON, a message),
+         *     or a supplier's confirmation / shipping notice / invoice for one of the shop's orders.
+         */
+        post: operations["partner_document_api_v1_businesses__business_id__supply_inbound_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/demo/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo Next
+         * @description Demo: the synthetic buyer sends its next document (forecast, order, change) as an IDoc.
+         */
+        post: operations["demo_next_api_v1_businesses__business_id__supply_demo_next_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Change */
+        post: operations["answer_change_api_v1_businesses__business_id__supply_orders__order_id__change_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Goods Receipt
+         * @description Goods came in: lines left out arrived in full. The receipt waits until sent.
+         */
+        post: operations["goods_receipt_api_v1_businesses__business_id__supply_orders__order_id__receipt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/asn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Shipping Notice */
+        post: operations["shipping_notice_api_v1_businesses__business_id__supply_orders__order_id__asn_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send Document */
+        post: operations["send_document_api_v1_businesses__business_id__supply_orders__order_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/send-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send All
+         * @description Close the day: everything still unsent goes out in one tap.
+         */
+        post: operations["send_all_api_v1_businesses__business_id__supply_send_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/inbox/{entry_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismiss */
+        post: operations["dismiss_api_v1_businesses__business_id__supply_inbox__entry_id__dismiss_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3069,6 +3326,13 @@ export interface components {
             /** Deals */
             deals: number;
         };
+        /** AsnBody */
+        AsnBody: {
+            /** Version */
+            version: number;
+            /** Shipped */
+            shipped?: components["schemas"]["LineQuantity"][];
+        };
         /** AvailabilityRequest */
         AvailabilityRequest: {
             /** Available */
@@ -3419,6 +3683,16 @@ export interface components {
             /** Exclude Prompts */
             exclude_prompts?: string[] | null;
         };
+        /** ChangeAnswer */
+        ChangeAnswer: {
+            /** Version */
+            version: number;
+            /**
+             * Accept
+             * @default true
+             */
+            accept: boolean;
+        };
         /** ChatSummary */
         ChatSummary: {
             shop: components["schemas"]["ShopCard"];
@@ -3554,6 +3828,11 @@ export interface components {
             } | null;
             /** Warnings */
             warnings?: string[];
+            /**
+             * Preset
+             * @description Built-in mapping used, e.g. Square
+             */
+            preset?: string | null;
             /** Photo Content */
             photo_content?: string | null;
             /** Photo Readings */
@@ -4338,6 +4617,13 @@ export interface components {
             /** Requirements */
             requirements: components["schemas"]["Requirement"][];
         };
+        /** LineQuantity */
+        LineQuantity: {
+            /** Line */
+            line: number;
+            /** Quantity */
+            quantity: number;
+        };
         /** LocalSignIn */
         LocalSignIn: {
             /**
@@ -4382,6 +4668,11 @@ export interface components {
         Me: {
             /** Signed In */
             signed_in: boolean;
+            /**
+             * Guest
+             * @default false
+             */
+            guest: boolean;
             /**
              * Name
              * @default
@@ -4608,6 +4899,16 @@ export interface components {
              * @enum {string}
              */
             source: "device" | "pin";
+        };
+        /** PartnerDocument */
+        PartnerDocument: {
+            /** Text */
+            text: string;
+            /**
+             * Partner Id
+             * @default
+             */
+            partner_id: string;
         };
         /** PassportView */
         PassportView: {
@@ -5209,6 +5510,18 @@ export interface components {
             /** Revenue */
             revenue: number;
         };
+        /** ReceiptBody */
+        ReceiptBody: {
+            /** Version */
+            version: number;
+            /** Received */
+            received?: components["schemas"]["LineQuantity"][];
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
         /** ReorderBody */
         ReorderBody: {
             /**
@@ -5472,6 +5785,13 @@ export interface components {
         Seen: {
             /** Message Id */
             message_id: string;
+        };
+        /** SendBody */
+        SendBody: {
+            /** Version */
+            version: number;
+            /** Doc Id */
+            doc_id: string;
         };
         /** ServiceAttributes */
         ServiceAttributes: {
@@ -6525,7 +6845,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "draft" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "purchase_order" | "supply_rules" | "chart" | "action" | "payment_link";
+            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "draft" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "purchase_order" | "supply_rules" | "supply" | "chart" | "action" | "payment_link";
             /**
              * Session Id
              * @default null
@@ -6579,6 +6899,11 @@ export interface components {
              * @default false
              */
             google_guide: boolean;
+            /**
+             * Guest Customer
+             * @default false
+             */
+            guest_customer: boolean;
         };
     };
     responses: never;
@@ -7704,6 +8029,74 @@ export interface operations {
             };
         };
     };
+    live_status_api_v1_businesses__business_id__connect_live_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_sync_api_v1_businesses__business_id__connect_live__provider___kind__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                provider: "square" | "loyverse";
+                kind: "menu" | "sales";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     state_api_v1_businesses__business_id__google_sim_get: {
         parameters: {
             query?: never;
@@ -8562,6 +8955,38 @@ export interface operations {
             };
         };
     };
+    unblock_conversation_api_v1_businesses__business_id__inquiries__inquiry_id__unblock_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                inquiry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inquiry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     customer_translation_api_v1_public_shops__business_id__inquiries__inquiry_id__messages__message_id__translation_post: {
         parameters: {
             query?: never;
@@ -8770,6 +9195,26 @@ export interface operations {
                     "application/json": {
                         [key: string]: boolean;
                     };
+                };
+            };
+        };
+    };
+    local_guest_api_v1_customer_guest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
                 };
             };
         };
@@ -11143,6 +11588,39 @@ export interface operations {
             };
         };
     };
+    sap_sandbox_orders_api_v1_businesses__business_id__supply_sap_sandbox_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     save_rules_api_v1_businesses__business_id__supply_suppliers__supplier_id__rules_put: {
         parameters: {
             query?: never;
@@ -11572,6 +12050,328 @@ export interface operations {
                 "application/json": components["schemas"]["Version"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    board_api_v1_businesses__business_id__supply_board_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    partner_document_api_v1_businesses__business_id__supply_inbound_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartnerDocument"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_next_api_v1_businesses__business_id__supply_demo_next_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_change_api_v1_businesses__business_id__supply_orders__order_id__change_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeAnswer"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    goods_receipt_api_v1_businesses__business_id__supply_orders__order_id__receipt_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceiptBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shipping_notice_api_v1_businesses__business_id__supply_orders__order_id__asn_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AsnBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_document_api_v1_businesses__business_id__supply_orders__order_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_all_api_v1_businesses__business_id__supply_send_all_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_api_v1_businesses__business_id__supply_inbox__entry_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

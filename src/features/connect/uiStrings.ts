@@ -9,6 +9,10 @@ const en = {
   analyzeSampleFailed: 'Could not analyze sample data. Please check the format.',
   noData: 'No data to sync',
   syncFailed: 'Could not complete sync. Please try again.',
+  pullFrom: 'Pull straight from {system}',
+  pullMenu: 'Pull menu',
+  pullSales: 'Pull last 28 days of sales',
+  reviewFirst: 'You review everything before it is saved.',
 }
 type Copy = typeof en
 const translations: Record<Locale, Copy> = {
@@ -21,6 +25,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: 'नमूना डेटा पढ़ा नहीं जा सका। उसका फ़ॉर्मैट जाँचें।',
     noData: 'सिंक करने के लिए डेटा नहीं है',
     syncFailed: 'सिंक पूरा नहीं हो सका। फिर कोशिश करें।',
+    pullFrom: 'सीधे {system} से लाएँ',
+    pullMenu: 'मेन्यू लाएँ',
+    pullSales: 'पिछले 28 दिनों की बिक्री लाएँ',
+    reviewFirst: 'सेव होने से पहले सब कुछ आप देखते हैं।',
   },
   bn: {
     otherPos: 'অন্য বিক্রয় ব্যবস্থা',
@@ -30,6 +38,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: 'নমুনা তথ্য পড়া যায়নি। তথ্যের ধরন যাচাই করুন।',
     noData: 'সিঙ্ক করার মতো তথ্য নেই',
     syncFailed: 'সিঙ্ক সম্পূর্ণ হয়নি। আবার চেষ্টা করুন।',
+    pullFrom: 'সরাসরি {system} থেকে আনুন',
+    pullMenu: 'মেনু আনুন',
+    pullSales: 'গত ২৮ দিনের বিক্রি আনুন',
+    reviewFirst: 'সংরক্ষণের আগে সবকিছু আপনি দেখে নেবেন।',
   },
   te: {
     otherPos: 'ఇతర విక్రయ వ్యవస్థ',
@@ -39,6 +51,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: 'నమూనా డేటాను చదవలేకపోయాం. దాని ఫార్మాట్‌ను చూడండి.',
     noData: 'సింక్ చేయడానికి డేటా లేదు',
     syncFailed: 'సింక్ పూర్తి కాలేదు. మళ్లీ ప్రయత్నించండి.',
+    pullFrom: 'నేరుగా {system} నుండి తీసుకోండి',
+    pullMenu: 'మెనూ తీసుకోండి',
+    pullSales: 'గత 28 రోజుల అమ్మకాలు తీసుకోండి',
+    reviewFirst: 'సేవ్ చేసే ముందు అన్నీ మీరు సమీక్షిస్తారు.',
   },
   mr: {
     otherPos: 'इतर विक्री प्रणाली',
@@ -48,6 +64,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: 'नमुना डेटा वाचता आला नाही. त्याचा प्रकार तपासा.',
     noData: 'सिंक करण्यासाठी डेटा नाही',
     syncFailed: 'सिंक पूर्ण झाले नाही. पुन्हा प्रयत्न करा.',
+    pullFrom: 'थेट {system} मधून आणा',
+    pullMenu: 'मेनू आणा',
+    pullSales: 'मागील 28 दिवसांची विक्री आणा',
+    reviewFirst: 'सेव्ह करण्यापूर्वी सर्व काही तुम्ही तपासता.',
   },
   kn: {
     otherPos: 'ಇತರ ಮಾರಾಟ ವ್ಯವಸ್ಥೆ',
@@ -57,6 +77,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: 'ಮಾದರಿ ಡೇಟಾ ಓದಲಾಗಲಿಲ್ಲ. ಅದರ ಸ್ವರೂಪ ಪರಿಶೀಲಿಸಿ.',
     noData: 'ಸಿಂಕ್ ಮಾಡಲು ಡೇಟಾ ಇಲ್ಲ',
     syncFailed: 'ಸಿಂಕ್ ಪೂರ್ಣವಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    pullFrom: 'ನೇರವಾಗಿ {system} ನಿಂದ ತನ್ನಿ',
+    pullMenu: 'ಮೆನು ತನ್ನಿ',
+    pullSales: 'ಕಳೆದ 28 ದಿನಗಳ ಮಾರಾಟ ತನ್ನಿ',
+    reviewFirst: 'ಉಳಿಸುವ ಮೊದಲು ಎಲ್ಲವನ್ನೂ ನೀವು ಪರಿಶೀಲಿಸುತ್ತೀರಿ.',
   },
   'zh-Hans': {
     otherPos: '其他收银系统',
@@ -66,6 +90,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: '无法读取示例数据，请检查格式。',
     noData: '没有可同步的数据',
     syncFailed: '同步未完成，请重试。',
+    pullFrom: '直接从 {system} 获取',
+    pullMenu: '获取菜单',
+    pullSales: '获取最近 28 天的销售',
+    reviewFirst: '保存前，所有内容都由您确认。',
   },
   ms: {
     otherPos: 'POS lain',
@@ -75,6 +103,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: 'Data sampel tidak dapat dibaca. Sila semak formatnya.',
     noData: 'Tiada data untuk disegerakkan',
     syncFailed: 'Segerak tidak selesai. Cuba lagi.',
+    pullFrom: 'Tarik terus daripada {system}',
+    pullMenu: 'Tarik menu',
+    pullSales: 'Tarik jualan 28 hari lepas',
+    reviewFirst: 'Anda menyemak semuanya sebelum disimpan.',
   },
   ta: {
     otherPos: 'வேறு விற்பனை அமைப்பு',
@@ -84,6 +116,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: 'மாதிரித் தரவைப் படிக்க முடியவில்லை. அதன் வடிவத்தைச் சரிபார்க்கவும்.',
     noData: 'ஒத்திசைக்கத் தரவு இல்லை',
     syncFailed: 'ஒத்திசைவு முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+    pullFrom: '{system} இலிருந்து நேரடியாக எடுக்கவும்',
+    pullMenu: 'மெனுவை எடுக்கவும்',
+    pullSales: 'கடந்த 28 நாள் விற்பனையை எடுக்கவும்',
+    reviewFirst: 'சேமிக்கும் முன் அனைத்தையும் நீங்கள் சரிபார்ப்பீர்கள்.',
   },
   ja: {
     otherPos: 'その他のPOS',
@@ -93,6 +129,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: 'サンプルデータを読み取れません。形式を確認してください。',
     noData: '同期するデータがありません',
     syncFailed: '同期できませんでした。もう一度お試しください。',
+    pullFrom: '{system} から直接取り込む',
+    pullMenu: 'メニューを取り込む',
+    pullSales: '過去28日間の売上を取り込む',
+    reviewFirst: '保存する前に、すべての内容を確認できます。',
   },
   ko: {
     otherPos: '기타 POS',
@@ -102,6 +142,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: '샘플 데이터를 읽을 수 없습니다. 형식을 확인해 주세요.',
     noData: '동기화할 데이터가 없습니다',
     syncFailed: '동기화하지 못했습니다. 다시 시도해 주세요.',
+    pullFrom: '{system}에서 바로 가져오기',
+    pullMenu: '메뉴 가져오기',
+    pullSales: '최근 28일 매출 가져오기',
+    reviewFirst: '저장하기 전에 모든 내용을 직접 확인합니다.',
   },
   id: {
     otherPos: 'POS lainnya',
@@ -111,6 +155,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: 'Data contoh tidak dapat dibaca. Periksa formatnya.',
     noData: 'Tidak ada data untuk disinkronkan',
     syncFailed: 'Sinkronisasi tidak selesai. Coba lagi.',
+    pullFrom: 'Tarik langsung dari {system}',
+    pullMenu: 'Tarik menu',
+    pullSales: 'Tarik penjualan 28 hari terakhir',
+    reviewFirst: 'Anda meninjau semuanya sebelum disimpan.',
   },
   th: {
     otherPos: 'ระบบขายอื่น ๆ',
@@ -120,6 +168,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: 'อ่านข้อมูลตัวอย่างไม่ได้ โปรดตรวจสอบรูปแบบ',
     noData: 'ไม่มีข้อมูลให้ซิงค์',
     syncFailed: 'ซิงค์ไม่สำเร็จ โปรดลองอีกครั้ง',
+    pullFrom: 'ดึงข้อมูลจาก {system} โดยตรง',
+    pullMenu: 'ดึงเมนู',
+    pullSales: 'ดึงยอดขาย 28 วันล่าสุด',
+    reviewFirst: 'คุณตรวจทุกอย่างก่อนบันทึก',
   },
   vi: {
     otherPos: 'Hệ thống bán hàng khác',
@@ -129,6 +181,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: 'Không thể đọc dữ liệu mẫu. Hãy kiểm tra định dạng.',
     noData: 'Không có dữ liệu để đồng bộ',
     syncFailed: 'Chưa thể đồng bộ. Hãy thử lại.',
+    pullFrom: 'Lấy trực tiếp từ {system}',
+    pullMenu: 'Lấy thực đơn',
+    pullSales: 'Lấy doanh số 28 ngày qua',
+    reviewFirst: 'Bạn xem lại mọi thứ trước khi lưu.',
   },
   fil: {
     otherPos: 'Iba pang POS',
@@ -138,6 +194,10 @@ const translations: Record<Locale, Copy> = {
     analyzeSampleFailed: 'Hindi mabasa ang sample na data. Suriin ang format nito.',
     noData: 'Walang data na isi-sync',
     syncFailed: 'Hindi natapos ang pag-sync. Subukan ulit.',
+    pullFrom: 'Kunin nang direkta mula sa {system}',
+    pullMenu: 'Kunin ang menu',
+    pullSales: 'Kunin ang benta ng huling 28 araw',
+    reviewFirst: 'Ikaw ang magrerepaso ng lahat bago i-save.',
   },
 }
 export function useConnectUiCopy(): Copy {

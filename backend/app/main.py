@@ -82,6 +82,7 @@ from .photos import PhotoPipeline
 from .planning_routes import router as planning_router
 from .playbook import PlaybookWriter
 from .playbook_routes import router as playbook_router
+from .pos_live_routes import router as pos_live_router
 from .public_demo import router as public_demo_router
 from .recap import RecapWriter
 from .recs_routes import router as recs_router
@@ -95,6 +96,7 @@ from .retail_recs import (
     configure_recommender,
 )
 from .sales_routes import router as sales_router
+from .sap_sandbox import SapSandbox
 from .search_engine import build_engine
 from .settings import Settings
 from .shop_language import ShopTranslator
@@ -204,6 +206,7 @@ def create_app(
         app.state.fraud_reviewer = FraudReviewer(settings)
         app.state.forecaster = ForecastService(settings)
         app.state.document_ai = DocumentAIReader(settings)
+        app.state.sap_sandbox = SapSandbox(settings)
         app.state.analytics = AnalyticsReader(settings)
         app.state.weather = WeatherService(settings)
         app.state.brief_writer = BriefWriter(settings)
@@ -283,6 +286,7 @@ def create_app(
     app.include_router(merchant_router)
     app.include_router(icon_router)
     app.include_router(connector_router)
+    app.include_router(pos_live_router)
     app.include_router(google_sim_router)
     app.include_router(planning_router)
     app.include_router(sales_router)
@@ -357,7 +361,9 @@ def create_app(
         return {
             **get_services(request).identity.bootstrap(request, response),
             "v1_enabled": settings.v1_enabled,
-            "features": FeatureFlags(google_guide=settings.feature_google_guide).model_dump(),
+            "features": FeatureFlags(
+                google_guide=settings.feature_google_guide, guest_customer=settings.guest_customer
+            ).model_dump(),
             "trust_strip": {
                 "enabled": settings.feature_trust_strip,
                 "support_whatsapp": settings.support_whatsapp
