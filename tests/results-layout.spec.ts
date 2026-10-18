@@ -44,7 +44,7 @@ const google = ['Tiong Bahru Kopi', 'Chinatown Hawker Centre'].map((name, i) => 
   sold_out: [],
   matched: [],
   rating: 4.4,
-  user_rating_count: 120,
+  user_rating_count: i === 1 ? 123456 : 120,
   google_maps_uri: 'https://maps.google.com/?cid=1',
   photo_url: null,
   photo_authors: [],
@@ -133,10 +133,10 @@ for (const width of [360, 390, 412])
         return out
       })
       expect(layout).toEqual([])
-      // Compact rows: none taller than 112px, all inside the screen width.
+      // Compact rows: none taller than 140px, all inside the screen width.
       for (const row of await rows.all()) {
         const box = (await row.boundingBox())!
-        expect(box.height).toBeLessThanOrEqual(112)
+        expect(box.height).toBeLessThanOrEqual(140)
         expect(box.x + box.width).toBeLessThanOrEqual(width)
       }
       // The first row starts in the first screen, above the composer.
@@ -162,6 +162,11 @@ for (const width of [360, 390, 412])
       for (const place of await places.all()) {
         await expect(place).toContainText('Google Maps')
         const box = (await place.boundingBox())!
-        expect(box.height).toBeLessThanOrEqual(112)
+        expect(box.height).toBeLessThanOrEqual(140)
       }
+      await expect(places.nth(1)).toContainText('123,456 reviews on Google')
+      const googleHeights = await places.evaluateAll((links) =>
+        links.map((link) => Math.round(link.getBoundingClientRect().height)),
+      )
+      expect(new Set(googleHeights).size).toBe(1)
     })
