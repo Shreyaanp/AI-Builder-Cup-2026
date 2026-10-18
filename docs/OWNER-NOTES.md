@@ -3,6 +3,13 @@
 Single place for everything the owner asked for in conversation. PLAN-V2.md holds the plan and
 status; this file holds the owner's intent so nothing is lost across resets. Keep both updated.
 
+## 18 Oct, ~10:10 (release-2026-10-18-06 and push-notification ops for #199)
+
+- Shipped f2dcd750 as `release-2026-10-18-06` (revision ogoogle-ai-00087, direct `gcloud run deploy --image`; ogoogle-face untouched, its inputs did not change since -05). Demo is on (`/api/v1/demo/sessions/x` is not 404 DEMO_DISABLED).
+- Web push is live on ogoogle-ai, free tier only: VAPID pair in Secret Manager (`web-push-public-key`, `web-push-private-key`, version 1, 5 of the 6 free secret versions; runtime service account has accessor on those two only), wired as `WEB_PUSH_PUBLIC_KEY` / `WEB_PUSH_PRIVATE_KEY`; env `WEB_PUSH_ENABLED=true`, `WEB_PUSH_SUBJECT=https://chalkboard.shreyaan.work`, `REMINDERS_CALLER=ogoogle-analytics-scheduler@ichiropractic.iam.gserviceaccount.com`, `REMINDERS_AUDIENCE=<service origin>`. All other env kept.
+- Cloud Scheduler job `owner-reminders` (asia-south1, every 5 min, OIDC as the existing analytics scheduler account), the one job docs/WEB_PUSH.md documents. 2 of 3 free jobs used in this project (the other, `chalkboard-analytics-export`, is still paused).
+- One forced run of the job returned HTTP 200 from `/api/v1/internal/reminders/send`. A real test push to a phone still needs you: You → Settings → Remind me on the phone, allow notifications, then it fires at the shop's opening/closing time (zero-count mornings are skipped by design).
+
 ## 17 Oct, 05:10 (tour story)
 
 - "The story I want to sell is not there; update the tour account with meaningful data so a
