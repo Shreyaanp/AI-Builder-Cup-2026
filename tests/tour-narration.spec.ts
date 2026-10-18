@@ -182,7 +182,7 @@ test('390px phone: owner menu, optional Hindi narration, interruption and rememb
   await page.getByRole('button', { name: /preview|प्रीव्यू|पूर्वावलोकन/i }).tap()
   const openTour = async () => {
     await page.getByRole('button', { name: /^दुकान चुनें/ }).tap()
-    await page.getByRole('menuitem', { name: 'टूर लें' }).tap()
+    await page.getByRole('menuitem', { name: 'दौरा शुरू करें' }).tap()
     await expect(page.getByRole('dialog', { name: tourCopy('hi').steps[0]!.title })).toBeVisible()
   }
   await openTour()

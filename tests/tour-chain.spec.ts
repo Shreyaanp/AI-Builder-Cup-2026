@@ -52,7 +52,7 @@ async function start(page: Page, language?: string) {
     .click()
   const made = page.waitForResponse((r) => r.url().includes('/api/v1/demo/workspace'))
   await page
-    .getByRole('button', { name: language === 'hi' ? 'टूर लें' : 'Take the tour' })
+    .getByRole('button', { name: language === 'hi' ? 'दौरा शुरू करें' : 'Take the tour' })
     .first()
     .click()
   const { business_id } = (await (await made).json()) as { business_id: string }
