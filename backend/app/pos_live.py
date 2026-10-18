@@ -58,7 +58,16 @@ def _money(amount: Any, currency: str) -> str:
 
 # ── Square ───────────────────────────────────────────────────────────────────
 SQUARE_MENU_HEADERS = ["Token", "Item Name", "Variation Name", "SKU", "Reporting Category", "Price"]
-SQUARE_SALES_HEADERS = ["Date", "Category", "Item", "Qty", "Price Point Name", "SKU", "Net Sales"]
+SQUARE_SALES_HEADERS = [
+    "Date",
+    "Category",
+    "Item",
+    "Qty",
+    "Price Point Name",
+    "SKU",
+    "Net Sales",
+    "Currency",
+]
 
 
 async def _square_pages(
@@ -185,6 +194,7 @@ async def square_sales(client: httpx.AsyncClient, settings: Settings) -> Table:
                     line.get("variation_name", ""),
                     "",
                     _money((gross.get("amount") or 0) - (discount.get("amount") or 0), currency),
+                    currency,
                 ]
             )
     return SQUARE_SALES_HEADERS, rows

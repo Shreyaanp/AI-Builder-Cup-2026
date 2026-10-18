@@ -1,7 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { publish } from './qa/support.js'
-import { enter, seedShop } from './stories/support.js'
+import { enter } from './stories/support.js'
 
 // Track H: one search engine. A customer asks in their own words and meaning finds the shop
 // (no shared keyword), the shop page shows "Similar nearby", and what they opened comes back as
@@ -21,6 +21,33 @@ test.beforeEach(async ({ page }) => {
 })
 
 const composer = (page: Page) => page.getByRole('textbox', { name: 'Ask about anything nearby' })
+
+async function seedCafe(page: Page, name: string) {
+  const response = await page.request.post('/api/v1/proposals', {
+    data: {
+      kind: 'business',
+      business: {
+        name,
+        category: 'Cafe',
+        location: INDIRANAGAR.label,
+        lat: INDIRANAGAR.lat,
+        lng: INDIRANAGAR.lng,
+        currency: 'INR',
+        timezone: 'Asia/Kolkata',
+        phone: '',
+      },
+      products: [{ name: 'Kopi', price: 1800, unit: 'cup', category: 'Drinks' }],
+    },
+  })
+  expect(response.ok()).toBe(true)
+  const proposal = await response.json()
+  const approved = await page.request.post(`/api/v1/proposals/${proposal.id}/approve`, {
+    data: { digest: proposal.digest },
+  })
+  expect(approved.ok(), await approved.text()).toBe(true)
+  const { business_id: businessId } = (await approved.json()) as { business_id: string }
+  await publish(page, businessId)
+}
 
 async function ask(page: Page, text: string) {
   await composer(page).fill(text)
@@ -46,8 +73,9 @@ for (const scheme of ['light', 'dark'] as const) {
       })
     await enter(page)
     const name = `Courtyard Chai ${Date.now().toString().slice(-6)}`
-    await seedShop(page, true, name)
-    await publish(page, (await (await page.request.get('/api/v1/businesses')).json())[0].id)
+    const nearbyName = `Nearby Kopi ${Date.now().toString().slice(-6)}`
+    await seedCafe(page, name)
+    await seedCafe(page, nearbyName)
     const asks: Record<string, unknown>[] = []
     page.on('request', (request) => {
       if (request.url().endsWith('/api/v1/discover/ask')) asks.push(request.postDataJSON())

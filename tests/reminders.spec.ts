@@ -86,30 +86,33 @@ async function setup(page: Page, permission: 'granted' | 'denied' = 'granted', l
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  const proposalResponse = await page.request.post('/api/v1/proposals', {
-    data: {
-      kind: 'business',
-      business: {
-        name: 'Tea',
-        category: 'Tea stall',
-        location: 'Bengaluru',
-        lat: 12.9719,
-        lng: 77.6412,
-        phone: '+910000000000',
-        hours: '09:00–18:00',
-        timezone: 'Asia/Kolkata',
+  const businesses = (await (await page.request.get('/api/v1/businesses')).json()) as unknown[]
+  if (businesses.length === 0) {
+    const proposalResponse = await page.request.post('/api/v1/proposals', {
+      data: {
+        kind: 'business',
+        business: {
+          name: 'Reminder test shop',
+          category: 'Tea stall',
+          location: 'Bengaluru',
+          lat: 12.9719,
+          lng: 77.6412,
+          phone: '+910000000000',
+          hours: '09:00–18:00',
+          timezone: 'Asia/Kolkata',
+        },
       },
-    },
-  })
-  expect(proposalResponse.ok()).toBe(true)
-  const proposal = await proposalResponse.json()
-  expect(
-    (
-      await page.request.post(`/api/v1/proposals/${proposal.id}/approve`, {
-        data: { digest: proposal.digest },
-      })
-    ).ok(),
-  ).toBe(true)
+    })
+    expect(proposalResponse.ok()).toBe(true)
+    const proposal = await proposalResponse.json()
+    expect(
+      (
+        await page.request.post(`/api/v1/proposals/${proposal.id}/approve`, {
+          data: { digest: proposal.digest },
+        })
+      ).ok(),
+    ).toBe(true)
+  }
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'You', exact: true }).click()

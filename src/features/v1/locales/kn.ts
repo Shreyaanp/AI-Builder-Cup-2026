@@ -330,6 +330,7 @@ export const kn: Copy = {
   importFailed: 'ಫೈಲ್ ಓದಲಾಗಲಿಲ್ಲ. ವಸ್ತುಗಳ ಹೆಸರು ಮತ್ತು ಬೆಲೆ ಇರುವ CSV ಅಥವಾ Excel ಫೈಲ್ ಕಳುಹಿಸಿ.',
   salesSummary: 'ಮಾರಾಟದ ಸಾರಾಂಶ',
   salesNotSaved: 'ನಿಮ್ಮ ಫೈಲ್‌ನಿಂದ. ಏನೂ ಉಳಿಸಿಲ್ಲ.',
+  salesCurrencyMismatch: 'ಬೇರೆ ಕರೆನ್ಸಿಯ ಸಾಲುಗಳನ್ನು ಬಿಟ್ಟಿದ್ದೇವೆ.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} ದಿನಗಳು · ${from} – ${to}` : 'ಫೈಲ್‌ನಲ್ಲಿ ದಿನಾಂಕಗಳಿಲ್ಲ',
   topItems: 'ಹೆಚ್ಚು ಮಾರಾಟವಾದ ವಸ್ತುಗಳು',

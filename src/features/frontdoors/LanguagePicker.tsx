@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { IconButton, Menu, MenuItem, Tooltip, useTheme } from '@mui/material'
+import { IconButton, Menu, MenuItem, useTheme } from '@mui/material'
+import { HoverTip } from './HoverTip'
 import type { SxProps, Theme } from '@mui/material'
 import { Globe } from 'lucide-react'
 import { LOCALE_NAMES, LOCALES, systemLocale } from '../../i18n/locales'
@@ -66,7 +67,7 @@ export function LanguagePicker({
 
   return (
     <>
-      <Tooltip title={`${t.language}: ${currentLabel}`}>
+      <HoverTip title={`${t.language}: ${currentLabel}`}>
         <IconButton
           id="customer-language-button"
           aria-label={`${t.language}: ${currentLabel}`}
@@ -81,7 +82,7 @@ export function LanguagePicker({
         >
           <Globe size={20} />
         </IconButton>
-      </Tooltip>
+      </HoverTip>
       <Menu
         id="customer-language-menu"
         anchorEl={anchorEl}

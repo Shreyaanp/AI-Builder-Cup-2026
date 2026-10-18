@@ -315,6 +315,7 @@ export const ko: Copy = {
   importFailed: '파일을 읽지 못했어요. 상품명과 가격이 있는 CSV나 Excel 파일을 보내 주세요.',
   salesSummary: '판매 요약',
   salesNotSaved: '파일 내용이에요. 아무것도 저장하지 않았어요.',
+  salesCurrencyMismatch: '다른 통화의 행은 제외했어요.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days}일 · ${from} – ${to}` : '파일에 날짜가 없어요',
   topItems: '인기 상품',

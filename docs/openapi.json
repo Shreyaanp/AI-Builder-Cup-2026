@@ -11997,7 +11997,7 @@
           "target_field": {
             "type": "string",
             "title": "Target Field",
-            "description": "Our schema field: name, price, unit, stock, quantity, date, total, category"
+            "description": "Our schema field: name, price, unit, stock, quantity, date, total, category, currency"
           },
           "confidence": {
             "type": "number",

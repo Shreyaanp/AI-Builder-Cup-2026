@@ -4242,7 +4242,7 @@ export interface components {
             source_field: string;
             /**
              * Target Field
-             * @description Our schema field: name, price, unit, stock, quantity, date, total, category
+             * @description Our schema field: name, price, unit, stock, quantity, date, total, category, currency
              */
             target_field: string;
             /**

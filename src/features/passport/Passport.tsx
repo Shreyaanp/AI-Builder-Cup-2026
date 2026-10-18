@@ -57,6 +57,35 @@ function lastPlace(): { lat: number; lng: number } | null {
  * The neighbourhood passport: level, the next named reward, scratch cards, the weekly streak,
  * the neighbourhood goal, stamp book, collection sets, quests, rescues, perks and the board.
  */
+/** The card stack's own shape while the passport loads; a slow load offers a retry. */
+function PassportSkeleton({ onRetry }: { onRetry: () => void }) {
+  const t = usePassportCopy()
+  const roles = useTheme().material
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), 8000)
+    return () => clearTimeout(timer)
+  }, [])
+  const block = (height: number) => (
+    <Box
+      className="c-shimmer"
+      sx={{ height, borderRadius: '20px', bgcolor: roles.surfaceContainerHighest }}
+    />
+  )
+  return (
+    <Stack spacing={5} sx={{ mt: 3 }} aria-busy="true" role="status" aria-label={t.title}>
+      {block(220)}
+      {block(72)}
+      {block(120)}
+      {slow && (
+        <Alert severity="info" action={<Button onClick={onRetry}>{t.retry}</Button>}>
+          {t.failed}
+        </Alert>
+      )}
+    </Stack>
+  )
+}
+
 export function Passport({ initialLocation }: { initialLocation?: CustomerLocation | null }) {
   const account = useCustomer()
   const t = usePassportCopy()
@@ -126,11 +155,7 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
           {t.failed}
         </Alert>
       )}
-      {!view && status !== 'error' && (
-        <Box sx={{ mt: 6 }} aria-busy="true">
-          <LinearProgress aria-label={t.title} />
-        </Box>
-      )}
+      {!view && status !== 'error' && <PassportSkeleton onRetry={refresh} />}
       {view && (
         <Stack spacing={5} sx={{ mt: 3 }}>
           <LevelCard view={view} />

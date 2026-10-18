@@ -1,0 +1,51 @@
+{
+  "model": "gemini-3.5-flash",
+  "turns": ["Share my page", "What are my hours?"],
+  "off": {
+    "turns": [
+      {
+        "owner": "Share my page",
+        "tool_calls": ["open_screen({\"screen\": \"share\"})"],
+        "model_calls": 2,
+        "cached_calls": 0,
+        "reply": "I have opened the share screen for you. You can turn on your customer page there to share your link and QR code with your customers."
+      },
+      {
+        "owner": "What are my hours?",
+        "tool_calls": ["get_business_context({})"],
+        "model_calls": 2,
+        "cached_calls": 0,
+        "reply": "Your shop hours are currently set from 7:00 AM to 9:00 PM."
+      }
+    ],
+    "prompt_tokens": 41854,
+    "cached_tokens": 19338,
+    "output_tokens": 486,
+    "input_billed_equivalent": 24450
+  },
+  "on": {
+    "turns": [
+      {
+        "owner": "Share my page",
+        "tool_calls": ["open_screen({\"screen\": \"share\"})"],
+        "model_calls": 2,
+        "cached_calls": 2,
+        "reply": "I have opened the share screen for you. You can find your customer page link and QR code there. If your page is currently turned off, just switch it on to start sharing!"
+      },
+      {
+        "owner": "What are my hours?",
+        "tool_calls": ["get_business_context({})"],
+        "model_calls": 2,
+        "cached_calls": 2,
+        "reply": "Your current hours are set as 7am-9pm. Would you like to make any changes to them?"
+      }
+    ],
+    "prompt_tokens": 41801,
+    "cached_tokens": 39840,
+    "output_tokens": 411,
+    "input_billed_equivalent": 5945
+  },
+  "model_calls": 8,
+  "same_tool_calls": true,
+  "input_saving_percent": 75.7
+}
