@@ -1,0 +1,26 @@
+import { test, expect } from '@playwright/test'
+
+test.setTimeout(120_000)
+
+test('public demo tour reaches step five without page errors', async ({ page }, info) => {
+  test.skip(info.project.name !== 'phone', 'Phone flow')
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('/demo')
+  await expect(page.getByText('Demo shop - nothing here is real', { exact: true })).toBeVisible({
+    timeout: 30_000,
+  })
+  const welcome = page.getByRole('dialog')
+  await welcome.getByRole('button', { name: 'Take the tour' }).click()
+  const tour = page.getByRole('dialog')
+  await expect(tour.getByText('1 of 14')).toBeVisible({ timeout: 30_000 })
+  for (let step = 0; step < 3; step++) {
+    await tour.getByRole('button', { name: 'Next' }).click()
+  }
+  await expect(tour.getByText('4 of 14')).toBeVisible()
+  await expect(tour.getByText('It lands at the wholesaler', { exact: true })).toBeVisible()
+  await tour.getByRole('button', { name: 'Next' }).click()
+  await expect(tour.getByText('5 of 14')).toBeVisible()
+  await page.waitForTimeout(500)
+  expect(errors).toEqual([])
+})

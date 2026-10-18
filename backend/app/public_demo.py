@@ -35,7 +35,16 @@ from .demo_workspace import ZONE_CITY
 from .limits import Bucket, client_ip
 from .merchant import MerchantStore
 from .merchant_routes import LEGAL_VERSION
-from .tour_story import seed_workspace
+from .tour_catalogue import TOUR_SHOPS
+from .tour_story import (
+    SEED_OWNER,
+    seed_shop,
+    seed_wholesaler,
+    seed_workspace,
+)
+from .tour_story import (
+    seed_supply as seed_tour_supply,
+)
 
 router = APIRouter(prefix="/api/v1/demo/sessions")
 TTL_SECONDS = 900
@@ -51,6 +60,7 @@ ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
     for method, pattern in (
         ("GET", "businesses"),
         ("GET", rf"{_BIZ}(?:/{_ID}){{0,4}}"),
+        ("GET", rf"demo/chain/{_ID}"),
         ("GET", "reminders/?"),
         ("GET", "trust"),
         ("POST", "proposals"),
@@ -136,13 +146,18 @@ def sandbox(zone: str) -> tuple[DemoSession, date]:
         store = SandboxStore(str(Path(directory.name) / "demo.sqlite3"))
         uid = f"public-demo-{token_urlsafe(8)}"
         bid, _ = seed_workspace(store, uid, "bengaluru", label="")
+        tour_shop = next(shop for shop in TOUR_SHOPS if shop.city == "bengaluru")
+        day = today_for(tour_shop.fields.model_dump())
+        seed_shop(store, SEED_OWNER, tour_shop, day)
+        seed_tour_supply(store, SEED_OWNER, tour_shop, day)
+        seed_wholesaler(store, tour_shop, day)
         # The chains show the larger channels: CSV to a distributor, SAP IDoc with an FMCG firm.
-        from .demo_supply_seed import seed_shop as seed_supply
+        from .demo_supply_seed import seed_shop as seed_chain_supply
 
         for chain in CHAINS:
             store.seed_demo_shop(CHAIN_OWNER, chain.id, chain.fields, chain.products)
             store.attach_demo_owner(CHAIN_OWNER, chain.id, uid)
-            seed_supply(store, CHAIN_OWNER, chain.id)
+            seed_chain_supply(store, CHAIN_OWNER, chain.id)
         store.record_consent(uid, LEGAL_VERSION)
         business = store.context(uid, bid)["business"]
         # One "(Demo)" label, never "(Demo) (Demo)" or "(Demo) (Tour)".
