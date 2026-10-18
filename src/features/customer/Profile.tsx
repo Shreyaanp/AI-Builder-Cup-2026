@@ -136,12 +136,6 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
   }
   return (
     <Sheet open={open} onClose={onClose} titleId="customer-profile-title" title={t.profile}>
-      <Box component="section" aria-label={tabs.help}>
-        <Typography component="h2" variant="titleSmall">
-          {tabs.help}
-        </Typography>
-        <SeeAgain app="customer" />
-      </Box>
       {account.status !== 'signed-in' && account.status !== 'guest' ? (
         <Stack spacing={3}>
           <Typography variant="bodyLarge">{t.signInBody}</Typography>
@@ -259,6 +253,13 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
           )}
         </Stack>
       )}
+      {/* Help comes after the account: signing in stays the first thing in the sheet. */}
+      <Box component="section" aria-label={tabs.help} sx={{ mt: 3 }}>
+        <Typography component="h2" variant="titleSmall">
+          {tabs.help}
+        </Typography>
+        <SeeAgain app="customer" />
+      </Box>
     </Sheet>
   )
 }
