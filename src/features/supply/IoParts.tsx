@@ -209,7 +209,7 @@ export function Timeline({ steps }: { steps: Step[] }) {
               }}
             />
             <Typography variant="bodyMedium">{c.step[step.step]}</Typography>
-            <Typography variant="bodySmall" color="text.secondary" sx={{ textAlign: 'right' }}>
+            <Typography variant="bodyMedium" color="text.secondary" sx={{ textAlign: 'right' }}>
               {step.waiting ? c.waiting : step.at != null ? f.time(step.at) : '–'}
             </Typography>
           </Box>
@@ -247,7 +247,7 @@ export function SapView({ order, doc }: { order: IoOrder; doc: IoDocument }) {
           </Typography>
         ))}
         {order.partner.demo && (
-          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
+          <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 2 }}>
             {c.simulated}
           </Typography>
         )}

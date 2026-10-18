@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test'
 import { orderTotal, poNumber, termsLabel } from '../src/features/supply/orderFormat.ts'
+import { formatMoneyText } from '../src/features/inquiries/formatMoneyText.ts'
+
+test('supplier and timeline text uses the shop currency symbol in every locale', () => {
+  expect(formatMoneyText('Total INR 540', 'hi')).toBe('Total ₹540')
+  expect(formatMoneyText('Total SGD 540.50', 'zh-Hans')).toBe('Total S$540.50')
+})
 
 test('poNumber drops a leading PO- so the label reads "PO 2026-0042"', () => {
   expect(poNumber('PO-2026-0042')).toBe('2026-0042')
