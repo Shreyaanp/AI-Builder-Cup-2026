@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Button,
@@ -23,20 +23,20 @@ import { narrationQueue } from './narrationQueue'
 import { narrationVoice } from './narrationVoice'
 
 import { motion } from '../../design/theme'
-import { TourFeature } from './TourFeatures'
-import { TourChain } from './TourChain'
-import { CHAIN_STEPS, chainStep } from './chainSteps'
+import { chainStep } from './chainSteps'
 import { chainCopy } from './chainCopy'
 import { useChainStory } from './chainData'
-import { useFeatureSteps } from './useFeatureSteps'
+import { placeCard } from './tourLayout'
+import type { Box as Rect } from './tourLayout'
 
 const EASE = motion.easing.emphasized
-// Where each step's spotlight lands (data-tour anchors), which screen it lives on and whose
-// copy it reads: a translated spotlight, the order story (seeded records) or a feature preview.
+// Where each step's spotlight lands (data-tour anchors), which screen it lives on and whose copy
+// it reads: a translated spotlight, or a line built from the shop's seeded records. Every step
+// lights a real element on the real screen; a step whose element is missing is skipped.
 type Step = {
   target: string
   destination: Destination
-  kind: 'spot' | 'chain' | 'feature'
+  kind: 'spot' | 'story'
   index: number
 }
 const spot = (index: number, target: string, destination: Destination): Step => ({
@@ -45,40 +45,69 @@ const spot = (index: number, target: string, destination: Destination): Step => 
   kind: 'spot',
   index,
 })
-const panel = (kind: 'chain' | 'feature', index: number): Step => ({
-  target: 'feature',
+const story = (index: number, target: string): Step => ({
+  target,
   destination: 'coach',
-  kind,
+  kind: 'story',
   index,
 })
 const STEPS: Step[] = [
-  spot(0, 'menu', 'shop'),
-  // One order, from the tea stall to the wholesaler to the chain, then back to the customer.
-  ...Array.from({ length: CHAIN_STEPS }, (_, i) => panel('chain', i)),
+  spot(0, 'today', 'coach'),
+  story(0, 'today-supply'),
+  story(1, 'reorder'),
+  spot(2, 'forecast', 'coach'),
   spot(1, 'menu', 'shop'),
   spot(3, 'closeday', 'grow'),
   spot(5, 'composer', 'coach'),
-  spot(6, 'google', 'grow'),
-  ...Array.from({ length: 3 }, (_, i) => panel('feature', i)),
 ]
 const PAD = 8
+const FIND_MS = 8000
 const NARRATION_PREF = 'chalkboard.tour.narration'
-
-type Rect = { top: number; left: number; width: number; height: number }
 
 function find(target: string): HTMLElement | null {
   const all = Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`))
-  const visible = all.find((el) => el.offsetParent !== null)
-  if (visible) return visible
-  // The public demo can hide the Google guide; keep its tour step anchored to Grow navigation.
-  if (target === 'google') {
-    return (
-      Array.from(document.querySelectorAll<HTMLElement>('[data-tour="nav-grow"]')).find(
-        (el) => el.offsetParent !== null,
-      ) ?? null
-    )
+  return all.find((el) => el.offsetParent !== null) ?? null
+}
+
+/** The nearest ancestor that scrolls, or the page. */
+function scroller(el: HTMLElement): HTMLElement {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    const overflow = getComputedStyle(node).overflowY
+    if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight)
+      return node
   }
-  return null
+  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement
+}
+
+/** Fixed and sticky targets (the composer, the tabs) stay where they are whatever the page does. */
+function pinned(el: HTMLElement): boolean {
+  for (let node: HTMLElement | null = el; node; node = node.parentElement) {
+    const position = getComputedStyle(node).position
+    if (position === 'fixed' || position === 'sticky') return true
+  }
+  return false
+}
+
+/** Whether the target sits where the spotlight wants it: on screen, and clear of a phone's card. */
+function placed(el: HTMLElement, cardHeight: number): boolean {
+  const box = el.getBoundingClientRect()
+  if (pinned(el)) return true
+  if (window.innerWidth >= 600)
+    return (
+      (box.top >= 0 && box.bottom <= window.innerHeight) || box.height > window.innerHeight * 0.8
+    )
+  return box.top >= 0 && (box.bottom <= window.innerHeight - cardHeight - 24 || box.top <= PAD + 16)
+}
+
+/** Bring a target into view, clear of the card: on a phone the card sits under it. */
+function align(el: HTMLElement, cardHeight: number) {
+  if (pinned(el)) return
+  el.scrollIntoView({ block: 'center', behavior: 'instant' as ScrollBehavior })
+  if (window.innerWidth >= 600) return
+  const free = window.innerHeight - cardHeight - 56
+  const box = el.getBoundingClientRect()
+  const want = box.height < free ? Math.max(PAD + 8, (free - box.height) / 2 + PAD) : PAD + 8
+  scroller(el).scrollTop += box.top - want
 }
 
 /** Spotlight walkthrough over the demo shop. Mounted once by the app shell. */
@@ -87,8 +116,7 @@ export function TourHost() {
   const ws = useWorkspace()
   const language = useLocale()
   const t = tourCopy(language)
-  const features = useFeatureSteps()
-  const story = useChainStory(running)
+  const tale = useChainStory(running)
   const chain = chainCopy(language)
   const roles = useTheme().material
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
@@ -105,15 +133,18 @@ export function TourHost() {
   )
   const [step, setStep] = useState(0)
   const [rect, setRect] = useState<Rect | null>(null)
+  const [cardHeight, setCardHeight] = useState(240)
+  const cardRef = useRef<HTMLDivElement>(null)
+  // Which way the owner is walking, so a step with nothing to show is passed over, not stopped at.
+  const direction = useRef(1)
+  const realigns = useRef(0)
   const done = step >= STEPS.length
   const current = done ? null : STEPS[step]
   const copy = !current
     ? null
     : current.kind === 'spot'
       ? t.steps[current.index]
-      : current.kind === 'chain'
-        ? chainStep(current.index, story, chain, language)
-        : features[current.index]
+      : chainStep(current.index, tale, chain, language)
   const spokenText = copy ? `${copy.title}. ${copy.body}` : ''
 
   // Tours are opened by a tap on an offer/menu control. A saved preference alone never starts one.
@@ -125,6 +156,7 @@ export function TourHost() {
   const move = useCallback(
     (delta: number) => {
       narration.stop()
+      direction.current = delta
       setStep((n) => Math.max(0, Math.min(n + delta, STEPS.length)))
     },
     [narration],
@@ -152,31 +184,60 @@ export function TourHost() {
     const current = STEPS[step]
     const el = current && find(current.target)
     if (!el) return setRect(null)
-    const box = el.getBoundingClientRect()
+    let box = el.getBoundingClientRect()
+    // Late content can push the target off screen after the first scroll: bring it back.
+    const cardNow = cardRef.current?.offsetHeight ?? 240
+    if (!placed(el, cardNow) && realigns.current++ < 20) {
+      align(el, cardNow)
+      box = el.getBoundingClientRect()
+    }
     setRect({
       top: box.top - PAD,
       left: box.left - PAD,
       width: box.width + PAD * 2,
-      height: Math.min(box.height + PAD * 2, window.innerHeight * 0.6),
+      height: box.height + PAD * 2,
     })
   }, [step, done])
 
-  // Each step: go to its screen, wait for its anchor, bring it into view, then measure.
+  // Each step: go to its screen, wait for its anchor, bring it into view clear of the card, then
+  // measure. The last stop is the Coach home.
   useEffect(() => {
     const current = STEPS[step]
-    if (!running || done || !current) return
+    if (!running) return
+    if (done || !current) {
+      ws.go('coach')
+      return
+    }
     ws.go(current.destination)
-    let frames = 0
+    realigns.current = 0
+    const started = performance.now()
     let raf = 0
+    // A screen can re-mount or load late content after the first scroll: keep the target in
+    // view for a moment, then stay put.
+    const settle = (since: number) => {
+      const el = find(current.target)
+      if (el) {
+        const cardNow = cardRef.current?.offsetHeight ?? 240
+        if (!placed(el, cardNow)) align(el, cardNow)
+      }
+      measure()
+      if (performance.now() - since < 3000) raf = requestAnimationFrame(() => settle(since))
+    }
     const seek = () => {
       const el = find(current.target)
       if (el) {
-        el.scrollIntoView({ block: 'center', behavior: 'instant' as ScrollBehavior })
-        requestAnimationFrame(measure)
+        align(el, cardRef.current?.offsetHeight ?? 240)
+        settle(performance.now())
         return
       }
-      if (frames++ < 120) raf = requestAnimationFrame(seek)
-      else setRect(null)
+      if (performance.now() - started < FIND_MS) raf = requestAnimationFrame(seek)
+      else {
+        // Nothing real to show here: leave the step out rather than float an empty box.
+        setRect(null)
+        const next = step + direction.current
+        if (next >= 0) setStep(Math.min(next, STEPS.length))
+        else direction.current = 1
+      }
     }
     raf = requestAnimationFrame(seek)
     return () => cancelAnimationFrame(raf)
@@ -198,6 +259,17 @@ export function TourHost() {
     }
   }, [running, measure, step])
 
+  // The card's own height decides how much room the spotlight keeps.
+  useLayoutEffect(() => {
+    const card = cardRef.current
+    if (!running || !card) return
+    const read = () => setCardHeight(card.offsetHeight)
+    read()
+    const observer = new ResizeObserver(read)
+    observer.observe(card)
+    return () => observer.disconnect()
+  }, [running, step, done])
+
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if (!running) return
@@ -210,13 +282,17 @@ export function TourHost() {
   }, [running, close, move])
 
   if (!running) return null
-  const below = rect ? rect.top + rect.height + 220 < window.innerHeight : true
-  const cardTop = rect ? (below ? rect.top + rect.height + 12 : Math.max(12, rect.top - 212)) : 0
+  const layout =
+    rect && !done
+      ? placeCard(
+          rect,
+          { width: window.innerWidth, height: window.innerHeight, safeBottom: 0 },
+          cardHeight,
+        )
+      : null
 
   return (
     <>
-      {current?.kind === 'chain' && <TourChain index={current.index} state={story} />}
-      {current?.kind === 'feature' && <TourFeature key={step} index={current.index} />}
       <Box
         role="dialog"
         aria-modal="true"
@@ -234,6 +310,7 @@ export function TourHost() {
         {/* The scrim with a moving cut-out around the highlighted element. */}
         <Box
           aria-hidden="true"
+          data-testid="tour-spot"
           onClick={() => move(1)}
           sx={{
             position: 'fixed',
@@ -241,35 +318,42 @@ export function TourHost() {
             boxShadow: '0 0 0 9999px rgba(0,0,0,0.62)',
             pointerEvents: 'auto',
             transition: reducedMotion ? 'none' : `opacity 300ms ${EASE}`,
-            outline: rect ? `2px solid ${roles.primary}` : 'none',
-            ...(rect
-              ? { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
+            outline: layout ? `2px solid ${roles.primary}` : 'none',
+            ...(layout
+              ? {
+                  top: layout.spot.top,
+                  left: layout.spot.left,
+                  width: layout.spot.width,
+                  height: layout.spot.height,
+                }
               : { top: '50%', left: '50%', width: 0, height: 0 }),
           }}
         />
         <FocusTrap open>
           <Card
             key={step}
+            ref={cardRef}
+            data-testid="tour-card"
             tabIndex={-1}
             elevation={8}
             sx={{
               position: 'fixed',
-              left: 16,
-              right: 16,
-              mx: 'auto',
-              maxWidth: 420,
+              boxSizing: 'border-box',
               p: { xs: 3, sm: 4 },
               borderRadius: '24px',
               bgcolor: roles.surfaceContainerHigh,
               animation: reducedMotion ? 'none' : `tourRise 360ms ${EASE} both`,
               maxHeight: 'calc(100dvh - 32px - env(safe-area-inset-bottom))',
               overflowY: 'auto',
-              ...(done || !rect
-                ? { top: '50%', transform: 'translateY(-50%)' }
-                : {
-                    top: { xs: 'auto', sm: cardTop },
-                    bottom: { xs: 'calc(16px + env(safe-area-inset-bottom))', sm: 'auto' },
-                  }),
+              ...(done || !layout
+                ? {
+                    top: `max(16px, calc(50% - ${cardHeight / 2}px))`,
+                    left: 16,
+                    right: 16,
+                    mx: 'auto',
+                    maxWidth: 420,
+                  }
+                : { top: layout.card.top, left: layout.card.left, width: layout.card.width }),
             }}
           >
             {done ? (
