@@ -16,7 +16,7 @@ from .limits import enforce_limits
 from .merchant_routes import consented_owner, owner, store
 from .sales import today_for
 from .tour_catalogue import CENTRES, TOUR_SHOPS
-from .tour_story import seed_customer, seed_story, seed_workspace, tour_id
+from .tour_story import seed_customer, seed_story, seed_workspace
 
 router = APIRouter(prefix="/api/v1/demo")
 
@@ -51,16 +51,8 @@ async def demo_workspace(
 
     def create() -> tuple[str, bool]:
         neighbours = request.app.state.community
-        if request.app.state.v1_settings.app_env == "production":
-            bid = tour_id(uid, city)
-            if bid not in {b["id"] for b in service.list_businesses(uid)}:
-                raise HTTPException(409, "The owner has not prepared this demo account yet.")
-            return bid, False
         seed_story(service, neighbours)
-        worlds = {
-            world: seed_workspace(service, uid, world) for world in ("bengaluru", "singapore")
-        }
-        result = worlds[city]
+        result = seed_workspace(service, uid, city)
         seed_customer(
             service,
             neighbours,
@@ -88,12 +80,6 @@ async def demo_customer(
         old = neighbours.docs.get("passport", principal.uid) or {}
         if old.get("points") or any(not s.get("demo") for s in old.get("stamps", [])):
             raise HTTPException(409, "Use a fresh demo account to load this story.")
-        if request.app.state.v1_settings.app_env == "production":
-            if not any(
-                s.get("shop_id", "").startswith("demo-story-") for s in old.get("stamps", [])
-            ):
-                raise HTTPException(409, "The owner has not prepared this demo account yet.")
-            return
         seed_story(store(request), neighbours, customer_uid=principal.uid)
 
     await anyio.to_thread.run_sync(create)

@@ -70,6 +70,15 @@ async function noSideScroll(page: Page) {
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
   ).toBeTruthy()
+  // The owner brief caps each spotlight at two short lines on a 390px phone.
+  const body = page.locator('#tour-title + p')
+  await expect(body).toBeVisible()
+  expect(
+    await body.evaluate((element) => {
+      const line = Number.parseFloat(getComputedStyle(element).lineHeight)
+      return element.getBoundingClientRect().height <= line * 2 + 1
+    }),
+  ).toBeTruthy()
 }
 
 for (const world of [

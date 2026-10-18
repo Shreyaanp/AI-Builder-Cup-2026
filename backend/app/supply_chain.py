@@ -469,14 +469,42 @@ async def draft_reorder(
         )
     if not candidates:
         return {"status": "no_supplier", "item": target}
-    options = [
-        option
-        for option in (
-            quote(store, bid, candidate, target, unit, wanted, need_by, today)
-            for candidate in candidates
+
+    def offer(candidate: dict[str, Any]) -> dict[str, Any] | None:
+        option = quote(store, bid, candidate, target, unit, wanted, need_by, today)
+        if option:
+            return option
+        # The wholesaler sells an ingredient in another unit (chai by the cup, tea dust by the
+        # kg, #264): order the ingredient, sized by the shop's own stock of it when it keeps
+        # some, else from the supplier's minimum; the owner reviews the draft either way.
+        supplied = candidate["product"]
+        stocked = next(
+            (p for p in inventory if p["name"].casefold() == supplied["name"].casefold()),
+            next((p for p in inventory if sourcing.matches(p["name"], supplied["name"])), None),
         )
-        if option
-    ]
+        if stocked and stocked.get("unit"):
+            # Only the ingredient's own sales: the drinks' cups must not size an order in kg.
+            exact = {
+                **forecast,
+                "predictions": [
+                    row
+                    for row in forecast.get("predictions") or []
+                    if isinstance(row, dict)
+                    and str(row.get("item", "")).casefold() == stocked["name"].casefold()
+                ],
+            }
+            own = need_from_forecast(stocked, exact, stocked["name"], today)
+            own_wanted = (
+                max(0.0, own["daily"] * (COVER_DAYS + 2) - own["stock"]) if own["daily"] else 0.0
+            )
+            option = quote(
+                store, bid, candidate, supplied["name"], stocked["unit"], own_wanted, need_by, today
+            )
+            if option:
+                return option
+        return quote(store, bid, candidate, supplied["name"], supplied["unit"], 0.0, need_by, today)
+
+    options = [option for option in map(offer, candidates) if option]
     if not options:
         return {"status": "no_supplier", "item": target}
     options.sort(
