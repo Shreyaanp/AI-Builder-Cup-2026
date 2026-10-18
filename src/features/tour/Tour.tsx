@@ -289,7 +289,11 @@ export function TourHost() {
                     variant="contained"
                     onClick={() => {
                       close()
-                      ws.startNewShop()
+                      // The tour runs in the read-only demo (OB-30): a shop of their own starts in
+                      // the business app (through sign-in when needed), not inside the sandbox.
+                      if (location.pathname.startsWith('/demo'))
+                        location.assign('/new-shop?app=business')
+                      else ws.startNewShop()
                     }}
                   >
                     {t.startMine}
