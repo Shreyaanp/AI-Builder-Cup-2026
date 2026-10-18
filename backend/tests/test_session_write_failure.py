@@ -22,7 +22,8 @@ from google.cloud import firestore
 from google.genai import types
 from starlette.websockets import WebSocketDisconnect
 
-from app.firestore_memory import FirestoreSessionService
+from app import firestore_memory
+from app.firestore_memory import FirestoreSessionService, pending_writes, settle_writes
 from app.main import create_app
 from app.settings import Settings
 
@@ -251,3 +252,59 @@ def test_voice_session_survives_failed_write_and_closes_cleanly(
         assert not app.state.services.registry.active
     assert stored_texts(store) == ["second reply", "cut off"]
     assert "Root node business_coach failed" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_settle_waits_for_a_write_its_cancelled_caller_left_behind(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(firestore_memory, "CANCELLED_WRITE_SECONDS", 0.05)
+    store = FakeFirestore()
+    memory = FirestoreSessionService(store, "ns")
+    session = await memory.create_session(app_name="coach", user_id="alice")
+    store.hang.add("last answer")
+    token = pending_writes.set(set())
+    try:
+        task = asyncio.create_task(memory.append_event(session, reply("last answer")))
+        assert await asyncio.to_thread(store.hanging.wait, 5)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        # The caller gave up; the write did not land yet.
+        assert stored_texts(store) == []
+        threading.Timer(0.3, store.release.set).start()
+        assert await settle_writes(5) == 0
+        assert stored_texts(store) == ["last answer"]
+    finally:
+        pending_writes.reset(token)
+
+
+def test_voice_close_mid_save_persists_the_last_answer_before_the_socket_closes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The owner closes while their last answer is still being committed, and the commit outlasts
+    # the cancelled caller's own wait: the socket closes only once the answer is stored.
+    async def fake_live(self: LlmAgent, ctx: Any):
+        yield reply("first reply")
+        yield reply("last answer")
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(LlmAgent, "_run_live_impl", fake_live)
+    monkeypatch.setattr(firestore_memory, "CANCELLED_WRITE_SECONDS", 0.1)
+    store = FakeFirestore()
+    store.hang.add("last answer")
+    app = create_app(Settings(app_env="test", _env_file=None), FirestoreSessionService(store, "ns"))
+    with TestClient(app) as client:
+        client.get("/api/v1/bootstrap")
+        app.state.services.runtime.settings.coach_mode = "gemini"
+        with client.websocket_connect("/api/v1/voice", headers=ORIGIN) as socket:
+            assert socket.receive_json()["kind"] == "ready"
+            assert socket.receive_json()["text"] == "first reply"
+            assert store.hanging.wait(5)
+            threading.Timer(1.0, store.release.set).start()
+            socket.send_json({"kind": "close"})
+            with pytest.raises(WebSocketDisconnect) as closed:
+                while True:
+                    socket.receive_json()
+            assert closed.value.code == 1000
+            assert stored_texts(store) == ["first reply", "last answer"]

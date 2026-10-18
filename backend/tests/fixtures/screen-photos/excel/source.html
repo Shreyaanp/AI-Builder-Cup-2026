@@ -1,0 +1,101 @@
+<!doctype html><meta charset="utf-8" /><title>Excel</title>
+<style>
+  body {
+    margin: 0;
+    background: #373330;
+    font: 22px Arial;
+    perspective: 1400px;
+    padding: 85px 55px;
+  }
+  .monitor {
+    position: relative;
+    background: #e2f0d9;
+    border: 24px solid #181818;
+    border-radius: 16px;
+    padding: 28px;
+    transform: rotateY(-9deg) rotateX(7deg) rotateZ(-2deg);
+    filter: blur(0.35px);
+    overflow: hidden;
+    box-shadow: 12px 22px 20px #0008;
+    min-height: 440px;
+  }
+  h1 {
+    font-size: 28px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 19px;
+  }
+  td,
+  th {
+    border: 1px solid #999;
+    padding: 12px;
+    text-align: left;
+  }
+  .moire,
+  .glare {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .moire {
+    background: repeating-linear-gradient(3deg, #0002 0px, transparent 1px, transparent 3px);
+    opacity: 0.38;
+  }
+  .glare {
+    background: linear-gradient(125deg, transparent 40%, #fff9 62%, transparent 80%);
+  }
+  .cutoff {
+    position: absolute;
+    right: 0;
+    bottom: 85px;
+    width: 300px;
+    height: 52px;
+    background: #fff;
+    opacity: 0.95;
+  }
+  tbody tr:last-child td:nth-child(4) {
+    color: transparent;
+    background: #fff;
+  }
+</style>
+<section class="monitor">
+  <h1>Excel — INR</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>name</th>
+        <th>sku</th>
+        <th>category</th>
+        <th>price</th>
+        <th>qty</th>
+        <th>date</th>
+        <th>total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Masala Dosa</td>
+        <td>MD01</td>
+        <td>Food</td>
+        <td>80</td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>Cut-off item</td>
+        <td></td>
+        <td></td>
+        <td>35</td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="cutoff"></div>
+  <div class="moire"></div>
+  <div class="glare"></div>
+</section>

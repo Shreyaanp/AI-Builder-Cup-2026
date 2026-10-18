@@ -58,6 +58,10 @@ test('one host/path policy, legacy URLs and origin validation', () => {
     ['https://chalkboard.shreyaan.work/', 'landing'],
     ['https://chalkboard.shreyaan.work/explore/map', 'customer'],
     ['https://business.chalkboard.shreyaan.work/', 'business'],
+    ['https://chalkboard.shreyaan.work/demo', 'business'],
+    ['https://business.chalkboard.shreyaan.work/demo', 'business'],
+    ['https://chalkboard.shreyaan.work/explore/demo', 'customer'],
+    ['https://business.chalkboard.shreyaan.work/explore/demo', 'customer'],
     ['https://legacy.run.app/', 'business'],
     ['http://127.0.0.1:3200/', 'business'],
     ['http://127.0.0.1:3200/?app=landing', 'landing'],
@@ -245,6 +249,19 @@ for (const width of [360, 390, 412]) {
     await page.goto('/?app=landing')
     await expect(page.locator('.lp-eyebrow')).toHaveCount(0)
     await expect(page.locator('.lp-nav').getByRole('link', { name: 'For businesses' })).toBeHidden()
+    const heroBusiness = page
+      .locator('.lp-hero .lp-cta')
+      .getByRole('link', { name: 'For businesses' })
+    const heroFind = page
+      .locator('.lp-hero .lp-cta')
+      .getByRole('link', { name: 'Find places near me' })
+    await expect(heroBusiness).toBeVisible()
+    await expect(heroBusiness).toHaveAttribute('href', 'https://business.chalkboard.shreyaan.work')
+    const heroFindBox = (await heroFind.boundingBox())!
+    const heroBusinessBox = (await heroBusiness.boundingBox())!
+    expect(heroBusinessBox.height).toBeGreaterThanOrEqual(48)
+    expect(heroBusinessBox.y).toBeGreaterThanOrEqual(heroFindBox.y + heroFindBox.height)
+    expect(heroBusinessBox.x + heroBusinessBox.width).toBeLessThanOrEqual(width)
     const business = page.locator('.lp-final').getByRole('link', { name: 'For businesses' })
     await business.scrollIntoViewIfNeeded()
     await expect(business).toBeInViewport()
@@ -297,6 +314,9 @@ test('B35 desktop keeps its hero columns, bento and pinned story', async ({ page
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/?app=landing')
+  await expect(
+    page.locator('.lp-hero .lp-cta').getByRole('link', { name: 'For businesses' }),
+  ).toBeHidden()
   expect(
     await page
       .locator('.lp-hero')

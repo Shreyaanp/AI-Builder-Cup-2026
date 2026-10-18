@@ -296,6 +296,10 @@ test('Hindi: "बस" ends the voice conversation: a goodbye, the mic closes, no
   expect(live.sockets).toHaveLength(1)
   expect(socket.received.join('\n')).not.toContain('"kind":"error"')
   await expect(page.getByTestId('shop-so-far')).toContainText('शर्मा चाय')
+  // Stopping opens "Review my shop" at once; close it to continue.
+  await expect(page.getByTestId('draft-summary')).toContainText('शर्मा चाय')
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('draft-summary')).toHaveCount(0)
   // Continue: the same conversation, silently, from the next missing field.
   await ended.getByRole('button', { name: copy.continueChat! }).click()
   await expect.poll(() => live.sockets.length, { timeout: 20_000 }).toBe(2)

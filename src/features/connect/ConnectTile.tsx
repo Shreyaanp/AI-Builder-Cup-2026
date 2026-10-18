@@ -31,7 +31,7 @@ export function ConnectTile() {
   }, [shop, ws])
 
   const latest = savedMappings[0]
-  const tileValue = latest ? `${latest.source_label}` : 'POS / ERP'
+  const tileValue = latest ? `${latest.source_label}` : t.connectType
   const supporting = latest
     ? latest.last_synced
       ? t.lastSynced(new Date(latest.last_synced * 1000).toLocaleDateString(formatLocale(locale)))

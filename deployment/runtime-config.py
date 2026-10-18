@@ -18,7 +18,8 @@ config = {
     # Chat + photo reading: the model the live coach evaluation passed with.
     "GOOGLE_CLOUD_LOCATION": "global",
     "GOOGLE_TEXT_MODEL": "gemini-3.5-flash",
-    # Live voice models are regional (not served at `global`).
+    # Live voice models are regional (not served at `global`). gemini-3.8-live is served only in
+    # us-central1 for this project: no closer region to asia-south1 (checked 18 Oct, all regions).
     "GOOGLE_LIVE_LOCATION": "us-central1",
     "GOOGLE_LIVE_MODEL": "gemini-3.8-live",
     "GOOGLE_EMBEDDING_LOCATION": "global",
@@ -47,6 +48,7 @@ config = {
     "FIRESTORE_NAMESPACE": target["firestoreNamespace"],
     # Share links and QR codes made in the business app point customers here.
     "CUSTOMER_ORIGIN": "https://chalkboard.shreyaan.work",
+    "GA_MEASUREMENT_ID": os.environ.get("GA_MEASUREMENT_ID", "").strip(),
     "ALLOWED_ORIGINS": json.dumps([origin, "https://chalkboard.shreyaan.work", "https://business.chalkboard.shreyaan.work"]),
     "FIREBASE_WEB_API_KEY": os.environ["FIREBASE_WEB_API_KEY"].strip(),
     "FIREBASE_WEB_APP_ID": os.environ["FIREBASE_WEB_APP_ID"].strip(),
