@@ -1,0 +1,452 @@
+﻿/* /how-it-works, /features and /landing-preview. Phone first (360/390/412); colours are the
+   app's M3 roles passed as CSS variables by HowItWorks.tsx, so light and dark both follow. */
+
+.hw {
+  background: var(--surface);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: clip;
+}
+.hw a:not(.MuiButton-root) {
+  color: inherit;
+}
+.hw-skip {
+  position: absolute;
+  left: -999px;
+}
+.hw-skip:focus {
+  left: 16px;
+  top: 16px;
+  z-index: 10;
+  background: var(--surface-high);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.hw main:focus {
+  outline: none;
+}
+
+.hw-nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px 8px 16px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid color-mix(in srgb, var(--outline) 60%, transparent);
+}
+.hw-nav nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.hw-nav-link {
+  display: none;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 12px;
+}
+@media (min-width: 600px) {
+  .hw-nav-link {
+    display: inline-block;
+  }
+}
+.hw-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+.hw-logo-mark {
+  width: 26px;
+  height: 26px;
+  background: var(--primary);
+  border-radius: 9px 9px 9px 2px;
+  transform: rotate(-8deg);
+}
+
+.hw-hero {
+  padding: 28px 20px 8px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+.hw .hw-title {
+  font-size: clamp(2rem, 9vw, 3.5rem);
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.hw .hw-lead {
+  margin-top: 12px;
+  font-size: clamp(1.15rem, 4.6vw, 1.5rem);
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+/* Two big doors: who is this for? */
+.hw-jump {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+@media (min-width: 720px) {
+  .hw-jump {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.hw-jump a {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-height: 48px;
+  padding: 16px 18px;
+  border-radius: 24px;
+  text-decoration: none;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+.hw-jump a:first-child {
+  background: var(--primary-c);
+  color: var(--on-primary-c);
+}
+.hw-jump a:last-child {
+  background: var(--tertiary-c);
+  color: var(--on-tertiary-c);
+}
+.hw-jump svg {
+  flex: none;
+  margin-top: 3px;
+}
+.hw-jump strong {
+  display: block;
+  font-size: 1.3rem;
+  margin-bottom: 2px;
+}
+
+.hw-anchor {
+  scroll-margin-top: 64px;
+}
+.hw-flow,
+.hw-features {
+  max-width: 960px;
+  margin: 24px auto 0;
+  padding: 24px 20px 28px;
+}
+.hw-flow.vendor,
+.hw-features.vendor {
+  background: color-mix(in srgb, var(--primary-c) 45%, var(--surface));
+}
+.hw-flow.customer,
+.hw-features.customer {
+  background: color-mix(in srgb, var(--tertiary-c) 45%, var(--surface));
+}
+@media (min-width: 720px) {
+  .hw-flow,
+  .hw-features {
+    border-radius: 32px;
+  }
+  .hw-flow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-areas: 'copy figure' 'steps figure' 'cta figure';
+    align-content: start;
+    column-gap: 40px;
+  }
+  .hw-flow-copy {
+    grid-area: copy;
+  }
+  .hw-figure {
+    grid-area: figure;
+  }
+  .hw-flow .hw-steps {
+    grid-area: steps;
+  }
+  .hw-flow .hw-cta {
+    grid-area: cta;
+  }
+}
+.hw-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-weight: 600;
+  font-size: 1rem;
+}
+.hw .hw-flow-line {
+  margin-top: 12px;
+  font-size: clamp(1.6rem, 7vw, 2.4rem);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.hw-figure {
+  margin: 20px 0 0;
+}
+.hw-phone {
+  width: min(100%, 320px);
+  margin: 0 auto;
+  border-radius: 36px;
+  overflow: hidden;
+  background: var(--surface-high);
+  box-shadow: 0 18px 40px -20px rgb(0 0 0 / 0.45);
+}
+.hw-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  background: var(--surface-high);
+}
+.hw-note {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.hw-steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 20px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.hw-steps li {
+  counter-increment: step;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.hw-steps li::before {
+  content: counter(step);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.hw-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+.hw-cta .MuiButton-root {
+  min-height: 48px;
+}
+
+.hw-grid {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 600px) {
+  .hw-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.hw-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 24px;
+  background: var(--surface);
+}
+.hw-card svg {
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.hw-more {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 20px;
+}
+.hw-trust {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hw-trust li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--outline);
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.hw-trust svg {
+  color: var(--primary);
+}
+
+/* Landing proposal */
+.hw-banner {
+  margin: 0;
+  padding: 10px 16px;
+  text-align: center;
+  font-weight: 600;
+  background: var(--secondary-c);
+  color: var(--on-secondary-c);
+}
+.hw-split {
+  max-width: 960px;
+  margin: 16px auto 0;
+  display: grid;
+  gap: 16px;
+  padding: 0 12px;
+}
+@media (min-width: 720px) {
+  .hw-split {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.hw-side {
+  padding: 20px 16px 24px;
+  border-radius: 28px;
+}
+.hw-side.vendor {
+  background: color-mix(in srgb, var(--primary-c) 45%, var(--surface));
+}
+.hw-side.customer {
+  background: color-mix(in srgb, var(--tertiary-c) 45%, var(--surface));
+}
+.hw-side .hw-phone {
+  margin-top: 16px;
+  width: min(100%, 280px);
+}
+
+.hw-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
+  padding: 24px 16px 40px;
+  color: var(--muted);
+}
+.hw-footer a {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Landing proposal: one cup of chai, step by step, with the Google technology doing each step. */
+.hw-story,
+.hw-numbers {
+  max-width: 960px;
+  margin: 16px auto 0;
+  padding: 24px 16px;
+}
+.hw-story-steps {
+  list-style: none;
+  counter-reset: story;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 720px) {
+  .hw-story-steps {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+.hw-story-steps li {
+  counter-increment: story;
+  position: relative;
+  display: grid;
+  gap: 4px;
+  padding: 16px 16px 16px 56px;
+  border-radius: 24px;
+  background: var(--surface-low);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+.hw-story-steps li::before {
+  content: counter(story);
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 700;
+}
+.hw-story-who {
+  color: var(--muted);
+}
+.hw-story-steps strong {
+  font-size: 1.15rem;
+}
+.hw-tech {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--primary-c);
+  color: var(--on-primary-c);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.hw-numbers dl {
+  margin: 16px 0 0;
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 720px) {
+  .hw-numbers dl {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.hw-numbers dl > div {
+  padding: 16px;
+  border-radius: 24px;
+  border: 1px solid var(--outline);
+}
+.hw-numbers dt {
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+}
+.hw-numbers dd {
+  margin: 4px 0 0;
+  font-size: 1rem;
+}
+.hw-numbers .hw-note {
+  text-align: left;
+}

@@ -8,6 +8,7 @@ const App = lazy(() => import('./App'))
 const V1App = lazy(() => import('../features/v1/V1App'))
 const CustomerApp = lazy(() => import('../features/frontdoors/CustomerApp'))
 const Marketing = lazy(() => import('../features/frontdoors/Marketing'))
+const HowItWorks = lazy(() => import('../features/frontdoors/HowItWorks'))
 const DemoApp = lazy(() => import('../features/demo/DemoApp'))
 const ArchitecturePage = lazy(() => import('../architecture/ArchitecturePage'))
 
@@ -47,6 +48,12 @@ export default function Root() {
       </LoadBoundary>
     )
   const kind = resolveApp(new URL(location.href))
+  if (kind === 'pages')
+    return (
+      <Suspense fallback={<BrandSplash />}>
+        <HowItWorks />
+      </Suspense>
+    )
   if (kind === 'landing')
     return (
       <Suspense fallback={null}>
