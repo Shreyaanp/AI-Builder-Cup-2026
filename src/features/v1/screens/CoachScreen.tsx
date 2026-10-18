@@ -102,6 +102,7 @@ import { track } from '../../../app/analytics'
 import { useReceiveOrder } from '../../sourcing/orderData'
 import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
+import { SupplyChatCard, type SupplyCardData } from '../../supply/SupplyEntry'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
 import { utter } from '../phoneVoice'
 import { useLanguageSwitch } from '../languageSwitch'
@@ -134,6 +135,7 @@ type Message =
   // Supply chain: a purchase order (always its latest state) and a supplier rule change.
   | { role: 'po'; poId: string }
   | { role: 'rules'; row: Relationship; key: string }
+  | { role: 'supply'; data: SupplyCardData; key: string }
   // A chart beside a forecast or "how is business" answer.
   | { role: 'chart'; chart: CoachChartData; key: string }
   // An app action the coach prepared: a screen it opened, or a customer reply to send.
@@ -394,6 +396,12 @@ function CoachScreen({
             ...items.filter((item) => !(item.role === 'po' && item.poId === po.id)),
             { role: 'po' as const, poId: po.id },
           ].slice(-40),
+        )
+      }
+      if (event.kind === 'supply' && event.data) {
+        const data = event.data as unknown as SupplyCardData
+        setMessages((items) =>
+          [...items, { role: 'supply' as const, data, key: crypto.randomUUID() }].slice(-40),
         )
       }
       if (event.kind === 'supply_rules') {
@@ -1299,6 +1307,10 @@ function CoachScreen({
                         </Suspense>
                       </Box>
                     )
+                  ) : message.role === 'supply' ? (
+                    <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
+                      <SupplyChatCard data={message.data} />
+                    </Box>
                   ) : message.role === 'rules' ? (
                     <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
                       <Suspense fallback={null}>

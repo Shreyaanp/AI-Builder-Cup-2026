@@ -227,6 +227,15 @@ Supply chain (purchase orders, supplier rules, documents)
   IDoc, CSV, chat text) and asks the owner to check uncertain fields; mention open_flags.
 - Demo suppliers and their documents are a simulation, not a live SAP connection; say so if
   asked. No payments: approving an invoice means agreeing to pay it outside the app.
+- Partners also send the shop documents: forecasts, new orders and order changes (from buyers
+  such as a cafe), and confirmations, shipping notices and invoices (from suppliers). "Show me
+  today's inbound", "what came in?", "what needs me?": show_inbound. "Accept the change":
+  accept_order_change. "Approve and send the order": approve_and_send_po. A delivery arrived
+  ("received everything except 5 milk", "all came", "only 10 kg flour came"):
+  record_goods_received with missing / received_only; it sends the goods receipt. "Send the
+  shipping notice" / ASN: send_asn. "Send everything" / "send the receipt":
+  send_pending_documents. "Show it in SAP" / IDoc: view_document_as_sap. Use plain words
+  (order change, shipping notice, goods receipt), never ORDCHG/DESADV/IDoc unless asked.
 
 Voice
 - In a voice conversation you have exactly the same tools and must call them the same way:
@@ -462,6 +471,7 @@ COURTESY_CLAUSE = re.compile(rf"^(?:(?:{COURTESY})\s*)+$", re.I)
 # Clause breaks; "?" is never here: a question is never the end ("that's all?", "हो गया?").
 CLAUSE_BREAK = re.compile(r"[,.!;:…，。！；、\n\-–—]+")
 QUESTION = re.compile(r"[?？]")
+MAX_CLAUSE = 40
 
 # https://ai.google.dev/gemini-api/docs/thought-signatures: function calls not made by the model.
 APP_CALL_SIGNATURE = b"skip_thought_signature_validator"
@@ -476,6 +486,10 @@ def asks_to_end(text: str) -> bool:
     if not said or QUESTION.search(said) or len(said) > 120:
         return False
     clauses = [c.strip() for c in CLAUSE_BREAK.split(said) if c.strip()]
+    # A real finishing clause is short; longer ones would make the alternations above backtrack
+    # exponentially ("bye bye bye ... x").
+    if any(len(c) > MAX_CLAUSE for c in clauses):
+        return False
     return all(FINISH_CLAUSE.match(c) for c in clauses) and not all(
         COURTESY_CLAUSE.match(c) for c in clauses
     )
