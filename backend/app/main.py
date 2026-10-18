@@ -382,6 +382,7 @@ def create_app(
                 else "http://127.0.0.1:3200"
             ),
             "ga_measurement_id": settings.ga_measurement_id,
+            "landing_variant": settings.landing_variant,
             "coach_mode": settings.coach_mode,
             "maps_browser_key": (
                 settings.maps_browser_key.get_secret_value() if settings.maps_browser_key else ""

@@ -9,6 +9,14 @@ import { localOnly } from './stories/support.js'
 const FRESH = { cookies: [], origins: [] }
 const TIONG_BAHRU = { lat: 1.2847, lng: 103.832 }
 
+// The first-run explainer (tests/first-run.spec.ts) is seen; the language step is what's tested.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    for (const app of ['owner', 'customer'])
+      localStorage.setItem(`chalkboard.explainer.${app}.v1`, '1')
+  })
+})
+
 /** Sign in to the owner preview and land on the language step. */
 async function ownerSignIn(page: Page) {
   await localOnly(page)

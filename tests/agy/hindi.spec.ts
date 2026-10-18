@@ -93,7 +93,10 @@ test.describe('Hindi language flows on phone (390px)', () => {
     const exitBtn = page.getByRole('button', { name: 'डेमो छोड़ें', exact: true })
     await expect(exitBtn).toBeVisible()
     await exitBtn.click()
-    await expect(page).toHaveURL(/\/(demo)?$/)
+    // Exit goes to the front door (or the customer app). /demo itself must not match, or the
+    // overflow check below races the navigation.
+    await expect(page).toHaveURL(/\/(explore\/)?$/)
+    await page.waitForLoadState()
 
     // Verify phone viewport has no horizontal overflow in Hindi
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
