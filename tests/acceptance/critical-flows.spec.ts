@@ -245,7 +245,11 @@ for (const language of LANGUAGES) {
       // The face check is offered and skippable; the shop opens; Today asks for the menu first.
       await expect(summary).toContainText(copy.faceOffer!)
       await summary.getByRole('button', { name: copy.skipForNow!, exact: true }).click()
-      await expect(page.getByRole('heading', { name: copy.ready! })).toBeVisible()
+      const liveHeading =
+        language.code === 'hi'
+          ? 'बधाई हो, Clean Helmet Point लाइव है!'
+          : 'Congratulations, Clean Helmet Point is live!'
+      await expect(page.getByRole('heading', { name: liveHeading, exact: true })).toBeVisible()
       await page.getByRole('button', { name: copy.newShopContinue! }).click()
       const today = page.getByTestId('today-day-one')
       await expect(today).toBeVisible()

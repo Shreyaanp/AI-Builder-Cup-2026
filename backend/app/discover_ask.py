@@ -55,6 +55,7 @@ from .search_engine import (
     popularity,
 )
 from .shop_time import shop_timezone, valid_timezone
+from .text_model import generate, generate_stream
 from .words import words as words_of
 
 log = structlog.get_logger()
@@ -491,8 +492,10 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
         request.app.state.ask_genai = client
     try:
         with anyio.fail_after(8):
-            response = await client.aio.models.generate_content(
-                model=settings.google_text_model,
+            response = await generate(
+                client,
+                settings,
+                "search",
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
                     language=written_language(body.language),
@@ -671,8 +674,10 @@ async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[
     last_word_count = 0
     try:
         with anyio.fail_after(8):
-            stream = await client.aio.models.generate_content_stream(
-                model=settings.google_text_model,
+            stream = generate_stream(
+                client,
+                settings,
+                "search",
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
                     language=written_language(body.language),

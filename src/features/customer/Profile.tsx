@@ -13,6 +13,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
+import { SeeAgain } from '../first-run/FirstRun'
 import { History, UserRound } from 'lucide-react'
 import { Sheet } from '../v1/Sheet'
 import { useCustomer } from './account'
@@ -134,6 +135,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
   }
   return (
     <Sheet open={open} onClose={onClose} titleId="customer-profile-title" title={t.profile}>
+      <SeeAgain app="customer" />
       {account.status !== 'signed-in' && account.status !== 'guest' ? (
         <Stack spacing={3}>
           <Typography variant="bodyLarge">{t.signInBody}</Typography>
