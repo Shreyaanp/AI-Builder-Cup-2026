@@ -100,6 +100,10 @@ def test_guest_daily_cap_atomic_and_upgrade_keeps_everything(client: TestClient)
         )
     assert sorted(r["outcome"]["verdict"] for r in results) == ["already_today", "stamped"]
     won = next(r for r in results if r["outcome"]["verdict"] == "stamped")
+    assert won["passport"]["demo_points"] == 50
+    assert len(won["passport"]["stamps"]) == 1
+    stored = client.get("/api/v1/customer/passport").json()
+    assert stored["demo_points"] == 50 and stored["stamps"] == won["passport"]["stamps"]
     ticket = won["scratch"]["id"]
     assert client.post(f"/api/v1/customer/games/scratch/{ticket}/reveal").is_success
     frozen = client.post("/api/v1/customer/games/freeze", json={"week": "next"})
