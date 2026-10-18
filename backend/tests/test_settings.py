@@ -42,6 +42,9 @@ def test_a_busy_text_model_is_retried_briefly_but_live_is_not() -> None:
         {**MODELS, "gemini_backend": "api_key"},  # API-key mode without a key
     ],
 )
-def test_gemini_mode_rejects_incomplete_configuration(overrides: dict[str, str]) -> None:
+def test_gemini_mode_rejects_incomplete_configuration(
+    overrides: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
     with pytest.raises(ValidationError):
         Settings(coach_mode="gemini", _env_file=None, **overrides)
