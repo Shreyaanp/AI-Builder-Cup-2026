@@ -961,9 +961,11 @@ export default function AskHome({
           zIndex: 1050,
           pl: 'max(16px, env(safe-area-inset-left))',
           pr: 'max(16px, env(safe-area-inset-right))',
-          pt: 6,
+          pt: 3,
           pb: typing ? 'max(12px, env(safe-area-inset-bottom))' : 3,
-          background: `linear-gradient(to bottom, transparent, ${roles.surface} 28px)`,
+          // Solid, so a suggestion chip is never half-hidden behind a fading edge.
+          bgcolor: roles.surface,
+          borderTop: `1px solid ${roles.outlineVariant}`,
           viewTransitionName: 'customer-composer',
         }}
       >
