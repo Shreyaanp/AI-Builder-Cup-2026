@@ -25,7 +25,10 @@ and preferences → Load demo story**, then close the profile before recording.
 | 1:35–1:50 | Chats → Lantern Chai Corner; Passport                                 | “A question becomes a conversation, then a reason to return.” Read the owner’s sample pickup reply; show five earned stamps plus two welcome stamps, a scratch card and two collected demo rescues. Saved kg is an **estimated CO₂** figure, not measured food weight. |
 | 1:50–2:00 | Choose Katong, Singapore; open Sunny Side Kopitiam                    | “Same story, local context.” Five shops, S$1.70 kopi, PayNow and English/Mandarin/Malay/Tamil. End on the customer’s next reward.                                                                                                                                      |
 
-The longer eight-spotlight introduction remains available; the table is the shorter recorded walk.
+The in-app tour (You → Help → Take the tour) is the longer walk: after the shop at a glance it
+follows one order from the tea stall to the wholesaler to the chain, on the seeded records only
+(see `backend/app/tour_chain.py`), then the remaining spotlights. The table is the shorter
+recorded walk.
 Do not describe offline fixtures as live AI. PayNow is a listed payment method; the existing
 payment-link feature supports INR/UPI only. No payment status is invented.
 

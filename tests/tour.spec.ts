@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 // First visit: a guided tour on a filled demo shop (menu + eight weeks of sales).
 test.skip(({ isMobile }) => !isMobile, '390×844 phone story')
 
-test('guided tour: demo shop is created, fourteen spotlights, then start your own', async ({
+test('guided tour: demo shop is created, the order story, then the spotlights, then start your own', async ({
   page,
 }) => {
   await page.route('**/*', (route) =>
@@ -23,17 +23,18 @@ test('guided tour: demo shop is created, fourteen spotlights, then start your ow
   await expect(tour).toBeVisible({ timeout: 30_000 })
   await page.waitForTimeout(800)
   await page.screenshot({ path: 'docs/stories/T-1-shop.png' })
+  // The order story steps carry seeded names and numbers (tests/tour-chain.spec.ts checks them).
   const titles = [
+    /runs out/,
+    'The AI drafts the order',
+    'It lands at the wholesaler',
+    'A big chain does it in SAP',
+    'Goods arrive',
+    'Customers come back',
     'Your menu, by category',
-    'Tomorrow’s prep plan',
     'Close the day in a minute',
-    'Running low? Find suppliers',
     'Just talk or type',
     'Get on Google, guided',
-    'Share your page',
-    'Supply chain',
-    'Purchase orders',
-    'View as SAP (IDoc)',
     'Import sales or menu (Excel, photo, notes)',
     'Get your first customers',
     'Your new shop is ready',
@@ -41,7 +42,7 @@ test('guided tour: demo shop is created, fourteen spotlights, then start your ow
   for (const [index, title] of titles.entries()) {
     await page.getByRole('button', { name: 'Next', exact: true }).tap()
     await expect(page.getByRole('dialog', { name: title })).toBeVisible()
-    if (index === 1 || index === 4) {
+    if (index === 6 || index === 7) {
       await page.waitForTimeout(700)
       await page.screenshot({ path: `docs/stories/T-${index + 2}-spotlight.png` })
     }
