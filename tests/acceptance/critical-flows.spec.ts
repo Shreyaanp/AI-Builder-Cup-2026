@@ -130,8 +130,8 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
     const flow = (await import('/src/features/v1/newShopCopy.ts' as string)) as {
       newShopCopyFor: (l: string) => { begin: string; ready: string }
     }
-    const translations = (await import('/src/features/v1/locales/index.ts' as string)) as {
-      translations: Record<string, Record<string, string>>
+    const locales = (await import('/src/features/v1/locales/index.ts' as string)) as {
+      loaders: Record<string, () => Promise<Record<string, string>>>
     }
     const strings = (await import('/src/features/v1/strings.ts' as string)) as {
       en: Record<string, string>
@@ -144,7 +144,7 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
     }
     return {
       ...strings.en,
-      ...translations.translations[language],
+      ...(language === 'en' ? {} : await locales.loaders[language]!()),
       begin: flow.newShopCopyFor(language).begin,
       ready: flow.newShopCopyFor(language).ready,
       ...onboarding.onboardingCopyFor(language),
