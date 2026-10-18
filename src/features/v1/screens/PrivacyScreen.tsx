@@ -100,7 +100,7 @@ export function PrivacyScreen() {
     )
 
   return (
-    <Box component="section" aria-label={t.navPrivacy} sx={{ maxWidth: 760, mx: 'auto', pt: 2 }}>
+    <Box component="section" aria-label={t.navPrivacy} sx={{ maxWidth: 720, mx: 'auto', pt: 2 }}>
       <Typography component="h1" variant="headlineMedium" sx={{ mb: 3 }}>
         {t.privacyTitle}
       </Typography>
