@@ -1,0 +1,17 @@
+{
+  "photo_kind": "menu",
+  "products": [
+    {
+      "name": "मसाला चाय",
+      "price": 15.0,
+      "unit": "cup",
+      "category": "पेय"
+    },
+    {
+      "name": "अदरक चाय",
+      "price": 20.0,
+      "unit": "cup",
+      "category": "पेय"
+    }
+  ]
+}

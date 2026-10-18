@@ -27,8 +27,9 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { useShowcaseCopy } from './showcaseCopy'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useSupplyCopy } from './copy'
-import { orderTotal, poNumber } from './orderFormat'
+import { orderTotal, poNumber, termsLabel } from './orderFormat'
 import { PurchaseOrderCard } from './PurchaseOrderCard'
+import { SapSandboxOrders } from './SapSandbox'
 import { useDraftReorder, useRulesActions, useSupply } from './supplyData'
 import type { ItemRule, PurchaseOrder, Relationship, RuleSet, SystemFormat } from './types'
 
@@ -159,8 +160,8 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
                   })
                   await ws.reload()
                   ws.select(result.business_id)
-                  close()
                   ws.go('coach')
+                  close()
                 } catch {
                   ws.notify(s.failed)
                 } finally {
@@ -225,6 +226,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
               ))}
             </List>
           )}
+          <SapSandboxOrders open={open} />
           {data && data.suppliers.length > 0 && (
             <Box>
               <Typography variant="titleSmall" component="h3" sx={{ mb: 2 }}>
@@ -246,7 +248,13 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
                       <Settings2 size={18} aria-hidden="true" />
                       <ListItemText
                         primary={row.supplier.name}
-                        secondary={`${s.terms(row.rules.terms_days)} · ${s.system[row.rules.system_format]}${row.supplier.demo ? ` · ${s.simulation}` : ''}`}
+                        secondary={[
+                          termsLabel(s.terms, row.rules.terms_days),
+                          s.system[row.rules.system_format],
+                          row.supplier.demo ? s.simulation : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                       />
                       <ChevronRight size={18} aria-hidden="true" />
                     </ListItemButton>

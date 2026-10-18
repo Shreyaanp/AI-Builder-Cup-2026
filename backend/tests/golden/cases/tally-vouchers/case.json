@@ -1,0 +1,8 @@
+{
+  "adapter": "connector",
+  "input": "input.xml",
+  "mime": "application/xml",
+  "source": "tally-vouchers",
+  "currency": "INR",
+  "notes": ""
+}

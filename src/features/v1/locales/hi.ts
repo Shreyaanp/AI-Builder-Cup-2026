@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const hi: Copy = {
+  remindMe: 'याद दिलाएँ',
+  reminderTiming: 'इस डिवाइस पर, आपकी दुकान खुलने और बंद होने के समय।',
+  reminderOff: 'अभी याद दिलाना बंद है।',
+  reminderUnsupported: 'इंस्टॉल किया ऐप या सूचनाओं वाला ब्राउज़र आज़माएँ।',
+  reminderShop: 'याद दिलाने के लिए दुकान जोड़ें।',
+  reminderDenied: 'सूचनाएँ बंद हैं। ब्राउज़र सेटिंग में अनुमति देकर फिर कोशिश करें।',
+  reminderFailed: 'बदलाव नहीं हुआ। फिर कोशिश करें।',
+  reminderSaving: 'बदल रहे हैं…',
+  reminderLoading: 'जाँच रहे हैं…',
   firstCustomers: 'अपने पहले ग्राहक पाएँ',
   printPoster: 'पोस्टर प्रिंट करें',
   downloadPdf: 'PDF डाउनलोड करें',
@@ -321,6 +330,7 @@ export const hi: Copy = {
   importFailed: 'फ़ाइल पढ़ नहीं पाए। सामान के नाम और दाम वाली CSV या Excel फ़ाइल भेजें।',
   salesSummary: 'बिक्री का सार',
   salesNotSaved: 'आपकी फ़ाइल से। कुछ सहेजा नहीं गया।',
+  salesCurrencyMismatch: 'दूसरी मुद्रा वाली पंक्तियाँ छोड़ दी गईं।',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} दिन · ${from} – ${to}` : 'फ़ाइल में तारीखें नहीं हैं',
   topItems: 'सबसे ज़्यादा बिकने वाले',
@@ -425,6 +435,7 @@ export const hi: Copy = {
   eraseFailed: 'मिटाना पूरा नहीं हुआ। कनेक्शन जाँचें और फिर कोशिश करें।',
   eraseRetry: 'फिर कोशिश करें',
   eraseSteps: {
+    reminders: 'याद दिलाएँ',
     face: 'चेहरे का डेटा',
     photos: 'फ़ोटो',
     records: 'दुकानें और उत्पाद',

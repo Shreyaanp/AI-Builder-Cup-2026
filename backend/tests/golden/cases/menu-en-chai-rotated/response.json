@@ -1,0 +1,17 @@
+{
+  "photo_kind": "menu",
+  "products": [
+    {
+      "name": "Masala Chai",
+      "price": 15.0,
+      "unit": "cup",
+      "category": "Drinks"
+    },
+    {
+      "name": "Ginger Chai",
+      "price": 20.0,
+      "unit": "cup",
+      "category": "Drinks"
+    }
+  ]
+}

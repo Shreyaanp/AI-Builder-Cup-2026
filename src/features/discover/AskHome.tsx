@@ -710,7 +710,9 @@ export default function AskHome({
         overflowX: 'clip',
         bgcolor: roles.surface,
         // The page ends just above the dock and the navigation bar, never under them.
-        pb: `calc(${dockHeight + NAV + 16}px + env(safe-area-inset-bottom))`,
+        // The measured chat dock, customer navigation, and a 24px reading gap all sit below
+        // the final chips or result card.
+        pb: `calc(${dockHeight + NAV + 24}px + env(safe-area-inset-bottom, 0px))`,
       }}
     >
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
@@ -940,6 +942,7 @@ export default function AskHome({
           navigation bar, on the keyboard while typing, clear of the safe areas. */}
       <Box
         ref={dock}
+        data-testid="customer-chat-dock"
         sx={{
           position: 'fixed',
           left: 0,

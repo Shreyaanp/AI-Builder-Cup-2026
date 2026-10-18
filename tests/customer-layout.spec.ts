@@ -371,6 +371,79 @@ async function setupCustomerRoutes(page: Page) {
   })
 }
 
+for (const width of [360, 390]) {
+  test(`customer floating actions preserve Bengaluru context and clear content at ${width}px`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'phone widths')
+    await page.setViewportSize({ width, height: 800 })
+    await setupCustomerRoutes(page)
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'chalkboard.discover.filters',
+        JSON.stringify({ place: { lat: 12.9719, lng: 77.6412, label: 'Indiranagar' } }),
+      )
+    })
+
+    await page.goto('/explore/')
+    const composer = page.getByRole('search').getByRole('textbox')
+    if (
+      await page
+        .getByRole('alert')
+        .isVisible()
+        .catch(() => false)
+    ) {
+      await page.getByRole('button', { name: 'Retry' }).click()
+    }
+    await expect(composer).toBeVisible({ timeout: 30_000 })
+    await page.getByRole('link', { name: 'Browse everything nearby' }).click()
+    await expect(page).toHaveURL(/area=Indiranagar/)
+    const browseList = page.getByRole('list', { name: /around me/i })
+    await expect(browseList).toBeVisible({ timeout: 20_000 })
+    const mapAction = page.getByRole('button', { name: 'Map view' })
+    const lastBrowseTitle = browseList.getByRole('heading', { level: 3 }).last()
+    await expect(lastBrowseTitle).toBeVisible()
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    const browseCardBox = await lastBrowseTitle.boundingBox()
+    const mapBox = await mapAction.boundingBox()
+    expect(browseCardBox).not.toBeNull()
+    expect(mapBox).not.toBeNull()
+    expect(browseCardBox!.y + browseCardBox!.height).toBeLessThanOrEqual(mapBox!.y)
+
+    await page.goto('/explore/')
+    const answerComposer = page.getByRole('search').getByRole('textbox')
+    await answerComposer.fill('coffee')
+    await answerComposer.press('Enter')
+    const answerArticle = page.getByRole('article', { name: 'coffee' })
+    await expect(answerArticle).toBeVisible({ timeout: 20_000 })
+    const answerTitle = answerArticle.getByRole('heading', { level: 3 }).last()
+    const dock = page.getByTestId('customer-chat-dock')
+    await expect(answerTitle).toBeVisible()
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    const answerBox = await answerTitle.boundingBox()
+    const dockBox = await dock.boundingBox()
+    expect(answerBox).not.toBeNull()
+    expect(dockBox).not.toBeNull()
+    expect(answerBox!.y + answerBox!.height).toBeLessThanOrEqual(dockBox!.y)
+
+    const lastChip = page
+      .getByRole('list', { name: 'Ask about anything nearby' })
+      .getByRole('button')
+      .last()
+    // The chips are present on the opening view and scrolling places them above the same dock.
+    await page.evaluate(() => sessionStorage.removeItem('chalkboard.ask.conversation.v1'))
+    await page.goto('/explore/')
+    await expect(lastChip).toBeVisible({ timeout: 20_000 })
+    await lastChip.scrollIntoViewIfNeeded()
+    const chipBox = await lastChip.boundingBox()
+    const openingDockBox = await dock.boundingBox()
+    expect(chipBox).not.toBeNull()
+    expect(openingDockBox).not.toBeNull()
+    expect(chipBox!.y + chipBox!.height).toBeLessThanOrEqual(openingDockBox!.y)
+  })
+}
+
 const screenshotDir = process.env.SCREENSHOT_DIR ?? 'docs/ux/layout-after'
 
 test.beforeAll(() => {

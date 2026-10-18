@@ -284,11 +284,23 @@ test('guide and payment settings render in all 15 locales', async ({ page }, inf
     const shellPath = '/src/features/v1/locales/index.ts'
     const englishPath = '/src/features/v1/strings.ts'
     const copy = await import(copyPath)
-    const shell = await import(shellPath)
+    const shell = (await import(shellPath)) as {
+      loaders: Record<string, () => Promise<Record<string, string>>>
+    }
     const english = await import(englishPath)
     return {
       tools: { en: copy.english, ...copy.translations },
-      shell: { en: english.en, ...shell.translations },
+      shell: {
+        en: english.en,
+        ...Object.fromEntries(
+          await Promise.all(
+            Object.entries(shell.loaders).map(async ([locale, load]) => [
+              locale,
+              await (load as () => Promise<Record<string, string>>)(),
+            ]),
+          ),
+        ),
+      },
     }
   })
   for (const language of LOCALES) {

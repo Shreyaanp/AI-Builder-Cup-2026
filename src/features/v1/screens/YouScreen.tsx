@@ -31,8 +31,10 @@ import { shape } from '../../../design/theme'
 import type { ColorMode } from '../../../design/theme'
 import { isLanguagePref, LOCALE_NAMES, LOCALES, systemLocale } from '../../../i18n/locales'
 import { usePreferences, usePreferencesDispatch } from '../../../state/hooks'
+import { SeeAgain } from '../../first-run/FirstRun'
 import { TourMenuButton } from '../../tour/Tour'
 import { Sheet } from '../Sheet'
+import { ReminderSettings } from '../ReminderSettings'
 import { useCopy } from '../strings'
 import { useTabsCopy } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
@@ -172,6 +174,8 @@ export function YouScreen() {
         <TrustCard compact />
 
         <Group title={t.settings}>
+          <SeeAgain app="owner" />
+          <ReminderSettings />
           <Box sx={{ px: 3, py: 2 }}>
             {/* Default follows the phone's language setting; owners can pin a language here. */}
             <TextField

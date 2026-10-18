@@ -251,3 +251,10 @@ def test_reading_a_normal_turn_adds_no_latency() -> None:
             asks_to_end(said)
     per_turn = (time.perf_counter() - start) / (rounds * len(turns))
     assert per_turn < 0.0005, f"{per_turn * 1e6:.1f} µs per turn"
+
+
+def test_a_long_repeated_finish_phrase_cannot_stall_the_event_loop() -> None:
+    start = time.perf_counter()
+    assert not asks_to_end(" ".join(["bye"] * 28) + " x")
+    assert not asks_to_end(" ".join(["bye"] * 38))
+    assert time.perf_counter() - start < 0.05

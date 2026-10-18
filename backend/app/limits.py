@@ -38,6 +38,7 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "coach": ((20, 60), (300, 86_400)),
     # Every mic press opens a session; owners test voice many times in a row.
     "voice": ((30, 600), (300, 86_400)),
+    "voice:resume": ((90, 600), (600, 86_400)),
     "photo": ((10, 60), (60, 86_400)),
     # Shop gallery uploads (moderated, no AI extraction).
     "gallery": ((20, 60), (100, 86_400)),
@@ -47,6 +48,7 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     # The Prep plan tile loads with My shop; repeats are answered from the forecast cache.
     "forecast": ((120, 3_600), (1_000, 86_400)),
     "owner:read": ((120, 3_600), (1_000, 86_400)),
+    "owner:write": ((30, 60), (200, 86_400)),
     "rescue:write": ((30, 60), (200, 86_400)),
     "rescue:public": ((30, 60),),
     "rescue:hold": ((20, 60), (100, 86_400)),

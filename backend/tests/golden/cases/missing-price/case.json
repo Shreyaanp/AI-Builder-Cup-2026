@@ -1,0 +1,8 @@
+{
+  "adapter": "connector",
+  "input": "input.csv",
+  "mime": "text/csv",
+  "source": "missing-price",
+  "currency": "INR",
+  "notes": "Mapping preview retains row; downstream menu import skips missing price."
+}

@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const id: Copy = {
+  remindMe: 'Ingatkan saya',
+  reminderTiming: 'Di perangkat ini, saat toko buka dan tutup.',
+  reminderOff: 'Pengingat sedang dinonaktifkan.',
+  reminderUnsupported: 'Coba aplikasi terpasang atau browser yang mendukung notifikasi.',
+  reminderShop: 'Tambah toko untuk pengingat.',
+  reminderDenied: 'Notifikasi diblokir. Izinkan di pengaturan browser, lalu coba lagi.',
+  reminderFailed: 'Gagal memperbarui. Coba lagi.',
+  reminderSaving: 'Memperbarui…',
+  reminderLoading: 'Memeriksa pengingat…',
   firstCustomers: 'Dapatkan pelanggan pertama',
   printPoster: 'Cetak poster',
   downloadPdf: 'Unduh PDF',
@@ -313,6 +322,7 @@ export const id: Copy = {
     'File itu tidak bisa dibaca. Kirim ekspor CSV atau Excel dengan nama item dan harga.',
   salesSummary: 'Ringkasan penjualan',
   salesNotSaved: 'Dari file Anda. Tidak ada yang disimpan.',
+  salesCurrencyMismatch: 'Baris dengan mata uang lain tidak disertakan.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} hari · ${from} – ${to}` : 'Tidak ada tanggal di file',
   topItems: 'Terlaris',
@@ -416,6 +426,7 @@ export const id: Copy = {
   eraseFailed: 'Penghapusan belum selesai. Periksa koneksi dan coba lagi.',
   eraseRetry: 'Coba lagi',
   eraseSteps: {
+    reminders: 'Ingatkan saya',
     face: 'data wajah',
     photos: 'foto',
     records: 'toko dan produk',

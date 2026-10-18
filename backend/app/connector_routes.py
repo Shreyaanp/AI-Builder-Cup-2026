@@ -33,6 +33,7 @@ from .imports import (
 )
 from .imports import (
     ImportRejected,
+    matching_currency_rows,
     menu_items,
     sales_summary,
 )
@@ -40,6 +41,7 @@ from .limits import enforce_limits
 from .merchant import ProductFields, ProposalRequest
 from .merchant_routes import consented_owner, owner, store
 from .money import to_minor
+from .pos_presets import detect_preset, prepare_rows, preset_mapping
 from .product_categories import suggest_category
 from .region import shop_currency
 from .sales import daily_sales
@@ -199,6 +201,7 @@ async def analyze_export(
     )
     reused = False
     last_synced = None
+    mapping: ConnectorMapping | None = None
     if saved_record and saved_record.get("fields"):
         try:
             mapping = ConnectorMapping(**saved_record["fields"])
@@ -206,12 +209,17 @@ async def analyze_export(
             reused = True
             last_synced = saved_record.get("last_synced")
         except Exception:
-            mapping = await ai_map_fields(
+            mapping = None
+    preset = detect_preset(headers)
+    if preset:
+        rows = prepare_rows(preset, headers, rows)
+    if mapping is None:
+        mapping = (
+            preset_mapping(preset, headers, rows)
+            if preset
+            else await ai_map_fields(
                 request.app.state.column_mapper, headers, rows[:15], resolved_source
             )
-    else:
-        mapping = await ai_map_fields(
-            request.app.state.column_mapper, headers, rows[:15], resolved_source
         )
 
     validate_mapping(mapping, headers)
@@ -240,6 +248,7 @@ async def analyze_export(
         photo_readings=[r.model_dump() for r in readings] if readings else None,
         cell_flags=[flag.model_dump() for flag in flags],
         detected_currency=detected_currency,
+        preset=preset.label if preset and not reused else None,
     )
 
 
@@ -309,8 +318,27 @@ async def sync_export(
     if not rows:
         raise HTTPException(422, "EMPTY_FILE")
 
+    if preset := detect_preset(headers):
+        rows = prepare_rows(preset, headers, rows)
     validate_mapping(mapping, headers)
+    return await build_import(
+        request, uid, business_id, context, mapping, headers, rows, resolved_source
+    )
 
+
+async def build_import(
+    request: Request,
+    uid: str,
+    business_id: str,
+    context: dict[str, Any],
+    mapping: ConnectorMapping,
+    headers: list[str],
+    rows: list[list[str]],
+    resolved_source: str,
+) -> dict[str, Any]:
+    """Turn a mapped table, uploaded or pulled live, into a review proposal. Never saves it."""
+    service = store(request)
+    business = context["business"]
     _, _, col_map = apply_mapping(mapping, headers, rows)
     now = time.time()
 
@@ -318,7 +346,19 @@ async def sync_export(
 
     # Sales export path
     if mapping.kind == "sales":
-        aggregates = daily_sales(rows, col_map, currency)
+        sales_rows, currency_mismatches = matching_currency_rows(rows, col_map, currency)
+        aggregates = daily_sales(sales_rows, col_map, currency) if sales_rows else []
+        summary = sales_summary(sales_rows, col_map)
+        if not aggregates:
+            return {
+                "kind": "sales",
+                "status": "nothing_to_propose",
+                "source_label": resolved_source,
+                "summary": summary,
+                "sales": [],
+                "currency": currency,
+                "currency_mismatches": currency_mismatches,
+            }
         proposal = await anyio.to_thread.run_sync(
             service.prepare_sales, uid, business_id, aggregates
         )
@@ -332,9 +372,10 @@ async def sync_export(
             "import_id": proposal["id"],
             "digest": proposal["digest"],
             "expires": proposal["expires"],
-            "summary": sales_summary(rows, col_map),
+            "summary": summary,
             "sales": proposal["snapshot"]["sales"],
             "currency": currency,
+            "currency_mismatches": currency_mismatches,
             "last_synced": now,
         }
 

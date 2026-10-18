@@ -212,6 +212,7 @@ def vertex_embedder(project: str, location: str, model: str) -> Embedder:
 # shared concept direction to each word in a group, so "kopi" lands near "latte" without a model.
 CONCEPTS: dict[str, str] = {
     "coffee": "coffee kopi espresso latte cappuccino americano mocha filter drip decoction "
+    "hot warm steaming "
     "brew cafe café flat white",
     "tea": "tea teh chai masala tarik matcha hojicha chaa lemongrass",
     "breakfast": "breakfast idli dosa vada poha upma paratha toast kaya egg omelette porridge "

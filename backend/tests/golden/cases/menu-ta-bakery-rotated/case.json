@@ -1,0 +1,25 @@
+{
+  "adapter": "menu",
+  "input": "input.png",
+  "mime": "image/png",
+  "currency": "INR",
+  "render": {
+    "title": "மாதிரி பேக்கரி",
+    "variant": "rotated",
+    "items": [
+      {
+        "name": "பன்",
+        "price": 2500,
+        "size": "piece",
+        "category": "பேக்கரி"
+      },
+      {
+        "name": "கேக்",
+        "price": 6000,
+        "size": "slice",
+        "category": "பேக்கரி"
+      }
+    ]
+  },
+  "notes": "Second item is marked SOLD OUT. Availability is not in extraction schema."
+}
