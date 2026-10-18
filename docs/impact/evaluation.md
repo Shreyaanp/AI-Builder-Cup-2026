@@ -10,7 +10,7 @@ All inputs are synthetic. Earlier live evaluations are summarised at the end.
 (clean, rotated, low light), receipts and invoices as PNG and PDF, POS and accounting exports
 (Tally, Shopify, Square, Zoho, Petpooja, Loyverse, generic CSV, XLSX and JSON), broken files, and
 SAP-style supply documents. PR #188 is open (not merged); it was run from its branch. See
-[its README](https://github.com/Shreyaanp/AI-Builer-Cup-2026/blob/test/golden-dataset/backend/tests/golden/README.md).
+[its README](https://github.com/Shreyaanp/AI-Builder-Cup-2026/blob/test/golden-dataset/backend/tests/golden/README.md).
 
 ### Offline: the parsers and the model contracts
 

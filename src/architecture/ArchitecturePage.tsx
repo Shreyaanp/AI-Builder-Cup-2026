@@ -4,7 +4,7 @@ import { shape, windowClass } from '../design/theme'
 import { adaptSteps, edges, lanes, scaleFacts } from './diagram'
 
 const titles = new Map(lanes.flatMap((lane) => lane.nodes.map((node) => [node.id, node.title])))
-const SOURCE = 'https://github.com/Shreyaanp/AI-Builer-Cup-2026/blob/main/docs/architecture.md'
+const SOURCE = 'https://github.com/Shreyaanp/AI-Builder-Cup-2026/blob/main/docs/architecture.md'
 
 /** /architecture on any host: the production diagram for judges, readable on a phone. */
 export default function ArchitecturePage() {
