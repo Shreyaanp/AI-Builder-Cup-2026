@@ -38,6 +38,7 @@ def test_demo_without_identity_is_filled_private_and_read_only(app, monkeypatch)
         assert response.headers["cache-control"] == "no-store"
         business = response.json()[0]
         assert business["fields"]["name"].endswith("(Demo)")
+        assert business["fields"]["name"].count("(Demo)") == 1
         assert business["fields"]["currency"] == "INR"
         assert business["public"] is False
         bid = business["id"]
