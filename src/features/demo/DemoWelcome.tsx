@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, CircularProgress, Stack, Typography } from '@mui/material'
 import { Sparkles } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
@@ -15,6 +15,17 @@ export function DemoWelcome() {
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const startAfterClose = useRef(false)
+  // Arriving from 'Take the tour' in the owner app (/demo?tour=1) starts the tour without asking again.
+  const asked = useRef(new URLSearchParams(window.location.search).get('tour') === '1')
+  useEffect(() => {
+    if (!asked.current || !ws.active) return
+    asked.current = false
+    history.replaceState(history.state, '', window.location.pathname)
+    setOpen(false)
+    void startDemoTour(ws, setBusy, setFailed).then((started) => {
+      if (!started) setOpen(true)
+    })
+  }, [ws])
   if (!ws.active) return null
   return (
     <Sheet
