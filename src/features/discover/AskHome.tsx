@@ -1,4 +1,5 @@
 import { carried, pushEntry } from '../../app/history'
+import { AiInfo } from '../v1/AiInfo'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
@@ -896,6 +897,12 @@ export default function AskHome({
         </Box>
 
         {/* The conversation so far. */}
+        {turns.some(
+          (turn) =>
+            turn.status === 'done' &&
+            (turn.answer?.area?.status === 'ok' ||
+              turn.answer?.groups.some((group) => group.places.some((p) => p.source === 'google'))),
+        ) && <AiInfo feature="places" />}
         <Box sx={{ mt: opening ? 0 : 4, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {turns.map((turn) => (
             <Box
