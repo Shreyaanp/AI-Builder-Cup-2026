@@ -137,6 +137,12 @@ export class TooSlowError extends StreamFailure {}
 /** A turn with no event for this long stops thinking ("That took too long — try again"). */
 export const TURN_IDLE_MS = 12_000
 
+// The public demo sends turns to its own sandbox coach (offline answers only).
+let coachUrl = '/api/v1/coach/stream'
+export function setCoachEndpoint(url: string | null) {
+  coachUrl = url ?? '/api/v1/coach/stream'
+}
+
 /**
  * One coach turn. `idleMs`: with no event for that long the turn ends with `TooSlowError`, so a
  * "thinking" state can never stay on (the reply, an error or a timeout always ends it).
@@ -211,7 +217,7 @@ async function streamTurn(
     document.addEventListener('visibilitychange', foreground)
     try {
       const credential = typeof token === 'function' ? await token() : token
-      const response = await fetch('/api/v1/coach/stream', {
+      const response = await fetch(coachUrl, {
         method: 'POST',
         credentials: 'same-origin',
         signal: connectionSignal,

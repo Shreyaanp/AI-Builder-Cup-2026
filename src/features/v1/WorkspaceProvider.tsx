@@ -31,14 +31,11 @@ export function WorkspaceProvider({
   me,
   children,
   readOnlyMessage,
-  onDemoAsk,
 }: {
   api: Api
   me: Me
   children: ReactNode
   readOnlyMessage?: string
-  /** Demo only: opens a sample answer for a coach starter or a screen the demo does not have. */
-  onDemoAsk?: (ask: { text: string; send: boolean }) => void
 }) {
   const t = useCopy()
   const theme = useTheme()
@@ -69,10 +66,9 @@ export function WorkspaceProvider({
   // Each phase, tab and sub-page is a history entry, so Back goes review → conversation →
   // leaves the flow, and Shop → Today, with each screen where it was.
   useLayoutEffect(() => {
-    if (readOnlyMessage) return
     const url = new URL(location.href)
     const inFlow = creatingShop || shopReady
-    url.pathname = inFlow ? '/new-shop' : '/'
+    url.pathname = readOnlyMessage ? '/demo' : inFlow ? '/new-shop' : '/'
     if (creatingShop) url.searchParams.set('step', newShopPhase)
     else if (shopReady) url.searchParams.set('step', 'ready')
     else url.searchParams.delete('step')
@@ -180,10 +176,6 @@ export function WorkspaceProvider({
 
   const setAvailability = useCallback(
     async (product: Product, available: boolean) => {
-      if (readOnlyMessage) {
-        setToast(readOnlyMessage)
-        return
-      }
       if (!activeId || !product.id) return
       // Optimistic: the switch moves at once; a failure restores the saved state.
       setInventory((current) => ({
@@ -208,7 +200,7 @@ export function WorkspaceProvider({
         setToast(t.actionFailed)
       }
     },
-    [activeId, api, reload, t.actionFailed, readOnlyMessage],
+    [activeId, api, reload, t.actionFailed],
   )
   const confirm = useCallback(
     async (proposal: Proposal) => {
@@ -302,14 +294,6 @@ export function WorkspaceProvider({
         }
       },
       go: (next) => {
-        if (onDemoAsk && next !== 'shop') {
-          onDemoAsk({ text: next, send: false })
-          return
-        }
-        if (readOnlyMessage) {
-          setToast(readOnlyMessage)
-          return
-        }
         setShopReady(false)
         setDestination(next)
       },
@@ -337,14 +321,6 @@ export function WorkspaceProvider({
       photoPending,
       consumePhotoRequest,
       startCoachDraft: (text: string, options?: { send?: boolean }) => {
-        if (onDemoAsk) {
-          onDemoAsk({ text, send: Boolean(options?.send) })
-          return
-        }
-        if (readOnlyMessage) {
-          setToast(readOnlyMessage)
-          return
-        }
         setDestination('coach')
         setCoachDraftSend(Boolean(options?.send))
         setCoachDraft(text)
@@ -357,12 +333,11 @@ export function WorkspaceProvider({
       faceOpen,
       setFaceOpen: readOnlyMessage ? () => setToast(readOnlyMessage) : setFaceOpen,
       editor,
-      openEditor: readOnlyMessage ? () => setToast(readOnlyMessage) : setEditor,
+      openEditor: setEditor,
     }),
     [
       api,
       readOnlyMessage,
-      onDemoAsk,
       customerOrigin,
       me,
       businesses,
