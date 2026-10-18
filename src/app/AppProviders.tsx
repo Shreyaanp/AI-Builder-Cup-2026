@@ -21,19 +21,27 @@ import { sideKey } from '../auth/appSide'
 const languageChosenKey = () => sideKey('language.chosen')
 const preferencesKey = () => sideKey('preferences')
 
+/**
+ * The pre-split device-wide records. A value not seen before (an older app version or a test
+ * wrote it) is copied to both sides once; after that each side's own record wins.
+ */
+function adoptLegacy(legacy: string, name: string) {
+  const value = localStorage.getItem(legacy)
+  const seen = `chalkboard.legacy.${name}`
+  if (value === null || localStorage.getItem(seen) === value) return
+  for (const side of ['owner', 'customer'])
+    localStorage.setItem(`chalkboard.${side}.${name}`, value)
+  localStorage.setItem(seen, value)
+}
+
 function readPreferences(): Preferences {
   let saved: Partial<Preferences> = {}
   let chosen = false
   try {
-    // This side's record wins; the pre-split device-wide one is only a fallback.
-    chosen =
-      (localStorage.getItem(languageChosenKey()) ??
-        localStorage.getItem('niva.language.chosen')) === '1'
-    saved = JSON.parse(
-      localStorage.getItem(preferencesKey()) ??
-        localStorage.getItem('niva.starter.preferences') ??
-        '{}',
-    ) as Partial<Preferences>
+    adoptLegacy('niva.language.chosen', 'language.chosen')
+    adoptLegacy('niva.starter.preferences', 'preferences')
+    chosen = localStorage.getItem(languageChosenKey()) === '1'
+    saved = JSON.parse(localStorage.getItem(preferencesKey()) ?? '{}') as Partial<Preferences>
   } catch {
     /* Storage may be disabled. */
   }
