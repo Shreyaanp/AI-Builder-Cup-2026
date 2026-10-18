@@ -79,6 +79,7 @@ from .new_shop_tools import go_live
 from .owner_routes import router as owner_router
 from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
+from .places_cache import shared_places
 from .planning_routes import router as planning_router
 from .playbook import PlaybookWriter
 from .playbook_routes import router as playbook_router
@@ -212,6 +213,8 @@ def create_app(
         app.state.playbook_writer = PlaybookWriter(settings)
         app.state.speech = Speech(settings)
         app.state.maps = maps_service or MapsService(settings)
+        if app.state.maps.shared is None:
+            app.state.maps.shared = shared_places(client, settings)
         app.state.grounding = AreaGrounding(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
         retail = (

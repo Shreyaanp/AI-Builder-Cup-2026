@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from .limits import client_ip, enforce_limits
 from .merchant import MerchantRepository, ProposalRequest
 from .place_photos import PlacesPhotos
+from .places_cache import SharedPlaces
 from .settings import Settings
 from .shop_time import shop_timezone
 from .words import words
@@ -34,6 +35,21 @@ PLACES_MASK = ",".join(
         "priceLevel",
         "googleMapsUri",
         "photos",
+    )
+)
+# Field masks pick the Places SKU: ask only for what each caller shows. The station anchor needs
+# no rating, opening state or price (Pro, not Enterprise), the grounded-answer pins no photos.
+STATION_MASK = ",".join(
+    "places." + field for field in ("id", "displayName", "location", "primaryType")
+)
+DETAILS_MASK = ",".join(
+    (
+        "id",
+        "displayName",
+        "location",
+        "currentOpeningHours.openNow",
+        "rating",
+        "googleMapsUri",
     )
 )
 CATEGORIES = {
@@ -279,22 +295,49 @@ class MapsService:
         self.photos = PlacesPhotos(self.client, self.key, enabled=not self.demo)
         self.cache: dict[tuple[Any, ...], tuple[float, Any]] = {}
         self.lock = asyncio.Lock()
+        # Places search/details shared by every instance (main.py sets it when PLACES_CACHE is
+        # on and the app runs on Firestore); this per-instance memory stays in front of it.
+        self.shared: SharedPlaces | None = None
 
     async def close(self) -> None:
         await self.client.aclose()
 
-    async def cached(self, key: tuple[Any, ...], lookup: Any) -> Any:
+    async def cached(self, key: tuple[Any, ...], lookup: Any, shared: bool = False) -> Any:
         # Single-flight prevents bursts from multiplying paid lookups. Bounded lifetime and size.
         async with self.lock:
             now = time.monotonic()
             self.cache = {k: v for k, v in self.cache.items() if v[0] > now}
             if key in self.cache:
+                if shared:
+                    log.info("places_cache", kind=key[0], result="hit", layer="memory")
                 return self.cache[key][1]
-            result = await lookup()
+            result = await self.shared_lookup(key, lookup) if shared else await lookup()
             if len(self.cache) >= 256:
                 self.cache.pop(next(iter(self.cache)))
             self.cache[key] = (time.monotonic() + 600, result)
             return result
+
+    async def shared_lookup(self, key: tuple[Any, ...], lookup: Any) -> Any:
+        """The shared copy when another instance paid for it; otherwise call Google and share
+        the answer. A store failure only costs the provider call."""
+        store = None if self.demo else self.shared
+        if store:
+            try:
+                found = await store.get(key)
+            except Exception:  # noqa: BLE001 - the cache is an optimisation; Google still answers
+                log.warning("places_cache_unavailable", kind=key[0])
+                found = None
+            if found is not None:
+                log.info("places_cache", kind=key[0], result="hit", layer="shared")
+                return found
+        log.info("places_cache", kind=key[0], result="miss")
+        result = await lookup()
+        if store and result is not None:
+            try:
+                await store.put(key, result)
+            except Exception:  # noqa: BLE001
+                log.warning("places_cache_unavailable", kind=key[0])
+        return result
 
     async def geocode(self, location: str) -> dict[str, Any]:
         async def lookup() -> dict[str, Any]:
@@ -376,7 +419,7 @@ class MapsService:
         return dict(await self.cached(("reverse", round(lat, 5), round(lng, 5)), lookup))
 
     async def places(
-        self, lat: float, lng: float, radius: int, q: str, category: str
+        self, lat: float, lng: float, radius: int, q: str, category: str, mask: str = PLACES_MASK
     ) -> list[dict[str, Any]]:
         async def lookup() -> list[dict[str, Any]]:
             if self.demo:
@@ -407,7 +450,7 @@ class MapsService:
             try:
                 response = await self.client.post(
                     "https://places.googleapis.com/v1/places:" + method,
-                    headers={"X-Goog-Api-Key": self.key, "X-Goog-FieldMask": PLACES_MASK},
+                    headers={"X-Goog-Api-Key": self.key, "X-Goog-FieldMask": mask},
                     json=payload,
                 )
                 response.raise_for_status()
@@ -417,7 +460,9 @@ class MapsService:
 
         return list(
             await self.cached(
-                ("places", round(lat, 3), round(lng, 3), radius, q.casefold(), category), lookup
+                ("places", round(lat, 3), round(lng, 3), radius, q.casefold(), category, mask),
+                lookup,
+                shared=True,
             )
         )
 
@@ -432,7 +477,7 @@ class MapsService:
                     "https://places.googleapis.com/v1/places/" + place_id,
                     headers={
                         "X-Goog-Api-Key": self.key,
-                        "X-Goog-FieldMask": PLACES_MASK.replace("places.", ""),
+                        "X-Goog-FieldMask": DETAILS_MASK,
                     },
                 )
                 response.raise_for_status()
@@ -443,7 +488,7 @@ class MapsService:
 
         if not re.fullmatch(r"[A-Za-z0-9_-]{8,256}", place_id):
             return None
-        return await self.cached(("place", place_id), lookup)
+        return await self.cached(("place", place_id), lookup, shared=True)
 
 
 async def prepare_pin(

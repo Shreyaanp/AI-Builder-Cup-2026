@@ -25,6 +25,7 @@ from sse_starlette import EventSourceResponse, ServerSentEvent
 from .community import Community, Profile, stated_preferences
 from .discover import (
     CATEGORIES,
+    STATION_MASK,
     DiscoveryPlace,
     MapsService,
     TopItem,
@@ -397,7 +398,7 @@ async def nearest_station(maps: MapsService, lat: float, lng: float) -> Anchor |
             return None
         return Anchor(name=near[0], lat=near[1], lng=near[2], demo=True)
     try:
-        rows = await maps.places(lat, lng, 2000, "metro train station", "")
+        rows = await maps.places(lat, lng, 2000, "metro train station", "", STATION_MASK)
     except HTTPException:
         return None
     for row in rows:

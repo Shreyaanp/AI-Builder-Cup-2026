@@ -26,3 +26,13 @@ requested 4,000-character ceiling. SSE resumes do not consume another text quota
 Voice uses WebSocket `RATE_LIMITED` error frames and closes with code 1008 because
 its existing protocol authenticates after accepting the WebSocket; HTTP routes
 return 429 with `detail: "RATE_LIMITED"` and `Retry-After`.
+
+# Places cache TTL
+
+With `PLACES_CACHE` on (default), Places results are shared across instances under
+`<namespace>/places/places_cache/<hash>` for 30 minutes (see `docs/impact/cost.md`). Reads ignore
+expired entries; enable deletion with (documentation only, placeholders as above):
+
+```sh
+gcloud firestore fields ttls update expires_at --collection-group=places_cache --enable-ttl --project=PROJECT_ID --database=DATABASE_ID
+```

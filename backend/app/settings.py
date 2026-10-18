@@ -98,6 +98,16 @@ class Settings(BaseSettings):
     # until measured in production; without it the coach runs exactly as before.
     context_cache_enabled: bool = False
     context_cache_ttl_seconds: int = Field(default=1800, ge=60, le=86_400)
+    # One shared Vertex cache of the coach rules + tool schemas (text coach and new-shop
+    # onboarding, never Live voice), reused by every shop; any cache error sends the normal
+    # request. Off by default: turn on with GEMINI_CONTEXT_CACHE=true (see docs/impact/cost.md).
+    gemini_context_cache: bool = False
+    gemini_context_cache_ttl_seconds: int = Field(default=3600, ge=300, le=86_400)
+    # Places results shared across instances (Firestore, when the app runs on it) for a short
+    # time. Google Maps Platform terms allow only short-term caching of Places content, so the
+    # TTL is capped at one hour; place ids alone may be kept indefinitely.
+    places_cache: bool = True
+    places_cache_ttl_seconds: int = Field(default=1800, ge=60, le=3600)
     # Customer AI answers about the area with Gemini's Google Maps grounding tool (Vertex).
     # "off" keeps the honest fallback (our list + straight-line distances); "demo" returns
     # labelled sample answers for offline previews and browser tests; "live" calls Gemini.
