@@ -210,7 +210,7 @@ export function HoursEditor({
                         width: 88,
                         flexShrink: 0,
                         justifyContent: 'space-between',
-                        '& .MuiFormControlLabel-label': { typography: 'bodySmall' },
+                        '& .MuiFormControlLabel-label': { typography: 'bodyMedium' },
                       }}
                       control={
                         <Checkbox
@@ -234,7 +234,7 @@ export function HoursEditor({
               })}
           </Stack>
           {overnight && (
-            <Typography id={`${id}-overnight`} variant="bodySmall" color="text.secondary">
+            <Typography id={`${id}-overnight`} variant="bodyMedium" color="text.secondary">
               {t.overnight}
             </Typography>
           )}
@@ -271,12 +271,12 @@ export function HoursList({ hours }: { hours?: DayHours[] }) {
       >
         {same ? (
           <>
-            <Typography component="dt" variant="bodySmall">
+            <Typography component="dt" variant="bodyMedium">
               {dayLabel(weekdays[0]!, locale)}–{dayLabel(weekdays[weekdays.length - 1]!, locale)}
             </Typography>
             <Typography
               component="dd"
-              variant="bodySmall"
+              variant="bodyMedium"
               sx={{ m: 0, fontVariantNumeric: 'tabular-nums' }}
             >
               {`${first!.open}–${first!.close}${first!.open! > first!.close! ? ' (+1)' : ''}`}
@@ -287,12 +287,12 @@ export function HoursList({ hours }: { hours?: DayHours[] }) {
             const entry = hours.find((item) => item.day === day)
             return entry
               ? [
-                  <Typography component="dt" variant="bodySmall" key={`${day}-label`}>
+                  <Typography component="dt" variant="bodyMedium" key={`${day}-label`}>
                     {dayLabel(day, locale)}
                   </Typography>,
                   <Typography
                     component="dd"
-                    variant="bodySmall"
+                    variant="bodyMedium"
                     key={day}
                     sx={{ m: 0, fontVariantNumeric: 'tabular-nums' }}
                   >

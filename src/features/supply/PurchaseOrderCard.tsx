@@ -261,7 +261,7 @@ export function PurchaseOrderCard({
           </Box>
         )}
         {order.simulated && (
-          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
             {order.supplier.system === 'idoc' ? showcase.simulated : s.simulationNote}
           </Typography>
         )}
@@ -310,7 +310,7 @@ export function PurchaseOrderCard({
           {reasons.map((check, index) => (
             <Typography
               key={`${check.code}-${index}`}
-              variant="bodySmall"
+              variant="bodyMedium"
               color="text.secondary"
               sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}
             >
@@ -346,7 +346,7 @@ export function PurchaseOrderCard({
       ) : (
         <>
           {order.auto_sent && (
-            <Typography variant="bodySmall" color="text.secondary">
+            <Typography variant="bodyMedium" color="text.secondary">
               {s.autoSent}
             </Typography>
           )}
@@ -524,7 +524,7 @@ function DocumentDetail({
   const changes = doc.kind === 'ORDRSP' ? (order.changes ?? []) : []
   return (
     <Stack spacing={2} sx={{ mt: 0.5, ...enterRise }}>
-      <Typography variant="bodySmall" color="text.secondary">
+      <Typography variant="bodyMedium" color="text.secondary">
         {outbound ? s.sentAs(theirs) : s.cameAs(theirs)} · {s.reader[doc.reader]}
       </Typography>
       {changes.map((change, index) => {
@@ -829,7 +829,7 @@ function NextStep({
               {s.disputed}
             </Typography>
           )}
-          <Typography variant="bodySmall" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+          <Typography variant="bodyMedium" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
             {s.invoiceNote}
           </Typography>
           <Button
