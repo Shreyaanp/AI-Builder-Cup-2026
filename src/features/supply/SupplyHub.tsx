@@ -1,13 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import {
-  Box,
-  Button,
-  ButtonBase,
-  CircularProgress,
-  Stack,
-  Typography,
-  useTheme,
-} from '@mui/material'
+import { Box, Button, ButtonBase, Skeleton, Stack, Typography, useTheme } from '@mui/material'
 import { Truck } from 'lucide-react'
 import { shape } from '../../design/theme'
 import { Sheet } from '../v1/Sheet'
@@ -119,9 +111,9 @@ export function SupplyHub({
                 </Button>
               </Stack>
             ) : (
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }} aria-busy="true">
-                <CircularProgress size={20} />
-                <Typography>{c.loading}</Typography>
+              <Stack spacing={2} aria-busy="true" aria-label={c.loading}>
+                <Skeleton variant="rounded" height={88} />
+                <Skeleton variant="rounded" height={64} />
               </Stack>
             )
           ) : (

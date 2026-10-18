@@ -201,7 +201,7 @@ test('owner tour connects Today, forecast, payment preview and supplier timeline
   })
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /^Payments & rides/ }).click()
-  await page.getByRole('textbox', { name: 'Amount (INR)', exact: true }).fill('40')
+  await page.getByRole('textbox', { name: 'Amount (₹)', exact: true }).fill('40')
   await page.getByRole('button', { name: 'Create link', exact: true }).click()
   await expect(page.getByRole('img', { name: /QR.*40/ })).toBeVisible()
   const payment = new URL(

@@ -350,7 +350,7 @@ export function RulesEditor({ row, onSaved }: { row: Relationship; onSaved: () =
           }
           label={s.autoSend}
         />
-        <Typography variant="bodySmall" color="text.secondary" sx={{ display: 'block', ml: 6 }}>
+        <Typography variant="bodyMedium" color="text.secondary" sx={{ display: 'block', ml: 6 }}>
           {s.autoSendHint}
         </Typography>
       </Box>
