@@ -172,7 +172,7 @@ function FlowSection({ flow, t, cta }: { flow: Flow; t: PagesCopy; cta: ReactNod
 
 function ShopsCta({ t }: { t: PagesCopy }) {
   return (
-    <>
+    <div className="hw-cta-pair">
       <Button variant="contained" size="large" href={demoUrl} endIcon={<ArrowRight size={18} />}>
         {t.tryDemo}
       </Button>
@@ -184,7 +184,7 @@ function ShopsCta({ t }: { t: PagesCopy }) {
       >
         {t.forBusiness}
       </Button>
-    </>
+    </div>
   )
 }
 
@@ -324,19 +324,35 @@ function Features({ t }: { t: PagesCopy }) {
 }
 
 /** The landing proposal (docs/LANDING-PLAN.md), for the owner to approve before it ships. */
-function Preview({ t }: { t: PagesCopy }) {
+function Preview({ t, front }: { t: PagesCopy; front: boolean }) {
   return (
     <>
-      <p className="hw-banner" role="note">
-        {t.previewBanner}
-      </p>
+      {!front && (
+        <p className="hw-banner" role="note">
+          {t.previewBanner}
+        </p>
+      )}
       <section className="hw-hero preview">
         <Typography component="h1" className="hw-title">
           {t.previewHero}
         </Typography>
         <Typography className="hw-lead">{t.lead}</Typography>
         <div className="hw-cta">
-          <ShopsCta t={t} />
+          {front ? (
+            <>
+              <CustomersCta t={t} />
+              <Button
+                variant="outlined"
+                size="large"
+                href={businessUrl}
+                endIcon={<ArrowUpRight size={18} />}
+              >
+                {t.forBusiness}
+              </Button>
+            </>
+          ) : (
+            <ShopsCta t={t} />
+          )}
         </div>
       </section>
       <section className="hw-story" aria-labelledby="story-title">
@@ -410,23 +426,32 @@ function Preview({ t }: { t: PagesCopy }) {
   )
 }
 
-/** /how-it-works, /features and /landing-preview: public, on both hosts, no API calls. */
-export default function HowItWorks() {
+/**
+ * /how-it-works, /features and /landing-preview: public, on both hosts, no API calls.
+ * `front` renders the same one-story page as the customer host's front door "/".
+ */
+export default function HowItWorks({ front = false }: { front?: boolean }) {
   const theme = useTheme()
   const t = pagesCopyFor(useLocale())
-  const page = pageFor(location.pathname)
+  const page = front ? 'preview' : pageFor(location.pathname)
   const title =
-    page === 'features' ? t.featuresTitle : page === 'preview' ? t.previewBanner : t.howTitle
+    page === 'features'
+      ? t.featuresTitle
+      : page === 'preview'
+        ? front
+          ? t.brand
+          : t.previewBanner
+        : t.howTitle
   useEffect(() => {
-    document.title = `${title} · Chalkboard`
-    if (page !== 'preview') return
+    document.title = front ? 'Chalkboard' : `${title} · Chalkboard`
+    if (page !== 'preview' || front) return
     // The proposal must never be indexed or mistaken for the live landing.
     const robots = document.createElement('meta')
     robots.name = 'robots'
     robots.content = 'noindex'
     document.head.appendChild(robots)
     return () => robots.remove()
-  }, [title, page])
+  }, [title, page, front])
   return (
     <div className="hw" style={brandVars(theme.material, theme.palette.mode)}>
       <a className="hw-skip" href="#hw-main">
@@ -437,7 +462,7 @@ export default function HowItWorks() {
         {page === 'features' ? (
           <Features t={t} />
         ) : page === 'preview' ? (
-          <Preview t={t} />
+          <Preview t={t} front={front} />
         ) : (
           <How t={t} />
         )}

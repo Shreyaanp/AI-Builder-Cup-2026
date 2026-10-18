@@ -31,11 +31,14 @@ export function WorkspaceProvider({
   me,
   children,
   readOnlyMessage,
+  onDemoAsk,
 }: {
   api: Api
   me: Me
   children: ReactNode
   readOnlyMessage?: string
+  /** Demo only: opens a sample answer for a coach starter or a screen the demo does not have. */
+  onDemoAsk?: (ask: { text: string; send: boolean }) => void
 }) {
   const t = useCopy()
   const theme = useTheme()
@@ -299,6 +302,10 @@ export function WorkspaceProvider({
         }
       },
       go: (next) => {
+        if (onDemoAsk && next !== 'shop') {
+          onDemoAsk({ text: next, send: false })
+          return
+        }
         if (readOnlyMessage) {
           setToast(readOnlyMessage)
           return
@@ -330,6 +337,10 @@ export function WorkspaceProvider({
       photoPending,
       consumePhotoRequest,
       startCoachDraft: (text: string, options?: { send?: boolean }) => {
+        if (onDemoAsk) {
+          onDemoAsk({ text, send: Boolean(options?.send) })
+          return
+        }
         if (readOnlyMessage) {
           setToast(readOnlyMessage)
           return
@@ -351,6 +362,7 @@ export function WorkspaceProvider({
     [
       api,
       readOnlyMessage,
+      onDemoAsk,
       customerOrigin,
       me,
       businesses,

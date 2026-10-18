@@ -94,7 +94,7 @@ for (const appearance of ['light', 'dark'] as const) {
     test(`Landing keeps one business link and a clear discovery action (${appearance})`, async ({
       page,
     }, info) => {
-      await page.goto('/?app=landing')
+      await page.goto('/?app=landing&landing=classic')
       const topBar = page.getByRole('banner').getByRole('link', { name: 'For businesses' })
       if ((page.viewportSize()?.width ?? 0) < 900) await expect(topBar).toBeHidden()
       else {
