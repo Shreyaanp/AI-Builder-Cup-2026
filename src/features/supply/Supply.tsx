@@ -160,8 +160,8 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
                   })
                   await ws.reload()
                   ws.select(result.business_id)
-                  close()
                   ws.go('coach')
+                  close()
                 } catch {
                   ws.notify(s.failed)
                 } finally {

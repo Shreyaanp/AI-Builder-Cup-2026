@@ -1,0 +1,5 @@
+{
+  "adapter": "supply",
+  "input": "input.json",
+  "notes": "Forecast is an ORDERS replenishment draft; no native forecast/ORDCHG kind."
+}

@@ -171,7 +171,8 @@ export default function Discover({
     for (const [key, value] of Object.entries({
       q: filters.q,
       category: filters.category,
-      area: filters.area,
+      // Keep a remembered typed/GPS neighbourhood visible in shared browse links too.
+      area: filters.place?.label ?? filters.area,
       open: filters.open ? '1' : '0',
       halal: filters.halal ? '1' : '0',
       budget: filters.budget ? '1' : '0',
@@ -379,7 +380,8 @@ export default function Discover({
         mx: 'auto',
         px: 4,
         pt: 1,
-        pb: 'max(24px, env(safe-area-inset-bottom))',
+        // Leave the final result clear of the sticky Map view action and the home indicator.
+        pb: 'calc(144px + env(safe-area-inset-bottom, 0px))',
         color: roles.onSurface,
         '--customer-spring': motion.easing.spring,
       }}
@@ -571,8 +573,13 @@ export default function Discover({
         {/* List or map: one pill in the thumb zone, floating over the results (not a title). */}
         <Box
           sx={{
-            position: 'sticky',
-            bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+            position: { xs: 'fixed', md: 'sticky' },
+            left: { xs: 0, md: 'auto' },
+            right: { xs: 0, md: 'auto' },
+            bottom: {
+              xs: 'calc(96px + env(safe-area-inset-bottom, 0px))',
+              md: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+            },
             zIndex: 3,
             order: 99,
             display: 'flex',

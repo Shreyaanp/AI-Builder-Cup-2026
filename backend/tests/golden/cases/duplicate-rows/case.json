@@ -1,0 +1,8 @@
+{
+  "adapter": "connector",
+  "input": "input.csv",
+  "mime": "text/csv",
+  "source": "duplicate-rows",
+  "currency": "INR",
+  "notes": "Preview preserves duplicates; downstream menu import collapses name/unit."
+}

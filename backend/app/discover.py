@@ -643,6 +643,9 @@ async def discover(
         # Results near an Indian location never show SGD
         if in_india and shop.get("currency") == "SGD":
             continue
+        # Results near a Singapore location never show INR
+        if in_sg and shop.get("currency") == "INR":
+            continue
         d = distance(lat, lng, shop["lat"], shop["lng"])
         if d > radius:
             continue

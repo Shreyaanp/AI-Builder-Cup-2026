@@ -1,0 +1,17 @@
+{
+  "photo_kind": "menu",
+  "products": [
+    {
+      "name": "奶茶",
+      "price": 2.5,
+      "unit": "cup",
+      "category": "饮料"
+    },
+    {
+      "name": "红豆面包",
+      "price": 1.8,
+      "unit": "piece",
+      "category": "面包"
+    }
+  ]
+}
