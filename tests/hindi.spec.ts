@@ -304,7 +304,7 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
     await customer.keyboard.press('Escape')
 
     await customer.goto('/explore/passport')
-    await expect(customer.getByText('आपका पहला स्टैंप बस एक QR दूर है')).toBeVisible()
+    await expect(customer.getByText('आपका पहला स्टैंप बस एक क्यूआर दूर है')).toBeVisible()
     await readsInHindi(customer, '24-passport')
   } finally {
     await context.close()
