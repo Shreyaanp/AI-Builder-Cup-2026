@@ -1,0 +1,71 @@
+{
+  "started_at": "2026-10-18T09:36:51.332Z",
+  "origin": "https://ogoogle-ai-5dnlvslisq-el.a.run.app",
+  "vus": 50,
+  "explorer_vus": 1,
+  "seconds": 42.1,
+  "think_ms": 100,
+  "explore_every_ms": 2500,
+  "total": {
+    "requests": 4633,
+    "errors": 0,
+    "status": {
+      "200": 4633
+    },
+    "rps": 110.1,
+    "p50_ms": 180.7,
+    "p95_ms": 636.6,
+    "p99_ms": 3797.6,
+    "max_ms": 18348.1
+  },
+  "endpoints": {
+    "health": {
+      "requests": 1537,
+      "errors": 0,
+      "status": {
+        "200": 1537
+      },
+      "rps": 36.5,
+      "p50_ms": 123.2,
+      "p95_ms": 305.3,
+      "p99_ms": 514.3,
+      "max_ms": 17915.8
+    },
+    "shop_page": {
+      "requests": 1545,
+      "errors": 0,
+      "status": {
+        "200": 1545
+      },
+      "rps": 36.7,
+      "p50_ms": 158.7,
+      "p95_ms": 464.5,
+      "p99_ms": 686.9,
+      "max_ms": 17151
+    },
+    "bundle": {
+      "requests": 1542,
+      "errors": 0,
+      "status": {
+        "200": 1542
+      },
+      "rps": 36.6,
+      "p50_ms": 276.7,
+      "p95_ms": 965,
+      "p99_ms": 6156,
+      "max_ms": 18348.1
+    },
+    "explore_list": {
+      "requests": 9,
+      "errors": 0,
+      "status": {
+        "200": 9
+      },
+      "rps": 0.2,
+      "p50_ms": 4195.2,
+      "p95_ms": 6117.2,
+      "p99_ms": 6117.2,
+      "max_ms": 7006.4
+    }
+  }
+}
