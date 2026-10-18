@@ -765,7 +765,7 @@ export default function AskHome({
             </Box>
           </Button>
           <Stack direction="row" sx={{ ml: 'auto', flexShrink: 0, alignItems: 'center' }}>
-            <Button component="a" href="/explore/demo" size="small" sx={{ minHeight: 44, px: 1 }}>
+            <Button component="a" href="/explore/demo" size="small" sx={{ minHeight: 48, px: 1 }}>
               {demo.tryDemo}
             </Button>
             <ProfileButton inline />
