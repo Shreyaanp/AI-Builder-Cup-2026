@@ -1,4 +1,5 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
+import { AiInfo } from '../AiInfo'
 import { photoCopy } from '../../coach/photoCopy'
 import { photoHeaders, preparePhoto } from '../photoPrep'
 import { PlainText } from '../../../design/PlainText'
@@ -1013,6 +1014,11 @@ function CoachScreen({
           {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
         </Typography>
       )}
+      {sorting ? (
+        <AiInfo feature="photo" />
+      ) : !empty && !showToday ? (
+        <AiInfo feature="coach" />
+      ) : null}
       <Sheet
         open={actionsOpen}
         onClose={() => setActionsOpen(false)}
@@ -1210,7 +1216,7 @@ function CoachScreen({
             // Today: how the shop is doing and what needs the owner now. Anything complete
             // goes away; the top bar already names the shop.
             <Stack spacing={3}>
-              <TodayView key={ws.active.id} actions={today} />
+              <TodayView key={ws.active.id} actions={today} showAiInfo={!sorting} />
               <GuideChips
                 compact
                 disabled={busy !== 'idle' || voice.state !== 'idle'}
