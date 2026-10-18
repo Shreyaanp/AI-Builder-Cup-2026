@@ -29,6 +29,7 @@ STEPS = (
     "face",
     "photos",
     "records",
+    "reminders",
     "gallery",
     "community",
     "analytics",
@@ -136,6 +137,9 @@ async def erase(request: Request, uid: str, only: set[str] | None = None) -> dic
         if state.photos is not None:
             await per_shop(state.photos.delete_gallery_sync)
 
+    async def reminders() -> None:
+        await anyio.to_thread.run_sync(store.feature_docs.delete, "push_subscriptions", uid)
+
     async def community() -> None:
         if getattr(state, "community", None) is not None:
             await per_shop(state.community.erase_shop)
@@ -167,6 +171,7 @@ async def erase(request: Request, uid: str, only: set[str] | None = None) -> dic
         "face": lambda: _face(request, uid),
         "photos": photos,
         "records": records,
+        "reminders": reminders,
         "gallery": gallery,
         "community": community,
         "analytics": analytics,

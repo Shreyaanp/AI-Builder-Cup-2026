@@ -1,6 +1,15 @@
 import type { Copy } from '../strings'
 
 export const vi: Copy = {
+  remindMe: 'Nhắc tôi',
+  reminderTiming: 'Trên thiết bị này, lúc cửa hàng mở và đóng cửa.',
+  reminderOff: 'Lời nhắc đang tắt.',
+  reminderUnsupported: 'Dùng ứng dụng đã cài hoặc trình duyệt hỗ trợ thông báo.',
+  reminderShop: 'Thêm cửa hàng để đặt lời nhắc.',
+  reminderDenied: 'Thông báo bị chặn. Cho phép trong cài đặt trình duyệt rồi thử lại.',
+  reminderFailed: 'Không thể cập nhật. Hãy thử lại.',
+  reminderSaving: 'Đang cập nhật…',
+  reminderLoading: 'Đang kiểm tra…',
   firstCustomers: 'Đón khách đầu tiên',
   printPoster: 'In áp phích',
   downloadPdf: 'Tải PDF',
@@ -414,6 +423,7 @@ export const vi: Copy = {
   eraseFailed: 'Chưa xóa xong. Kiểm tra kết nối và thử lại.',
   eraseRetry: 'Thử lại',
   eraseSteps: {
+    reminders: 'Nhắc tôi',
     face: 'dữ liệu khuôn mặt',
     photos: 'ảnh',
     records: 'cửa hàng và sản phẩm',
