@@ -243,18 +243,116 @@ const hi: IoCopy = {
   demoDone: 'डेमो साथी सब भेज चुका है।',
 }
 
-// Hindi and English are complete; other languages show English until translated.
+// Hindi and English are complete; other languages show English until translated, except the
+// Grow tile (title, partner status and what is left to send), which every language has.
 const tables: Record<string, IoCopy> = { en, hi }
-const localeLabels: Record<string, { title: string; sent: string }> = {
-  'zh-Hans': { title: '供应链', sent: '所有内容均已发送。' },
-  ta: { title: 'விநியோகச் சங்கிலி', sent: 'அனைத்தும் அனுப்பப்பட்டன.' },
+type TileCopy = Pick<IoCopy, 'title' | 'allQuiet' | 'needsNow' | 'notSent'> & { sent: string }
+const tileCopy: Record<string, TileCopy> = {
+  'zh-Hans': {
+    title: '供应链',
+    allQuiet: '合作伙伴：全部准时',
+    needsNow: (n) => `${n} 件事需要你现在处理`,
+    notSent: (n) => `${n} 份单据尚未发送`,
+    sent: '所有内容均已发送。',
+  },
+  ms: {
+    title: 'Rantaian bekalan',
+    allQuiet: 'Rakan kongsi: semua tepat masa',
+    needsNow: (n) => `${n} perkara perlukan anda sekarang`,
+    notSent: (n) => `${n} dokumen belum dihantar`,
+    sent: 'Semua sudah dihantar.',
+  },
+  ta: {
+    title: 'விநியோகச் சங்கிலி',
+    allQuiet: 'கூட்டாளிகள்: அனைத்தும் சரியான நேரத்தில்',
+    needsNow: (n) => `இப்போது உங்கள் கவனம் தேவை: ${n}`,
+    notSent: (n) => `இன்னும் அனுப்பாத ஆவணங்கள்: ${n}`,
+    sent: 'அனைத்தும் அனுப்பப்பட்டன.',
+  },
+  ja: {
+    title: 'サプライチェーン',
+    allQuiet: '取引先：すべて予定どおり',
+    needsNow: (n) => `今すぐ対応が必要：${n} 件`,
+    notSent: (n) => `未送信の書類：${n} 件`,
+    sent: 'すべて送信済みです。',
+  },
+  ko: {
+    title: '공급망',
+    allQuiet: '거래처: 모두 제시간',
+    needsNow: (n) => `지금 처리할 일: ${n}건`,
+    notSent: (n) => `아직 보내지 않은 문서: ${n}건`,
+    sent: '모두 보냈습니다.',
+  },
+  id: {
+    title: 'Rantai pasok',
+    allQuiet: 'Mitra: semua tepat waktu',
+    needsNow: (n) => `${n} hal perlu Anda tangani sekarang`,
+    notSent: (n) => `${n} dokumen belum dikirim`,
+    sent: 'Semua sudah terkirim.',
+  },
+  th: {
+    title: 'ห่วงโซ่อุปทาน',
+    allQuiet: 'คู่ค้า: ตรงเวลาทั้งหมด',
+    needsNow: (n) => `ต้องจัดการตอนนี้: ${n} รายการ`,
+    notSent: (n) => `เอกสารที่ยังไม่ได้ส่ง: ${n} ฉบับ`,
+    sent: 'ส่งครบทุกอย่างแล้ว',
+  },
+  vi: {
+    title: 'Chuỗi cung ứng',
+    allQuiet: 'Đối tác: tất cả đúng hạn',
+    needsNow: (n) => `${n} việc cần bạn xử lý ngay`,
+    notSent: (n) => `${n} chứng từ chưa gửi`,
+    sent: 'Đã gửi tất cả.',
+  },
+  fil: {
+    title: 'Supply chain',
+    allQuiet: 'Mga partner: lahat ay nasa oras',
+    needsNow: (n) => `${n} bagay ang kailangan mo ngayon`,
+    notSent: (n) => `${n} dokumento ang hindi pa naipapadala`,
+    sent: 'Naipadala na ang lahat.',
+  },
+  hi: {
+    title: hi.title,
+    allQuiet: hi.allQuiet,
+    needsNow: hi.needsNow,
+    notSent: hi.notSent,
+    sent: hi.empty.send,
+  },
+  bn: {
+    title: 'সাপ্লাই চেইন',
+    allQuiet: 'অংশীদার: সব সময়মতো',
+    needsNow: (n) => `এখনই আপনাকে দেখতে হবে: ${n}টি বিষয়`,
+    notSent: (n) => `${n}টি নথি এখনও পাঠানো হয়নি`,
+    sent: 'সব পাঠানো হয়েছে।',
+  },
+  te: {
+    title: 'సరఫరా గొలుసు',
+    allQuiet: 'భాగస్వాములు: అన్నీ సమయానికి',
+    needsNow: (n) => `ఇప్పుడు మీరు చూడాల్సినవి: ${n}`,
+    notSent: (n) => `ఇంకా పంపని పత్రాలు: ${n}`,
+    sent: 'అన్నీ పంపబడ్డాయి.',
+  },
+  mr: {
+    title: 'पुरवठा साखळी',
+    allQuiet: 'भागीदार: सर्व वेळेवर',
+    needsNow: (n) => `आता तुमचे लक्ष हवे: ${n}`,
+    notSent: (n) => `अजून न पाठवलेले दस्तऐवज: ${n}`,
+    sent: 'सर्व पाठवले आहे.',
+  },
+  kn: {
+    title: 'ಪೂರೈಕೆ ಸರಪಳಿ',
+    allQuiet: 'ಪಾಲುದಾರರು: ಎಲ್ಲವೂ ಸಮಯಕ್ಕೆ ಸರಿಯಾಗಿ',
+    needsNow: (n) => `ಈಗ ನಿಮ್ಮ ಗಮನ ಬೇಕು: ${n}`,
+    notSent: (n) => `ಇನ್ನೂ ಕಳುಹಿಸದ ದಾಖಲೆಗಳು: ${n}`,
+    sent: 'ಎಲ್ಲವನ್ನೂ ಕಳುಹಿಸಲಾಗಿದೆ.',
+  },
 }
 
 export function useIoCopy(): IoCopy {
   const locale = useLocale()
   const copy = tables[locale] ?? en
-  const labels = localeLabels[locale]
-  return labels
-    ? { ...copy, title: labels.title, empty: { ...copy.empty, send: labels.sent } }
-    : copy
+  const tile = tileCopy[locale]
+  if (!tile) return copy
+  const { sent, ...labels } = tile
+  return { ...copy, ...labels, empty: { ...copy.empty, send: sent } }
 }

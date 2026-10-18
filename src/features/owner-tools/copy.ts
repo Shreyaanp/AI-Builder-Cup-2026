@@ -23,7 +23,7 @@ export const english = {
   supplies: 'my supplies',
   payTitle: 'Payments & rides',
   payHint: 'Opens your UPI app; Chalkboard never handles money or confirms payment.',
-  amount: 'Amount',
+  amount: 'Amount (₹)',
   note: 'Note',
   create: 'Create link',
   pay: 'Open UPI',

@@ -231,7 +231,7 @@ function ItemCard({ product, onEdit }: { product: Product; onEdit: () => void })
         >
           {product.name}
         </Typography>
-        <Typography component="span" variant="bodySmall" color="text.secondary">
+        <Typography component="span" variant="bodyMedium" color="text.secondary">
           {unitLabel(product.unit, copy)}
         </Typography>
       </ButtonBase>
@@ -363,7 +363,7 @@ function PriceField({ product }: { product: Product }) {
         {state.error && (
           <Typography
             id={`price-error-${product.id}`}
-            variant="bodySmall"
+            variant="bodyMedium"
             sx={{ display: 'block', mt: 1, color: roles.error }}
           >
             {copy.priceInvalid}
@@ -390,7 +390,7 @@ function PriceField({ product }: { product: Product }) {
                 setState({ mode: 'view' })
               })
           }}
-          sx={{ minHeight: 40, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+          sx={{ minHeight: 48, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
         >
           {copy.savePrice(formatPrice(state.price, currency))}
         </Button>
@@ -398,7 +398,7 @@ function PriceField({ product }: { product: Product }) {
           size="small"
           startIcon={<X size={16} />}
           onClick={() => setState({ mode: 'view' })}
-          sx={{ minHeight: 40 }}
+          sx={{ minHeight: 48 }}
         >
           {t.cancel}
         </Button>
