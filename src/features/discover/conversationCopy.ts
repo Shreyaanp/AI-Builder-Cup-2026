@@ -159,7 +159,7 @@ const translations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     helloBodyEmpty: '{place} அருகில் எதையும் கேளுங்கள்.',
     area: 'பகுதி: {place}. மாற்று',
     composer: 'அருகில் உள்ள எதைப் பற்றியும் கேளுங்கள்',
-    placeholder: '“{price}க்குள் காபி” அல்லது “இப்போது திறந்த பேக்கரி” என முயலுங்கள்',
+    placeholder: '“{price} வரை காபி” அல்லது “இப்போது திறந்த பேக்கரி” என முயலுங்கள்',
     send: 'அனுப்பு',
     stop: 'நிறுத்து',
     you: 'நீங்கள் கேட்டது',
