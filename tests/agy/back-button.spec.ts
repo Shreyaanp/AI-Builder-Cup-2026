@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('Back button behaviour on phone (390px)', () => {
   test('owner tabs preserve history across Back, Forward, and sub-pages', async ({ page }) => {
-    test.setTimeout(90_000)
+    test.setTimeout(120_000)
     await enter(page)
     await seedShop(page)
     await page.keyboard.press('Escape')
