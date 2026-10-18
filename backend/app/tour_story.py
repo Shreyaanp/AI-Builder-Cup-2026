@@ -421,7 +421,7 @@ DISTRIBUTOR = {
         ],
     ),
     "singapore": (
-        "Katong Wholesale Distributors (Demo)",
+        "Katong Trading (Demo)",
         "PO-AH-2210",
         [
             ("Kopi powder", "kg", 50, 1080),
