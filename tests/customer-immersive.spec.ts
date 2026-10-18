@@ -144,23 +144,25 @@ test('customer app at 390 px: photos first, bars not floating, full-bleed shop, 
     await expect(c.getByRole('button', { name: 'Map view' })).toBeVisible()
     await noSideScroll(c)
 
-    // Shop page: the photo runs edge to edge; Back floats over it with a 48px target; Follow
-    // and the stamp card share one row.
+    // Shop page: the photo runs edge to edge; Back sits in the bar above it with a 48px target; Follow
+    // and the stamp card stay on screen.
     await c.goto(`${origin}/explore/s/${new URL(qr).pathname.split('/').pop()}`)
     const heading = c.getByRole('heading', { level: 1, name })
     await expect(heading).toBeVisible()
     const hero = await box(c.getByTestId('shop-hero-banner'))
     expect(hero.x).toBeLessThanOrEqual(0.5)
     expect(hero.width).toBeGreaterThanOrEqual(389)
-    expect(hero.y).toBeLessThanOrEqual(0.5)
     const back = await box(c.locator('a[aria-label="Back"]').first())
     expect(back.width).toBeGreaterThanOrEqual(48)
     expect(back.height).toBeGreaterThanOrEqual(48)
     const headingBox = await box(heading)
     expect(overlaps(back, headingBox)).toBe(false)
+    // Back lives in a solid bar above the photo, never over it (#259).
+    expect(back.y + back.height).toBeLessThanOrEqual(hero.y + 1)
     const follow = await box(c.getByRole('button', { name: /^Follow / }))
     const stamps = await box(c.getByRole('link', { name: /^Stamp card · / }))
-    expect(Math.abs(follow.y + follow.height / 2 - (stamps.y + stamps.height / 2))).toBeLessThan(4)
+    // They wrap onto a second line when they must, never cut at the screen edge (#259).
+    for (const b of [follow, stamps]) expect(b.x + b.width).toBeLessThanOrEqual(390)
     await noSideScroll(c)
 
     // QR scan: the stamp moment slides up from the bottom edge; Done brings the card into

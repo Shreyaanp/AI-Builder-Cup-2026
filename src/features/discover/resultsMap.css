@@ -16,8 +16,8 @@
     700 13px/1 Roboto,
     system-ui,
     sans-serif;
-  border: 2px solid #fff;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 0.3);
+  border: 2px solid var(--rm-surface);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--rm-on-surface) 30%, transparent);
   transform-origin: 50% 100%;
   transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: pointer;
@@ -45,11 +45,11 @@
   background: var(--pin-fg);
 }
 .rm-pin[data-open='true'] {
-  outline: 3px solid var(--customer-open, #2e7d32);
+  outline: 3px solid var(--customer-open);
   outline-offset: 1px;
 }
 .rm-pin[data-open='false'] {
-  outline: 3px solid #8a8f8a;
+  outline: 3px solid var(--rm-outline);
   outline-offset: 1px;
 }
 .rm-pin[data-selected='true'] {
@@ -59,9 +59,9 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #1a73e8;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 8px rgb(26 115 232 / 0.2);
+  background: var(--rm-primary);
+  border: 3px solid var(--rm-surface);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--rm-primary) 20%, transparent);
 }
 .rm-station {
   font-size: 18px;
@@ -76,7 +76,7 @@
   outline: none;
 }
 .rm-sketch-pin:focus-visible > circle:first-child {
-  stroke: var(--rm-focus, #1a73e8);
+  stroke: var(--rm-primary);
   stroke-width: 4;
 }
 @media (prefers-reduced-motion: reduce) {

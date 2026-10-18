@@ -38,7 +38,7 @@ export function CustomerTopBar({ back = false }: { back?: boolean }) {
         minHeight: 64,
         pt: 'env(safe-area-inset-top, 0px)',
         px: 'max(8px, env(safe-area-inset-left, 0px))',
-        bgcolor: `color-mix(in srgb, ${roles.surface} 88%, transparent)`,
+        bgcolor: roles.surface,
         backdropFilter: 'blur(12px)',
         borderBottom: '1px solid transparent',
         transition: 'border-color 200ms var(--c-ease)',

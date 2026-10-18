@@ -1,15 +1,7 @@
 import { useState } from 'react'
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  IconButton,
-  Snackbar,
-  Tooltip,
-  useTheme,
-} from '@mui/material'
+import { Alert, Box, Button, CircularProgress, IconButton, Snackbar, useTheme } from '@mui/material'
 import { Check, Plus } from 'lucide-react'
+import { HoverTip } from '../frontdoors/HoverTip'
 import { popIn } from '../../design/chalkMotion'
 import { useCustomer } from './account'
 import { track } from '../../app/analytics'
@@ -62,7 +54,7 @@ export function FollowButton({
   return (
     <>
       {variant === 'icon' ? (
-        <Tooltip title={label}>
+        <HoverTip title={label}>
           <IconButton
             aria-label={label}
             aria-pressed={following}
@@ -81,7 +73,7 @@ export function FollowButton({
           >
             {icon}
           </IconButton>
-        </Tooltip>
+        </HoverTip>
       ) : (
         <Button
           aria-pressed={following}

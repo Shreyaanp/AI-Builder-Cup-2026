@@ -254,11 +254,43 @@ def blocking(checks: list[Check]) -> list[Check]:
     return [check for check in checks if check.blocking]
 
 
+Size = Literal["small", "mid", "large"]
+# How a business of each size really trades with its suppliers: a stall or kirana messages a local
+# wholesaler (WhatsApp, paid on delivery), a minimart or small chain emails spreadsheet orders on
+# a week's credit, and only a large chain or distributor exchanges SAP IDoc / EDI on 30 days.
+SIZE_FORMAT: dict[str, Format] = {"small": "text", "mid": "csv", "large": "idoc"}
+SIZE_TERMS: dict[str, Terms] = {"small": 0, "mid": 7, "large": 30}
+SIZE_CREDIT = {"small": 0, "mid": 50_000, "large": 5_000_000}  # major units; 0 = no limit
+SIZE_APPROVAL = {"small": 2_000, "mid": 20_000, "large": 500_000}
+LARGE_CATEGORIES = {"supermarket chain", "restaurant group", "distributor", "hypermarket"}
+MID_CATEGORIES = {"minimart", "supermarket", "bakery chain", "restaurant chain"}
+
+
+def business_size(fields: dict[str, Any]) -> Size:
+    """small, mid or large, from the shop's own words: an "outlets" fact (20+ is large, 2 to 19
+    is mid) or a chain-like category. A single shop, stall or kirana is small."""
+    outlets = 0
+    for fact in fields.get("custom_facts") or []:
+        if str(fact.get("key", "")).casefold() == "outlets":
+            digits = "".join(c for c in str(fact.get("value", "")) if c.isdigit())
+            outlets = int(digits) if digits else 0
+    category = str(fields.get("category") or "").casefold()
+    if outlets >= 20 or category in LARGE_CATEGORIES:
+        return "large"
+    if outlets >= 2 or category in MID_CATEGORIES:
+        return "mid"
+    return "small"
+
+
 def default_rules(
-    supplier: dict[str, Any], currency: str, index: int, minor_per_major: int
+    supplier: dict[str, Any],
+    currency: str,
+    index: int,
+    minor_per_major: int,
+    size: Size = "small",
 ) -> RuleSet:
     """Sensible starting rules for a supplier the shop has not set up yet (the owner edits
-    them). Demo suppliers each run a different system, so the translator has work to do."""
+    them). The channel, credit terms and limits follow the size of the buyer."""
     from .sourcing import fact
 
     lead = int(fact(supplier, "lead_days", "1") or 1)
@@ -281,14 +313,13 @@ def default_rules(
                 ],
             )
         )
-    formats: list[Format] = ["idoc", "csv", "text", "json"]
     return RuleSet(
-        terms_days=(7, 30, 0, 7)[index % 4],
-        credit_limit=(5000, 15000, 0, 8000)[index % 4] * minor_per_major,
-        approval_over=2000 * minor_per_major,
+        terms_days=SIZE_TERMS[size],
+        credit_limit=SIZE_CREDIT[size] * minor_per_major,
+        approval_over=SIZE_APPROVAL[size] * minor_per_major,
         new_supplier_approval=True,
         auto_send=False,
-        system_format=formats[index % 4] if supplier.get("demo") else "json",
+        system_format=SIZE_FORMAT[size],
         items=items,
     )
 
