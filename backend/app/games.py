@@ -1,7 +1,7 @@
 """The game layer on top of the passport: scratch cards, collection sets, the neighbourhood co-op
 goal, streak freezes planned ahead, and shop social proof.
 
-Each mechanic and the behavioural research behind it is in docs/research/gamification.md. The
+Each mechanic and the behavioural research behind it are documented in the code. The
 rules stay honest: rewards only follow a verified stamp (never money), the server decides every
 outcome and publishes the odds, nothing expires, and demo shops only ever earn demo points.
 

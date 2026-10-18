@@ -15,7 +15,7 @@ import { useGuestCopy } from '../../customer/guestCopy'
 import { useCustomer } from '../../customer/account'
 
 /**
- * The neighbourhood goal (docs/research/gamification.md §5): one shared bar for the area's
+ * The neighbourhood goal: one shared bar for the area's
  * verified visits this week. The customer's own part is drawn in gold inside it, so their
  * contribution is visible; when the street reaches the goal, everyone who helped collects.
  */

@@ -3,7 +3,7 @@ import { paynowPayload, validPaynow } from '../src/features/owner-tools/links.js
 import { readFileSync } from 'node:fs'
 import { localOnly } from './stories/support.js'
 
-// Region persona (docs/qa/region-persona.md): the shop's location decides money, payments, rides
+// Region persona: the shop's location decides money, payments, rides
 // and the language offered after sign-in. Offline fixtures; these walk a fresh phone, so the
 // suite-wide "language already chosen" storage is cleared.
 const FRESH = { cookies: [], origins: [] }

@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test'
 import base from '../../playwright.config.js'
 
-// Eye-strain / attention audit of the customer screens (docs/qa/customer-heatmap.md).
+// Eye-strain / attention audit of the customer screens.
 // Runs against already-running local servers: WEB_PORT/API_PORT, with DEMO_WORLD_ENABLED=true
 // on the backend so the labelled demo neighbourhood exists. Not part of npm run check.
 const web = Number(process.env.WEB_PORT ?? 3200)

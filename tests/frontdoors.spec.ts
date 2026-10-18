@@ -193,7 +193,7 @@ for (const mode of ['light', 'dark'] as const) {
     await expect(page.getByRole('heading', { name: shopName })).toBeVisible()
     const capture = async (name: string) => {
       if (info.project.name === 'phone')
-        await page.screenshot({ path: `docs/codex/customer-shots/${name}-${mode}.png` })
+        await page.screenshot({ path: `output/customer-shots/${name}-${mode}.png` })
     }
     await capture('home')
     await page.getByRole('button', { name: 'Map view', exact: true }).click()

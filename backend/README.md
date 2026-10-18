@@ -37,7 +37,7 @@ uv run pip-audit --local --progress-spinner off
 uv run python -m scripts.export_contract
 ```
 
-After schema export, run from the repository root: `npx openapi-typescript docs/openapi.json -o src/api/generated.d.ts`. Commit both generated files with a contract change after review. Tests override model environment settings to prevent paid inference.
+After schema export, run from the repository root: `npx openapi-typescript backend/openapi.json -o src/api/generated.d.ts`. Commit both generated files with a contract change after review. Tests override model environment settings to prevent paid inference.
 
 ADK emits an experimental function-schema warning in the fixture tests. Passing tests do not establish live provider compatibility, real speech quality, production security or submission readiness.
 

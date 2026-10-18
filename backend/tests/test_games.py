@@ -1,6 +1,6 @@
 # ruff: noqa: F811  (the passport route fixtures are imported and requested by name)
 """The game layer: scratch cards, endowed cards, streak freezes, collection sets, the co-op goal,
-social proof and reciprocity perks (docs/research/gamification.md)."""
+social proof and reciprocity perks."""
 
 from datetime import datetime, timedelta
 

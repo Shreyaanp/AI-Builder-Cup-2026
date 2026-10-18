@@ -45,11 +45,10 @@ graphify-out/
 *.sln
 *.sw?
 
-# Local agent tooling config
-.codex/
+# Local tooling output
 output/
 .playwright-cli/
 tests/zz-*
 
-# Story director recordings (large, local only)
-docs/stories/director/**/*.webm
+# Local test and report output
+docs/

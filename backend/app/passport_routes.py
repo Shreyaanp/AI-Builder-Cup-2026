@@ -214,7 +214,7 @@ PerkTrigger = Literal[
     "full_card",
     "quest_finale",
     "rescue_hero",
-    # Reciprocity: small thank-yous the owner sets (docs/research/gamification.md §7).
+    # Reciprocity: small thank-yous the owner sets.
     "third_visit",
     "tip",
     "follow",

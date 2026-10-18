@@ -1,6 +1,6 @@
 /**
- * The game layer's entry points for other surfaces (the customer front door mounts these; see
- * docs/handoff/customer-games.md). Everything else in this folder is internal to the passport.
+ * The game layer's entry points for other surfaces (the customer front door mounts these).
+ * Everything else in this folder is internal to the passport.
  */
 export { GamesCard, NextRewardLine } from './GamesCard'
 export { useGames, useGameActions } from './api'

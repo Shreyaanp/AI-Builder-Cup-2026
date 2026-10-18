@@ -47,7 +47,7 @@ function reducedMotion() {
 }
 
 /**
- * A scratch card earned by a verified stamp (docs/research/gamification.md §1). The prize was
+ * A scratch card earned by a verified stamp. The prize was
  * drawn on the server when the stamp was made; the first touch asks the server to open the card,
  * and the foil comes away under the finger or mouse. A Reveal button does the same for keyboard
  * and screen-reader users. The odds that apply to this card are one tap away.

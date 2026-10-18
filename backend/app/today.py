@@ -1,6 +1,6 @@
 """Today's 7: a finite, hand-picked set of neighbourhood finds that changes at 7 am local.
 
-Card types, ranking and assembly follow docs/research/customer.md §3. Cards carry structured
+Card types, ranking and assembly follow the customer research. Cards carry structured
 facts (kind + params), never finished sentences, so every language words them itself. Every card
 built on demo data says so. If fewer than 7 finds qualify, fewer are shown: weak cards never pad.
 """

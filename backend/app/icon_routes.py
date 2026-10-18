@@ -1,4 +1,4 @@
-"""Shop icon endpoints. See icons.py for the flow; docs/qa/uploads.md for the contract."""
+"""Shop icon endpoints. See icons.py for the flow."""
 
 import asyncio
 import contextlib

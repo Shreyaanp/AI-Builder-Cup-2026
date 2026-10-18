@@ -126,7 +126,7 @@ class Settings(BaseSettings):
     context_cache_ttl_seconds: int = Field(default=1800, ge=60, le=86_400)
     # One shared Vertex cache of the coach rules + tool schemas (text coach and new-shop
     # onboarding, never Live voice), reused by every shop; any cache error sends the normal
-    # request. Off by default: turn on with GEMINI_CONTEXT_CACHE=true (see docs/impact/cost.md).
+    # request. Off by default: turn on with GEMINI_CONTEXT_CACHE=true.
     gemini_context_cache: bool = False
     gemini_context_cache_ttl_seconds: int = Field(default=3600, ge=300, le=86_400)
     # Places results shared across instances (Firestore, when the app runs on it) for a short

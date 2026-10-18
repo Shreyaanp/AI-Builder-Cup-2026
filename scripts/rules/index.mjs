@@ -37,7 +37,7 @@ if (update) {
   writeFileSync(BASELINE_PATH, JSON.stringify(out, null, 2) + '\n')
   console.log(`baseline written: ${BASELINE_PATH}`)
 } else if (failed) {
-  console.error(`${failed} rule(s) failed. The rules are listed in docs/RULES.md.`)
+  console.error(`${failed} rule(s) failed.`)
   process.exit(1)
 } else {
   console.log('all product rules pass')

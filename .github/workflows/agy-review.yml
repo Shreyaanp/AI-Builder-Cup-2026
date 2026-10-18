@@ -1,5 +1,5 @@
 name: AGY review
-# Advisory PR review by the Antigravity CLI on the self-hosted runner `chalkboard-pc` (see docs/ci/agy-review.md).
+# Advisory PR review by the Antigravity CLI on the self-hosted runner `chalkboard-pc`.
 # SECURITY: this personal PC runner only handles same-repo PRs, never checks out or executes PR code,
 # and never exposes a GitHub token to the Antigravity CLI.
 on:

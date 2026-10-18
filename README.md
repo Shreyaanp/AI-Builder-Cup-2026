@@ -3,9 +3,7 @@
 **Neighbourhood shops get online by talking to an AI coach; customers find them by asking.**
 
 [Customer site](https://chalkboard.shreyaan.work) ·
-[Owner app](https://business.chalkboard.shreyaan.work) ·
-[Demo video — pending](docs/submission-checklist.md#demo-video) ·
-[Deck PDF — pending](docs/submission-checklist.md#deck-pdf)
+[Owner app](https://business.chalkboard.shreyaan.work)
 
 Built for the Google AI Builder Cup, Retail & Commerce track. Speak, type or photograph a menu:
 Chalkboard turns it into details the owner can review, share and keep current. Neighbours ask
@@ -16,9 +14,9 @@ for what they need, see matching items and prices, and chat with the shop.
 Existing story-test captures, with fictional shops and offline fixtures; these are not live-model
 or physical-phone evidence.
 
-| Talk to the coach                                                                                                                | See what needs attention                                                                                                   | Ask for something nearby                                                                                                     | Collect a visit stamp                                                                                       |
-| -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| <img src="docs/stories/new-shop-4-speaking-light.png" width="190" alt="Owner onboarding with voice controls and a shop draft" /> | <img src="docs/stories/today-needs-phone.png" width="190" alt="Daily owner view with menu, low-stock and setup actions" /> | <img src="docs/stories/customer-ai-3-answer.png" width="190" alt="Customer answer with a matched item, price and map pin" /> | <img src="docs/stories/S8-3.png" width="190" alt="First shop visit earns a neighbourhood passport stamp" /> |
+| Talk to the coach                                                                                                                  | See what needs attention                                                                                                     | Ask for something nearby                                                                                                       | Collect a visit stamp                                                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| <img src=".github/assets/new-shop-4-speaking-light.png" width="190" alt="Owner onboarding with voice controls and a shop draft" /> | <img src=".github/assets/today-needs-phone.png" width="190" alt="Daily owner view with menu, low-stock and setup actions" /> | <img src=".github/assets/customer-ai-3-answer.png" width="190" alt="Customer answer with a matched item, price and map pin" /> | <img src=".github/assets/S8-3.png" width="190" alt="First shop visit earns a neighbourhood passport stamp" /> |
 
 ## The owner story
 
@@ -72,8 +70,7 @@ the seeded shops belong to a fictional demo owner.
 Use a fresh checkout with no provider configuration. The development launcher selects offline
 coach, local sign-in and photo fixtures; no Google credentials are needed. Local voice exercises
 transport, not speech recognition. Conversations and shop records use ignored local SQLite files.
-Stop each server with Ctrl+C. [Verification and limits](docs/submission-checklist.md#local-verification)
-record exactly what was checked.
+Stop each server with Ctrl+C.
 
 If the default ports are occupied, set `WEB_PORT` and `API_PORT` to unused ports in both terminals.
 
@@ -85,6 +82,5 @@ If the default ports are occupied, set `WEB_PORT` and `API_PORT` to unused ports
 - Firebase Google sign-in, Firestore records/conversations/vector recall, Cloud Storage photos and Cloud Vision SafeSearch.
 - Cloud Run serves the compiled frontend and API; BigQuery `AI.FORECAST` supplies TimesFM forecasts with a weekday-average fallback.
 
-[Architecture](docs/architecture.md) · [Google AI used — verified](docs/google-ai.md) ·
-[Submission checklist](docs/submission-checklist.md) · [Backend guide](backend/README.md) ·
+[Architecture](https://chalkboard.shreyaan.work/architecture) · [Backend guide](backend/README.md) ·
 [Contributing](CONTRIBUTING.md)

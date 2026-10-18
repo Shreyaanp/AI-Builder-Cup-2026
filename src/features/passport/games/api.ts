@@ -67,7 +67,7 @@ export function useGameActions(place?: Place) {
 }
 
 /**
- * The front door's entry point (docs/handoff/customer-games.md): the game summary for the
+ * The front door's entry point: the game summary for the
  * current account, kept fresh with the passport. Signed out, it is drawn from this phone.
  */
 export function useGames(place?: Place) {
