@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Box, ButtonBase, Stack, Typography, useTheme } from '@mui/material'
 import { ChevronRight } from 'lucide-react'
 import { shape } from '../../design/theme'
+import { Disclosure } from '../v1/Disclosure'
 import { Code } from './PurchaseOrderCard'
 import { useIoCopy } from './ioCopy'
 import { changeText, problemText, taskDetail, useIoFormat, type IoFormat } from './ioFormat'
@@ -246,6 +247,7 @@ export function SapView({ order, doc }: { order: IoOrder; doc: IoDocument }) {
             {f.qty(line.quantity)} {line.unit} {line.item}
           </Typography>
         ))}
+        {lines.length > 5 && <Disclosure>{lines.slice(5).map((line) => <Typography key={line.line}>{f.qty(line.quantity)} {line.unit} {line.item}</Typography>)}</Disclosure>}
         {order.partner.demo && (
           <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 2 }}>
             {c.simulated}

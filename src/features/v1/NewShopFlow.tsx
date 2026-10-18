@@ -60,6 +60,7 @@ import { photoHeaders, preparePhoto } from './photoPrep'
 import type { Business, PhotoResult, Product, Proposal } from './api'
 import { CameraCard, type Shot } from './CameraCard'
 import { LocationPin } from './CurrentLocation'
+import { Disclosure } from './Disclosure'
 import { GuidedDetails } from './GuidedDetails'
 import { useInChatCopy } from './inChatCopy'
 import { readablePlace, type OwnerLocation } from './location'
@@ -2101,7 +2102,7 @@ function DraftSummary({ draft }: { draft: Draft }) {
           hours ? (
             <>
               {b?.hours && <Typography>{b.hours}</Typography>}
-              <HoursList hours={b?.weekly_hours} />
+              <Disclosure title={t.fields.hours}><HoursList hours={b?.weekly_hours} /></Disclosure>
             </>
           ) : skipped.has('hours') ? (
             o.addLater
@@ -2149,7 +2150,7 @@ function SummaryCard({
       <Typography component="h2" variant="titleLarge" sx={{ mb: 1 }}>
         {o.summaryTitle}
       </Typography>
-      <DraftSummary draft={draft} />
+      <Disclosure title={o.review}><DraftSummary draft={draft} /></Disclosure>
       <Divider sx={{ my: 2 }} />
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', mb: 2 }}>
         <ShieldCheck size={20} color={roles.primary} aria-hidden="true" />

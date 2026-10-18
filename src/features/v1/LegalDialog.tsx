@@ -8,20 +8,17 @@ import {
   DialogTitle,
   Stack,
   Typography,
-  useMediaQuery,
 } from '@mui/material'
 import { LEGAL_VERSION, LEGAL } from './legal'
 import { useBackClose } from './backStack'
 import { useCopy } from './strings'
 import { useLocale } from '../../state/hooks'
-import { windowClass } from '../../design/theme'
 
 export type LegalDocument = 'terms' | 'privacy' | null
 
 export function LegalDialog({ open, onClose }: { open: LegalDocument; onClose: () => void }) {
   const t = useCopy()
   const locale = useLocale()
-  const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
   const document = LEGAL[locale] ?? LEGAL.en!
   const sections = open === 'privacy' ? document.PRIVACY : document.TERMS
   useBackClose(open !== null, onClose)
@@ -29,7 +26,7 @@ export function LegalDialog({ open, onClose }: { open: LegalDocument; onClose: (
     <Dialog
       open={open !== null}
       onClose={onClose}
-      fullScreen={compact}
+      fullScreen
       scroll="paper"
       aria-labelledby="legal-title"
     >

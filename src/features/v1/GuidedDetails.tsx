@@ -30,6 +30,7 @@ import { useInChatCopy, type DetailStep } from './inChatCopy'
 import { MapCard, type PinChoice } from './MapCard'
 import { useNewShopCopy } from './newShopCopy'
 import { useCopy } from './strings'
+import { Disclosure } from './Disclosure'
 import { shopRegion } from '../../region/region'
 
 type Row = { key: string; name: string; price: string; unit: string }
@@ -207,7 +208,7 @@ export function GuidedDetails({
     setFields((current) => ({ ...current, ...patch }))
 
   const pressed = (on: boolean) => ({
-    height: 44,
+    minHeight: 48,
     fontSize: '0.95rem',
     ...(on ? { bgcolor: roles.secondaryContainer, color: roles.onSecondaryContainer } : {}),
   })
@@ -235,7 +236,7 @@ export function GuidedDetails({
       body = (
         <Stack spacing={2}>
           <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
-            {c.kinds.map((kind) => (
+            {c.kinds.slice(0, 4).map((kind) => (
               <Chip
                 key={kind}
                 label={kind}
@@ -246,6 +247,11 @@ export function GuidedDetails({
               />
             ))}
           </Stack>
+          <Disclosure>
+            <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
+              {c.kinds.slice(4).map((kind) => <Chip key={kind} label={kind} aria-pressed={fields.category === kind} onClick={() => set({ category: kind })} sx={pressed(fields.category === kind)} />)}
+            </Stack>
+          </Disclosure>
           <TextField
             label={t.fields.category}
             value={fields.category}
@@ -411,6 +417,7 @@ export function GuidedDetails({
             value={fields.weekly_hours ?? []}
             onChange={(weekly_hours) => set({ weekly_hours })}
           />
+          <Disclosure title={shopCopy.hoursNote}>
           <TextField
             label={shopCopy.hoursNote}
             value={fields.hours}
@@ -419,6 +426,7 @@ export function GuidedDetails({
             slotProps={{ htmlInput: { maxLength: 180 } }}
             fullWidth
           />
+          </Disclosure>
         </Stack>
       )
       break
@@ -593,7 +601,7 @@ export function GuidedDetails({
         width: '100%',
         maxWidth: 640,
         mx: 'auto',
-        px: { xs: 4, sm: 6 },
+        px: { xs: 2, sm: 6 },
         pt: 'env(safe-area-inset-top)',
       }}
     >
@@ -621,7 +629,7 @@ export function GuidedDetails({
         aria-hidden="true"
         sx={{ mt: 1, height: 6, borderRadius: 3 }}
       />
-      {/* Every step at a glance: jump straight to the one to change. */}
+      <Disclosure title={t.moreOptions}>
       <Box
         component="nav"
         aria-label={c.manualTitle}
@@ -630,8 +638,7 @@ export function GuidedDetails({
           gap: 1,
           overflowX: 'auto',
           py: 2,
-          mx: { xs: -4, sm: 0 },
-          px: { xs: 4, sm: 0 },
+          flexWrap: 'wrap', 
           // Fade the right edge so a clipped chip reads as "scroll for more".
           maskImage: 'linear-gradient(to right, #000 calc(100% - 32px), transparent)',
           ...scrollArea,
@@ -647,7 +654,7 @@ export function GuidedDetails({
             onClick={() => go(at)}
             sx={{
               flexShrink: 0,
-              height: 40,
+              minHeight: 48,
               ...(at === index
                 ? {
                     bgcolor: roles.primary,
@@ -659,6 +666,7 @@ export function GuidedDetails({
           />
         ))}
       </Box>
+      </Disclosure>
       <Box key={step} sx={{ flex: 1, pt: 1, pb: 3, ...fieldFade }}>
         <Typography
           ref={heading}
@@ -673,9 +681,7 @@ export function GuidedDetails({
         >
           {c.ask[step]}
         </Typography>
-        <Typography variant="bodyLarge" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
-          {c.help[step]}
-        </Typography>
+        <Disclosure><Typography variant="bodyLarge" color="text.secondary" sx={{ mb: 2 }}>{c.help[step]}</Typography></Disclosure>
         {body}
         {(problem || error) && (
           <Alert severity="error" sx={{ mt: 3 }}>

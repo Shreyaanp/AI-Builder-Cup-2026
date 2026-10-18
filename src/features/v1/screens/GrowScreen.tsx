@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Box, LinearProgress, Stack, Typography, useTheme } from '@mui/material'
+import { Box, Button, LinearProgress, Stack, Typography, useTheme } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
 import { CalendarClock, Globe, Stamp, Wallet } from 'lucide-react'
 import { useIdentity } from '../../../auth/useIdentity'
@@ -18,6 +18,7 @@ import { readiness } from '../shopProgress'
 import { ShopSheets, Supporting, Tile, type ShopSheetKind } from '../ShopTiles'
 import { tileGrid } from '../tileSpan'
 import { useCopy } from '../strings'
+import { useInChatCopy } from '../inChatCopy'
 import { useTabsCopy } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
 import { ShopGate } from './ShopScreen'
@@ -81,6 +82,8 @@ function GrowTiles() {
   const ws = useWorkspace()
   const roles = useTheme().material
   const { state: playbook } = usePlaybook()
+  const c = useInChatCopy()
+  const [page, setPage] = useState(0)
   const [planOpen, setPlanOpen] = useState(false)
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
   const [radarOpen, setRadarOpen] = useState(false)
@@ -177,8 +180,13 @@ function GrowTiles() {
     <Stack spacing={4}>
       <MorningBrief key={shop.id} onSheet={setSheet} onRadar={() => setRadarOpen(true)} />
       <Box data-testid="grow-tiles" sx={tileGrid}>
-        {cards}
+        {cards.slice(page * 4, page * 4 + 4)}
       </Box>
+      <Stack direction="row" sx={{ gap: 2, alignItems: 'center', pb: 2 }}>
+        <Button disabled={page === 0} onClick={() => setPage(page - 1)} sx={{ minHeight: 48 }}>{c.back}</Button>
+        <Typography variant="bodyMedium" role="status">{c.stepOf(page + 1, Math.ceil(cards.length / 4))}</Typography>
+        <Button variant="contained" disabled={(page + 1) * 4 >= cards.length} onClick={() => setPage(page + 1)} sx={{ minHeight: 48, flex: 1 }}>{c.next}</Button>
+      </Stack>
       <ShopSheets
         kind={sheet ?? (planOpen ? 'plan' : null)}
         onClose={() => {
