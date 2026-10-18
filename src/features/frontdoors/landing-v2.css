@@ -533,6 +533,23 @@
 }
 
 /* Trust: the big tags (shared .hw-trust), and the founder's note in chalk handwriting. */
+@media (min-width: 900px) {
+  .l2-pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 24px;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding-inline: var(--gutter);
+  }
+  .l2-pair .l2-videos,
+  .l2-pair .l2-trust {
+    max-width: none;
+    margin: 0;
+    padding-inline: 0;
+  }
+}
 .l2-trust .hw-trust {
   margin-top: 16px;
 }
