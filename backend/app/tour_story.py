@@ -474,6 +474,17 @@ def seed_wholesaler(store: MerchantRepository, demo: DemoShop, day: date) -> Non
     supply_io.process(store, sid, context, restock, "csv", render(restock, "csv"))
 
 
+def seed_chain(store: MerchantRepository) -> None:
+    """Metro Foods and its SAP loop, as the supply-chain seed writes them for production (same
+    owner and ids, so either seed recognises the other's records)."""
+    from .demo_chains import METRO
+    from .demo_supply_seed import seed_shop as seed_chain_supply
+
+    owner = "demo-world-owner"
+    store.seed_demo_shop(owner, METRO.id, METRO.fields, METRO.products)
+    seed_chain_supply(store, owner, METRO.id)
+
+
 def seed_customer_threads(
     store: MerchantRepository,
     community: Community,
@@ -605,6 +616,7 @@ def seed_story(
         seed_shop(store, SEED_OWNER, demo, day)
         seed_reviews(community, demo, day)
         seed_rescue(store, demo, day)
+    seed_chain(store)
     owners = [next(s for s in TOUR_SHOPS if s.city == city) for city in ("bengaluru", "singapore")]
     for demo in owners:
         day = today or today_for(demo.fields.model_dump())
