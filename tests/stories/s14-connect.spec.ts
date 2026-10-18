@@ -55,7 +55,7 @@ Bun Maska,35.00,Snacks,25,piece`
     await dialog.getByRole('button', { name: /Analyze sample/i }).click()
 
     // Mapping view appears with confidence
-    await expect(dialog.getByText('AI column mapping')).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: 'Column mapping' })).toBeVisible()
     await expect(dialog.getByText('Item Name', { exact: true })).toBeVisible()
     await expect(dialog.getByText('Rate', { exact: true })).toBeVisible()
 

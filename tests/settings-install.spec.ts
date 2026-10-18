@@ -121,7 +121,15 @@ test('B36 install strings exist in all ten locales', async ({ page }) => {
     const source = '/src/features/v1/strings.ts'
     const registry = '/src/features/v1/locales/index.ts'
     const { en } = await import(source)
-    const { translations } = await import(registry)
+    const { loaders } = await import(registry)
+    const translations = Object.fromEntries(
+      await Promise.all(
+        Object.entries(loaders).map(async ([locale, load]) => [
+          locale,
+          await (load as () => Promise<Record<string, string>>)(),
+        ]),
+      ),
+    )
     return { en, ...translations } as Record<string, Record<string, string>>
   })
   for (const locale of LOCALES)
