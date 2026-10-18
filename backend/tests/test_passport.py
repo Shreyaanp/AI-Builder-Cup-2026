@@ -3,6 +3,7 @@
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -332,6 +333,16 @@ def client(app):
         yield client
 
 
+@pytest.fixture
+def midweek(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin the routes' clock to Wednesday midday in Singapore. Shops stamp by their own local
+    week and the board and the co-op by the UTC week, so on a real clock these tests broke in
+    the hours when the two weeks differ (Monday morning in Singapore)."""
+    import app.passport_routes as routes
+
+    monkeypatch.setattr(routes, "time", SimpleNamespace(time=lambda: at(0)))
+
+
 def sign_in(client: TestClient, name: str = "Asha Rao") -> None:
     assert client.post("/api/v1/customer/session", json={"name": name}).status_code == 200
 
@@ -526,7 +537,7 @@ def test_rescue_collect_with_qr_in_window(client: TestClient, monkeypatch) -> No
     assert again["outcome"]["verdict"] == "already_today"
 
 
-def test_leaderboard_is_opt_in(client: TestClient) -> None:
+def test_leaderboard_is_opt_in(client: TestClient, midweek: None) -> None:
     sign_in(client, "Asha Rao")
     body = {"shop_id": DEMO, "key": demo_key(client), **at_shop(client)}
     client.post("/api/v1/customer/passport/stamps", json=body)
