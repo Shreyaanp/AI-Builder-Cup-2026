@@ -6,14 +6,22 @@ import { materialRoles, nivaTheme, type Appearance } from './theme'
  * (deeper press-down buttons, pill chips). Photos keep their colour.
  */
 export function customerTheme(mode: Appearance) {
-  const theme = nivaTheme(mode, materialRoles(mode), 'customer')
+  const roles = materialRoles(mode)
+  const theme = nivaTheme(mode, roles, 'customer')
   const tones = chalkTones[mode]
   const baseOverrides =
     (theme.components?.MuiCssBaseline?.styleOverrides as Record<string, unknown>) ?? {}
   const existingRoot = (baseOverrides[':root'] as Record<string, string>) ?? {}
   theme.components!.MuiCssBaseline!.styleOverrides = {
     ...baseOverrides,
-    ':root': { ...existingRoot, '--customer-open': tones.mint.main },
+    ':root': {
+      ...existingRoot,
+      '--customer-open': tones.mint.main,
+      '--rm-primary': roles.primary,
+      '--rm-surface': roles.surface,
+      '--rm-on-surface': roles.onSurface,
+      '--rm-outline': roles.outline,
+    },
   }
   theme.palette.success = { ...theme.palette.success, main: tones.mint.main }
   theme.palette.warning = { ...theme.palette.warning, main: tones.sunflower.main }
