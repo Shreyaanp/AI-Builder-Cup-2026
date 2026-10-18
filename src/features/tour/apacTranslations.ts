@@ -18,7 +18,7 @@ export const tourApac: Partial<Record<Locale, Partial<TourCopy>>> = {
     steps: [
       {
         title: '店铺一览',
-        body: '这是一家有六周销售数据的示范店。您和助手对话时，这里会随之更新。',
+        body: '这是一家有八周销售数据的示范店。您和助手对话时，这里会随之更新。',
       },
       { title: '按类别排列的菜单', body: '点按价格即可修改。售罄的商品会立即显示在顾客页面上。' },
       { title: '明天的备货计划', body: '根据您的销售预测，做得够又少浪费。' },
@@ -57,7 +57,7 @@ export const tourApac: Partial<Record<Locale, Partial<TourCopy>>> = {
     steps: [
       {
         title: 'Kedai anda sepintas lalu',
-        body: 'Ini kedai demo dengan jualan enam minggu. Semuanya dikemas kini semasa anda bercakap dengan jurulatih.',
+        body: 'Ini kedai demo dengan jualan lapan minggu. Semuanya dikemas kini semasa anda bercakap dengan jurulatih.',
       },
       {
         title: 'Menu anda, ikut kategori',
@@ -109,7 +109,7 @@ export const tourApac: Partial<Record<Locale, Partial<TourCopy>>> = {
     steps: [
       {
         title: 'お店をひと目で',
-        body: '6週間分の売上があるデモ店です。コーチと話すたびに更新されます。',
+        body: '8週間分の売上があるデモ店です。コーチと話すたびに更新されます。',
       },
       {
         title: 'カテゴリ別のメニュー',
@@ -157,7 +157,7 @@ export const tourApac: Partial<Record<Locale, Partial<TourCopy>>> = {
     steps: [
       {
         title: '가게 한눈에 보기',
-        body: '6주치 매출이 있는 데모 가게예요. 코치와 대화하면 여기 모든 것이 업데이트돼요.',
+        body: '8주치 매출이 있는 데모 가게예요. 코치와 대화하면 여기 모든 것이 업데이트돼요.',
       },
       {
         title: '카테고리별 메뉴',
@@ -202,7 +202,7 @@ export const tourApac: Partial<Record<Locale, Partial<TourCopy>>> = {
     steps: [
       {
         title: 'Toko Anda sekilas',
-        body: 'Ini toko demo dengan penjualan enam minggu. Semuanya diperbarui saat Anda bicara dengan pelatih.',
+        body: 'Ini toko demo dengan penjualan delapan minggu. Semuanya diperbarui saat Anda bicara dengan pelatih.',
       },
       {
         title: 'Menu Anda, per kategori',
@@ -253,7 +253,7 @@ export const tourApac: Partial<Record<Locale, Partial<TourCopy>>> = {
     steps: [
       {
         title: 'ร้านของคุณในภาพรวม',
-        body: 'นี่คือร้านตัวอย่างที่มียอดขายหกสัปดาห์ ทุกอย่างอัปเดตเมื่อคุณคุยกับผู้ช่วย',
+        body: 'นี่คือร้านตัวอย่างที่มียอดขายแปดสัปดาห์ ทุกอย่างอัปเดตเมื่อคุณคุยกับผู้ช่วย',
       },
       { title: 'เมนูแยกตามหมวด', body: 'แตะราคาเพื่อแก้ไข สินค้าหมดจะแสดงบนหน้าลูกค้าทันที' },
       { title: 'แผนเตรียมของพรุ่งนี้', body: 'พยากรณ์จากยอดขาย ทำพอดีและเหลือทิ้งน้อยลง' },
@@ -295,7 +295,7 @@ export const tourApac: Partial<Record<Locale, Partial<TourCopy>>> = {
     steps: [
       {
         title: 'Cửa hàng của bạn trong nháy mắt',
-        body: 'Đây là cửa hàng mẫu với doanh thu sáu tuần. Mọi thứ cập nhật khi bạn trò chuyện với trợ lý.',
+        body: 'Đây là cửa hàng mẫu với doanh thu tám tuần. Mọi thứ cập nhật khi bạn trò chuyện với trợ lý.',
       },
       {
         title: 'Thực đơn theo danh mục',
@@ -348,7 +348,7 @@ export const tourApac: Partial<Record<Locale, Partial<TourCopy>>> = {
     steps: [
       {
         title: 'Ang tindahan mo sa isang tingin',
-        body: 'Demo na tindahan ito na may anim na linggong benta. Nag-a-update ang lahat habang kausap mo ang coach.',
+        body: 'Demo na tindahan ito na may walong linggong benta. Nag-a-update ang lahat habang kausap mo ang coach.',
       },
       {
         title: 'Ang menu mo, ayon sa kategorya',

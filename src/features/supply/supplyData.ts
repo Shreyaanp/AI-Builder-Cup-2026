@@ -7,7 +7,7 @@ import type { PurchaseOrder, Relationship, RuleSet } from './types'
 interface SupplyOverview {
   suppliers: Relationship[]
   orders: PurchaseOrder[]
-  needs?: { item: string; runs_out: string; stock: number }[]
+  needs?: { item: string; runs_out: string; stock: number; supplied?: boolean }[]
 }
 
 /** The shop's supplier relationships and purchase orders (newest first). */

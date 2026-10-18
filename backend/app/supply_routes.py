@@ -98,7 +98,16 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
         )["runs_out"]
         and need["stock_known"]
     ]
-    needs.sort(key=lambda need: need["runs_out"])
+    currency = supply_chain.shop_currency(context["business"]["fields"])
+
+    def supplied(item: str) -> bool:
+        product = next(p for p in context["inventory"] if p["name"] == item)
+        return supply_chain.can_supply(store(request), business_id, product, currency)
+
+    for need in needs:
+        need["supplied"] = await anyio.to_thread.run_sync(supplied, need["item"])
+    # Today leads with what a linked supplier can bring: chai runs out because tea dust does.
+    needs.sort(key=lambda need: (not need["supplied"], need["runs_out"]))
     return {"suppliers": rows, "orders": orders, "needs": needs}
 
 
