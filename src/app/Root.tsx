@@ -37,7 +37,7 @@ export default function Root() {
       </Suspense>
     )
   const kind = resolveApp(new URL(location.href))
-  if (kind === 'how-it-works')
+  if (kind === 'pages')
     return (
       <Suspense fallback={<BrandSplash />}>
         <HowItWorks />
