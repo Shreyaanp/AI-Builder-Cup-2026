@@ -65,7 +65,7 @@ jobs:
           if ($truncated) { $prompt += "`nNOTE: the diff was truncated at $max characters; say that the review is partial." }
 
           Push-Location $dir
-          $raw = & $agy -p $prompt --model gemini-3.8-flash-medium --effort medium --mode plan `
+          $raw = & $agy -p $prompt --model gemini-3.8-flash-medium --mode plan `
             --add-dir $dir --output-format json --print-timeout 15m --log-file (Join-Path $dir 'agy.log') 2>&1 | Out-String
           Pop-Location
 
