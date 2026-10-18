@@ -399,8 +399,8 @@ export default function Discover({
         mx: 'auto',
         px: 4,
         pt: 1,
-        // Leave the final result clear of the sticky Map view action and the home indicator.
-        pb: 'calc(160px + env(safe-area-inset-bottom, 0px))',
+        // Leave the final result clear of the docked Map view bar, the navigation bar and the home indicator.
+        pb: 'calc(192px + env(safe-area-inset-bottom, 0px))',
         color: roles.onSurface,
         '--customer-spring': motion.easing.spring,
       }}
@@ -589,7 +589,7 @@ export default function Discover({
             </Stack>
           </Box>
         )}
-        {/* List or map: one pill in the thumb zone, floating over the results (not a title). */}
+        {/* List or map: one action in the thumb zone, on a solid bar above the navigation so cards never run under it. */}
         <Box
           sx={{
             position: { xs: 'fixed', md: 'sticky' },
@@ -603,7 +603,11 @@ export default function Discover({
             order: 99,
             display: 'flex',
             justifyContent: 'center',
-            pointerEvents: 'none',
+            px: { xs: 4, md: 0 },
+            py: { xs: 2, md: 0 },
+            bgcolor: { xs: roles.surface, md: 'transparent' },
+            borderTop: { xs: `1px solid ${roles.outlineVariant}`, md: 'none' },
+            pointerEvents: { xs: 'auto', md: 'none' },
           }}
         >
           <Button
