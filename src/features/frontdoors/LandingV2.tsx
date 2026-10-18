@@ -316,6 +316,15 @@ export default function LandingV2({ preview = false }: { preview?: boolean }) {
               <Actions t={t} />
             </div>
           </div>
+          {/* Wide screens only: two moments from the story beside the headline. */}
+          <div className="l2-hero-visual" aria-hidden="true">
+            {t.story.slice(0, 2).map(([stop, line]) => (
+              <p key={stop}>
+                <span>{stop}</span>
+                <strong>{line}</strong>
+              </p>
+            ))}
+          </div>
         </section>
 
         <Does t={t} />
