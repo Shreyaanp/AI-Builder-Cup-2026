@@ -724,7 +724,7 @@ def create_app(
                 await websocket.close()
 
     if settings.frontend_dist:
-        serve_frontend(app, settings.frontend_dist)
+        serve_frontend(app, settings.frontend_dist, settings.landing_variant)
     return app
 
 
