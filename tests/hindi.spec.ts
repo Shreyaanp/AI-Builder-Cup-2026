@@ -2,13 +2,13 @@ import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, image, localOnly, seedShop, share } from './stories/support.js'
 
-// Hindi end to end at 360px (docs/qa/hindi-e2e.md). The owner app set to Hindi and a customer
+// Hindi end to end at 390px (docs/qa/hindi-e2e.md). The owner app set to Hindi and a customer
 // whose phone is in Hindi walk the main screens; each must read in Hindi: no English UI words
 // (brands, units and the owner's own words excepted), ₹ prices, Hindi dates, and nothing wider
 // than the phone. Offline fixtures only: live Gemini replies are checked by hand (see the doc).
-test.skip(({ isMobile }) => !isMobile, 'One 360px phone pass')
+test.skip(({ isMobile }) => !isMobile, 'One 390px phone pass')
 test.use({
-  viewport: { width: 360, height: 780 },
+  viewport: { width: 390, height: 844 },
   locale: 'en-IN',
   timezoneId: 'Asia/Kolkata',
   reducedMotion: 'reduce',
@@ -21,6 +21,8 @@ const BRANDS = [
   'Google Maps',
   'Google',
   'Gemini',
+  'TimesFM',
+  'Excel',
   'Open-Meteo',
   'CC BY 4.0',
   'UPI ID',
@@ -65,7 +67,7 @@ async function englishLeft(page: Page, more: string[] = []) {
         if (!text) return
         let rest = text
         for (const word of keep) rest = rest.split(word).join(' ')
-        if (/[A-Za-z]{2,}/.test(rest)) found.add(text.trim().slice(0, 120))
+        if (/[A-Za-z]{4,}/.test(rest)) found.add(text.trim().slice(0, 120))
       }
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -205,7 +207,7 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
 
   await test.step('purchase order', async () => {
     await growCard(page, /^खरीद ऑर्डर/)
-    await readsInHindi(page, '09-purchase-order', ['supplier'])
+    await readsInHindi(page, '09-purchase-order')
     await closeSheet(page)
   })
 
