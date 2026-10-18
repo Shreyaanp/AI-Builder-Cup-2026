@@ -21,7 +21,19 @@ export function TourPanel({ children }: { children: ReactNode }) {
         pb: 'calc(280px + env(safe-area-inset-bottom))',
       }}
     >
-      <Box data-tour="feature" inert sx={{ maxWidth: 680, mx: 'auto' }}>
+      {/* One solid card for the preview, so the dimmed page around it never shows through it. */}
+      <Box
+        data-tour="feature"
+        inert
+        sx={{
+          maxWidth: 680,
+          mx: 'auto',
+          p: 1.5,
+          bgcolor: 'background.default',
+          borderRadius: 4,
+          boxShadow: 6,
+        }}
+      >
         {children}
       </Box>
     </Box>
