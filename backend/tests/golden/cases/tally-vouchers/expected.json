@@ -1,0 +1,20 @@
+{
+  "kind": "sales",
+  "count": 2,
+  "rows": [
+    {
+      "date": "20261017",
+      "name": "Chai",
+      "price": 1550,
+      "quantity": 3,
+      "total": 4650
+    },
+    {
+      "date": "20261017",
+      "name": "Bun",
+      "price": 2500,
+      "quantity": 2,
+      "total": 5000
+    }
+  ]
+}

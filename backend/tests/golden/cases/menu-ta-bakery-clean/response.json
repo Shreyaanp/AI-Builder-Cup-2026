@@ -1,0 +1,17 @@
+{
+  "photo_kind": "menu",
+  "products": [
+    {
+      "name": "பன்",
+      "price": 25.0,
+      "unit": "piece",
+      "category": "பேக்கரி"
+    },
+    {
+      "name": "கேக்",
+      "price": 60.0,
+      "unit": "slice",
+      "category": "பேக்கரி"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "adapter": "connector",
+  "input": "input.xml",
+  "mime": "application/xml",
+  "source": "reused-tally-vouchers",
+  "currency": "INR",
+  "notes": "Reuses existing synthetic tests/fixtures/connect/tally_sales.xml."
+}

@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
-from test_photos import app as app  # noqa: F401 - shared consented local app fixture
-from test_photos import join
+
+from tests.test_photos import app as app  # noqa: F401 - shared consented local app fixture
+from tests.test_photos import join
 
 
 def shop(client: TestClient, name: str) -> str:
