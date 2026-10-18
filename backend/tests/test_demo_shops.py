@@ -38,8 +38,13 @@ def test_demo_seed_is_idempotent_and_labelled(store: MerchantRepository) -> None
     # A second run changes nothing: same shops, same menus, same revisions.
     assert [changed for _, changed in seed(store, "demo-owner")] == [False] * len(SHOPS)
     assert {shop["id"]: shop for shop in store.shared_shops()} == first
-    assert sorted(first) == sorted(s.id for s in SHOPS)
-    revisions = {b["id"]: b["revision"] for b in store.list_businesses("demo-owner")}
+    # The supply-chain demo adds two chains (a minimart and a supermarket chain) to the catalogue.
+    assert sorted(first) == sorted([s.id for s in SHOPS] + [c.id for c in CHAINS])
+    revisions = {
+        b["id"]: b["revision"]
+        for b in store.list_businesses("demo-owner")
+        if b["id"] in {s.id for s in SHOPS}
+    }
     assert set(revisions.values()) == {2}  # Catalogue creation + normal sales import approval.
     for demo in SHOPS:
         shop = store.public_shop(demo.id)
