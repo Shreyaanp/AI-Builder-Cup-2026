@@ -101,7 +101,8 @@ const all = { ms: [], errors: 0, status: {} }
 for (const entry of Object.values(stats)) {
   all.ms.push(...entry.ms)
   all.errors += entry.errors
-  for (const [code, n] of Object.entries(entry.status)) all.status[code] = (all.status[code] ?? 0) + n
+  for (const [code, n] of Object.entries(entry.status))
+    all.status[code] = (all.status[code] ?? 0) + n
 }
 const report = {
   started_at: startedAt,

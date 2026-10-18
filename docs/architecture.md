@@ -1,113 +1,199 @@
 # Chalkboard architecture
 
-Source review: 16 October 2026, checkout `fb483b2`. The diagram shows implemented paths;
-configuration and live evidence are recorded separately in [Google AI used](google-ai.md).
-No cloud service was contacted for this review.
+Checked against production on **18 October 2026**: Cloud Run services `ogoogle-ai` (revision
+`ogoogle-ai-00079-pjc`, serving `36368f0b`) and `ogoogle-face`, the Cloud Armor policy, Cloud
+Scheduler, BigQuery datasets and the runtime switches (names and non-secret values only). The
+same diagram is in the app at **/architecture**
+([ArchitecturePage.tsx](../src/architecture/ArchitecturePage.tsx)); both come from
+[diagram.ts](../src/architecture/diagram.ts), and
+[architecture.spec.ts](../tests/architecture.spec.ts) fails if they drift apart.
 
 ```mermaid
 flowchart TD
-    Phone["Phone / browser PWA<br/>React + TypeScript: owner and customer"]
-    App["Cloud Run: ogoogle-ai<br/>FastAPI + compiled static frontend<br/>Google ADK coach and reviewed tools"]
-    Auth["Firebase Authentication<br/>Google sign-in"]
-    Text["Gemini on Vertex AI<br/>Text, structured output and photo reading"]
-    Live["Gemini Live on Vertex AI<br/>WebSocket audio and tools<br/>Achernar voice"]
-    TTS["Cloud Text-to-Speech<br/>Read-aloud MP3; prefer Achernar"]
-    DB["Firestore<br/>Conversations, shops, sales, community<br/>Run leases and vector recall"]
-    Emb["Vertex AI embeddings<br/>gemini-embedding-2; 768 dimensions"]
-    BQ["BigQuery AI.FORECAST<br/>TimesFM demand forecasting"]
-    Vision["Cloud Vision SafeSearch<br/>Photo moderation"]
-    Media["Cloud Storage<br/>Accepted shop photos"]
-    Maps["Google Maps Platform<br/>Places, Geocoding and photos"]
-    Face["Private Cloud Run face worker<br/>OpenVINO + ONNX liveness/template inference"]
-
-    Phone -->|HTTPS: static files, REST, SSE, WebSocket| App
-    Phone -->|Google login| Auth
-    App -->|Verify identity| Auth
-    App --> Text
-    App --> Live
-    App --> TTS
-    App --> DB
-    App -->|Owner and business scoped recall| Emb
-    Emb -->|Embeddings stored and searched in Firestore| DB
-    App -->|Approved sales; switch selects provider| BQ
-    App --> Vision
-    App --> Media
-    App -->|When Maps configuration is supplied| Maps
-    App -->|Optional consented capture; authenticated request| Face
+  subgraph people["Phones"]
+    pwa["Chalkboard PWA<br/>React + TypeScript, owner and customer apps, 15 languages"]
+    auth["Firebase Auth<br/>Google sign-in, verified on the server"]
+    ga4["Google Analytics 4<br/>Consent-gated flow events, no personal data"]
+  end
+  subgraph gateway["Edge"]
+    armor["HTTPS load balancer + Cloud Armor<br/>300 requests a minute per IP, then 429"]
+  end
+  subgraph run["Cloud Run ogoogle-ai (asia-south1)"]
+    api["FastAPI + React<br/>Stateless; 1 to 10 instances, 40 requests each; SSE text, WebSocket voice"]
+    understand["Business understanding<br/>Gemini profile of any business: kind, offer, never-ask list, extra questions"]
+    coach["ADK agent business_coach<br/>34 tools; the same agent runs text (Gemini) and voice (Gemini Live)"]
+    onboard["Onboarding tools<br/>update_shop, propose_business, suggest_starter_items, make_my_icon, end_conversation"]
+    shop["Shop coach tools<br/>get_insights, get_forecast, get_shop_playbook, propose_products, propose_rescue_deal"]
+    supply["Supply tools<br/>get_supplier_rules, set_supplier_rules, draft_reorder, get_purchase_orders"]
+    sourcing["Sourcing tools<br/>find_suppliers, prepare_order, message_supplier, get_orders, cancel_order"]
+    ask["Customer ask<br/>Gemini reads the request; results only from real shop data and Google places"]
+  end
+  subgraph face["Cloud Run ogoogle-face"]
+    faceworker["Private face worker<br/>Optional owner liveness check; OpenVINO + ONNX; 1 instance"]
+  end
+  subgraph ai["Google AI"]
+    flash["Gemini 3.5 Flash<br/>Coach turns, structured output, menu and photo reading"]
+    live["Gemini Live 3.8<br/>Voice in and out, with the same tools"]
+    embed["gemini-embedding-2<br/>768 dimensions, owner-scoped recall"]
+    docai["Document AI<br/>Expense and Invoice parsers for receipts"]
+    maps["Maps grounding + Places<br/>Gemini grounded in Google Maps"]
+    vision["Vision SafeSearch + Cloud TTS<br/>Photo checks; read-aloud voice"]
+  end
+  subgraph data["Data"]
+    firestore["Firestore<br/>Shops, sessions, run leases, rate limits, vector recall"]
+    bq["BigQuery<br/>AI.FORECAST (TimesFM); chalkboard_analytics; billing_export"]
+    gcs["Cloud Storage<br/>Moderated shop photos, private bucket"]
+    secrets["Secret Manager<br/>Maps keys and the face-worker token"]
+  end
+  subgraph ops["Operations"]
+    scheduler["Cloud Scheduler<br/>Nightly analytics export with OIDC (paused on 18 Oct)"]
+    logging["Cloud Logging sink<br/>API request logs into BigQuery"]
+    cicd["GitHub Actions CI/CD<br/>Checks on every PR; keyless (WIF) deploy of a tagged main commit"]
+  end
+  pwa -->|HTTPS, SSE, WebSocket| armor
+  pwa -->|sign in| auth
+  pwa -->|after consent| ga4
+  armor --> api
+  api --> understand
+  understand -->|questions and tools fit the business| coach
+  api --> coach
+  api --> ask
+  coach --> onboard
+  coach --> shop
+  coach --> supply
+  coach --> sourcing
+  coach --> flash
+  coach --> live
+  understand --> flash
+  ask --> flash
+  ask --> maps
+  api -->|close the day| docai
+  api --> vision
+  api --> embed
+  api -->|optional, consented| faceworker
+  api --> firestore
+  embed -->|find_nearest| firestore
+  shop -->|forecast| bq
+  api --> gcs
+  secrets --> api
+  scheduler -->|export| api
+  api -->|analytics| bq
+  logging --> bq
+  cicd -->|deploy| api
 ```
 
-## Request and data flow
+## What runs, in one paragraph
 
-The [Dockerfile](../Dockerfile) builds React and serves its output through
-[frontend.py](../backend/app/frontend.py) in the same service as
-[FastAPI](../backend/app/main.py). The two public domains share this application;
-[router.ts](../src/app/router.ts) selects the owner or customer experience by host/path.
-[PWA registration](../src/app/pwa.ts) and [service worker](../public/sw.js) exist;
-installation and physical-phone offline behaviour still need device verification.
+One stateless Cloud Run service serves the React PWA and the FastAPI API behind an HTTPS load
+balancer with Cloud Armor. Every conversation goes through **one Google ADK agent,
+`business_coach`** ([agent.py](../backend/app/agent.py) `make_agent`), with 34 tools in four
+groups (onboarding, shop coach, supply, sourcing). The same agent and tools run on Gemini 3.5
+Flash for text ([streaming.py](../backend/app/streaming.py)) and Gemini Live 3.8 for voice
+([voice.py](../backend/app/voice.py)). The customer side is a separate Gemini pipeline,
+[discover_ask.py](../backend/app/discover_ask.py): Gemini turns the request into a typed intent,
+and results come only from real shop records and Google places. It is not a second ADK agent.
+State lives in Firestore, BigQuery and Cloud Storage, so any instance can serve any request.
 
-[ADK](../backend/app/agent.py) runs one `business_coach` agent with tools from
-[coordinator.py](../backend/app/coordinator.py), rather than a deployed specialist-agent network.
-[streaming.py](../backend/app/streaming.py) streams text over SSE;
-[voice.py](../backend/app/voice.py) relays microphone audio, transcriptions, responses and tool
-events through Gemini Live. [tts.py](../backend/app/tts.py) separately calls Cloud TTS for
-read-aloud; the browser can fall back to its own speech voice. TTS is not a Gemini inference call.
+Tools read data and propose changes; the owner approves before anything is written. Nothing is
+published to Google Business Profile.
 
-Firebase establishes account identity. Server-side ownership checks scope conversations and
-business records; owners review proposed changes before committing them. Firestore adapters
-persist [sessions and leases](../backend/app/firestore_memory.py),
-[merchant records](../backend/app/merchant_firestore.py) and
-[customer/community data](../backend/app/community.py) under `ogoogle_ai_v1` in `ichiropractic`.
+## How the AI adapts to any business
 
-[memory_vectors.py](../backend/app/memory_vectors.py) calls Vertex embeddings, then Firestore
-`find_nearest` for owner/business conversation recall. This is **Firestore vector search**;
-there is no Vertex AI Vector Search endpoint or shared semantic product-search engine in this
-checkout. Customer intent uses [Gemini plus catalogue matching](../backend/app/discover_ask.py);
-[supplier search](../backend/app/sourcing.py) has its own implementation.
+Chalkboard has no fixed shop template. The same code serves a helmet-cleaning station, a tailor
+and a tea stall:
 
-[forecast.py](../backend/app/forecast.py) sends approved sales as parameterized inline data to
-BigQuery `AI.FORECAST` using dataset context `ichiropractic.chalkboard_analytics`. It requires
-28 recent recorded days per item, returns seven days and falls back to a labelled weekday
-average on provider failure. This adapter writes no merchant analytics tables. Sales summaries,
-page counts and customer insights are calculated in the app from stored records. Release 2 adds
-a nightly BigQuery analytics export and a Looker Studio dashboard on it; see
-[Google services added in release 2](#google-services-added-in-release-2).
+1. **Understand.** [business_understanding.py](../backend/app/business_understanding.py) turns
+   the owner's own words into a typed profile with one Gemini structured-output call: kind
+   (product, service, food or mixed), what it offers, who it is for, what customers ask, and a
+   list of things never to ask. If the owner corrects the kind, the correction wins.
+2. **Ask only what fits.** Onboarding asks the core five (name, what, where, hours, photo) and at
+   most two extra questions from the profile. `safe()` blocks menu, price, payment, delivery,
+   halal and vegetarian questions in onboarding whatever the model suggests. After onboarding,
+   [business_profile.py](../backend/app/business_profile.py) `QuestionPlanner` builds the
+   follow-up questions for that type of business.
+3. **Shape the shop.** Item categories ([product_categories.py](../backend/app/product_categories.py)),
+   starter items and units ([starter_templates.py](../backend/app/starter_templates.py)) and the
+   customer search group follow the profile and the owner's words. Food-only questions and tools
+   stay off for a business that does not serve food (`serves_food` in
+   [coordinator.py](../backend/app/coordinator.py)).
+4. **Coach with a playbook.** [playbook.py](../backend/app/playbook.py) writes a per-shop
+   playbook (goals, key numbers, watch list, segments, vocabulary, tone) from the answers, menu,
+   sales and customer questions. It decides the Today page, the Grow cards and the coach's shop
+   summary. The owner can edit it; edits survive the weekly refresh.
 
-[photos.py](../backend/app/photos.py) sanitizes images, calls Vision SafeSearch and Gemini,
-and stores accepted media in Cloud Storage. Menus, receipts and day-closing photos are read
-by Gemini; see [day_close.py](../backend/app/day_close.py) and [ingestion.py](../backend/app/ingestion.py).
-The optional [face worker](../backend/face_worker.py) returns a template after its liveness
-checks; [trust.py](../backend/app/trust.py) encrypts it in the shared document store and flags
-possible duplicate accounts for review. This uses non-Google inference models and does not
-establish business ownership or calibrated fraud-detection accuracy.
+Evidence: the 40-business onboarding eval ([qa/onboarding-eval.md](qa/onboarding-eval.md),
+17 Oct) got the kind right for 39 of 40 businesses and asked 0 irrelevant questions out of 215.
+A smaller re-run on 18 Oct found three issues. See [impact/evaluation.md](impact/evaluation.md).
 
-## Configuration and boundaries
+## Production configuration (18 October 2026)
 
-[settings.py](../backend/app/settings.py) defaults to offline coach, local identity, SQLite,
-fixture photo moderation and weekday forecasting. The [local launcher](../scripts/backend-dev.mjs)
-enables the product routes with offline fixtures. [runtime-config.py](../deployment/runtime-config.py)
-selects Vertex Gemini, Firebase, Firestore, Vision and BigQuery for releases;
-[deploy.yml](../.github/workflows/deploy.yml) supplies the private face worker and Maps settings.
-These files describe intended release settings, not a fresh inspection of the running revision.
+| Setting                  | `ogoogle-ai`                                                | `ogoogle-face`      |
+| ------------------------ | ----------------------------------------------------------- | ------------------- |
+| Instances (min / max)    | 1 / 10 (service cap 10; revision template says 20)          | 0 / 1               |
+| Concurrency per instance | 40                                                          | 1                   |
+| CPU / memory             | 1 vCPU / 2 GiB, CPU always allocated, startup boost         | 1 vCPU / 2 GiB      |
+| Request timeout          | 3600 s (Live voice is capped at 150 s by the app)           | 60 s                |
+| Session affinity         | on                                                          | off                 |
+| Ingress                  | all (the `run.app` URL bypasses Cloud Armor)                | all, token required |
+| Service account          | `ogoogle-runtime`                                           |                     |
+| Secrets (Secret Manager) | `maps-server-key`, `maps-browser-key`, `ogoogle-face-token` |                     |
+| Edge                     | Cloud Armor `chalkboard-armor`: 300 requests/min per IP     | not behind the LB   |
 
-The diagram above was drawn from `fb483b2`, before release 2. Release 2 adds code for Document
-AI receipts and invoices ([document_ai.py](../backend/app/document_ai.py), `DOCUMENT_AI_ENABLED`),
-Gemini grounding with Google Maps ([maps_grounding.py](../backend/app/maps_grounding.py),
-`MAPS_GROUNDING` off/demo/live) and Recommendations AI ([retail_recs.py](../backend/app/retail_recs.py),
-`RECS_ENABLED`, off by default). The release settings in
-[runtime-config.py](../deployment/runtime-config.py) turn on Document AI and BigQuery analytics.
-Recommendations AI has its catalog imported, and the "Similar items" model is still pending
-console creation ([status](impact/recommendations-ai.md)). Until it serves, similar items come from
-embeddings. See the [pending-services note](google-ai.md#pending-services--not-counted-as-used).
+Runtime switches on the live revision: `COACH_MODE=gemini`, `GEMINI_BACKEND=vertex`,
+`GOOGLE_TEXT_MODEL=gemini-3.5-flash` (global), `GOOGLE_LIVE_MODEL=gemini-3.8-live`
+(us-central1), `FORECAST_BACKEND=bigquery`, `DOCUMENT_AI_ENABLED=true` (us),
+`ANALYTICS_BACKEND=bigquery`, `MODERATION_MODE=vision`, `MAPS_GROUNDING=live`,
+`SESSION_BACKEND=firestore`, `MERCHANT_BACKEND=firestore`, `AUTH_MODE=firebase`,
+`MAX_ACTIVE_RUNS=8`. Recommendations AI (`RECS_ENABLED`) is not set, so it is off.
 
-Chalkboard pages and QR sharing do not publish to Google Business Profile. The Google guide
-hands off to Google's own pages. Cloud Run storage durability comes from Firestore and Cloud
-Storage, not local SQLite or the container filesystem.
+Read them again without printing secrets:
 
-<!-- Release 2 sections follow (Google services added in release 2, deployment evidence). -->
+```powershell
+gcloud run services describe ogoogle-ai --project ichiropractic --region asia-south1 --format="value(status.latestReadyRevisionName,metadata.annotations.'run.googleapis.com/minScale',metadata.annotations.'run.googleapis.com/maxScale',spec.template.spec.containerConcurrency,spec.template.spec.timeoutSeconds)"
+gcloud compute security-policies describe chalkboard-armor --project ichiropractic --format="yaml(rules[].action,rules[].rateLimitOptions)"
+```
 
-## Google services added in release 2
+Supporting resources:
 
-One line per Google service the app calls, its switch and what happens without it. Streaming and
+- **BigQuery** `chalkboard_analytics` (asia-south1): table `shop_daily`, request-log table
+  `run_googleapis_com_requests` (Cloud Logging sink `chalkboard-requests`), views
+  `impact_daily`, `forecast_accuracy`, `latency_daily`. `billing_export` (US) holds the Cloud
+  billing export. Forecasts use `AI.FORECAST` (TimesFM) on inline, parameterized sales
+  ([forecast.py](../backend/app/forecast.py)), with a labelled weekday-average fallback.
+- **Cloud Scheduler** `chalkboard-analytics-export`, `30 0 * * *`, OIDC to
+  `/api/v1/internal/analytics/export`. **Paused on 18 Oct**, so `shop_daily` is not refreshed
+  nightly until it is resumed.
+- **CI/CD**: [checks.yml](../.github/workflows/checks.yml) runs lint, build, rules, backend
+  tests and phone browser tests on every PR. [deploy.yml](../.github/workflows/deploy.yml)
+  deploys a checked main commit with a `release-*` tag through Workload Identity Federation
+  (no service-account keys). The latest release is `release-2026-10-18-01`.
+
+## Why it scales to N shops
+
+- **Stateless instances.** Sessions, run leases, rate limits, replay and shop records are in
+  Firestore ([firestore_memory.py](../backend/app/firestore_memory.py),
+  [merchant_firestore.py](../backend/app/merchant_firestore.py), [limits.py](../backend/app/limits.py)).
+  Session affinity only keeps a WebSocket on the same instance; nothing depends on it.
+- **Per-shop data.** Every record is keyed by shop, so one more shop adds documents, not load
+  on a shared row. Vector recall uses Firestore `find_nearest` scoped to the owner and business.
+- **Bounded AI.** At most 8 coach runs at once across all instances (one Firestore lease
+  document), 30 s per text turn, 150 s per voice session; busy returns "try again", never a made-up
+  answer. Per-IP and per-user limits sit in front of every model call.
+- **Caching.** Hashed static assets are `immutable` for a year; translations, Maps results
+  (600 s) and forecasts are cached in the process; playbooks are stored and refreshed weekly.
+- **Edge protection.** Cloud Armor stops one client from flooding the service.
+
+Measured on 18 Oct: 9,428 requests in 60 s with 50 virtual users, 0 errors, 155 requests/s,
+p50 154 ms, p95 573 ms, and Cloud Run grew from 2 to 4 instances. Details and limits:
+[impact/scalability.md](impact/scalability.md).
+
+Known limits: customer discovery reads all shared shops and then filters by distance (p50
+3.9 s under load), so it needs a geohash index before thousands of shops. The face worker is a
+single instance with in-memory templates. The run-lease document is one Firestore hotspot.
+
+## Services added in release 2 and their switches
+
+The full list of Google AI calls is in [google-ai.md](google-ai.md). One line per release 2 service, its switch and what happens without it. Streaming and
 the coach runtime are described in [AI_ARCHITECTURE.md](AI_ARCHITECTURE.md).
 
 | Service                                                                                                                                               | Where                                                                                                                                                                                                     | Switch                                                              | Without it                                                                                                                                                          |
@@ -123,137 +209,25 @@ customer messages, contacts, IPs or user agents. Erasing an account deletes its 
 (erasure step `analytics`). Exported days are loaded with WRITE_TRUNCATE per partition (free load
 jobs; a re-run replaces the day).
 
-## Deployment and scaling evidence
+## Quotas and graceful degradation
 
-Source inspection: 16 October 2026. Solid edges below are implemented adapters in this
-checkout, not proof of live calls. Dashed edges are proposed CDN delivery. Production was
-not contacted; current configuration and quotas remain unverified.
+| Service / boundary         | Implemented behavior / limit                                                                           |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Vertex Gemini text         | Explicit model/location; 30 s per turn; 3 retries on 429/503; errors become retryable stream states    |
+| Gemini Live                | Regional model; at most 150 s per session; shared run lease                                            |
+| Global coach admission     | `MAX_ACTIVE_RUNS=8` across the namespace, not per instance; Firestore transaction on one lease doc     |
+| Firestore                  | Durable owned sessions/replay and distributed rate limits                                              |
+| Embeddings / vector recall | Explicit embedding model and owner/business scope                                                      |
+| BigQuery TimesFM           | Forecast cache and weekday-average fallback; no table import in inline query                           |
+| TTS / Vision / Maps        | Bounded requests, provider errors and fixture fallbacks; Maps has 600s process cache and single-flight |
+| Cloud Armor                | 300 requests/min per IP on the load balancer, then 429                                                 |
 
-```mermaid
-flowchart TD
-    Browser[React customer and owner browser]
-    CDN[Firebase Hosting CDN: optional static assets]
-    Run[Cloud Run: FastAPI + React HTML\nSSE coach and WebSocket Live]
-    Auth[Firebase Google sign-in]
-    DB[Firestore namespace ogoogle_ai_v1\nmerchant records / sessions / leases / replay / rate limits]
-    Gemini[Vertex Gemini text and photo extraction]
-    Live[Vertex Gemini Live: regional voice]
-    TTS[Google Cloud TTS: Achernar]
-    Vision[Cloud Vision SafeSearch]
-    BQ[BigQuery AI.FORECAST / TimesFM]
-    Embed[Vertex embeddings]
-    Vectors[Firestore vector recall]
-    GCS[Private GCS photo bucket]
-    Maps[Google Maps Places / geocoding / photos]
-    Face[Private Cloud Run face worker]
-    Browser -. public hashed assets .-> CDN
-    Browser -->|HTTPS API / HTML / SSE / WS| Run
-    Browser -->|Google identity only| Auth
-    Run -->|verify account token| Auth
-    Run --> DB
-    Run --> Gemini
-    Run --> Live
-    Run --> TTS
-    Run --> Vision
-    Run -->|bounded forecast request| BQ
-    Run --> Embed
-    Embed --> Vectors
-    Vectors --> DB
-    Run -->|moderated sanitized images| GCS
-    Run --> Maps
-    Run --> Face
-```
+On 429, timeout or provider failure the UI keeps the owner's input and offers retry or typing.
+The stream reports the failure instead of inventing an answer. There is no durable queue: when
+the run cap is full the API returns busy, and the UI does not claim the request is queued.
+Shared Vertex quota does run out: the 18 Oct onboarding re-run hit one `429 RESOURCE_EXHAUSTED`,
+which the retry absorbed.
 
-Google identity, business authority, liveness and public publishing remain separate. The
-Google guide hands off to Google's pages; it does not establish native Google placement.
-The private face worker is a separate workload; its in-memory templates and one-instance
-limit do not make it horizontally scalable or durable. GCS remains private: gallery APIs
-check owner/sharing rights before bytes are served. New approved intake objects are
-`private, no-store`; gallery objects use `private, max-age=3600` metadata. Existing public
-gallery responses have a one-day public cache, so hiding/deleting cannot revoke cached bytes.
-
-### Capacity and cost
-
-There are three conflicting **source records**, none a current cloud measurement:
-
-| Record                                      | Min / max | Concurrency | CPU / RAM            | Timeout / CPU billing |
-| ------------------------------------------- | --------- | ----------- | -------------------- | --------------------- |
-| `deployment/target.json`, historical memory | 0 / 1     | 8           | historical 1 / 1 GiB | 180s / request        |
-| old CI deploy arguments at branch base      | 1 / 10    | 40          | 1 / 2 GiB            | 3600s / always-on     |
-| `deployment/README.md` historical prose     | 0 / 10    | 16          | 1 / 1 GiB            | 180s / request        |
-
-This change stops release CI from resetting capacity. Claude should inspect only selected
-non-secret fields; never print a full service YAML or its environment:
-
-```powershell
-gcloud run services describe ogoogle-ai --project ichiropractic --region asia-south1 --format="json(spec.template.metadata.annotations,spec.template.spec.containerConcurrency,spec.template.spec.timeoutSeconds,spec.template.spec.containers[0].resources,status.latestReadyRevisionName,status.traffic,metadata.annotations)"
-gcloud run services describe ogoogle-face --project ichiropractic --region asia-south1 --format="json(spec.template.metadata.annotations,spec.template.spec.containerConcurrency,spec.template.spec.timeoutSeconds,spec.template.spec.containers[0].resources,metadata.annotations)"
-```
-
-30,000 **daily** users at ten dynamic requests each is ~3.5 requests/s average, ~35/s at a
-10x burst. At an assumed 300ms average service time that is ~11 simultaneous requests.
-These are sizing assumptions, not measured cloud capacity. 30,000 simultaneous users or
-many concurrent Live sessions is a different workload and cannot be promised under ₹500.
-
-Proposed first bounded trial after quota/credit checks: max 3 instances, concurrency 16,
-1 CPU, 2 GiB, 180s timeout, min 0 outside judging, request-based CPU. Short text turns keep
-their 30s app deadline; Live remains bounded by its 150s session cap, so a 3600s request
-timeout adds no useful capacity for this implementation. Avoid enabling session affinity as
-a scaling strategy; persistent state lives in Firestore. Do not increase face-worker max.
-
-**Not run; Claude executes only after reviewing existing values and budget headroom:**
-
-```powershell
-gcloud run services update ogoogle-ai --project ichiropractic --region asia-south1 --max=3 --max-instances=3 --concurrency=16 --cpu=1 --memory=2Gi --timeout=180 --cpu-throttling --no-session-affinity --quiet
-```
-
-Both service and revision maximums are set so an existing service-level cap of one cannot
-silently prevent the trial from scaling. Keep both caps aligned and inspect effective traffic.
-Record the inspected old values and reverse those exact settings if error rate, latency or
-spend rises. Do not reset to an assumed historical configuration. Max instances limits
-resources, not money; warm instances, provider calls, Firestore and bandwidth still cost.
-Preserve the ₹500 total cash ceiling and paused budget setup; alerts cannot enforce it.
-
-### Quotas, bottlenecks and graceful degradation
-
-| Service / boundary         | Implemented behavior / limit                                                                           | Claude must verify before raising traffic                                                                          |
-| -------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Vertex Gemini text         | Explicit model/location; text deadline 30s; errors become retryable stream states                      | Project/model/location capacity, shared vs provisioned throughput, 429 rates; no fixed universal RPM is asserted   |
-| Gemini Live                | Regional model; at most 150s per session; shared run lease                                             | Concurrent session and throughput allowance for `gemini-3.8-live` in `us-central1`                                 |
-| Global coach admission     | `MAX_ACTIVE_RUNS=8` across the **namespace**, not per instance; Firestore transaction on one lease doc | Contention and occupied slots; adding instances does not multiply eight into 24                                    |
-| Firestore                  | Durable owned sessions/replay and distributed rate limits                                              | Reads/writes, index/storage usage and lease/rate-counter hotspots; customer discovery currently scans shared shops |
-| Embeddings / vector recall | Explicit embedding model and owner/business scope                                                      | Model throughput, dimensions/index availability, read and embedding cost                                           |
-| BigQuery TimesFM           | Forecast cache and weekday-average fallback; no table import in inline query                           | BigQuery job/AI.FORECAST quotas, query cost, concurrent jobs, region/model availability                            |
-| TTS / Vision / Maps        | Bounded requests, provider errors and fixture fallbacks; Maps has 600s process cache and single-flight | Per-project API quotas, daily caps, billing and content/cache restrictions                                         |
-| Cloud Run / GCS / CDN      | Instance/concurrency caps; private GCS; optional CDN for assets only                                   | Regional CPU allowance, GCS egress, Hosting storage/transfer allowance and first-release WIF permission            |
-
-Claude can inspect quota dimensions without exposing credentials:
-
-```powershell
-gcloud beta quotas info list --service=aiplatform.googleapis.com --project=ichiropractic
-gcloud beta quotas info list --service=texttospeech.googleapis.com --project=ichiropractic
-gcloud beta quotas info list --service=vision.googleapis.com --project=ichiropractic
-gcloud beta quotas info list --service=bigquery.googleapis.com --project=ichiropractic
-```
-
-Some shared-throughput and model-specific limits are not returned as editable project quota;
-check the relevant Vertex model/location page and monitoring in Cloud Console. Do not request
-quota increases, provisioned throughput, billing activation or new paid models as part of this
-handoff. Current numeric allowances are **unknown**, not unlimited. Consult official Cloud Run,
-Firebase Hosting, Vertex quotas and BigQuery AI.FORECAST documentation when Claude has permission
-to access external services; this task prohibited that access.
-
-On 429/timeout/provider failure the existing UI retains input and offers retry/typing instead;
-the stream reports failure instead of a fabricated answer. There is **no durable user queue**:
-the run cap returns busy/try-again, and the UI should not claim someone is queued. Existing
-Maps/forecast caches reduce repeats; they are process-local, cold on new instances and cannot
-guarantee a shared hit rate. Customer factual answers can use confirmed shop data; never cache
-private cross-owner answers or silently call an offline fixture a live Gemini answer. A shared
-answer cache and queue are future work, requiring privacy/expiry/backpressure design.
-
-### Evidence boundary
-
-The [local load report](impact/load-test.md) exercises public shop reads, discovery and the
-offline SSE coach on one loopback process with ten shops. It measures neither Firestore nor
-Google inference/ASR, CDN hit rate, autoscaling, cold starts or 30,000-user production readiness.
-No live service in the diagram is claimed as independently verified by this change.
+Google identity, business authority and the optional face check stay separate; a face check does
+not prove ownership. Cloud Storage stays private, and gallery APIs check sharing rights before
+serving bytes.
