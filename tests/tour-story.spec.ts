@@ -218,10 +218,10 @@ test('owner tour connects Today, forecast, payment preview and supplier timeline
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /Purchase orders/ }).click()
   await page.getByRole('button', { name: /PO 4500000001/ }).click()
-  const order = page.getByRole('article', { name: 'PO 4500000001', exact: true })
+  const order = page.getByRole('button', { name: /PO 4500000001.*Lantern Tea Wholesale/ })
   await expect(order).toBeVisible()
-  await expect(order.getByText('Invoice in', { exact: true })).toBeVisible()
-  await expect(order.getByText('Simulation', { exact: true })).toBeVisible()
+  await expect(order).toContainText('Invoice in')
+  await expect(page.getByText('Recorded sample of SAP’s sandbox, not live')).toBeVisible()
   await page.screenshot({
     path: `output/playwright/tour-story/${info.project.name}-owner-supply.png`,
     animations: 'disabled',
