@@ -51,8 +51,10 @@ function rememberSession(value: Session) {
     /* Without storage the next page simply opens a new sandbox. */
   }
 }
-function forgetSession() {
+/** Forgets the stored sandbox, unless a newer one has replaced it since this one ended. */
+function forgetSession(id?: string) {
   try {
+    if (id && savedSession()?.session_id !== id && sessionStorage.getItem(SESSION_KEY)) return
     sessionStorage.removeItem(SESSION_KEY)
   } catch {
     /* Nothing was stored. */
@@ -124,7 +126,7 @@ export default function DemoApp() {
     if (!session) return
     const timer = window.setTimeout(
       () => {
-        forgetSession()
+        forgetSession(session?.session_id)
         setSession(null)
         setState('expired')
       },
@@ -148,7 +150,7 @@ export default function DemoApp() {
         )
         if (response.status === 410) {
           queueMicrotask(() => {
-            forgetSession()
+            forgetSession(session?.session_id)
             setSession(null)
             setState('expired')
           })
@@ -176,7 +178,7 @@ export default function DemoApp() {
         })
         if (response.status === 410) {
           queueMicrotask(() => {
-            forgetSession()
+            forgetSession(session?.session_id)
             setSession(null)
             setState('expired')
           })
@@ -210,7 +212,7 @@ export default function DemoApp() {
     return () => abort.abort()
   }, [session, customer, api])
   const exit = useCallback(async () => {
-    forgetSession()
+    forgetSession(session?.session_id)
     try {
       if (session)
         await fetch(`/api/v1/demo/sessions/${session.session_id}`, {
