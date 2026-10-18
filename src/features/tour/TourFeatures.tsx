@@ -14,7 +14,6 @@ export function TourPanel({ children }: { children: ReactNode }) {
         position: 'fixed',
         inset: 0,
         zIndex: 1400,
-        bgcolor: 'background.default',
         overflowY: 'auto',
         p: 2,
         pt: 'max(24px, env(safe-area-inset-top))',
