@@ -24,7 +24,7 @@ from .merchant import MerchantRepository
 from .passport import PassportState, Visit, apply_rescue, apply_visit
 from .playbook import gather_inputs, offline_draft, stored_from
 from .sales import today_for
-from .supply_docs import Format, SupplyDoc, render
+from .supply_docs import DocLine, Format, Party, SupplyDoc, render
 from .supply_rules import ItemRule, RuleSet
 from .threads import token_hash
 from .tour_catalogue import TOUR_SHOPS
@@ -407,6 +407,84 @@ def seed_supply(store: MerchantRepository, uid: str, demo: DemoShop, day: date) 
     put_once(store.feature_docs, supply.SEQUENCE, bid, bid, at, {"po": 1})
 
 
+# The wholesaler restocks in bulk from a distributor that takes spreadsheet orders by email.
+# Bengaluru's is the one FreshMart also buys from. Prices are minor units, below the wholesaler's.
+DISTRIBUTOR = {
+    "bengaluru": (
+        "Anand Distributors (Demo)",
+        "PO-SL-2210",
+        [
+            ("Tea dust", "kg", 50, 19000),
+            ("Milk", "litre", 200, 4800),
+            ("Sugar", "kg", 100, 3900),
+            ("Paper cups (50)", "pack", 100, 3400),
+        ],
+    ),
+    "singapore": (
+        "Katong Trading (Demo)",
+        "PO-AH-2210",
+        [
+            ("Kopi powder", "kg", 50, 1080),
+            ("Evaporated milk", "pack", 240, 140),
+            ("Sugar", "kg", 100, 160),
+            ("Paper cups (50)", "pack", 100, 210),
+        ],
+    ),
+}
+
+
+def seed_wholesaler(store: MerchantRepository, demo: DemoShop, day: date) -> None:
+    """Vendor to vendor: the stall's WhatsApp order lands in the wholesaler's own books, and the
+    wholesaler's CSV restock goes to its distributor. Both run through the same pipeline a
+    partner's document does; a resend is recognised, so reruns change nothing."""
+    from . import supply_io
+
+    sid = f"demo-story-{demo.city}-supplier"
+    po = store.feature_docs.get(
+        supply.ORDERS, supply._key(demo.id, stable(f"{demo.id}/purchase-order"))
+    )
+    context = store.context(SEED_OWNER, sid)
+    if po:
+        order = supply.po_document(po).model_copy(update={"note": "Demo only: nothing was sent."})
+        supply_io.process(store, sid, context, order, "text", render(order, "text"))
+    name, number, lines = DISTRIBUTOR[demo.city]
+    restock = SupplyDoc(
+        kind="ORDERS",
+        number=number,
+        issued=(day - timedelta(days=1)).isoformat(),
+        delivery=(day + timedelta(days=1)).isoformat(),
+        currency=demo.fields.currency,
+        buyer=Party(id=sid, name=context["business"]["fields"]["name"]),
+        supplier=Party(id=f"demo-{demo.city}-distributor", name=name, system="csv"),
+        terms_days=7,
+        lines=[
+            DocLine(
+                line=10 * (n + 1),
+                item=item,
+                quantity=quantity,
+                unit=unit,
+                price=price,
+                total=price * quantity,
+            )
+            for n, (item, unit, quantity, price) in enumerate(lines)
+        ],
+        total=sum(price * quantity for *_, quantity, price in lines),
+        note="Demo only: nothing was sent.",
+    )
+    supply_io.process(store, sid, context, restock, "csv", render(restock, "csv"))
+
+
+def seed_chain(store: MerchantRepository) -> None:
+    """Metro Foods and its SAP loop, as the supply-chain seed writes them for production (same
+    owner and ids, so either seed recognises the other's records)."""
+    from .demo_chains import METRO
+    from .demo_supply_seed import seed_shop as seed_chain_supply
+
+    owner = "demo-world-owner"
+    store.seed_demo_shop(owner, METRO.id, METRO.fields, METRO.products)
+    seed_chain_supply(store, owner, METRO.id)
+
+
 def seed_customer_threads(
     store: MerchantRepository,
     community: Community,
@@ -538,10 +616,12 @@ def seed_story(
         seed_shop(store, SEED_OWNER, demo, day)
         seed_reviews(community, demo, day)
         seed_rescue(store, demo, day)
+    seed_chain(store)
     owners = [next(s for s in TOUR_SHOPS if s.city == city) for city in ("bengaluru", "singapore")]
     for demo in owners:
         day = today or today_for(demo.fields.model_dump())
         seed_supply(store, SEED_OWNER, demo, day)
+        seed_wholesaler(store, demo, day)
         if owner_uid:
             seed_workspace(store, owner_uid, demo.city, today, reset=reset)
     if customer_uid:

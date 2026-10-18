@@ -21,7 +21,7 @@ const en = {
   steps: [
     {
       title: 'Your shop at a glance',
-      body: 'This is a demo shop with six weeks of sales. Everything here updates as you talk to the coach.',
+      body: 'This is a demo shop with eight weeks of sales. Everything here updates as you talk to the coach.',
     },
     {
       title: 'Your menu, by category',
