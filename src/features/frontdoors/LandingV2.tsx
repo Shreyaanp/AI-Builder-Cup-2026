@@ -320,14 +320,17 @@ export default function LandingV2({ preview = false }: { preview?: boolean }) {
 
         <Does t={t} />
         <Journey t={t} />
-        <Videos t={t} />
+        {/* Wide screens: the videos and the trust tags sit side by side; phones stack them. */}
+        <div className="l2-pair">
+          <Videos t={t} />
 
-        <section className="l2-trust" aria-labelledby="l2-trust-title">
-          <Typography id="l2-trust-title" component="h2" className="l2-h2" data-reveal>
-            {t.trustTitle}
-          </Typography>
-          <TrustTags t={t} />
-        </section>
+          <section className="l2-trust" aria-labelledby="l2-trust-title">
+            <Typography id="l2-trust-title" component="h2" className="l2-h2" data-reveal>
+              {t.trustTitle}
+            </Typography>
+            <TrustTags t={t} />
+          </section>
+        </div>
 
         <figure className="l2-founder" data-reveal>
           <blockquote>{t.founder}</blockquote>

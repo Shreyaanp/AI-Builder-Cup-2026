@@ -7,6 +7,7 @@ import { shape } from '../../design/theme'
 import { LegalDialog } from './LegalDialog'
 import type { LegalDocument } from './LegalDialog'
 import { useCopy } from './strings'
+import { useDemoCopy } from '../frontdoors/strings'
 import { formatPrice, toMinor } from './format'
 import { regionAt } from '../../region/region'
 
@@ -168,6 +169,7 @@ function SignInActions({
 }) {
   const t = useCopy()
   const identity = useIdentity()
+  const demo = useDemoCopy()
   return (
     <Stack spacing={1.5} sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}>
       {identity.error && !compact && <Alert severity="error">{identity.error}</Alert>}
@@ -188,9 +190,15 @@ function SignInActions({
           {t.retry}
         </Button>
       ) : (
-        <Button variant="contained" size="large" onClick={() => void identity.signIn()}>
-          {compact ? t.getStarted : t.signIn}
-        </Button>
+        <>
+          <Button variant="contained" size="large" onClick={() => void identity.signIn()}>
+            {compact ? t.getStarted : t.signIn}
+          </Button>
+          {/* No account needed: the public demo shop is the way in for anyone just looking. */}
+          <Button variant="outlined" size="large" href="/demo">
+            {demo.tryDemo}
+          </Button>
+        </>
       )}
     </Stack>
   )
