@@ -335,6 +335,23 @@ function Preview({ t }: { t: PagesCopy }) {
           {t.previewHero}
         </Typography>
         <Typography className="hw-lead">{t.lead}</Typography>
+        <div className="hw-cta">
+          <ShopsCta t={t} />
+        </div>
+      </section>
+      <section className="hw-story" aria-labelledby="story-title">
+        <Typography id="story-title" component="h2" className="hw-flow-line">
+          {t.storyTitle}
+        </Typography>
+        <ol className="hw-story-steps">
+          {t.story.map(([who, result, tech]) => (
+            <li key={who}>
+              <span className="hw-story-who">{who}</span>
+              <strong>{result}</strong>
+              <span className="hw-tech">{tech}</span>
+            </li>
+          ))}
+        </ol>
       </section>
       <div className="hw-split">
         <section className="hw-side vendor" aria-labelledby="side-vendor">
@@ -364,6 +381,20 @@ function Preview({ t }: { t: PagesCopy }) {
           </div>
         </section>
       </div>
+      <section className="hw-numbers" aria-labelledby="numbers-title">
+        <Typography id="numbers-title" component="h2" className="hw-flow-line">
+          {t.numbersTitle}
+        </Typography>
+        <dl>
+          {t.numbers.map(([value, label]) => (
+            <div key={value}>
+              <dt>{value}</dt>
+              <dd>{label}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="hw-note">{t.numbersNote}</p>
+      </section>
       <section className="hw-more" aria-label={t.previewTrust}>
         <Trust t={t} />
         <div className="hw-cta">
