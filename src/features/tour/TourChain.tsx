@@ -126,6 +126,9 @@ function Panel({ index, story, c }: { index: number; story: ChainStory; c: Chain
         <Typography variant="headlineSmall" component="h2">
           {wholesaler.name}
         </Typography>
+        {!wholesaler.inbound && !wholesaler.restock && (
+          <Typography role="status">{c.failed}</Typography>
+        )}
         {wholesaler.inbound && (
           <Card label={c.incoming}>
             <Chip label={c.incoming} size="small" sx={{ alignSelf: 'flex-start' }} />
