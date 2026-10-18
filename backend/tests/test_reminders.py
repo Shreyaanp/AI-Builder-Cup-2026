@@ -236,15 +236,19 @@ def test_routes_disabled_isolation_unsubscribe_erasure(push_settings: Settings) 
 
 
 @pytest.mark.parametrize(
-    ("locale", "expected_title"),
+    ("locale", "expected_title", "expected_close_title"),
     [
-        ("hi", "1 कामों पर ध्यान दें"),
-        ("ta", "1 விஷயங்களைக் கவனியுங்கள்"),
-        ("zh-Hans", "有1件事需要您处理"),
+        ("hi", "1 कामों पर ध्यान दें", "दिन पूरा करें"),
+        ("ta", "1 விஷயங்களைக் கவனியுங்கள்", "நாளை முடிக்கவும்"),
+        ("zh-Hans", "有1件事需要您处理", "结束今天"),
     ],
 )
 async def test_dispatch_localized_titles_and_dedup(
-    locale: str, expected_title: str, push_settings: Settings, monkeypatch: Any
+    locale: str,
+    expected_title: str,
+    expected_close_title: str,
+    push_settings: Settings,
+    monkeypatch: Any,
 ) -> None:
     repository = MerchantStore(push_settings.merchant_database)
     bid = seed(repository)
@@ -264,7 +268,13 @@ async def test_dispatch_localized_titles_and_dedup(
     sender.return_value = 410
     evening = datetime(2026, 10, 12, 12, 30, tzinfo=UTC)
     assert (await reminders.dispatch(repository, push_settings, evening)).expired == 1
+    assert sender.call_args.args[2]["title"] == expected_close_title
     assert not repository.feature_docs.get(reminders.KIND, "owner")["entries"]
+
+
+def test_push_title_falls_back_to_english_for_missing_translation() -> None:
+    assert reminders.push_title("missing", "morning", 2) == "2 things need you"
+    assert reminders.push_title("missing", "evening", 0) == "Close the day"
 
 
 def test_reminder_locale_accepts_app_locales_and_rejects_unknown() -> None:

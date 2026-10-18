@@ -16,6 +16,7 @@ async function reminderCopy(page: Page, locale: string) {
     const localeExport = locale === 'zh-Hans' ? 'zhHans' : locale
     const t = locale === 'en' ? source.en : source[localeExport]
     return {
+      getStarted: String(t.getStarted),
       remindMe: String(t.remindMe),
       reminderTiming: String(t.reminderTiming),
       reminderDenied: String(t.reminderDenied),
@@ -26,7 +27,7 @@ async function reminderCopy(page: Page, locale: string) {
   }, locale)
 }
 
-async function setup(page: Page, permission: 'granted' | 'denied' = 'granted', locale = 'en') {
+async function setup(page: Page, permission: 'granted' | 'denied' = 'granted') {
   await localOnly(page)
   await page.addInitScript(
     ({ endpoint, permission, locale }) => {
@@ -82,7 +83,8 @@ async function setup(page: Page, permission: 'granted' | 'denied' = 'granted', l
     return route.fulfill({ json: { ok: true } })
   })
   await page.goto('/?app=business')
-  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  const copy = await reminderCopy(page, 'en')
+  await page.getByRole('button', { name: copy.getStarted, exact: true }).click()
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
@@ -114,7 +116,7 @@ async function setup(page: Page, permission: 'granted' | 'denied' = 'granted', l
     ).toBe(true)
   }
   await page.reload()
-  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await page.getByRole('button', { name: copy.getStarted, exact: true }).click()
   await page.getByRole('button', { name: 'You', exact: true }).click()
   return {
     saved,
@@ -183,7 +185,11 @@ test.describe('owner reminders on a phone', () => {
 
   for (const locale of ['ta', 'zh-Hans'] as const) {
     test(`${locale} is sent with the push subscription`, async ({ page }) => {
-      const state = await setup(page, 'granted', locale)
+      const state = await setup(page)
+      await page.getByRole('combobox', { name: 'Language', exact: true }).click()
+      await page
+        .getByRole('option', { name: locale === 'ta' ? 'தமிழ்' : '简体中文', exact: true })
+        .click()
       const copy = await reminderCopy(page, locale)
       const toggle = page.getByRole('switch', { name: copy.remindMe, exact: true })
       await toggle.click()
