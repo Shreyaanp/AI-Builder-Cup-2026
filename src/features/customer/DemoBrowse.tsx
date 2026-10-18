@@ -69,7 +69,7 @@ export function DemoBrowse({ shops, api }: { shops: DemoShop[]; api: Api }) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
-                minHeight: 44,
+                minHeight: 48,
                 color: index > 0 ? 'primary.main' : 'text.secondary',
                 typography: 'labelSmall',
                 textDecoration: index > 0 ? 'underline' : 'none',

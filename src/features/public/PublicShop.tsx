@@ -1187,7 +1187,7 @@ function PublicShopContent({ id, previewApi }: { id: string; previewApi?: Api })
       {stampsEnabled && previewApi && (
         <Link
           href="/explore/s/demo-story-bengaluru-chai?source=qr"
-          sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, mt: 2 }}
+          sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 48, mt: 2 }}
         >
           {demoCopy.stampAtStall}
         </Link>
