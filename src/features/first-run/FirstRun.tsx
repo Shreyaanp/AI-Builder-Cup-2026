@@ -8,7 +8,7 @@ import { hasSeen, remember, type Audience } from './seen'
 /** Blocks setup until the device's introduction is finished or skipped. */
 export function FirstRun({ app, children }: { app: Audience; children: ReactNode }) {
   const [open, setOpen] = useState(() => !hasSeen(app))
-  return open ? (
+  return open && !hasSeen(app) ? (
     <Cards
       app={app}
       onClose={() => {

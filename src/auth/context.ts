@@ -1,6 +1,7 @@
 import { createContext } from 'react'
 import type { FeatureFlags } from './features'
 import type { TrustStripConfig } from './trustStrip'
+import type { FarewellReason } from './farewellNote'
 
 export interface Identity {
   features: FeatureFlags
@@ -13,7 +14,7 @@ export interface Identity {
   name?: string
   getToken: () => Promise<string | null>
   signIn: () => Promise<void>
-  signOut: () => Promise<void>
+  signOut: (reason?: FarewellReason) => Promise<void>
 }
 
 export const IdentityContext = createContext<Identity | null>(null)

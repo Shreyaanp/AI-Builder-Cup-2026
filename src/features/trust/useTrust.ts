@@ -17,7 +17,7 @@ export interface Review {
   status: 'open' | 'cleared' | 'upheld' | 'resolved'
   updated?: number
   similarity?: number
-  /** Liveness: the anti-spoof model's real-person score the reviewer is deciding on. */
+  /** Liveness review (older items): the score the reviewer was deciding on. */
   score?: number
   /** Duplicate: shop names of the newer and the earlier account; liveness: the owner's. */
   shops?: string[][]
