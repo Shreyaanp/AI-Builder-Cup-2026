@@ -357,7 +357,9 @@ def create_app(
         return {
             **get_services(request).identity.bootstrap(request, response),
             "v1_enabled": settings.v1_enabled,
-            "features": FeatureFlags(google_guide=settings.feature_google_guide).model_dump(),
+            "features": FeatureFlags(
+                google_guide=settings.feature_google_guide, guest_customer=settings.guest_customer
+            ).model_dump(),
             "trust_strip": {
                 "enabled": settings.feature_trust_strip,
                 "support_whatsapp": settings.support_whatsapp
