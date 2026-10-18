@@ -323,7 +323,7 @@ export function PickCard({
           <Typography
             variant="bodySmall"
             color="text.secondary"
-            sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}
+            sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, minWidth: 0 }}
           >
             {pick.open_now !== null && (
               <Box
@@ -332,13 +332,15 @@ export function PickCard({
                 sx={{
                   width: 8,
                   height: 8,
+                  mt: 1.5,
                   flexShrink: 0,
                   borderRadius: '50%',
                   bgcolor: pick.open_now ? 'var(--customer-open)' : roles.outline,
                 }}
               />
             )}
-            <Box component="span" sx={oneLine}>
+            {/* Wraps, never an ellipsis: long Tamil/Kannada status words stay whole. */}
+            <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               {[
                 pick.open_now === null ? null : pick.open_now ? ask.openNow : ask.closed,
                 anchor ? fillIn(copy.fromStation, { distance, station: anchor.name }) : distance,
@@ -367,9 +369,15 @@ export function PickCard({
   )
 }
 
-/** A same-size placeholder row while the area's shops load, so nothing below moves. */
+/**
+ * A same-size placeholder row while the area's shops load, so nothing below moves. It draws
+ * the card's own shape (photo, name, details) so it never reads as an empty outline.
+ */
 export function PickSkeleton({ tile = false }: { tile?: boolean }) {
   const roles = useTheme().material
+  const bar = (width: string) => (
+    <Box sx={{ height: 12, width, borderRadius: 1, bgcolor: roles.surfaceContainerHighest }} />
+  )
   return (
     <Box
       component="li"
@@ -377,6 +385,11 @@ export function PickSkeleton({ tile = false }: { tile?: boolean }) {
       className="c-shimmer"
       sx={{
         listStyle: 'none',
+        display: 'flex',
+        flexDirection: tile ? 'column' : 'row',
+        gap: 2,
+        p: tile ? 0 : 2,
+        overflow: 'hidden',
         // A carousel card: the photo's 4:3 plus its three text lines.
         ...(tile && { flex: '0 0 min(72%, 264px)', aspectRatio: '4/4.4' }),
         height: tile ? 'auto' : 88,
@@ -384,7 +397,21 @@ export function PickSkeleton({ tile = false }: { tile?: boolean }) {
         bgcolor: roles.surfaceContainerLow,
         border: `1px solid ${roles.outlineVariant}`,
       }}
-    />
+    >
+      <Box
+        sx={{
+          bgcolor: roles.surfaceContainerHighest,
+          ...(tile
+            ? { aspectRatio: '4/3', width: '100%' }
+            : { width: 56, height: 56, flex: 'none' }),
+          borderRadius: tile ? 0 : '12px',
+        }}
+      />
+      <Box sx={{ display: 'grid', gap: 2, alignContent: 'center', flex: 1, p: tile ? 2 : 0 }}>
+        {bar('70%')}
+        {bar('45%')}
+      </Box>
+    </Box>
   )
 }
 
