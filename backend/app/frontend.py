@@ -3,6 +3,11 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
+YEAR = "public, max-age=31536000, immutable"
+# Hashed build output, plus public media that never changes in place: the how-it-works demo
+# videos and posters and the self-hosted fonts. Replace one of those under a new file name.
+LONG_CACHE = ("assets/", "how-it-works/", "fonts/")
+
 
 def serve_frontend(app: FastAPI, directory: str) -> None:
     root = Path(directory).resolve()
@@ -19,11 +24,7 @@ def serve_frontend(app: FastAPI, directory: str) -> None:
         ):
             raise HTTPException(404, "File not found.")
         if candidate.is_file():
-            headers = (
-                {"Cache-Control": "public, max-age=31536000, immutable"}
-                if path.startswith("assets/")
-                else {}
-            )
+            headers = {"Cache-Control": YEAR} if path.startswith(LONG_CACHE) else {}
             return FileResponse(candidate, headers=headers)
         if Path(path).suffix or path.startswith("assets/"):
             raise HTTPException(404, "File not found.")
