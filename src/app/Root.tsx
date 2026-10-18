@@ -2,6 +2,7 @@ import { Component, lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { resolveApp } from './router'
 import { BrandSplash } from '../features/frontdoors/Splash'
+import { FirstRun } from '../features/first-run/FirstRun'
 
 const App = lazy(() => import('./App'))
 const V1App = lazy(() => import('../features/v1/V1App'))
@@ -72,9 +73,11 @@ export default function Root() {
     )
   return (
     <LoadBoundary business>
-      <Suspense fallback={<BrandSplash business />}>
-        <V1App />
-      </Suspense>
+      <FirstRun app="owner">
+        <Suspense fallback={<BrandSplash business />}>
+          <V1App />
+        </Suspense>
+      </FirstRun>
     </LoadBoundary>
   )
 }
