@@ -33,7 +33,7 @@ from .gemini_schema import gemini_schema, parse_reply
 from .limits import client_ip, enforce_limits
 from .merchant import DEMO_ID
 from .merchant_routes import owner, store
-from .money import exponent, to_major
+from .region import money_text
 from .threads import thread_signals
 
 log = structlog.get_logger()
@@ -272,11 +272,6 @@ async def act(
     return record
 
 
-def money(minor: int, currency: str) -> str:
-    """ "SGD 4.50": the currency's own decimals, never "4.5"."""
-    return f"{currency} {to_major(minor, currency):,.{exponent(currency)}f}".strip()
-
-
 def _stem(word: str) -> str:
     return word[:-2] if word.endswith("es") and len(word) > 5 else word.rstrip("s")
 
@@ -303,7 +298,7 @@ def demo_reply_text(shop: dict[str, Any], message: str) -> str:
         product = matched[0]
         if not product["available"]:
             return f"Sorry, {product['name']} is sold out today. Try again tomorrow morning!"
-        price = money(product["price"], currency)
+        price = money_text(product["price"], currency)
         return (
             f"Hi! Yes, {product['name']} is on today ({price} per "
             f"{product['unit']}). Shall I keep one for you?"
@@ -330,7 +325,7 @@ async def shop_side_replies(
                 text = answer.answer
                 if answer.price is not None:
                     currency = shop.get("currency", "")
-                    text += f" {money(answer.price, currency)}"
+                    text += f" {money_text(answer.price, currency)}"
                     text += f" / {answer.unit}" if answer.unit else ""
                 await act(request, bid, entry, "ai_answer", text[:500])
     except HTTPException:
