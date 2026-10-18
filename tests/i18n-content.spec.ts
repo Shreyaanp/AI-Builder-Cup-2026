@@ -87,6 +87,11 @@ test('the shop page reads in the customer’s language; owner item names stay as
   for (const { locale, code, category, sections } of CASES) {
     const { context, page: customer } = await customerIn(browser, baseURL, locale)
     try {
+      const blockedFonts: string[] = []
+      customer.on('response', (response) => {
+        if (response.url().includes('/@fs/') && response.status() >= 400)
+          blockedFonts.push(`${response.status()} ${response.url()}`)
+      })
       const response = customer.waitForResponse((r) => r.url().includes(`/public/shops/${id}`))
       await customer.goto(`/explore/s/${id}`)
       // The page asks once, in its language.
@@ -112,6 +117,8 @@ test('the shop page reads in the customer’s language; owner item names stay as
         expect(box.left).toBeGreaterThanOrEqual(0)
         expect(box.right).toBeLessThanOrEqual(360)
       }
+      // Linked node_modules must still serve the locale font files (especially Tamil at 360px).
+      await expect.poll(() => blockedFonts).toEqual([])
       await customer.screenshot({ path: `docs/stories/i18n-${code}-shop.png`, fullPage: true })
     } finally {
       await context.close()

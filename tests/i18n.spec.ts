@@ -64,6 +64,18 @@ test('systemLocale maps APAC browser tags and falls back to English', async ({ p
   expect(mapped).toEqual(['zh-Hans', 'zh-Hans', 'id', 'fil', 'en', 'ko'])
 })
 
+test('Malay passport calls streak freezes protection, not a freezer', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  const freezes = await page.evaluate(async () => {
+    const module = '/src/features/passport/games/copy.ts'
+    const { gamesCopy } = (await import(module)) as {
+      gamesCopy: (locale: 'ms') => { freezes: string }
+    }
+    return gamesCopy('ms').freezes.replace('{n}', '1')
+  })
+  expect(freezes).toBe('Perlindungan: 1')
+})
+
 test('the Settings override wins over the phone and survives reload', async ({ page }) => {
   await consentScreen(page, 'Continue local preview', 'Before we start')
   await page.getByLabel('I agree to the Terms').check()
