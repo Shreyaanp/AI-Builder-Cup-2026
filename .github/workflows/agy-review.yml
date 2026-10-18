@@ -39,8 +39,14 @@ jobs:
           New-Item -ItemType Directory -Force $dir | Out-Null
 
           # Untrusted text goes to files, never into a command line or the prompt itself.
-          gh pr diff $env:PR --repo $env:REPO | Out-String | Set-Content -Encoding utf8 (Join-Path $dir 'pr.diff')
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
           $diffFile = Join-Path $dir 'pr.diff'
+          gh pr diff $env:PR --repo $env:REPO | Out-String | Set-Content -Encoding utf8 $diffFile
+          if ($LASTEXITCODE -ne 0 -or (Get-Item $diffFile).Length -lt 10) {
+            Write-Output "Could not fetch the PR diff; skipping the review."
+            exit 0
+          }
           $max = 300000
           $text = Get-Content $diffFile -Raw
           $truncated = $false
@@ -72,7 +78,8 @@ jobs:
           $review = $null
           try {
             $result = ($raw.Trim() -split "`n" | Where-Object { $_ -match '^\{' } | Select-Object -Last 1) | ConvertFrom-Json
-            if ($result.status -ne 'ERROR') { $review = ($result.response | Out-String).Trim() }
+            # agy can report status ERROR (e.g. a late tool error) yet still return the full review text.
+            $review = ($result.response | Out-String).Trim()
           } catch {}
           if (-not $review) {
             Write-Output "Antigravity returned no review (quota or error); skipping the comment."
