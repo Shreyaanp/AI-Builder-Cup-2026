@@ -1,5 +1,6 @@
 """Public demos never acquire an owner identity or use the durable merchant repository."""
 
+import json
 import time
 from unittest.mock import AsyncMock, Mock
 
@@ -94,8 +95,55 @@ def test_demo_coach_answers_offline(app, monkeypatch):  # noqa: F811
         )
         assert reply.status_code == 200, reply.text
         assert "turn_complete" in reply.text
-        assert "weekday average" in reply.text.lower()
+        assert "demo forecast" in reply.text.lower()
         paid_forecast.forecast.assert_not_called()
+
+
+def test_public_demo_coach_covers_shop_intents_from_seeded_data(app):  # noqa: F811
+    prompts = [
+        ("Help me update my products", "demo menu"),
+        ("Help me close the day", "demo sales"),
+        ("Forecast demand for Masala chai", "demo forecast"),
+        ("Reorder milk for tomorrow", "Demo supply records"),
+        ("My flour is running low", "Demo supply records"),
+        ("Reply to customers", "demo customer questions"),
+        ("Something sold out?", "Demo stock shows"),
+        ("Change a price", "demo price"),
+        ("Samosa is 20 now", "demo price"),
+        ("How did I do today?", "demo sales"),
+        ("Order more Tea dust", "Demo supply records"),
+        ("What should I prep tomorrow?", "demo forecast"),
+        ("Hello", "menu items"),
+        ("नमस्ते", "menu items"),
+        ("आज बिक्री कैसी रही?", "demo sales"),
+        ("कल क्या तैयारी करूँ?", "demo forecast"),
+        ("ग्राहक क्या पूछ रहे हैं?", "customer questions"),
+        ("नमक खत्म है", "Demo stock shows"),
+        ("कीमत बदलो", "demo price"),
+        ("ऑर्डर और सामान", "Demo supply records"),
+        ("We are closed today", "Demo shop hours"),
+        ("What is my business called?", "I can help with"),
+    ]
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        app.state.rate_limiter.counters.clear()
+        session = open_demo(client).json()["session_id"]
+        for message, expected in prompts:
+            response = client.post(
+                f"/api/v1/demo/sessions/{session}/coach", json={"message": message}
+            )
+            assert response.status_code == 200, (message, response.text)
+            events = [
+                json.loads(line[6:])
+                for line in response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            reply = " ".join(event.get("text", "") for event in events)
+            assert expected in reply, (message, events)
+            assert "What is your business called?" not in reply
+            if expected != "I can help with":
+                assert "next" in reply.lower()
+        app.state.rate_limiter.counters.clear()
 
 
 def test_customer_snapshot_reads(app):  # noqa: F811
