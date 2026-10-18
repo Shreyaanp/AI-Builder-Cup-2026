@@ -1335,6 +1335,7 @@ const demoEnglish = {
   failed: 'The demo could not open. Try again.',
   expired: 'This demo has ended. Try again.',
   readOnly: 'Demo: not sent',
+  demoNotice: "This is a demo shop; changes aren't saved",
   title: 'Demo shop',
   tryDemo: 'Try demo',
   askTitle: 'Coach (sample answer)',

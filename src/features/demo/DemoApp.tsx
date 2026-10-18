@@ -277,7 +277,7 @@ export default function DemoApp() {
           )
         ) : (
           <BackHistory value>
-            <WorkspaceProvider api={ownerApi} me={demoMe} readOnlyMessage={t.readOnly}>
+            <WorkspaceProvider api={ownerApi} me={demoMe} readOnlyMessage={t.demoNotice}>
               <AppShell />
               <DemoWelcome />
             </WorkspaceProvider>

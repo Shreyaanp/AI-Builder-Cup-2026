@@ -259,7 +259,9 @@ export function ReviewDialog({
           </Stack>
         </>
       )}
-      {error && <Alert severity="error">{error}</Alert>}
+      {error && (
+        <Alert severity={error.toLowerCase().includes('demo') ? 'info' : 'error'}>{error}</Alert>
+      )}
     </Stack>
   )
   const actions = empty ? (

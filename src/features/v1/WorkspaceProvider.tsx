@@ -234,6 +234,7 @@ export function WorkspaceProvider({
     () => ({
       api,
       me,
+      readOnlyMessage,
       businesses,
       loading,
       loadError,
