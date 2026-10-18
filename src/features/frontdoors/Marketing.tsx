@@ -205,6 +205,22 @@ function StoryScreen({ step }: { step: number }) {
   )
 }
 
+/** A lazy, size-reserved photo from public/landing (400 and 800 px wide WebP). */
+function Photo({ name, alt, sizes }: { name: string; alt: string; sizes: string }) {
+  return (
+    <img
+      src={`/landing/${name}-800.webp`}
+      srcSet={`/landing/${name}-400.webp 400w, /landing/${name}-800.webp 800w`}
+      sizes={sizes}
+      width={800}
+      height={598}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+    />
+  )
+}
+
 export default function Marketing() {
   const theme = useTheme()
   const t = useFrontCopy()
@@ -455,19 +471,53 @@ export default function Marketing() {
                 {t.freshBody}
               </Typography>
               <div className="lp-cards" aria-hidden="true">
-                {[
-                  ['Ah Seng Kopi', 'Kopitiam · Open now', '#f6d365'],
-                  ['Rotiboy Corner', 'Bakery · 300 m', '#fda085'],
-                  ['Glow Hair Studio', 'Salon · Walk-ins today', '#a1c4fd'],
-                  ['Menya Hoshi', 'Ramen · Open now', '#c2e9fb'],
-                  ['Som Tam Nong', 'Thai · 1 sold out', '#d4fc79'],
-                ].map(([name, line, color], index) => (
+                {(
+                  [
+                    [
+                      'Ah Seng Kopi',
+                      'Kopitiam · Open now',
+                      '#f6d365',
+                      'chai',
+                      'Glasses of hot tea steaming on a street stall counter',
+                    ],
+                    [
+                      'Rotiboy Corner',
+                      'Bakery · 300 m',
+                      '#fda085',
+                      'bakery',
+                      'Fresh loaves and buns on wooden trays at a neighbourhood bakery',
+                    ],
+                    [
+                      'Glow Hair Studio',
+                      'Salon · Walk-ins today',
+                      '#a1c4fd',
+                      'tailor',
+                      'A small tailor shop with folded fabric, thread and a measuring tape',
+                    ],
+                    [
+                      'Menya Hoshi',
+                      'Ramen · Open now',
+                      '#c2e9fb',
+                      'hawker',
+                      'Steaming bowls of noodles and a plate of chicken rice at a hawker stall',
+                    ],
+                    [
+                      'Som Tam Nong',
+                      'Thai · 1 sold out',
+                      '#d4fc79',
+                      'kirana',
+                      'A corner grocery shop with jars, sacks and fruit crates',
+                    ],
+                  ] as [string, string, string, string, string][]
+                ).map(([name, line, color, photo, alt], index) => (
                   <div
                     key={name}
                     className="lp-card"
                     style={{ '--k': index - 2, '--c': color } as CSSProperties}
                   >
-                    <div className="lp-card-art" />
+                    <div className="lp-card-art">
+                      <Photo name={photo} alt={alt} sizes="(max-width: 599px) 45vw, 210px" />
+                    </div>
                     <strong>{name}</strong>
                     <span>
                       <MapPin size={12} /> {line}
@@ -491,6 +541,13 @@ export default function Marketing() {
               {t.trust}
             </Typography>
             <Typography variant="bodyLarge">{t.trustBody}</Typography>
+            <div className="lp-trust-photo">
+              <Photo
+                name="flowers"
+                alt="Buckets of fresh marigolds, roses and jasmine garlands at a flower seller's stall"
+                sizes="(max-width: 599px) 90vw, 560px"
+              />
+            </div>
           </section>
 
           <section className="lp-final" data-reveal aria-labelledby="final-title">
