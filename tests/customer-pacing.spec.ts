@@ -1,13 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { AxeBuilder } from '@axe-core/playwright'
-import { explainerCopy } from '../src/features/first-run/copy'
-import { frontCopy } from '../src/features/frontdoors/strings'
-import { conversationCopy } from '../src/features/discover/conversationCopy'
-import { discoverCopy } from '../src/features/discover/strings'
-import { passportCopy } from '../src/features/passport/copy'
-import { accountCopyFor } from '../src/features/customer/copy'
-import { customerEnglish } from '../src/features/public/customerCopy'
-import { customerTranslations } from '../src/features/public/customerLocales'
+import { explainerCopy } from '../src/features/first-run/copy.js'
+import { discoverCopy } from '../src/features/discover/strings.js'
 import { writeFileSync, mkdirSync } from 'node:fs'
 
 const baseline = process.env.CUSTOMER_PACING_BASELINE === 'true'
@@ -43,6 +37,13 @@ for (const language of ['en', 'hi'] as const) for (const appearance of ['light',
   test(`customer pacing: first open → Ask → results → shop → QR → Passport → sign-in → legal (${language}, ${appearance})`, async ({ page, context }, info) => {
     test.skip(info.project.name !== 'phone', 'One 390 px phone journey per locale and theme')
     test.setTimeout(120_000)
+    // Runtime copy imports also use hooks in the web app; keep them out of Node's type graph.
+    const { frontCopy } = await import('../src/features/frontdoors/strings' as string)
+    const { conversationCopy } = await import('../src/features/discover/conversationCopy' as string)
+    const { passportCopy } = await import('../src/features/passport/copy' as string)
+    const { accountCopyFor } = await import('../src/features/customer/copy' as string)
+    const { customerEnglish } = await import('../src/features/public/customerCopy' as string)
+    const { customerTranslations } = await import('../src/features/public/customerLocales' as string)
     const c = conversationCopy(language, 'INR')
     const d = discoverCopy(language)
     const p = passportCopy(language)
@@ -51,7 +52,7 @@ for (const language of ['en', 'hi'] as const) for (const appearance of ['light',
     const tour = explainerCopy[language]
     const more = language === 'en' ? 'Show more' : 'और देखें'
     const agree = language === 'en' ? 'I agree' : 'मैं सहमत हूँ'
-    const captures = []
+    const captures: Awaited<ReturnType<typeof record>>[] = []
     const prefix = `${baseline ? 'before' : 'after'}-${language}-${appearance}`
     const capture = async (name: string, scope = page.getByRole('main')) => captures.push(await record(page, scope, name, prefix))
     let followed = false

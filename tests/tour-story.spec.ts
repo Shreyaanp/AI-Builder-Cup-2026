@@ -115,15 +115,22 @@ for (const area of [
   })
 }
 
-test('customer opts into the seeded story, then sees passport and replied chats', async ({
+test('customer has no demo-story entry; seeded fixture shows passport and replied chats', async ({
   page,
 }, info) => {
   test.setTimeout(60_000)
   await page.request.post('/api/v1/customer/session', { data: { name: 'Demo judge' } })
   await page.goto('/explore/')
   await page.getByRole('button', { name: 'Profile and preferences' }).click()
-  await page.getByRole('button', { name: 'Load demo story' }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Load demo story' })).toHaveCount(0)
+  const zone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone)
+  const seed = await page.request.post(`/api/v1/demo/customer?zone=${encodeURIComponent(zone)}`)
+  expect(seed.ok()).toBe(true)
+  const { place } = await seed.json()
+  await page.evaluate(
+    (place) => localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place })),
+    place,
+  )
   const passport = await (await page.request.get('/api/v1/customer/passport')).json()
   expect(passport.points).toBe(0)
   expect(passport.demo_points).toBeGreaterThan(0)
@@ -132,7 +139,15 @@ test('customer opts into the seeded story, then sees passport and replied chats'
   await page.goto('/explore/passport')
   await expect(page.getByRole('heading', { name: 'Your passport', exact: true })).toBeVisible()
   await expect(page.getByText('Points', { exact: true })).toBeVisible()
+  await page
+    .locator('summary')
+    .filter({ hasText: /^Rescued$/ })
+    .click()
   await expect(page.getByText(/kg CO₂e kept out of the air/)).toBeVisible()
+  await page
+    .locator('summary')
+    .filter({ hasText: /^Stamp book$/ })
+    .click()
   await expect(page.getByRole('link', { name: /Lantern Chai Corner/ }).first()).toBeVisible()
   await page.screenshot({
     path: `output/playwright/tour-story/${info.project.name}-passport.png`,
@@ -140,6 +155,10 @@ test('customer opts into the seeded story, then sees passport and replied chats'
     animations: 'disabled',
   })
   await page.goto('/explore/s/demo-story-bengaluru-chai')
+  await page
+    .locator('summary')
+    .filter({ hasText: /^Stamp book$/ })
+    .click()
   await expect(
     page.getByRole('link', { name: 'Stamp card · 7 of 10 stamps', exact: true }),
   ).toBeVisible()
@@ -235,14 +254,16 @@ for (const language of [
   { locale: 'hi', profile: 'प्रोफ़ाइल और पसंद', load: 'डेमो कहानी खोलें' },
   { locale: 'zh-Hans', profile: '资料和偏好', load: '加载演示故事' },
 ]) {
-  test(`demo action fits in ${language.locale}`, async ({ page }, info) => {
+  test(`customer profile excludes the business demo action in ${language.locale}`, async ({
+    page,
+  }, info) => {
     await page.addInitScript((locale) => {
       localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: locale }))
     }, language.locale)
     await page.request.post('/api/v1/customer/session', { data: { name: 'Demo judge' } })
     await page.goto('/explore/')
     await page.getByRole('button', { name: language.profile }).click()
-    await expect(page.getByRole('button', { name: language.load })).toBeVisible()
+    await expect(page.getByRole('button', { name: language.load })).toHaveCount(0)
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
     ).toBeTruthy()
