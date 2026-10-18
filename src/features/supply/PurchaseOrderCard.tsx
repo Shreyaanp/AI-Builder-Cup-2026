@@ -174,7 +174,7 @@ export function PurchaseOrderCard({
         <Box aria-hidden="true" sx={{ display: 'flex', color: roles.primary }}>
           <FileText size={20} />
         </Box>
-        <Typography variant="labelLarge" color="text.secondary" sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="labelLarge" color="text.secondary" sx={{ flex: 1, minWidth: 'max-content' }}>
           {s.po(poNumber(order.number))}
         </Typography>
         {order.simulated && (
