@@ -109,25 +109,6 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
             ]}
           />
         </Box>
-
-        {/* Closing call to action */}
-        <Box sx={{ ...section, pb: { xs: 6, md: 10 } }}>
-          <Stack
-            spacing={2.5}
-            sx={{
-              bgcolor: roles.primaryContainer,
-              color: roles.onPrimaryContainer,
-              borderRadius: `${shape.xl}px`,
-              p: { xs: 3, md: 6 },
-              alignItems: { md: 'flex-start' },
-            }}
-          >
-            <Typography component="h2" variant="headlineMedium">
-              {t.ctaTitle}
-            </Typography>
-            <SignInActions onPreview={onPreview} compact />
-          </Stack>
-        </Box>
       </Box>
 
       <Box
