@@ -42,7 +42,7 @@ def local_shop(
     products[-1].available = False
     products[0].stock = 4  # A concrete, actionable low-stock row on Today.
     if index == 0:
-        products[4].stock = 1  # Tea leaves / coffee beans link the pulse to a supplier order.
+        products[4].stock = 1  # Tea dust / kopi powder link the pulse to a supplier order.
     return shop(
         f"demo-story-{city}-{slug}",
         city=city,
@@ -120,7 +120,7 @@ def catalogue() -> list[DemoShop]:
                 ("Ginger chai", 25, "cup"),
                 ("Bun maska", 35, "piece"),
                 ("Samosa", 20, "piece"),
-                ("Tea leaves", 320, "kg"),
+                ("Tea dust", 320, "kg"),
                 ("Ragi biscuit", 15, "piece"),
             ],
         ),
@@ -242,7 +242,7 @@ def catalogue() -> list[DemoShop]:
                 ("Kopi O", 1.5, "cup"),
                 ("Kaya toast set", 5.2, "set"),
                 ("Soft-boiled eggs", 1.8, "set"),
-                ("Coffee beans", 18, "kg"),
+                ("Kopi powder", 18, "kg"),
                 ("Curry puff", 1.8, "piece"),
             ],
         ),
