@@ -166,7 +166,7 @@ function Preview({ order, doc }: { order: IoOrder; doc: IoDocument }) {
         </Typography>
       ))}
       {order.partner.demo && (
-        <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
+        <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
           {c.simulated}
         </Typography>
       )}
@@ -258,7 +258,7 @@ function ReceiveOrItems({
               <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
                 {line.item}
               </Typography>
-              <Typography variant="bodySmall" color="text.secondary">
+              <Typography variant="bodyMedium" color="text.secondary">
                 {c.of(f.qty(expected(line.line)), line.unit)}
               </Typography>
             </Box>

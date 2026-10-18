@@ -64,7 +64,7 @@ test('one host/path policy, legacy URLs and origin validation', () => {
     ['https://business.chalkboard.shreyaan.work/explore/demo', 'customer'],
     ['https://legacy.run.app/', 'business'],
     ['http://127.0.0.1:3200/', 'business'],
-    ['http://127.0.0.1:3200/?app=landing', 'landing'],
+    ['http://127.0.0.1:3200/?app=landing&landing=classic', 'landing'],
     ['http://127.0.0.1:3200/?app=customer', 'customer'],
   ]
   for (const [url, app] of cases) expect(resolveApp(new URL(url))).toBe(app)
@@ -80,7 +80,7 @@ test('marketing has two paths, all sections, no splash or auth bootstrap', async
   const requests: string[] = []
   page.on('request', (request) => requests.push(request.url()))
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.goto('/?app=landing')
+  await page.goto('/?app=landing&landing=classic')
   await expect(
     page.getByRole('heading', { name: 'Small shops. Big neighbourhood energy.' }),
   ).toBeVisible()
@@ -226,7 +226,7 @@ for (const mode of ['light', 'dark'] as const) {
 }
 
 test('all new copy has 15 complete locale translations', async ({ page }) => {
-  await page.goto('/?app=landing')
+  await page.goto('/?app=landing&landing=classic')
   // Loaded through the Vite dev server: app modules use bundler-style imports.
   const { english, translations } = await page.evaluate(async () => {
     const path = '/src/features/frontdoors/strings.ts'
@@ -246,7 +246,7 @@ test('all new copy has 15 complete locale translations', async ({ page }) => {
 for (const width of [360, 390, 412]) {
   test(`B35 landing fits ${width}px with readable cards and a vertical story`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })
-    await page.goto('/?app=landing')
+    await page.goto('/?app=landing&landing=classic')
     await expect(page.locator('.lp-eyebrow')).toHaveCount(0)
     await expect(page.locator('.lp-nav').getByRole('link', { name: 'For businesses' })).toBeHidden()
     const heroBusiness = page
@@ -313,7 +313,7 @@ for (const width of [360, 390, 412]) {
 test('B35 desktop keeps its hero columns, bento and pinned story', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.goto('/?app=landing')
+  await page.goto('/?app=landing&landing=classic')
   await expect(
     page.locator('.lp-hero .lp-cta').getByRole('link', { name: 'For businesses' }),
   ).toBeHidden()
