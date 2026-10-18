@@ -11,6 +11,10 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   List,
   ListItemButton,
   ListItemText,
@@ -50,6 +54,7 @@ export default function DemoApp() {
   const [session, setSession] = useState<Session | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'failed' | 'expired'>('loading')
   const [attempt, setAttempt] = useState(0)
+  const [ask, setAsk] = useState<{ text: string; send: boolean } | null>(null)
   const [shops, setShops] = useState<DemoShop[]>([])
   const path = useSyncExternalStore(subscribePath, currentPath)
   const customer = path.startsWith('/explore/demo')
@@ -147,16 +152,20 @@ export default function DemoApp() {
           component="header"
           sx={{
             px: 2,
-            pt: 'calc(8px + env(safe-area-inset-top))',
+            pt: 'env(safe-area-inset-top)',
             bgcolor: (theme) => theme.material.secondaryContainer,
             color: (theme) => theme.material.onSecondaryContainer,
           }}
         >
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <Typography variant="bodyMedium" sx={{ flex: '1 1 180px' }}>
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 1, height: 36 }}>
+            <Typography variant="bodySmall" noWrap sx={{ flex: 1, minWidth: 0 }}>
               {t.banner}
             </Typography>
-            <Button onClick={() => void exit()} sx={{ minHeight: 48 }}>
+            <Button
+              size="small"
+              onClick={() => void exit()}
+              sx={{ minHeight: 36, minWidth: 0, py: 0, px: 1, fontSize: 13 }}
+            >
               {t.exit}
             </Button>
           </Stack>
@@ -164,7 +173,7 @@ export default function DemoApp() {
             <Button
               href={customer ? '/demo' : '/explore/demo'}
               onClick={customerNavigate}
-              sx={{ minHeight: 48 }}
+              sx={{ minHeight: 40 }}
             >
               {customer ? t.owner : t.customer}
             </Button>
@@ -218,7 +227,12 @@ export default function DemoApp() {
           )
         ) : (
           <BackHistory value>
-            <WorkspaceProvider api={api} me={demoMe} readOnlyMessage={t.readOnly}>
+            <WorkspaceProvider
+              api={api}
+              me={demoMe}
+              readOnlyMessage={t.readOnly}
+              onDemoAsk={setAsk}
+            >
               <Box component="main" sx={{ px: 2, pb: 4 }}>
                 <ShopScreen />
                 <Box sx={{ maxWidth: 760, mx: 'auto', mt: 4 }}>
@@ -228,6 +242,24 @@ export default function DemoApp() {
             </WorkspaceProvider>
           </BackHistory>
         )}
+        <Dialog open={ask !== null} onClose={() => setAsk(null)} fullWidth maxWidth="xs">
+          <DialogTitle>{t.askTitle}</DialogTitle>
+          <DialogContent>
+            <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 1.5 }}>
+              {ask?.text}
+            </Typography>
+            <Typography variant="bodyLarge">
+              {ask?.send
+                ? t.askSuppliers
+                : /\s/.test(ask?.text ?? '') && !/:\s*$/.test(ask?.text ?? '')
+                  ? t.askPrep
+                  : t.askOther}
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAsk(null)}>{t.close}</Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </IdentityContext>
   )
