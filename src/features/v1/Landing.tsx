@@ -116,7 +116,6 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
         sx={{ ...section, pb: 'calc(24px + env(safe-area-inset-bottom))', textAlign: 'center' }}
       >
         <Typography variant="bodySmall" color="text.secondary">
-          {t.independent} ·{' '}
           <Link
             component="button"
             type="button"
