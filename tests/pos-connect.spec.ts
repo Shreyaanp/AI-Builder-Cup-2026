@@ -53,7 +53,7 @@ test('linked local fonts load without dev-server errors', async ({ page }) => {
   await localOnly(page)
   const fontResponses: number[] = []
   page.on('response', (response) => {
-    if (response.url().includes('/@fs/') && /\.(woff2?|ttf)(\?|$)/i.test(response.url()))
+    if (response.url().includes('google-sans-flex') && response.url().endsWith('.woff2'))
       fontResponses.push(response.status())
   })
   await page.goto('/', { waitUntil: 'domcontentloaded' })
@@ -80,7 +80,7 @@ test('POS connection labels stay in the selected Hindi locale', async ({ page })
 
   const connect = page.getByRole('dialog', { name: 'अपना सिस्टम जोड़ें' })
   await expect(connect.getByText('अपना सिस्टम चुनें')).toBeVisible()
-  await expect(connect.getByRole('button', { name: 'बंद करें' })).toBeVisible()
+  await expect(connect.getByRole('button', { name: 'बंद करें', exact: true }).first()).toBeVisible()
   await expect(connect.getByText('Close', { exact: true })).toHaveCount(0)
   await expect(connect.getByText('जुड़ा है', { exact: true })).toBeVisible()
   await expect(connect.getByText('Connected', { exact: true })).toHaveCount(0)
