@@ -95,8 +95,9 @@ for (const appearance of ['light', 'dark'] as const) {
       page,
     }, info) => {
       await page.goto('/?app=landing')
+      const phone = (page.viewportSize()?.width ?? 0) < 900
       const topBar = page.getByRole('banner').getByRole('link', { name: 'For businesses' })
-      if ((page.viewportSize()?.width ?? 0) < 900) await expect(topBar).toBeHidden()
+      if (phone) await expect(topBar).toBeHidden()
       else {
         await expect(topBar).toBeVisible()
         await expect(topBar).not.toHaveClass(/MuiButton-contained/)
@@ -104,9 +105,17 @@ for (const appearance of ['light', 'dark'] as const) {
       const business = page.locator('.lp-final').getByRole('link', { name: 'For businesses' })
       await expect(business).toHaveCount(1)
       const hero = page.locator('.lp-hero')
-      await expect(hero.getByRole('link', { name: 'For businesses' })).toHaveCount(0)
       const discover = hero.getByRole('link', { name: 'Find places near me' })
       await expect(discover).toHaveClass(/MuiButton-contained/)
+      // Phones hide the top bar's business link, so the hero carries it, outlined, below the
+      // discovery action (#179); wider screens keep it in the top bar only.
+      const heroBusiness = hero.getByRole('link', { name: 'For businesses' })
+      if (phone) {
+        await expect(heroBusiness).toHaveCount(1)
+        await expect(heroBusiness).not.toHaveClass(/MuiButton-contained/)
+        const [find, below] = [await discover.boundingBox(), await heroBusiness.boundingBox()]
+        expect(below!.y).toBeGreaterThanOrEqual(find!.y + find!.height)
+      } else await expect(heroBusiness).toHaveCount(0)
       await withinViewport(page, discover)
       await discover.focus()
       await expect(discover).toBeFocused()
