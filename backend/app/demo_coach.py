@@ -30,13 +30,17 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     name = product["name"]
     stock = product.get("stock", 0)
     quantity = sum(row["quantity"] for row in history if row["item"] == name)
-    if re.search(r"\b(?:hello|hi|hey)\b", words) or "\u0928\u092e\u0938\u094d\u0924\u0947" in words:
+    # Only a short hello is a greeting; "Hi, reorder milk" is an order.
+    greeting = (
+        re.search(r"\b(?:hello|hi|hey)\b", words) or "\u0928\u092e\u0938\u094d\u0924\u0947" in words
+    )
+    if greeting and len(words.split()) <= 3:
         shop = str(fields.get("name") or "This demo shop")
         return (
             f"{shop} has {len(inventory)} menu items and {len(history)} sales records. "
             "Next, ask about sales, stock, prep or customers."
         )
-    if any(term in words for term in ("hours", "open", "closed", "timing", "sunday")):
+    if re.search(r"\b(?:hours|open|opening|closed|timing|sunday)\b", words):
         return (
             f"Demo shop hours are {fields.get('hours', 'not listed')}. "
             "In your real shop, a hours change waits for review; open Shop Details next."
@@ -50,7 +54,9 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
             "In your real shop, saving would add today’s sales; open Grow → Close the day next."
         )
     if (
-        re.search(r"\b(?:order|reorder|buy more|low|need|supplier|supply)\b", words)
+        re.search(
+            r"\b(?:order|reorder|buy more|low|need|suppliers?|supply|supplies|sourc\w*)\b", words
+        )
         or "\u0911\u0930\u094d\u0921\u0930" in words
     ):
         orders = supply_chain.orders(store, uid, bid)
@@ -156,7 +162,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
             "product",
             "menu",
             "update",
-            "add",
+            " add ",
             "\u0909\u0924\u094d\u092a\u093e\u0926",
             "\u092e\u0947\u0928\u0942",
         )
