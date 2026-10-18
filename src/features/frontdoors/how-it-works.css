@@ -126,6 +126,16 @@
   font-weight: 600;
   white-space: nowrap;
 }
+/* Narrow phones and long translations: the label may wrap to two short lines instead of clipping. */
+@media (max-width: 399px) {
+  .hw-jump a {
+    padding: 0 12px;
+  }
+  .hw-jump strong {
+    white-space: normal;
+    line-height: 1.1;
+  }
+}
 @media (min-width: 900px) {
   .hw-jump a {
     flex: 0 0 auto;
