@@ -467,7 +467,6 @@ function Wizard({
                   <Typography>{t.keepsListing}</Typography>
                 </>
               )}
-              <Typography variant="bodyMedium">{t.independent}</Typography>
               <Stack spacing={1}>
                 <Typography variant="labelMedium">{t.liveMaps}</Typography>
                 <Button

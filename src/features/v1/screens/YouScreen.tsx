@@ -293,10 +293,6 @@ export function YouScreen() {
             />
           </Group>
         )}
-
-        <Typography variant="bodySmall" color="text.secondary" sx={{ px: 1, pb: 2 }}>
-          {t.independent}
-        </Typography>
       </Stack>
 
       <Sheet
