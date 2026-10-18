@@ -243,18 +243,39 @@ const hi: IoCopy = {
   demoDone: 'डेमो साथी सब भेज चुका है।',
 }
 
-// Hindi and English are complete; other languages show English until translated.
+// Hindi and English are complete; other languages show English until translated, except the
+// Grow tile (title, partner status and what is left to send) in the Singapore languages.
 const tables: Record<string, IoCopy> = { en, hi }
-const localeLabels: Record<string, { title: string; sent: string }> = {
-  'zh-Hans': { title: '供应链', sent: '所有内容均已发送。' },
-  ta: { title: 'விநியோகச் சங்கிலி', sent: 'அனைத்தும் அனுப்பப்பட்டன.' },
+type TileCopy = Pick<IoCopy, 'title' | 'allQuiet' | 'needsNow' | 'notSent'> & { sent: string }
+const tileCopy: Record<string, TileCopy> = {
+  'zh-Hans': {
+    title: '供应链',
+    allQuiet: '合作伙伴：全部准时',
+    needsNow: (n) => `${n} 件事需要你现在处理`,
+    notSent: (n) => `${n} 份单据尚未发送`,
+    sent: '所有内容均已发送。',
+  },
+  ms: {
+    title: 'Rantaian bekalan',
+    allQuiet: 'Rakan kongsi: semua tepat masa',
+    needsNow: (n) => `${n} perkara perlukan anda sekarang`,
+    notSent: (n) => `${n} dokumen belum dihantar`,
+    sent: 'Semua sudah dihantar.',
+  },
+  ta: {
+    title: 'விநியோகச் சங்கிலி',
+    allQuiet: 'கூட்டாளிகள்: அனைத்தும் சரியான நேரத்தில்',
+    needsNow: (n) => `இப்போது உங்கள் கவனம் தேவை: ${n}`,
+    notSent: (n) => `இன்னும் அனுப்பாத ஆவணங்கள்: ${n}`,
+    sent: 'அனைத்தும் அனுப்பப்பட்டன.',
+  },
 }
 
 export function useIoCopy(): IoCopy {
   const locale = useLocale()
   const copy = tables[locale] ?? en
-  const labels = localeLabels[locale]
-  return labels
-    ? { ...copy, title: labels.title, empty: { ...copy.empty, send: labels.sent } }
-    : copy
+  const tile = tileCopy[locale]
+  if (!tile) return copy
+  const { sent, ...labels } = tile
+  return { ...copy, ...labels, empty: { ...copy.empty, send: sent } }
 }
