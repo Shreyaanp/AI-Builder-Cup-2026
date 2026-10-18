@@ -52,6 +52,7 @@ class ColumnMap(BaseModel):
     date: int | None = Field(default=None, description="Date or time of sale column (sales)")
     stock: int | None = Field(default=None, description="Stock on hand column (menu)")
     category: int | None = Field(default=None, description="Item category or menu section column")
+    currency: int | None = Field(default=None, description="ISO currency code for a sales row")
 
 
 PROMPT = """You map a spreadsheet exported by a shop's POS or written by the owner. Given the
@@ -68,6 +69,7 @@ HEADER_HINTS: dict[str, tuple[str, ...]] = {
     "total": ("total", "net sales", "gross sales", "revenue", "line total", "subtotal"),
     "date": ("date", "time", "created", "receipt date", "day"),
     "stock": ("stock", "inventory", "on hand", "in stock", "available"),
+    "currency": ("currency", "currency code"),
 }
 
 
@@ -126,7 +128,17 @@ def heuristic_map(headers: list[str]) -> ColumnMap:
     used: set[int] = set()
     # Exact header matches win, a column serves one role, and "unit" goes last so that a
     # "Unit Price" column is taken as the price rather than the unit.
-    for role in ("name", "price", "quantity", "total", "date", "stock", "category", "unit"):
+    for role in (
+        "name",
+        "price",
+        "quantity",
+        "total",
+        "date",
+        "stock",
+        "category",
+        "unit",
+        "currency",
+    ):
         hints = HEADER_HINTS[role]
         free = [(index, header) for index, header in enumerate(lowered) if index not in used]
         match = next((index for index, header in free if header in hints), None)
@@ -219,6 +231,21 @@ def sales_summary(rows: list[list[str]], mapping: ColumnMap) -> dict[str, Any]:
             for name in top
         ],
     }
+
+
+def matching_currency_rows(
+    rows: list[list[str]], mapping: ColumnMap, shop_currency: str
+) -> tuple[list[list[str]], int]:
+    """Keep rows in the shop currency; rows without a currency remain usable."""
+    if mapping.currency is None:
+        return rows, 0
+    matched = [
+        row
+        for row in rows
+        if not cell(row, mapping.currency)
+        or cell(row, mapping.currency).strip().upper() == shop_currency.upper()
+    ]
+    return matched, len(rows) - len(matched)
 
 
 class Sections(BaseModel):

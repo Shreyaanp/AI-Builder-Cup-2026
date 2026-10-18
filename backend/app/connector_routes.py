@@ -33,6 +33,7 @@ from .imports import (
 )
 from .imports import (
     ImportRejected,
+    matching_currency_rows,
     menu_items,
     sales_summary,
 )
@@ -345,7 +346,19 @@ async def build_import(
 
     # Sales export path
     if mapping.kind == "sales":
-        aggregates = daily_sales(rows, col_map, currency)
+        sales_rows, currency_mismatches = matching_currency_rows(rows, col_map, currency)
+        aggregates = daily_sales(sales_rows, col_map, currency) if sales_rows else []
+        summary = sales_summary(sales_rows, col_map)
+        if not aggregates:
+            return {
+                "kind": "sales",
+                "status": "nothing_to_propose",
+                "source_label": resolved_source,
+                "summary": summary,
+                "sales": [],
+                "currency": currency,
+                "currency_mismatches": currency_mismatches,
+            }
         proposal = await anyio.to_thread.run_sync(
             service.prepare_sales, uid, business_id, aggregates
         )
@@ -359,9 +372,10 @@ async def build_import(
             "import_id": proposal["id"],
             "digest": proposal["digest"],
             "expires": proposal["expires"],
-            "summary": sales_summary(rows, col_map),
+            "summary": summary,
             "sales": proposal["snapshot"]["sales"],
             "currency": currency,
+            "currency_mismatches": currency_mismatches,
             "last_synced": now,
         }
 
