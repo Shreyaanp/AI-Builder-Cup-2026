@@ -787,11 +787,15 @@ function CoachScreen({
     const operation = new AbortController()
     photoController.current = operation
     let guess: PhotoRoute | null = null
+    let sent = file
     try {
+      // OB-37: a phone original is megabytes; shrink it before it is classified.
+      sent = (await preparePhoto(file)).file
+      if (!alive.current || operation.signal.aborted) return
       const result = await api<{ kind: string }>('/photos/classify', {
         method: 'POST',
-        body: file,
-        headers: { 'Content-Type': file.type },
+        body: sent,
+        headers: { 'Content-Type': sent.type },
         signal: AbortSignal.any([operation.signal, AbortSignal.timeout(60_000)]),
       })
       if (isPhotoRoute(result.kind)) guess = result.kind
@@ -807,7 +811,7 @@ function CoachScreen({
       setBusy('idle')
       if (photoInput.current) photoInput.current.value = ''
     }
-    if (alive.current && !operation.signal.aborted) setSorting({ file, guess })
+    if (alive.current && !operation.signal.aborted) setSorting({ file: sent, guess })
   }
 
   function routePhoto(kind: PhotoRoute) {
@@ -906,6 +910,19 @@ function CoachScreen({
   // A typed reply streams as tokens; a spoken one appears as it is said.
   const liveReply = reply || reveal.shown
   const empty = messages.length === 0 && !liveReply
+  // OB-38: "How this works" goes away once the owner has sent 2+ messages in this shop (remembered
+  // per shop so it stays hidden on reload); it stays reachable in the + sheet.
+  const helpSeenKey = activeId ? `niva.coach.helpSeen.${activeId}` : null
+  const sentCount = messages.filter((message) => message.role === 'user').length
+  const helpHidden = Boolean(helpSeenKey) && (sentCount >= 2 || readFlag(helpSeenKey))
+  useEffect(() => {
+    if (!helpSeenKey || sentCount < 2) return
+    try {
+      localStorage.setItem(helpSeenKey, '1')
+    } catch {
+      // Private mode: the card simply comes back next visit.
+    }
+  }, [helpSeenKey, sentCount])
   // Suggestion chips are rules only (no AI): they come from the current shop state, never a
   // fixed list, and at most three show. Each one either opens the right sheet or starts a note.
   type Suggestion = 'reply' | 'menu' | 'soldOut' | 'price' | 'share' | 'photo' | 'name'
@@ -1016,7 +1033,7 @@ function CoachScreen({
       )}
       {sorting ? (
         <AiInfo feature="photo" />
-      ) : !empty && !showToday ? (
+      ) : !empty && !showToday && !helpHidden ? (
         <AiInfo feature="coach" />
       ) : null}
       <Sheet
@@ -1028,6 +1045,7 @@ function CoachScreen({
         actions={<Button onClick={() => setActionsOpen(false)}>{t.cancel}</Button>}
       >
         <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+          <AiInfo feature="coach" inSheet />
           <Button
             startIcon={<Store size={18} />}
             onClick={() => {
@@ -1734,6 +1752,14 @@ function CoachScreen({
       </Box>
     </Box>
   )
+}
+
+function readFlag(key: string | null): boolean {
+  try {
+    return Boolean(key && localStorage.getItem(key))
+  } catch {
+    return false
+  }
 }
 
 function Bubble({
