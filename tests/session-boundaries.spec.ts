@@ -263,6 +263,9 @@ for (const [side, action] of [
     const farewell =
       action === 'delete' ? 'Account deleted. You are signed out.' : 'You are signed out.'
     await expect(page.getByRole('status').filter({ hasText: farewell })).toBeVisible()
+    // Captain UX gate (#335): the note sat over the docked Ask box; it now stays in the top part.
+    const note = await page.getByRole('status').filter({ hasText: farewell }).boundingBox()
+    expect(note!.y + note!.height).toBeLessThan(page.viewportSize()!.height / 3)
     if (side === 'customer') await customerProfile(page)
     await expect(
       page.getByRole('button', { name: 'Continue with Google', exact: true }),

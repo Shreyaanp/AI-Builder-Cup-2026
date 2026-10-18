@@ -65,8 +65,9 @@ export function Farewell({ side }: { side: AppSide }) {
       onClose={(_, why) => {
         if (why !== 'clickaway') setOpen(false)
       }}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      sx={{ bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }}
+      // Under the top bar: at the bottom it covered the docked Ask box and the tab bar on phones.
+      anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      sx={{ top: { xs: 'calc(72px + env(safe-area-inset-top))', sm: 80 } }}
       slotProps={{ content: { role: 'status' } }}
     />
   )
