@@ -18,6 +18,7 @@ import { ArrowLeft, ArrowUp, PackageCheck, Truck } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { enterRise, shape } from '../../design/theme'
 import { formatPrice } from '../v1/format'
+import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
@@ -292,7 +293,7 @@ function Thread({
                   variant="bodyLarge"
                   sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}
                 >
-                  {message.text}
+                  {formatMoneyText(message.text, locale)}
                 </Typography>
                 <Typography variant="labelSmall" sx={{ display: 'block', opacity: 0.75, mt: 0.5 }}>
                   {mine ? s.you : order.supplier.name}
