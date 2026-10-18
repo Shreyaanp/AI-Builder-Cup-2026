@@ -324,23 +324,20 @@ def test_real_models_find_one_live_person_in_each_recording(name):
         assert set(trace["faces"]) == {"1"}
 
 
-# Owner's phone, 17 Oct 19:03Z, second attempt (16/16 frames with a face, 480x640 JPEG frames,
-# 7.5 s, 00:33 local time indoors): movement passed, yaw [-2, 34.9], pitch [-35.6, -9.3], and
-# the uncorrected anti-spoof scores averaged 0.092 (< REAL_MIN 0.3), so a live owner was told
-# "not_live" and to try again.
+# OB-26 / #74. Owner's phone, 19 Oct 02:18 IST: 16/16 frames with a face, the turn_right prompt
+# passed (yaw -44..35), but the anti-spoof model scored 0.003 and rejected a real owner as
+# "not_live". The model is gone: a face in enough frames plus the completed prompts passes.
 OWNER_LIVE_POSES = [
     (-2.0, -12.1), (0.4, -11.0), (1.2, -12.6), (12.5, -10.2), (24.8, -9.3), (34.9, -11.4),
     (22.0, -12.9), (6.1, -13.3), (1.0, -21.8), (0.6, -30.2), (-0.8, -35.6), (0.2, -27.4),
     (1.5, -16.0), (0.9, -12.4), (-1.1, -11.8), (0.0, -12.2),
 ]  # fmt: skip
-OWNER_LIVE_SCORES = [
-    0.11, 0.09, 0.12, 0.07, 0.08, 0.06, 0.06, 0.10, 0.08, 0.05, 0.07, 0.07, 0.12, 0.14, 0.11,
-    0.149,
-]  # fmt: skip
 
 
-def scripted_models(monkeypatch, poses, scores):
-    """CpuModels whose frames report recorded poses and scores (no model files needed)."""
+def scripted_models(monkeypatch, poses, faces=None):
+    """CpuModels whose frames report recorded poses (no model files needed); a False in
+    `faces` is a frame without a face."""
+    faces = faces or [True] * len(poses)
 
     def frames(capture, trace):
         trace["sampled"] = len(poses)
@@ -349,56 +346,58 @@ def scripted_models(monkeypatch, poses, scores):
     monkeypatch.setattr(face_worker, "sampled_frames", frames)
     models = object.__new__(face_worker.CpuModels)
     seen = iter(
-        [(pose, np.ones(256), score, 60.0) for pose, score in zip(poses, scores, strict=True)]
+        [(pose, np.ones(256)) if face else None for pose, face in zip(poses, faces, strict=True)]
     )
     models.frame = lambda image: next(seen)
     return models
 
 
-def test_an_unsure_live_score_goes_to_a_person_not_back_to_retry(monkeypatch):
-    assert round(float(np.mean(OWNER_LIVE_SCORES)), 3) == 0.092
-    models = scripted_models(monkeypatch, OWNER_LIVE_POSES, OWNER_LIVE_SCORES)
+def test_ob26_74_face_and_completed_prompts_pass_with_no_spoof_check(monkeypatch):
+    models = scripted_models(monkeypatch, OWNER_LIVE_POSES)
     trace = {}
     outcome, vector = models.analyze(b"{}", ["turn_left", "look_up"], trace)
-    assert outcome["status"] == "review" and outcome["reason"] == "liveness_unsure"
-    assert outcome["liveness"] == "unsure" and outcome["passed_prompts"] == ["turn_left", "look_up"]
-    assert face_worker.SPOOF_MAX <= outcome["score"] < face_worker.REAL_MIN
-    assert vector is not None and len(vector) == 256  # The duplicate check still runs.
-    # The verdict log says what was measured: start pose, brightness, frames used.
-    assert trace["start_pose"] == [0.4, -12.1] and trace["face_luma"] == 60.0
-    assert trace["live_frames"] == 10  # The turned and tilted frames are left out.
-    assert trace["failed"].endswith(": review")
+    assert outcome == {
+        "status": "live",
+        "reason": "ok",
+        "liveness": "passed",
+        "passed_prompts": ["turn_left", "look_up"],
+    }
+    assert len(vector) == 256
+    # The model and its thresholds are gone, and so is any score in the verdict or the log.
+    assert not any(hasattr(face_worker, name) for name in ("SPOOF_MAX", "REAL_MIN", "exposed"))
+    assert "score" not in outcome and "face_luma" not in trace
+    assert not hasattr(models, "anti")
 
 
-@pytest.mark.parametrize(
-    ("scores", "status", "reason"),
-    [([0.97] * 16, "live", "ok"), ([0.002] * 16, "retry", "not_live")],
-)
-def test_clear_live_and_spoof_scores_keep_their_verdicts(monkeypatch, scores, status, reason):
-    models = scripted_models(monkeypatch, OWNER_LIVE_POSES, scores)
-    outcome, vector = models.analyze(b"{}", ["turn_left", "look_up"], {})
-    assert (outcome["status"], outcome["reason"]) == (status, reason)
-    assert (vector is not None) == (status == "live")
+def test_ob26_74_no_face_asks_to_retry(monkeypatch):
+    # The endpoint turns the rejection into {"status": "retry", "reason": "no_face"}.
+    models = scripted_models(monkeypatch, OWNER_LIVE_POSES, faces=[False] * 16)
+    with pytest.raises(face_worker.CaptureRejected) as rejected:
+        models.analyze(b"{}", ["turn_left"], {})
+    assert rejected.value.reason == "no_face"
+    # Too few frames with a face is the same friendly retry.
+    models = scripted_models(monkeypatch, OWNER_LIVE_POSES, faces=[True] * 5 + [False] * 11)
+    with pytest.raises(face_worker.CaptureRejected) as rejected:
+        models.analyze(b"{}", ["turn_left"], {})
+    assert rejected.value.reason == "no_face"
 
 
-def test_liveness_uses_the_frames_nearest_the_starting_pose():
-    # One frame turned far from the start scored low; it does not decide.
-    poses = [(0.0, -10.0)] * 5 + [(40.0, -10.0)]
-    assert face_worker.liveness_score([0.9, 0.8, 0.9, 0.95, 0.9, 0.01], poses) == (0.9, 5)
-    # Too few frames near the start: every frame counts.
-    assert (
-        face_worker.liveness_score([0.9, 0.1, 0.1], [(0.0, 0.0), (30.0, 0.0), (35.0, 0.0)])[1] == 3
+def test_ob26_74_prompts_not_done_asks_to_retry(monkeypatch):
+    still = [(0.0, -10.0)] * 16
+    models = scripted_models(monkeypatch, still)
+    outcome, vector = models.analyze(b"{}", ["turn_left"], {})
+    assert outcome["status"] == "retry" and outcome["reason"] == "movement_not_seen"
+    assert outcome["failed_prompt"] == "turn_left" and vector is None
+
+
+def test_ob26_74_every_reason_the_worker_gives_has_owner_copy():
+    copy = (Path(__file__).parents[2] / "src" / "features" / "trust" / "copy.ts").read_text(
+        encoding="utf-8"
     )
-
-
-def test_dim_face_crops_are_brightened_for_the_anti_spoof_model():
-    dim = np.full((128, 128, 3), 40, np.uint8)
-    assert abs(face_worker.face_luma(face_worker.exposed(dim)) - face_worker.LIGHT_TARGET) < 1
-    bright = np.full((128, 128, 3), 150, np.uint8)
-    assert face_worker.exposed(bright) is bright
-    # The gain is capped: a black frame is not turned into noise.
-    black = np.full((8, 8, 3), 5, np.uint8)
-    assert face_worker.face_luma(face_worker.exposed(black)) == pytest.approx(20, abs=1)
+    english = copy[copy.index("movement_not_seen") :][:1500]
+    for reason in ("no_face", "movement_not_seen", "too_short", "capture_not_usable"):
+        assert reason + ":" in copy, reason
+    assert "not_live" not in copy and "photo or a screen" not in english
 
 
 def dimmed_frames(name, change):
@@ -421,29 +420,10 @@ def night_room(image):
     return np.clip(image.astype(np.float32) * 0.35 + noise, 0, 255).astype(np.uint8)
 
 
-def screen_recapture(image):
-    """A photo of a screen: a third of the resolution, a pixel grid, a cast, a re-shoot blur."""
-    import cv2
-
-    height, width = image.shape[:2]
-    small = cv2.resize(image, (width // 3, height // 3))
-    shown = cv2.resize(small, (width, height), interpolation=cv2.INTER_NEAREST).astype(np.float32)
-    rows, cols = np.mgrid[:height, :width]
-    shown *= (0.85 + 0.15 * np.sin(cols * 1.3 + rows * 0.2))[..., None]
-    shown = cv2.GaussianBlur(shown * [1.15, 1.0, 0.85] + 25, (3, 3), 0)
-    return np.clip(shown, 0, 255).astype(np.uint8)
-
-
 @pytest.mark.skipif(not (MODELS / "verified.json").exists(), reason="face models not fetched")
 @pytest.mark.parametrize("name", ["chrome-vp9.webm", "chrome-h264.mp4"])
-def test_real_models_pass_a_live_face_in_a_dark_room_and_fail_a_screen(name):
+def test_real_models_pass_a_live_face_in_a_dark_room(name):
     models = face_worker.CpuModels(MODELS)
     trace = {}
     outcome, vector = models.analyze(dimmed_frames(name, night_room), ["turn_left"], trace)
-    # Uncorrected, these frames scored 0.002-0.05; the owner saw "not_live".
-    assert outcome["status"] == "live" and outcome["score"] >= 0.9, trace
-    assert trace["face_luma"] < 60 and vector is not None
-    trace = {}
-    outcome, vector = models.analyze(dimmed_frames(name, screen_recapture), ["turn_left"], trace)
-    assert outcome["status"] == "retry" and outcome["reason"] == "not_live", trace
-    assert vector is None
+    assert outcome["status"] == "live" and vector is not None, trace

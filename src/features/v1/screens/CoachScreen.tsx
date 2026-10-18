@@ -597,6 +597,8 @@ function CoachScreen({
 
   // Natural Google voice for replies; the phone's own voice if that isn't available.
   async function speakReply(text: string) {
+    // The read-only demo shows replies as text; it has no recorded voice for live answers.
+    if (ws.demo) return
     speechSynthesis.cancel()
     speaking.current?.pause()
     const cleanText = stripMarkdown(text)

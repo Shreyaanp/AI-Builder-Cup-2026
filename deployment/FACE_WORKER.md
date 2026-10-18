@@ -7,14 +7,14 @@ Implementation is prepared locally. No cloud resources, IAM, secrets or deployme
 `backend/face_worker.py` accepts an owner-scoped bearer-authenticated `POST /evaluate`
 with up to 8 MiB of WebM/MP4, at most 8.2 seconds / 480 frames, dimensions 100–1280
 by 100–720. It samples about twice per second, requires one face, aligns landmarks,
-checks prompted head movement and an anti-spoof score, and returns a 256-dimensional
-template only for a live capture (otherwise a typed retry reason). The worker stores
+checks prompted head movement over a real pose range (that is the liveness check), and returns a 256-dimensional
+template only when the prompts are done (otherwise a typed retry reason). The worker stores
 nothing: the main app seals each template (AES-256-GCM, `FACE_TEMPLATE_KEY`) in the shared
 document store and compares there. `DELETE /template` is a no-op kept for older revisions.
-Raw captures stay in memory.
+Raw captures stay in memory; only the numeric template is kept (by the main app), never a frame, image or video.
 
 The image fetches FP32 Open Model Zoo detection, landmarks, head-pose and
-reidentification models plus `anti-spoof-mn3.onnx` from publisher release `2023.3.0`.
+reidentification models from publisher release `2023.3.0`. There is no anti-spoof model.
 Publisher size/SHA-384 checks, manifests and licenses are retained; startup checks
 the receipts again. The pinned release and Linux Python 3.13 face wheels still need
 an actual image build to validate. No model downloads occurred during this task.

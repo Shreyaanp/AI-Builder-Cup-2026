@@ -10,8 +10,7 @@ COPY backend/scripts/fetch_face_models.py ./scripts/fetch_face_models.py
 # Models are absent from git; verify publisher checksums and retain license notices.
 RUN /opt/venv/bin/python scripts/fetch_face_models.py
 COPY backend/face_worker.py ./face_worker.py
-RUN useradd --create-home --uid 10001 ogoogle && \
-    mkdir -p data/face-vectors && chown ogoogle:ogoogle data/face-vectors
+RUN useradd --create-home --uid 10001 ogoogle
 USER 10001:10001
 EXPOSE 8080
 CMD ["/bin/sh", "-c", "exec /opt/venv/bin/uvicorn face_worker:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --no-access-log"]
