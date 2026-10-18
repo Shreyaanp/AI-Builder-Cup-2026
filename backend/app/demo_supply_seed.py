@@ -1,178 +1,183 @@
-"""Fixed, fictional supply-chain records for one demo shop per currency."""
+"""Synthetic supply-chain partners and documents for the demo (fictional businesses only).
+
+Two demo partners per shop: a buyer that runs SAP (it sends a forecast, an order and an order
+change as IDocs, and gets a shipping notice back) and a supplier that sends JSON (its order is
+received with a goods receipt). Every document goes through the same pipeline a real partner's
+document would (supply_io.py), so the demo shows real processing, not canned screens.
+"""
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
-from . import supply_chain
+from fastapi import HTTPException
+
+from . import supply_chain, supply_io, supply_outbound
 from .demo_data import SHOPS
 from .merchant import MerchantRepository
-from .supply_docs import DocLine, Party, SupplyDoc
+from .supply_docs import DocLine, Party, SupplyDoc, parse, render
 
 
-def seed(store: MerchantRepository) -> None:
-    """Insert the showcase once; fixed IDs and put semantics make reruns idempotent."""
-    selections: list[tuple[Any, str, str, int]] = []
-    # One demo shop per currency in the catalogue, so every region shown has its own showcase.
-    for region, demo in enumerate({s.fields.currency: s for s in reversed(SHOPS)}.values()):
-        selections.append((demo, demo.fields.currency, demo.fields.currency.lower(), region))
-    for demo, currency, tag, region in selections:
-        bid = demo.id
-        buyer = Party(id=bid, name=demo.fields.name, system="json")
-        partners: list[dict[str, Any]] = [
-            {
-                "id": f"demo-{tag}-partner-a",
-                "name": "Sunrise Supply (Demo)",
-                "demo": True,
-                "system": "json",
-            },
-            {
-                "id": f"demo-{tag}-partner-b",
-                "name": "Harbour Trade (Demo)",
-                "demo": True,
-                "system": "idoc",
-            },
-        ]
-        products = demo.products[:2]
-        for index, partner in enumerate(partners):
-            supply_chain.ensure_relationship(store, bid, partner, currency, index)
-        for index, partner in enumerate(partners):
-            po_id = f"demo-{tag}-order-{index + 1}"
-            if store.feature_docs.get(supply_chain.ORDERS, f"{bid}/{po_id}"):
-                continue
-            product = products[index % len(products)]
-            qty = 12 + index * 4
-            number = str(4500091000 + index + region * 100)
-            supplier = Party(id=partner["id"], name=partner["name"], system=partner["system"])
-            line = DocLine(
+def buyer(tag: str) -> dict[str, Any]:
+    return {
+        "id": f"demo-{tag}-buyer",
+        "name": "Harbour Café (Demo)",
+        "system": "idoc",
+        "demo": True,
+    }
+
+
+def supplier(tag: str) -> dict[str, Any]:
+    return {
+        "id": f"demo-{tag}-supplier",
+        "name": "Sunrise Supply (Demo)",
+        "system": "json",
+        "demo": True,
+    }
+
+
+def _item(context: dict[str, Any]) -> dict[str, Any]:
+    stocked = [p for p in context["inventory"] if p.get("stock") is not None]
+    return (stocked or context["inventory"])[0]
+
+
+def _tag(context: dict[str, Any]) -> str:
+    # One demo shop per area currency: the currency keeps partner ids apart.
+    return str(supply_chain.shop_currency(context["business"]["fields"])).casefold()
+
+
+def script(context: dict[str, Any], today: date) -> list[SupplyDoc]:
+    """The buyer's story: forecast → order create → order change (fewer, a day later)."""
+    tag = _tag(context)
+    product = _item(context)
+    shop = supply_io.shop_party(context)
+    partner = buyer(tag)
+    price = round(product["price"] * 0.8)  # the trade price a regular buyer gets
+    currency = supply_chain.shop_currency(context["business"]["fields"])
+
+    def doc(
+        kind: str, number: str, quantity: float, day: date, ref: str = "", note: str = ""
+    ) -> SupplyDoc:
+        return SupplyDoc(
+            kind=kind,  # type: ignore[arg-type]
+            number=number,
+            ref=ref,
+            issued=today.isoformat(),
+            delivery=day.isoformat(),
+            currency=currency,
+            buyer=Party(id=partner["id"], name=partner["name"], system="idoc"),
+            supplier=Party(id=shop["id"], name=shop["name"]),
+            lines=[
+                DocLine(
+                    line=10,
+                    item=product["name"],
+                    buyer_code="HC-0001",
+                    quantity=quantity,
+                    unit=product["unit"],
+                    price=price,
+                    total=price * round(quantity),
+                )
+            ],
+            total=price * round(quantity),
+            note=note,
+        )
+
+    number = "4700001201"
+    return [
+        doc("FORECAST", "5500000301", 20, today + timedelta(days=2), note="Next week's need"),
+        doc("ORDERS", number, 20, today + timedelta(days=2)),
+        doc("ORDER_CHANGE", "4700001202", 15, today + timedelta(days=3), ref=number),
+    ]
+
+
+def next_document(store: MerchantRepository, uid: str, bid: str) -> dict[str, Any]:
+    """The demo buyer sends its next document (as an SAP IDoc) through the real pipeline."""
+    context = store.context(uid, bid)
+    if not context["inventory"]:
+        raise HTTPException(409, "NO_ITEMS")
+    today = supply_chain.shop_today(context)
+    seen = {(row["kind"], row["number"]) for row in supply_io.inbox(store, bid)}
+    for doc in script(context, today):
+        if (doc.kind, doc.number) in seen:
+            continue
+        raw = render(doc, "idoc")
+        read, fmt, _ = parse(raw, today)
+        return supply_io.process(store, bid, context, read, fmt, raw, "parser")
+    raise HTTPException(409, "DEMO_DONE")
+
+
+def _supplier_order(context: dict[str, Any], today: date) -> SupplyDoc:
+    """The supplier's order create: a standing order it books for the shop (JSON)."""
+    tag = _tag(context)
+    product = _item(context)
+    partner = supplier(tag)
+    shop = supply_io.shop_party(context)
+    price = round(product["price"] * 0.6)
+    return SupplyDoc(
+        kind="ORDERS",
+        number=f"SO-{tag.upper()}-2210",
+        issued=today.isoformat(),
+        delivery=today.isoformat(),
+        currency=supply_chain.shop_currency(context["business"]["fields"]),
+        buyer=Party(id=shop["id"], name=shop["name"]),
+        supplier=Party(id=partner["id"], name=partner["name"], system="json"),
+        lines=[
+            DocLine(
                 line=10,
-                item=product.name,
-                buyer_code=f"CB-{index + 1:03}",
-                supplier_code=f"SUP-{index + 1:03}",
-                quantity=qty,
-                unit=product.unit,
-                price=product.price,
-                total=product.price * qty,
+                item=product["name"],
+                supplier_code="SUP-001",
+                quantity=12,
+                unit=product["unit"],
+                price=price,
+                total=price * 12,
             )
-            create = SupplyDoc(
-                kind="ORDERS",
-                number=number,
-                issued="2026-10-17",
-                delivery="2026-10-20",
-                currency=currency,
-                buyer=buyer,
-                supplier=supplier,
-                lines=[line],
-                total=product.price * qty,
-                note="Synthetic demo order create",
-            )
-            docs = [
-                supply_chain.document_entry(
-                    create,
-                    "supplier",
-                    create.model_dump_json(),
-                    "json",
-                    create.model_dump_json(),
-                    "json",
-                    [],
-                    "demo_seed",
-                )
-            ]
-            if index == 0:
-                forecast = create.model_dump(mode="json")
-                forecast.update(
-                    kind="FORECAST",
-                    number=f"FC-{tag}-01",
-                    ref=number,
-                    note="Synthetic partner forecast",
-                )
-                docs.insert(
-                    0,
-                    {
-                        "id": f"demo-forecast-{tag}",
-                        "kind": "FORECAST",
-                        "number": forecast["number"],
-                        "from": "supplier",
-                        "status": "received",
-                        "order_id": po_id,
-                        "partner_id": partner["id"],
-                        "canonical": forecast,
-                    },
-                )
-                changed = create.model_copy(
-                    update={
-                        "number": f"CH-{tag}-01",
-                        "ref": number,
-                        "delivery": "2026-10-21",
-                        "note": "Synthetic order change: quantity and date",
-                    }
-                )
-                changed.lines[0].quantity = qty + 3
-                changed.lines[0].total = product.price * (qty + 3)
-                changed_data = changed.model_dump(mode="json")
-                docs.append(
-                    {
-                        "id": f"demo-change-{tag}",
-                        "kind": "ORDER_CHANGE",
-                        "number": changed.number,
-                        "from": "supplier",
-                        "status": "processed",
-                        "order_id": po_id,
-                        "partner_id": partner["id"],
-                        "canonical": changed_data,
-                    }
-                )
-                docs.append(
-                    {
-                        "id": f"demo-receipt-{tag}",
-                        "kind": "RECEIPT",
-                        "number": f"GR-{tag}-01",
-                        "from": "buyer",
-                        "status": "sent",
-                        "order_id": po_id,
-                        "partner_id": partner["id"],
-                        "canonical": {"quantity": qty, "shortage": 0},
-                    }
-                )
-            else:
-                docs.append(
-                    {
-                        "id": f"demo-asn-{tag}",
-                        "kind": "DESADV",
-                        "number": f"ASN-{tag}-01",
-                        "from": "buyer",
-                        "status": "pending",
-                        "order_id": po_id,
-                        "partner_id": partner["id"],
-                        "canonical": {"quantity": qty},
-                    }
-                )
-            for document in docs:
-                document["order_id"] = po_id
-                document["partner_id"] = partner["id"]
-            data = {
-                "id": po_id,
-                "number": number,
-                "created": date(2026, 10, 17).toordinal(),
-                "updated": date(2026, 10, 17).toordinal(),
-                "version": 1,
-                "status": "received" if index == 0 else "confirmed",
-                "sent": True,
-                "received": index == 0,
-                "simulated": True,
-                "currency": currency,
-                "buyer": buyer.model_dump(),
-                "supplier": {**partner},
-                "lines": [line.model_dump()],
-                "delivery": "2026-10-20",
-                "terms_days": 0,
-                "total": product.price * qty,
-                "documents": docs,
-                "checks": [],
-                "backorders": [],
-                "reason": "Demo supply-chain story",
-            }
-            store.feature_docs.put(
-                supply_chain.ORDERS, f"{bid}/{po_id}", bid, float(data["created"]), data
-            )
+        ],
+        total=price * 12,
+        note="Standing order (demo)",
+    )
+
+
+def seed_shop(store: MerchantRepository, uid: str, bid: str) -> None:
+    """Preload one shop: a sent goods receipt and a shipping notice still to send.
+    Idempotent: documents already processed are not processed again."""
+    context = store.context(uid, bid)
+    if not context["inventory"]:
+        return
+    today = supply_chain.shop_today(context)
+    order = _supplier_order(context, today)
+    result = supply_io.process(store, bid, context, order, "json", render(order, "json"), "parser")
+    po = result["order"]
+    if po and not po.get("received"):
+        saved = supply_outbound.record_receipt(store, uid, bid, po["id"], po["version"])
+        supply_outbound.send(
+            store, uid, bid, po["id"], saved["order"]["version"], saved["document"]["id"]
+        )
+    for _ in range(3):
+        try:
+            result = next_document(store, uid, bid)
+        except HTTPException:
+            break
+    sold = next(
+        (
+            po
+            for po in supply_chain.all_orders(store, bid)
+            if supply_io.direction_of(po) == "out" and po["status"] not in supply_io.CLOSED
+        ),
+        None,
+    )
+    if sold and sold.get("pending_change"):
+        sold = supply_io.accept_change(store, uid, bid, sold["id"], sold["version"])
+    if sold and not any(d["kind"] == "DESADV" for d in sold["documents"]):
+        supply_outbound.prepare_asn(store, uid, bid, sold["id"], sold["version"])
+
+
+def seed(store: MerchantRepository, uid: str = "demo-world-owner", city: str | None = None) -> None:
+    """The first demo shop of each area currency (owned by the seed owner)."""
+    seen: set[str] = set()
+    for demo in SHOPS:
+        if city and demo.city != city:
+            continue
+        if demo.fields.currency not in seen:
+            seen.add(demo.fields.currency)
+            seed_shop(store, uid, demo.id)
