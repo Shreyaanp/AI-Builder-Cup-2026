@@ -281,7 +281,15 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
       viewBox={`0 0 ${W} ${H}`}
       role="group"
       aria-label={copy.title}
-      sx={{ display: 'block', width: '100%', height: '100%', '--rm-focus': roles.primary }}
+      sx={{
+        display: 'block',
+        width: '100%',
+        height: '100%',
+        '--rm-primary': roles.primary,
+        '--rm-surface': roles.surface,
+        '--rm-on-surface': roles.onSurface,
+        '--rm-outline': roles.outline,
+      }}
     >
       {/* Streets through where you are: a sense of place, not a street map. */}
       <g stroke={roles.surfaceContainerHighest} strokeLinecap="round" fill="none">
