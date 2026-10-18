@@ -25,6 +25,7 @@ from sse_starlette import EventSourceResponse, ServerSentEvent
 from .community import Community, Profile, stated_preferences
 from .discover import (
     CATEGORIES,
+    STATION_MASK,
     DiscoveryPlace,
     MapsService,
     TopItem,
@@ -398,7 +399,7 @@ async def nearest_station(maps: MapsService, lat: float, lng: float) -> Anchor |
             return None
         return Anchor(name=near[0], lat=near[1], lng=near[2], demo=True)
     try:
-        rows = await maps.places(lat, lng, 2000, "metro train station", "")
+        rows = await maps.places(lat, lng, 2000, "metro train station", "", STATION_MASK)
     except HTTPException:
         return None
     for row in rows:
@@ -791,6 +792,9 @@ async def match_local_shops(
             continue
         # Results near an Indian location never show SGD
         if in_india and shop.get("currency") == "SGD":
+            continue
+        # Results near a Singapore location never show INR
+        if in_sg and shop.get("currency") == "INR":
             continue
         if distance(lat, lng, shop["lat"], shop["lng"]) > radius:
             continue

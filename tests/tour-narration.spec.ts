@@ -67,6 +67,8 @@ test('narration queue: late responses, cancellation, fallback and autoplay rejec
   expect(events.slice(-2)).toEqual(['play:offline phone', 'stop:offline phone'])
 })
 
+test.skip(({ isMobile }) => !isMobile, '390px phone narration flow')
+
 test('390px phone: owner menu, optional Hindi narration, interruption and remembered choice', async ({
   page,
 }) => {
@@ -82,7 +84,8 @@ test('390px phone: owner menu, optional Hindi narration, interruption and rememb
       // Successful cloud bytes; playback itself is deterministic below.
       return route.fulfill({ status: 200, contentType: 'audio/mpeg', body: 'mock audio' })
     }
-    if (path === '/bootstrap') return route.fulfill({ json: { auth_mode: 'local' } })
+    if (path === '/bootstrap')
+      return route.fulfill({ json: { auth_mode: 'local', customer_origin: url.origin } })
     if (path === '/me') return route.fulfill({ json: { consent_current: true } })
     if (path === '/demo/workspace') {
       seeded = true
@@ -110,9 +113,47 @@ test('390px phone: owner menu, optional Hindi narration, interruption and rememb
           : [],
       })
     if (path.endsWith('/inventory')) return route.fulfill({ json: [] })
+    if (path.endsWith('/supply'))
+      return route.fulfill({
+        json: {
+          suppliers: [],
+          needs: [{ item: 'Milk', runs_out: '2026-10-20', stock: 2 }],
+          orders: [
+            {
+              id: 'seeded-po',
+              number: 'PO-1',
+              status: 'sent',
+              currency: 'INR',
+              buyer: { name: 'Demo (Tour)' },
+              supplier: { name: 'Seeded demo supplier', demo: true },
+              checks: [],
+              lines: [{ line: 1, item: 'Milk', quantity: 12, unit: 'l', price: 100 }],
+              total: 1200,
+              terms_days: 7,
+              delivery: '2026-10-20',
+              documents: [
+                {
+                  id: 'doc',
+                  kind: 'ORDERS',
+                  from: 'buyer',
+                  at: 1792300000,
+                  raw_format: 'json',
+                  translated_format: 'idoc',
+                  raw: '{}',
+                  translated: '<ORDERS05>demo</ORDERS05>',
+                  flags: [],
+                  mapping: [],
+                  reader: 'template',
+                },
+              ],
+            },
+          ],
+        },
+      })
     return route.fulfill({ status: 503, json: { detail: 'Offline test fixture' } })
   })
   await page.addInitScript(() => {
+    localStorage.setItem('chalkboard.explainer.owner.v1', '1')
     localStorage.setItem('niva.language.chosen', '1')
     localStorage.setItem(
       'niva.starter.preferences',
@@ -170,20 +211,35 @@ test('390px phone: owner menu, optional Hindi narration, interruption and rememb
       page.evaluate(() => (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents),
     )
     .toContain('stop:1')
-  await page.getByRole('button', { name: 'छोड़ें', exact: true }).tap()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: tourCopy('hi').skipVoice, exact: true }).tap()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  expect(requests).toHaveLength(2)
   await expect
     .poll(() =>
       page.evaluate(() => (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents),
     )
     .toContain('stop:2')
+  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
+  await expect.poll(() => requests.length).toBe(3)
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents),
+    )
+    .toContain('play:3')
+  await page.getByRole('button', { name: tourCopy('hi').close, exact: true }).tap()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { tourAudioEvents: string[] }).tourAudioEvents),
+    )
+    .toContain('stop:3')
   expect(await page.evaluate(() => localStorage.getItem('chalkboard.tour.narration'))).toBe('true')
   await page.reload({ waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: /preview|प्रीव्यू|पूर्वावलोकन/i }).tap()
-  expect(requests).toHaveLength(2)
+  expect(requests).toHaveLength(3)
   await openTour()
   await expect(speaker).toHaveAttribute('aria-pressed', 'true')
-  await expect.poll(() => requests.length).toBe(3)
+  await expect.poll(() => requests.length).toBe(4)
   await speaker.tap()
   const before = requests.length
   await page.getByRole('button', { name: 'आगे', exact: true }).tap()
@@ -191,6 +247,22 @@ test('390px phone: owner menu, optional Hindi narration, interruption and rememb
   expect(requests).toHaveLength(before)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: 'output/playwright/tour-narration-hi-390.png' })
+  // Walk every new feature stop with the selected demo order, without importing or publishing.
+  for (let i = 1; i < 8; i++) await page.getByRole('button', { name: 'आगे', exact: true }).tap()
+  await expect(page.locator('[data-tour="feature"]')).toContainText('Milk')
+  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
+  await expect(page.locator('[data-tour="feature"]')).toContainText('Seeded demo supplier')
+  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
+  await expect(page.locator('[data-tour="feature"]')).toContainText('<ORDERS05>demo</ORDERS05>')
+  await page.screenshot({ path: 'output/playwright/tour-sap-hi-390.png' })
+  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
+  await expect(page.locator('[data-tour="feature"] #import-panel')).toBeVisible()
+  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
+  await expect(page.locator('[data-tour="feature"] [data-testid="first-customers"]')).toBeVisible()
+  await page.getByRole('button', { name: 'आगे', exact: true }).tap()
+  await expect(page.locator('[data-tour="feature"]')).toContainText('Demo (Tour)')
+  expect(requests).toHaveLength(before)
+  await page.getByRole('button', { name: tourCopy('hi').close }).tap()
   for (const step of tourCopy('hi').steps)
     expect(`${step.title} ${step.body}`).not.toMatch(/[A-Za-z]/)
 })

@@ -20,7 +20,7 @@ test('phone photos → merged rows → mapping review → explicit confirmation'
   await connect.getByTestId('screen-gallery').setInputFiles([photo('excel'), photo('petpooja')])
   await expect(connect.getByRole('status')).toContainText('Photos selected: 2')
   await connect.getByRole('button', { name: 'Read photos', exact: true }).click()
-  await expect(connect.getByText('AI column mapping')).toBeVisible()
+  await expect(connect.getByRole('heading', { name: 'Column mapping' })).toBeVisible()
   await expect(connect.getByText('Unclear rows were left out.', { exact: false })).toBeVisible()
   await expect(connect.getByText('Currency: INR')).toBeVisible()
   await expect(connect.getByText('Sample photos only: no AI read these images.')).toBeVisible()

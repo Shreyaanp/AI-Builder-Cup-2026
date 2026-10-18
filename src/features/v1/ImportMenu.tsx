@@ -251,6 +251,11 @@ export function SalesImportSheet({
               {t.importFailed}
             </Alert>
           )}
+          {Boolean(imported?.currency_mismatches) && (
+            <Alert severity="warning" role="status" sx={{ mt: 2 }}>
+              {t.salesCurrencyMismatch}
+            </Alert>
+          )}
           {Boolean(imported?.flags?.length) && (
             <Alert severity="warning" sx={{ mt: 2 }}>
               {t.importReviewFlags}:{' '}
@@ -289,7 +294,7 @@ export function SalesImportSheet({
               </ListItem>
             ))}
           </List>
-          {!saved && (
+          {!saved && imported?.status !== 'nothing_to_propose' && (
             <Button
               variant="contained"
               disabled={busy}

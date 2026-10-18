@@ -1,0 +1,11 @@
+{
+  "adapter": "document",
+  "input": "input.png",
+  "processor": "invoice",
+  "mime": "image/png",
+  "render": {
+    "title": "SUPPLIER INVOICE",
+    "variant": "clean"
+  },
+  "notes": "Tax 5.00 is printed; parser omits tax."
+}

@@ -147,8 +147,8 @@ for (const locale of [
       const source = '/src/features/v1/strings.ts'
       const locales = '/src/features/v1/locales/index.ts'
       const { en } = await import(source)
-      const { translations } = await import(locales)
-      const copy = locale === 'en' ? en : translations[locale]
+      const { loaders } = await import(locales)
+      const copy = locale === 'en' ? en : await loaders[locale]!()
       return {
         talk: copy.talk as string,
         continuePreview: copy.continuePreview as string,

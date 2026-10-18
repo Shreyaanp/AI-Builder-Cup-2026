@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "Item Name": "Masala Chai",
+      "Price": "15.50",
+      "Stock": "20",
+      "Category": "Drinks",
+      "SKU": "TEA-01"
+    },
+    { "Item Name": "Bun", "Price": "25.00", "Stock": "0", "Category": "Bakery", "SKU": "BUN-02" }
+  ]
+}
