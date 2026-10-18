@@ -405,7 +405,9 @@ def allowed(method: str, path: str) -> bool:
 
 
 @router.api_route(
-    "/{session_id}/api/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"]
+    "/{session_id}/api/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    include_in_schema=False,
 )
 async def owner_api(
     session_id: str, path: str, request: Request, entry: Annotated[DemoSession, Depends(live)]
