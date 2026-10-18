@@ -318,6 +318,7 @@ export const ja: Copy = {
     'ファイルを読み込めませんでした。商品名と価格を含む CSV または Excel を送ってください。',
   salesSummary: '売上の概要',
   salesNotSaved: 'ファイルの内容です。何も保存していません。',
+  salesCurrencyMismatch: '別の通貨の行は除外しました。',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} 日間 · ${from} – ${to}` : 'ファイルに日付がありません',
   topItems: '売れ筋',
