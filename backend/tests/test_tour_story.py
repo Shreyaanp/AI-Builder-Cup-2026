@@ -275,15 +275,89 @@ def test_cli_dry_run_and_explicit_target(tmp_path: Path, monkeypatch) -> None:
     assert main(["--sqlite", str(path), "--date", str(DAY)]) == 0
 
 
-def test_production_routes_require_owner_prepared_accounts(app) -> None:  # noqa: F811
-    # Exercise the production gates using local repositories; never create a cloud client.
+@pytest.mark.parametrize("zone", ["Asia/Kolkata", "Asia/Singapore"])
+def test_production_tour_seeds_fresh_owner_once_without_provider_calls(
+    app,  # noqa: F811
+    monkeypatch,
+    zone,
+) -> None:
+    # Use local repositories with production route settings; forbid provider network I/O.
+    import socket
+
+    connect = socket.socket.connect
+
+    def no_network(sock, address):
+        if address[0] in {"127.0.0.1", "::1"}:
+            return connect(sock, address)
+        pytest.fail("Tour seeding must not contact model, payment or other providers")
+
+    monkeypatch.setattr(socket.socket, "connect", no_network)
     with TestClient(app) as client:
         join(client)
         app.state.v1_settings = app.state.v1_settings.model_copy(update={"app_env": "production"})
-        app.state.world_generator.settings = app.state.v1_settings
-        assert client.post("/api/v1/demo/workspace").status_code == 409
+        assert client.get("/api/v1/businesses").json() == []
+        first = client.post(f"/api/v1/demo/workspace?zone={zone}")
+        assert first.status_code == 200, first.text
+        bid = first.json()["business_id"]
+        assert first.json()["created"] is True
+        businesses = client.get("/api/v1/businesses").json()
+        assert len(businesses) == 1
+        assert businesses[0]["fields"]["demo"]
+        assert businesses[0]["fields"]["name"].endswith("(Tour)")
+        assert app.state.merchant.public_shop(bid) is None
+        context = client.get(f"/api/v1/demo/chain/{bid}")
+        assert context.status_code == 200, context.text
+        assert context.json()["order"]["number"] == "4500000001"
+        assert context.json()["wholesaler"]["inbound"]["lines"] == context.json()["order"]["lines"]
+        again = client.post(f"/api/v1/demo/workspace?zone={zone}")
+        assert again.json() == {"business_id": bid, "created": False}
+        assert client.get("/api/v1/businesses").json() == businesses
+
+
+def test_production_customer_seeds_fresh_account_once_without_provider_calls(
+    app,  # noqa: F811
+    monkeypatch,
+) -> None:
+    import socket
+
+    connect = socket.socket.connect
+
+    def no_network(sock, address):
+        if address[0] in {"127.0.0.1", "::1"}:
+            return connect(sock, address)
+        pytest.fail("Customer seeding must not contact model or payment providers")
+
+    monkeypatch.setattr(socket.socket, "connect", no_network)
+    with TestClient(app) as client:
+        app.state.v1_settings = app.state.v1_settings.model_copy(update={"app_env": "production"})
         client.post("/api/v1/customer/session", json={"name": "Demo judge"})
-        assert client.post("/api/v1/demo/customer").status_code == 409
+        first = client.post("/api/v1/demo/customer")
+        assert first.status_code == 200 and first.json()["ready"]
+        passport = client.get("/api/v1/customer/passport").json()
+        threads = client.get("/api/v1/customer/threads").json()
+        assert passport["points"] == 0 and passport["demo_points"] > 0
+        assert len(threads) == 2
+        assert client.post("/api/v1/demo/customer").json() == first.json()
+        assert client.get("/api/v1/customer/passport").json() == passport
+        assert client.get("/api/v1/customer/threads").json() == threads
+
+
+@pytest.mark.parametrize("route", ["workspace", "customer"])
+def test_production_demo_rate_limit_prevents_seeding(app, monkeypatch, route) -> None:  # noqa: F811
+    from unittest.mock import Mock
+
+    with TestClient(app) as client:
+        join(client)
+        client.post("/api/v1/customer/session", json={"name": "Demo judge"})
+        app.state.v1_settings = app.state.v1_settings.model_copy(update={"app_env": "production"})
+        take = Mock(return_value=60)
+        monkeypatch.setattr(app.state.rate_limiter, "take", take)
+        response = client.post(f"/api/v1/demo/{route}")
+        assert response.status_code == 429
+        assert response.headers["Retry-After"] == "60"
+        assert all(
+            bucket.action == "proposal" and bucket.subject for bucket in take.call_args[0][0]
+        )
         assert app.state.merchant.shared_shops() == []
 
 
@@ -362,6 +436,110 @@ def test_private_tour_stays_private_during_seeding_and_resumes_a_partial_seed(
     assert len({row["date"] for row in store.sales_history("owner", bid)}) == 56
     assert len(supply_chain.orders(store, "owner", bid)) == 1
     assert store.public_shop(bid) is None
+
+
+@pytest.mark.parametrize(
+    ("city", "item", "supplier"),
+    [
+        ("bengaluru", "Tea dust", "Sri Lakshmi Provisions (Demo)"),
+        ("singapore", "Kopi powder", "Ah Huat Provision (Demo)"),
+    ],
+)
+def test_tour_reorder_drafts_from_the_wholesaler(world, city, item, supplier) -> None:
+    """#264: Reorder on the tour shop drafts the stocked supply, not the chai brewed from it."""
+    store, community = world
+    seed_story(store, community, owner_uid="owner", today=DAY)
+    bid = tour_id("owner", city)
+    forecaster = ForecastService(Settings(_env_file=None, forecast_backend="weekday_average"))
+
+    result = asyncio.run(
+        supply_chain.draft_reorder(store, "owner", bid, "", None, forecaster, None, "demo")
+    )
+
+    assert result["status"] == "drafted"
+    assert result["order"]["supplier"]["name"] == supplier
+    assert [line["item"] for line in result["order"]["lines"]] == [item]
+    # The kilos on the shelf follow the kilos sold, never the cups of chai or kopi.
+    assert result["order"]["reason"]["daily"] < 5
+
+
+def test_wholesaler_books_the_stall_order_and_restocks_by_csv(world) -> None:
+    """Vendor to vendor: PO 4500000001 is an order coming in for the wholesaler, and the
+    wholesaler's own spreadsheet order goes to its distributor. Reruns add nothing."""
+    store, community = world
+    for _ in range(2):
+        seed_story(store, community, today=DAY)
+    from app import supply_io
+
+    for city, stall, distributor, item in [
+        ("bengaluru", "Lantern Chai Corner (Demo)", "Anand Distributors (Demo)", "Tea dust"),
+        (
+            "singapore",
+            "Sunny Side Kopitiam (Demo)",
+            "Katong Trading (Demo)",
+            "Kopi powder",
+        ),
+    ]:
+        sid = f"demo-story-{city}-supplier"
+        orders = {po["number"]: po for po in supply_chain.all_orders(store, sid)}
+        assert len(orders) == 2 and len(supply_io.inbox(store, sid)) == 2
+        sold = next(po for po in orders.values() if supply_io.direction_of(po) == "out")
+        bought = next(po for po in orders.values() if supply_io.direction_of(po) == "in")
+        assert sold["number"] == "4500000001"
+        assert supply_io.partner_of(sold)["name"] == stall
+        assert sold["lines"][0]["item"] == item
+        assert supply_io.partner_of(bought)["name"] == distributor
+        assert bought["documents"][0]["raw_format"] == "csv"
+        assert bought["documents"][0]["raw"].startswith("doc_type,doc_number")
+
+
+def test_tour_chain_follows_one_order_on_seeded_records(app) -> None:  # noqa: F811
+    """Every name and number in the tour's order story comes from the seeded records."""
+    with TestClient(app) as client:
+        join(client)
+        stories = {}
+        for zone in ("Asia/Kolkata", "Asia/Singapore"):
+            bid = client.post(f"/api/v1/demo/workspace?zone={zone}").json()["business_id"]
+            response = client.get(f"/api/v1/demo/chain/{bid}")
+            assert response.status_code == 200, response.text
+            stories[zone] = (bid, response.json())
+        bid, india = stories["Asia/Kolkata"]
+        assert india["today"]["item"] == "Tea dust" and india["today"]["runs_out"]
+        assert india["order"]["number"] == "4500000001"
+        assert india["order"]["partner"] == "Sri Lakshmi Provisions (Demo)"
+        assert [line["item"] for line in india["order"]["lines"]][1:] == [
+            "Milk",
+            "Sugar",
+            "Paper cups (50)",
+        ]
+        assert india["order"]["message"].startswith("*Purchase order 4500000001*")
+        inbound = india["wholesaler"]["inbound"]
+        assert inbound["number"] == "4500000001"
+        assert inbound["partner"] == "Lantern Chai Corner (Demo)"
+        assert inbound["lines"] == india["order"]["lines"]
+        restock = india["wholesaler"]["restock"]
+        assert restock["partner"] == "Anand Distributors (Demo)"
+        assert restock["csv"].startswith("doc_type,doc_number")
+        chain = india["chain"]
+        assert chain["name"] == "Metro Foods (Demo)" and chain["outlets"] == "24"
+        assert chain["order"]["partner"] == "Bharat FMCG Distribution (Demo)"
+        assert chain["order"]["idocs"][:4] == ["ORDERS05", "ORDERS05", "DELVRY07", "INVOIC02"]
+        tea = next(row for row in india["arrived"] if row["item"] == "Tea dust")
+        assert tea["after"] == tea["before"] + india["order"]["lines"][0]["quantity"]
+        assert tea["runs_out_before"] and not tea["runs_out_after"]
+        assert tea["covered_until"] > tea["runs_out_before"]
+        assert india["customers"]["stamps_needed"] == 8
+        assert india["customers"]["reward"] == "A free chai"
+        assert india["customers"]["stamps_today"] > 0
+        _, sg = stories["Asia/Singapore"]
+        assert sg["today"]["item"] == "Kopi powder"
+        assert sg["order"]["partner"] == "Ah Huat Provision (Demo)"
+        assert sg["wholesaler"]["restock"]["partner"] == "Katong Trading (Demo)"
+        assert sg["wholesaler"]["inbound"]["partner"] == "Sunny Side Kopitiam (Demo)"
+
+    with TestClient(app) as stranger:
+        join(stranger)
+        assert stranger.get(f"/api/v1/demo/chain/{bid}").status_code == 404
 
 
 @pytest.mark.parametrize("city", CENTRES)
