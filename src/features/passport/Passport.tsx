@@ -19,6 +19,8 @@ import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { useCustomer } from '../customer/account'
 import { useAccountCopy } from '../customer/copy'
 import { SignInSheet } from '../customer/SignIn'
+import { Details } from '../v1/Sheet'
+import { usePacingCopy } from '../customer/pacingCopy'
 import { customerNavigate } from '../frontdoors/navigation'
 import { useRewardCopy } from '../rewards/strings'
 import { formatPrice } from '../v1/format'
@@ -89,6 +91,7 @@ function PassportSkeleton({ onRetry }: { onRetry: () => void }) {
 export function Passport({ initialLocation }: { initialLocation?: CustomerLocation | null }) {
   const account = useCustomer()
   const t = usePassportCopy()
+  const games = useGamesCopy()
   const roles = useTheme().material
   const [place] = useState(() =>
     initialLocation?.gps
@@ -159,19 +162,33 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
       {view && (
         <Stack spacing={5} sx={{ mt: 3 }}>
           <LevelCard view={view} />
-          <NextRewardLine view={view} />
-          <PendingScratch view={view} place={place} onSignIn={() => setSignIn(true)} />
-          <StreakFlame view={view} place={place} />
-          {view.games?.coop && (
-            <CoopGoal coop={view.games.coop} signedIn={signedIn} place={place} />
-          )}
-          <StampBook view={view} />
-          {view.games && <CollectionSets sets={view.games.sets} />}
-          {/* Festival trails live with the collection sets. */}
-          <Quests quests={view.quests.filter((quest) => quest.kind !== 'festival')} />
-          <Impact view={view} />
-          <Perks view={view} />
-          <Leaderboard view={view} place={place} onSignIn={() => setSignIn(true)} />
+          <Details title={t.stampBook} name="passport">
+            <StampBook view={view} />
+          </Details>
+          <Details title={t.perks} name="passport">
+            <NextRewardLine view={view} />
+            <PendingScratch view={view} place={place} onSignIn={() => setSignIn(true)} />
+            <Perks view={view} />
+          </Details>
+          <Details title={games.how_streak} name="passport">
+            <StreakFlame view={view} place={place} />
+          </Details>
+          <Details title={games.how_sets} name="passport">
+            {view.games?.coop && (
+              <CoopGoal coop={view.games.coop} signedIn={signedIn} place={place} />
+            )}
+            {view.games && <CollectionSets sets={view.games.sets} />}
+          </Details>
+          <Details title={t.quests} name="passport">
+            {/* Festival trails live with the collection sets. */}
+            <Quests quests={view.quests.filter((quest) => quest.kind !== 'festival')} />
+          </Details>
+          <Details title={t.impact} name="passport">
+            <Impact view={view} />
+          </Details>
+          <Details title={t.board} name="passport">
+            <Leaderboard view={view} place={place} onSignIn={() => setSignIn(true)} />
+          </Details>
           {!signedIn && account.status !== 'guest' && (
             <Box
               sx={{
@@ -211,6 +228,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function LevelCard({ view }: { view: PassportView }) {
+  const pacing = usePacingCopy()
   const t = usePassportCopy()
   const locale = useLocale()
   const theme = useTheme()
@@ -252,9 +270,11 @@ function LevelCard({ view }: { view: PassportView }) {
             : t.topLevel}
         </Typography>
         {view.demo_points > 0 && (
-          <Typography variant="bodySmall" sx={{ mt: 1, opacity: 0.85 }}>
-            {fill(t.demoPoints, { n: number(view.demo_points) })}. {t.demoPointsNote}
-          </Typography>
+          <Details title={pacing.more}>
+            <Typography variant="bodyLarge" sx={{ mt: 1 }}>
+              {fill(t.demoPoints, { n: number(view.demo_points) })}. {t.demoPointsNote}
+            </Typography>
+          </Details>
         )}
       </Box>
     </Box>

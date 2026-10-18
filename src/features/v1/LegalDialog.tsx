@@ -15,10 +15,21 @@ import { useBackClose } from './backStack'
 import { useCopy } from './strings'
 import { useLocale } from '../../state/hooks'
 import { windowClass } from '../../design/theme'
+import type { ReactNode } from 'react'
 
 export type LegalDocument = 'terms' | 'privacy' | null
 
-export function LegalDialog({ open, onClose }: { open: LegalDocument; onClose: () => void }) {
+export function LegalDialog({
+  open,
+  onClose,
+  introduction,
+  actionLabel,
+}: {
+  open: LegalDocument
+  onClose: () => void
+  introduction?: ReactNode
+  actionLabel?: string
+}) {
   const t = useCopy()
   const locale = useLocale()
   const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
@@ -36,6 +47,7 @@ export function LegalDialog({ open, onClose }: { open: LegalDocument; onClose: (
       <DialogTitle id="legal-title">{open === 'privacy' ? t.viewPrivacy : t.viewTerms}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={3}>
+          {introduction}
           <Alert severity="warning">
             {t.draftLegal} · v{LEGAL_VERSION}
           </Alert>
@@ -61,7 +73,7 @@ export function LegalDialog({ open, onClose }: { open: LegalDocument; onClose: (
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button variant="contained" onClick={onClose}>
-          {t.close}
+          {actionLabel ?? t.close}
         </Button>
       </DialogActions>
     </Dialog>

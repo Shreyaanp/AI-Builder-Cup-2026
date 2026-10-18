@@ -7,7 +7,8 @@ import { HAND_FONT } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { useCustomer } from '../customer/account'
 import { SignInSheet } from '../customer/SignIn'
-import { Sheet } from '../v1/Sheet'
+import { Details, Sheet } from '../v1/Sheet'
+import { usePacingCopy } from '../customer/pacingCopy'
 import { useRescueCopy } from '../rescue/copy'
 import { dropHold } from '../rescue/holds'
 import { visit } from '../rewards/storage'
@@ -65,6 +66,7 @@ export function StampMoment({
   rescue?: string | null
 }) {
   const t = usePassportCopy()
+  const pacing = usePacingCopy()
   const account = useCustomer()
   const roles = useTheme().material
   const [phase, setPhase] = useState<Phase>({ step: 'locating' })
@@ -175,9 +177,9 @@ export function StampMoment({
             />
             {/* The variable reward: a scratch card for this verified stamp. */}
             {phase.result.scratch && (
-              <Box sx={{ mt: 4, textAlign: 'start' }}>
+              <Details title={pacing.more}>
                 <ScratchCard card={phase.result.scratch} />
-              </Box>
+              </Details>
             )}
           </>
         ) : (
@@ -284,6 +286,7 @@ function Celebration({
   rescue: boolean
 }) {
   const t = usePassportCopy()
+  const pacing = usePacingCopy()
   const r = useRescueCopy()
   const g = useGamesCopy()
   const locale = useLocale()
@@ -405,51 +408,53 @@ function Celebration({
       >
         {fill(outcome.demo ? t.plusDemo : t.plus, { n: number })}
       </Typography>
-      <Stack id="stamp-moment-body" spacing={1} sx={{ mt: 2 }}>
-        {rescue && result.passport && (
-          <Typography className="stamp-line" variant="titleMedium">
-            {fill(r.rescuedBody, {
-              n: new Intl.NumberFormat(locale).format(result.passport.impact.meals),
-            })}
-          </Typography>
-        )}
-        {levelUp && (
-          <Typography className="stamp-line" variant="titleLarge" sx={{ fontWeight: 700 }}>
-            {fill(t.levelUp, { level: t[outcome.level_after ?? 'newcomer'] })}
-          </Typography>
-        )}
-        {(outcome.quests_completed?.length ?? 0) > 0 && (
-          <Typography className="stamp-line" variant="titleMedium">
-            {t.questComplete}
-          </Typography>
-        )}
-        {outcome.milestone && (
-          <Typography className="stamp-line" variant="titleMedium">
-            {fill(t.milestone, { n: outcome.milestone })}
-          </Typography>
-        )}
-        {(result.sets_completed ?? []).map((id) => (
-          <SetComplete key={id} set={{ id, art: '' }} />
-        ))}
-        {coop && coop.you > 0 && (
-          <Typography className="stamp-line" variant="bodyLarge">
-            {fill(g.coopHelped, {
-              total: new Intl.NumberFormat(locale).format(coop.total),
-              goal: new Intl.NumberFormat(locale).format(coop.goal),
-            })}
-          </Typography>
-        )}
-        {next && nextLevel && (
-          <Typography className="stamp-line" variant="bodyLarge" color="text.secondary">
-            {requirementText(next, nextLevel, t)}
-          </Typography>
-        )}
-        {!signedIn && (
-          <Typography className="stamp-line" variant="bodyMedium" color="text.secondary">
-            {t.keptOnPhone} {g.signInScratch}
-          </Typography>
-        )}
-      </Stack>
+      <Details title={pacing.more}>
+        <Stack id="stamp-moment-body" spacing={1} sx={{ mt: 2 }}>
+          {rescue && result.passport && (
+            <Typography className="stamp-line" variant="titleMedium">
+              {fill(r.rescuedBody, {
+                n: new Intl.NumberFormat(locale).format(result.passport.impact.meals),
+              })}
+            </Typography>
+          )}
+          {levelUp && (
+            <Typography className="stamp-line" variant="titleLarge" sx={{ fontWeight: 700 }}>
+              {fill(t.levelUp, { level: t[outcome.level_after ?? 'newcomer'] })}
+            </Typography>
+          )}
+          {(outcome.quests_completed?.length ?? 0) > 0 && (
+            <Typography className="stamp-line" variant="titleMedium">
+              {t.questComplete}
+            </Typography>
+          )}
+          {outcome.milestone && (
+            <Typography className="stamp-line" variant="titleMedium">
+              {fill(t.milestone, { n: outcome.milestone })}
+            </Typography>
+          )}
+          {(result.sets_completed ?? []).map((id) => (
+            <SetComplete key={id} set={{ id, art: '' }} />
+          ))}
+          {coop && coop.you > 0 && (
+            <Typography className="stamp-line" variant="bodyLarge">
+              {fill(g.coopHelped, {
+                total: new Intl.NumberFormat(locale).format(coop.total),
+                goal: new Intl.NumberFormat(locale).format(coop.goal),
+              })}
+            </Typography>
+          )}
+          {next && nextLevel && (
+            <Typography className="stamp-line" variant="bodyLarge" color="text.secondary">
+              {requirementText(next, nextLevel, t)}
+            </Typography>
+          )}
+          {!signedIn && (
+            <Typography className="stamp-line" variant="bodyMedium" color="text.secondary">
+              {t.keptOnPhone} {g.signInScratch}
+            </Typography>
+          )}
+        </Stack>
+      </Details>
     </Box>
   )
 }

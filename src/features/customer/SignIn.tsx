@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { Alert, Box, Button, CircularProgress, Stack, Typography, useTheme } from '@mui/material'
 import { LockKeyhole } from 'lucide-react'
-import { Sheet } from '../v1/Sheet'
+import { Details, Sheet } from '../v1/Sheet'
+import { useGuestCopy } from './guestCopy'
+import { usePacingCopy } from './pacingCopy'
+import { PrivacyLinks } from './PrivacyLinks'
 import { useCustomer } from './account'
 import { useAccountCopy } from './copy'
 
@@ -90,6 +93,8 @@ export function SignInSheet({
 }) {
   const roles = useTheme().material
   const t = useAccountCopy()
+  const guest = useGuestCopy()
+  const pacing = usePacingCopy()
   return (
     <Sheet
       open={open}
@@ -113,12 +118,14 @@ export function SignInSheet({
         >
           <LockKeyhole size={26} />
         </Box>
-        <Typography variant="bodyLarge">{body ?? t.signInBody}</Typography>
+        <Typography variant="bodyLarge">{body ?? guest.claim}</Typography>
         {!body && (
-          <Typography variant="bodySmall" color="text.secondary">
-            {t.signInWhy}
-          </Typography>
+          <Details title={pacing.more}>
+            <Typography variant="bodyLarge">{t.signInBody}</Typography>
+            <Typography variant="bodyLarge">{t.signInWhy}</Typography>
+          </Details>
         )}
+        <PrivacyLinks />
         <SignInButton onSignedIn={onSignedIn} />
         <Button onClick={onClose}>{t.notNow}</Button>
       </Stack>

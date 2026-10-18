@@ -27,7 +27,9 @@ import { discoverCopy } from '../discover/strings'
 import { loadScriptFont } from '../../i18n/fonts'
 import { formatPrice } from '../v1/format'
 import { factName } from '../v1/factNames'
-import { Sheet } from '../v1/Sheet'
+import { Details, Sheet } from '../v1/Sheet'
+import { usePassportCopy } from '../passport/copy'
+import { usePacingCopy } from '../customer/pacingCopy'
 import type { Api, ShopFacts } from '../v1/api'
 import { useCopy as useOwnerCopy } from '../v1/strings'
 import { HAND_FONT, shape } from '../../design/theme'
@@ -489,6 +491,9 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   // A counter QR scan, read once: a shop without stamps has no stamp moment to answer it.
   const [scannedQr] = useState(() => new URLSearchParams(location.search).get('source') === 'qr')
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [allProducts, setAllProducts] = useState(false)
+  const passportCopy = usePassportCopy()
+  const pacing = usePacingCopy()
   const previous = useRef<PublicShopData | null>(null)
   const [changedPrices, setChangedPrices] = useState<string[]>([])
   useEffect(() => {
@@ -850,148 +855,149 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         </Stack>
       </Box>
       {/* One line a neighbour would say about the place, in chalk. */}
-      {story && (
-        <Typography
-          sx={{
-            ...chalkWrite,
-            mt: 2,
-            fontFamily: HAND_FONT,
-            fontSize: '1.375rem',
-            lineHeight: 1.25,
-            fontWeight: 600,
-            color: theme.chalk.sunflower.main,
-          }}
-        >
-          “{story}”
-        </Typography>
-      )}
-      {/* Sample shops say so in words, not only with a chip. */}
-      {shop.demo && !previewApi && (
-        <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
-          {t.demoShopNote}
-        </Typography>
-      )}
-      {/* Follow, stamps and how to get there wrap onto a second line, never cut at the edge. */}
-      <Stack
-        direction="row"
-        sx={{
-          mt: 3,
-          gap: 1.5,
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          py: 0.5,
-          '& > *': { minWidth: 0, maxWidth: '100%' },
-        }}
-      >
-        {!previewApi && <FollowButton id={id} name={shop.name} />}
-        {stampsEnabled && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
-        {actions.map((action) => (
-          <Button
-            key={action.label}
-            variant="outlined"
-            size="small"
-            startIcon={action.icon}
-            href={action.href}
-            target={action.href.startsWith('http') ? '_blank' : undefined}
-            rel={action.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-            sx={{ minHeight: 48 }}
+      <Details title={t.factsLabel}>
+        {story && (
+          <Typography
+            sx={{
+              ...chalkWrite,
+              mt: 2,
+              fontFamily: HAND_FONT,
+              fontSize: '1.375rem',
+              lineHeight: 1.25,
+              fontWeight: 600,
+              color: theme.chalk.sunflower.main,
+            }}
           >
-            {action.label}
-          </Button>
-        ))}
-      </Stack>
-      {chips.length > 0 && (
-        <Box
-          component="ul"
-          aria-label={t.factsLabel}
-          // Chips wrap onto more lines: long Tamil/Kannada words never hide past the edge.
-          sx={{
-            listStyle: 'none',
-            m: 0,
-            p: 0,
-            mt: 2,
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 1,
-          }}
-        >
-          {chips.map((chip) => (
-            <Box
-              component="li"
-              key={chip}
-              sx={{
-                minWidth: 0,
-                maxWidth: '100%',
-                px: 2,
-                py: 1,
-                borderRadius: `${shape.sm}px`,
-                bgcolor: roles.secondaryContainer,
-                color: roles.onSecondaryContainer,
-                typography: 'labelLarge',
-                overflowWrap: 'anywhere',
-              }}
-            >
-              {chip}
-            </Box>
-          ))}
-        </Box>
-      )}
-      {/* Hours and address on demand; freshness stays in view (trust). */}
-      <Stack direction="row" sx={{ mt: 1, alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-        <Button
-          variant="text"
-          size="small"
-          onClick={() => setDetailsOpen((open) => !open)}
-          aria-expanded={detailsOpen}
-          endIcon={
-            <ChevronDown
-              size={18}
-              style={{
-                transform: detailsOpen ? 'rotate(180deg)' : 'none',
-                transition: 'transform 200ms ease',
-              }}
-            />
-          }
-          sx={{ px: 2, minHeight: 48, color: 'text.secondary', fontWeight: 500 }}
-        >
-          {shopCopy.weeklyHours}
-          {shop.hours
-            ? ` · ${shop.hours}`
-            : !shop.weekly_hours?.length
-              ? ` · ${o.hoursNotSet}`
-              : ''}
-        </Button>
-        <Typography variant="bodySmall" color="text.secondary">
-          {shop.last_confirmed
-            ? (() => {
-                // "Today" in the shop's own timezone, so a late-night check reads correctly.
-                const parts = new Intl.DateTimeFormat('en-CA', {
-                  timeZone: shopZone(shop),
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                }).formatToParts(new Date())
-                const part = (name: string) => parts.find((p) => p.type === name)?.value
-                const today = `${part('year')}-${part('month')}-${part('day')}`
-                const days = Math.max(
-                  0,
-                  Math.round((Date.parse(today) - Date.parse(shop.last_confirmed)) / 86_400_000),
-                )
-                return days === 0 ? freshnessCopy.updatedToday : freshnessCopy.updatedDays(days)
-              })()
-            : freshnessCopy.menuUnconfirmed}
-        </Typography>
-      </Stack>
-      <Collapse in={detailsOpen} unmountOnExit>
-        <Box sx={{ mt: 1 }}>
-          <HoursList hours={shop.weekly_hours} />
-        </Box>
-        {shop.location && (
-          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
-            {shop.location}
+            “{story}”
           </Typography>
         )}
-      </Collapse>
+        {/* Sample shops say so in words, not only with a chip. */}
+        {shop.demo && !previewApi && (
+          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
+            {t.demoShopNote}
+          </Typography>
+        )}
+        {/* Follow, stamps and how to get there wrap onto a second line, never cut at the edge. */}
+        <Stack
+          direction="row"
+          sx={{
+            mt: 3,
+            gap: 1.5,
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            py: 0.5,
+            '& > *': { minWidth: 0, maxWidth: '100%' },
+          }}
+        >
+          {!previewApi && <FollowButton id={id} name={shop.name} />}
+          {actions.map((action) => (
+            <Button
+              key={action.label}
+              variant="outlined"
+              size="small"
+              startIcon={action.icon}
+              href={action.href}
+              target={action.href.startsWith('http') ? '_blank' : undefined}
+              rel={action.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+              sx={{ minHeight: 48 }}
+            >
+              {action.label}
+            </Button>
+          ))}
+        </Stack>
+        {chips.length > 0 && (
+          <Box
+            component="ul"
+            aria-label={t.factsLabel}
+            // Chips wrap onto more lines: long Tamil/Kannada words never hide past the edge.
+            sx={{
+              listStyle: 'none',
+              m: 0,
+              p: 0,
+              mt: 2,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 1,
+            }}
+          >
+            {chips.map((chip) => (
+              <Box
+                component="li"
+                key={chip}
+                sx={{
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  px: 2,
+                  py: 1,
+                  borderRadius: `${shape.sm}px`,
+                  bgcolor: roles.secondaryContainer,
+                  color: roles.onSecondaryContainer,
+                  typography: 'labelLarge',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {chip}
+              </Box>
+            ))}
+          </Box>
+        )}
+        {/* Hours and address on demand; freshness stays in view (trust). */}
+        <Stack direction="row" sx={{ mt: 1, alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Button
+            variant="text"
+            size="small"
+            onClick={() => setDetailsOpen((open) => !open)}
+            aria-expanded={detailsOpen}
+            endIcon={
+              <ChevronDown
+                size={18}
+                style={{
+                  transform: detailsOpen ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 200ms ease',
+                }}
+              />
+            }
+            sx={{ px: 2, minHeight: 48, color: 'text.secondary', fontWeight: 500 }}
+          >
+            {shopCopy.weeklyHours}
+            {shop.hours
+              ? ` · ${shop.hours}`
+              : !shop.weekly_hours?.length
+                ? ` · ${o.hoursNotSet}`
+                : ''}
+          </Button>
+          <Typography variant="bodySmall" color="text.secondary">
+            {shop.last_confirmed
+              ? (() => {
+                  // "Today" in the shop's own timezone, so a late-night check reads correctly.
+                  const parts = new Intl.DateTimeFormat('en-CA', {
+                    timeZone: shopZone(shop),
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                  }).formatToParts(new Date())
+                  const part = (name: string) => parts.find((p) => p.type === name)?.value
+                  const today = `${part('year')}-${part('month')}-${part('day')}`
+                  const days = Math.max(
+                    0,
+                    Math.round((Date.parse(today) - Date.parse(shop.last_confirmed)) / 86_400_000),
+                  )
+                  return days === 0 ? freshnessCopy.updatedToday : freshnessCopy.updatedDays(days)
+                })()
+              : freshnessCopy.menuUnconfirmed}
+          </Typography>
+        </Stack>
+        <Collapse in={detailsOpen} unmountOnExit>
+          <Box sx={{ mt: 1 }}>
+            <HoursList hours={shop.weekly_hours} />
+          </Box>
+          {shop.location && (
+            <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
+              {shop.location}
+            </Typography>
+          )}
+        </Collapse>
+      </Details>
       {/* Menu: dense, aligned prices, readable at a glance. */}
       <Stack
         direction="row"
@@ -1055,7 +1061,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           {o.menuSoon}
         </Alert>
       ) : (
-        <CategoryGroups products={shop.products}>
+        <CategoryGroups products={allProducts ? shop.products : shop.products.slice(0, 5)}>
           {(items) => (
             <List
               disablePadding
@@ -1159,49 +1165,61 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           )}
         </CategoryGroups>
       )}
+      {shop.products.length > 5 && !allProducts && (
+        <Button onClick={() => setAllProducts(true)} sx={{ minHeight: 48 }}>
+          {pacing.more}
+        </Button>
+      )}
       {/* Rewards after the menu: earned, not in the way. */}
       {stampsEnabled && (
-        <StampCard
-          shop={id}
-          name={shop.name}
-          timezone={shopZone(shop)}
-          reward={shop.reward_text}
-          needed={shop.stamps_needed ?? 8}
-        />
+        <Details title={passportCopy.stampBook}>
+          <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />
+          {stampsEnabled && (
+            <StampCard
+              shop={id}
+              name={shop.name}
+              timezone={shopZone(shop)}
+              reward={shop.reward_text}
+              needed={shop.stamps_needed ?? 8}
+            />
+          )}
+          {stampsEnabled && (
+            <ShopStamp
+              shop={{
+                id,
+                name: shop.name,
+                category: shop.category,
+                demo: shop.demo,
+                timezone: shopZone(shop),
+                needed: shop.stamps_needed ?? 8,
+              }}
+            />
+          )}
+          {stampsEnabled && <ShopGames shop={id} />}
+          {stampsEnabled && <BadgeRow shop={id} />}
+        </Details>
       )}
-      {stampsEnabled && (
-        <ShopStamp
-          shop={{
-            id,
-            name: shop.name,
-            category: shop.category,
-            demo: shop.demo,
-            timezone: shopZone(shop),
-            needed: shop.stamps_needed ?? 8,
-          }}
-        />
-      )}
-      {stampsEnabled && <ShopGames shop={id} />}
-      {!previewApi && !stale && <BackInStock shop={id} products={shop.products} />}
-      {stampsEnabled && <BadgeRow shop={id} />}
-      {!previewApi && <Tips shop={id} />}
-      {!previewApi && (
-        <SimilarNearby
-          key={id}
-          shop={id}
-          items={menu.filter((product) => product.available).map((product) => product.name)}
-        />
-      )}
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{ mt: 3, alignItems: 'center', color: 'text.secondary', justifyContent: 'center' }}
-      >
-        <Leaf size={14} aria-hidden="true" />
-        <Typography variant="bodySmall" sx={{ textAlign: 'center' }}>
-          {t.footer}
-        </Typography>
-      </Stack>
+      <Details title={pacing.more}>
+        {!previewApi && !stale && <BackInStock shop={id} products={shop.products} />}
+        {!previewApi && <Tips shop={id} />}
+        {!previewApi && (
+          <SimilarNearby
+            key={id}
+            shop={id}
+            items={menu.filter((product) => product.available).map((product) => product.name)}
+          />
+        )}
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ mt: 3, alignItems: 'center', color: 'text.secondary', justifyContent: 'center' }}
+        >
+          <Leaf size={14} aria-hidden="true" />
+          <Typography variant="bodySmall" sx={{ textAlign: 'center' }}>
+            {t.footer}
+          </Typography>
+        </Stack>
+      </Details>
       {/* One way to reach the shop: instant answers first, the owner when needed. */}
       {!previewApi && (
         <Box

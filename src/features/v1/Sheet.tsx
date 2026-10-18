@@ -18,6 +18,38 @@ import { motion, shape, windowClass } from '../../design/theme'
 import { useBackClose } from './backStack'
 import { useCopy } from './strings'
 
+/** Native disclosure keeps child state and provides keyboard access without another overlay. */
+export function Details({
+  title,
+  children,
+  name,
+}: {
+  title: ReactNode
+  children: ReactNode
+  name?: string
+}) {
+  const roles = useTheme().material
+  return (
+    <Box component="details" name={name} sx={{ my: 2, color: roles.onSurface }}>
+      <Box
+        component="summary"
+        sx={{
+          minHeight: 48,
+          py: 3,
+          cursor: 'pointer',
+          typography: 'bodyLarge',
+          color: roles.primary,
+          overflowWrap: 'anywhere',
+          '&:focus-visible': { outline: `2px solid ${roles.primary}`, outlineOffset: 4 },
+        }}
+      >
+        {title}
+      </Box>
+      <Box sx={{ pt: 2 }}>{children}</Box>
+    </Box>
+  )
+}
+
 const timing = { enter: motion.duration.enter, exit: motion.duration.exit }
 
 /**
