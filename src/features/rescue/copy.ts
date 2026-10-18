@@ -1,10 +1,10 @@
 import type { Locale } from '../../i18n/locales'
+import { localePack } from '../../i18n/packs'
 import { useLocale } from '../../state/hooks'
-import { rescueTranslations } from './locales'
 
 /**
  * Customer rescue strings (the Rescue tab, Hold one for me, collecting at the counter). English
- * is the source; every supported locale has a complete set in locales.ts. Counts sit after a
+ * is the source; every supported locale has a complete set in its i18n/packs file. Counts sit after a
  * label ("Left: {n}") so no language needs plural forms. The impact meter reuses the passport's.
  */
 export const rescueStrings = {
@@ -61,7 +61,7 @@ export const rescueStrings = {
 export type RescueStrings = typeof rescueStrings
 
 export function rescueCopy(locale: Locale): RescueStrings {
-  return locale === 'en' ? rescueStrings : rescueTranslations[locale]
+  return localePack(locale)?.rescue ?? rescueStrings
 }
 
 export function useRescueCopy() {

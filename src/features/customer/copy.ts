@@ -1,10 +1,10 @@
 import type { Locale } from '../../i18n/locales'
+import { localePack } from '../../i18n/packs'
 import { useLocale } from '../../state/hooks'
-import { accountTranslations } from './copyLocales'
 
 /**
  * Customer account, chats, saved, tips and profile strings. English is the source; every
- * supported locale has its own complete set in copyLocales.ts. Counts use `{n}` with a `One`
+ * supported locale has its own complete set in its i18n/packs file. Counts use `{n}` with a `One`
  * variant for languages that mark the singular.
  */
 export const accountStrings = {
@@ -171,7 +171,10 @@ const cache = new Map<Locale, AccountCopy>()
 export function accountCopyFor(locale: Locale): AccountCopy {
   let copy = cache.get(locale)
   if (!copy) {
-    copy = build(locale === 'en' ? accountStrings : accountTranslations[locale])
+    // English until the language's pack has loaded (it loads before the app shows it).
+    const strings = localePack(locale)?.account
+    if (!strings && locale !== 'en') return accountCopyFor('en')
+    copy = build(strings ?? accountStrings)
     cache.set(locale, copy)
   }
   return copy

@@ -1,11 +1,11 @@
 import type { Locale } from '../../i18n/locales'
+import { localePack } from '../../i18n/packs'
 import { useLocale } from '../../state/hooks'
-import { passportTranslations } from './copyLocales'
 import type { LevelKey, Requirement } from './store'
 
 /**
  * Passport, stamp moment and Today's 7 strings. English is the source; every supported locale
- * has a complete set in copyLocales.ts. Counts sit after a label ("Weekly streak: {n}") so no
+ * has a complete set in its i18n/packs file. Counts sit after a label ("Weekly streak: {n}") so no
  * language needs plural forms. Server cards carry facts, and these templates word them.
  */
 export const passportStrings = {
@@ -157,7 +157,7 @@ export const passportStrings = {
 export type PassportStrings = typeof passportStrings
 
 export function passportCopy(locale: Locale): PassportStrings {
-  return locale === 'en' ? passportStrings : passportTranslations[locale]
+  return localePack(locale)?.passport ?? passportStrings
 }
 
 export function usePassportCopy() {
