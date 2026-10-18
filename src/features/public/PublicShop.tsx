@@ -7,6 +7,7 @@ import {
   CircularProgress,
   Collapse,
   IconButton,
+  Link,
   List,
   ListItem,
   ListItemText,
@@ -49,12 +50,14 @@ import { HoursList } from '../shop/Hours'
 import type { DayHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
 import { useShopCopy } from '../shop/strings'
+import { useDemoCopy } from '../frontdoors/strings'
 import { VerifiedBadge } from '../trust/VerifiedBadge'
 import { unitLabel } from '../shop/units'
 import { rememberOpened } from '../discover/opened'
 import { SimilarNearby } from '../discover/SimilarNearby'
 import { shopRegion, shopZone } from '../../region/region'
 import { track } from '../../app/analytics'
+import { CustomerAccountProvider } from '../customer/account'
 
 interface PublicShopData {
   id: string
@@ -468,9 +471,20 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
 }
 
 /** Customer-facing, read-only page for a shop the owner chose to share. No sign-in. */
-export default function PublicShop({ id, previewApi }: { id: string; previewApi?: Api }) {
+export default function PublicShop(props: { id: string; previewApi?: Api }) {
+  return props.previewApi ? (
+    <CustomerAccountProvider>
+      <PublicShopContent {...props} />
+    </CustomerAccountProvider>
+  ) : (
+    <PublicShopContent {...props} />
+  )
+}
+
+function PublicShopContent({ id, previewApi }: { id: string; previewApi?: Api }) {
   const locale = useLocale()
   const shopCopy = useShopCopy()
+  const demoCopy = useDemoCopy()
   const o = useOnboardingCopy()
   const discovery = discoverCopy(locale)
   const freshnessCopy = useOwnerCopy()
@@ -885,7 +899,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         }}
       >
         {!previewApi && <FollowButton id={id} name={shop.name} />}
-        {stampsEnabled && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
+        {stampsEnabled && !previewApi && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
         {actions.map((action) => (
           <Button
             key={action.label}
@@ -1161,7 +1175,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         </CategoryGroups>
       )}
       {/* Rewards after the menu: earned, not in the way. */}
-      {stampsEnabled && (
+      {stampsEnabled && !previewApi && (
         <StampCard
           shop={id}
           name={shop.name}
@@ -1170,7 +1184,15 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           needed={shop.stamps_needed ?? 8}
         />
       )}
-      {stampsEnabled && (
+      {stampsEnabled && previewApi && (
+        <Link
+          href="/explore/s/demo-story-bengaluru-chai?source=qr"
+          sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, mt: 2 }}
+        >
+          {demoCopy.stampAtStall}
+        </Link>
+      )}
+      {stampsEnabled && !previewApi && (
         <ShopStamp
           shop={{
             id,
