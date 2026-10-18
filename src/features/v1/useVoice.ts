@@ -6,6 +6,7 @@ import { useLocale } from '../../state/hooks'
 import { useLanguageSwitch } from './languageSwitch'
 import { useCopy } from './strings'
 import { useOnboardingCopy } from './onboardingCopy'
+import { keepScreenAwake } from './wakeLock'
 import type { Business, Product } from './api'
 
 /** One socket to the Live session. A conversation may use many in a row (see `connect`). */
@@ -161,6 +162,8 @@ export function useVoice(
   // Conversation mode: the microphone stays closed until the coach's first turn has played.
   const micOpen = useRef(false)
   const held = useRef<{ packets: ArrayBuffer[]; bytes: number }>({ packets: [], bytes: 0 })
+  // The screen stays on from start to stop (reconnects included): a sleeping phone cuts the mic.
+  const awake = useRef<(() => void) | null>(null)
   const releaseSocket = useCallback(() => {
     const current = runtime.current
     runtime.current = null
@@ -182,6 +185,8 @@ export function useVoice(
   const stop = useCallback(() => {
     owner.current?.abort()
     owner.current = null
+    awake.current?.()
+    awake.current = null
     releaseSocket()
     releaseMedia()
     held.current = { packets: [], bytes: 0 }
@@ -248,6 +253,7 @@ export function useVoice(
     if (owner.current) return
     const operation = new AbortController()
     owner.current = operation
+    awake.current ??= keepScreenAwake()
     micOpen.current = !conversationRef.current || listening
     attempts.current = 0
     setError('')

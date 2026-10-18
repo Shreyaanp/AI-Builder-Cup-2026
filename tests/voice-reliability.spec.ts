@@ -80,8 +80,8 @@ async function hindiFlow(page: Page): Promise<Copy> {
     const flow = (await import('/src/features/v1/newShopCopy.ts' as string)) as {
       newShopCopyFor: (l: string) => { begin: string }
     }
-    const translations = (await import('/src/features/v1/locales/index.ts' as string)) as {
-      translations: Record<string, { addShop: string; continuePreview: string }>
+    const locales = (await import('/src/features/v1/locales/index.ts' as string)) as {
+      loaders: Record<string, () => Promise<{ addShop: string; continuePreview: string }>>
     }
     const voice = (await import('/src/features/v1/voiceModeCopy.ts' as string)) as {
       voiceModeCopyFor: (l: string) => Record<string, string>
@@ -90,7 +90,7 @@ async function hindiFlow(page: Page): Promise<Copy> {
       onboardingCopyFor: (l: string) => Record<string, string>
     }
     return {
-      ...translations.translations.hi!,
+      ...(await locales.loaders.hi!()),
       begin: flow.newShopCopyFor('hi').begin,
       ...voice.voiceModeCopyFor('hi'),
       ...onboarding.onboardingCopyFor('hi'),
@@ -296,6 +296,10 @@ test('Hindi: "बस" ends the voice conversation: a goodbye, the mic closes, no
   expect(live.sockets).toHaveLength(1)
   expect(socket.received.join('\n')).not.toContain('"kind":"error"')
   await expect(page.getByTestId('shop-so-far')).toContainText('शर्मा चाय')
+  // Stopping opens "Review my shop" at once; close it to continue.
+  await expect(page.getByTestId('draft-summary')).toContainText('शर्मा चाय')
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('draft-summary')).toHaveCount(0)
   // Continue: the same conversation, silently, from the next missing field.
   await ended.getByRole('button', { name: copy.continueChat! }).click()
   await expect.poll(() => live.sockets.length, { timeout: 20_000 }).toBe(2)

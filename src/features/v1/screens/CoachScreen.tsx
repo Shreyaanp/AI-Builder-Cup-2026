@@ -525,6 +525,11 @@ function CoachScreen({
     field.style.height = `${base}px`
     if (note) field.style.height = `${Math.max(base, field.scrollHeight)}px`
   }, [note, voice.state, language])
+  // The remembered speaker choice drives the live voice too: off = no audio, the text still shows.
+  const { muted: voiceMuted, toggleMute } = voice
+  useEffect(() => {
+    if (voiceMuted === speakReplies) toggleMute()
+  }, [speakReplies, voiceMuted, toggleMute])
   // A pending request (e.g. "Start from a photo" on My shop) opens the chooser once, from the
   // composer's photo button.
   const { photoPending, consumePhotoRequest } = ws
@@ -1385,7 +1390,24 @@ function CoachScreen({
         }}
       >
         {error && (
-          <Alert severity="error" onClose={() => setError('')} sx={{ mb: 1.5 }}>
+          <Alert
+            severity="error"
+            onClose={() => setError('')}
+            action={
+              note.trim() ? (
+                <Button
+                  color="inherit"
+                  size="small"
+                  disabled={busy !== 'idle'}
+                  onClick={() => void send(note)}
+                  sx={{ minHeight: 44 }}
+                >
+                  {t.retryLoad}
+                </Button>
+              ) : undefined
+            }
+            sx={{ mb: 1.5 }}
+          >
             {error}
           </Alert>
         )}
@@ -1430,15 +1452,7 @@ function CoachScreen({
             '&:has(textarea:focus-visible)': { outline: `2px solid ${roles.primary}` },
           }}
         >
-          {voice.state !== 'idle' ? (
-            <IconButton
-              aria-label={voice.muted ? t.unmute : t.mute}
-              onClick={voice.toggleMute}
-              sx={{ minWidth: 48, minHeight: 48 }}
-            >
-              {voice.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-            </IconButton>
-          ) : (
+          {voice.state !== 'idle' ? null : (
             <Tooltip title={t.attach} disableTouchListener>
               <span>
                 <IconButton
@@ -1593,6 +1607,15 @@ function CoachScreen({
               }}
             />
           )}
+          {/* Speaker on/off (remembered): off = the coach still answers, in text only. */}
+          <IconButton
+            aria-label={speakReplies ? t.mute : t.unmute}
+            aria-pressed={!speakReplies}
+            onClick={() => ws.setSpeakReplies(!speakReplies)}
+            sx={{ minWidth: 48, minHeight: 48 }}
+          >
+            {speakReplies ? <Volume2 size={20} /> : <VolumeX size={20} />}
+          </IconButton>
           {/* Tap to talk, tap again to finish: the icon and its container show the state. No
               tooltip on touch, which would pop over the composer on a long press. */}
           <Tooltip

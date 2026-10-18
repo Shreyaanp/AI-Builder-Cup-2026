@@ -1,6 +1,12 @@
 import type { Copy } from '../strings'
 
 export const ta: Copy = {
+  firstCustomers: 'முதல் வாடிக்கையாளர்களைப் பெறுங்கள்',
+  printPoster: 'சுவரொட்டி அச்சிடு',
+  downloadPdf: 'PDF பதிவிறக்கு',
+  shareWhatsApp: 'WhatsApp-இல் பகிர்',
+  scanStamps: 'முத்திரைகளுக்கு ஸ்கேன் செய்யவும்',
+  paperSize: 'காகித அளவு',
   trustFree: 'இலவசமாகத் தொடங்குங்கள்',
   trustLanguage: 'உங்கள் மொழி',
   trustData: 'தரவு உங்களுடையதே',

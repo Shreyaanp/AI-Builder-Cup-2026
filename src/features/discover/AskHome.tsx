@@ -755,7 +755,7 @@ export default function AskHome({
               component="span"
               sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
-              {place.label}
+              {place.label.split(',')[0]?.trim() || place.label}
             </Box>
           </Button>
           <Stack direction="row" sx={{ ml: 'auto', flexShrink: 0, alignItems: 'center' }}>
