@@ -59,6 +59,10 @@ export function keepReceipt(receipt: string) {
   }
   window.dispatchEvent(new Event(change))
 }
+/** Re-read server state after a verified scan and its local receipt/card updates have landed. */
+export function refreshPassport() {
+  window.dispatchEvent(new Event(change))
+}
 function clearReceipts() {
   try {
     localStorage.removeItem(RECEIPTS)
