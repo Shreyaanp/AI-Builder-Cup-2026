@@ -1,0 +1,18 @@
+{
+  "kind": "menu",
+  "count": 2,
+  "rows": [
+    {
+      "name": "Masala Chai",
+      "price": 1550,
+      "stock": 20,
+      "category": "Drinks"
+    },
+    {
+      "name": "Masala Chai",
+      "price": 1550,
+      "stock": 20,
+      "category": "Drinks"
+    }
+  ]
+}

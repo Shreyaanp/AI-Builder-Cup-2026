@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "name": "मसाला चाय",
+      "price": 1500,
+      "size": "cup",
+      "category": "पेय"
+    },
+    {
+      "name": "अदरक चाय",
+      "price": 2000,
+      "size": "cup",
+      "category": "पेय"
+    }
+  ]
+}

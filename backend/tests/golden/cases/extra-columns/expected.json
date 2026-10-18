@@ -1,0 +1,12 @@
+{
+  "kind": "menu",
+  "count": 1,
+  "rows": [
+    {
+      "name": "Masala Chai",
+      "price": 1550,
+      "stock": 20,
+      "category": "Drinks"
+    }
+  ]
+}

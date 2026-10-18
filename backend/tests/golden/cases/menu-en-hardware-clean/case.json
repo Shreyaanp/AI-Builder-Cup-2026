@@ -1,0 +1,25 @@
+{
+  "adapter": "menu",
+  "input": "input.png",
+  "mime": "image/png",
+  "currency": "INR",
+  "render": {
+    "title": "Synthetic Hardware",
+    "variant": "clean",
+    "items": [
+      {
+        "name": "Steel nails",
+        "price": 4500,
+        "size": "pack",
+        "category": "Tools"
+      },
+      {
+        "name": "Hammer",
+        "price": 22000,
+        "size": "piece",
+        "category": "Tools"
+      }
+    ]
+  },
+  "notes": "Second item is marked SOLD OUT. Availability is not in extraction schema."
+}
