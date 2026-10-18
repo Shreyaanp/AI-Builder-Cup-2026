@@ -785,7 +785,8 @@ export default function AskHome({
                     fontWeight: 500,
                     letterSpacing: '-0.01em',
                     overflowWrap: 'break-word',
-                    ...chalkWrite,
+                    // The clip-reveal is for Latin script only: it left Tamil titles clipped away (#260).
+                    ...(locale === 'en' ? chalkWrite : {}),
                   }
                 : visuallyHidden
             }

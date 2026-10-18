@@ -141,10 +141,14 @@ export function StampCard({
   const cardRef = useRef<HTMLElement>(null)
   useEffect(() => {
     if (!landed) return
-    cardRef.current?.scrollIntoView({
-      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-      block: 'center',
-    })
+    // The closing sheet still holds the page's scroll lock for a moment: wait for it to let go.
+    const timer = window.setTimeout(() => {
+      cardRef.current?.scrollIntoView({
+        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'center',
+      })
+    }, 400)
+    return () => window.clearTimeout(timer)
   }, [landed])
   const close = () => {
     setRedeeming(false)
