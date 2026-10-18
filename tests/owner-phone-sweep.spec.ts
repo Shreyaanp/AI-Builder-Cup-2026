@@ -13,22 +13,40 @@ async function assertPhoneLayout(page: Page, screen: string) {
       document.querySelector<HTMLElement>('[role="article"]') ??
       document.querySelector<HTMLElement>('main') ??
       document.body
+    const visibleRect = (element: HTMLElement) => {
+      const rect = element.getBoundingClientRect()
+      let left = Math.max(rect.left, 0)
+      let top = Math.max(rect.top, 0)
+      let right = Math.min(rect.right, window.innerWidth)
+      let bottom = Math.min(rect.bottom, window.innerHeight)
+      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+        const style = getComputedStyle(parent)
+        const clipX = style.overflowX !== 'visible'
+        const clipY = style.overflowY !== 'visible'
+        if (clipX || clipY) {
+          const clip = parent.getBoundingClientRect()
+          if (clipX) {
+            left = Math.max(left, clip.left)
+            right = Math.min(right, clip.right)
+          }
+          if (clipY) {
+            top = Math.max(top, clip.top)
+            bottom = Math.min(bottom, clip.bottom)
+          }
+        }
+      }
+      return { left, top, right, bottom, width: right - left, height: bottom - top }
+    }
     const candidates = Array.from(
       scope.querySelectorAll<HTMLElement>(
         'h2,h3,p,button,[role="button"],[role="tab"],label,input,textarea',
       ),
     ).filter((element) => {
-      const box = element.getBoundingClientRect()
+      const box = visibleRect(element)
       const style = getComputedStyle(element)
-      const inViewport =
-        box.bottom > 0 &&
-        box.top < window.innerHeight &&
-        box.right > 0 &&
-        box.left < window.innerWidth
       return (
         box.width > 2 &&
         box.height > 2 &&
-        inViewport &&
         element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) &&
         style.visibility !== 'hidden' &&
         style.display !== 'none' &&
@@ -40,9 +58,9 @@ async function assertPhoneLayout(page: Page, screen: string) {
     })
     const overlaps: string[] = []
     for (let i = 0; i < candidates.length; i += 1) {
-      const a = candidates[i].getBoundingClientRect()
+      const a = visibleRect(candidates[i])
       for (let j = i + 1; j < candidates.length; j += 1) {
-        const b = candidates[j].getBoundingClientRect()
+        const b = visibleRect(candidates[j])
         const contained =
           (a.left <= b.left + 1 &&
             a.top <= b.top + 1 &&

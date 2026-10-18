@@ -22,13 +22,18 @@ offline app. This is viewport emulation, not a physical phone test.
 
 ## Verification record
 
-- The focused Playwright spec uses `WEB_PORT=4891`, `API_PORT=4991`, and one worker. English/light
-  and Hindi/light passed at 360 px after the final text-size changes. English/dark passed at 360 px
-  before those text-size changes.
-- The full matrix run passed English/light and English/dark at 360 px, then the offline app failed
-  to load the Hindi screen and its API port became unavailable. Later attempts also hit an
-  intermittent Vite `V1App.tsx` dynamic-import failure. The final English/dark rerun did not reach
-  the screen, and 390/412 px plus Hindi/dark remain unvalidated.
-- `npm run rules`, scoped ESLint, Prettier check, and `npm run build` passed. Build retains its
-  existing large-chunk advisory.
-- No physical-device, human language review, or full accessibility audit was performed.
+- `tests/owner-phone-sweep.spec.ts` covers 360, 390 and 412 px in English/Hindi and light/dark.
+  Its overlap assertion clips element bounds through scroll containers so content outside the
+  visible scrollport is not reported as an overlap.
+- The complete offline Playwright matrix passed: **12/12** with `WEB_PORT=4891`, `API_PORT=4991`
+  and one worker. A Vite dependency-optimizer `EPERM` and dynamic-import console error appeared
+  during startup; all 12 screen journeys still completed successfully.
+- Earlier attempts exposed a false overlap on clipped coach controls and stale Vite server
+  connections. The assertion was corrected and the final clean-start matrix passed.
+- `npm run rules`, ESLint, TypeScript/Vite build, hook checks and Prettier checks passed. The build
+  retains its existing large-chunk advisory.
+- `npm run check` reached the browser suite (1,372 cases, one worker) after lint/build/hooks passed.
+  I stopped it after 449 cases because the long run had unrelated failures in critical-flow startup,
+  discovery, landing checks and region onboarding. The owner phone sweep itself passed all 12 cases
+  again within this run. No landing source files were changed.
+- No physical-device test, human Hindi review, or full accessibility audit was performed.
