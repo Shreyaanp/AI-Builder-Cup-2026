@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Box, Button, Chip, Stack, Typography, useTheme } from '@mui/material'
 import { ArrowUpRight, Send } from 'lucide-react'
-import { RichText } from '../../design/RichText'
+import { RichText } from '../../design/LazyRichText'
 import { enterRise, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { NEEDS_TAP, type CoachAction } from './coachAction'

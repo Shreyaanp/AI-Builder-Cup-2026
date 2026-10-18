@@ -6,11 +6,13 @@ import { SignInOverlay } from './SignInOverlay'
 import type { Identity } from './context'
 import { hiddenFeatures, readFeatures } from './features'
 import { upgradeGoogle } from './upgradeGoogle'
+import { readTrustStrip } from './trustStrip'
 
 type Operations = { auth: Auth; signIn: () => Promise<void>; signOut: () => Promise<void> }
 
 export function IdentityProvider({ children }: { children: ReactNode }) {
   const [features, setFeatures] = useState(hiddenFeatures)
+  const [trustStrip, setTrustStrip] = useState(() => readTrustStrip(undefined))
   const [state, setState] = useState<
     Pick<Identity, 'mode' | 'status' | 'scope' | 'error' | 'name'>
   >({
@@ -37,6 +39,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
           throw new Error('Invalid identity configuration.')
         if (controller.signal.aborted) return
         setFeatures(readFeatures('features' in value ? value.features : undefined))
+        setTrustStrip(readTrustStrip('trust_strip' in value ? value.trust_strip : undefined))
         if (value.auth_mode === 'local') {
           setState({ mode: 'local', status: 'ready', scope: 'local-preview', error: '' })
           return
@@ -156,7 +159,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     return user.getIdToken()
   }, [state.mode, state.status])
   return (
-    <IdentityContext value={{ ...state, features, getToken, signIn, signOut }}>
+    <IdentityContext value={{ ...state, features, trustStrip, getToken, signIn, signOut }}>
       {children}
       {(signing === 'waiting' || (signing === 'finishing' && state.status !== 'ready')) && (
         <SignInOverlay phase={signing} />

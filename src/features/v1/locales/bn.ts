@@ -1,6 +1,21 @@
 import type { Copy } from '../strings'
 
 export const bn: Copy = {
+  firstCustomers: 'প্রথম ক্রেতাদের আনুন',
+  printPoster: 'পোস্টার ছাপান',
+  downloadPdf: 'PDF ডাউনলোড করুন',
+  shareWhatsApp: 'WhatsApp-এ পাঠান',
+  scanStamps: 'স্ট্যাম্প পেতে স্ক্যান করুন',
+  paperSize: 'কাগজের মাপ',
+  trustFree: 'শুরু বিনামূল্যে',
+  trustLanguage: 'আপনার ভাষা',
+  trustData: 'আপনার ডেটা আপনারই',
+  trustHuman: 'মানুষের সঙ্গে কথা বলুন',
+  trustFreeBody: 'বিনামূল্যে শুরু করুন; টাকা দিতে হবে না।',
+  trustLanguageBody: 'সেটিংসে হিন্দি, ইংরেজি বা অন্য ভাষা বেছে নিন।',
+  trustDataBody: 'যেকোনো সময় ডেটা মুছুন; মুখের সংরক্ষিত ডেটা এনক্রিপ্ট করা।',
+  trustHumanBody: 'WhatsApp-এ সহায়তা দলের সঙ্গে কথা বলুন।',
+  trustWhatsapp: 'WhatsApp খুলুন',
   newShopMode: 'নতুন দোকান',
   newShopReady: 'আপনার নতুন দোকান তৈরি',
   newShopReadyBody: 'এখন আপনি নতুন দোকানে কাজ করছেন। প্রস্তুত হলে গ্রাহক পেজ শেয়ার করুন।',

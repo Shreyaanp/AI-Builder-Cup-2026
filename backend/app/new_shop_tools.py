@@ -284,10 +284,13 @@ END_NOTE = (
 
 
 def end_conversation() -> dict[str, Any]:
-    """End the conversation now because the owner asked to stop ("bas", "ho gaya", "band
-    karo", "that's all", "stop", "bye", "baad mein baat karte hain"). Call it at once, even if
-    the name, kind or place are not known yet: everything said is already saved and the next
-    visit carries on silently. Then say one short goodbye and nothing else."""
+    """End the conversation now because the owner is finished, in any language or words
+    ("bas", "ho gaya", "that's all", "these are all my information", "nothing more to add",
+    "I'm done", "aur kuch nahi", "就这些", "itu sahaja", "அவ்வளவுதான்", "bye", "baad mein baat
+    karte hain"); never for a question or an answer that only contains such a word. Call it
+    at once, even if the name, kind or place are not known yet: everything said is already
+    saved and the next visit carries on silently. Then say one short goodbye and nothing
+    else."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}

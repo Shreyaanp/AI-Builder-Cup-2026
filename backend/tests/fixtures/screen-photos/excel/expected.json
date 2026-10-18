@@ -1,0 +1,86 @@
+{
+  "source_app": "Excel",
+  "currency": "INR",
+  "page_kind": "screen",
+  "tables": [
+    {
+      "header_row": ["name", "sku", "category", "price", "qty", "date", "total"],
+      "rows": [
+        {
+          "name": {
+            "value": "Masala Dosa",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "sku": {
+            "value": "MD01",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "category": {
+            "value": "Food",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "price": {
+            "value": "80",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "qty": {
+            "value": null,
+            "confidence": 0,
+            "unreadable": false
+          },
+          "date": {
+            "value": null,
+            "confidence": 0,
+            "unreadable": false
+          },
+          "total": {
+            "value": null,
+            "confidence": 0,
+            "unreadable": false
+          }
+        },
+        {
+          "name": {
+            "value": "Cut-off item",
+            "confidence": 0.98,
+            "unreadable": false
+          },
+          "sku": {
+            "value": null,
+            "confidence": 0,
+            "unreadable": false
+          },
+          "category": {
+            "value": null,
+            "confidence": 0,
+            "unreadable": false
+          },
+          "price": {
+            "value": null,
+            "confidence": 0.2,
+            "unreadable": true
+          },
+          "qty": {
+            "value": null,
+            "confidence": 0,
+            "unreadable": false
+          },
+          "date": {
+            "value": null,
+            "confidence": 0,
+            "unreadable": false
+          },
+          "total": {
+            "value": null,
+            "confidence": 0,
+            "unreadable": false
+          }
+        }
+      ]
+    }
+  ]
+}

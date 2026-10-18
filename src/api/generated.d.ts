@@ -1553,6 +1553,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/demo/customer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo Customer
+         * @description Explicit opt-in; never run merely because somebody signs in or visits a shop.
+         */
+        post: operations["demo_customer_api_v1_demo_customer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/demo/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Demo */
+        get: operations["read_demo_api_v1_demo_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        /** Exit Demo */
+        delete: operations["exit_demo_api_v1_demo_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/demo/world": {
         parameters: {
             query?: never;
@@ -2225,6 +2263,26 @@ export interface paths {
         get: operations["overview_api_v1_businesses__business_id__supply_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supply/demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Showcase
+         * @description Explicit local demo; creates a private buyer and simulated supplier only.
+         */
+        post: operations["showcase_api_v1_supply_demo_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3530,6 +3588,18 @@ export interface components {
             } | null;
             /** Warnings */
             warnings?: string[];
+            /** Photo Content */
+            photo_content?: string | null;
+            /** Photo Readings */
+            photo_readings?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Cell Flags */
+            cell_flags?: {
+                [key: string]: unknown;
+            }[];
+            /** Detected Currency */
+            detected_currency?: string | null;
         };
         /** ConsentRequest */
         ConsentRequest: {
@@ -6127,6 +6197,8 @@ export interface components {
             /** Demo */
             demo: boolean;
             hints?: components["schemas"]["TodayHints"] | null;
+            /** Has Customer Stamp */
+            has_customer_stamp?: boolean | null;
         };
         /** TodayArea */
         TodayArea: {
@@ -9639,6 +9711,7 @@ export interface operations {
         parameters: {
             query?: {
                 zone?: string;
+                public?: boolean;
             };
             header?: never;
             path?: never;
@@ -9654,6 +9727,105 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_customer_api_v1_demo_customer_post: {
+        parameters: {
+            query?: {
+                zone?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_demo_api_v1_demo_sessions__session_id__get: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exit_demo_api_v1_demo_sessions__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
                     };
                 };
             };
@@ -11041,6 +11213,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    showcase_api_v1_supply_demo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };
