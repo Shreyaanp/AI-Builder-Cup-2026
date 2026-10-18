@@ -511,7 +511,6 @@ export default function Marketing() {
             </div>
           </section>
         </main>
-        <footer className="lp-footer"></footer>
       </div>
     </ThemeProvider>
   )
