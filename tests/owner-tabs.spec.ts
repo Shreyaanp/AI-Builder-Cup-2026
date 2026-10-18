@@ -91,6 +91,8 @@ for (const scheme of ['light', 'dark'] as const) {
     await capture(page, 'you', isMobile, scheme)
     await page.getByRole('button', { name: /^Privacy & your data/ }).click()
     await expect(page.getByRole('heading', { name: 'Privacy & data' })).toBeVisible()
+    if (!(await page.getByRole('button', { name: 'Delete all my data' }).isVisible()))
+      await page.locator('summary').filter({ hasText: /^Your data$/ }).click()
     await expect(page.getByRole('button', { name: 'Delete all my data' })).toBeVisible()
     await axe(page)
     await capture(page, 'privacy', isMobile, scheme)

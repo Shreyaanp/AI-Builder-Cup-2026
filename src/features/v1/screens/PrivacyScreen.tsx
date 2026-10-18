@@ -33,10 +33,12 @@ import { TrustCard } from '../../trust/TrustCard'
 
 function Section({
   title,
+  open,
   children,
 }: {
   icon: ReactNode
   title: string
+  open?: boolean
   children: ReactNode
 }) {
   const roles = useTheme().material
@@ -45,7 +47,7 @@ function Section({
       component="section"
       sx={{ bgcolor: roles.surfaceContainerLow, borderRadius: `${shape.lg}px`, p: 3 }}
     >
-      <Disclosure title={title}>
+      <Disclosure title={title} open={open}>
       {children}
       </Disclosure>
     </Box>
@@ -120,7 +122,7 @@ export function PrivacyScreen() {
 
         <Disclosure title={trust.title}><TrustCard /></Disclosure>
 
-        <Section icon={<ShieldCheck size={22} />} title={t.dataSection}>
+        <Section icon={<ShieldCheck size={22} />} title={t.dataSection} open={erase.kind !== 'idle'}>
           <Typography variant="bodyMedium" color="text.secondary">
             {t.dataBody}
           </Typography>

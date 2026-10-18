@@ -35,6 +35,7 @@ test.describe('Hindi language flows on phone (390px)', () => {
 
     // Terms checkboxes in Hindi
     await page.getByLabel(/मैं शर्तों से सहमत हूँ|I agree to the Terms/i).check()
+    await page.getByRole('button', { name: /Next|आगे/ }).click()
     await page.getByLabel(/मैंने गोपनीयता सूचना पढ़ी है|Privacy Notice/i).check()
     await page.getByRole('button', { name: /सहमत होकर आगे बढ़ें|Agree and continue/i }).click()
 

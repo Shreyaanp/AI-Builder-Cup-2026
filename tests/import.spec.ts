@@ -5,6 +5,7 @@ async function shopWithoutMenu(page: Page) {
   await page.goto('/')
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByLabel('I agree to the Terms').check()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
   await createShop(page, 'name: Ah Seng Kopi')

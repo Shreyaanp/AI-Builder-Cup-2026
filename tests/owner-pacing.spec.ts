@@ -60,23 +60,26 @@ test('edit details preserves answers through Back and Next', async ({ page }) =>
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
   await page.getByRole('button', { name: 'Edit details', exact: true }).click()
-  await page.getByLabel('Shop name', { exact: true }).fill('Calm Chai')
+  await page.getByRole('textbox', { name: /^Shop name/ }).fill('Calm Chai')
   await proof(page, 'edit-details', page.locator('[data-testid="guided-details"]'))
   await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.getByRole('button', { name: 'Back', exact: true }).click()
-  await expect(page.getByLabel('Shop name', { exact: true })).toHaveValue('Calm Chai')
+  await expect(page.getByRole('textbox', { name: /^Shop name/ })).toHaveValue('Calm Chai')
 })
 
-test('Grow offers the remaining tools on demand', async ({ page }) => {
+test('Grow shows four tools, then the rest on demand', async ({ page }) => {
+  // The shared config opens every tool; this walk starts from a first visit.
+  await page.addInitScript(() => localStorage.removeItem('niva.grow.all'))
   await enter(page)
   await seedShop(page)
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await proof(page, 'grow')
+  const tiles = page.getByTestId('grow-tiles').getByRole('button')
   if (!baseline) {
-    await expect(page.getByTestId('grow-tiles').getByRole('button')).toHaveCount(4)
-    await page.getByRole('button', { name: 'Next', exact: true }).click()
-    await page.getByRole('button', { name: 'Back', exact: true }).click()
-    await expect(page.getByTestId('grow-tiles').getByRole('button')).toHaveCount(4)
+    await expect(tiles).toHaveCount(4)
+    await page.getByRole('button', { name: 'Show more', exact: true }).click()
+    expect(await tiles.count()).toBeGreaterThan(4)
+    await expect(page.getByRole('button', { name: 'Show more', exact: true })).toHaveCount(0)
   }
 })
 
@@ -97,11 +100,8 @@ test('You opens settings, privacy and face details on demand', async ({ page }) 
 test('Supply explains an order before showing its document', async ({ page }) => {
   await enter(page)
   await seedShop(page)
+  await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  if (!baseline) {
-    while (!(await page.getByRole('button', { name: /^Purchase orders/ }).isVisible()))
-      await page.getByRole('button', { name: 'Next', exact: true }).click()
-  }
   await page.getByRole('button', { name: /^Purchase orders/ }).click()
   await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
   await page.getByRole('region', { name: 'Supply chain' }).getByRole('button', { name: 'Reorder', exact: true }).click()

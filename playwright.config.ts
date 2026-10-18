@@ -34,6 +34,7 @@ export default defineConfig({
           origin: `http://127.0.0.1:${web}`,
           localStorage: [
             { name: 'niva.language.chosen', value: '1' },
+            { name: 'niva.grow.all', value: '1' },
             { name: 'chalkboard.explainer.owner.v1', value: '1' },
             { name: 'chalkboard.explainer.customer.v1', value: '1' },
           ],

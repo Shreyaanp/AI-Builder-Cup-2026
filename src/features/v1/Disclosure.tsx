@@ -3,11 +3,20 @@ import { Box, useTheme } from '@mui/material'
 import { usePaceCopy } from './paceCopy'
 
 /** Native disclosure keeps forms mounted and preserves their values when folded. */
-export function Disclosure({ title, children }: { title?: string; children: ReactNode }) {
+export function Disclosure({
+  title,
+  open,
+  children,
+}: {
+  title?: string
+  /** Keeps the section unfolded while it reports something the owner must see. */
+  open?: boolean
+  children: ReactNode
+}) {
   const roles = useTheme().material
   const c = usePaceCopy()
   return (
-    <Box component="details" sx={{ minWidth: 0 }}>
+    <Box component="details" open={open} sx={{ minWidth: 0 }}>
       <Box
         component="summary"
         sx={{

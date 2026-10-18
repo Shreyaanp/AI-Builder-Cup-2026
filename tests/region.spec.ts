@@ -26,6 +26,7 @@ async function ownerSignIn(page: Page) {
 
 async function agree(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
   await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()

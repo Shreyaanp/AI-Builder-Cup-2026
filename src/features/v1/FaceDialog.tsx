@@ -610,13 +610,7 @@ export function FaceDialog({
                 </Stack>
               )}
             </Box>
-            {phase === 'consent' && (
-          <>
-            <Button onClick={() => setPhase('intro')}>{steps.back}</Button>
-            <Button variant="contained" disabled={!consent} onClick={() => void begin()} sx={{ minHeight: 48, flex: 1 }}>{pace.agree}</Button>
-          </>
-        )}
-        {phase === 'camera' && (
+            {phase === 'camera' && (
               // Live hints change several times a second: visible, not announced.
               <Typography variant="bodyMedium" color="text.secondary" sx={{ minHeight: 24 }}>
                 {guide ? c.guide[guide] : ''}

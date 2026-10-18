@@ -180,6 +180,7 @@ test('owner reward edits require exact review before saving and clearing', async
   await page.goto('/')
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByLabel('I agree to the Terms').check()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
   // The shop comes from the new-shop flow; its reward is set in the details form.
