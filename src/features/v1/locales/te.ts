@@ -332,6 +332,7 @@ export const te: Copy = {
   importFailed: 'ఫైల్ చదవలేకపోయాం. వస్తువుల పేర్లు, ధరలతో CSV లేదా Excel ఫైల్ పంపండి.',
   salesSummary: 'అమ్మకాల సారాంశం',
   salesNotSaved: 'మీ ఫైల్ నుంచి. ఏదీ సేవ్ కాలేదు.',
+  salesCurrencyMismatch: 'వేరే కరెన్సీ వరుసలు వదిలివేయబడ్డాయి.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} రోజులు · ${from} – ${to}` : 'ఫైల్‌లో తేదీలు లేవు',
   topItems: 'ఎక్కువ అమ్ముడయ్యేవి',

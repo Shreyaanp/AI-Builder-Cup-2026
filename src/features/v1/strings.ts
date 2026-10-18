@@ -336,6 +336,7 @@ export const en = {
   importFailed: 'Couldn’t read that file. Send a CSV or Excel export with item names and prices.',
   salesSummary: 'Sales summary',
   salesNotSaved: 'From your file. Nothing was saved.',
+  salesCurrencyMismatch: 'Rows in another currency were left out.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} days · ${from} – ${to}` : 'No dates in the file',
   topItems: 'Top sellers',
