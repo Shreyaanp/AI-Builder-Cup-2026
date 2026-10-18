@@ -7,18 +7,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
-import {
-  Alert,
-  Box,
-  Button,
-  List,
-  ListItemButton,
-  ListItemText,
-  Skeleton,
-  Snackbar,
-  Stack,
-  Typography,
-} from '@mui/material'
+import { Alert, Box, Button, Skeleton, Snackbar, Stack, Typography } from '@mui/material'
 import { IdentityContext } from '../../auth/context'
 import { hiddenFeatures } from '../../auth/features'
 import { useDemoCopy } from '../frontdoors/strings'
@@ -30,6 +19,7 @@ import { BackHistory } from '../v1/backStack'
 import { ApiError, type Api } from '../v1/api'
 import { setCoachEndpoint } from '../../api/stream'
 import { DemoWelcome } from './DemoWelcome'
+import { DemoBrowse } from '../customer/DemoBrowse'
 import { currentPath, subscribePath, customerNavigate } from '../frontdoors/navigation'
 
 type Session = { session_id: string; expires_at: number }
@@ -296,24 +286,7 @@ export default function DemoApp() {
               <PublicShop id={shop} previewApi={api} />
             </Suspense>
           ) : (
-            <Box component="main" sx={{ maxWidth: 760, mx: 'auto', p: 2 }}>
-              <Typography component="h1" variant="headlineSmall">
-                {t.customer}
-              </Typography>
-              <List>
-                {shops.map((item) => (
-                  <ListItemButton
-                    key={item.id}
-                    component="a"
-                    href={`/explore/demo/${item.id}`}
-                    onClick={customerNavigate}
-                    sx={{ minHeight: 64 }}
-                  >
-                    <ListItemText primary={item.name} />
-                  </ListItemButton>
-                ))}
-              </List>
-            </Box>
+            <DemoBrowse shops={shops} api={api} />
           )
         ) : (
           <BackHistory value>
