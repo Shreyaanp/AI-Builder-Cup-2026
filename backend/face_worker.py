@@ -54,19 +54,6 @@ def log(level: int, event: str, **fields: Any) -> None:
 
 MODEL_ID = "intel-face-reidentification-retail-0095-fp32-v1"
 MAX_BYTES = 8 * 1024 * 1024
-# anti-spoof-mn3 answers softmax [real, spoof]; the median "real" over the frames nearest the
-# owner's starting pose decides. At or above REAL_MIN the capture is live. Below SPOOF_MAX it
-# looks like a screen or a print and the owner is asked to try again. In between a person
-# looks (in_review), so a live owner in a dim room is never sent round the retry loop.
-# Measured on the fixture recordings with the exposure correction below: real faces score
-# 0.93-0.99 (also at 30% exposure), a re-captured screen 0.000-0.003.
-REAL_MIN = 0.30
-SPOOF_MAX = 0.05
-# The model was trained on well-lit faces (dataset mean luma about 127). An underexposed crop
-# from a phone indoors at night scored 0.01-0.09 for a live person (17 Oct production capture),
-# so dim crops are brightened to this luma first, at most LIGHT_GAIN_MAX times.
-LIGHT_TARGET = 120.0
-LIGHT_GAIN_MAX = 4.0
 # Frames without exactly one clear face (motion blur, turned head) are skipped, but sampled
 # frames must show enough valid faces. 40% accommodates profile views during turns.
 MIN_FRAMES = 6
@@ -77,9 +64,6 @@ MIN_FACE_SHARE = 0.40
 START_FRAMES = 3
 YAW_MIN = 10.0
 PITCH_MIN = 7.0
-# Liveness uses the frames within this many degrees of the starting pose when there are enough.
-LIVE_YAW_SPAN = 20.0
-LIVE_PITCH_SPAN = 15.0
 
 
 class CaptureRejected(ValueError):
@@ -104,34 +88,6 @@ def container_of(capture: bytes) -> str:
     if head.startswith(b"\xff\xd8"):
         return "jpeg"
     return "unknown"
-
-
-def face_luma(crop: np.ndarray) -> float:
-    """Mean brightness (0-255) of a BGR crop."""
-    weights = np.array([0.114, 0.587, 0.299], dtype=np.float32)
-    return float(np.mean(crop.astype(np.float32) @ weights))
-
-
-def exposed(crop: np.ndarray) -> np.ndarray:
-    """A dim face crop brightened to LIGHT_TARGET luma (BGR in, BGR out); bright ones unchanged."""
-    gain = min(LIGHT_GAIN_MAX, LIGHT_TARGET / max(face_luma(crop), 1.0))
-    if gain <= 1.0:
-        return crop
-    return np.clip(crop.astype(np.float32) * gain, 0, 255).astype(np.uint8)
-
-
-def liveness_score(scores: list[float], poses: list[tuple[float, float]]) -> tuple[float, int]:
-    """The median real-person score over the frames nearest the starting pose (a turned or
-    tilted face is not what the model was trained on), or over every frame when fewer than
-    START_FRAMES are near. Returns (score, frames used)."""
-    start_yaw, start_pitch = start_pose(poses)
-    near = [
-        score
-        for score, (yaw, pitch) in zip(scores, poses, strict=True)
-        if abs(yaw - start_yaw) <= LIVE_YAW_SPAN and abs(pitch - start_pitch) <= LIVE_PITCH_SPAN
-    ]
-    used = near if len(near) >= START_FRAMES else scores
-    return float(np.median(used)), len(used)
 
 
 def upright(image: np.ndarray, rotation: int) -> np.ndarray:
@@ -208,7 +164,6 @@ def movement_seen(prompts: list[str], poses: list[tuple[float, float]]) -> bool:
 class CpuModels:
     def __init__(self, directory: Path) -> None:
         import cv2
-        import onnxruntime as ort
         import openvino as ov
 
         self.cv2 = cv2
@@ -233,18 +188,6 @@ class CpuModels:
             )
             for name in names
         }
-        self.anti = ort.InferenceSession(
-            str(directory / "anti-spoof-mn3" / "anti-spoof-mn3.onnx"),
-            sess_options=self.anti_options(ort),
-            providers=["CPUExecutionProvider"],
-        )
-
-    @staticmethod
-    def anti_options(ort):
-        options = ort.SessionOptions()
-        options.intra_op_num_threads = 2
-        options.inter_op_num_threads = 1
-        return options
 
     def infer(self, name: str, image: np.ndarray) -> dict[str, np.ndarray]:
         model = self.models[name]
@@ -255,11 +198,8 @@ class CpuModels:
         output = model([frame])
         return {port.get_any_name(): np.asarray(value) for port, value in output.items()}
 
-    def frame(
-        self, image: np.ndarray
-    ) -> tuple[tuple[float, float], np.ndarray, float, float] | None:
-        """(yaw, pitch), template, real-person score and face brightness for one frame; None
-        without one face."""
+    def frame(self, image: np.ndarray) -> tuple[tuple[float, float], np.ndarray] | None:
+        """(yaw, pitch) and template for one frame; None without one face."""
         detections = next(iter(self.infer("face-detection-retail-0004", image).values())).reshape(
             -1, 7
         )
@@ -302,19 +242,7 @@ class CpuModels:
         pose = self.infer("head-pose-estimation-adas-0001", crop)
         yaw = float(pose["angle_y_fc"].reshape(-1)[0])
         pitch = float(pose["angle_p_fc"].reshape(-1)[0])
-        # The model takes RGB 128x128 normalised by its training mean and spread.
-        face = self.cv2.resize(crop, (128, 128))
-        rgb = self.cv2.cvtColor(exposed(face), self.cv2.COLOR_BGR2RGB).astype(np.float32)
-        normalized = (rgb - [151.2405, 119.5950, 107.8395]) / [63.0105, 56.4570, 55.0035]
-        prediction = self.anti.run(
-            None,
-            {
-                self.anti.get_inputs()[0].name: normalized.transpose(2, 0, 1)[None].astype(
-                    np.float32
-                )
-            },
-        )[0].reshape(-1)
-        return (yaw, pitch), np.asarray(vector).reshape(-1), float(prediction[0]), face_luma(face)
+        return (yaw, pitch), np.asarray(vector).reshape(-1)
 
     def analyze(
         self, video: bytes, prompts: list[str], trace: dict[str, Any] | None = None
@@ -323,8 +251,6 @@ class CpuModels:
         trace = {} if trace is None else trace
         poses: list[tuple[float, float]] = []
         templates = []
-        scores = []
-        lumas = []
         faces = ""
         for image in sampled_frames(video, trace):
             trace["stage"] = "faces"
@@ -336,11 +262,9 @@ class CpuModels:
             faces += "0" if seen is None else "1"
             if seen is None:
                 continue
-            pose, vector, real, luma = seen
+            pose, vector = seen
             poses.append(pose)
             templates.append(vector)
-            scores.append(real)
-            lumas.append(luma)
         trace["stage"] = "thresholds"
         trace["faces"] = faces
         trace["face_frames"] = len(poses)
@@ -349,7 +273,6 @@ class CpuModels:
             trace["yaw_range"] = [round(min(yaws), 1), round(max(yaws), 1)]
             trace["pitch_range"] = [round(min(pitches), 1), round(max(pitches), 1)]
             trace["start_pose"] = [round(value, 1) for value in start_pose(poses)]
-            trace["face_luma"] = round(float(np.median(lumas)), 1)
         sampled = trace.get("sampled", 0)
         if sampled < MIN_FRAMES:
             raise CaptureRejected("too_short", f"sampled {sampled} < MIN_FRAMES {MIN_FRAMES}")
@@ -373,29 +296,13 @@ class CpuModels:
                 "failed_prompt": failed_prompt or "movement",
             }, None
 
-        score, used = liveness_score(scores, poses)
-        trace["live_frames"] = used
-        verdict = {"score": round(score, 3), "passed_prompts": passed_prompts}
-        if score < SPOOF_MAX:
-            trace["failed"] = f"score {score:.3f} < SPOOF_MAX {SPOOF_MAX}"
-            return {"status": "retry", "reason": "not_live", "liveness": "failed", **verdict}, None
-        if score < REAL_MIN:
-            # Unsure, not failed: a person decides, and the owner is not asked to try again.
-            trace["failed"] = f"score {score:.3f} < REAL_MIN {REAL_MIN}: review"
-            return {
-                "status": "review",
-                "reason": "liveness_unsure",
-                "liveness": "unsure",
-                **verdict,
-            }, template(np.mean(templates, axis=0))
-
-        # Liveness is measured, not certified: the app treats a pass as "checked", and any
-        # match against another owner goes to a person, never to an automatic decision.
+        # The prompted head turns are the liveness check: a face in enough frames that follows
+        # them over a real pose range passes. Nothing else decides, and no image is kept.
         return {
             "status": "live",
             "reason": "ok",
             "liveness": "passed",
-            **verdict,
+            "passed_prompts": passed_prompts,
         }, template(np.mean(templates, axis=0))
 
 
@@ -584,7 +491,6 @@ async def evaluate(request: Request):
                 status=outcome["status"],
                 reason=outcome["reason"],
                 failed_prompt=outcome.get("failed_prompt"),
-                score=outcome.get("score"),
                 content_type=request.headers.get("content-type", ""),
                 latency_ms=round((time.perf_counter() - start_time) * 1000, 1),
             )

@@ -280,6 +280,12 @@ function CoachScreen({
   const connectCopy = useConnectCopy()
   // A chat photo waiting for the owner's one-line confirmation (kept until they choose).
   const [sorting, setSorting] = useState<{ file: File; guess: PhotoRoute | null } | null>(null)
+  // OB-37: the question sits above the conversation; on a phone the chat was scrolled to the
+  // bottom, so the owner saw only the last choices. Bring the whole question into view.
+  const sortingCard = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (sorting) sortingCard.current?.scrollIntoView({ block: 'nearest' })
+  }, [sorting])
   const [dayPhoto, setDayPhoto] = useState<{ kind: DayKind; file: File } | null>(null)
   const routeText = photoRouteCopy(language)
   const importer = useImport({ onSales: setSales })
@@ -516,7 +522,8 @@ function CoachScreen({
     end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
   }, [messages, reply, reveal.shown, reducedMotion])
   const revealReply = useEffectEvent(() => {
-    if (visible && (messages.length || reply || reveal.shown))
+    // An open photo question (top of the chat) keeps the owner's attention; don't scroll past it.
+    if (visible && !sorting && (messages.length || reply || reveal.shown))
       end.current?.scrollIntoView({ block: 'end', behavior: 'instant' })
   })
   useEffect(() => {
@@ -597,6 +604,8 @@ function CoachScreen({
 
   // Natural Google voice for replies; the phone's own voice if that isn't available.
   async function speakReply(text: string) {
+    // The read-only demo shows replies as text; it has no recorded voice for live answers.
+    if (ws.demo) return
     speechSynthesis.cancel()
     speaking.current?.pause()
     const cleanText = stripMarkdown(text)
@@ -788,10 +797,14 @@ function CoachScreen({
     photoController.current = operation
     let guess: PhotoRoute | null = null
     try {
+      // OB-37: a phone original is megabytes; only a shrunk copy is classified. The original goes
+      // on to the chosen action, which shrinks it itself and keeps the photo's GPS for the pin.
+      const sent = (await preparePhoto(file)).file
+      if (!alive.current || operation.signal.aborted) return
       const result = await api<{ kind: string }>('/photos/classify', {
         method: 'POST',
-        body: file,
-        headers: { 'Content-Type': file.type },
+        body: sent,
+        headers: { 'Content-Type': sent.type },
         signal: AbortSignal.any([operation.signal, AbortSignal.timeout(60_000)]),
       })
       if (isPhotoRoute(result.kind)) guess = result.kind
@@ -906,6 +919,19 @@ function CoachScreen({
   // A typed reply streams as tokens; a spoken one appears as it is said.
   const liveReply = reply || reveal.shown
   const empty = messages.length === 0 && !liveReply
+  // OB-38: "How this works" goes away once the owner has sent 2+ messages in this shop (remembered
+  // per shop so it stays hidden on reload); it stays reachable in the + sheet.
+  const helpSeenKey = activeId ? `niva.coach.helpSeen.${activeId}` : null
+  const sentCount = messages.filter((message) => message.role === 'user').length
+  const helpHidden = Boolean(helpSeenKey) && (sentCount >= 2 || readFlag(helpSeenKey))
+  useEffect(() => {
+    if (!helpSeenKey || sentCount < 2) return
+    try {
+      localStorage.setItem(helpSeenKey, '1')
+    } catch {
+      // Private mode: the card simply comes back next visit.
+    }
+  }, [helpSeenKey, sentCount])
   // Suggestion chips are rules only (no AI): they come from the current shop state, never a
   // fixed list, and at most three show. Each one either opens the right sheet or starts a note.
   type Suggestion = 'reply' | 'menu' | 'soldOut' | 'price' | 'share' | 'photo' | 'name'
@@ -1016,7 +1042,7 @@ function CoachScreen({
       )}
       {sorting ? (
         <AiInfo feature="photo" />
-      ) : !empty && !showToday ? (
+      ) : !empty && !showToday && !helpHidden ? (
         <AiInfo feature="coach" />
       ) : null}
       <Sheet
@@ -1028,6 +1054,7 @@ function CoachScreen({
         actions={<Button onClick={() => setActionsOpen(false)}>{t.cancel}</Button>}
       >
         <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+          <AiInfo feature="coach" inSheet />
           <Button
             startIcon={<Store size={18} />}
             onClick={() => {
@@ -1089,7 +1116,7 @@ function CoachScreen({
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', pb: 4 }}>
         {ws.loadError && <LoadError />}
         {sorting && (
-          <Alert severity="info" icon={false} sx={{ mb: 2 }}>
+          <Alert ref={sortingCard} severity="info" icon={false} sx={{ mb: 2 }}>
             <Typography variant="titleSmall" role="status">
               {sorting.guess ? routeText.looks(routeText.kinds[sorting.guess]) : routeText.unsure}
             </Typography>
@@ -1734,6 +1761,14 @@ function CoachScreen({
       </Box>
     </Box>
   )
+}
+
+function readFlag(key: string | null): boolean {
+  try {
+    return Boolean(key && localStorage.getItem(key))
+  } catch {
+    return false
+  }
 }
 
 function Bubble({

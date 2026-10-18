@@ -191,6 +191,25 @@ async def test_moderation_and_extraction_run_together_and_a_block_wins() -> None
     assert blocked.value.code == "PHOTO_BLOCKED"
 
 
+def test_ob37_classify_accepts_a_5mb_photo_not_413(app) -> None:
+    """OB-37: the JSON body limit used to reject big chat photos before the route saw them."""
+    with TestClient(app) as client:
+        join(client)
+        image = Image.effect_noise((1800, 1800), 90).convert("RGB")
+        output = io.BytesIO()
+        image.save(output, format="JPEG", quality=100, subsampling=0)
+        big = output.getvalue()
+        if len(big) < 5_000_000:
+            big += b"\0" * (5_000_000 - len(big))  # trailing padding, still a valid JPEG
+        sent = client.post(
+            "/api/v1/photos/classify",
+            content=big,
+            headers={"content-type": "image/jpeg"},
+        )
+        assert sent.status_code != 413, sent.text
+        assert sent.status_code == 200, sent.text
+
+
 def test_classify_names_the_kind_and_saves_nothing(app) -> None:
     with TestClient(app) as client:
         join(client)

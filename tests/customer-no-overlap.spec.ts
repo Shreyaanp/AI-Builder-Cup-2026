@@ -45,7 +45,7 @@ for (const width of [360, 390]) {
       const chat = page.getByRole('button', { name: 'Chat with the shop' })
       await expect(chat).toBeVisible({ timeout: 20_000 })
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-      const last = page.getByText('independent prototype').last()
+      const last = page.getByText(/Prepared by the shop owner/).last()
       await expect(last).toBeVisible()
       const content = (await last.boundingBox())!
       const bar = (await chat.boundingBox())!

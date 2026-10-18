@@ -283,6 +283,7 @@ export function WorkspaceProvider({
       products: inventory.bid === activeId ? inventory.items : [],
       productsLoaded: !activeId || inventory.bid === activeId,
       destination,
+      demo: Boolean(readOnlyMessage),
       speakReplies,
       setSpeakReplies: (next) => {
         setSpeak(next)
