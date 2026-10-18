@@ -62,10 +62,9 @@ import { CategoryGroups } from '../shop/CategoryGroups'
 import { MapsHandoff } from './MapsHandoff'
 import { shopZone } from '../../region/region'
 import { ShopIcon } from '../google/ShopIcon'
-import { PhotosSheet } from '../google/PhotosSheet'
 
 export type ShopSheetKind =
-  'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness' | 'photos'
+  'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
 
 /** A glanceable tile: icon + label, one big value, a little supporting detail. */
 export function Tile({
@@ -393,7 +392,7 @@ export function ShopTiles({
         icon={<Images size={20} />}
         label={tabs.photos}
         value={photos ? tabs.photoCount(photos) : tabs.addPhotos}
-        onClick={() => onSheet('photos')}
+        onClick={() => ws.go('google')}
       />
       <Tile
         icon={
@@ -610,8 +609,6 @@ export function ShopSheets({
           )}
         </Sheet>
       )
-    case 'photos':
-      return <PhotosSheet {...common} />
     case 'customer':
       return (
         <Sheet {...common} titleId="customer-sheet-title" title={t.customerPage}>

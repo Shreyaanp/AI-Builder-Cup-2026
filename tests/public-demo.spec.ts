@@ -70,9 +70,13 @@ for (const width of [360, 390, 412]) {
         await publish.click()
         await expect(publish).not.toBeChecked()
         // Blocked writes answer with the friendly demo note (#322), never an error alert.
+        // The Hindi run must show the Hindi notice (strings are matched by position; OB-344 review).
         await expect(
           page.locator('.MuiSnackbar-root', {
-            hasText: "This is a demo shop; changes aren't saved",
+            hasText:
+              language === 'en'
+                ? "This is a demo shop; changes aren't saved"
+                : 'डेमो: बदलाव सहेजे नहीं जाते',
           }),
         ).toBeVisible()
         await page.keyboard.press('Escape')

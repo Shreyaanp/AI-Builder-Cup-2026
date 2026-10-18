@@ -39,6 +39,16 @@ async function noErrors(page: Page) {
   expect(errorsOf.get(page)).toEqual([])
 }
 
+/** The destination is the actual thread list: a demo customer and its conversation are on screen. */
+async function showsThread(page: Page) {
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('Priya (Demo)')).toBeVisible({ timeout: 10_000 })
+  await expect(
+    dialog.getByText('Is Masala chai available this afternoon?', { exact: false }),
+  ).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Open conversation' }).first()).toBeVisible()
+}
+
 /** Taps a button; the sheet it opens is on screen with `heading` and nothing broke. */
 async function opensSheet(page: Page, button: RegExp, heading: RegExp) {
   await page.getByRole('button', { name: button }).first().click({ timeout: 5000 })
@@ -68,12 +78,14 @@ test('Coach: Reorder opens the purchase order draft', async ({ page }) => {
 test('Coach: Reply opens the message thread', async ({ page }) => {
   await openDemo(page)
   await opensSheet(page, /^Reply$/, /Messages/)
+  await showsThread(page)
 })
 
 test('Grow: Open messages opens the message thread', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'grow')
   await opensSheet(page, /^Open messages$/, /Messages/)
+  await showsThread(page)
 })
 
 test('Grow: Rescue deals opens the rescue screen', async ({ page }) => {
@@ -109,19 +121,11 @@ test('Shop: Connect your system opens its sheet', async ({ page }) => {
   await opensSheet(page, /Connect your system/, /Connect your system/)
 })
 
-test('Shop: Photos opens its own screen', async ({ page }) => {
-  await openDemo(page)
-  await tab(page, 'shop')
-  await page.getByRole('button', { name: /^Photos/ }).click()
-  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Photos' })).toBeVisible()
-  await noErrors(page)
-  await expect(page.getByTestId('today')).toBeHidden()
-})
-
 test('Shop: Messages opens the message thread', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'shop')
   await opensSheet(page, /^Messages/, /Messages/)
+  await showsThread(page)
 })
 
 test('You: Verify it is you answers with the demo note', async ({ page }) => {
@@ -141,6 +145,8 @@ test('You: Remind me turns on without an error', async ({ page }) => {
   const remind = page.getByRole('switch', { name: /Remind me/i })
   await remind.scrollIntoViewIfNeeded()
   await remind.click()
+  await expect(remind).toBeChecked()
+  await expect(remind).toBeInViewport()
   await expect(page.locator('#reminder-status')).toBeVisible()
   await expect(page.locator('#reminder-status')).not.toHaveText(/couldn|failed|error/i)
   await noErrors(page)
