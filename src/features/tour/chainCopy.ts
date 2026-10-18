@@ -13,8 +13,7 @@ const en = {
   },
   wholesaler: {
     title: 'It lands at the wholesaler',
-    body: (wholesaler: string, distributor: string) =>
-      `${wholesaler} gets it, then restocks from ${distributor} by CSV.`,
+    body: (distributor: string) => `Restocks from ${distributor} by CSV.`,
   },
   chain: {
     title: 'A big chain does it in SAP',
@@ -69,8 +68,7 @@ const hi: ChainCopy = {
   },
   wholesaler: {
     title: 'ऑर्डर थोक व्यापारी तक',
-    body: (wholesaler, distributor) =>
-      `${wholesaler} को ऑर्डर मिलता है; वह ${distributor} से CSV पर मँगाता है।`,
+    body: (distributor) => `${distributor} से CSV पर मँगाता है।`,
   },
   chain: {
     title: 'बड़ी चेन यही SAP में करती है',

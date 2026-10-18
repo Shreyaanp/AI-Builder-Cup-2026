@@ -275,15 +275,89 @@ def test_cli_dry_run_and_explicit_target(tmp_path: Path, monkeypatch) -> None:
     assert main(["--sqlite", str(path), "--date", str(DAY)]) == 0
 
 
-def test_production_routes_require_owner_prepared_accounts(app) -> None:  # noqa: F811
-    # Exercise the production gates using local repositories; never create a cloud client.
+@pytest.mark.parametrize("zone", ["Asia/Kolkata", "Asia/Singapore"])
+def test_production_tour_seeds_fresh_owner_once_without_provider_calls(
+    app,  # noqa: F811
+    monkeypatch,
+    zone,
+) -> None:
+    # Use local repositories with production route settings; forbid provider network I/O.
+    import socket
+
+    connect = socket.socket.connect
+
+    def no_network(sock, address):
+        if address[0] in {"127.0.0.1", "::1"}:
+            return connect(sock, address)
+        pytest.fail("Tour seeding must not contact model, payment or other providers")
+
+    monkeypatch.setattr(socket.socket, "connect", no_network)
     with TestClient(app) as client:
         join(client)
         app.state.v1_settings = app.state.v1_settings.model_copy(update={"app_env": "production"})
-        app.state.world_generator.settings = app.state.v1_settings
-        assert client.post("/api/v1/demo/workspace").status_code == 409
+        assert client.get("/api/v1/businesses").json() == []
+        first = client.post(f"/api/v1/demo/workspace?zone={zone}")
+        assert first.status_code == 200, first.text
+        bid = first.json()["business_id"]
+        assert first.json()["created"] is True
+        businesses = client.get("/api/v1/businesses").json()
+        assert len(businesses) == 1
+        assert businesses[0]["fields"]["demo"]
+        assert businesses[0]["fields"]["name"].endswith("(Tour)")
+        assert app.state.merchant.public_shop(bid) is None
+        context = client.get(f"/api/v1/demo/chain/{bid}")
+        assert context.status_code == 200, context.text
+        assert context.json()["order"]["number"] == "4500000001"
+        assert context.json()["wholesaler"]["inbound"]["lines"] == context.json()["order"]["lines"]
+        again = client.post(f"/api/v1/demo/workspace?zone={zone}")
+        assert again.json() == {"business_id": bid, "created": False}
+        assert client.get("/api/v1/businesses").json() == businesses
+
+
+def test_production_customer_seeds_fresh_account_once_without_provider_calls(
+    app,  # noqa: F811
+    monkeypatch,
+) -> None:
+    import socket
+
+    connect = socket.socket.connect
+
+    def no_network(sock, address):
+        if address[0] in {"127.0.0.1", "::1"}:
+            return connect(sock, address)
+        pytest.fail("Customer seeding must not contact model or payment providers")
+
+    monkeypatch.setattr(socket.socket, "connect", no_network)
+    with TestClient(app) as client:
+        app.state.v1_settings = app.state.v1_settings.model_copy(update={"app_env": "production"})
         client.post("/api/v1/customer/session", json={"name": "Demo judge"})
-        assert client.post("/api/v1/demo/customer").status_code == 409
+        first = client.post("/api/v1/demo/customer")
+        assert first.status_code == 200 and first.json()["ready"]
+        passport = client.get("/api/v1/customer/passport").json()
+        threads = client.get("/api/v1/customer/threads").json()
+        assert passport["points"] == 0 and passport["demo_points"] > 0
+        assert len(threads) == 2
+        assert client.post("/api/v1/demo/customer").json() == first.json()
+        assert client.get("/api/v1/customer/passport").json() == passport
+        assert client.get("/api/v1/customer/threads").json() == threads
+
+
+@pytest.mark.parametrize("route", ["workspace", "customer"])
+def test_production_demo_rate_limit_prevents_seeding(app, monkeypatch, route) -> None:  # noqa: F811
+    from unittest.mock import Mock
+
+    with TestClient(app) as client:
+        join(client)
+        client.post("/api/v1/customer/session", json={"name": "Demo judge"})
+        app.state.v1_settings = app.state.v1_settings.model_copy(update={"app_env": "production"})
+        take = Mock(return_value=60)
+        monkeypatch.setattr(app.state.rate_limiter, "take", take)
+        response = client.post(f"/api/v1/demo/{route}")
+        assert response.status_code == 429
+        assert response.headers["Retry-After"] == "60"
+        assert all(
+            bucket.action == "proposal" and bucket.subject for bucket in take.call_args[0][0]
+        )
         assert app.state.merchant.shared_shops() == []
 
 
@@ -466,3 +540,36 @@ def test_tour_chain_follows_one_order_on_seeded_records(app) -> None:  # noqa: F
     with TestClient(app) as stranger:
         join(stranger)
         assert stranger.get(f"/api/v1/demo/chain/{bid}").status_code == 404
+
+
+@pytest.mark.parametrize("city", CENTRES)
+async def test_today_reorder_on_the_tour_shop_drafts_from_its_wholesaler(world, city) -> None:
+    # #264: the Today card's item is a drink sold by the cup; its wholesaler sells the
+    # ingredient by the kg. The draft orders that ingredient instead of finding no supplier.
+    from app.coordinator import DEMO_OWNER_UID, SupplierGenerator
+
+    store, community = world
+    seed_story(store, community, owner_uid="owner", customer_uid="customer", today=DAY)
+    bid = tour_id("owner", city)
+    settings = Settings(_env_file=None, forecast_backend="weekday_average", coach_mode="offline")
+    result = await supply_chain.draft_reorder(
+        store,
+        "owner",
+        bid,
+        "",
+        None,
+        ForecastService(settings),
+        SupplierGenerator(settings),
+        DEMO_OWNER_UID,
+    )
+    assert result["status"] == "drafted", result
+    order = result["order"]
+    assert order["supplier"]["name"] == (
+        "Sri Lakshmi Provisions (Demo)" if city == "bengaluru" else "Ah Huat Provision (Demo)"
+    )
+    line = order["lines"][0]
+    assert line["quantity"] > 0 and line["total"] > 0
+    assert line["unit"] == "kg" and line["quantity"] <= 20
+    # A stall-sized order (the seeded stall orders stay under 1 lakh / S$1,000 too).
+    assert order["total"] < 100_000_00
+    assert order["reason"]["item"]
