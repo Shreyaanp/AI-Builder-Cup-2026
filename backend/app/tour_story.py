@@ -24,8 +24,8 @@ from .merchant import MerchantRepository
 from .passport import PassportState, Visit, apply_rescue, apply_visit
 from .playbook import gather_inputs, offline_draft, stored_from
 from .sales import today_for
-from .supply_docs import SupplyDoc, render
-from .supply_rules import ItemRule, PriceTier, RuleSet
+from .supply_docs import Format, SupplyDoc, render
+from .supply_rules import ItemRule, RuleSet
 from .threads import token_hash
 from .tour_catalogue import TOUR_SHOPS
 from .tour_media import photo_id, seed_gallery
@@ -240,46 +240,69 @@ def seed_rescue(store: MerchantRepository, demo: DemoShop, day: date) -> None:
     rescue.publish_update(store, deal)
 
 
+# A stall orders from the wholesaler down the road by WhatsApp and pays on delivery: short names,
+# a handful of everyday items, small quantities. Prices are minor units (paise / cents).
+LOCAL_WHOLESALER = {
+    "bengaluru": (
+        "Sri Lakshmi Provisions (Demo)",
+        [
+            ("Milk", "litre", 30, 5400),
+            ("Sugar", "kg", 10, 4400),
+            ("Paper cups (50)", "pack", 10, 4000),
+        ],
+    ),
+    "singapore": (
+        "Ah Huat Provision (Demo)",
+        [
+            ("Evaporated milk", "pack", 24, 165),
+            ("Sugar", "kg", 10, 190),
+            ("Paper cups (50)", "pack", 10, 250),
+        ],
+    ),
+}
+
+
 def seed_supply(store: MerchantRepository, uid: str, demo: DemoShop, day: date) -> None:
-    """A linked, offline forecast → PO → ORDRSP → DESADV → invoice, awaiting receipt."""
+    """A stall's WhatsApp reorder: the AI drafts the message, the wholesaler's reply is read
+    from text, then the dispatch note and bill. Awaiting receipt; no IDoc, it is a tea stall."""
     bid = demo.id
     po_id = stable(f"{bid}/purchase-order")
-    if store.feature_docs.get(supply.ORDERS, supply._key(bid, po_id)):
-        return
+    channel: Format = "text"
+    key = supply._key(bid, po_id)
+    old = store.feature_docs.get(supply.ORDERS, key)
+    if old:
+        # An untouched order from before the channel followed the business size is rebuilt;
+        # an order the owner has already received or moved on is never touched.
+        if old.get("channel") == channel or old.get("received") or old.get("version", 4) > 4:
+            return
+        store.feature_docs.delete(supply.ORDERS, key)
     product = demo.products[4]
     sid = f"demo-story-{demo.city}-supplier"
-    supplier_name = (
-        "Lantern Tea Wholesale (Demo)" if demo.city == "bengaluru" else "Dawn Bean Supply (Demo)"
-    )
+    supplier_name, extras = LOCAL_WHOLESALER[demo.city]
     fields = demo.fields.model_copy(
         update={
             "name": supplier_name,
             "category": "Wholesaler",
             "supplier": True,
-            "supplies": [product.name],
+            "supplies": [product.name, *(name for name, *_ in extras)],
             "reward_text": "",
-            "description": "Fictional supplier; no order leaves this demo.",
+            "description": "Fictional local wholesaler; no order leaves this demo.",
         }
     )
     supplier_product = product.model_copy(
         update={"price": round(product.price * 0.7), "stock": 500}
     )
-    if store.public_shop(sid) is None:
-        store.seed_demo_shop(SEED_OWNER, sid, fields, [supplier_product])
+    stock = [supplier_product] + [
+        product.model_copy(update={"name": n, "unit": u, "price": c, "stock": 500})
+        for n, u, _, c in extras
+    ]
+    store.seed_demo_shop(SEED_OWNER, sid, fields, stock)
     at = stamp(day - timedelta(days=2), fields.timezone)
     rules = RuleSet(
-        system_format="idoc",
-        terms_days=7,
-        credit_limit=100_000_000,
+        system_format=channel,
+        terms_days=0,
         items=[
-            ItemRule(
-                item=product.name,
-                unit=product.unit,
-                moq=5,
-                pack=5,
-                lead_days=1,
-                tiers=[PriceTier(min_quantity=10, price=supplier_product.price)],
-            )
+            ItemRule(item=p.name, unit=p.unit, moq=1, pack=1, lead_days=1, tiers=[]) for p in stock
         ],
     )
     relationship = {
@@ -291,20 +314,32 @@ def seed_supply(store: MerchantRepository, uid: str, demo: DemoShop, day: date) 
         "created": at,
         "version": 1,
     }
-    put_once(store.feature_docs, supply.RULES, supply._key(bid, sid), bid, at, relationship)
+
+    def settle(old_rules: dict[str, Any] | None) -> tuple[float, dict[str, Any]] | None:
+        stale = old_rules and old_rules.get("rules", {}).get("system_format") != channel
+        return (at, relationship) if old_rules is None or stale else None
+
+    store.feature_docs.update(supply.RULES, supply._key(bid, sid), bid, settle)
     rows = store.sales_history(uid, bid)
     predictions = weekday_average(rows, day)
     forecast = {
         "method": "weekday_average",
-        # The general supplier matcher also relates chai to tea leaves. This sample PO
+        # The general supplier matcher also relates chai to tea dust. This sample PO
         # replenishes the exact kg item, so cups must not enter its quantity calculation.
         "predictions": [p.model_dump(mode="json") for p in predictions if p.item == product.name],
     }
     need = supply.need_from_forecast(product.model_dump(), forecast, product.name, day)
     wanted = max(5, round(need["daily"] * 9 - need["stock"]))
-    candidate = {"row": relationship, "product": supplier_product.model_dump()}
-    best = supply.quote(store, bid, candidate, product.name, product.unit, wanted, "", day)
-    assert best is not None
+    lines = []
+    best: dict[str, Any] = {}
+    wishes = [wanted, *(q for _, _, q, _ in extras)]
+    for number, (stocked, wish) in enumerate(zip(stock, wishes, strict=True), start=1):
+        candidate = {"row": relationship, "product": stocked.model_dump()}
+        option = supply.quote(store, bid, candidate, stocked.name, stocked.unit, wish, "", day)
+        assert option is not None
+        option["line"]["line"] = number * 10
+        lines.append(option["line"])
+        best = best or option
     po: dict[str, Any] = {
         "id": po_id,
         "number": "4500000001",
@@ -312,11 +347,12 @@ def seed_supply(store: MerchantRepository, uid: str, demo: DemoShop, day: date) 
         "sent": False,
         "auto_sent": False,
         "created": at,
+        "channel": channel,
         "currency": fields.currency,
         "buyer": {"id": bid, "name": demo.fields.name, "system": "json"},
         "supplier": best["supplier"],
-        "terms_days": 7,
-        "lines": [best["line"]],
+        "terms_days": 0,
+        "lines": lines,
         "total": 0,
         "need_by": "",
         "delivery": "",
@@ -348,16 +384,17 @@ def seed_supply(store: MerchantRepository, uid: str, demo: DemoShop, day: date) 
                 "kind": kind,
                 "number": po["number"] if index == 0 else str(7100000000 + index),
                 "ref": "" if index == 0 else po["number"],
-                "note": "Simulated demo document; no external system connected.",
+                "note": "Demo only: nothing was sent.",
             }
         )
+        # The draft is the WhatsApp message the owner sends; the replies come back as text.
         entry = supply.document_entry(
             doc,
             "buyer" if index == 0 else "supplier",
-            render(doc, "json" if index == 0 else "idoc"),
-            "json" if index == 0 else "idoc",
-            render(doc, "idoc" if index == 0 else "json"),
-            "idoc" if index == 0 else "json",
+            render(doc, "json" if index == 0 else channel),
+            "json" if index == 0 else channel,
+            render(doc, channel if index == 0 else "json"),
+            channel if index == 0 else "json",
             [],
             "parser",
         )
@@ -366,7 +403,7 @@ def seed_supply(store: MerchantRepository, uid: str, demo: DemoShop, day: date) 
         if index:
             supply.apply_document(store, bid, po, doc, [])
     po.update(sent=True, sent_at=at, status="invoiced", version=4)
-    store.feature_docs.put(supply.ORDERS, supply._key(bid, po_id), bid, at, po)
+    store.feature_docs.put(supply.ORDERS, key, bid, at, po)
     put_once(store.feature_docs, supply.SEQUENCE, bid, bid, at, {"po": 1})
 
 
