@@ -131,7 +131,7 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
       newShopCopyFor: (l: string) => { begin: string; ready: string }
     }
     const translations = (await import('/src/features/v1/locales/index.ts' as string)) as {
-      translations: Record<string, Record<string, string>>
+      loaders: Record<string, () => Promise<Record<string, string>>>
     }
     const strings = (await import('/src/features/v1/strings.ts' as string)) as {
       en: Record<string, string>
@@ -144,7 +144,7 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
     }
     return {
       ...strings.en,
-      ...translations.translations[language],
+      ...(language === 'en' ? {} : await translations.loaders[language]!()),
       begin: flow.newShopCopyFor(language).begin,
       ready: flow.newShopCopyFor(language).ready,
       ...onboarding.onboardingCopyFor(language),
@@ -245,7 +245,7 @@ for (const language of LANGUAGES) {
       // The face check is offered and skippable; the shop opens; Today asks for the menu first.
       await expect(summary).toContainText(copy.faceOffer!)
       await summary.getByRole('button', { name: copy.skipForNow!, exact: true }).click()
-      await expect(page.getByRole('heading', { name: copy.ready! })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1 })).toContainText('Clean Helmet Point')
       await page.getByRole('button', { name: copy.newShopContinue! }).click()
       const today = page.getByTestId('today-day-one')
       await expect(today).toBeVisible()
