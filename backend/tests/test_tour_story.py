@@ -104,6 +104,19 @@ async def test_every_feature_has_connected_records_and_truthful_forecasts(world)
         )
         assert forecast.status == "ready" and forecast.method == "weekday_average"
         order = supply_chain.orders(store, "owner", bid)[0]
+        assert order["channel"] == "text" and order["terms_days"] == 0
+        assert order["supplier"]["name"] == (
+            "Sri Lakshmi Provisions (Demo)" if city == "bengaluru" else "Ah Huat Provision (Demo)"
+        )
+        assert {line["item"] for line in order["lines"]} == (
+            {"Tea dust", "Milk", "Sugar", "Paper cups (50)"}
+            if city == "bengaluru"
+            else {"Kopi powder", "Evaporated milk", "Sugar", "Paper cups (50)"}
+        )
+        assert order["documents"][0]["translated_format"] == "text"
+        for document in order["documents"][1:]:
+            assert document["raw_format"] == "text"
+            assert parse(document["raw"])[0].ref == order["number"]
         assert order["status"] == "invoiced" and order["simulated"]
         assert order["reason"]["method"] == "weekday_average"
         assert order["reason"]["daily"] > 0 and order["reason"]["wanted"] > 0

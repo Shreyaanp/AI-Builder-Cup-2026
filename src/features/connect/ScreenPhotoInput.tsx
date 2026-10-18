@@ -3,6 +3,7 @@ import { Button, CircularProgress, Stack, Typography } from '@mui/material'
 import { Camera, Images } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { photoCopy } from './photoCopy'
+import { AiInfo } from '../v1/AiInfo'
 
 export function ScreenPhotoInput({
   photos,
@@ -36,6 +37,7 @@ export function ScreenPhotoInput({
   return (
     <>
       <Typography variant="titleSmall">{t.title}</Typography>
+      <AiInfo feature="photo" inSheet />
       <input
         ref={camera}
         type="file"
