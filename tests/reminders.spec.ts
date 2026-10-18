@@ -30,8 +30,8 @@ async function reminderCopy(page: Page, locale: string) {
 async function setup(page: Page, permission: 'granted' | 'denied' = 'granted') {
   await localOnly(page)
   await page.addInitScript(
-    ({ endpoint, permission, locale }) => {
-      localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: locale }))
+    ({ endpoint, permission }) => {
+      localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'en' }))
       let subscription: object | null = null
       const item = {
         endpoint,
@@ -63,7 +63,7 @@ async function setup(page: Page, permission: 'granted' | 'denied' = 'granted') {
         return permission
       }
     },
-    { endpoint, permission, locale },
+    { endpoint, permission },
   )
   const saved: string[] = []
   let writes = 0
