@@ -68,7 +68,17 @@ type Rect = { top: number; left: number; width: number; height: number }
 
 function find(target: string): HTMLElement | null {
   const all = Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`))
-  return all.find((el) => el.offsetParent !== null) ?? null
+  const visible = all.find((el) => el.offsetParent !== null)
+  if (visible) return visible
+  // The public demo can hide the Google guide; keep its tour step anchored to Grow navigation.
+  if (target === 'google') {
+    return (
+      Array.from(document.querySelectorAll<HTMLElement>('[data-tour="nav-grow"]')).find(
+        (el) => el.offsetParent !== null,
+      ) ?? null
+    )
+  }
+  return null
 }
 
 /** Spotlight walkthrough over the demo shop. Mounted once by the app shell. */
