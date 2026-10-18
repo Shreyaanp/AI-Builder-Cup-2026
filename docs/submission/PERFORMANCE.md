@@ -54,7 +54,7 @@ Notes:
   own response after load, with no network and no model, so they are not comparable to the
   Lighthouse load numbers above.
 
-### Quick wins (not done in this PR; app code is untouched)
+### Quick wins (implemented in `perf/quick-wins`; local results below)
 
 Found in the Lighthouse audits and the live response headers.
 
@@ -66,8 +66,31 @@ Found in the Lighthouse audits and the live response headers.
 | 4   | **Render something before the framework boots.** On `/` and `/explore` the LCP text is ready 0.2 s after the first byte but paints at ~4.9 s ("element render delay" 4.7 s): it is client-rendered. Static hero HTML in `index.html`, or server-rendered first screen, removes the wait                                   | LCP breakdown on `/` and `/explore`: TTFB 0.19–0.22 s, element render delay 4.67–4.69 s                                                   | LCP 4.9–5.0 s → roughly 2–3 s on both; biggest single score gain               |
 | 5   | **Make the `index-*.css` file non-blocking.** One 10.8 KB stylesheet blocks first paint on every page (Lighthouse "render-blocking")                                                                                                                                                                                      | Render-blocking insight, same file on all pages                                                                                           | Small: tens of ms on FCP                                                       |
 
-Gains are estimates from the Lighthouse audits, not re-measured after a change. Quick win 4 is a
-larger piece of work than the others; 1, 2 and 5 are each a few lines.
+The media, cache, CSS and locale changes are implemented in this branch. Static first-frame HTML
+and the server-side Explore profiling work remain open. The expected gains above were estimates;
+the local measurements below show what this branch achieves on a first visit.
+
+### After fixes (local production build)
+
+Lighthouse 13.5.0, `--preset=perf --form-factor=mobile`, headless Chrome. Three serial runs per
+route on 18 Oct 2026 against Vite's production preview at `127.0.0.1:5361`; the offline local API
+on `127.0.0.1:5461` supplied Explore demo data. Each cell shows all three runs and the median in
+bold. Raw reports and the machine-readable summary are in [perf/](perf/), as
+`local-*-run*.json` and [local-after-fixes-summary.json](perf/local-after-fixes-summary.json).
+
+| Page | Performance score (runs; median) | FCP median | LCP median | TBT median | CLS median |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `/` landing | 89 / 92 / 88; **89** | 3.03 s | 3.03 s | 0 ms | 0.000 |
+| `/explore` | 70 / 71 / 72; **71** | 2.73 s | 5.12 s | 241 ms | 0.000 |
+| `/explore/demo` | 89 / 86 / 88; **88** | 2.68 s | 2.68 s | 160 ms | 0.000 |
+| `/how-it-works` | 68 / 64 / 66; **66** | 2.83 s | 5.25 s | 308 ms | 0.000 |
+
+These are local lab results, not a direct before/after comparison with the earlier production run:
+the server, network path and cache state differ. The home and demo pages score above 85 locally;
+Explore and how-it-works remain below target, with LCP above 5 s. The report's business front door
+is served by a separate hostname, so it is not represented by these localhost runs. No field CWV
+improvement is claimed. The first-frame HTML step and Explore endpoint profiling remain the next
+work needed for the slow LCP results.
 
 ## 2. Server (Cloud Monitoring and request logs, last 24 h)
 

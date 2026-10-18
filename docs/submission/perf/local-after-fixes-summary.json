@@ -1,0 +1,141 @@
+﻿{
+    "measured_at":  "2026-10-18",
+    "target":  "http://127.0.0.1:5361",
+    "lighthouse":  "13.5.0",
+    "mode":  "--preset=perf --form-factor=mobile; three serial runs per route; Chrome headless",
+    "environment":  "Vite production preview; local offline API on 127.0.0.1:5461 for Explore data",
+    "pages":  [
+                  {
+                      "route":  "/",
+                      "runs":  [
+                                   {
+                                       "score":  89,
+                                       "fcp_ms":  3026,
+                                       "lcp_ms":  3026,
+                                       "tbt_ms":  0,
+                                       "cls":  0.000
+                                   },
+                                   {
+                                       "score":  92,
+                                       "fcp_ms":  2733,
+                                       "lcp_ms":  2733,
+                                       "tbt_ms":  0,
+                                       "cls":  0.000
+                                   },
+                                   {
+                                       "score":  88,
+                                       "fcp_ms":  3032,
+                                       "lcp_ms":  3032,
+                                       "tbt_ms":  0,
+                                       "cls":  0.000
+                                   }
+                               ],
+                      "median":  {
+                                     "score":  89,
+                                     "fcp_ms":  3026,
+                                     "lcp_ms":  3026,
+                                     "tbt_ms":  0,
+                                     "cls":  0.000
+                                 }
+                  },
+                  {
+                      "route":  "/explore",
+                      "runs":  [
+                                   {
+                                       "score":  70,
+                                       "fcp_ms":  2869,
+                                       "lcp_ms":  5198,
+                                       "tbt_ms":  241,
+                                       "cls":  0
+                                   },
+                                   {
+                                       "score":  71,
+                                       "fcp_ms":  2665,
+                                       "lcp_ms":  5104,
+                                       "tbt_ms":  247,
+                                       "cls":  0
+                                   },
+                                   {
+                                       "score":  72,
+                                       "fcp_ms":  2726,
+                                       "lcp_ms":  5115,
+                                       "tbt_ms":  217,
+                                       "cls":  0
+                                   }
+                               ],
+                      "median":  {
+                                     "score":  71,
+                                     "fcp_ms":  2726,
+                                     "lcp_ms":  5115,
+                                     "tbt_ms":  241,
+                                     "cls":  0
+                                 }
+                  },
+                  {
+                      "route":  "/explore/demo",
+                      "runs":  [
+                                   {
+                                       "score":  89,
+                                       "fcp_ms":  2680,
+                                       "lcp_ms":  2680,
+                                       "tbt_ms":  149,
+                                       "cls":  0.000
+                                   },
+                                   {
+                                       "score":  86,
+                                       "fcp_ms":  2808,
+                                       "lcp_ms":  2808,
+                                       "tbt_ms":  173,
+                                       "cls":  0.000
+                                   },
+                                   {
+                                       "score":  88,
+                                       "fcp_ms":  2681,
+                                       "lcp_ms":  2681,
+                                       "tbt_ms":  160,
+                                       "cls":  0.000
+                                   }
+                               ],
+                      "median":  {
+                                     "score":  88,
+                                     "fcp_ms":  2681,
+                                     "lcp_ms":  2681,
+                                     "tbt_ms":  160,
+                                     "cls":  0.000
+                                 }
+                  },
+                  {
+                      "route":  "/how-it-works",
+                      "runs":  [
+                                   {
+                                       "score":  68,
+                                       "fcp_ms":  2786,
+                                       "lcp_ms":  5136,
+                                       "tbt_ms":  273,
+                                       "cls":  0
+                                   },
+                                   {
+                                       "score":  64,
+                                       "fcp_ms":  2834,
+                                       "lcp_ms":  5245,
+                                       "tbt_ms":  352,
+                                       "cls":  0
+                                   },
+                                   {
+                                       "score":  66,
+                                       "fcp_ms":  2880,
+                                       "lcp_ms":  5252,
+                                       "tbt_ms":  308,
+                                       "cls":  0
+                                   }
+                               ],
+                      "median":  {
+                                     "score":  66,
+                                     "fcp_ms":  2834,
+                                     "lcp_ms":  5245,
+                                     "tbt_ms":  308,
+                                     "cls":  0
+                                 }
+                  }
+              ]
+}
