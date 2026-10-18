@@ -459,6 +459,7 @@ COURTESY_CLAUSE = re.compile(rf"^(?:(?:{COURTESY})\s*)+$", re.I)
 # Clause breaks; "?" is never here: a question is never the end ("that's all?", "हो गया?").
 CLAUSE_BREAK = re.compile(r"[,.!;:…，。！；、\n\-–—]+")
 QUESTION = re.compile(r"[?？]")
+MAX_CLAUSE = 40
 
 # https://ai.google.dev/gemini-api/docs/thought-signatures: function calls not made by the model.
 APP_CALL_SIGNATURE = b"skip_thought_signature_validator"
@@ -473,6 +474,10 @@ def asks_to_end(text: str) -> bool:
     if not said or QUESTION.search(said) or len(said) > 120:
         return False
     clauses = [c.strip() for c in CLAUSE_BREAK.split(said) if c.strip()]
+    # A real finishing clause is short; longer ones would make the alternations above backtrack
+    # exponentially ("bye bye bye ... x").
+    if any(len(c) > MAX_CLAUSE for c in clauses):
+        return False
     return all(FINISH_CLAUSE.match(c) for c in clauses) and not all(
         COURTESY_CLAUSE.match(c) for c in clauses
     )
