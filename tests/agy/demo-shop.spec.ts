@@ -43,7 +43,9 @@ test.describe('Try the demo shop flow on phone (390px)', () => {
     const editBtn = page.locator('[data-tour="customer"] button').first()
     if (await editBtn.isVisible()) {
       await editBtn.click()
-      await expect(page.getByText('Demo only. Changes are turned off.', { exact: true })).toBeVisible()
+      await expect(
+        page.getByText('Demo only. Changes are turned off.', { exact: true }),
+      ).toBeVisible()
     }
 
     // 3. Inspect demo menu

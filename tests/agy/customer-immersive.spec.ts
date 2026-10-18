@@ -43,18 +43,20 @@ async function seedTestShop(request: APIRequestContext, name: string) {
 
   const shops = await (await request.get('/api/v1/businesses')).json()
   const target = shops.find((s: { id: string }) => s.id === id)
-  await request.post('/api/v1/proposals', {
-    data: {
-      kind: 'business',
-      business_id: id,
-      revision: target.revision,
-      business: { ...business, lat: 1.285, lng: 103.827 },
-      products: [],
-    },
-  }).then(async (res) => {
-    const prop = await res.json()
-    await request.post(`/api/v1/proposals/${prop.id}/approve`, { data: { digest: prop.digest } })
-  })
+  await request
+    .post('/api/v1/proposals', {
+      data: {
+        kind: 'business',
+        business_id: id,
+        revision: target.revision,
+        business: { ...business, lat: 1.285, lng: 103.827 },
+        products: [],
+      },
+    })
+    .then(async (res) => {
+      const prop = await res.json()
+      await request.post(`/api/v1/proposals/${prop.id}/approve`, { data: { digest: prop.digest } })
+    })
 
   await request.post(`/api/v1/businesses/${id}/share`, { data: { public: true } })
   const qrKeyRes = await (await request.get(`/api/v1/businesses/${id}/qr-key`)).json()

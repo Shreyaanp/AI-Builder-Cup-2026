@@ -39,7 +39,10 @@ test.describe('Hindi language flows on phone (390px)', () => {
     await page.getByRole('button', { name: /सहमत होकर आगे बढ़ें|Agree and continue/i }).click()
 
     // Add shop details
-    await page.getByRole('banner').getByRole('button', { name: /दुकान की जानकारी जोड़ें|Add shop details/i }).click()
+    await page
+      .getByRole('banner')
+      .getByRole('button', { name: /दुकान की जानकारी जोड़ें|Add shop details/i })
+      .click()
     const beginBtn = page.getByRole('button', { name: /शुरू करें|Let’s begin/i })
     await expect(beginBtn).toBeVisible()
     await beginBtn.click()
@@ -63,9 +66,9 @@ test.describe('Hindi language flows on phone (390px)', () => {
     await page.getByTestId('finish-review').click()
 
     // Congratulations heading in Hindi or shop live confirmation
-    await expect(
-      page.getByRole('heading', { name: /बधाई|Congratulations/i }),
-    ).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: /बधाई|Congratulations/i })).toBeVisible({
+      timeout: 15_000,
+    })
 
     // Verify phone viewport has no horizontal overflow in Hindi
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(

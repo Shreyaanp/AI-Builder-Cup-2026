@@ -65,7 +65,10 @@ test.describe('Back button behaviour on phone (390px)', () => {
     await expect(page.locator('#ask-hello')).toBeVisible({ timeout: 15_000 })
 
     // Open customer profile sheet
-    await page.getByRole('button', { name: /profile/i }).first().click()
+    await page
+      .getByRole('button', { name: /profile/i })
+      .first()
+      .click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
     // Browser back closes the profile sheet

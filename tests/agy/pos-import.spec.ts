@@ -49,9 +49,9 @@ test.describe('POS import flows on phone (390px)', () => {
     })
 
     // Column mapping appears
-    await expect(
-      connectDialog.getByRole('heading', { name: /Column mapping/i }),
-    ).toBeVisible({ timeout: 15_000 })
+    await expect(connectDialog.getByRole('heading', { name: /Column mapping/i })).toBeVisible({
+      timeout: 15_000,
+    })
     await expect(connectDialog.getByText('Item name: Masala Dosa', { exact: true })).toBeVisible()
 
     // Confirm & review import
@@ -93,9 +93,9 @@ test.describe('POS import flows on phone (390px)', () => {
     })
 
     // Column mapping for JSON
-    await expect(
-      connectDialog.getByRole('heading', { name: /Column mapping/i }),
-    ).toBeVisible({ timeout: 15_000 })
+    await expect(connectDialog.getByRole('heading', { name: /Column mapping/i })).toBeVisible({
+      timeout: 15_000,
+    })
     await connectDialog.getByRole('button', { name: 'Confirm & review import' }).click()
 
     const review = page.getByRole('dialog', { name: reviewName })
@@ -132,10 +132,12 @@ test.describe('POS import flows on phone (390px)', () => {
     await connectDialog.getByRole('button', { name: 'Read photos', exact: true }).click()
 
     // Mapping review appears
+    await expect(connectDialog.getByRole('heading', { name: /Column mapping/i })).toBeVisible({
+      timeout: 20_000,
+    })
     await expect(
-      connectDialog.getByRole('heading', { name: /Column mapping/i }),
-    ).toBeVisible({ timeout: 20_000 })
-    await expect(connectDialog.getByText('Sample photos only: no AI read these images.')).toBeVisible()
+      connectDialog.getByText('Sample photos only: no AI read these images.'),
+    ).toBeVisible()
 
     // Confirm & review
     await connectDialog.getByRole('button', { name: 'Confirm & review import' }).click()
