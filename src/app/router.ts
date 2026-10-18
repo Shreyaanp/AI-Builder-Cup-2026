@@ -15,6 +15,16 @@ export function resolveApp(url: URL): AppKind {
   return 'landing'
 }
 
+/**
+ * Which landing "/" shows. The server marks the page when LANDING_VARIANT=new (backend
+ * frontend.py); ?landing=new|classic previews either one. Default: the frozen classic landing.
+ */
+export function landingVariant(url: URL, marked: string | null | undefined): 'classic' | 'new' {
+  const override = url.searchParams.get('landing')
+  if (override === 'new' || override === 'classic') return override
+  return marked === 'new' ? 'new' : 'classic'
+}
+
 export function canonicalCustomerPath(path: string): string {
   // The old list link opens the list; /explore/ itself is the AI-first front door.
   if (/^\/discover\/?$/.test(path)) return '/explore/browse'

@@ -23,6 +23,8 @@ JSON_BODY_BYTES = 16_384
 # (maximum, window seconds). Windows align to Unix time, including UTC days.
 LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "discover": ((30, 60),),
+    # Google place photos: one results page loads ~10; the browser caches each for a day.
+    "discover:photo": ((120, 60), (1_500, 86_400)),
     "discover:place": ((10, 60), (100, 86_400)),
     # Customer AI entry: one model call per ask.
     "discover:ask": ((15, 60), (300, 86_400)),

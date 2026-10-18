@@ -137,7 +137,7 @@ for (const width of widths) {
         await page.locator('[data-tour="supply"]').click()
         await page.getByRole('button', { name: /Try supply demo|डेमो/ }).click()
         await assertPhoneLayout(page, 'Supply orders')
-        const supply = page.getByRole('region', { name: /Supply chain|आपूर्ति/ })
+        const supply = page.getByRole('region', { name: /Supply chain|सामान मँगाना/ })
         await expect(supply).toBeVisible()
         await supply.getByRole('button', { name: /Reorder|फिर/ }).click()
         const order = page.getByRole('article')

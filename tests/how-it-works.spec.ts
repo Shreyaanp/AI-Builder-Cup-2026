@@ -3,7 +3,8 @@ import { expect, test, type Page } from '@playwright/test'
 import { resolveApp } from '../src/app/router.ts'
 import { pagesEnglish, pagesHindi } from '../src/features/frontdoors/howItWorksCopy.ts'
 
-// /how-it-works, /features and /landing-preview: phone first, light and dark, English and Hindi.
+// /how-it-works and /features: phone first, light and dark, English and Hindi. The new landing
+// (/landing-preview) has its own spec: landing-v2.spec.ts.
 test.skip(({ isMobile }) => !isMobile, 'Phone pages')
 
 async function open(page: Page, path: string, language: 'en' | 'hi', appearance: 'light' | 'dark') {
@@ -59,6 +60,9 @@ for (const width of [360, 390, 412]) {
       await expect(video).toHaveAttribute('playsinline', '')
       await expect(video).toHaveAttribute('controls', '')
       await expect(video).toHaveAttribute('poster', `/how-it-works/${flow}-en.jpg`)
+      await expect(
+        video.locator('xpath=../..').getByRole('button', { name: t.sound }),
+      ).toBeVisible()
       // The steps are the video's captions, without the end card.
       const label = flow === 'vendor' ? t.forShops : t.forCustomers
       const steps = page.getByRole('list', { name: `${label}: ${t.steps}` }).getByRole('listitem')
@@ -137,7 +141,8 @@ test('/features (English, dark): two grids, a trust strip and links to the video
   await expect(
     page.getByRole('region', { name: t.customersLine }).getByRole('listitem'),
   ).toHaveCount(t.customerFeatures.length)
-  await expect(page.getByTestId('trust-strip')).toContainText(t.free)
+  await expect(page.getByTestId('trust-strip').getByRole('listitem')).toHaveCount(4)
+  await expect(page.getByTestId('trust-strip')).toContainText(t.trustItems[0]![0]!)
   await expect(page.getByRole('link', { name: t.watch }).first()).toHaveAttribute(
     'href',
     '/how-it-works#vendor',
@@ -146,41 +151,17 @@ test('/features (English, dark): two grids, a trust strip and links to the video
   await page.screenshot({ path: 'output/playwright/features-en-dark.png', fullPage: true })
 })
 
-test('/landing-preview: labelled proposal, noindex, both videos inline', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await open(page, '/landing-preview', 'en', 'light')
-  const t = pagesEnglish
-  await expect(page.getByRole('note')).toHaveText(t.previewBanner)
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex')
-  await expect(page.getByRole('heading', { level: 1, name: t.previewHero })).toBeVisible()
-  await expect(page.getByTestId('vendor-video')).toBeAttached()
-  await expect(page.getByTestId('customer-video')).toBeAttached()
-  await expect(page.getByRole('link', { name: t.previewHow })).toHaveAttribute(
-    'href',
-    '/how-it-works',
-  )
-  // One story: a cup of chai, each step with the Google technology doing it.
-  const steps = page.getByRole('region', { name: t.storyTitle }).getByRole('listitem')
-  await expect(steps).toHaveCount(t.story.length)
-  await expect(steps.first()).toContainText(t.story[0]![2]!)
-  await expect(page.getByRole('region', { name: t.numbersTitle })).toContainText('132 ms')
-  await noOverflow(page)
-  // The mock the owner approves (docs/LANDING-PLAN.md).
-  await page.evaluate(() => document.fonts.ready)
-  await page.screenshot({ path: 'docs/landing-preview-390.png', fullPage: true })
-  expect(
-    (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
-  ).toEqual([])
-})
-
-test('every demo video and poster ships, small enough for a phone (< 3 MB)', async ({
+test('every demo video and poster ships, small enough for a phone (< 3 MB), with a voice', async ({
   request,
 }) => {
   for (const flow of ['vendor', 'customer'])
     for (const lang of ['en', 'hi']) {
       const video = await request.get(`/how-it-works/${flow}-${lang}.mp4`)
       expect(video.ok(), `${flow}-${lang}.mp4`).toBe(true)
-      expect((await video.body()).length).toBeLessThan(3_000_000)
+      const body = await video.body()
+      expect(body.length).toBeLessThan(3_000_000)
+      // An MP4 with a voiceover carries a sound track ('soun' handler) beside the picture.
+      expect(body.includes('soun'), `${flow}-${lang}.mp4 has a voiceover`).toBe(true)
       const poster = await request.get(`/how-it-works/${flow}-${lang}.jpg`)
       expect(poster.ok(), `${flow}-${lang}.jpg`).toBe(true)
     }
@@ -191,27 +172,20 @@ for (const width of [360, 390]) {
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 })
-    await page.route('**/api/v1/bootstrap', (route) =>
-      route.fulfill({ json: { landing_variant: 'new' } }),
-    )
-    await page.goto('/?app=landing', { waitUntil: 'domcontentloaded' })
+    await page.goto('/?app=landing&landing=new', { waitUntil: 'domcontentloaded' })
     const t = pagesEnglish
-    await expect(page.getByRole('heading', { level: 1, name: t.previewHero })).toBeVisible({
+    await expect(page.getByRole('heading', { level: 1, name: t.hero })).toBeVisible({
       timeout: 20_000,
     })
-    await expect(page.getByRole('note')).toHaveCount(0)
     await expect(page.locator('meta[name="robots"]')).toHaveCount(0)
-    await expect(page.getByRole('link', { name: 'Find places near me' }).first()).toBeInViewport()
-    await expect(page.getByRole('link', { name: t.forBusiness }).first()).toBeInViewport()
+    await expect(page.getByRole('link', { name: t.tryShort }).first()).toBeInViewport()
+    await expect(page.getByRole('link', { name: t.findShort }).first()).toBeInViewport()
     await noOverflow(page)
   })
 }
 
-test('LANDING_VARIANT=classic serves the classic landing at "/"', async ({ page }) => {
-  await page.route('**/api/v1/bootstrap', (route) =>
-    route.fulfill({ json: { landing_variant: 'classic' } }),
-  )
-  await page.goto('/?app=landing')
+test('classic landing remains at "/" when selected', async ({ page }) => {
+  await page.goto('/?app=landing&landing=classic')
   await expect(
     page.getByRole('heading', { name: 'Small shops. Big neighbourhood energy.' }),
   ).toBeVisible({ timeout: 20_000 })

@@ -273,7 +273,7 @@ export function PickCard({
             <Typography
               variant="labelMedium"
               data-testid="pick-because"
-              sx={{ color: roles.primary, fontWeight: 700, ...oneLine }}
+              sx={{ color: roles.primary, fontWeight: 700, overflowWrap: 'anywhere' }}
             >
               {personal ?? (reason && (accountCopyFor(locale).reasons[reason] ?? reason))}
             </Typography>
