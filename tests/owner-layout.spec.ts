@@ -122,7 +122,9 @@ for (const lang of LANGS) {
       // Shop → Connect your system: system pills, tabs and the upload button.
       await page.locator('[data-tour="nav-shop"]').click()
       await page
-        .locator('button:has-text("Connect your system"), button:has-text("अपना सिस्टम जोड़ें")')
+        .locator(
+          'button:has-text("Connect your system"), button:has-text("बिक्री का हिसाब जोड़ें")',
+        )
         .first()
         .click()
       const connect = page.getByRole('dialog')
