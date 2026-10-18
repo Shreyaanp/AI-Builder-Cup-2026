@@ -1,5 +1,6 @@
 """Bounded, expiring fixture snapshots. No account, live services or durable merchant writes."""
 
+import re
 import sqlite3
 import time
 from contextlib import ExitStack
@@ -65,7 +66,9 @@ def fixture(zone: str) -> tuple[dict[str, Any], list[dict[str, Any]], date]:
         city = city if city in {"bengaluru", "singapore"} else "singapore"
         bid, _ = seed_workspace(service, uid, city)
         business = service.list_businesses(uid)[0]
-        business["fields"]["name"] = business["fields"]["name"].replace(" (Tour)", " (Demo)")
+        business["fields"]["name"] = re.sub(
+            r"(\s*\((?:Demo|Tour)\))+$", " (Demo)", business["fields"]["name"]
+        )
         inventory = service.inventory(uid, bid)
         sales = service.sales_history(uid, bid)
         today = today_for(business["fields"])
