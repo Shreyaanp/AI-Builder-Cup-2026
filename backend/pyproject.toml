@@ -32,7 +32,6 @@ dependencies = [
 [project.optional-dependencies]
 face = [
     "av>=15,<18",
-    "onnxruntime>=1.22,<2",
     "opencv-python-headless>=4.12,<5",
     "openvino>=2025,<2027",
 ]
