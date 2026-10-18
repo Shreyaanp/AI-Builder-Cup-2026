@@ -1,0 +1,8 @@
+{
+  "adapter": "connector",
+  "input": "input.csv",
+  "mime": "text/csv",
+  "source": "extra-columns",
+  "currency": "INR",
+  "notes": "Unknown columns silently ignored; no app warning."
+}

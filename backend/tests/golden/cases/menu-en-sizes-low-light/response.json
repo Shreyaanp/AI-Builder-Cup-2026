@@ -1,0 +1,17 @@
+{
+  "photo_kind": "menu",
+  "products": [
+    {
+      "name": "Coffee small",
+      "price": 2.5,
+      "unit": "cup",
+      "category": "Drinks"
+    },
+    {
+      "name": "Coffee large",
+      "price": 3.5,
+      "unit": "cup",
+      "category": "Drinks"
+    }
+  ]
+}

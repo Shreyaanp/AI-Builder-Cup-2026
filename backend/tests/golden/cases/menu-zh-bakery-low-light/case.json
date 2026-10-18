@@ -1,0 +1,25 @@
+{
+  "adapter": "menu",
+  "input": "input.png",
+  "mime": "image/png",
+  "currency": "SGD",
+  "render": {
+    "title": "示例面包店",
+    "variant": "low-light",
+    "items": [
+      {
+        "name": "奶茶",
+        "price": 250,
+        "size": "cup",
+        "category": "饮料"
+      },
+      {
+        "name": "红豆面包",
+        "price": 180,
+        "size": "piece",
+        "category": "面包"
+      }
+    ]
+  },
+  "notes": "Second item is marked SOLD OUT. Availability is not in extraction schema."
+}

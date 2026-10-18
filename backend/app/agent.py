@@ -13,9 +13,11 @@ from google.adk.models.base_llm import BaseLlm
 from google.adk.models.google_llm import Gemini
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
+from google.adk.tools import FunctionTool
 from google.genai import types
 from pydantic import ValidationError
 
+from .context_cache import CachedGemini, uses_gemini_context_cache
 from .contracts import BusinessProposal
 from .coordinator import (
     cancel_order,
@@ -1383,6 +1385,61 @@ class LiveGemini(Gemini):
                     record.note(connection)
 
 
+# Voice (owner decision, 17 Oct: first audio was 1.5-2.5 s, target under 800 ms): in a Live
+# session these tools run in the background. The model speaks at once while the draft is saved,
+# the business profile is read or a card opens; the result reaches it later, with the same
+# content a blocking call returns. SILENT: added to the model's context without a new turn (it
+# already said its next question; a second turn would repeat it). WHEN_IDLE: the model needs
+# the result to answer, so it speaks again once its current words are done.
+BACKGROUND_TOOLS: dict[str, types.FunctionResponseScheduling] = {
+    "update_shop": types.FunctionResponseScheduling.SILENT,
+    "show_step": types.FunctionResponseScheduling.SILENT,
+    "remember_note": types.FunctionResponseScheduling.SILENT,
+    "get_business_context": types.FunctionResponseScheduling.WHEN_IDLE,
+    "get_question_plan": types.FunctionResponseScheduling.WHEN_IDLE,
+}
+
+# Off for a Live connection whose model refused the tuned session setup (voice.gemini_voice):
+# that connection gets plain blocking tools.
+background_tools: ContextVar[bool] = ContextVar("background_tools", default=True)
+
+LIVE_TOOLS_NOTE = """
+Voice tools: update_shop, show_step and remember_note run in the background. Never wait for
+them: call the tool, then say your reply at once. Their results reach you silently a moment
+later; the newest result is the truth. get_business_context and get_question_plan also run in
+the background: say a few words ("ek second", "let me check") and answer when the result comes.
+"""
+
+
+class BackgroundTool(FunctionTool):
+    """A coach tool that runs NON_BLOCKING in a Live session (ADK async function calling)."""
+
+    def __init__(self, func: Callable[..., Any], scheduling: types.FunctionResponseScheduling):
+        super().__init__(func)
+        self.scheduling = scheduling
+
+    @property
+    def behavior(self) -> types.Behavior | None:
+        return types.Behavior.NON_BLOCKING if background_tools.get() else None
+
+    @behavior.setter
+    def behavior(self, _: types.Behavior | None) -> None:
+        """Set once by BaseTool; the Live connection decides."""
+
+    @property
+    def response_scheduling(self) -> types.FunctionResponseScheduling | None:
+        return self.scheduling if background_tools.get() else None
+
+    @response_scheduling.setter
+    def response_scheduling(self, _: types.FunctionResponseScheduling | None) -> None:
+        """Set once by BaseTool; the Live connection decides."""
+
+
+def live_instruction(context: ReadonlyContext) -> str:
+    """The Live agent's instruction: the coach rules, how its background tools behave, the turn."""
+    return f"{INSTRUCTION}\n{LIVE_TOOLS_NOTE}\n{turn_instruction(context)}"
+
+
 def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) -> LlmAgent:
     """The coach agent. cached=True sends the long coach rules as a static instruction (system
     instruction, identical every turn, so Vertex context caching can reuse it with the tool
@@ -1401,23 +1458,27 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
             if settings.gemini_backend == "vertex"
             else {"api_key": settings.google_api_key.get_secret_value(), "vertexai": False}
         )
-        # A busy model (429/503) is refused before anything streams, so the text coach tries
-        # again briefly, then the fallback model, instead of breaking the owner's turn
-        # (text_model.py, logged); Live reconnects on its own.
-        model = (
-            LiveGemini(
-                model=settings.google_live_model,
-                client_kwargs=client_kwargs,
-                retry_options=types.HttpRetryOptions(attempts=1),
-            )
-            if live
-            else SteadyGemini(
-                model=settings.google_text_model,
+        # Live reconnects on its own. Text retries busy responses and can use the configured
+        # fallback; the optional context cache remains an optimization on Vertex only.
+        model_kwargs: dict[str, Any] = {
+            "model": settings.google_live_model if live else settings.google_text_model,
+            "client_kwargs": client_kwargs,
+            "retry_options": types.HttpRetryOptions(attempts=1),
+        }
+        if live:
+            model = LiveGemini(**model_kwargs)
+        elif uses_gemini_context_cache(settings):
+            model = CachedGemini(
+                **model_kwargs,
                 fallback_model=settings.google_text_fallback_model,
-                client_kwargs=client_kwargs,
-                retry_options=types.HttpRetryOptions(attempts=1),
+                stable_parts=[INSTRUCTION, NEW_SHOP_INSTRUCTION],
+                cache_ttl=settings.gemini_context_cache_ttl_seconds,
             )
-        )
+        else:
+            model = SteadyGemini(
+                **model_kwargs,
+                fallback_model=settings.google_text_fallback_model,
+            )
     # V1 merchants get only the record-backed tools; the classic starter keeps its draft tools.
     tools: list[Callable[..., Any]] = (
         [
@@ -1459,9 +1520,14 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
     return LlmAgent(
         name="business_coach",
         model=model,
-        instruction=turn_instruction if cached else instruction,
+        instruction=turn_instruction if cached else live_instruction if live else instruction,
         static_instruction=INSTRUCTION if cached else None,
-        tools=list(tools),
+        tools=[
+            BackgroundTool(tool, BACKGROUND_TOOLS[tool.__name__])
+            if live and tool.__name__ in BACKGROUND_TOOLS
+            else tool
+            for tool in tools
+        ],
         # Each recorded new-shop answer is saved in the conversation at once (resume = continue).
         after_tool_callback=keep_draft,
         after_model_callback=after_model,

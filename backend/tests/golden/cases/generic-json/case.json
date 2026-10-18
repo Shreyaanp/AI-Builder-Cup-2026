@@ -1,0 +1,8 @@
+{
+  "adapter": "connector",
+  "input": "input.json",
+  "mime": "application/json",
+  "source": "generic-json",
+  "currency": "INR",
+  "notes": "SKU is present in input but unsupported by connector target schema."
+}

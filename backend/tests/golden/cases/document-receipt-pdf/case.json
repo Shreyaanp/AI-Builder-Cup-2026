@@ -1,0 +1,11 @@
+{
+  "adapter": "document",
+  "input": "input.pdf",
+  "processor": "receipt",
+  "mime": "application/pdf",
+  "render": {
+    "title": "RETAIL RECEIPT",
+    "variant": "clean"
+  },
+  "notes": "Tax 5.00 is printed; parser omits tax."
+}

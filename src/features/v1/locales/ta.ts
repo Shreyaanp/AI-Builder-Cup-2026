@@ -334,6 +334,7 @@ export const ta: Copy = {
     'அந்தக் கோப்பைப் படிக்க முடியவில்லை. பொருள் பெயர்களும் விலைகளும் உள்ள CSV அல்லது Excel கோப்பை அனுப்புங்கள்.',
   salesSummary: 'விற்பனைச் சுருக்கம்',
   salesNotSaved: 'உங்கள் கோப்பிலிருந்து. எதுவும் சேமிக்கப்படவில்லை.',
+  salesCurrencyMismatch: 'வேறு நாணய வரிகள் சேர்க்கப்படவில்லை.',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} நாட்கள் · ${from} – ${to}` : 'கோப்பில் தேதிகள் இல்லை',
   topItems: 'அதிகம் விற்பவை',

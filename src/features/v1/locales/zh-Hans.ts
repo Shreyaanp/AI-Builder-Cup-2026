@@ -308,6 +308,7 @@ export const zhHans: Copy = {
   importFailed: '无法读取这个文件。请上传包含品名和价格的 CSV 或 Excel 文件。',
   salesSummary: '销售概览',
   salesNotSaved: '来自你的文件，未保存任何内容。',
+  salesCurrencyMismatch: '已跳过使用其他货币的行。',
   salesRange: (days: number, from: string, to: string) =>
     days ? `${days} 天 · ${from} – ${to}` : '文件里没有日期',
   topItems: '畅销品',
