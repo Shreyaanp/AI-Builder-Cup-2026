@@ -402,7 +402,7 @@ def test_wholesaler_books_the_stall_order_and_restocks_by_csv(world) -> None:
         (
             "singapore",
             "Sunny Side Kopitiam (Demo)",
-            "Katong Wholesale Distributors (Demo)",
+            "Katong Trading (Demo)",
             "Kopi powder",
         ),
     ]:
@@ -460,7 +460,7 @@ def test_tour_chain_follows_one_order_on_seeded_records(app) -> None:  # noqa: F
         _, sg = stories["Asia/Singapore"]
         assert sg["today"]["item"] == "Kopi powder"
         assert sg["order"]["partner"] == "Ah Huat Provision (Demo)"
-        assert sg["wholesaler"]["restock"]["partner"] == "Katong Wholesale Distributors (Demo)"
+        assert sg["wholesaler"]["restock"]["partner"] == "Katong Trading (Demo)"
         assert sg["wholesaler"]["inbound"]["partner"] == "Sunny Side Kopitiam (Demo)"
 
     with TestClient(app) as stranger:
