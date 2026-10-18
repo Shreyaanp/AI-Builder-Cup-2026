@@ -400,7 +400,7 @@ export default function Discover({
         px: 4,
         pt: 1,
         // Leave the final result clear of the sticky Map view action and the home indicator.
-        pb: 'calc(144px + env(safe-area-inset-bottom, 0px))',
+        pb: 'calc(160px + env(safe-area-inset-bottom, 0px))',
         color: roles.onSurface,
         '--customer-spring': motion.easing.spring,
       }}
