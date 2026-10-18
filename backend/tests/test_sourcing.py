@@ -71,6 +71,26 @@ def test_units_and_local_names() -> None:
     assert not sourcing.matches("Sugar", "flour")
 
 
+@pytest.mark.parametrize(
+    ("currency", "total", "expected"),
+    [("INR", 54000, "₹540"), ("SGD", 54050, "S$540.50")],
+)
+def test_supplier_order_message_uses_currency_symbol(
+    currency: str, total: int, expected: str
+) -> None:
+    text = sourcing.order_text(
+        {
+            "shop_name": "Asha Bakery",
+            "lines": [{"quantity": 10, "unit": "kg", "name": "Flour"}],
+            "total": total,
+            "currency": currency,
+            "delivery": "Friday",
+        }
+    )
+    assert expected in text
+    assert f"{currency} 540" not in text
+
+
 def test_no_supplier_nearby_generates_labelled_demo_suppliers_once(ctx) -> None:
     result = asyncio.run(find_suppliers("flour", 20, "kg"))
     assert result["status"] == "found"

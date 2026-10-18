@@ -14,6 +14,7 @@ import {
 import { Camera, FileSpreadsheet, Keyboard, RotateCcw } from 'lucide-react'
 import { formatPrice, shopCurrency, toMinor } from './format'
 import { Sheet } from './Sheet'
+import { AiInfo } from './AiInfo'
 import { track } from '../../app/analytics'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
@@ -79,6 +80,7 @@ export function ImportPanel({
   }
   return (
     <Stack id="import-panel" spacing={2} sx={{ width: '100%', minWidth: 0, mb: 4 }}>
+      <AiInfo feature="photo" inSheet />
       <input
         ref={input}
         type="file"

@@ -323,7 +323,7 @@ export function PickCard({
           <Typography
             variant="bodySmall"
             color="text.secondary"
-            sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}
+            sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, minWidth: 0 }}
           >
             {pick.open_now !== null && (
               <Box
@@ -332,13 +332,15 @@ export function PickCard({
                 sx={{
                   width: 8,
                   height: 8,
+                  mt: 1.5,
                   flexShrink: 0,
                   borderRadius: '50%',
                   bgcolor: pick.open_now ? 'var(--customer-open)' : roles.outline,
                 }}
               />
             )}
-            <Box component="span" sx={oneLine}>
+            {/* Wraps, never an ellipsis: long Tamil/Kannada status words stay whole. */}
+            <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               {[
                 pick.open_now === null ? null : pick.open_now ? ask.openNow : ask.closed,
                 anchor ? fillIn(copy.fromStation, { distance, station: anchor.name }) : distance,

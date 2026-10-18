@@ -1,4 +1,5 @@
 import { carried, pushEntry } from '../../app/history'
+import { AiInfo } from '../v1/AiInfo'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
@@ -786,7 +787,8 @@ export default function AskHome({
                     fontWeight: 500,
                     letterSpacing: '-0.01em',
                     overflowWrap: 'break-word',
-                    ...chalkWrite,
+                    // The clip-reveal is for Latin script only: it left Tamil titles clipped away (#260).
+                    ...(locale === 'en' ? chalkWrite : {}),
                   }
                 : visuallyHidden
             }
@@ -896,6 +898,12 @@ export default function AskHome({
         </Box>
 
         {/* The conversation so far. */}
+        {turns.some(
+          (turn) =>
+            turn.status === 'done' &&
+            (turn.answer?.area?.status === 'ok' ||
+              turn.answer?.groups.some((group) => group.places.some((p) => p.source === 'google'))),
+        ) && <AiInfo feature="places" />}
         <Box sx={{ mt: opening ? 0 : 4, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {turns.map((turn) => (
             <Box
