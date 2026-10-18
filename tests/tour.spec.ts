@@ -39,6 +39,9 @@ test('OB-30: owner tour opens the public demo, then the order story, spotlights 
   await demoNavigation
   const tour = page.locator('#tour-title').locator('..')
   await expect(tour).toContainText('Your shop at a glance', { timeout: 30_000 })
+  // Captain review (#361): the welcome sheet closing as the tour opened left the app aria-hidden,
+  // so screen readers lost the tour. It must stay a named dialog.
+  await expect(page.getByRole('dialog', { name: 'Your shop at a glance' })).toBeVisible()
   await page.waitForTimeout(800)
   // The order story steps carry seeded names and numbers (tests/tour-chain.spec.ts checks them).
   const titles = [
@@ -57,16 +60,16 @@ test('OB-30: owner tour opens the public demo, then the order story, spotlights 
     'Your new shop is ready',
   ]
   for (const [index, title] of titles.entries()) {
-    await tour.locator('button').last().tap()
+    await tour.getByRole('button', { name: 'Next', exact: true }).tap()
     await expect(page.locator('#tour-title')).toContainText(title)
     if (index === 6 || index === 7) {
       await page.waitForTimeout(700)
       await page.screenshot({ path: `docs/stories/T-${index + 2}-spotlight.png` })
     }
   }
-  await tour.locator('button').last().tap()
+  await tour.getByRole('button', { name: 'Next', exact: true }).tap()
   await expect(page.locator('#tour-title')).toContainText('You’re ready')
-  await tour.locator('button').last().tap()
+  await tour.getByRole('button', { name: 'Keep exploring' }).tap()
   await expect(page.locator('#tour-title')).toHaveCount(0)
   expect(privateWorkspacePosts).toEqual([])
 })
