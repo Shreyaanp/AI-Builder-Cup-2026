@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from 'react'
 import type { Auth } from 'firebase/auth'
 import { upgradeGoogle } from '../../auth/upgradeGoogle'
+import { firebaseAppName } from '../../auth/appSide'
+import { clearSession, frontDoor } from '../../auth/clearSession'
 
 export type { Profile } from './types'
 import type { Me, Profile } from './types'
@@ -63,6 +65,7 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
   const [deviceFollows, setDeviceFollows] = useState<string[]>(localFollows)
   const [unread, setUnread] = useState(0)
   const firebase = useRef<Firebase | null>(null)
+  const ending = useRef(false)
 
   const raw = useCallback(async (path: string, init: RequestInit = {}) => {
     const headers = new Headers(init.headers)
@@ -86,6 +89,7 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
   const load = useCallback(async () => {
     try {
       const me = await api<Me>('/api/v1/customer/me')
+      if (ending.current) return
       if ((me.signed_in || me.guest) && me.profile) {
         // Follows made on this device before signing in move into the account.
         const pending = localFollows().filter((id) => !me.profile!.follows.includes(id))
@@ -144,7 +148,7 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
           import('firebase/auth'),
         ])
         if (abort.signal.aborted) return
-        const appName = `ogoogle-web-${config.projectId}`
+        const appName = firebaseAppName('customer', config.projectId)
         const app =
           appSdk.getApps().find((candidate) => candidate.name === appName) ??
           appSdk.initializeApp(config, appName)
@@ -157,7 +161,7 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
           signOut: () => authSdk.signOut(auth),
         }
         unsubscribe = authSdk.onIdTokenChanged(auth, (user) => {
-          if (abort.signal.aborted) return
+          if (abort.signal.aborted || ending.current) return
           if (user) void load()
           else if (value.features?.guest_customer) {
             void authSdk.signInAnonymously(auth).catch(() => {
@@ -206,14 +210,20 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
   }, [api, load, mode])
 
   const signOut = useCallback(async () => {
+    ending.current = true
     try {
       if (mode === 'firebase') await firebase.current?.signOut()
       else await api('/api/v1/customer/session', { method: 'DELETE' })
-    } finally {
+      await clearSession('customer')
       setProfile(null)
+      setDeviceFollows([])
       setName('')
       setUnread(0)
       setStatus('signed-out')
+      frontDoor('customer')
+    } catch {
+      ending.current = false
+      setError('unfinished')
     }
   }, [api, mode])
 

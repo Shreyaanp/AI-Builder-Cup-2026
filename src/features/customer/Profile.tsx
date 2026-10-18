@@ -15,12 +15,12 @@ import {
 import { SeeAgain } from '../first-run/FirstRun'
 import { History, UserRound } from 'lucide-react'
 import { Sheet } from '../v1/Sheet'
+import { useTabsCopy } from '../v1/tabsCopy'
 import { HoverTip } from '../frontdoors/HoverTip'
 import { useCustomer } from './account'
 import { PrivacyLinks } from './PrivacyLinks'
 import type { Profile } from './types'
 import { useLocale } from '../../state/hooks'
-import { TourStoryButton } from './TourStoryButton'
 import { useAccountCopy } from './copy'
 import { SignInButton } from './SignIn'
 import { preferenceChips } from './preferences'
@@ -86,6 +86,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
   const roles = useTheme().material
   const account = useCustomer()
   const t = useAccountCopy()
+  const tabs = useTabsCopy()
   const locale = useLocale()
   // A deletion the server refused is said out loud, with a way to try it again.
   const [notice, setNotice] = useState<{
@@ -134,7 +135,12 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
   }
   return (
     <Sheet open={open} onClose={onClose} titleId="customer-profile-title" title={t.profile}>
-      <SeeAgain app="customer" />
+      <Box component="section" aria-label={tabs.help}>
+        <Typography component="h2" variant="titleSmall">
+          {tabs.help}
+        </Typography>
+        <SeeAgain app="customer" />
+      </Box>
       {account.status !== 'signed-in' && account.status !== 'guest' ? (
         <Stack spacing={3}>
           <Typography variant="bodyLarge">{t.signInBody}</Typography>
@@ -159,7 +165,6 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
           </Stack>
           <PrivacyLinks />
           <Divider />
-          <TourStoryButton onReady={onClose} />
           <Box>
             <Typography variant="titleSmall" component="h3">
               {t.preferences}

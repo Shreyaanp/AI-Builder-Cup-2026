@@ -7,6 +7,8 @@
  *
  * Every pushState/replaceState in the app goes through pushEntry/replaceEntry.
  */
+import { sideKey } from '../auth/appSide'
+
 export interface EntryState {
   /** Names this entry's sessionStorage (readEntry/writeEntry). */
   key?: string
@@ -20,7 +22,7 @@ export interface EntryState {
   [field: string]: unknown
 }
 
-const PREFIX = 'chalkboard.entry.'
+const PREFIX = sideKey('entry.')
 // The newest entries' stored state is kept; older ones are dropped.
 const MAX_STORED = 30
 

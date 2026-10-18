@@ -15,17 +15,21 @@ import { useIdentity } from '../auth/useIdentity'
 import { isLanguagePref, resolveLocale } from '../i18n/locales'
 import { loadScriptFont } from '../i18n/fonts'
 import { configureAnalytics, watchRouteChanges } from './analytics'
+import { sideKey } from '../auth/appSide'
 
 /** Kept apart from the preferences object, which older code and tests overwrite whole. */
-const LANGUAGE_CHOSEN = 'niva.language.chosen'
+const LANGUAGE_CHOSEN = sideKey('language.chosen')
+const PREFERENCES = sideKey('preferences')
 
 function readPreferences(): Preferences {
   let saved: Partial<Preferences> = {}
   let chosen = false
   try {
-    chosen = localStorage.getItem(LANGUAGE_CHOSEN) === '1'
+    chosen =
+      (localStorage.getItem('niva.language.chosen') ?? localStorage.getItem(LANGUAGE_CHOSEN)) ===
+      '1'
     saved = JSON.parse(
-      localStorage.getItem('niva.starter.preferences') || '{}',
+      localStorage.getItem('niva.starter.preferences') ?? localStorage.getItem(PREFERENCES) ?? '{}',
     ) as Partial<Preferences>
   } catch {
     /* Storage may be disabled. */
@@ -87,10 +91,13 @@ function Providers({
     void loadScriptFont(locale)
     try {
       localStorage.setItem(
-        'niva.starter.preferences',
+        PREFERENCES,
         JSON.stringify({ language: preferences.language, appearance: preferences.appearance }),
       )
       if (preferences.languageChosen) localStorage.setItem(LANGUAGE_CHOSEN, '1')
+      // Migrate only nonpersonal display preferences; never copy identity or app data.
+      localStorage.removeItem('niva.starter.preferences')
+      localStorage.removeItem('niva.language.chosen')
     } catch {
       /* App remains usable without storage. */
     }
