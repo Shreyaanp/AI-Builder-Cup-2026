@@ -86,6 +86,7 @@ from .pos_live_routes import router as pos_live_router
 from .public_demo import router as public_demo_router
 from .recap import RecapWriter
 from .recs_routes import router as recs_router
+from .reminders import router as reminders_router
 from .replay import FirestoreTurns, RemoteTurn, ReplayStore, TurnReplay
 from .reply_language import reply_language
 from .retail_recs import (
@@ -309,6 +310,7 @@ def create_app(
     app.include_router(sourcing_router)
     app.include_router(supply_router)
     app.include_router(owner_router)
+    app.include_router(reminders_router)
     app.include_router(trust_router)
     app.add_middleware(
         CORSMiddleware,

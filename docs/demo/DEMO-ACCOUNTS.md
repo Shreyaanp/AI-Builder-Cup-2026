@@ -9,10 +9,10 @@ Money is stored in minor units: Masala chai `2000` shows as ₹20.00, Kopi `170`
 
 ## 1. Which login, which button
 
-| Use | Login | Where |
-|---|---|---|
-| Owner video | Google sign-in as `shreyaan.9it@gmail.com` (UID `gGvGP8eVQeM7UM3DUKLCpYpIRnT2`) | `https://chalkboard.shreyaan.work/` |
-| Customer video, anonymous | none | `https://chalkboard.shreyaan.work/explore` |
+| Use                       | Login                                                                           | Where                                      |
+| ------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------ |
+| Owner video               | Google sign-in as `shreyaan.9it@gmail.com` (UID `gGvGP8eVQeM7UM3DUKLCpYpIRnT2`) | `https://chalkboard.shreyaan.work/`        |
+| Customer video, anonymous | none                                                                            | `https://chalkboard.shreyaan.work/explore` |
 
 Production does not build tour shops on tap. `POST /api/v1/demo/workspace` returns 409
 ("The owner has not prepared this demo account yet") unless the shops already exist, so only
@@ -21,12 +21,12 @@ other account is not.
 
 The owner account now holds four shops (switch under You → Your shops):
 
-| Shop | Business ID | Why it is there |
-|---|---|---|
-| Lantern Chai Corner (Demo) (Tour) | `5e2f910d-36e2-5036-91f2-f8000a5ad94a` | Bengaluru tour shop, INR, private |
-| Sunny Side Kopitiam (Demo) (Tour) | `d99fb68c-2940-5f1f-84c8-197de71b73a1` | Singapore tour shop, SGD, private |
-| Sunny Side Kopitiam (Demo) | `demo-katong-kopitiam` | Singapore supply-chain showcase (public) |
-| Courtyard Filter House (Demo) | `demo-bengaluru-indiranagar-coffee` | Bengaluru supply-chain showcase (public) |
+| Shop                              | Business ID                            | Why it is there                          |
+| --------------------------------- | -------------------------------------- | ---------------------------------------- |
+| Lantern Chai Corner (Demo) (Tour) | `5e2f910d-36e2-5036-91f2-f8000a5ad94a` | Bengaluru tour shop, INR, private        |
+| Sunny Side Kopitiam (Demo) (Tour) | `d99fb68c-2940-5f1f-84c8-197de71b73a1` | Singapore tour shop, SGD, private        |
+| Sunny Side Kopitiam (Demo)        | `demo-katong-kopitiam`                 | Singapore supply-chain showcase (public) |
+| Courtyard Filter House (Demo)     | `demo-bengaluru-indiranagar-coffee`    | Bengaluru supply-chain showcase (public) |
 
 Tour button: **You → Help → Take the tour**. The first-run offer card says "See it working
 first" with a "Take the tour" button; a brand-new shop screen offers the same. The tour picks the
@@ -44,18 +44,18 @@ Bottom tabs: Coach, Shop, Grow, You.
 
 Both worlds have the same shape.
 
-| | Bengaluru: Lantern Chai Corner | Singapore: Sunny Side Kopitiam |
-|---|---|---|
-| Currency, zone | INR, Asia/Kolkata | SGD, Asia/Singapore |
-| Sales | 56 days (2026-08-23 to 2026-10-17), 336 rows, about ₹3.17 lakh | 56 days, 336 rows, about S$27,366 |
-| Menu | Masala chai ₹20/cup, Ginger chai ₹25/cup, Bun maska ₹35, Samosa ₹20, Tea leaves ₹320/kg, Ragi biscuit ₹15 (sold out) | Kopi S$1.70, Kopi O S$1.50, Kaya toast set S$5.20, Soft-boiled eggs S$1.80, Coffee beans S$18/kg, Curry puff S$1.80 (sold out) |
-| Customer chats | 3: Priya unread, Wei and Asha replied | same 3 |
-| Reviews | 2 (4.5 average), marked Demo | same |
-| Rescue deal (today) | Bun maska ₹24.50, was ₹35, 6 left | Kaya toast set S$3.64, was S$5.20, 6 left |
-| Prep plan / playbook | stored offline playbook | same |
-| Purchase order | PO 4500000001, 10 kg Tea leaves from Lantern Tea Wholesale (Demo), ₹2,240, status invoiced, goods not received | PO 4500000001, 10 kg Coffee beans from Dawn Bean Supply (Demo), S$126, status invoiced, goods not received |
-| PO documents | ORDERS, ORDRSP, DESADV, INVOIC | same |
-| Gallery | 1 photo | 1 photo |
+|                      | Bengaluru: Lantern Chai Corner                                                                                       | Singapore: Sunny Side Kopitiam                                                                                                 |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Currency, zone       | INR, Asia/Kolkata                                                                                                    | SGD, Asia/Singapore                                                                                                            |
+| Sales                | 56 days (2026-08-23 to 2026-10-17), 336 rows, about ₹3.17 lakh                                                       | 56 days, 336 rows, about S$27,366                                                                                              |
+| Menu                 | Masala chai ₹20/cup, Ginger chai ₹25/cup, Bun maska ₹35, Samosa ₹20, Tea leaves ₹320/kg, Ragi biscuit ₹15 (sold out) | Kopi S$1.70, Kopi O S$1.50, Kaya toast set S$5.20, Soft-boiled eggs S$1.80, Coffee beans S$18/kg, Curry puff S$1.80 (sold out) |
+| Customer chats       | 3: Priya unread, Wei and Asha replied                                                                                | same 3                                                                                                                         |
+| Reviews              | 2 (4.5 average), marked Demo                                                                                         | same                                                                                                                           |
+| Rescue deal (today)  | Bun maska ₹24.50, was ₹35, 6 left                                                                                    | Kaya toast set S$3.64, was S$5.20, 6 left                                                                                      |
+| Prep plan / playbook | stored offline playbook                                                                                              | same                                                                                                                           |
+| Purchase order       | PO 4500000001, 10 kg Tea leaves from Lantern Tea Wholesale (Demo), ₹2,240, status invoiced, goods not received       | PO 4500000001, 10 kg Coffee beans from Dawn Bean Supply (Demo), S$126, status invoiced, goods not received                     |
+| PO documents         | ORDERS, ORDRSP, DESADV, INVOIC                                                                                       | same                                                                                                                           |
+| Gallery              | 1 photo                                                                                                              | 1 photo                                                                                                                        |
 
 Eight Bengaluru and five Singapore public tour shops exist as well (ids `demo-story-*`, owner
 `chalkboard-tour-story-owner`), plus two suppliers, so Explore and the stamp passport have
@@ -80,6 +80,7 @@ sold-out flag. Tap a price to edit; nothing changes until confirmed.
 
 **Grow tab.** Tiles in this order (the playbook may reorder): prep plan, close the day, orders,
 supply, plan, rescue, radar, payments, Google, Stamps & perks, week, recap. Showable data:
+
 - Prep plan: a forecast from the 56 sales days.
 - Close the day: 8 weeks of per-item sales behind it.
 - Rescue: the live rescue deal above.
@@ -95,12 +96,12 @@ reseed will not undo (the seed never overwrites an existing PO).
 `Sunny Side Kopitiam (Demo)` (SGD) or `Courtyard Filter House (Demo)` (INR), then Grow →
 Purchase orders. Two orders each:
 
-| | Order 1 | Order 2 |
-|---|---|---|
-| Partner | Sunrise Supply (Demo), JSON | Harbour Trade (Demo), IDoc |
-| SGD shop | 4500091500, 15 Kopi at S$1.70 = S$20.40, status received | 4500091501, 16 Kopi O at S$1.50 = S$24.00, status confirmed |
-| INR shop | 4500091400, 15 Filter coffee at ₹60 = ₹720, status received | 4500091401, 16 Masala chai at ₹35 = ₹560, status confirmed |
-| Documents | FORECAST (received), ORDERS, ORDER_CHANGE (quantity and date, processed), RECEIPT (sent) | ORDERS, DESADV (pending) |
+|           | Order 1                                                                                  | Order 2                                                     |
+| --------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Partner   | Sunrise Supply (Demo), JSON                                                              | Harbour Trade (Demo), IDoc                                  |
+| SGD shop  | 4500091500, 15 Kopi at S$1.70 = S$20.40, status received                                 | 4500091501, 16 Kopi O at S$1.50 = S$24.00, status confirmed |
+| INR shop  | 4500091400, 15 Filter coffee at ₹60 = ₹720, status received                              | 4500091401, 16 Masala chai at ₹35 = ₹560, status confirmed  |
+| Documents | FORECAST (received), ORDERS, ORDER_CHANGE (quantity and date, processed), RECEIPT (sent) | ORDERS, DESADV (pending)                                    |
 
 Order 1 shows the full inbound loop: partner forecast, order, a change, goods receipt. Order 2
 shows an open order waiting for its advance ship notice.
@@ -110,17 +111,18 @@ each showcase shop (SGD and INR), Grow → Supply chain opens four screens: Need
 in, Received, Must send. Data per shop, all synthetic and labelled Demo, pushed through the real
 inbound pipeline:
 
-| Tap | What you should see |
-|---|---|
-| Inbound: Coming in / Received | Order SO-SGD-2210 (SGD) or SO-INR-2210 (INR) from Sunrise Supply (Demo), JSON, goods receipt sent, status closed. Orders 4500091500 and 4500091501 (INR: 4500091400, 4500091401) as in the table above. |
-| Inbound: partner documents | Inbox of 4 entries: FORECAST 5500000301, ORDERS 4700001201, ORDER_CHANGE 4700001202 (Harbour Café (Demo), SAP IDoc) and ORDERS SO-…-2210 (Sunrise Supply, JSON). |
-| Outbound: Must send | Order 4700001201 (shop ships to Harbour Café): shipping notice DESADV prepared, not yet sent. Tap it for the preview, "View as SAP" for the DELVRY07 document. |
-| Order timeline | Open any order: Created → Changed → Shipped → Received → Closed. 4700001201 shows Changed (the change was accepted). SO-…-2210 shows Received and Closed. |
-| Close the day | Grow → Close the day shows "Before you close: 2 not sent" (the DESADV for 4700001201 and the goods receipt for 4500091500, INR 4500091400) with Send all. After Send all it shows "Everything is sent"; reseed to bring it back. |
-| "Partner sends next document (demo)" | Plays forecast → order → change on a demo shop. Once all three are in, it answers DEMO_DONE. |
-| Coach chat | Try "show inbound", or "received everything except 5 milk" on an order awaiting receipt; a supply card appears. |
+| Tap                                  | What you should see                                                                                                                                                                                                              |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Inbound: Coming in / Received        | Order SO-SGD-2210 (SGD) or SO-INR-2210 (INR) from Sunrise Supply (Demo), JSON, goods receipt sent, status closed. Orders 4500091500 and 4500091501 (INR: 4500091400, 4500091401) as in the table above.                          |
+| Inbound: partner documents           | Inbox of 4 entries: FORECAST 5500000301, ORDERS 4700001201, ORDER_CHANGE 4700001202 (Harbour Café (Demo), SAP IDoc) and ORDERS SO-…-2210 (Sunrise Supply, JSON).                                                                 |
+| Outbound: Must send                  | Order 4700001201 (shop ships to Harbour Café): shipping notice DESADV prepared, not yet sent. Tap it for the preview, "View as SAP" for the DELVRY07 document.                                                                   |
+| Order timeline                       | Open any order: Created → Changed → Shipped → Received → Closed. 4700001201 shows Changed (the change was accepted). SO-…-2210 shows Received and Closed.                                                                        |
+| Close the day                        | Grow → Close the day shows "Before you close: 2 not sent" (the DESADV for 4700001201 and the goods receipt for 4500091500, INR 4500091400) with Send all. After Send all it shows "Everything is sent"; reseed to bring it back. |
+| "Partner sends next document (demo)" | Plays forecast → order → change on a demo shop. Once all three are in, it answers DEMO_DONE.                                                                                                                                     |
+| Coach chat                           | Try "show inbound", or "received everything except 5 milk" on an order awaiting receipt; a supply card appears.                                                                                                                  |
 
 Caveats found while reseeding:
+
 - The Inbox and Tasks lists mark ORDERS 4700001201 and SO-…-2210 as status "problem". Open one
   to see what the shop says before filming.
 - Orders 4500091400/01 and 4500091500/01 (seeded before this release) had documents without an
@@ -140,6 +142,7 @@ that already exist, or upload a till report photo under Grow → Close the day.
 
 **Customer app (no login).** `https://chalkboard.shreyaan.work/explore`, allow location or pick
 a place:
+
 - Bengaluru: search near Indiranagar (12.9688, 77.6382). First hit: Lantern Chai Corner (Demo),
   0 m, "Demo shop" chip, Ragi biscuit shown as sold out.
 - Singapore: near Katong (1.3050, 103.9050). First hit: Sunny Side Kopitiam (Demo), 60 m.
