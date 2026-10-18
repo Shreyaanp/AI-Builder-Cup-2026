@@ -21,6 +21,7 @@ import { FlowVideo, TrustTags } from './HowItWorks'
 import { LanguagePicker } from './LanguagePicker'
 import { pagesCopyFor, type PagesCopy } from './howItWorksCopy'
 import './landing-v2.css'
+import './landing-v2-desktop.css'
 
 const businessUrl = 'https://business.chalkboard.shreyaan.work'
 const demoUrl = `${businessUrl}/demo`
@@ -315,6 +316,15 @@ export default function LandingV2({ preview = false }: { preview?: boolean }) {
             <div ref={hero}>
               <Actions t={t} />
             </div>
+          </div>
+          {/* Wide screens only: two moments from the story beside the headline. */}
+          <div className="l2-hero-visual" aria-hidden="true">
+            {t.story.slice(0, 2).map(([stop, line]) => (
+              <p key={stop}>
+                <span>{stop}</span>
+                <strong>{line}</strong>
+              </p>
+            ))}
           </div>
         </section>
 
