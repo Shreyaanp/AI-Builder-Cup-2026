@@ -81,7 +81,6 @@ async function hindiOnly(page: Page, label: string) {
 const tab = (page: Page, name: string) =>
   page.getByRole('navigation', { name: 'मुख्य मेन्यू' }).getByRole('button', { name, exact: true })
 
-// Skipped: fails on every open PR; another job owns the fix.
 test('Hindi phone sweep: supply, reminders, onboarding, tour and demo', async ({ page }) => {
   test.setTimeout(150_000)
   await localOnly(page)
