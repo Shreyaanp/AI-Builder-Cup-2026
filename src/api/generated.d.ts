@@ -10026,6 +10026,7 @@ export interface operations {
             query: {
                 name: string;
                 width?: number;
+                sig?: string;
             };
             header?: never;
             path?: never;
