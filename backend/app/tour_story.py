@@ -46,7 +46,10 @@ def history(demo: DemoShop, day: date) -> list[dict[str, Any]]:
     for row in rows:
         product = products[row["item"]]
         if product.unit == "kg":
-            row["quantity"] = round(row["quantity"] / 20, 1)
+            # Six-week sales stay stable per shop/date. A busy chai stall or kopitiam uses about
+            # 2.5 kg of tea dust or kopi powder each day (OB-62); other kilos keep their scale.
+            divisor = 6.5 if product.name in ("Tea dust", "Kopi powder") else 20
+            row["quantity"] = round(row["quantity"] / divisor, 1)
         elif product.unit == "cup":
             row["quantity"] *= 3
         row["revenue"] = round(row["quantity"] * product.price)
