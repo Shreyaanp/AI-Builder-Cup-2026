@@ -28,9 +28,7 @@ async function noSideScroll(page: Page) {
 
 for (const size of PHONES) {
   test.describe(`${size.width}px`, () => {
-    test.beforeEach((_fixtures, info) =>
-      test.skip(info.project.name !== 'phone', 'phone project only'),
-    )
+    test.beforeEach(() => test.skip(test.info().project.name !== 'phone', 'phone project only'))
 
     test('OB-80 the tour card keeps Skip, Back and Next on one row at every step', async ({
       page,
