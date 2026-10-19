@@ -201,3 +201,109 @@ def test_ask_stream_emits_instant_and_complete_events(
         assert "event: instant" in text
         assert "event: complete" in text
         assert bid in text
+
+
+def test_ob_97_ask_stream_reads_shops_once_and_overlaps_slow_lookups(
+    store: MerchantRepository, tmp_path: Path, monkeypatch
+) -> None:
+    """OB-97: Ask took ~8 s. Slow shop reads ran three times, then the model call, then the
+    places lookup, one after another. Mocked providers with fixed delays pin the timing."""
+    import asyncio
+    import time
+
+    from app import discover_ask
+
+    shared_shop(store)
+    reads: list[float] = []
+    real_shared = store.shared_shops
+
+    def slow_shared() -> list:
+        reads.append(time.monotonic())
+        time.sleep(0.3)
+        return real_shared()
+
+    monkeypatch.setattr(store, "shared_shops", slow_shared)
+
+    spans: dict[str, tuple[float, float]] = {}
+
+    async def slow_model(request, body):
+        start = time.monotonic()
+        for word in ("Coffee", "near", "you"):
+            await asyncio.sleep(0.25)
+            yield word + " "
+        spans["model"] = (start, time.monotonic())
+        yield keyword_intent(body.q).model_copy(update={"summary": "Coffee near you"})
+
+    monkeypatch.setattr(discover_ask, "ai_intent_stream", slow_model)
+
+    real_places = discover_ask.query_google_places
+
+    async def slow_places(*args, **kwargs):
+        start = time.monotonic()
+        await asyncio.sleep(0.6)
+        found = await real_places(*args, **kwargs)
+        spans["places"] = (start, time.monotonic())
+        return found
+
+    monkeypatch.setattr(discover_ask, "query_google_places", slow_places)
+
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        app.state.merchant = store
+        app.state.v1_settings = app.state.v1_settings.model_copy(update={"coach_mode": "gemini"})
+        began = time.monotonic()
+        response = client.post(
+            "/api/v1/discover/ask",
+            json={"q": "kopi", **TIONG_BAHRU},
+            headers={"Accept": "text/event-stream"},
+        )
+        elapsed = time.monotonic() - began
+    assert response.status_code == 200
+    text = response.text
+    assert "event: instant" in text and "event: delta" in text and "event: complete" in text
+    assert text.index("event: instant") < text.index("event: complete")
+    # The shop list is read once per ask, not once per step.
+    assert len(reads) == 1, len(reads)
+    # The places lookup runs beside the model call, not after it.
+    (m0, m1), (p0, p1) = spans["model"], spans["places"]
+    assert p0 < m1 and m0 < p1, "places lookup and model call must overlap"
+    # Serial: 0.3 + 0.6 + 0.75 = 1.65 s of waits. Overlapped: about 1.05 s.
+    assert elapsed < 1.5, elapsed
+
+
+def test_ob_97_firestore_shared_shops_is_cached_and_refreshes_in_background(monkeypatch) -> None:
+    """OB-97: reading every shop's menu one by one cost seconds on each Ask."""
+    import threading
+    import time
+
+    from app import merchant_firestore
+    from app.merchant_firestore import FirestoreMerchantStore
+
+    store = object.__new__(FirestoreMerchantStore)
+    store.shared_lock = threading.Lock()
+    store.shared_cache = None
+    store.shared_loading = False
+    loads: list[int] = []
+
+    def load() -> list[dict]:
+        loads.append(1)
+        time.sleep(0.2)
+        return [{"id": f"shop-{len(loads)}"}]
+
+    monkeypatch.setattr(store, "load_shared_shops", load)
+    assert store.shared_shops()[0]["id"] == "shop-1"
+    began = time.monotonic()
+    assert store.shared_shops()[0]["id"] == "shop-1"  # warm: no second read
+    assert time.monotonic() - began < 0.1 and len(loads) == 1
+
+    monkeypatch.setattr(merchant_firestore, "SHARED_FRESH_SECONDS", 0.0)
+    began = time.monotonic()
+    assert store.shared_shops()[0]["id"] == "shop-1"  # stale copy now, refresh behind it
+    assert time.monotonic() - began < 0.1
+    for _ in range(50):
+        if len(loads) == 2 and not store.shared_loading:
+            break
+        time.sleep(0.02)
+    assert len(loads) == 2
+    store.forget_shared()
+    assert store.shared_cache is None

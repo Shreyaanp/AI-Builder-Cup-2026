@@ -6,12 +6,14 @@ on a revision, a proposal digest or a single-use challenge runs in one Firestore
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import re
 import secrets
 import time
-from threading import Lock
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock, Thread
 from typing import Any, cast
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
@@ -50,6 +52,8 @@ from .stock_alerts import (
 from .threads import change_thread, contact_hash, new_thread
 from .vendor_profile import migrate_profile
 
+SHARED_FRESH_SECONDS = 20.0
+
 
 def document_id(value: str | None, missing: str) -> str:
     """Only server-generated UUIDs may name documents; reject paths and arbitrary strings.
@@ -81,6 +85,9 @@ class FirestoreMerchantStore:
         # still enforce deduplication and sharing across independent server processes.
         self.inquiry_lock = Lock()
         self.stock_alert_lock = Lock()
+        self.shared_lock = Lock()
+        self.shared_cache: tuple[float, list[dict[str, Any]]] | None = None
+        self.shared_loading = False
 
     def person_ref(self, uid: str) -> Any:
         return self.people.document(hashlib.sha256(uid.encode()).hexdigest())
@@ -468,13 +475,47 @@ class FirestoreMerchantStore:
         ref = self.businesses.document(document_id(bid, "Business not found."))
         self.owned(ref.get(), uid)
         ref.update({"public": public})
+        self.forget_shared()
         return {"business_id": ref.id, "public": public}
 
     def shared_shops(self) -> list[dict[str, Any]]:
-        from google.cloud.firestore_v1.base_query import FieldFilter
+        """Every shared shop. Served from a short-lived copy (OB-97): reading each shop's menu
+        one by one took seconds on every Ask. A stale copy is returned at once while a fresh one
+        loads in the background, so a request almost never waits on Firestore."""
+        now = time.monotonic()
+        with self.shared_lock:
+            held = self.shared_cache
+            if held is not None and now - held[0] < SHARED_FRESH_SECONDS:
+                return copy.deepcopy(held[1])
+            if held is not None and not self.shared_loading:
+                self.shared_loading = True
+                Thread(target=self.refresh_shared, daemon=True).start()
+            if held is not None:
+                return copy.deepcopy(held[1])
+        return copy.deepcopy(self.refresh_shared())
 
-        rows = self.businesses.where(filter=FieldFilter("public", "==", True)).stream()
-        return [shop for row in rows if (shop := self.public_shop(row.id)) is not None]
+    def refresh_shared(self) -> list[dict[str, Any]]:
+        try:
+            shops = self.load_shared_shops()
+            with self.shared_lock:
+                self.shared_cache = (time.monotonic(), shops)
+            return shops
+        finally:
+            with self.shared_lock:
+                self.shared_loading = False
+
+    def forget_shared(self) -> None:
+        with self.shared_lock:
+            self.shared_cache = None
+
+    def load_shared_shops(self) -> list[dict[str, Any]]:
+        rows = list(self.businesses.where(filter=FieldFilter("public", "==", True)).stream())
+
+        def one(row: Any) -> dict[str, Any] | None:
+            return self.shop_view(row.reference, row.to_dict())
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            return [shop for shop in pool.map(one, rows) if shop is not None]
 
     def seed_demo_shop(
         self,
@@ -584,7 +625,9 @@ class FirestoreMerchantStore:
         except HTTPException:
             return None
         snapshot = ref.get()
-        data = snapshot.to_dict() if snapshot.exists else None
+        return self.shop_view(ref, snapshot.to_dict() if snapshot.exists else None)
+
+    def shop_view(self, ref: Any, data: dict[str, Any] | None) -> dict[str, Any] | None:
         if not data or not data.get("public"):
             return None
         rows = [s.to_dict() or {} for s in ref.collection("inventory").limit(500).stream()]

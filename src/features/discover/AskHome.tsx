@@ -325,8 +325,8 @@ export default function AskHome({
       update(turn.id, { status: 'thinking' })
 
       try {
-        // Allow the live status line and skeleton result cards to render
-        await new Promise((resolve) => setTimeout(resolve, 150))
+        // One frame for the status line and skeleton cards to render (it was 150 ms of dead time)
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
         if (controller.signal.aborted) {
           update(turn.id, { status: 'stopped' })
           return
