@@ -1,8 +1,8 @@
 import { alpha, createTheme, darken } from '@mui/material/styles'
 import type { CSSProperties } from 'react'
-import { FONT_STACK } from '../i18n/fonts'
-import { chalkDust, chalkRoles, chalkTones } from './chalkboard'
-import type { ChalkTone, FeatureKey } from './chalkboard'
+import { FONT_STACK } from '../i18n/fonts.js'
+import { chalkDust, chalkRoles, chalkTones } from './chalkboard.js'
+import type { ChalkTone, FeatureKey } from './chalkboard.js'
 
 export type Appearance = 'light' | 'dark'
 /** Owner tools stay calm; the customer app gets the full chalk energy (owner decision). */

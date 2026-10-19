@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('Try the demo shop flow on phone (390px)', () => {
   // Skipped: fails on every open PR; another job owns the fix.
-  test.fixme('unauthenticated visitor opens /demo, inspects demo shop, browses shops, and exits demo', async ({
+  test('unauthenticated visitor opens /demo, inspects demo shop, browses shops, and exits demo', async ({
     page,
   }) => {
     test.setTimeout(90_000)
