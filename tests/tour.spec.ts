@@ -23,26 +23,21 @@ test('guided tour: demo shop is created, the order story, then the spotlights, t
   await expect(tour).toBeVisible({ timeout: 30_000 })
   await page.waitForTimeout(800)
   await page.screenshot({ path: 'docs/stories/T-1-shop.png' })
-  // The order story steps carry seeded names and numbers (tests/tour-chain.spec.ts checks them).
+  // OB-51: seven real steps, each lighting a real element (tests/tour-real-steps.spec.ts checks
+  // the geometry; tests/tour-chain.spec.ts checks the seeded numbers on the first two).
   const titles = [
     /runs out/,
     'The AI drafts the order',
-    'It lands at the wholesaler',
-    'A big chain does it in SAP',
-    'Goods arrive',
-    'Customers come back',
+    'Tomorrow’s prep plan',
     'Your menu, by category',
     'Close the day in a minute',
     'Just talk or type',
-    'Get on Google, guided',
-    'Import sales or menu (Excel, photo, notes)',
-    'Get your first customers',
-    'Your new shop is ready',
   ]
   for (const [index, title] of titles.entries()) {
     await page.getByRole('button', { name: 'Next', exact: true }).tap()
     await expect(page.getByRole('dialog', { name: title })).toBeVisible()
-    if (index === 6 || index === 7) {
+    await expect(page.locator('[data-tour="feature"]')).toHaveCount(0)
+    if (index === 3 || index === 4) {
       await page.waitForTimeout(700)
       await page.screenshot({ path: `docs/stories/T-${index + 2}-spotlight.png` })
     }
