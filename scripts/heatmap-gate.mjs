@@ -30,7 +30,7 @@ if (process.argv.includes('--update')) {
   const merged = Object.fromEntries(
     Object.entries({ ...baseline, ...current }).sort(([a], [b]) => a.localeCompare(b)),
   )
-  writeFileSync(baselinePath, JSON.stringify(merged, null, 1) + '\n')
+  writeFileSync(baselinePath, JSON.stringify(merged, null, 2) + '\n')
   console.log(`Baseline updated: ${Object.keys(current).length} screens.`)
   process.exit(0)
 }
