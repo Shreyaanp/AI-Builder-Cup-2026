@@ -1,36 +1,36 @@
 {
   "ask-desktop-dark": {
-    "marks": 61,
-    "accentFamilies": 1,
+    "marks": 60,
+    "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "ask-desktop-light": {
-    "marks": 61,
+    "marks": 60,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "ask-followup-desktop-dark": {
-    "marks": 69,
+    "marks": 74,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "ask-followup-desktop-light": {
-    "marks": 69,
+    "marks": 74,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "ask-followup-phone-dark": {
-    "marks": 64,
+    "marks": 66,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "ask-followup-phone-light": {
-    "marks": 64,
+    "marks": 66,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
@@ -48,37 +48,37 @@
     "contrastIssues": 0
   },
   "ask-results-desktop-dark": {
-    "marks": 65,
+    "marks": 68,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "ask-results-desktop-light": {
-    "marks": 65,
+    "marks": 68,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "ask-results-phone-dark": {
-    "marks": 60,
+    "marks": 62,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "ask-results-phone-light": {
-    "marks": 60,
+    "marks": 62,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "ask-today-desktop-dark": {
-    "marks": 46,
+    "marks": 47,
     "accentFamilies": 3,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "ask-today-desktop-light": {
-    "marks": 46,
+    "marks": 47,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
@@ -96,13 +96,13 @@
     "contrastIssues": 0
   },
   "browse-desktop-dark": {
-    "marks": 67,
+    "marks": 68,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "browse-desktop-light": {
-    "marks": 67,
+    "marks": 68,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
@@ -144,13 +144,13 @@
     "contrastIssues": 0
   },
   "chats-desktop-dark": {
-    "marks": 22,
+    "marks": 23,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "chats-desktop-light": {
-    "marks": 22,
+    "marks": 23,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
@@ -168,13 +168,13 @@
     "contrastIssues": 0
   },
   "passport-desktop-dark": {
-    "marks": 46,
+    "marks": 47,
     "accentFamilies": 3,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "passport-desktop-light": {
-    "marks": 46,
+    "marks": 47,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
@@ -192,13 +192,13 @@
     "contrastIssues": 0
   },
   "saved-desktop-dark": {
-    "marks": 26,
+    "marks": 27,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "saved-desktop-light": {
-    "marks": 26,
+    "marks": 27,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
@@ -264,13 +264,13 @@
     "contrastIssues": 0
   },
   "welcome-desktop-dark": {
-    "marks": 67,
+    "marks": 66,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "welcome-desktop-light": {
-    "marks": 67,
+    "marks": 66,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
