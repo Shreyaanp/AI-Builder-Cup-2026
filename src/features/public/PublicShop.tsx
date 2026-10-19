@@ -700,8 +700,8 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         px: 4,
         // Phones: the photo runs to the screen's top edge, under the status bar.
         pt: { xs: 0, sm: 'calc(16px + env(safe-area-inset-top))' },
-        // Room for the pinned chat bar (prevents occlusion at 200% font zoom).
-        pb: previewApi ? 4 : 'calc(148px + env(safe-area-inset-bottom))',
+        // Clear the full fixed chat dock and the phone safe area at the end of the page.
+        pb: previewApi ? 4 : 'calc(240px + env(safe-area-inset-bottom))',
       }}
     >
       {/* Back and controls: one solid bar in the page flow, pinned while the page scrolls, so
