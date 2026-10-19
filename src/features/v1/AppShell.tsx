@@ -399,7 +399,13 @@ function TopBar() {
         }}
       >
         {/* One line with an ellipsis: a long shop name must not grow the bar (OB-117). */}
-        <Typography variant="titleLarge" component="span" noWrap sx={{ minWidth: 0 }}>
+        <Typography
+          variant="titleLarge"
+          component="span"
+          noWrap
+          title={ws.active?.fields.name ?? t.appName}
+          sx={{ minWidth: 0 }}
+        >
           {ws.active?.fields.name ?? t.appName}
         </Typography>
       </Button>
