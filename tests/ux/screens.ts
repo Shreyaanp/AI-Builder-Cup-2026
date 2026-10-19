@@ -24,6 +24,11 @@ async function demoTab(page: Page, tab: 'coach' | 'shop' | 'grow' | 'you') {
   const skip = page.getByRole('dialog').getByRole('button', { name: 'Skip', exact: true })
   if (await skip.isVisible().catch(() => false)) await skip.click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
+  // The banner shows before the sandbox has loaded; measure the tab itself, not its loading state.
+  await expect(page.getByRole('navigation', { name: 'Main' }).first()).toBeVisible({
+    timeout: 30_000,
+  })
+  await expect(page.locator('main').getByRole('heading', { level: 1 }).first()).toBeAttached()
   await settle(page)
 }
 
@@ -50,6 +55,8 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await page.goto('/?app=business', { waitUntil: 'domcontentloaded' })
       await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 20_000 })
+      // A slow first load shows the splash heading first; wait for the sign-in page itself.
+      await expect(page.getByRole('button', { name: 'Terms' })).toBeVisible({ timeout: 20_000 })
       await settle(page)
     },
   },

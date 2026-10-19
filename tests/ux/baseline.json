@@ -12,8 +12,8 @@
     "fonts": 6
   },
   "business-sign-in|360x800|light": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 5,
+    "fonts": 6
   },
   "business-sign-in|390x844|dark": {
     "spacingOff": 5,
@@ -64,68 +64,68 @@
     "fonts": 6
   },
   "demo-coach|1280x800|dark": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 39,
+    "fonts": 6
   },
   "demo-coach|1280x800|light": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 39,
+    "fonts": 6
   },
   "demo-coach|360x800|dark": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 34,
+    "fonts": 6
   },
   "demo-coach|360x800|light": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 34,
+    "fonts": 6
   },
   "demo-coach|390x844|dark": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 34,
+    "fonts": 6
   },
   "demo-coach|390x844|light": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 34,
+    "fonts": 6
   },
   "demo-coach|412x915|dark": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 36,
+    "fonts": 7
   },
   "demo-coach|412x915|light": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 36,
+    "fonts": 7
   },
   "demo-grow|1280x800|dark": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 24,
+    "fonts": 6
   },
   "demo-grow|1280x800|light": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 24,
+    "fonts": 6
   },
   "demo-grow|360x800|dark": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 23,
+    "fonts": 6
   },
   "demo-grow|360x800|light": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 23,
+    "fonts": 6
   },
   "demo-grow|390x844|dark": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 23,
+    "fonts": 6
   },
   "demo-grow|390x844|light": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 23,
+    "fonts": 6
   },
   "demo-grow|412x915|dark": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 23,
+    "fonts": 6
   },
   "demo-grow|412x915|light": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 23,
+    "fonts": 6
   },
   "demo-shop-page|1280x800|dark": {
     "spacingOff": 15,
@@ -160,100 +160,100 @@
     "fonts": 7
   },
   "demo-shop|1280x800|dark": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 30,
+    "fonts": 4
   },
   "demo-shop|1280x800|light": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 30,
+    "fonts": 4
   },
   "demo-shop|360x800|dark": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 30,
+    "fonts": 4
   },
   "demo-shop|360x800|light": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 30,
+    "fonts": 4
   },
   "demo-shop|390x844|dark": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 30,
+    "fonts": 4
   },
   "demo-shop|390x844|light": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 30,
+    "fonts": 4
   },
   "demo-shop|412x915|dark": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 30,
+    "fonts": 4
   },
   "demo-shop|412x915|light": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 30,
+    "fonts": 4
   },
   "demo-you|1280x800|dark": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 62,
+    "fonts": 5
   },
   "demo-you|1280x800|light": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 62,
+    "fonts": 5
   },
   "demo-you|360x800|dark": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 60,
+    "fonts": 6
   },
   "demo-you|360x800|light": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 60,
+    "fonts": 6
   },
   "demo-you|390x844|dark": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 64,
+    "fonts": 6
   },
   "demo-you|390x844|light": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 64,
+    "fonts": 6
   },
   "demo-you|412x915|dark": {
-    "spacingOff": 0,
-    "fonts": 2
+    "spacingOff": 66,
+    "fonts": 6
   },
   "demo-you|412x915|light": {
-    "spacingOff": 4,
-    "fonts": 3
+    "spacingOff": 66,
+    "fonts": 6
   },
   "how-it-works|1280x800|dark": {
-    "spacingOff": 18,
-    "fonts": 8
+    "spacingOff": 8,
+    "fonts": 6
   },
   "how-it-works|1280x800|light": {
-    "spacingOff": 18,
-    "fonts": 8
+    "spacingOff": 8,
+    "fonts": 6
   },
   "how-it-works|360x800|dark": {
-    "spacingOff": 16,
-    "fonts": 7
+    "spacingOff": 6,
+    "fonts": 5
   },
   "how-it-works|360x800|light": {
-    "spacingOff": 16,
-    "fonts": 7
+    "spacingOff": 6,
+    "fonts": 5
   },
   "how-it-works|390x844|dark": {
-    "spacingOff": 16,
-    "fonts": 7
+    "spacingOff": 6,
+    "fonts": 5
   },
   "how-it-works|390x844|light": {
-    "spacingOff": 16,
-    "fonts": 7
+    "spacingOff": 6,
+    "fonts": 5
   },
   "how-it-works|412x915|dark": {
-    "spacingOff": 16,
-    "fonts": 7
+    "spacingOff": 6,
+    "fonts": 5
   },
   "how-it-works|412x915|light": {
-    "spacingOff": 16,
-    "fonts": 7
+    "spacingOff": 6,
+    "fonts": 5
   },
   "landing|1280x800|dark": {
     "spacingOff": 31,

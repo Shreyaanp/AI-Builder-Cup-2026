@@ -46,6 +46,8 @@ for (const theme of THEMES) {
           await page.addInitScript((appearance) => {
             localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance }))
             localStorage.setItem('chalkboard.customer.journey', 'done')
+            // The demo's tour offer: measure the tabs, not the offer sheet over them.
+            sessionStorage.setItem('chalkboard.demo.welcome.v1', '1')
           }, theme)
           await context.setExtraHTTPHeaders({ 'x-forwarded-for': `ux-${Math.random()}` })
           await page.route('**/*', (route) =>
