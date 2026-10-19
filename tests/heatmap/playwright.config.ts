@@ -8,7 +8,7 @@ const webServer = [base.webServer ?? []]
   .flat()
   .map((s) => ({ ...s, cwd: s.cwd ? root + s.cwd : root }))
 
-// Eye-strain / attention audit of the customer screens (docs/qa/customer-heatmap.md).
+// Eye-strain / attention audit of the customer screens.
 // Uses the base config's servers (WEB_PORT/API_PORT) with DEMO_WORLD_ENABLED=true
 // on the backend so the labelled demo neighbourhood exists. Not part of npm run check; CI runs it sharded in the UX gate job (scripts/heatmap-gate.mjs).
 // The labelled demo neighbourhood the spec asks for.

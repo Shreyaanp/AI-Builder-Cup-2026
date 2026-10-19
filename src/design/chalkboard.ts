@@ -1,5 +1,5 @@
 /**
- * Chalkboard identity (owner decision, 15 Oct 2026; docs/research/visual-motion.md, Direction 1).
+ * Chalkboard identity (owner decision, 15 Oct 2026).
  * Light is kraft paper with green ink; dark is the chalkboard itself with chalk-pastel accents.
  * Every pair keeps WCAG AA contrast (≥ 4.5:1 for text on its container).
  */

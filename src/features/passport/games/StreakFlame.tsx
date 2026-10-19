@@ -41,7 +41,7 @@ export function Flame({ lit, size = 64 }: { lit: boolean; size?: number }) {
 }
 
 /**
- * The weekly streak (docs/research/gamification.md §3): a flame that grows with the weeks, the
+ * The weekly streak: a flame that grows with the weeks, the
  * freezes in the bank, the last 8 weeks, a gentle nudge when this week still needs a stamp, and
  * a way to freeze a week ahead. Loss aversion done kindly: freezes are given, never sold.
  */

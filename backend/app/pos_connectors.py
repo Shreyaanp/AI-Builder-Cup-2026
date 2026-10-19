@@ -3,7 +3,7 @@
 With `POS_SOURCE=google-connectors` the Square pull reads items and orders from a Connectors
 connection (default `square-sandbox`) instead of calling Square directly. This module only
 reads existing connections: it never creates, resumes or deletes one, because connections are
-billed per node. The owner creates them (docs/integrations/google-connectors.md).
+billed per node. The owner creates them.
 
 The connection's entity lists are put back into the shapes of the Square API, so the same row
 builders in pos_live.py serve the direct, the Connectors and the recorded-sample paths.

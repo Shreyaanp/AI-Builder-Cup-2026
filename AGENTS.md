@@ -1,15 +1,15 @@
 # oGoogle AI template instructions
 
-Read `rules.md`, `docs/RULES.md` (product rules enforced in CI; run `npm run rules`) and `PROJECT_MEMORY.md` before changes. Keep implementation evidence separate from intentions.
+Product rules are enforced in CI; run `npm run rules`. Keep implementation evidence separate from intentions.
 
-For every design or UI change, read `.agents/skills/material-design-3-ui/SKILL.md`, then only the relevant references. Typography, spacing, accessibility and component semantics are required for UI review. Use `docs/REACT_RULES.md` and the official hook lint rules for React code. The vendored skill is community-authored; Google's official specifications remain authoritative.
+For every design or UI change, read `.agents/skills/material-design-3-ui/SKILL.md`, then only the relevant references. Typography, spacing, accessibility and component semantics are required for UI review. Use the official hook lint rules for React code. The vendored skill is community-authored; Google's official specifications remain authoritative.
 
 Also apply `.agents/skills/web-interface-guidelines/SKILL.md` (Vercel rules: forms, focus, motion, content states, theming) to every UI change, and use `.agents/skills/performance`, `core-web-vitals`, `best-practices` and `web-quality-audit` for performance, PWA and security work. When rules conflict, Material 3 decides visual/component choices; the web guidelines decide web mechanics (keyboard, forms, motion properties, safe areas, performance). All are pinned copies (see each SKILL.md for source and commit).
 
 For every user-facing change also apply the Chalkboard house skills: `.agents/skills/content-design` (plain words, text caps, no TMI), `progressive-disclosure` (one primary action, details on demand, guided journeys), `personalization` (adapt to the user and business type, remember, explain picks), `motion-and-delight` (shared motion tokens, one moment at a time) and `ux-review-checklist` (run before every PR and record the result in the PR description).
 
 - This is a business-information and coaching assistant, not a marketplace or health app.
-- Latest backend choice is Python 3.13 + FastAPI + Google ADK, with React/TypeScript frontend. Read `docs/PYTHON_RULES.md` for backend changes. Keep dependency lockfiles and regenerate API types after schema changes.
+- Latest backend choice is Python 3.13 + FastAPI + Google ADK, with React/TypeScript frontend. Keep dependency lockfiles and regenerate API types after schema changes.
 - Keep the independent oGoogle AI identity; the Pixel health/coach reference informs pacing and hierarchy, not affiliation.
 - Preserve explicit Google connection status. A frontend theme and API key never establish native Google placement or Business Profile rights.
 - Keep actual account, business authority, liveness, publishing and AI execution separate. Face/liveness is deferred.
@@ -36,3 +36,11 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 - A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
+
+## Owner rules for every AI tool
+
+These apply to every agent working in this repository (Antigravity, Gemini CLI and any other tool):
+
+1. **Log every issue at once.** Any bug or issue you notice, or that the owner mentions, is added immediately to the owner's bug list (`C:/Users/pshre/work/orchestrator-tools/OWNER-BUGS.md` on the owner's machine) as a new `OB-xx` row. Never keep it only in memory.
+2. **Logging is not fixing.** Fix only what your task assigns, or what the owner explicitly says to fix now. Everything else stays in the list; the orchestrator packs it into a batch and schedules it by availability.
+3. **Every fix has a regression test** tagged with its `OB-xx` id, so it cannot silently break again.

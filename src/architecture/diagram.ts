@@ -1,6 +1,5 @@
 /**
- * What really runs in production, as one diagram. The single source for the /architecture page
- * and the Mermaid block in docs/architecture.md (tests/architecture.spec.ts keeps them equal).
+ * What really runs in production, as one diagram. The single source for the /architecture page.
  * Checked against the live Cloud Run service, Cloud Armor, Scheduler and BigQuery on 18 Oct 2026.
  */
 
@@ -224,7 +223,7 @@ export const adaptSteps: { title: string; detail: string }[] = [
   },
 ]
 
-/** Measured on 18 Oct 2026; see docs/impact/scalability.md. */
+/** Measured on 18 Oct 2026. */
 export const scaleFacts: { value: string; label: string }[] = [
   { value: '0 errors', label: '9,428 requests, 50 users for 60 s, straight to Cloud Run' },
   { value: '155 /s', label: 'Requests served on the non-AI pages' },
@@ -234,7 +233,7 @@ export const scaleFacts: { value: string; label: string }[] = [
 
 const quote = (text: string) => text.replaceAll('"', '#quot;')
 
-/** The Mermaid flowchart for docs/architecture.md, generated from the same data. */
+/** The Mermaid flowchart, generated from the same data. */
 export function toMermaid(): string {
   const lines = ['flowchart TD']
   for (const lane of lanes) {

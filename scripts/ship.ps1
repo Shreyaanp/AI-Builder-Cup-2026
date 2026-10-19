@@ -25,7 +25,7 @@ if ($remoteSha -ne $sha) { throw 'Publish the exact release tag before shipping.
 & (Join-Path $PSScriptRoot 'ship-face.ps1')
 
 # CI gates this SHA, builds its image, applies runtime-config.py, and verifies health/SHA.
-# Capacity is deliberately managed separately (docs/release-checklist.md).
+# Capacity is deliberately managed separately.
 gh workflow run deploy.yml --ref main -f "revision=$sha" -f "release_tag=$Tag"
 if ($LASTEXITCODE) { throw 'Release dispatch failed.' }
 Write-Host "Queued release $Tag ($sha). Dispatch is not deployment success."

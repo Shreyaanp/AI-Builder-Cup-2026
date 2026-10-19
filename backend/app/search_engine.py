@@ -588,7 +588,7 @@ class SearchEngine:
         explainer: Explainer | None = None,
     ) -> None:
         self.live = live
-        # Measured on gemini-embedding-2 (docs/impact/search-eval.md): unrelated shop items sit
+        # Measured on gemini-embedding-2: unrelated shop items sit
         # at raw cosine 0.45-0.63, matching ones at 0.60-0.78; 0.35 puts ITEM_RECALL near 0.64.
         self.cache = VectorCache(embed, model, docs, LIVE_FLOOR if live else 0.0)
         self.explainer = explainer

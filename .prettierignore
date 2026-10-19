@@ -7,7 +7,7 @@ playwright-report/
 package-lock.json
 src/design/material-roles.generated.json
 src/api/generated.d.ts
-docs/openapi.json
+backend/openapi.json
 backend/.venv/
 backend/uv.lock
 backend/.pytest_cache/
@@ -18,4 +18,3 @@ backend/data/
 gha-creds-*.json
 output/
 .playwright-cli/
-docs/research/mockups/
