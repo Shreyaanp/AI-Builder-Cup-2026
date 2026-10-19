@@ -1,6 +1,8 @@
 """Bounded, server-key Places (New) photo media. No owner-upload publication."""
 
 import asyncio
+import hashlib
+import hmac
 import re
 import time
 from typing import Any
@@ -18,7 +20,6 @@ class PlacesPhotos:
         self.client = client
         self.key = key
         self.enabled = enabled
-        self.allowed: dict[str, float] = {}
         self.cache: dict[tuple[str, int], tuple[float, bytes, str]] = {}
         self.lock = asyncio.Lock()
 
@@ -31,20 +32,22 @@ class PlacesPhotos:
                 continue
             if not name.startswith("places/" + row["id"] + "/photos/"):
                 continue
-            self.allowed = {k: v for k, v in self.allowed.items() if v > time.monotonic()}
-            if len(self.allowed) >= 128:
-                self.allowed.pop(next(iter(self.allowed)))
-            self.allowed[name] = time.monotonic() + 600
             authors = [
                 str(author["displayName"])[:200]
                 for author in photo.get("authorAttributions", [])[:5]
                 if author.get("displayName")
             ]
-            return "/api/v1/place-photo?" + urlencode({"name": name, "width": 800}), authors
+            return "/api/v1/place-photo?" + urlencode(
+                {"name": name, "width": 800, "sig": self.sign(name)}
+            ), authors
         return None, []
 
-    async def media(self, name: str, width: int) -> tuple[bytes, str]:
-        if not self.enabled or self.allowed.get(name, 0) <= time.monotonic():
+    def sign(self, name: str) -> str:
+        """Stateless proof that this server listed the photo: any instance can check it (OB-46)."""
+        return hmac.new(self.key.encode(), name.encode(), hashlib.sha256).hexdigest()[:32]
+
+    async def media(self, name: str, width: int, sig: str = "") -> tuple[bytes, str]:
+        if not self.enabled or not hmac.compare_digest(sig.encode(), self.sign(name).encode()):
             raise HTTPException(404, "PHOTO_NOT_AVAILABLE")
         async with self.lock:
             self.cache = {k: v for k, v in self.cache.items() if v[0] > time.monotonic()}
