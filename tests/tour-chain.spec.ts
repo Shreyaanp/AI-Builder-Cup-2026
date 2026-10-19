@@ -167,7 +167,7 @@ test.describe('Hindi', () => {
     const card = page.getByTestId('tour-card')
     await expect(card).toContainText('7 में से 1', { timeout: 30_000 })
     await expect(card).toContainText('आठ हफ़्ते')
-    const expected = [story.today.item, 'AI ऑर्डर तैयार करता है']
+    const expected = ['चाय पत्ती', 'AI ऑर्डर तैयार करता है']
     for (const [index, title] of expected.entries()) {
       await next(page, 'आगे')
       await expect(page.locator('#tour-title')).toContainText(title)

@@ -42,7 +42,7 @@ async function noErrors(page: Page) {
 /** The destination is the actual thread list: a demo customer and its conversation are on screen. */
 async function showsThread(page: Page) {
   const dialog = page.getByRole('dialog')
-  await expect(dialog.getByText('Priya (Demo)')).toBeVisible({ timeout: 10_000 })
+  await expect(dialog.getByText('Priya', { exact: true })).toBeVisible({ timeout: 10_000 })
   await expect(
     dialog.getByText('Is Masala chai available this afternoon?', { exact: false }),
   ).toBeVisible()

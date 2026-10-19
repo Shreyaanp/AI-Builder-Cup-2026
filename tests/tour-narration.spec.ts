@@ -177,7 +177,7 @@ test('390px phone: public demo, optional Hindi narration, interruption and remem
     .getByRole('button', { name: tourCopy('hi').next, exact: true })
     .tap()
   // The seeded supply step is presented without a narration request until narration is enabled again.
-  await expect(page.locator('#tour-title')).toContainText('Tea dust')
+  await expect(page.locator('#tour-title')).toContainText('चाय पत्ती')
   // OB-51: no preview copy of any screen is ever drawn over the page.
   await expect(page.locator('[data-tour="feature"]')).toHaveCount(0)
   expect(await clips()).toHaveLength(before)

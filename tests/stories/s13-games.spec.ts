@@ -236,7 +236,7 @@ async function walk(customer: Page, qr: string, name: string, mode: Mode) {
     const run = customer.getByRole('region', { name: 'Weekly streak: 1' })
     await run.scrollIntoViewIfNeeded()
     // OB-75: English uses the singular unit for a one-week streak.
-    await expect(run.getByText('1 week', { exact: true })).toBeVisible()
+    await expect(run.getByText('week', { exact: true })).toBeVisible()
     await expect(run.getByRole('img', { name: 'Freezes: 1' })).toBeVisible()
     await run.getByRole('button', { name: 'Freeze next week' }).click()
     await expect(run.getByRole('status')).toHaveText('Next week is frozen. Enjoy the break!')

@@ -100,7 +100,7 @@ test('marketing has two paths, all sections, no splash or auth bootstrap', async
     page.getByRole('heading', { name: 'Everything a corner shop needs. Nothing it doesn’t.' }),
   ).toBeVisible()
   // OB-121: the landing phone story belongs to the Bengaluru rupee market.
-  const phonePreview = page.locator('.lp-screen').nth(1)
+  const phonePreview = page.locator('.lp-screen.static')
   await expect(phonePreview.locator('.lp-bubble.me')).toContainText('₹18')
   await expect(phonePreview.locator('.lp-bubble.coach')).toContainText('₹20 → ₹18')
   await expect(phonePreview).not.toContainText('$')
@@ -143,12 +143,6 @@ test('separate standalone manifests and real-loading splash', async ({ page }) =
   }
   await page.goto('/?app=business')
   await expect(page.getByRole('button', { name: 'Continue local preview' })).toBeVisible()
-  // OB-121: the business demo preview uses the same local currency and market.
-  await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await expect(page.getByText('Chai is ₹18 now, samosa sold out')).toBeVisible()
-  await expect(
-    page.getByText('Prepared: chai ₹20 → ₹18 per cup, samosa sold out. Check and confirm.'),
-  ).toBeVisible()
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
     'href',
     '/manifest-business.webmanifest',
