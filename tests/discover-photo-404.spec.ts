@@ -63,7 +63,9 @@ test('OB-46: discover cards never show a broken image when the place photo 404s'
   await expect
     .poll(async () =>
       page.evaluate(
-        () => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length,
+        () =>
+          Array.from(document.images).filter((img) => !img.complete || img.naturalWidth === 0)
+            .length,
       ),
     )
     .toBe(0)
