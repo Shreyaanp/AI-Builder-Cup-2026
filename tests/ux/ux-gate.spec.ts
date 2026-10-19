@@ -67,11 +67,12 @@ for (const theme of THEMES) {
           for (const d of m.primary) found.push({ rule: 'primary', detail: d })
           if (phone) {
             await page.evaluate(() => {
-              const roots = [
-                document.scrollingElement,
-                ...Array.from(document.querySelectorAll('main')),
-              ]
-              for (const el of roots) el?.scrollTo(0, 1e6)
+              // The page, <main>, and any scroll area inside it (the Coach thread scrolls on its own).
+              const areas = Array.from(document.querySelectorAll('main, main *')).filter((el) => {
+                const o = getComputedStyle(el).overflowY
+                return (o === 'auto' || o === 'scroll') && el.scrollHeight > el.clientHeight
+              })
+              for (const el of [document.scrollingElement, ...areas]) el?.scrollTo(0, 1e6)
             })
             await page.waitForTimeout(200)
             for (const d of await page.evaluate(lastContentClears))

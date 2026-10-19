@@ -82,9 +82,25 @@ export function measure(phone: boolean): Measured {
     Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 &&
     Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1
   const barRects = bars.map((b) => [b, b.getBoundingClientRect()] as const)
+  // A control in flowing content that still has page left to scroll (the document or a scroll area
+  // around it) reaches clear of the bar by scrolling; the last-content check proves the end clears.
+  // Controls pinned in place (fixed or sticky) cannot, so they are always flagged (OB-105).
+  const scrollsClear = (el: Element) => {
+    for (let p: Element | null = el; p; p = p.parentElement) {
+      const pos = getComputedStyle(p).position
+      if (pos === 'fixed' || pos === 'sticky') return false
+      const scroller = p === document.documentElement ? document.scrollingElement : p
+      if (!scroller) continue
+      const o = getComputedStyle(scroller).overflowY
+      const scrollable = scroller === document.scrollingElement || o === 'auto' || o === 'scroll'
+      if (scrollable && scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop > 1)
+        return true
+    }
+    return false
+  }
   for (const el of first.filter((e) => e.matches(CONTROL) && !insideBar(e))) {
     for (const [b, br] of barRects)
-      if (!b.contains(el) && hit(el.getBoundingClientRect(), br))
+      if (!b.contains(el) && hit(el.getBoundingClientRect(), br) && !scrollsClear(el))
         overlap.push(`${label(el)} under ${label(b)}`)
   }
 
