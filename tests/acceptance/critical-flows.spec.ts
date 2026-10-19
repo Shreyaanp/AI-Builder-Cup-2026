@@ -744,8 +744,9 @@ test('a shop with no reward shows no stamps: no card, no button, no passport til
     const shopUrl = new URL(qr)
     shopUrl.search = ''
     await customer.goto(qr)
-    await collectStamp(customer)
     await expect(customer.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 20_000 })
+    // A shop without stamps offers nothing to collect on a scan.
+    await expect(customer.getByRole('button', { name: 'Collect your stamp' })).toHaveCount(0)
     await expect(customer.getByRole('region', { name: 'Stamp card' })).toHaveCount(0)
     await expect(customer.getByRole('link', { name: /^Stamp card · / })).toHaveCount(0)
     await expect(customer.getByText(/\d+ stamps?/)).toHaveCount(0)
