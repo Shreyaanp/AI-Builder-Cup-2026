@@ -58,7 +58,7 @@ export function HowItWorks({ game, label }: { game: Game; label?: string }) {
         onClick={() => setOpen(true)}
         aria-label={fill(t.howItWorksFor, { title })}
         // Long labels (Kannada, Tamil) wrap inside the button instead of pushing the page wide.
-        sx={{ minHeight: 40, minWidth: 0, color: 'inherit', textAlign: 'start' }}
+        sx={{ minHeight: 48, minWidth: 0, color: 'inherit', textAlign: 'start' }}
       >
         {label ?? t.howItWorks}
       </Button>

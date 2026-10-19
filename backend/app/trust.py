@@ -294,7 +294,7 @@ def record(
         uid,
         GALLERY,
         now,
-        {"uid": uid, "sealed": vault.seal(uid, vector), "created": now},
+        {"uid": uid, "sealed": vault.seal(uid, vector), "created": now, "version": 1},
     )
     face = "verified"
     review = None

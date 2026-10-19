@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { scrollToEnd } from './scroll-to-end.js'
 
 // Last customer overlaps (#308-#313, #310): pinned bars never sit on content, no sideways scroll,
 // the Tamil pre-order tag and placeholder read fully in Tamil, and the Passport offers a retry.
@@ -53,7 +54,7 @@ async function prepare(page: Page, width: number, language = 'en') {
 const noSideScroll = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
-for (const width of [360, 390]) {
+for (const width of [360, 390, 412]) {
   test(`shop page: no sideways scroll, last content clear of the chat bar at ${width}px`, async ({
     page,
   }) => {
@@ -62,7 +63,7 @@ for (const width of [360, 390]) {
     await page.goto(`/explore/s/${SHOP}`)
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible({ timeout: 30_000 })
     expect(await noSideScroll(page)).toBe(true)
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+    await scrollToEnd(page)
     const bar = page.getByRole('button', { name: 'Chat with the shop' })
     const barTop = (await bar.boundingBox())!.y
     const footer = page.getByText(/Prepared by the shop owner/)

@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 
-// The owner tour follows one order: the tea stall's forecast and WhatsApp reorder, the same order
-// at the wholesaler and its CSV restock, the chain's SAP loop, the goods arriving, and customers.
-// Every name and number on screen is checked against the seeded records the API returns.
+// The owner tour reads the seeded records: the tea stall's Today supply card and its WhatsApp
+// reorder (OB-51: both light real elements on the Coach screen; the wholesaler and chain steps
+// were previews of other businesses' screens and are gone). Every name and number on screen is
+// checked against the seeded records the API returns.
 test.skip(({ isMobile }) => !isMobile, '390×844 phone story')
 
 interface Line {
@@ -19,9 +20,6 @@ interface Order {
 interface Story {
   today: { item: string; unit: string; stock: number; daily: number }
   order: Order & { message: string }
-  wholesaler: { name: string; inbound: Order; restock: Order }
-  chain: { name: string; outlets: string; order: Order }
-  arrived: { item: string; unit: string; before: number; after: number }[]
   customers: { stamps_today: number; stamps_needed: number; reward: string }
 }
 
@@ -40,30 +38,22 @@ async function start(page: Page, language?: string) {
     await page.addInitScript((language) => {
       localStorage.setItem('niva.starter.preferences', JSON.stringify({ language }))
     }, language)
-  await page.goto('/')
-  await page
-    .getByRole('button', { name: /स्थानीय प्रीव्यू जारी रखें|Continue local preview/ })
-    .click()
-  await page.getByRole('checkbox').nth(0).check()
-  await page.getByRole('checkbox').nth(1).check()
-  await page
-    .getByRole('button')
-    .filter({ hasText: /Agree and continue|सहमत/ })
-    .click()
-  const made = page.waitForResponse((r) => r.url().includes('/api/v1/demo/workspace'))
-  await page
-    .getByRole('button', { name: language === 'hi' ? 'दौरा शुरू करें' : 'Take the tour' })
-    .first()
-    .click()
-  const { business_id } = (await (await made).json()) as { business_id: string }
+  const made = page.waitForResponse(
+    (r) => r.url().includes('/api/demo/workspace') && r.request().method() === 'POST',
+  )
+  await page.goto('/demo?tour=1')
+  const madeResponse = await made
+  const { business_id } = (await madeResponse.json()) as { business_id: string }
+  const sessionId = new URL(madeResponse.url()).pathname.match(/\/sessions\/([^/]+)\/api\//)?.[1]
+  expect(sessionId).toBeTruthy()
   const story = (await (
-    await page.request.get(`/api/v1/demo/chain/${business_id}`)
+    await page.request.get(`/api/v1/demo/sessions/${sessionId}/api/demo/chain/${business_id}`)
   ).json()) as Story
   return story
 }
 
 async function next(page: Page, label = 'Next') {
-  await page.getByRole('button', { name: label, exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: label, exact: true }).click()
 }
 
 async function noSideScroll(page: Page) {
@@ -81,6 +71,9 @@ async function noSideScroll(page: Page) {
   ).toBeTruthy()
 }
 
+// The tour now runs on the public demo, whose tour shop is the Bengaluru chai stall for every
+// visitor (backend/app/public_demo.py). The Singapore story seed is still checked in
+// backend/tests/test_tour_story.py.
 for (const world of [
   {
     zone: 'Asia/Kolkata',
@@ -91,164 +84,72 @@ for (const world of [
     distributor: 'Anand Distributors (Demo)',
     reward: 'A free chai',
   },
-  {
-    zone: 'Asia/Singapore',
-    locale: 'en-SG',
-    item: 'Kopi powder',
-    wholesaler: 'Ah Huat Provision (Demo)',
-    stall: 'Sunny Side Kopitiam (Demo)',
-    distributor: 'Katong Trading (Demo)',
-    reward: 'A free kopi',
-  },
 ]) {
   test.describe(world.zone, () => {
     test.use({ timezoneId: world.zone, locale: world.locale })
 
-    test(`tour follows one order on seeded data (${world.item})`, async ({ page }, info) => {
+    test(`OB-51 tour reads seeded data on real elements (${world.item})`, async ({
+      page,
+    }, info) => {
       test.setTimeout(120_000)
       const story = await start(page)
       // The seeded records are the expected story; the screen must show exactly these.
       expect(story.today.item).toBe(world.item)
       expect(story.order.number).toBe('4500000001')
       expect(story.order.partner).toBe(world.wholesaler)
-      expect(story.wholesaler.inbound.partner).toBe(world.stall)
-      expect(story.wholesaler.restock.partner).toBe(world.distributor)
       expect(story.customers.reward).toBe(world.reward)
       const shot = (n: number) =>
         page.screenshot({
           path: `output/playwright/tour-chain/${info.project.name}-${world.item}-${n}.png`,
           animations: 'disabled',
         })
-      const card = page.getByRole('dialog').last()
-      const panel = page.locator('[data-tour="feature"]')
+      const card = page.getByTestId('tour-card')
 
-      await expect(page.getByRole('dialog', { name: 'Your shop at a glance' })).toBeVisible({
+      await expect(page.locator('#tour-title')).toContainText('Your shop at a glance', {
         timeout: 30_000,
       })
-      await expect(card).toContainText('1 of 14')
+      await expect(card).toContainText('1 of 7')
       await expect(card).toContainText('eight weeks of sales')
+      // OB-51: nothing is drawn over the page but the spotlight and the card.
+      await expect(page.locator('[data-tour="feature"]')).toHaveCount(0)
 
-      await test.step('1 · Today: the forecast card with the seeded numbers', async () => {
+      await test.step('1 · Today: the real supply card with the seeded numbers', async () => {
         await next(page)
         await expect(page.locator('#tour-title')).toContainText(`${world.item} runs out`)
         await expect(card).toContainText(
           `${qty(story.today.stock, story.today.unit)} left, about ${qty(story.today.daily, story.today.unit)} a day`,
         )
-        await expect(panel).toContainText(`${world.item} runs out`)
-        await expect(panel.getByRole('button', { name: 'Reorder' })).toBeVisible()
+        const real = page.locator('[data-tour="today-supply"]')
+        await expect(real).toContainText(`${world.item} runs out`)
+        await expect(real.getByRole('button', { name: 'Reorder' })).toBeVisible()
         await noSideScroll(page)
         await shot(1)
       })
 
-      await test.step('2 · Reorder: the WhatsApp order to the wholesaler', async () => {
+      await test.step('2 · Reorder: the WhatsApp order, lighting the real Reorder button', async () => {
         await next(page)
         await expect(card).toContainText('The AI drafts the order')
         await expect(card).toContainText(
           `WhatsApp to ${world.wholesaler.replace(' (Demo)', '')}: ${story.order.lines.length} items`,
         )
         await expect(card).toContainText(money(story.order.total))
-        await expect(panel).toContainText(`To ${world.wholesaler}`)
-        await expect(panel.getByTestId('tour-whatsapp')).toHaveText(story.order.message)
-        for (const line of story.order.lines) await expect(panel).toContainText(line.item)
+        await expect(page.locator('[data-tour="reorder"]')).toBeVisible()
         await noSideScroll(page)
         await shot(2)
       })
 
-      await test.step('3 · Vendor to vendor: the order arrives, the wholesaler restocks', async () => {
-        await next(page)
-        await expect(card).toContainText('It lands at the wholesaler')
-        await expect(card).toContainText(world.distributor.replace(' (Demo)', ''))
-        const incoming = panel.getByRole('region', { name: 'Order coming in' })
-        await expect(incoming).toContainText(`From ${world.stall} · 4500000001`)
-        await expect(incoming).toContainText(
-          `Same ${story.wholesaler.inbound.lines.length} items as your WhatsApp order`,
-        )
-        await expect(incoming).toContainText(money(story.wholesaler.inbound.total))
-        expect(story.wholesaler.inbound.lines).toEqual(story.order.lines)
-        const own = panel.getByRole('region', { name: 'Its own order' })
-        await expect(own).toContainText('Spreadsheet (CSV) by email')
-        await expect(own).toContainText(
-          `To ${world.distributor} · ${story.wholesaler.restock.number}`,
-        )
-        const first = story.wholesaler.restock.lines[0]!
-        await expect(own).toContainText(qty(first.quantity, first.unit))
-        await noSideScroll(page)
-        await shot(3)
-      })
-
-      await test.step('4 · The chain: Metro Foods in SAP, in plain words', async () => {
-        await next(page)
-        await expect(card).toContainText('A big chain does it in SAP')
-        await expect(card).toContainText(`Metro Foods, ${story.chain.outlets} outlets`)
-        await expect(panel).toContainText(story.chain.name)
-        await expect(panel).toContainText(
-          `Order ${story.chain.order.number} to ${story.chain.order.partner}`,
-        )
-        const steps = panel.getByRole('list', { name: 'SAP' })
-        for (const label of ['New order', 'Order confirmed', 'Shipping notice', 'Invoice'])
-          await expect(steps).toContainText(label)
-        await expect(steps).toContainText('SAP DELVRY07')
-        await noSideScroll(page)
-        await shot(4)
-      })
-
-      await test.step('5 · Goods arrive: stock and Today update', async () => {
-        await next(page)
-        const row = story.arrived.find((r) => r.item === world.item)!
-        expect(row.after).toBeGreaterThan(row.before)
-        await expect(card).toContainText('Goods arrive')
-        await expect(card).toContainText(
-          `${world.item}: ${qty(row.before, row.unit)} → ${qty(row.after, row.unit)}`,
-        )
-        await expect(panel.getByRole('region', { name: world.item })).toContainText(
-          qty(row.after, row.unit),
-        )
-        await expect(panel).toContainText('Covered until')
-        await noSideScroll(page)
-        await shot(5)
-      })
-
-      await test.step('6 · Customers: stamps today and the reward', async () => {
-        await next(page)
-        await expect(card).toContainText('Customers come back')
-        await expect(card).toContainText(
-          `${story.customers.stamps_today} stamps today. At ${story.customers.stamps_needed} stamps: ${world.reward}.`,
-        )
-        await expect(panel).toContainText(
-          `${story.customers.stamps_needed} stamps: ${world.reward}`,
-        )
-        await noSideScroll(page)
-        await shot(6)
-      })
-
       for (const title of [
+        'Tomorrow’s prep plan',
         'Your menu, by category',
         'Close the day in a minute',
         'Just talk or type',
-        'Get on Google, guided',
-        'Import sales or menu (Excel, photo, notes)',
-        'Get your first customers',
-        'Your new shop is ready',
       ]) {
         await next(page)
-        await expect(page.getByRole('dialog', { name: title })).toBeVisible()
+        await expect(page.locator('#tour-title')).toContainText(title)
       }
       await next(page)
-      await page.getByRole('button', { name: 'Keep exploring' }).click()
-      await expect(page.getByRole('dialog')).toHaveCount(0)
-
-      await test.step('Reorder on Today really drafts it (#264)', async () => {
-        await page.getByRole('button', { name: 'Coach', exact: true }).click()
-        const today = page
-          .getByRole('region', { name: 'Supplies' })
-          .or(page.locator('section').filter({ hasText: `${world.item} runs out` }))
-        await today.first().getByRole('button', { name: 'Reorder' }).click()
-        const sheet = page.getByRole('dialog').last()
-        await expect(sheet).toContainText(world.wholesaler)
-        await expect(sheet).toContainText(world.item)
-        await expect(page.getByText(/No purchase orders yet/)).toHaveCount(0)
-        await shot(7)
-      })
+      await page.getByRole('dialog').getByRole('button', { name: 'Keep exploring' }).click()
+      await expect(page.locator('#tour-title')).toHaveCount(0)
     })
   })
 }
@@ -261,28 +162,19 @@ test.describe('Hindi', () => {
   }, info) => {
     test.setTimeout(120_000)
     const story = await start(page, 'hi')
-    const card = page.getByRole('dialog').last()
-    await expect(card).toContainText('14 में से 1', { timeout: 30_000 })
+    const card = page.getByTestId('tour-card')
+    await expect(card).toContainText('7 में से 1', { timeout: 30_000 })
     await expect(card).toContainText('आठ हफ़्ते')
-    const expected = [
-      `${story.today.item}`,
-      'AI ऑर्डर तैयार करता है',
-      'ऑर्डर थोक व्यापारी तक',
-      'बड़ी चेन यही SAP में करती है',
-      'माल आ गया',
-      'ग्राहक लौटकर आते हैं',
-    ]
+    const expected = [story.today.item, 'AI ऑर्डर तैयार करता है']
     for (const [index, title] of expected.entries()) {
       await next(page, 'आगे')
       await expect(page.locator('#tour-title')).toContainText(title)
       if (index === 0) await expect(card).toContainText('बचा है')
       if (index === 1) await expect(card).toContainText(money(story.order.total))
-      if (index === 5)
-        await expect(card).toContainText(`आज ${story.customers.stamps_today} स्टैम्प`)
       await noSideScroll(page)
     }
     await page.screenshot({
-      path: `output/playwright/tour-chain/${info.project.name}-hi-customers.png`,
+      path: `output/playwright/tour-chain/${info.project.name}-hi-order.png`,
       animations: 'disabled',
     })
   })

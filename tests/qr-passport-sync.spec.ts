@@ -39,10 +39,13 @@ for (const customer of ['guest', 'signed-in'] as const) {
       await page.context().setGeolocation({ latitude: shop.lat, longitude: shop.lng, accuracy: 20 })
 
       await page.goto('/explore/s/demo-story-bengaluru-chai?source=qr')
+      await page.getByRole('button', { name: 'Collect your stamp' }).click()
       const moment = page.getByRole('dialog')
-      await expect(moment.getByRole('button', { name: 'Done' })).toBeVisible({ timeout: 15_000 })
+      await expect(moment.getByRole('button', { name: 'Keep browsing' })).toBeVisible({
+        timeout: 15_000,
+      })
       await expect(moment.getByText('+50 demo points')).toBeVisible()
-      await moment.getByRole('button', { name: 'Done' }).click()
+      await moment.getByRole('button', { name: 'Keep browsing' }).click()
       await expect(moment).toBeHidden()
 
       await page.goto('/explore/passport')

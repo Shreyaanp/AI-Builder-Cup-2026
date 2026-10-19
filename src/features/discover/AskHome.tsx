@@ -888,6 +888,7 @@ export default function AskHome({
                           lineHeight: 1.25,
                           whiteSpace: 'normal',
                           overflowWrap: 'anywhere',
+                          color: roles.onSurface,
                           bgcolor: roles.surfaceContainerLow,
                           '&:hover': { bgcolor: roles.surfaceContainer },
                         }}
@@ -1650,7 +1651,13 @@ function AssistantTurn({
                 <Button
                   variant="outlined"
                   onClick={() => onSend(chip.q, chip)}
-                  sx={{ minHeight: 48, borderRadius: 999, px: 4, py: 2 }}
+                  sx={{
+                    minHeight: 48,
+                    borderRadius: 999,
+                    px: 4,
+                    py: 2,
+                    color: roles.onSurface,
+                  }}
                 >
                   {chip.label}
                 </Button>
