@@ -37,7 +37,7 @@ export function ReviewDialog({
   const shopCopy = useShopCopy()
   const pinCopy = discoverCopy(useLocale())
   const next = useNextStepsCopy()
-  const { api, businesses, review, reload, openEditor } = useWorkspace()
+  const { api, businesses, review, reload, openEditor, readOnlyMessage } = useWorkspace()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const snapshot = proposal?.snapshot
@@ -259,7 +259,7 @@ export function ReviewDialog({
           </Stack>
         </>
       )}
-      {error && <Alert severity="error">{error}</Alert>}
+      {error && <Alert severity={readOnlyMessage ? 'info' : 'error'}>{error}</Alert>}
     </Stack>
   )
   const actions = empty ? (

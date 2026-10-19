@@ -23,6 +23,10 @@ for (const width of [360, 412]) {
     await page.getByRole('dialog').getByRole('button', { name: 'Skip', exact: true }).click()
     await page.locator('[data-tour="nav-grow"]').click()
     await page.getByText('Prep plan').first().click({ timeout: 60_000 })
+    // OB-13 (#344): in the demo, Prep plan opens its own sheet; Coach there asks the real forecast.
+    const sheet = page.getByRole('dialog', { name: 'Prep plan' })
+    await expect(sheet).toContainText('Tomorrow')
+    await sheet.getByRole('button', { name: 'Coach', exact: true }).click()
     await expect(page.getByRole('textbox', { name: 'Message', exact: true })).not.toHaveValue('')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
     await expect(page.getByRole('log')).toContainText(/weekday average/i, { timeout: 30_000 })
