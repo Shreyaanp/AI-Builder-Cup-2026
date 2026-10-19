@@ -40,7 +40,8 @@ class SeedInquiry(Inquiry):
 
 
 def history(demo: DemoShop, day: date) -> list[dict[str, Any]]:
-    rows = sales_history(demo, day, 56)
+    # Seeded by shop and date, never by the private workspace id, so every visit is alike.
+    rows = sales_history(demo, day, 56, seed=f"tour/{demo.city}")
     products = {p.name: p for p in demo.products}
     for row in rows:
         product = products[row["item"]]
