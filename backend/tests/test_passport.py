@@ -1,7 +1,7 @@
 """Neighbourhood passport: verified stamps, anti-abuse rules, levels, streaks, quests, perks."""
 
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
@@ -335,12 +335,23 @@ def client(app):
 
 @pytest.fixture
 def midweek(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Pin the routes' clock to Wednesday midday in Singapore. Shops stamp by their own local
-    week and the board and the co-op by the UTC week, so on a real clock these tests broke in
-    the hours when the two weeks differ (Monday morning in Singapore)."""
+    """Freeze every route and passport clock at Wednesday in Singapore (OB-73)."""
+    import app.games_routes as game_routes
+    import app.passport as passport
     import app.passport_routes as routes
 
-    monkeypatch.setattr(routes, "time", SimpleNamespace(time=lambda: at(0)))
+    instant = at(0)
+    frozen_time = SimpleNamespace(time=lambda: instant)
+
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            value = datetime.fromtimestamp(instant, tz or UTC)
+            return value.replace(tzinfo=tz) if tz else value.replace(tzinfo=None)
+
+    monkeypatch.setattr(routes, "time", frozen_time)
+    monkeypatch.setattr(game_routes, "time", frozen_time)
+    monkeypatch.setattr(passport, "datetime", FrozenDateTime)
 
 
 def sign_in(client: TestClient, name: str = "Asha Rao") -> None:

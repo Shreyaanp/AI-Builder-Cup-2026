@@ -174,6 +174,40 @@ test('every demo video and poster ships, small enough for a phone (< 3 MB), with
     }
 })
 
+// OB-17: the buttons were far too big. Every jump pill and action button is one 48 px row,
+// its label stays inside it, and the row stays inside the screen, in English and Hindi.
+for (const width of [360, 390, 412, 1280]) {
+  test(`OB-17 ${width}px: /how-it-works buttons are 48 px and their labels fit`, async ({
+    page,
+  }) => {
+    test.setTimeout(90_000)
+    for (const language of ['en', 'hi'] as const) {
+      await page.setViewportSize({ width, height: 800 })
+      await open(page, '/how-it-works', language, 'light')
+      const buttons = page.locator('.hw-jump a, .hw-cta .MuiButton-root, .hw-sound')
+      await expect(buttons.first()).toBeVisible({ timeout: 50_000 })
+      const boxes = await buttons.evaluateAll((els) =>
+        els.map((el) => {
+          const r = el.getBoundingClientRect()
+          return {
+            label: (el.textContent ?? '').trim(),
+            height: Math.round(r.height),
+            right: r.right,
+            spill: el.scrollWidth - el.clientWidth,
+          }
+        }),
+      )
+      expect(boxes.length).toBeGreaterThanOrEqual(6)
+      for (const box of boxes) {
+        expect(box.height, `${language} ${box.label} height`).toBe(48)
+        expect(box.spill, `${language} ${box.label} label fits`).toBeLessThanOrEqual(1)
+        expect(box.right, `${language} ${box.label} on screen`).toBeLessThanOrEqual(width)
+      }
+      await noOverflow(page)
+    }
+  })
+}
+
 for (const width of [360, 390]) {
   test(`${width}px: the new "/" front door fits and shows both primary actions`, async ({
     page,
