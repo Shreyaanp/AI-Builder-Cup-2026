@@ -2,18 +2,16 @@ import { expect, test } from '@playwright/test'
 import { localOnly } from '../stories/support.js'
 
 test.use({
-  viewport: { width: 390, height: 844 },
   reducedMotion: 'reduce',
-  hasTouch: true,
 })
 
 test.beforeEach(async ({ page }) => {
   await localOnly(page)
+  if (test.info().project.name === 'phone') await page.setViewportSize({ width: 390, height: 844 })
 })
 
-test.describe('Try the demo shop flow on phone (390px)', () => {
-  // Skipped: fails on every open PR; another job owns the fix.
-  test('unauthenticated visitor opens /demo, inspects demo shop, browses shops, and exits demo', async ({
+test.describe('Try the demo shop flow', () => {
+  test('OB-137: unauthenticated visitor opens /demo, browses a demo shop, and exits demo', async ({
     page,
   }) => {
     test.setTimeout(90_000)
@@ -57,7 +55,11 @@ test.describe('Try the demo shop flow on phone (390px)', () => {
 
     // Demo browse shows shops
     await expect(page.locator('main a').first()).toBeVisible({ timeout: 15_000 })
-    await page.locator('main a').first().click()
+    // Guided steps precede the shop cards and can lead outside the demo session. Choose an actual
+    // demo shop so this flow remains in DemoApp, where the Exit demo control is available.
+    const demoShop = page.locator('main a[href^="/explore/demo/"]').first()
+    await expect(demoShop).toBeVisible({ timeout: 15_000 })
+    await demoShop.click()
 
     // Demo shop detail page opens with hero banner
     await expect(page.getByTestId('shop-hero-banner')).toBeVisible({ timeout: 15_000 })

@@ -80,6 +80,8 @@ export function NewShopReady({ preview = false }: { preview?: boolean }) {
         sx={{
           fontFamily: HAND_FONT,
           fontSize: { xs: '3rem', md: '4rem' },
+          // Caveat has tall ascenders: a tight line height made wrapped lines touch (OB-112).
+          lineHeight: 1.3,
           '&:focus': { outline: 'none' },
         }}
       >
