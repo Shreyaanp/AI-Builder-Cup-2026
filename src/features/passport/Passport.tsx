@@ -106,7 +106,7 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
       sx={{
         maxWidth: 720,
         mx: 'auto',
-        px: { xs: 2, sm: 4 },
+        px: 4,
         pt: 1,
         pb: 'calc(120px + env(safe-area-inset-bottom))',
         minHeight: '100dvh',
