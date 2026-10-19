@@ -302,7 +302,15 @@ test('S10 · entries: tour end and an empty My shop open the same flow', async (
     const total = Number((await tour.getByText(/^1 of \d+$/).textContent())!.split(' of ')[1])
     for (let step = 0; step < total; step++)
       await page.getByRole('button', { name: 'Next', exact: true }).click()
+    // OB-30: the tour runs in the public demo; starting your own shop leaves it for the business
+    // app's new-shop flow.
     await page.getByRole('button', { name: 'Start my own shop' }).click()
+    await expect(page).toHaveURL(/\/new-shop\?app=business$/)
+    // A fresh page load: the local preview asks to continue again (signed-in owners skip this).
+    const preview = page.getByRole('button', { name: 'Continue local preview' })
+    const heading = page.getByRole('heading', { name: 'Let’s open your shop' })
+    await expect(preview.or(heading)).toBeVisible()
+    if (await preview.isVisible()) await preview.click()
     await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
     await axe(page)
     await shot(page, 10, '8-from-tour')

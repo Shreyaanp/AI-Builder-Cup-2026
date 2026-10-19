@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { landingVariant, resolveApp } from './router'
 import { BrandSplash } from '../features/frontdoors/Splash'
 import { FirstRun } from '../features/first-run/FirstRun'
+import { Farewell } from '../auth/Farewell'
 
 const App = lazy(() => import('./App'))
 const V1App = lazy(() => import('../features/v1/V1App'))
@@ -96,6 +97,7 @@ export default function Root() {
     )
   return (
     <LoadBoundary business>
+      <Farewell side="owner" />
       <FirstRun app="owner">
         <Suspense fallback={<BrandSplash business />}>
           <V1App />
