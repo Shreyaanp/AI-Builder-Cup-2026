@@ -25,7 +25,9 @@ interface Story {
 
 const money = (minor: number) =>
   (minor / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const qty = (n: number, unit: string) => `${n} ${unit}`
+// Same rounding as the tour (chainSteps.amount): one decimal, so 2.71 kg reads 2.7 kg (OB-62).
+const qty = (n: number, unit: string) =>
+  `${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 1 }).format(n)} ${unit}`
 
 async function start(page: Page, language?: string) {
   await page.setViewportSize({ width: 390, height: 844 })

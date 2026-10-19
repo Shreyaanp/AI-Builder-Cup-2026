@@ -42,7 +42,7 @@ def local_shop(
     products[-1].available = False
     products[0].stock = 4  # A concrete, actionable low-stock row on Today.
     if index == 0:
-        products[4].stock = 1  # Tea dust / kopi powder link the pulse to a supplier order.
+        products[4].stock = 6  # A busy chai stall keeps several days of tea dust on hand.
     return shop(
         f"demo-story-{city}-{slug}",
         city=city,
