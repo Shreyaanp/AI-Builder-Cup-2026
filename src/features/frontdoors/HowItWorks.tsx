@@ -244,17 +244,11 @@ function How({ t }: { t: PagesCopy }) {
         <nav className="hw-jump" aria-label={t.watch}>
           <a href="#vendor">
             <Store size={20} aria-hidden="true" />
-            <span>
-              <strong>{t.forShops}</strong>
-              {t.shopsLine}
-            </span>
+            <strong>{t.forShops}</strong>
           </a>
           <a href="#customer">
             <Footprints size={20} aria-hidden="true" />
-            <span>
-              <strong>{t.forCustomers}</strong>
-              {t.customersLine}
-            </span>
+            <strong>{t.forCustomers}</strong>
           </a>
         </nav>
       </section>
