@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Box, Button, Skeleton, Stack, Typography, useTheme } from '@mui/material'
 import { useLocale } from '../../state/hooks'
 import { useDemoCopy } from '../frontdoors/strings'
@@ -17,7 +17,16 @@ type ShopDetails = {
   currency: string
 }
 
-export function DemoBrowse({ shops, api }: { shops: DemoShop[]; api: Api }) {
+export function DemoBrowse({
+  shops,
+  api,
+  actions,
+}: {
+  shops: DemoShop[]
+  api: Api
+  /** Language and theme controls, beside the title (not a band of their own in the banner). */
+  actions?: ReactNode
+}) {
   const demo = useDemoCopy()
   const passport = usePassportCopy()
   const locale = useLocale()
@@ -45,9 +54,12 @@ export function DemoBrowse({ shops, api }: { shops: DemoShop[]; api: Api }) {
 
   return (
     <Box component="main" sx={{ maxWidth: 760, mx: 'auto', p: 2, pb: 4 }}>
-      <Typography component="h1" variant="headlineSmall" sx={{ mb: 2 }}>
-        {demo.customer}
-      </Typography>
+      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography component="h1" variant="headlineSmall">
+          {demo.customer}
+        </Typography>
+        {actions && <Stack direction="row">{actions}</Stack>}
+      </Stack>
       <Stack
         component="ol"
         direction="row"
@@ -116,7 +128,8 @@ export function DemoBrowse({ shops, api }: { shops: DemoShop[]; api: Api }) {
                 aria-label={info ? `${shop.name}, ${info.category}` : shop.name}
                 sx={{
                   display: 'flex',
-                  flexDirection: 'column',
+                  // A row per shop: a thumbnail and its lines, so several shops fit one screen (OB-124).
+                  flexDirection: 'row',
                   alignItems: 'stretch',
                   p: 0,
                   overflow: 'hidden',
@@ -131,7 +144,7 @@ export function DemoBrowse({ shops, api }: { shops: DemoShop[]; api: Api }) {
                 }}
               >
                 {info ? (
-                  <Box sx={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden' }}>
+                  <Box sx={{ width: 96, flex: '0 0 96px', overflow: 'hidden' }}>
                     <PlaceImage
                       id={shop.id}
                       category={info.category}
@@ -141,10 +154,19 @@ export function DemoBrowse({ shops, api }: { shops: DemoShop[]; api: Api }) {
                     />
                   </Box>
                 ) : (
-                  <Skeleton variant="rectangular" height={176} />
+                  <Skeleton
+                    variant="rectangular"
+                    width={96}
+                    height={96}
+                    sx={{ flex: '0 0 96px' }}
+                  />
                 )}
-                <Stack spacing={0.5} sx={{ p: 2 }}>
-                  <Typography variant="titleMedium" component="span">
+                <Stack spacing={0.5} sx={{ p: 2, flex: 1, minWidth: 0, justifyContent: 'center' }}>
+                  <Typography
+                    variant="titleMedium"
+                    component="span"
+                    sx={{ overflowWrap: 'anywhere' }}
+                  >
                     {shop.name}
                   </Typography>
                   {info ? (

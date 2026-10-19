@@ -396,21 +396,23 @@ export function TourHost() {
                       .replace('{n}', String(step + 1))
                       .replace('{total}', String(STEPS.length))}
                   </Typography>
-                  <IconButton aria-label={t.close} onClick={close} sx={{ width: 48, height: 48 }}>
-                    <X size={22} />
-                  </IconButton>
-                  <IconButton
-                    aria-label={t.narration}
-                    aria-pressed={narrated}
-                    onClick={toggleNarration}
-                    sx={{
-                      width: 48,
-                      height: 48,
-                      color: narrated ? roles.primary : roles.onSurfaceVariant,
-                    }}
-                  >
-                    {narrated ? <Volume2 size={22} /> : <VolumeX size={22} />}
-                  </IconButton>
+                  <Stack direction="row" sx={{ alignItems: 'center', mr: -1 }}>
+                    <IconButton
+                      aria-label={t.narration}
+                      aria-pressed={narrated}
+                      onClick={toggleNarration}
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        color: narrated ? roles.primary : roles.onSurfaceVariant,
+                      }}
+                    >
+                      {narrated ? <Volume2 size={22} /> : <VolumeX size={22} />}
+                    </IconButton>
+                    <IconButton aria-label={t.close} onClick={close} sx={{ width: 48, height: 48 }}>
+                      <X size={22} />
+                    </IconButton>
+                  </Stack>
                 </Stack>
                 <Typography id="tour-title" variant="titleLarge" sx={{ mt: 0.5 }}>
                   {copy?.title}
@@ -418,35 +420,37 @@ export function TourHost() {
                 <Typography color="text.secondary" sx={{ mt: 1 }}>
                   {copy?.body}
                 </Typography>
+                {/* Progress on its own line, so Skip / Back / Next keep one row at every step (OB-80). */}
+                <Stack direction="row" sx={{ gap: 0.75, mt: 3 }} aria-hidden="true">
+                  {STEPS.map((_, i) => (
+                    <Box
+                      key={i}
+                      sx={{
+                        width: i === step ? 18 : 6,
+                        height: 6,
+                        borderRadius: 3,
+                        bgcolor: i <= step ? roles.primary : roles.outlineVariant,
+                      }}
+                    />
+                  ))}
+                </Stack>
                 <Stack
                   direction="row"
                   sx={{
-                    mt: 3,
+                    mt: 2,
                     alignItems: 'center',
+                    justifyContent: 'flex-end',
                     gap: 1,
                     flexWrap: 'wrap',
                     '& button': { minHeight: 48 },
                   }}
                 >
-                  <Stack direction="row" sx={{ gap: 0.75, flex: 1 }} aria-hidden="true">
-                    {STEPS.map((_, i) => (
-                      <Box
-                        key={i}
-                        sx={{
-                          width: i === step ? 18 : 6,
-                          height: 6,
-                          borderRadius: 3,
-                          bgcolor: i <= step ? roles.primary : roles.outlineVariant,
-                        }}
-                      />
-                    ))}
-                  </Stack>
                   {narrated ? (
-                    <Button size="small" onClick={() => narration.stop()}>
+                    <Button size="small" onClick={() => narration.stop()} sx={{ mr: 'auto' }}>
                       {t.skipVoice}
                     </Button>
                   ) : (
-                    <Button size="small" onClick={close}>
+                    <Button size="small" onClick={close} sx={{ mr: 'auto' }}>
                       {t.skip}
                     </Button>
                   )}

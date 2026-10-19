@@ -127,6 +127,12 @@
   top: 150px;
   background: color-mix(in srgb, var(--secondary-c) 80%, transparent);
 }
+/* Phones: the shapes would sit behind the headline and cut across its words (OB-125). */
+@media (max-width: 599px) {
+  .l2-blob {
+    display: none;
+  }
+}
 .l2 .l2-title {
   font-size: clamp(2.5rem, 11.5vw, 5.2rem);
   line-height: 1;

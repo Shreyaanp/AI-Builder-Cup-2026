@@ -255,12 +255,6 @@ export default function DemoApp() {
               {t.exit}
             </Button>
           </Stack>
-          {customer && !shop && (
-            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
-              <LanguagePicker variant="inline" />
-              <AppearanceToggle inline />
-            </Stack>
-          )}
         </Box>
         {state === 'loading' ? (
           <Stack spacing={2} sx={{ p: 2 }} aria-busy="true">
@@ -286,7 +280,16 @@ export default function DemoApp() {
               <PublicShop id={shop} previewApi={api} />
             </Suspense>
           ) : (
-            <DemoBrowse shops={shops} api={api} />
+            <DemoBrowse
+              shops={shops}
+              api={api}
+              actions={
+                <>
+                  <LanguagePicker variant="inline" />
+                  <AppearanceToggle inline />
+                </>
+              }
+            />
           )
         ) : (
           <BackHistory value>

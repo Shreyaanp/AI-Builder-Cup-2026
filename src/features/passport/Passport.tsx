@@ -158,9 +158,10 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
       {!view && status !== 'error' && <PassportSkeleton onRetry={refresh} />}
       {view && (
         <Stack spacing={{ xs: 2, sm: 4 }} sx={{ mt: { xs: 2, sm: 3 } }}>
+          {/* A waiting scratch card comes first: its Reveal button must clear the bottom nav (OB-99). */}
+          <PendingScratch view={view} place={place} onSignIn={() => setSignIn(true)} />
           <LevelCard view={view} />
           <NextRewardLine view={view} />
-          <PendingScratch view={view} place={place} onSignIn={() => setSignIn(true)} />
           <StreakFlame view={view} place={place} />
           {view.games?.coop && (
             <CoopGoal coop={view.games.coop} signedIn={signedIn} place={place} />
