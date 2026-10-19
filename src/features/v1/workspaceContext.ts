@@ -20,6 +20,8 @@ export type NewShopPhase = 'hero' | 'chat' | 'manual' | 'review'
 export interface Workspace {
   api: Api
   me: Me
+  /** Note shown when changes in this workspace cannot be saved (e.g. demo mode). */
+  readOnlyMessage?: string
   businesses: Business[]
   loading: boolean
   /** Shops could not be loaded; show recovery, never the empty "add your shop" state. */
