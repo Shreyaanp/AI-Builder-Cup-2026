@@ -18,6 +18,7 @@ import {
 import { useLocale } from '../../state/hooks'
 import { AppearanceToggle } from './AppearanceToggle'
 import { FlowVideo, TrustTags } from './HowItWorks'
+import { BrandLogo } from '../../design/BrandLogo'
 import { LanguagePicker } from './LanguagePicker'
 import { pagesCopyFor, type PagesCopy } from './howItWorksCopy'
 import './landing-v2.css'
@@ -289,10 +290,7 @@ export default function LandingV2({ preview = false }: { preview?: boolean }) {
         {t.skip}
       </a>
       <header className="l2-nav">
-        <a className="l2-logo" href="/">
-          <span className="l2-logo-mark" aria-hidden="true" />
-          {t.brand}
-        </a>
+        <BrandLogo name={t.brand} href="/" />
         <nav aria-label={t.brand}>
           <LanguagePicker variant="nav" />
           <AppearanceToggle inline />
@@ -339,18 +337,20 @@ export default function LandingV2({ preview = false }: { preview?: boolean }) {
         <div className="l2-pair">
           <Videos t={t} />
 
-          <section className="l2-trust" aria-labelledby="l2-trust-title">
-            <Typography id="l2-trust-title" component="h2" className="l2-h2" data-reveal>
-              {t.trustTitle}
-            </Typography>
-            <TrustTags t={t} />
-          </section>
+          {/* Wide screens: the trust tags and the founder's note share one column as tall as the video. */}
+          <div className="l2-trust-col">
+            <section className="l2-trust" aria-labelledby="l2-trust-title">
+              <Typography id="l2-trust-title" component="h2" className="l2-h2" data-reveal>
+                {t.trustTitle}
+              </Typography>
+              <TrustTags t={t} />
+            </section>
+            <figure className="l2-founder" data-reveal>
+              <blockquote>{t.founder}</blockquote>
+              <figcaption>{t.founderName}</figcaption>
+            </figure>
+          </div>
         </div>
-
-        <figure className="l2-founder" data-reveal>
-          <blockquote>{t.founder}</blockquote>
-          <figcaption>{t.founderName}</figcaption>
-        </figure>
 
         <section ref={final} className="l2-final" aria-labelledby="l2-final-title" data-reveal>
           <Typography id="l2-final-title" component="h2" className="l2-final-title">

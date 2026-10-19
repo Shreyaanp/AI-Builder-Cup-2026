@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Box, Button, Stack, useTheme } from '@mui/material'
 import { ArrowLeft } from 'lucide-react'
+import { BrandLogo } from '../../design/BrandLogo'
 import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
 import { LanguagePicker } from '../frontdoors/LanguagePicker'
 import { customerBack } from '../frontdoors/navigation'
@@ -46,21 +47,24 @@ export function CustomerTopBar({ back = false }: { back?: boolean }) {
         viewTransitionName: 'customer-top-bar',
       }}
     >
-      {back ? (
-        <Button
-          component="a"
-          href="/explore/"
-          onClick={customerBack}
-          startIcon={<ArrowLeft size={18} />}
-          sx={{ minHeight: 48 }}
-        >
-          {t.back}
-        </Button>
-      ) : (
-        <Button href="/explore/demo" sx={{ minHeight: 48 }}>
-          {demo.tryDemo}
-        </Button>
-      )}
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minWidth: 0 }}>
+        <BrandLogo wordmark="wide" href="/explore/" />
+        {back ? (
+          <Button
+            component="a"
+            href="/explore/"
+            onClick={customerBack}
+            startIcon={<ArrowLeft size={18} />}
+            sx={{ minHeight: 48 }}
+          >
+            {t.back}
+          </Button>
+        ) : (
+          <Button href="/explore/demo" sx={{ minHeight: 48 }}>
+            {demo.tryDemo}
+          </Button>
+        )}
+      </Stack>
       <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
         {!back && <ProfileButton inline />}
         <LanguagePicker variant="inline" />
