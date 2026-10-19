@@ -1,4 +1,5 @@
 import { carried, pushEntry } from '../../app/history'
+import { BrandLogo } from '../../design/BrandLogo'
 import { AiInfo } from '../v1/AiInfo'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -738,6 +739,10 @@ export default function AskHome({
             bgcolor: roles.surface,
           }}
         >
+          {/* The row is full on a phone (place, demo, three buttons): the logo joins from 600px. */}
+          <Box sx={{ display: { xs: 'none', sm: 'flex' }, mr: 2 }}>
+            <BrandLogo href="/explore/" />
+          </Box>
           <Button
             onClick={() => setChanging((open) => !open)}
             aria-expanded={changing}

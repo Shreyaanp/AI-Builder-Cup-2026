@@ -61,22 +61,6 @@
     display: none;
   }
 }
-.lp-logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 700;
-  font-size: 1.25rem;
-  letter-spacing: -0.02em;
-  text-decoration: none;
-}
-.lp-logo-mark {
-  width: 28px;
-  height: 28px;
-  background: var(--primary);
-  border-radius: 9px 9px 9px 2px;
-  transform: rotate(-8deg);
-}
 
 /* Shared type: bold, editorial, tight. */
 .lp-title {
