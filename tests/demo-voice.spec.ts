@@ -2,7 +2,9 @@ import { test, expect } from '@playwright/test'
 
 test.setTimeout(120_000)
 
-test('OB-72 demo tour plays recorded audio and never uses the browser voice', async ({ page }, info) => {
+test('OB-72 demo tour plays recorded audio and never uses the browser voice', async ({
+  page,
+}, info) => {
   test.skip(info.project.name !== 'phone', 'Phone flow')
   const audio: string[] = []
   const live: string[] = []
