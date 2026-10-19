@@ -383,7 +383,7 @@ for (const mode of ['light', 'dark'] as const)
     )
   })
 
-test('speed: first answer text appears quickly with the offline fixture', async ({ page }) => {
+test('OB-76 speed: first answer text appears quickly with the offline fixture', async ({ page }) => {
   test.setTimeout(60_000)
   await page.route('**/api/v1/discover/ask', (route) =>
     route.fulfill({ json: answer('Fast Kopi') }),
