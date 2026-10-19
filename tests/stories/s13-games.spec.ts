@@ -1,6 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Browser, type Page } from '@playwright/test'
-import { enter, localOnly, phone, shareSigned } from './support.js'
+import { enter, localOnly, phone, shareSigned, collectStamp } from './support.js'
 
 /**
  * S13 · The passport games (docs/research/gamification.md). An owner sets a scratch-card prize
@@ -178,6 +178,7 @@ async function walk(customer: Page, qr: string, name: string, mode: Mode) {
   })
   await test.step('2 · scan the counter QR: stamp, then a scratch card', async () => {
     await customer.goto(qr)
+    await collectStamp(customer)
     const moment = customer.getByRole('dialog')
     await expect(moment.getByRole('heading', { name: 'First try!' })).toBeVisible()
     await moment.getByRole('heading', { name: 'First try!' }).click()
@@ -202,7 +203,7 @@ async function walk(customer: Page, qr: string, name: string, mode: Mode) {
     await expect(moment.getByRole('status').filter({ hasText: '+25 bonus points' })).toBeVisible()
     await expect(moment.getByText('Added to your passport.')).toBeVisible()
     await evidence(customer, '3-scratch')
-    await moment.getByRole('button', { name: 'Done' }).click()
+    await moment.getByRole('button', { name: 'Keep browsing' }).click()
     await expect(moment).toBeHidden()
   })
   await test.step('4 · passport: next reward, set progress, the neighbourhood goal', async () => {

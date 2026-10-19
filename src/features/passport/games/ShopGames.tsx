@@ -101,7 +101,7 @@ export function ShopGames({ shop }: { shop: string }) {
           onClick={() => setShowOdds((value) => !value)}
           aria-expanded={showOdds}
           aria-controls={oddsId}
-          sx={{ minHeight: 40 }}
+          sx={{ minHeight: 48 }}
         >
           {t.odds}
         </Button>

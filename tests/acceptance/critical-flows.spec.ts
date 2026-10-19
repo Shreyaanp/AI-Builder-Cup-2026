@@ -7,7 +7,7 @@ import {
   type Page,
   type WebSocketRoute,
 } from '@playwright/test'
-import { enter, localOnly, shareSigned } from '../stories/support.js'
+import { enter, localOnly, shareSigned, collectStamp } from '../stories/support.js'
 import { expectCount } from './stamps.js'
 
 /**
@@ -704,18 +704,22 @@ for (const who of ['guest', 'signed-in customer'] as const) {
       await expectCount(customer, shopUrl, name, 2, 12, false)
       // The signed QR: a stamp (3 = 2 welcome + 1), then the same 3 everywhere.
       await customer.goto(qr)
+      await collectStamp(customer)
       const moment = customer.getByRole('dialog')
-      await expect(moment.getByRole('button', { name: 'Done' })).toBeVisible({ timeout: 20_000 })
-      await moment.getByRole('button', { name: 'Done' }).click()
+      await expect(moment.getByRole('button', { name: 'Keep browsing' })).toBeVisible({
+        timeout: 20_000,
+      })
+      await moment.getByRole('button', { name: 'Keep browsing' }).click()
       await expect(moment).toBeHidden()
       await expect(customer).not.toHaveURL(/[?&]k=/)
       await expectCount(customer, shopUrl, name, 3, 12)
       // A second scan the same day: honest, and no extra stamp.
       await customer.goto(qr)
+      await collectStamp(customer)
       await expect(
         customer.getByRole('dialog').getByRole('heading', { name: 'Already stamped today' }),
       ).toBeVisible({ timeout: 20_000 })
-      await customer.getByRole('dialog').getByRole('button', { name: 'Done' }).click()
+      await customer.getByRole('dialog').getByRole('button', { name: 'Keep browsing' }).click()
       await expectCount(customer, shopUrl, name, 3, 12)
       await overflowFree(customer)
     } finally {
@@ -741,6 +745,8 @@ test('a shop with no reward shows no stamps: no card, no button, no passport til
     shopUrl.search = ''
     await customer.goto(qr)
     await expect(customer.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 20_000 })
+    // A shop without stamps offers nothing to collect on a scan.
+    await expect(customer.getByRole('button', { name: 'Collect your stamp' })).toHaveCount(0)
     await expect(customer.getByRole('region', { name: 'Stamp card' })).toHaveCount(0)
     await expect(customer.getByRole('link', { name: /^Stamp card · / })).toHaveCount(0)
     await expect(customer.getByText(/\d+ stamps?/)).toHaveCount(0)
@@ -766,9 +772,10 @@ test('claiming a full card needs sign-in', async ({ page, browser }) => {
   const guest = await customerAt(browser, at, false)
   try {
     await guest.page.goto(qr)
+    await collectStamp(guest.page)
     await guest.page
       .getByRole('dialog')
-      .getByRole('button', { name: 'Done' })
+      .getByRole('button', { name: 'Keep browsing' })
       .click({ timeout: 20_000 })
     const card = guest.page.getByRole('region', { name: 'Stamp card' })
     await expect(card.getByRole('status')).toHaveText('3 stamps')

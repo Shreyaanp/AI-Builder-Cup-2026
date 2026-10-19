@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { enter, localOnly, shareSigned } from './stories/support.js'
+import { enter, localOnly, shareSigned, collectStamp } from './stories/support.js'
 
 /**
  * The 2 welcome stamps count everywhere (owner decision, 17 Oct): after the first QR scan the
@@ -85,9 +85,10 @@ test('first scan: the shop button, the card and the passport show the same stamp
 
     // The first scan (signed out): one verified stamp on top of the 2 welcome ones.
     await customer.goto(qr)
+    await collectStamp(customer)
     const moment = customer.getByRole('dialog')
-    await expect(moment.getByRole('button', { name: 'Done' })).toBeVisible()
-    await moment.getByRole('button', { name: 'Done' }).click()
+    await expect(moment.getByRole('button', { name: 'Keep browsing' })).toBeVisible()
+    await moment.getByRole('button', { name: 'Keep browsing' }).click()
     await expect(moment).toBeHidden()
     await expect(button).toHaveText('Stamp card · 3 of 10 stamps')
     await expect(card.getByRole('status')).toHaveText('3 stamps')
