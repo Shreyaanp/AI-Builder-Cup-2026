@@ -17,20 +17,11 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import {
-  Activity,
-  ArrowRight,
-  Check,
-  CircleHelp,
-  Leaf,
-  Moon,
-  Sparkles,
-  Store,
-  Sun,
-} from 'lucide-react'
+import { Activity, ArrowRight, Check, CircleHelp, Moon, Sparkles, Store, Sun } from 'lucide-react'
 import { BusinessCard } from '../features/business/BusinessCard'
 import { InputDock } from '../features/coach/InputDock'
 import { copy } from '../design/copy'
+import { BrandLogo } from '../design/BrandLogo'
 import { layout } from '../design/theme'
 import {
   useBusiness,
@@ -108,15 +99,7 @@ export default function App() {
           direction="row"
           sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}
         >
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
-            <Leaf size={28} color={roles.primary} aria-hidden="true" />
-            <Typography
-              component="span"
-              sx={{ fontSize: '1.5rem', fontWeight: 600, letterSpacing: '-.06em' }}
-            >
-              Chalkboard
-            </Typography>
-          </Stack>
+          <BrandLogo />
           <Box
             component="nav"
             aria-label={t.navigation}
