@@ -8,10 +8,9 @@ One Cloud Run service serves compiled React and the Python API at the same HTTPS
 
 ## Release flow
 
-**Current release procedure:** [tagged release checklist](../docs/release-checklist.md).
 `scripts/ship.ps1 -Tag release-...` dispatches the same checked CI path; runtime config is
 applied there. Both entry points require a published tag. Capacity is preserved by release
-CI and changed separately by the assistant; see [source drift and proposed limits](../docs/architecture.md).
+CI and changed separately by the assistant.
 The historical sizing and release evidence below are not a current cloud inspection.
 
 1. Push a main commit. GitHub Actions checks Python, the Firestore emulator, generated contracts, React/browser behavior and the actual Docker image.

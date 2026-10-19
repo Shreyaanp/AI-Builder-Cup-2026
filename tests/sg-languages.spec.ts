@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
 
-// Singapore languages end to end at 360px (docs/qa/sg-languages-e2e.md). A Singapore shop (pin
+// Singapore languages end to end at 360px. A Singapore shop (pin
 // in Tiong Bahru, no currency sent) with the owner app set in turn to English, Mandarin, Malay
 // and Tamil, and a customer whose phone is in that language. Every screen must read in its
 // language (brands, units and the owner's own words excepted), show S$ and never ₹, and fit the

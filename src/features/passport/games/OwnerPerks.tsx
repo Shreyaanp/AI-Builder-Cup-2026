@@ -20,7 +20,7 @@ const TRIGGERS: PerkTrigger[] = [
 ]
 
 /**
- * The owner's thank-you perks (reciprocity, docs/research/gamification.md §7): one short line per
+ * The owner's thank-you perks (reciprocity): one short line per
  * moment, blank to skip. Calm owner UI: plain fields, one save button, no game motion.
  */
 export function OwnerPerks() {

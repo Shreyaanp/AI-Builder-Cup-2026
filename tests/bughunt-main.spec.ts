@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
 
-// Bug hunt on main (16 Oct, docs/qa/bughunt-main-2026-10-16.md): console errors and copy found
+// Bug hunt on main (16 Oct): console errors and copy found
 // while running the browser suite and clicking through at 360px.
 
 function consoleErrors(page: Page) {

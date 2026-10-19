@@ -2,7 +2,7 @@ import { createShop, detailsStep } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
-// Phone shell bugs B1–B7 (BUGS.md), at the 390×844 size they were reported on.
+// Phone shell bugs B1–B7, at the 390×844 size they were reported on.
 test.skip(({ isMobile }) => !isMobile, 'phone-only regressions')
 test.use({ viewport: { width: 390, height: 844 } })
 

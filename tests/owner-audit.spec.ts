@@ -3,7 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { gpsBoardPath, openNewShopReview } from './stories/support.js'
 
-// Owner story audit (16 Oct, docs/qa/story-audit/owner-report.md): every finding reproduced,
+// Owner story audit (16 Oct): every finding reproduced,
 // then fixed. Runs on phone and desktop; light and dark are both checked with axe.
 
 // The real Bengaluru menu board the story audit used.

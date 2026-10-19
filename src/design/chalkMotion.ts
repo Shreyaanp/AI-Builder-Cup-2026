@@ -3,7 +3,7 @@ import { gsap } from 'gsap'
 import { motion } from './theme'
 
 /**
- * Chalkboard motion (docs/research/visual-motion.md §3). Rules: animate transform/opacity/
+ * Chalkboard motion. Rules: animate transform/opacity/
  * clip-path/stroke only, ≤ 1 reward animation at a time, never block input, and respect reduced
  * motion. The global CSS rule only stops CSS animations, so every GSAP timeline goes through
  * `useChalkTimeline`, which runs nothing when the person prefers reduced motion.

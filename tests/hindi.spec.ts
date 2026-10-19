@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, image, localOnly, seedShop, share } from './stories/support.js'
 
-// Hindi end to end at 360px (docs/qa/hindi-e2e.md). The owner app set to Hindi and a customer
+// Hindi end to end at 360px. The owner app set to Hindi and a customer
 // whose phone is in Hindi walk the main screens; each must read in Hindi: no English UI words
 // (brands, units and the owner's own words excepted), ₹ prices, Hindi dates, and nothing wider
 // than the phone. Offline fixtures only: live Gemini replies are checked by hand (see the doc).
