@@ -5,10 +5,16 @@ import { useLocale } from '../../state/hooks'
 import { explainerCopy } from './copy'
 import { hasSeen, remember, type Audience } from './seen'
 
-/** Blocks setup until the device's introduction is finished or skipped. */
+/** A customer who scanned a shop's QR came for that shop and its stamp, not the intro (OB-65). */
+function qrArrival(app: Audience) {
+  return app === 'customer' && new URLSearchParams(window.location.search).get('source') === 'qr'
+}
+
+/** Blocks setup until the device's introduction is finished or skipped. A QR arrival defers it to
+ * the next visit. */
 export function FirstRun({ app, children }: { app: Audience; children: ReactNode }) {
-  const [open, setOpen] = useState(() => !hasSeen(app))
-  return open ? (
+  const [open, setOpen] = useState(() => !hasSeen(app) && !qrArrival(app))
+  return open && !hasSeen(app) ? (
     <Cards
       app={app}
       onClose={() => {

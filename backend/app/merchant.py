@@ -660,12 +660,13 @@ def seal_proposal(request: ProposalRequest) -> tuple[dict[str, Any], str, str]:
 
 
 def challenge_prompts(exclude: list[str] | None = None) -> list[str]:
-    pool = [p for p in ["turn_left", "turn_right", "look_up"] if not exclude or p not in exclude]
-    if not pool:
-        pool = ["turn_left", "turn_right", "look_up"]
-    count = 1 if exclude and len(exclude) >= 1 else 2
-    count = min(count, len(pool))
-    return secrets.SystemRandom().sample(pool, count)
+    """Always two head movements (the only liveness check): exclusions only change which two."""
+    every = ["turn_left", "turn_right", "look_up"]
+    preferred = [p for p in every if not exclude or p not in exclude]
+    rest = [p for p in every if p not in preferred]
+    rng = secrets.SystemRandom()
+    picked = rng.sample(preferred, min(2, len(preferred)))
+    return picked + rng.sample(rest, 2 - len(picked))
 
 
 class MerchantStore:

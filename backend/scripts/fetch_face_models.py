@@ -27,7 +27,7 @@ def main() -> None:
     # Fixed publisher release; builds must not follow a changing master branch.
     commit = "2023.3.0"
     receipts = []
-    for group, name in [("intel", n) for n in MODELS] + [("public", "anti-spoof-mn3")]:
+    for group, name in [("intel", n) for n in MODELS]:
         manifest = fetch(f"{base}{commit}/models/{group}/{name}/model.yml")
         info = yaml.safe_load(manifest)
         directory = ROOT / name
