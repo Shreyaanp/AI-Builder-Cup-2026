@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert, Box, Button, Link, Stack, Typography, useTheme } from '@mui/material'
-import { Languages, Leaf, MapPin, MessageCircle, Search, ShieldCheck, Trash2 } from 'lucide-react'
+import { Languages, MapPin, MessageCircle, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { useIdentity } from '../../auth/useIdentity'
+import { BrandLogo } from '../../design/BrandLogo'
 import { shape } from '../../design/theme'
 import { LegalDialog } from './LegalDialog'
 import type { LegalDocument } from './LegalDialog'
@@ -42,12 +43,7 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
           pb: 1,
         }}
       >
-        <Box aria-hidden="true" sx={{ color: roles.primary, display: 'flex' }}>
-          <Leaf size={26} />
-        </Box>
-        <Typography variant="titleLarge" sx={{ flex: 1 }} translate="no">
-          {t.appName}
-        </Typography>
+        <BrandLogo name={t.appName} />
       </Box>
 
       <Box component="main">
