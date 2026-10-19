@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useReducer, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material'
 import { nivaTheme } from '../design/theme'
@@ -91,6 +91,20 @@ function Providers({
   const resolved =
     preferences.appearance === 'system' ? (systemDark ? 'dark' : 'light') : preferences.appearance
   const theme = useMemo(() => nivaTheme(resolved), [resolved])
+  const shownMode = useRef(resolved)
+  useLayoutEffect(() => {
+    if (shownMode.current === resolved) return
+    shownMode.current = resolved
+    // A light/dark switch repaints at once: colours never fade through a washed-out in-between.
+    const style = document.createElement('style')
+    style.textContent = '*,*::before,*::after{transition:none!important}'
+    document.head.appendChild(style)
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => style.remove()))
+    return () => {
+      cancelAnimationFrame(frame)
+      style.remove()
+    }
+  }, [resolved])
   useEffect(() => {
     // Keep the PWA/browser chrome in step with the active surface colour.
     document
