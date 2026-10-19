@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { scrollToEnd } from './scroll-to-end.js'
 
 // Customer phone screens: bars never cover content, loading never shows blank outlines, and a
 // rejected QR key never leaves a stamp behind. 360 and 390 px.
@@ -44,8 +45,8 @@ for (const width of [360, 390]) {
       await page.goto('/explore/s/demo-shop-1')
       const chat = page.getByRole('button', { name: 'Chat with the shop' })
       await expect(chat).toBeVisible({ timeout: 20_000 })
-      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-      const last = page.getByText('independent prototype').last()
+      await scrollToEnd(page)
+      const last = page.getByText(/Prepared by the shop owner/).last()
       await expect(last).toBeVisible()
       const content = (await last.boundingBox())!
       const bar = (await chat.boundingBox())!
@@ -94,13 +95,14 @@ for (const width of [360, 390]) {
         route.fulfill({ status: 403, json: { detail: 'bad key' } }),
       )
       await page.goto('/explore/s/demo-shop-1?source=qr&k=made-up-key')
+      await page.getByRole('button', { name: 'Collect your stamp' }).click()
       await expect(page.getByText('This QR is out of date')).toBeVisible({ timeout: 20_000 })
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
         ),
       ).toBe(0)
-      await page.getByRole('button', { name: 'Done' }).click()
+      await page.getByRole('button', { name: 'Keep browsing' }).click()
       // The shop page's own card keeps the count it had before the scan.
       await expect(page.getByRole('link', { name: 'Stamp card · 2 of 10 stamps' })).toBeVisible()
     })

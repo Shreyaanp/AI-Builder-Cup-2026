@@ -16,7 +16,7 @@ async function reminderCopy(page: Page, locale: string) {
     const localeExport = locale === 'zh-Hans' ? 'zhHans' : locale
     const t = locale === 'en' ? source.en : source[localeExport]
     return {
-      getStarted: String(t.getStarted),
+      continuePreview: String(t.continuePreview),
       remindMe: String(t.remindMe),
       reminderTiming: String(t.reminderTiming),
       reminderDenied: String(t.reminderDenied),
@@ -84,7 +84,7 @@ async function setup(page: Page, permission: 'granted' | 'denied' = 'granted') {
   })
   await page.goto('/?app=business')
   const copy = await reminderCopy(page, 'en')
-  await page.getByRole('button', { name: copy.getStarted, exact: true }).click()
+  await page.getByRole('button', { name: copy.continuePreview, exact: true }).click()
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
@@ -116,7 +116,7 @@ async function setup(page: Page, permission: 'granted' | 'denied' = 'granted') {
     ).toBe(true)
   }
   await page.reload()
-  await page.getByRole('button', { name: copy.getStarted, exact: true }).click()
+  await page.getByRole('button', { name: copy.continuePreview, exact: true }).click()
   await page.getByRole('button', { name: 'You', exact: true }).click()
   return {
     saved,

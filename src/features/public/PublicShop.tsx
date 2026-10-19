@@ -13,6 +13,7 @@ import {
   Stack,
   Typography,
   useTheme,
+  Link,
 } from '@mui/material'
 import { ArrowLeft, ChevronDown, Leaf, MapPin, MessageCircle, Phone, RefreshCw } from 'lucide-react'
 import { customerBack, customerNavigate } from '../frontdoors/navigation'
@@ -49,6 +50,7 @@ import { HoursList } from '../shop/Hours'
 import type { DayHours } from '../shop/hoursModel'
 import { CategoryGroups } from '../shop/CategoryGroups'
 import { useShopCopy } from '../shop/strings'
+import { useDemoCopy } from '../frontdoors/strings'
 import { VerifiedBadge } from '../trust/VerifiedBadge'
 import { unitLabel } from '../shop/units'
 import { rememberOpened } from '../discover/opened'
@@ -193,8 +195,7 @@ const en = {
   updated: 'Updated just now',
   missing: 'This shop page isn’t available.',
   missingBody: 'The owner may have stopped sharing it.',
-  footer:
-    'Prepared by the shop owner with Chalkboard · independent prototype, not a Google product',
+  footer: 'Prepared by the shop owner with Chalkboard',
   loading: 'Loading shop…',
   empty: 'The owner hasn’t added prices yet.',
   error: 'We couldn’t load this shop right now.',
@@ -218,7 +219,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: 'अभी अपडेट हुआ',
     missing: 'दुकान का पेज उपलब्ध नहीं है।',
     missingBody: 'मालिक ने शेयर करना बंद किया होगा।',
-    footer: 'मालिक ने Chalkboard से तैयार किया · स्वतंत्र नमूना, Google का उत्पाद नहीं',
+    footer: 'मालिक ने Chalkboard से तैयार किया',
     loading: 'दुकान लोड हो रही है…',
     empty: 'मालिक ने अभी दाम नहीं जोड़े हैं।',
     error: 'अभी दुकान लोड नहीं कर पाए।',
@@ -236,7 +237,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: 'এইমাত্র আপডেট হয়েছে',
     missing: 'দোকানের পেজ পাওয়া যাচ্ছে না।',
     missingBody: 'মালিক হয়তো শেয়ার বন্ধ করেছেন।',
-    footer: 'মালিক Chalkboard দিয়ে তৈরি করেছেন · স্বাধীন নমুনা, Google-এর পণ্য নয়',
+    footer: 'মালিক Chalkboard দিয়ে তৈরি করেছেন',
     loading: 'দোকান লোড হচ্ছে…',
     empty: 'মালিক এখনও দাম যোগ করেননি।',
     error: 'এখন দোকান লোড করা যায়নি।',
@@ -254,7 +255,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: 'ఇప్పుడే నవీకరించారు',
     missing: 'ఈ దుకాణం పేజీ అందుబాటులో లేదు.',
     missingBody: 'యజమాని షేర్ చేయడం ఆపి ఉండవచ్చు.',
-    footer: 'యజమాని Chalkboardతో సిద్ధం చేశారు · స్వతంత్ర నమూనా, Google ఉత్పత్తి కాదు',
+    footer: 'యజమాని Chalkboardతో సిద్ధం చేశారు',
     loading: 'దుకాణం లోడ్ అవుతోంది…',
     empty: 'యజమాని ఇంకా ధరలు జోడించలేదు.',
     error: 'ఇప్పుడు ఈ దుకాణం లోడ్ చేయలేకపోయాం.',
@@ -272,7 +273,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: 'आत्ताच अपडेट केले',
     missing: 'दुकानाचे पेज उपलब्ध नाही.',
     missingBody: 'मालकाने शेअर करणे बंद केले असेल.',
-    footer: 'मालकाने Chalkboard ने तयार केले · स्वतंत्र नमुना, Google चे उत्पादन नाही',
+    footer: 'मालकाने Chalkboard ने तयार केले',
     loading: 'दुकान लोड करत आहोत…',
     empty: 'मालकाने अजून दर जोडलेले नाहीत.',
     error: 'आत्ता दुकान लोड करता आले नाही.',
@@ -290,7 +291,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: 'ಈಗಷ್ಟೇ ನವೀಕರಿಸಲಾಗಿದೆ',
     missing: 'ಈ ಅಂಗಡಿ ಪೇಜ್ ಲಭ್ಯವಿಲ್ಲ.',
     missingBody: 'ಮಾಲೀಕರು ಹಂಚುವುದನ್ನು ನಿಲ್ಲಿಸಿರಬಹುದು.',
-    footer: 'ಮಾಲೀಕರು Chalkboard ಮೂಲಕ ಸಿದ್ಧಪಡಿಸಿದ್ದಾರೆ · ಸ್ವತಂತ್ರ ಮಾದರಿ, Google ಉತ್ಪನ್ನವಲ್ಲ',
+    footer: 'ಮಾಲೀಕರು Chalkboard ಮೂಲಕ ಸಿದ್ಧಪಡಿಸಿದ್ದಾರೆ',
     loading: 'ಅಂಗಡಿ ಲೋಡ್ ಆಗುತ್ತಿದೆ…',
     empty: 'ಮಾಲೀಕರು ಇನ್ನೂ ಬೆಲೆ ಸೇರಿಸಿಲ್ಲ.',
     error: 'ಈಗ ಅಂಗಡಿ ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.',
@@ -310,7 +311,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: '刚刚更新',
     missing: '此店铺页面无法访问。',
     missingBody: '店主可能已停止分享。',
-    footer: '店主使用 Chalkboard 准备 · 独立原型，非 Google 产品',
+    footer: '店主使用 Chalkboard 准备',
     loading: '正在加载店铺…',
     empty: '店主尚未添加价格。',
     error: '暂时无法加载店铺。',
@@ -328,7 +329,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: 'Baru dikemas kini',
     missing: 'Halaman kedai ini tidak tersedia.',
     missingBody: 'Pemilik mungkin berhenti berkongsi.',
-    footer: 'Disediakan pemilik dengan Chalkboard · prototaip bebas, bukan produk Google',
+    footer: 'Disediakan pemilik dengan Chalkboard',
     loading: 'Memuatkan kedai…',
     empty: 'Pemilik belum tambah harga.',
     error: 'Kedai tidak dapat dimuatkan sekarang.',
@@ -346,8 +347,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: 'இப்போதுதான் புதுப்பிக்கப்பட்டது',
     missing: 'இந்தக் கடைப் பக்கம் கிடைக்கவில்லை.',
     missingBody: 'உரிமையாளர் பகிர்வை நிறுத்தியிருக்கலாம்.',
-    footer:
-      'Chalkboard மூலம் கடை உரிமையாளர் தயாரித்தது · சுயாதீன முன்மாதிரி, Google தயாரிப்பு அல்ல',
+    footer: 'Chalkboard மூலம் கடை உரிமையாளர் தயாரித்தது',
     loading: 'கடையை ஏற்றுகிறோம்…',
     empty: 'உரிமையாளர் இன்னும் விலைகளைச் சேர்க்கவில்லை.',
     error: 'இப்போது கடையை ஏற்ற முடியவில்லை.',
@@ -365,7 +365,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: 'たった今更新',
     missing: 'このお店のページは利用できません。',
     missingBody: 'オーナーが共有を停止した可能性があります。',
-    footer: 'オーナーが Chalkboard で作成・独立した試作アプリであり Google 製品ではありません',
+    footer: 'オーナーが Chalkboard で作成',
     loading: 'お店を読み込んでいます…',
     empty: '価格はまだ追加されていません。',
     error: '今はお店を読み込めません。',
@@ -383,7 +383,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: '방금 업데이트했어요',
     missing: '이 가게 페이지를 볼 수 없어요.',
     missingBody: '점주가 공유를 중단했을 수 있어요.',
-    footer: '점주가 Chalkboard로 작성 · 독립 시제품이며 Google 제품이 아니에요',
+    footer: '점주가 Chalkboard로 작성',
     loading: '가게를 불러오고 있어요…',
     empty: '점주가 아직 가격을 추가하지 않았어요.',
     error: '지금 가게를 불러올 수 없어요.',
@@ -401,7 +401,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: 'Baru diperbarui',
     missing: 'Halaman toko ini tidak tersedia.',
     missingBody: 'Pemilik mungkin menghentikan berbagi.',
-    footer: 'Disiapkan pemilik dengan Chalkboard · prototipe independen, bukan produk Google',
+    footer: 'Disiapkan pemilik dengan Chalkboard',
     loading: 'Memuat toko…',
     empty: 'Pemilik belum menambahkan harga.',
     error: 'Toko belum dapat dimuat saat ini.',
@@ -419,7 +419,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: 'เพิ่งอัปเดต',
     missing: 'ไม่พบหน้าร้านนี้',
     missingBody: 'เจ้าของอาจหยุดแชร์แล้ว',
-    footer: 'เจ้าของจัดทำด้วย Chalkboard · แอปต้นแบบอิสระ ไม่ใช่ผลิตภัณฑ์ Google',
+    footer: 'เจ้าของจัดทำด้วย Chalkboard',
     loading: 'กำลังโหลดร้าน…',
     empty: 'เจ้าของยังไม่เพิ่มราคา',
     error: 'ตอนนี้โหลดร้านไม่ได้',
@@ -437,8 +437,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: 'Vừa cập nhật',
     missing: 'Trang cửa hàng này không khả dụng.',
     missingBody: 'Chủ cửa hàng có thể đã ngừng chia sẻ.',
-    footer:
-      'Chủ cửa hàng chuẩn bị bằng Chalkboard · bản thử nghiệm độc lập, không phải sản phẩm Google',
+    footer: 'Chủ cửa hàng chuẩn bị bằng Chalkboard',
     loading: 'Đang tải cửa hàng…',
     empty: 'Chủ cửa hàng chưa thêm giá.',
     error: 'Hiện chưa tải được cửa hàng.',
@@ -456,8 +455,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
     updated: 'Kaka-update lang',
     missing: 'Hindi available ang pahina ng tindahan.',
     missingBody: 'Maaaring itinigil ng may-ari ang pag-share.',
-    footer:
-      'Inihanda ng may-ari gamit ang Chalkboard · hiwalay na prototype, hindi produkto ng Google',
+    footer: 'Inihanda ng may-ari gamit ang Chalkboard',
     loading: 'Nilo-load ang tindahan…',
     empty: 'Wala pang inilalagay na presyo ang may-ari.',
     error: 'Hindi ma-load ang tindahan ngayon.',
@@ -471,6 +469,7 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
 export default function PublicShop({ id, previewApi }: { id: string; previewApi?: Api }) {
   const locale = useLocale()
   const shopCopy = useShopCopy()
+  const demoCopy = useDemoCopy()
   const o = useOnboardingCopy()
   const discovery = discoverCopy(locale)
   const freshnessCopy = useOwnerCopy()
@@ -489,6 +488,9 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   const [chatOpen, setChatOpen] = useState(false)
   // A counter QR scan, read once: a shop without stamps has no stamp moment to answer it.
   const [scannedQr] = useState(() => new URLSearchParams(location.search).get('source') === 'qr')
+  // Set once the shop has answered the QR scan; until then the bottom bar is "Collect your stamp".
+  const [qrAnswered, setQrAnswered] = useState(false)
+  const [qrKeyed] = useState(() => Boolean(new URLSearchParams(location.search).get('k')))
   const [detailsOpen, setDetailsOpen] = useState(false)
   const previous = useRef<PublicShopData | null>(null)
   const [changedPrices, setChangedPrices] = useState<string[]>([])
@@ -665,6 +667,11 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   const menu = [...shop.products].sort((a, b) => Number(b.available) - Number(a.available))
   const openLabel = shop.open_now == null ? null : shop.open_now ? discovery.open : discovery.closed
   const stampsEnabled = shop.stamps_enabled ?? Boolean(shop.reward_text?.trim())
+  // The stamp card, games and badges read and write this customer's own account, which the
+  // read-only public demo never touches.
+  const showStamps = stampsEnabled && !previewApi
+  // A counter scan with a signed key (or a demo shop's on-screen QR) waits for the stamp tap.
+  const qrArmed = scannedQr && !qrAnswered && (qrKeyed || Boolean(shop.demo))
   // Demo shops' numbers are fictional; never offer to call or message them.
   const phone = shop.demo ? '' : shop.phone
   const actions = previewApi
@@ -885,7 +892,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         }}
       >
         {!previewApi && <FollowButton id={id} name={shop.name} />}
-        {stampsEnabled && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
+        {showStamps && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
         {actions.map((action) => (
           <Button
             key={action.label}
@@ -1161,7 +1168,15 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         </CategoryGroups>
       )}
       {/* Rewards after the menu: earned, not in the way. */}
-      {stampsEnabled && (
+      {stampsEnabled && previewApi && (
+        <Link
+          href="/explore/s/demo-story-bengaluru-chai?source=qr"
+          sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 48, mt: 2 }}
+        >
+          {demoCopy.stampAtStall}
+        </Link>
+      )}
+      {showStamps && (
         <StampCard
           shop={id}
           name={shop.name}
@@ -1170,7 +1185,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           needed={shop.stamps_needed ?? 8}
         />
       )}
-      {stampsEnabled && (
+      {showStamps && (
         <ShopStamp
           shop={{
             id,
@@ -1180,11 +1195,15 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
             timezone: shopZone(shop),
             needed: shop.stamps_needed ?? 8,
           }}
+          armed={qrArmed}
+          onSpent={() => setQrAnswered(true)}
+          onChat={() => setChatOpen(true)}
+          chatLabel={t.chatTitle}
         />
       )}
-      {stampsEnabled && <ShopGames shop={id} />}
+      {showStamps && <ShopGames shop={id} />}
       {!previewApi && !stale && <BackInStock shop={id} products={shop.products} />}
-      {stampsEnabled && <BadgeRow shop={id} />}
+      {showStamps && <BadgeRow shop={id} />}
       {!previewApi && <Tips shop={id} />}
       {!previewApi && (
         <SimilarNearby
@@ -1204,7 +1223,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         </Typography>
       </Stack>
       {/* One way to reach the shop: instant answers first, the owner when needed. */}
-      {!previewApi && (
+      {!previewApi && !(showStamps && qrArmed) && (
         <Box
           sx={{
             position: 'fixed',

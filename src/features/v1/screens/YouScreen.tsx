@@ -174,7 +174,6 @@ export function YouScreen() {
         <TrustCard compact />
 
         <Group title={t.settings}>
-          <SeeAgain app="owner" />
           <ReminderSettings />
           <Box sx={{ px: 3, py: 2 }}>
             {/* Default follows the phone's language setting; owners can pin a language here. */}
@@ -261,6 +260,7 @@ export function YouScreen() {
         </Group>
 
         <Group title={tabs.help}>
+          <SeeAgain app="owner" />
           <TourMenuButton onStart={() => undefined} />
           <Row
             icon={<MessageCircleQuestion size={20} />}
@@ -293,10 +293,6 @@ export function YouScreen() {
             />
           </Group>
         )}
-
-        <Typography variant="bodySmall" color="text.secondary" sx={{ px: 1, pb: 2 }}>
-          {t.independent}
-        </Typography>
       </Stack>
 
       <Sheet

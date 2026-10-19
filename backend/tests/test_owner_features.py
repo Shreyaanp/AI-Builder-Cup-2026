@@ -709,3 +709,38 @@ def test_brief_writer_is_closed_at_shutdown(app, monkeypatch):  # noqa: F811
     with TestClient(app):
         pass
     close.assert_awaited_once()
+
+
+def _runs_out_for_milk(setup, demo):
+    from app.demand import Radar
+    from app.forecast import Forecast
+
+    _, store, bid, _ = setup
+    context = store.context("owner", bid)
+    context["business"]["fields"]["demo"] = demo
+    today = brief.local_now(context["business"]["fields"]).date()
+    # Milk has 3 in stock. Today's forecast alone covers it: the real-owner rule counts today
+    # (>=), the demo's shared supply rule starts tomorrow and uses the upper bound.
+    forecast = Forecast(
+        status="ready",
+        method="weekday_average",
+        training_cutoff=today,
+        predictions=[
+            Prediction(date=today, item="Milk", quantity=3),
+            Prediction(date=today + timedelta(days=2), item="Milk", quantity=1, upper=4),
+        ],
+    )
+    radar = Radar(area_label="x", approximate=True, demo=False, opportunities=[])
+    result = brief.facts(store, "owner", bid, context, forecast, radar)
+    return today, next(p for p in result.low_stock if p.name == "Milk").runs_out
+
+
+def test_brief_runs_out_rule_unchanged_for_real_owners_pr344(setup):
+    # PR #344 review: the unified rule must not leak into real signed-in shops.
+    today, runs_out = _runs_out_for_milk(setup, demo=False)
+    assert runs_out == today
+
+
+def test_brief_runs_out_uses_supply_rule_for_demo_shops_pr344(setup):
+    today, runs_out = _runs_out_for_milk(setup, demo=True)
+    assert runs_out == today + timedelta(days=2)

@@ -57,6 +57,7 @@ for (const app of ['owner', 'customer'] as const) {
       const freshTourKey = `first-run-spec.${app}`
       if (!sessionStorage.getItem(freshTourKey)) {
         localStorage.removeItem(`chalkboard.explainer.${app}.v1`)
+        document.cookie = `chalkboard.explainer.${app}.v1=; Path=/; Max-Age=0`
         sessionStorage.setItem(freshTourKey, '1')
       }
       if (!localStorage.getItem('niva.starter.preferences'))
@@ -126,8 +127,10 @@ for (const app of ['owner', 'customer'] as const) {
       await page.evaluate(
         ({ app, language }) => {
           localStorage.removeItem(`chalkboard.explainer.${app}.v1`)
+          document.cookie = `chalkboard.explainer.${app}.v1=; Path=/; Max-Age=0`
+          // Each side keeps its own preferences record.
           localStorage.setItem(
-            'niva.starter.preferences',
+            `chalkboard.${app}.preferences`,
             JSON.stringify({ language, appearance: 'dark' }),
           )
         },

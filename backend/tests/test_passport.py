@@ -1,8 +1,9 @@
 """Neighbourhood passport: verified stamps, anti-abuse rules, levels, streaks, quests, perks."""
 
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -332,6 +333,27 @@ def client(app):
         yield client
 
 
+@pytest.fixture
+def midweek(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Freeze every route and passport clock at Wednesday in Singapore (OB-73)."""
+    import app.games_routes as game_routes
+    import app.passport as passport
+    import app.passport_routes as routes
+
+    instant = at(0)
+    frozen_time = SimpleNamespace(time=lambda: instant)
+
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            value = datetime.fromtimestamp(instant, tz or UTC)
+            return value.replace(tzinfo=tz) if tz else value.replace(tzinfo=None)
+
+    monkeypatch.setattr(routes, "time", frozen_time)
+    monkeypatch.setattr(game_routes, "time", frozen_time)
+    monkeypatch.setattr(passport, "datetime", FrozenDateTime)
+
+
 def sign_in(client: TestClient, name: str = "Asha Rao") -> None:
     assert client.post("/api/v1/customer/session", json={"name": name}).status_code == 200
 
@@ -526,7 +548,7 @@ def test_rescue_collect_with_qr_in_window(client: TestClient, monkeypatch) -> No
     assert again["outcome"]["verdict"] == "already_today"
 
 
-def test_leaderboard_is_opt_in(client: TestClient) -> None:
+def test_leaderboard_is_opt_in(client: TestClient, midweek: None) -> None:
     sign_in(client, "Asha Rao")
     body = {"shop_id": DEMO, "key": demo_key(client), **at_shop(client)}
     client.post("/api/v1/customer/passport/stamps", json=body)

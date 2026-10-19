@@ -63,10 +63,14 @@ for (const width of [360, 390, 412]) {
       await expect(
         video.locator('xpath=../..').getByRole('button', { name: t.sound }),
       ).toBeVisible()
-      // The steps are the video's captions, without the end card.
+      // The steps are the video's captions, without the end card. Phones leave the list out (the
+      // video already tells each step), so it stays in the page but is not shown.
       const label = flow === 'vendor' ? t.forShops : t.forCustomers
-      const steps = page.getByRole('list', { name: `${label}: ${t.steps}` }).getByRole('listitem')
-      await expect(steps).toHaveText(captions.slice(0, -1))
+      const list = page.getByRole('list', { name: `${label}: ${t.steps}`, includeHidden: true })
+      await expect(list).toBeHidden()
+      await expect(list.getByRole('listitem', { includeHidden: true })).toHaveText(
+        captions.slice(0, -1),
+      )
       for (const caption of captions) expect(caption.split(/\s+/).length).toBeLessThanOrEqual(8)
     }
     // Nothing downloads until the customer video nears the screen.
@@ -98,12 +102,15 @@ for (const appearance of ['light', 'dark'] as const) {
       'poster',
       '/how-it-works/vendor-hi.jpg',
     )
-    await expect(
-      page
-        .getByRole('list', { name: `${t.forShops}: ${t.steps}` })
-        .getByRole('listitem')
-        .first(),
-    ).toHaveText(t.vendorCaptions[0]!)
+    // Phones hide the step list: the video tells the steps; the list keeps the Hindi text.
+    const steps = page.getByRole('list', {
+      name: `${t.forShops}: ${t.steps}`,
+      includeHidden: true,
+    })
+    await expect(steps).toBeHidden()
+    await expect(steps.getByRole('listitem', { includeHidden: true }).first()).toHaveText(
+      t.vendorCaptions[0]!,
+    )
     await noOverflow(page)
     expect(
       (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
@@ -167,6 +174,40 @@ test('every demo video and poster ships, small enough for a phone (< 3 MB), with
     }
 })
 
+// OB-17: the buttons were far too big. Every jump pill and action button is one 48 px row,
+// its label stays inside it, and the row stays inside the screen, in English and Hindi.
+for (const width of [360, 390, 412, 1280]) {
+  test(`OB-17 ${width}px: /how-it-works buttons are 48 px and their labels fit`, async ({
+    page,
+  }) => {
+    test.setTimeout(90_000)
+    for (const language of ['en', 'hi'] as const) {
+      await page.setViewportSize({ width, height: 800 })
+      await open(page, '/how-it-works', language, 'light')
+      const buttons = page.locator('.hw-jump a, .hw-cta .MuiButton-root, .hw-sound')
+      await expect(buttons.first()).toBeVisible({ timeout: 50_000 })
+      const boxes = await buttons.evaluateAll((els) =>
+        els.map((el) => {
+          const r = el.getBoundingClientRect()
+          return {
+            label: (el.textContent ?? '').trim(),
+            height: Math.round(r.height),
+            right: r.right,
+            spill: el.scrollWidth - el.clientWidth,
+          }
+        }),
+      )
+      expect(boxes.length).toBeGreaterThanOrEqual(6)
+      for (const box of boxes) {
+        expect(box.height, `${language} ${box.label} height`).toBe(48)
+        expect(box.spill, `${language} ${box.label} label fits`).toBeLessThanOrEqual(1)
+        expect(box.right, `${language} ${box.label} on screen`).toBeLessThanOrEqual(width)
+      }
+      await noOverflow(page)
+    }
+  })
+}
+
 for (const width of [360, 390]) {
   test(`${width}px: the new "/" front door fits and shows both primary actions`, async ({
     page,
@@ -178,7 +219,7 @@ for (const width of [360, 390]) {
       timeout: 20_000,
     })
     await expect(page.locator('meta[name="robots"]')).toHaveCount(0)
-    await expect(page.getByRole('link', { name: t.tryShort }).first()).toBeInViewport()
+    await expect(page.getByRole('link', { name: t.businessShort }).first()).toBeInViewport()
     await expect(page.getByRole('link', { name: t.findShort }).first()).toBeInViewport()
     await noOverflow(page)
   })

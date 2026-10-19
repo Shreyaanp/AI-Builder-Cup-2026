@@ -69,9 +69,14 @@ for (const width of [360, 390, 412]) {
         const publish = page.getByRole('dialog').getByRole('switch')
         await publish.click()
         await expect(publish).not.toBeChecked()
+        // Blocked writes answer with the friendly demo note (#322), never an error alert.
+        // The Hindi run must show the Hindi notice (strings are matched by position; OB-344 review).
         await expect(
-          page.getByText(language === 'en' ? 'Demo: not sent' : 'डेमो: भेजा नहीं गया', {
-            exact: true,
+          page.locator('.MuiSnackbar-root', {
+            hasText:
+              language === 'en'
+                ? "This is a demo shop; changes aren't saved"
+                : 'डेमो: बदलाव सहेजे नहीं जाते',
           }),
         ).toBeVisible()
         await page.keyboard.press('Escape')
@@ -95,8 +100,10 @@ for (const width of [360, 390, 412]) {
             exact: true,
           })
           .click()
-        await expect(page.locator('main a').first()).toBeVisible()
-        await page.locator('main a').first().click()
+        // The guide's stamp step leaves the sandbox on purpose; open a demo shop card instead.
+        const card = page.locator('main a[href^="/explore/demo/"]').first()
+        await expect(card).toBeVisible()
+        await card.click()
         await expect(page.getByTestId('shop-hero-banner')).toBeVisible()
         await expect(page.locator('main li').first()).toBeVisible()
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(

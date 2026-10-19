@@ -123,21 +123,26 @@ export function StreakFlame({
       component="section"
       aria-label={fill(p.streak, { n: weeks })}
       sx={{
-        p: 4,
-        borderRadius: '24px',
+        p: { xs: 2.5, sm: 4 },
+        borderRadius: { xs: '20px', sm: '24px' },
         bgcolor: weeks ? coral.container : roles.surfaceContainerLow,
         color: weeks ? coral.onContainer : roles.onSurface,
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 3 }}>
-        <Flame lit={weeks > 0} size={Math.min(72, 48 + weeks * 3)} />
+      <Stack direction="row" sx={{ alignItems: 'center', gap: { xs: 2, sm: 3 } }}>
+        <Flame lit={weeks > 0} size={Math.min(60, 40 + weeks * 2)} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography component="h2" variant="titleMedium" sx={{ fontWeight: 700 }}>
             {t.streakFlame}
           </Typography>
           <Stack direction="row" sx={{ alignItems: 'baseline', gap: 1 }}>
             <Typography
-              sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: 44, lineHeight: 1 }}
+              sx={{
+                fontFamily: HAND_FONT,
+                fontWeight: 700,
+                fontSize: { xs: 36, sm: 44 },
+                lineHeight: 1,
+              }}
             >
               {number(weeks)}
             </Typography>
@@ -149,7 +154,7 @@ export function StreakFlame({
       {/* The bank of freezes, as ice tokens. */}
       <Stack
         direction="row"
-        sx={{ mt: 2, alignItems: 'center', gap: 1 }}
+        sx={{ mt: { xs: 1.5, sm: 2 }, alignItems: 'center', gap: 1 }}
         aria-label={fill(t.freezes, { n: freezes })}
         role="img"
       >
@@ -178,7 +183,14 @@ export function StreakFlame({
       <Box
         component="ol"
         aria-label={p.weekRow}
-        sx={{ listStyle: 'none', p: 0, m: 0, mt: 3, display: 'flex', gap: 1.5 }}
+        sx={{
+          listStyle: 'none',
+          p: 0,
+          m: 0,
+          mt: { xs: 2, sm: 3 },
+          display: 'flex',
+          gap: { xs: 1, sm: 1.5 },
+        }}
       >
         {run.row.map((mark, index) => {
           const cold = mark === 'frozen' || mark === 'rain'
@@ -215,7 +227,7 @@ export function StreakFlame({
         })}
       </Box>
       {view.games?.nudge && (
-        <Typography variant="bodyMedium" sx={{ mt: 3, fontWeight: 500 }}>
+        <Typography variant="bodyMedium" sx={{ mt: { xs: 2, sm: 3 }, fontWeight: 500 }}>
           {t.nudge}
         </Typography>
       )}
@@ -225,7 +237,7 @@ export function StreakFlame({
         </Typography>
       )}
       {view.signed_in || account.status === 'guest' ? (
-        <Stack direction="row" sx={{ mt: 3, gap: 1.5, flexWrap: 'wrap' }}>
+        <Stack direction="row" sx={{ mt: { xs: 2, sm: 3 }, gap: 1.5, flexWrap: 'wrap' }}>
           {!run.this_week && !thisFrozen && freezes > 0 && weeks > 0 && (
             <Button
               variant="outlined"

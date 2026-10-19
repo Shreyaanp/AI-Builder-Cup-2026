@@ -19,13 +19,13 @@ import {
   Check,
   ChevronDown,
   CircleUserRound,
-  Leaf,
   MessageCircle,
   Plus,
   Sparkles,
   Sprout,
   Store,
 } from 'lucide-react'
+import { BrandLogo } from '../../design/BrandLogo'
 import { shape, windowClass } from '../../design/theme'
 import { useCopy } from './strings'
 import { useTabsCopy } from './tabsCopy'
@@ -160,9 +160,6 @@ export function AppShell() {
               pl: 'env(safe-area-inset-left)',
             }}
           >
-            <Box aria-hidden="true" sx={{ color: roles.primary, mb: 3, mt: 1 }}>
-              <Leaf size={28} />
-            </Box>
             {destinations.map((item) => (
               <NavItem key={item.id} item={item} selected={tab === item.id} onSelect={go} rail />
             ))}
@@ -387,6 +384,7 @@ function TopBar() {
         pt: 'env(safe-area-inset-top)',
       }}
     >
+      <BrandLogo wordmark="wide" href="/" />
       <Button
         onClick={(event) => setShopMenu(event.currentTarget)}
         endIcon={<ChevronDown size={18} />}

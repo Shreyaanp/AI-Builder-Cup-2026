@@ -118,6 +118,9 @@ export const passportStrings = {
   keptOnPhone: 'Kept on this phone. Sign in to keep it everywhere.',
   signIn: 'Sign in',
   stampFailed: 'The stamp didn’t go through. Check your connection.',
+  collect: 'Collect your stamp',
+  seePassport: 'See your Passport',
+  keepBrowsing: 'Keep browsing',
   tryDemo: 'Try a demo stamp',
   tryDemoNote: 'Demo shop: its QR is shown on screen for this demo.',
   // Today's 7

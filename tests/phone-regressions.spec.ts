@@ -142,7 +142,7 @@ test('PHONE-1-firebase: same-account identity refresh preserves an in-flight rep
       },
     }),
   )
-  await page.route('**/node_modules/.vite/deps/firebase_app.js*', (route) =>
+  await page.route('**/node_modules/.vite*/deps/firebase_app.js*', (route) =>
     route.fulfill({
       contentType: 'text/javascript',
       body: `
@@ -151,7 +151,7 @@ test('PHONE-1-firebase: same-account identity refresh preserves an in-flight rep
   `,
     }),
   )
-  await page.route('**/node_modules/.vite/deps/firebase_auth.js*', (route) =>
+  await page.route('**/node_modules/.vite*/deps/firebase_auth.js*', (route) =>
     route.fulfill({
       contentType: 'text/javascript',
       body: `

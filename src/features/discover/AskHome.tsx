@@ -1,4 +1,5 @@
 import { carried, pushEntry } from '../../app/history'
+import { BrandLogo } from '../../design/BrandLogo'
 import { AiInfo } from '../v1/AiInfo'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -40,7 +41,7 @@ import { openedShops } from './opened'
 import { ProfileButton, ProfileSheet } from '../customer/Profile'
 import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
 import { LanguagePicker } from '../frontdoors/LanguagePicker'
-import { useFrontCopy } from '../frontdoors/strings'
+import { useDemoCopy, useFrontCopy } from '../frontdoors/strings'
 import { usePassportCopy } from '../passport/copy'
 import { TodayDeck } from '../passport/TodayDeck'
 import { AreaAnswerCard, GoogleRows, PickCard, PickList, PickSkeleton } from './AnswerCards'
@@ -155,6 +156,7 @@ export default function AskHome({
   const locale = useLocale()
   const t = askCopy(locale)
   const front = useFrontCopy()
+  const demo = useDemoCopy()
   const discover = discoverCopy(locale)
   const passport = usePassportCopy()
   const roles = useTheme().material
@@ -737,6 +739,10 @@ export default function AskHome({
             bgcolor: roles.surface,
           }}
         >
+          {/* The row is full on a phone (place, demo, three buttons): the logo joins from 600px. */}
+          <Box sx={{ display: { xs: 'none', sm: 'flex' }, mr: 2 }}>
+            <BrandLogo href="/explore/" />
+          </Box>
           <Button
             onClick={() => setChanging((open) => !open)}
             aria-expanded={changing}
@@ -764,6 +770,9 @@ export default function AskHome({
             </Box>
           </Button>
           <Stack direction="row" sx={{ ml: 'auto', flexShrink: 0, alignItems: 'center' }}>
+            <Button component="a" href="/explore/demo" size="small" sx={{ minHeight: 48, px: 1 }}>
+              {demo.tryDemo}
+            </Button>
             <ProfileButton inline />
             <LanguagePicker variant="inline" />
             <AppearanceToggle inline />
@@ -884,6 +893,7 @@ export default function AskHome({
                           lineHeight: 1.25,
                           whiteSpace: 'normal',
                           overflowWrap: 'anywhere',
+                          color: roles.onSurface,
                           bgcolor: roles.surfaceContainerLow,
                           '&:hover': { bgcolor: roles.surfaceContainer },
                         }}
@@ -1646,7 +1656,13 @@ function AssistantTurn({
                 <Button
                   variant="outlined"
                   onClick={() => onSend(chip.q, chip)}
-                  sx={{ minHeight: 48, borderRadius: 999, px: 4, py: 2 }}
+                  sx={{
+                    minHeight: 48,
+                    borderRadius: 999,
+                    px: 4,
+                    py: 2,
+                    color: roles.onSurface,
+                  }}
                 >
                   {chip.label}
                 </Button>

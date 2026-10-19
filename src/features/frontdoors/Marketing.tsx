@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { LOCALE_NAMES, LOCALES } from '../../i18n/locales'
+import { BrandLogo } from '../../design/BrandLogo'
 import { LanguagePicker } from './LanguagePicker'
 import { useDemoCopy, useFrontCopy, useStoryCopy } from './strings'
 import './landing.css'
@@ -244,10 +245,7 @@ export default function Marketing() {
           {t.skip}
         </a>
         <header className="lp-nav">
-          <a className="lp-logo" href="/">
-            <span className="lp-logo-mark" aria-hidden="true" />
-            Chalkboard
-          </a>
+          <BrandLogo href="/" />
           <nav aria-label="Chalkboard">
             <LanguagePicker variant="nav" />
             <a href="/explore/" className="lp-nav-find">
@@ -511,9 +509,6 @@ export default function Marketing() {
             </div>
           </section>
         </main>
-        <footer className="lp-footer">
-          <Typography variant="bodyMedium">{t.independent}</Typography>
-        </footer>
       </div>
     </ThemeProvider>
   )

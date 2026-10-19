@@ -287,6 +287,13 @@ export async function shareSigned(page: Page) {
   return { url, qr: qr.toString() }
 }
 
+/** OB-20 (#360): a QR arrival arms "Collect your stamp" in the thumb zone; the moment opens on the tap. */
+export async function collectStamp(page: Page) {
+  const collect = page.getByRole('button', { name: 'Collect your stamp' })
+  await expect(collect).toBeVisible({ timeout: 30_000 })
+  await collect.click()
+}
+
 export const phone = {
   viewport: { width: 390, height: 844 },
   locale: 'en-IN',
