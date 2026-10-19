@@ -41,6 +41,7 @@ export function TodaySupply() {
       <Stack
         component="section"
         aria-label={s.title}
+        data-tour="today-supply"
         spacing={2}
         sx={{
           p: 4,
@@ -58,6 +59,7 @@ export function TodaySupply() {
         <Box>
           <Button
             variant="contained"
+            data-tour="reorder"
             disabled={busy}
             sx={{ minHeight: 48 }}
             startIcon={busy ? <CircularProgress size={16} color="inherit" /> : undefined}

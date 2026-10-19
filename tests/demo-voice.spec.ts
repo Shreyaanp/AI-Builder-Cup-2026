@@ -26,12 +26,12 @@ test('demo tour plays recorded audio and never uses the browser voice', async ({
   await page.goto('/demo')
   await page.getByRole('dialog').getByRole('button', { name: 'Take the tour' }).click()
   const tour = page.getByRole('dialog')
-  await expect(tour.getByText('1 of 14')).toBeVisible({ timeout: 30_000 })
+  await expect(tour.getByText('1 of 7')).toBeVisible({ timeout: 30_000 })
   await expect.poll(() => audio).toContain('/audio/demo/en/step-0.mp3')
 
-  // Walk past the recorded spotlights into the order story, whose lines carry live shop data.
-  for (let step = 0; step < 5; step++) await tour.getByRole('button', { name: 'Next' }).click()
-  await expect(tour.getByText('6 of 14')).toBeVisible()
+  // Walk on to the supply card, whose line carries live shop data and so has no recording.
+  for (let step = 0; step < 1; step++) await tour.getByRole('button', { name: 'Next' }).click()
+  await expect(tour.getByText('2 of 7')).toBeVisible()
   const recorded = audio.length
   await page.waitForTimeout(500)
   expect(audio.length).toBe(recorded)
