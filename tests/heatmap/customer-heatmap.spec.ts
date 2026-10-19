@@ -129,8 +129,14 @@ const screens: Screen[] = [
       await page.request.post(`/api/v1/customer/shops/${shop}/threads`, {
         data: { text: 'Do you have oat milk?' },
       })
-      await page.goto('/explore/chats')
-      await expect(page.locator('main a[href^="/explore/chats/"]').first()).toBeVisible()
+      // The demo shop answers after a short "typing"; measure the list once the answer is in it,
+      // or the marks change from run to run (OB-63).
+      await expect(async () => {
+        await page.goto('/explore/chats')
+        await expect(page.getByText(/Thanks for your message/).first()).toBeVisible({
+          timeout: 3000,
+        })
+      }).toPass({ timeout: 30_000 })
       await page.waitForTimeout(600)
     },
   },
@@ -146,6 +152,8 @@ const screens: Screen[] = [
       ).json()
       await page.goto(`/explore/chats/${shop}/${chat.thread.id}`)
       await expect(page.getByText('Do you have oat milk?').first()).toBeVisible()
+      // Wait for the demo shop's automatic answer, not its "typing" bubble (OB-63: stable marks).
+      await expect(page.getByText('Demo reply').first()).toBeVisible({ timeout: 20_000 })
       await page.waitForTimeout(600)
     },
   },

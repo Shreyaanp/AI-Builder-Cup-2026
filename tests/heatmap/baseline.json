@@ -120,49 +120,49 @@
     "contrastIssues": 0
   },
   "chat-thread-desktop-dark": {
-    "marks": 10,
+    "marks": 14,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "chat-thread-desktop-light": {
-    "marks": 10,
+    "marks": 14,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "chat-thread-phone-dark": {
-    "marks": 10,
+    "marks": 14,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "chat-thread-phone-light": {
-    "marks": 10,
+    "marks": 14,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "chats-desktop-dark": {
-    "marks": 20,
+    "marks": 22,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "chats-desktop-light": {
-    "marks": 20,
+    "marks": 22,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "chats-phone-dark": {
-    "marks": 20,
+    "marks": 22,
     "accentFamilies": 3,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "chats-phone-light": {
-    "marks": 20,
+    "marks": 22,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
