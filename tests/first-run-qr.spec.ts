@@ -50,11 +50,14 @@ test('OB-65: a first QR scan skips the intro and opens the shop and its stamp', 
   try {
     await localOnly(customer)
     await customer.goto(qr)
-    await expect(customer.getByRole('dialog').getByRole('button', { name: 'Done' })).toBeVisible({
-      timeout: 30_000,
-    })
+    // OB-20 (#360): the scan arms 'Collect your stamp' in the thumb zone; the moment opens on the tap.
+    const collect = customer.getByRole('button', { name: 'Collect your stamp' })
+    await expect(collect).toBeVisible({ timeout: 30_000 })
     await expect(customer.getByText('Find local shops near you')).toHaveCount(0)
-    await customer.getByRole('dialog').getByRole('button', { name: 'Done' }).click()
+    await collect.click()
+    const done = customer.getByRole('dialog').getByRole('button', { name: 'Keep browsing' })
+    await expect(done).toBeVisible({ timeout: 30_000 })
+    await done.click()
     await expect(customer.getByRole('link', { name: /^Stamp card · / })).toBeVisible()
     // The next plain visit still gets the introduction once.
     await customer.goto('/explore')
