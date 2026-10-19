@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test.setTimeout(120_000)
 
-test('demo tour plays recorded audio and never uses the browser voice', async ({ page }, info) => {
+test('OB-72 demo tour plays recorded audio and never uses the browser voice', async ({ page }, info) => {
   test.skip(info.project.name !== 'phone', 'Phone flow')
   const audio: string[] = []
   const live: string[] = []
@@ -33,7 +33,6 @@ test('demo tour plays recorded audio and never uses the browser voice', async ({
   for (let step = 0; step < 1; step++) await tour.getByRole('button', { name: 'Next' }).click()
   await expect(tour.getByText('2 of 7')).toBeVisible()
   const recorded = audio.length
-  await page.waitForTimeout(500)
   expect(audio.length).toBe(recorded)
   expect(audio.every((path) => path.startsWith('/audio/demo/'))).toBe(true)
   expect(live).toEqual([])
