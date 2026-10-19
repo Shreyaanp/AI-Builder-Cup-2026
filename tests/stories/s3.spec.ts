@@ -10,6 +10,7 @@ import {
   shareSigned,
   shopName as shopPrefix,
   shot,
+  collectStamp,
 } from './support.js'
 
 test.use(phone)
@@ -163,15 +164,16 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
     await test.step('7 · signed QR stamp moment and an honest card', async () => {
       // The owner's poster QR is signed: the stamp moment checks it, then the card counts it.
       await customer.goto(qr)
+      await collectStamp(customer)
       const moment = customer.getByRole('dialog')
-      await expect(moment.getByRole('button', { name: 'Done' })).toBeVisible()
+      await expect(moment.getByRole('button', { name: 'Keep browsing' })).toBeVisible()
       await expect(moment.getByRole('progressbar')).toHaveCount(0)
       // A tap skips the celebration to its end state. The customer signed in to chat (step 5),
       // so this verified stamp lands on their account card, not only this phone.
       await moment.getByRole('heading').first().click()
       await expect(moment.getByText('+50 points')).toBeVisible()
       await shot(customer, 3, '7-stamp-moment')
-      await moment.getByRole('button', { name: 'Done' }).click()
+      await moment.getByRole('button', { name: 'Keep browsing' }).click()
       await expect(customer).not.toHaveURL(/[?&]k=/)
       const card = customer.getByRole('region', { name: 'Stamp card' })
       await expect(card.getByRole('status')).toHaveText('3 stamps')
