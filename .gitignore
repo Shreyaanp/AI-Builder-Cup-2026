@@ -53,3 +53,7 @@ tests/zz-*
 
 # Story director recordings (large, local only)
 docs/stories/director/**/*.webm
+
+# Heatmap runs in CI (HEATMAP_LABEL=ci); only the committed before/after sets are kept
+docs/qa/heatmap/ci-*
+docs/qa/heatmap/data/ci-*
