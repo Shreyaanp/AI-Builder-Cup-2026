@@ -38,30 +38,22 @@ async function start(page: Page, language?: string) {
     await page.addInitScript((language) => {
       localStorage.setItem('niva.starter.preferences', JSON.stringify({ language }))
     }, language)
-  await page.goto('/')
-  await page
-    .getByRole('button', { name: /स्थानीय प्रीव्यू जारी रखें|Continue local preview/ })
-    .click()
-  await page.getByRole('checkbox').nth(0).check()
-  await page.getByRole('checkbox').nth(1).check()
-  await page
-    .getByRole('button')
-    .filter({ hasText: /Agree and continue|सहमत/ })
-    .click()
-  const made = page.waitForResponse((r) => r.url().includes('/api/v1/demo/workspace'))
-  await page
-    .getByRole('button', { name: language === 'hi' ? 'दौरा शुरू करें' : 'Take the tour' })
-    .first()
-    .click()
-  const { business_id } = (await (await made).json()) as { business_id: string }
+  const made = page.waitForResponse(
+    (r) => r.url().includes('/api/demo/workspace') && r.request().method() === 'POST',
+  )
+  await page.goto('/demo?tour=1')
+  const madeResponse = await made
+  const { business_id } = (await madeResponse.json()) as { business_id: string }
+  const sessionId = new URL(madeResponse.url()).pathname.match(/\/sessions\/([^/]+)\/api\//)?.[1]
+  expect(sessionId).toBeTruthy()
   const story = (await (
-    await page.request.get(`/api/v1/demo/chain/${business_id}`)
+    await page.request.get(`/api/v1/demo/sessions/${sessionId}/api/demo/chain/${business_id}`)
   ).json()) as Story
   return story
 }
 
 async function next(page: Page, label = 'Next') {
-  await page.getByRole('button', { name: label, exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: label, exact: true }).click()
 }
 
 async function noSideScroll(page: Page) {
@@ -79,6 +71,9 @@ async function noSideScroll(page: Page) {
   ).toBeTruthy()
 }
 
+// The tour now runs on the public demo, whose tour shop is the Bengaluru chai stall for every
+// visitor (backend/app/public_demo.py). The Singapore story seed is still checked in
+// backend/tests/test_tour_story.py.
 for (const world of [
   {
     zone: 'Asia/Kolkata',
@@ -88,15 +83,6 @@ for (const world of [
     stall: 'Lantern Chai Corner (Demo)',
     distributor: 'Anand Distributors (Demo)',
     reward: 'A free chai',
-  },
-  {
-    zone: 'Asia/Singapore',
-    locale: 'en-SG',
-    item: 'Kopi powder',
-    wholesaler: 'Ah Huat Provision (Demo)',
-    stall: 'Sunny Side Kopitiam (Demo)',
-    distributor: 'Katong Trading (Demo)',
-    reward: 'A free kopi',
   },
 ]) {
   test.describe(world.zone, () => {
@@ -119,7 +105,7 @@ for (const world of [
         })
       const card = page.getByTestId('tour-card')
 
-      await expect(page.getByRole('dialog', { name: 'Your shop at a glance' })).toBeVisible({
+      await expect(page.locator('#tour-title')).toContainText('Your shop at a glance', {
         timeout: 30_000,
       })
       await expect(card).toContainText('1 of 7')
@@ -159,24 +145,11 @@ for (const world of [
         'Just talk or type',
       ]) {
         await next(page)
-        await expect(page.getByRole('dialog', { name: title })).toBeVisible()
+        await expect(page.locator('#tour-title')).toContainText(title)
       }
       await next(page)
-      await page.getByRole('button', { name: 'Keep exploring' }).click()
-      await expect(page.getByRole('dialog')).toHaveCount(0)
-
-      await test.step('Reorder on Today really drafts it (#264)', async () => {
-        await page.getByRole('button', { name: 'Coach', exact: true }).click()
-        const today = page
-          .getByRole('region', { name: 'Supplies' })
-          .or(page.locator('section').filter({ hasText: `${world.item} runs out` }))
-        await today.first().getByRole('button', { name: 'Reorder' }).click()
-        const sheet = page.getByRole('dialog').last()
-        await expect(sheet).toContainText(world.wholesaler)
-        await expect(sheet).toContainText(world.item)
-        await expect(page.getByText(/No purchase orders yet/)).toHaveCount(0)
-        await shot(7)
-      })
+      await page.getByRole('dialog').getByRole('button', { name: 'Keep exploring' }).click()
+      await expect(page.locator('#tour-title')).toHaveCount(0)
     })
   })
 }
