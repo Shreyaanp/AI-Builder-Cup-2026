@@ -126,7 +126,9 @@ test.describe('customer phone sweep at 360px', () => {
   ] as const
 
   for (const [path, label] of screens) {
-    test(`OB-92 ${label} has no horizontal overflow or fixed overlay collision`, async ({ page }) => {
+    test(`OB-92 ${label} has no horizontal overflow or fixed overlay collision`, async ({
+      page,
+    }) => {
       test.skip(!test.info().project.name.includes('phone'), 'phone project only')
       await prepare(page)
       await page.goto(path, { waitUntil: 'domcontentloaded' })
