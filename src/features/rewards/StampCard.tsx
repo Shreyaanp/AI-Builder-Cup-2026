@@ -81,7 +81,8 @@ export function StampPeek({ shop, needed = 8 }: { shop: string; needed?: number 
         })
       }}
       sx={{
-        minHeight: 40,
+        // PHONE-UX-RULES: every target at least 48px (caught on the QR arrival screen, OB-20).
+        minHeight: 48,
         bgcolor: gold.container,
         color: gold.onContainer,
         '&:hover': { bgcolor: gold.container },
