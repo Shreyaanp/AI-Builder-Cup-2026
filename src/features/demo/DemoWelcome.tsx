@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, CircularProgress, Stack, Typography } from '@mui/material'
 import { Sparkles } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
@@ -30,7 +30,14 @@ function remember() {
 export function DemoWelcome() {
   const ws = useWorkspace()
   const t = tourCopy(useLocale())
-  const [open, setOpen] = useState(() => !seen())
+  // Arriving from 'Take the tour' in the owner app (/demo?tour=1) starts the tour without asking again.
+  const [tourAsked] = useState(
+    () => new URLSearchParams(window.location.search).get('tour') === '1',
+  )
+  const asked = useRef(tourAsked)
+  // The offer never opens then: a sheet closing as the tour opens left the app (and the tour
+  // card inside it) aria-hidden, so screen readers lost the whole tour.
+  const [open, setOpen] = useState(() => !tourAsked && !seen())
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const startAfterClose = useRef(false)
@@ -38,6 +45,15 @@ export function DemoWelcome() {
     remember()
     setOpen(false)
   }
+  useEffect(() => {
+    if (!asked.current || !ws.active) return
+    asked.current = false
+    remember()
+    history.replaceState(history.state, '', window.location.pathname)
+    void startDemoTour(ws, setBusy, setFailed).then((started) => {
+      if (!started) setOpen(true)
+    })
+  }, [ws])
   return (
     <Sheet
       open={open}
