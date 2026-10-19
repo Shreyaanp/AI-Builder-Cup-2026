@@ -100,12 +100,6 @@
   .l2-journey > .l2-h2,
   .l2-journey > .l2-lead {
     grid-column: 1;
-    position: sticky;
-    top: 96px;
-  }
-  .l2-journey > .l2-lead {
-    top: auto;
-    position: static;
   }
   .l2-journey > .l2-stops {
     grid-column: 2;
@@ -113,13 +107,20 @@
     max-width: none;
     margin-top: 0;
   }
-  .l2-journey > .l2-h2 {
-    position: static;
-  }
   .l2-pair {
     gap: 56px;
     padding-inline: var(--gutter);
-    align-items: start;
+    align-items: stretch;
+  }
+  /* Trust tags on top, the founder's note at the bottom: the column ends where the video ends. */
+  .l2-pair .l2-trust-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .l2-pair .l2-trust-col .l2-founder {
+    margin: auto 0 0;
+    max-width: none;
   }
   .l2-pair .l2-videos,
   .l2-pair .l2-trust {
