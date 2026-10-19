@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { scrollToEnd } from './scroll-to-end.js'
 
 const fixtureAnswer = {
   intent: {
@@ -100,7 +101,7 @@ for (const width of [360, 390, 412, 1280]) {
         true,
       )
 
-      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+      await scrollToEnd(page)
       const footer = page.getByText(/Prepared by the shop owner/)
       const footerBottom = await footer.evaluate(
         (element) => element.getBoundingClientRect().bottom,
