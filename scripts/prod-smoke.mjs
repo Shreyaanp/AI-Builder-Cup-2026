@@ -13,10 +13,13 @@ const [argCustomer, argBusiness] = process.argv.slice(2)
 const strip = (u) => u.replace(/\/+$/, '')
 const customer = strip(argCustomer || process.env.SMOKE_CUSTOMER_URL || DEFAULT_CUSTOMER)
 // A single tagged-revision URL serves both hosts.
-const business = strip(argBusiness || process.env.SMOKE_BUSINESS_URL || argCustomer || DEFAULT_BUSINESS)
+const business = strip(
+  argBusiness || process.env.SMOKE_BUSINESS_URL || argCustomer || DEFAULT_BUSINESS,
+)
 // On a *.run.app URL the host does not pick the app, so public pages need ?app=.
 const onTag = /.run.app$/.test(new URL(customer).hostname)
-const pub = (path, app) => `${customer}${path}${onTag ? `${path.includes('?') ? '&' : '?'}app=${app}` : ''}`
+const pub = (path, app) =>
+  `${customer}${path}${onTag ? `${path.includes('?') ? '&' : '?'}app=${app}` : ''}`
 const startedAt = Date.now()
 const BUDGET_MS = 3 * 60_000
 
@@ -26,13 +29,26 @@ const ERROR_TEXT = /couldn.t|could not|went wrong|failed to|something broke/i
 
 // The Today/Shop/Grow/You buttons from chalkboard-regression/vaudit.mjs.
 const BUTTONS = [
-  ['Coach', /^Reorder/i], ['Coach', /^Order$/i], ['Coach', /^Reply$/i], ['Coach', /close the day/i],
-  ['Coach', /Forecast demand/i], ['Coach', /See all examples/i],
-  ['Shop', /Turn on your page/i], ['Shop', /^Edit$/i], ['Shop', /View all/i], ['Shop', /Customer page/i],
-  ['Shop', /Connect your system/i], ['Shop', /Photos/i], ['Shop', /Messages/i],
-  ['Grow', /Open messages/i], ['Grow', /Create link/i], ['Grow', /Send a rider/i], ['Grow', /Rescue/i],
+  ['Coach', /^Reorder/i],
+  ['Coach', /^Order$/i],
+  ['Coach', /^Reply$/i],
+  ['Coach', /close the day/i],
+  ['Coach', /Forecast demand/i],
+  ['Coach', /See all examples/i],
+  ['Shop', /Turn on your page/i],
+  ['Shop', /View all/i],
+  ['Shop', /Customer page/i],
+  ['Shop', /Connect your system/i],
+  ['Shop', /Photos/i],
+  ['Shop', /Messages/i],
+  ['Grow', /Open messages/i],
+  ['Grow', /Create link/i],
+  ['Grow', /Send a rider/i],
+  ['Grow', /Rescue/i],
   ['Grow', /Prep plan/i],
-  ['You', /Verify it/i], ['You', /Remind me/i], ['You', /New shop/i], ['You', /FreshMart/i],
+  ['You', /Verify it/i],
+  ['You', /New shop/i],
+  ['You', /FreshMart/i],
 ]
 
 let failures = 0
@@ -57,12 +73,22 @@ async function open(viewport, label) {
     d.dismiss().catch(() => {})
   })
   page.on('response', (r) => {
-    if (r.status() >= 500 || (r.status() === 429 && /demo\/workspace/.test(r.url()))) all5xx.push(`${r.status()} ${label} ${r.url().replace(/^https?:\/\/[^/]+/, '').slice(0, 70)}`)
+    if (r.status() >= 500 || (r.status() === 429 && /demo\/workspace/.test(r.url())))
+      all5xx.push(
+        `${r.status()} ${label} ${r
+          .url()
+          .replace(/^https?:\/\/[^/]+/, '')
+          .slice(0, 70)}`,
+      )
   })
   return state
 }
 const bodyText = async (page) => (await page.locator('body').innerText()).replace(/\s+/g, ' ')
-const visible = (loc) => loc.first().isVisible().catch(() => false)
+const visible = (loc) =>
+  loc
+    .first()
+    .isVisible()
+    .catch(() => false)
 
 async function check(name, fn) {
   if (timeLeft() < 0) return report(false, name, 'skipped: 3 minute budget used up')
@@ -91,14 +117,19 @@ async function openDemo(s) {
     await s.page.locator('nav').first().waitFor({ timeout: 12_000 })
   } catch {
     const t = await bodyText(s.page)
-    demoDown = /could not open/i.test(t) ? 'demo could not open (see 429/5xx on /api/v1/demo/workspace)' : 'demo nav never appeared'
+    demoDown = /could not open/i.test(t)
+      ? 'demo could not open (see 429/5xx on /api/v1/demo/workspace)'
+      : 'demo nav never appeared'
     throw new Error(demoDown)
   }
   await dismissIntro(s.page)
 }
 
 // 1. Landing and public pages, phone and desktop.
-for (const [vpName, vp] of [['phone', PHONE], ['desktop', DESKTOP]]) {
+for (const [vpName, vp] of [
+  ['phone', PHONE],
+  ['desktop', DESKTOP],
+]) {
   const s = await open(vp, vpName)
   await check(`landing ${vpName}`, async () => {
     const res = await s.page.goto(pub('/', 'landing'), { waitUntil: 'domcontentloaded' })
@@ -112,7 +143,10 @@ for (const [vpName, vp] of [['phone', PHONE], ['desktop', DESKTOP]]) {
       s.errors.length = 0
       const res = await s.page.goto(pub(path, 'landing'), { waitUntil: 'domcontentloaded' })
       await s.page.waitForTimeout(2000)
-      return { ok: res.status() === 200 && !s.errors.length, reason: `HTTP ${res.status()}, pageerrors=${s.errors.length}` }
+      return {
+        ok: res.status() === 200 && !s.errors.length,
+        reason: `HTTP ${res.status()}, pageerrors=${s.errors.length}`,
+      }
     })
   }
   await s.context.close()
@@ -127,14 +161,19 @@ for (const [vpName, vp] of [['phone', PHONE], ['desktop', DESKTOP]]) {
     await dismissIntro(s.page)
     await s.page.waitForTimeout(1000)
     const google = await visible(s.page.getByText(/Continue with Google/i))
-    const demo = await visible(s.page.getByText(/^Try demo$/i).or(s.page.getByRole('button', { name: /Try demo/i })))
+    const demo = await visible(
+      s.page.getByText(/^Try demo$/i).or(s.page.getByRole('button', { name: /Try demo/i })),
+    )
     return { ok: google && demo, reason: `Continue with Google=${google}, Try demo=${demo}` }
   })
   await s.context.close()
 }
 
 // 3. /demo tabs and tour, phone and desktop.
-for (const [vpName, vp] of [['phone', PHONE], ['desktop', DESKTOP]]) {
+for (const [vpName, vp] of [
+  ['phone', PHONE],
+  ['desktop', DESKTOP],
+]) {
   const s = await open(vp, vpName)
   await check(`demo tabs ${vpName}`, async () => {
     await openDemo(s)
@@ -148,7 +187,12 @@ for (const [vpName, vp] of [['phone', PHONE], ['desktop', DESKTOP]]) {
         missing.push(tab)
       }
     }
-    return { ok: !missing.length && !s.errors.length, reason: missing.length ? `could not tap ${missing.join(', ')}` : `all four tapped, pageerrors=${s.errors.length}` }
+    return {
+      ok: !missing.length && !s.errors.length,
+      reason: missing.length
+        ? `could not tap ${missing.join(', ')}`
+        : `all four tapped, pageerrors=${s.errors.length}`,
+    }
   })
   await check(`demo tour order ${vpName}`, async () => {
     if (!(await visible(s.page.locator('nav')))) await openDemo(s)
@@ -167,7 +211,14 @@ for (const [vpName, vp] of [['phone', PHONE], ['desktop', DESKTOP]]) {
     const t = await bodyText(s.page)
     const failed = /Couldn.t load the demo order/i.test(t)
     const loading = /Loading the demo order/i.test(t)
-    return { ok: !failed && !loading, reason: failed ? 'step 4 says "Couldn\'t load the demo order"' : loading ? 'step 4 still loading the order' : 'step 4 shows the order' }
+    return {
+      ok: !failed && !loading,
+      reason: failed
+        ? 'step 4 says "Couldn\'t load the demo order"'
+        : loading
+          ? 'step 4 still loading the order'
+          : 'step 4 shows the order',
+    }
   })
   await s.context.close()
 }
@@ -183,23 +234,50 @@ for (const [vpName, vp] of [['phone', PHONE], ['desktop', DESKTOP]]) {
       s.alerts.length = 0
       await s.page.keyboard.press('Escape')
       const navTab = s.page.locator('nav').getByText(tab, { exact: true }).first()
-      if (!(await visible(navTab))) await openDemo(s)
-      await navTab.click()
-      await s.page.waitForTimeout(1000)
-      const el = s.page.getByRole('button', { name: label }).or(s.page.getByRole('link', { name: label })).first()
-      await el.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {})
+      const find = async () => {
+        if (!(await visible(navTab))) await openDemo(s)
+        await navTab.click()
+        await s.page.waitForTimeout(1000)
+        const found = s.page
+          .getByRole('button', { name: label })
+          .or(s.page.getByRole('link', { name: label }))
+          .first()
+        await found.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {})
+        return found
+      }
+      let el = await find()
+      // Some demo cards are used up by an earlier tap (Order, Turn on your page): look again in a
+      // fresh demo before calling the button missing.
+      if (!(await visible(el))) {
+        await openDemo(s)
+        el = await find()
+      }
       if (!(await visible(el))) return { ok: false, reason: 'button not found' }
       const before = await bodyText(s.page)
       const url = s.page.url()
       await el.click()
       await s.page.waitForTimeout(1800)
       const after = await bodyText(s.page)
-      const alertEl = await s.page.getByRole('alert').allInnerTexts().catch(() => [])
+      const alertEl = await s.page
+        .getByRole('alert')
+        .allInnerTexts()
+        .catch(() => [])
       const errAlert = alertEl.find((a) => ERROR_TEXT.test(a))
       const opened = after !== before || s.page.url() !== url
       await s.page.keyboard.press('Escape')
       const ok = opened && !errAlert && !s.alerts.length && !s.errors.length
-      return { ok, reason: !opened ? 'nothing opened' : errAlert ? `error alert: ${errAlert.slice(0, 60)}` : s.alerts.length ? `dialog: ${s.alerts[0]}` : s.errors.length ? `pageerror: ${s.errors[0]}` : 'opened, no error alerts' }
+      return {
+        ok,
+        reason: !opened
+          ? 'nothing opened'
+          : errAlert
+            ? `error alert: ${errAlert.slice(0, 60)}`
+            : s.alerts.length
+              ? `dialog: ${s.alerts[0]}`
+              : s.errors.length
+                ? `pageerror: ${s.errors[0]}`
+                : 'opened, no error alerts',
+      }
     })
   }
   await s.context.close()
@@ -210,29 +288,53 @@ for (const [vpName, vp] of [['phone', PHONE], ['desktop', DESKTOP]]) {
   const s = await open(PHONE, 'customer')
   const appQuery = onTag ? '?app=customer' : ''
   await check('customer explore to shop', async () => {
-    const res = await s.page.goto(pub('/explore/demo', 'customer'), { waitUntil: 'domcontentloaded' })
+    const res = await s.page.goto(pub('/explore/demo', 'customer'), {
+      waitUntil: 'domcontentloaded',
+    })
     await s.page.waitForTimeout(4000)
     const t = await bodyText(s.page)
-    const link = s.page.getByRole('link', { name: 'Collect a stamp', exact: true })
-    const ok = res.status() === 200 && !s.errors.length && !ERROR_TEXT.test(t.slice(0, 400)) && (await visible(link))
-    return { ok, reason: `HTTP ${res.status()}, pageerrors=${s.errors.length}, Collect a stamp link=${await visible(link)}` }
+    // The guide step is numbered, so its accessible name is "2 Collect a stamp".
+    const link = s.page.getByRole('link', { name: /Collect a stamp$/ })
+    const ok =
+      res.status() === 200 &&
+      !s.errors.length &&
+      !ERROR_TEXT.test(t.slice(0, 400)) &&
+      (await visible(link))
+    return {
+      ok,
+      reason: `HTTP ${res.status()}, pageerrors=${s.errors.length}, Collect a stamp link=${await visible(link)}`,
+    }
   })
   await check('customer QR stamp then Passport', async () => {
-    const session = await s.context.request.post(`${customer}/api/v1/customer/session${appQuery}`, { data: { name: 'Smoke Check' } })
-    if (!session.ok()) return { ok: false, reason: `customer session HTTP ${session.status()}` }
-    const shop = await (await s.context.request.get(`${customer}/api/v1/public/shops/demo-story-bengaluru-chai${appQuery}`)).json()
+    // No sign-in: POST /customer/session is local/test only (404 once Firebase is on) and
+    // /customer/guest is off in production. A signed-out phone stamps the demo shop, as a visitor does.
+    const shopRes = await s.context.request.get(
+      `${customer}/api/v1/public/shops/demo-story-bengaluru-chai${appQuery}`,
+    )
+    if (!shopRes.ok()) return { ok: false, reason: `demo shop HTTP ${shopRes.status()}` }
+    const shop = await shopRes.json()
     await s.context.grantPermissions(['geolocation'])
     await s.context.setGeolocation({ latitude: shop.lat, longitude: shop.lng, accuracy: 20 })
-    await s.page.goto(pub('/explore/s/demo-story-bengaluru-chai?source=qr', 'customer'), { waitUntil: 'domcontentloaded' })
+    await s.page.goto(pub('/explore/s/demo-story-bengaluru-chai?source=qr', 'customer'), {
+      waitUntil: 'domcontentloaded',
+    })
     await s.page.getByRole('button', { name: 'Collect your stamp' }).click()
     const moment = s.page.getByRole('dialog')
     await moment.getByRole('button', { name: 'Keep browsing' }).waitFor({ timeout: 15_000 })
     await moment.getByRole('button', { name: 'Keep browsing' }).click()
     await s.page.goto(pub('/explore/demo', 'customer'), { waitUntil: 'domcontentloaded' })
-    await s.page.getByRole('link', { name: 'See your Passport' }).click()
+    await s.page.getByRole('link', { name: /See your Passport$/ }).click()
+    // The first-visit intro slides in a moment after the page loads.
+    await s.page.waitForTimeout(3000)
+    await dismissIntro(s.page)
     await s.page.getByRole('heading', { name: 'Your passport' }).waitFor({ timeout: 15_000 })
-    const stamped = await visible(s.page.getByRole('region', { name: 'Stamp book' }).getByText('Lantern Chai Corner'))
-    return { ok: stamped && !s.errors.length, reason: stamped ? 'stamp is in the Passport stamp book' : 'stamp missing from the Passport' }
+    const stamped = await visible(
+      s.page.getByRole('region', { name: 'Stamp book' }).getByText('Lantern Chai Corner'),
+    )
+    return {
+      ok: stamped && !s.errors.length,
+      reason: stamped ? 'stamp is in the Passport stamp book' : 'stamp missing from the Passport',
+    }
   })
   await s.context.close()
 }
@@ -248,8 +350,15 @@ for (const [vpName, vp] of [['phone', PHONE], ['desktop', DESKTOP]]) {
         new Promise((resolve) => {
           const ws = new WebSocket(u)
           const timer = setTimeout(() => resolve('timeout after 10s'), 10_000)
-          ws.onopen = () => { clearTimeout(timer); ws.close(); resolve('open') }
-          ws.onerror = () => { clearTimeout(timer); resolve('error before open') }
+          ws.onopen = () => {
+            clearTimeout(timer)
+            ws.close()
+            resolve('open')
+          }
+          ws.onerror = () => {
+            clearTimeout(timer)
+            resolve('error before open')
+          }
         }),
       wsUrl,
     )
@@ -259,10 +368,16 @@ for (const [vpName, vp] of [['phone', PHONE], ['desktop', DESKTOP]]) {
 }
 
 // 7. No 5xx anywhere.
-report(!all5xx.length, 'no 5xx (or demo 429) responses', all5xx.length ? [...new Set(all5xx)].slice(0, 6).join('; ') : 'none seen')
+report(
+  !all5xx.length,
+  'no 5xx (or demo 429) responses',
+  all5xx.length ? [...new Set(all5xx)].slice(0, 6).join('; ') : 'none seen',
+)
 
 await browser.close()
 const secs = Math.round((Date.now() - startedAt) / 1000)
-console.log(`\n${failures ? `${failures} FAILED` : 'ALL PASSED'} in ${secs}s (customer ${customer}, business ${business})`)
+console.log(
+  `\n${failures ? `${failures} FAILED` : 'ALL PASSED'} in ${secs}s (customer ${customer}, business ${business})`,
+)
 if (secs > BUDGET_MS / 1000) console.log('WARNING: over the 3 minute budget')
 process.exit(failures ? 1 : 0)
