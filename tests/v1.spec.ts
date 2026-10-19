@@ -161,6 +161,10 @@ test('delete all my data erases shops and asks for consent again', async ({ page
   const confirm = page.getByRole('dialog', { name: 'Delete everything?' })
   await confirm.getByRole('button', { name: 'Delete permanently' }).click()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
+  // Account cleanup removes this side's saved language choice as well.
+  await expect(page.getByRole('heading', { name: 'Choose your language' })).toBeVisible()
+  await page.getByRole('radio', { name: 'English', exact: true }).check()
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Before we start' })).toBeVisible()
 })
 
