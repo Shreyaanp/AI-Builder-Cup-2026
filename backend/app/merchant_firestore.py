@@ -88,6 +88,7 @@ class FirestoreMerchantStore:
         self.shared_lock = Lock()
         self.shared_cache: tuple[float, list[dict[str, Any]]] | None = None
         self.shared_loading = False
+        self.shared_generation = 0
 
     def person_ref(self, uid: str) -> Any:
         return self.people.document(hashlib.sha256(uid.encode()).hexdigest())
@@ -302,7 +303,9 @@ class FirestoreMerchantStore:
             transaction.update(proposal_ref, {"receipt": json.dumps(receipt)})
             return receipt
 
-        return run(self.client.transaction())
+        result = run(self.client.transaction())
+        self.forget_shared()
+        return result
 
     def challenge(
         self, uid: str, bid: str, exclude_prompts: list[str] | None = None
@@ -430,6 +433,7 @@ class FirestoreMerchantStore:
             for ref in refs[start : start + 400]:
                 batch.delete(ref)
             batch.commit()
+        self.forget_shared()
         return owned
 
     def set_availability(
@@ -469,7 +473,9 @@ class FirestoreMerchantStore:
             transaction.update(business_ref, {"revision": business["revision"] + 1})
             return {"id": product_id, **fields, "revision": business["revision"] + 1}
 
-        return run(self.client.transaction())
+        result = run(self.client.transaction())
+        self.forget_shared()
+        return result
 
     def share(self, uid: str, bid: str, public: bool) -> dict[str, Any]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
@@ -495,10 +501,14 @@ class FirestoreMerchantStore:
         return copy.deepcopy(self.refresh_shared())
 
     def refresh_shared(self) -> list[dict[str, Any]]:
+        with self.shared_lock:
+            generation = self.shared_generation
         try:
             shops = self.load_shared_shops()
             with self.shared_lock:
-                self.shared_cache = (time.monotonic(), shops)
+                # A refresh started before a write must never put its old snapshot back.
+                if generation == self.shared_generation:
+                    self.shared_cache = (time.monotonic(), shops)
             return shops
         finally:
             with self.shared_lock:
@@ -506,6 +516,7 @@ class FirestoreMerchantStore:
 
     def forget_shared(self) -> None:
         with self.shared_lock:
+            self.shared_generation += 1
             self.shared_cache = None
 
     def load_shared_shops(self) -> list[dict[str, Any]]:
@@ -575,7 +586,10 @@ class FirestoreMerchantStore:
                 )
             return True
 
-        return bool(run(self.client.transaction()))
+        changed = bool(run(self.client.transaction()))
+        if changed:
+            self.forget_shared()
+        return changed
 
     def attach_demo_owner(self, uid: str, bid: str, owner_uid: str) -> bool:
         if not owner_uid.strip():
@@ -786,7 +800,9 @@ class FirestoreMerchantStore:
             transaction.update(ref, {"last_confirmed": day})
             return {"business_id": bid, "last_confirmed": day}
 
-        return run(self.client.transaction())
+        result = run(self.client.transaction())
+        self.forget_shared()
+        return result
 
     def set_notes(self, uid: str, bid: str, notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
@@ -823,7 +839,9 @@ class FirestoreMerchantStore:
             transaction.update(ref, {"icon": icon})
             return icon
 
-        return cast(str | None, run(self.client.transaction()))
+        result = cast(str | None, run(self.client.transaction()))
+        self.forget_shared()
+        return result
 
     def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
@@ -834,7 +852,9 @@ class FirestoreMerchantStore:
             transaction.update(ref, {"gallery": photos})
             return photos
 
-        return cast(list[str], run(self.client.transaction()))
+        result = cast(list[str], run(self.client.transaction()))
+        self.forget_shared()
+        return result
 
     def analytics_shops(self, limit: int) -> list[tuple[str, str]]:
         return [

@@ -283,6 +283,7 @@ def test_ob_97_firestore_shared_shops_is_cached_and_refreshes_in_background(monk
     store.shared_lock = threading.Lock()
     store.shared_cache = None
     store.shared_loading = False
+    store.shared_generation = 0
     loads: list[int] = []
 
     def load() -> list[dict]:
@@ -306,4 +307,35 @@ def test_ob_97_firestore_shared_shops_is_cached_and_refreshes_in_background(monk
         time.sleep(0.02)
     assert len(loads) == 2
     store.forget_shared()
+    assert store.shared_cache is None
+
+
+def test_ob_97_firestore_inflight_refresh_cannot_restore_pre_write_shops() -> None:
+    """OB-97: a refresh already running when a write invalidates the cache stays discarded."""
+    import threading
+
+    from app.merchant_firestore import FirestoreMerchantStore
+
+    store = object.__new__(FirestoreMerchantStore)
+    store.shared_lock = threading.Lock()
+    store.shared_cache = (0.0, [{"id": "old-shop"}])
+    store.shared_loading = True
+    store.shared_generation = 0
+    entered = threading.Event()
+    release = threading.Event()
+
+    def load() -> list[dict]:
+        entered.set()
+        assert release.wait(timeout=2)
+        return [{"id": "pre-write-shop"}]
+
+    store.load_shared_shops = load
+    refresh = threading.Thread(target=store.refresh_shared)
+    refresh.start()
+    assert entered.wait(timeout=2)
+    store.forget_shared()
+    release.set()
+    refresh.join(timeout=2)
+
+    assert not refresh.is_alive()
     assert store.shared_cache is None
