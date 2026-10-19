@@ -53,7 +53,7 @@ async function prepare(page: Page, width: number, language = 'en') {
 const noSideScroll = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
-for (const width of [360, 390]) {
+for (const width of [360, 390, 412]) {
   test(`shop page: no sideways scroll, last content clear of the chat bar at ${width}px`, async ({
     page,
   }) => {
