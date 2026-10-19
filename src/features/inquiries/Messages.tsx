@@ -772,7 +772,17 @@ export function Messages({ businessId }: { businessId: string }) {
             sx={{ p: 0, listStyle: 'none' }}
           >
             {items.map((item) => (
-              <Box component="li" key={item.id} sx={{ py: 2, overflowWrap: 'anywhere' }}>
+              <Box
+                component="li"
+                key={item.id}
+                sx={{
+                  py: 2,
+                  overflowWrap: 'anywhere',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                }}
+              >
                 <Typography component="h3" variant="titleMedium">
                   {item.name || t.unnamed}
                 </Typography>

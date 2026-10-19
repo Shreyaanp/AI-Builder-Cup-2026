@@ -146,7 +146,9 @@ export function StreakFlame({
             >
               {number(weeks)}
             </Typography>
-            <Typography variant="labelLarge">{t.weeksLabel}</Typography>
+            <Typography variant="labelLarge">
+              {weeks === 1 && locale === 'en' ? 'week' : t.weeksLabel}
+            </Typography>
           </Stack>
         </Box>
         <HowItWorks game="streak" />

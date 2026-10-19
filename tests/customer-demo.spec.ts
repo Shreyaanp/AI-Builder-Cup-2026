@@ -35,6 +35,8 @@ test('390px customer demo: browse shops, collect a public demo stamp, and see Pa
   const shopName = (await firstCard.locator('span').first().innerText()).trim()
   await firstCard.getByRole('link').click()
   await expect(page.getByRole('heading', { name: shopName })).toBeVisible()
+  // OB-123: a populated menu must not be labelled as unconfirmed.
+  await expect(page.getByText('Menu not confirmed yet', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Try a demo stamp' })).toHaveCount(0)
   await expect(
     page.getByRole('link', { name: 'Collect a stamp at the demo chai stall' }),
@@ -63,4 +65,23 @@ test('390px customer demo: browse shops, collect a public demo stamp, and see Pa
     'Lantern Chai Corner',
   )
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})
+
+test('OB-120 customer demo uses customer branding while its app chunk loads', async ({ page }) => {
+  let releaseChunk!: () => void
+  const chunkGate = new Promise<void>((resolve) => {
+    releaseChunk = resolve
+  })
+  await page.route('**/src/features/demo/DemoApp.tsx*', async (route) => {
+    const response = await route.fetch()
+    await chunkGate
+    await route.fulfill({ response })
+  })
+  await page.goto('/explore/demo', { waitUntil: 'domcontentloaded' })
+  const splash = page.getByTestId('brand-splash')
+  await expect(splash).toBeVisible()
+  await expect(splash).toContainText('Chalkboard')
+  await expect(splash).not.toContainText('Chalkboard Business')
+  releaseChunk()
+  await expect(splash).toHaveCount(0)
 })

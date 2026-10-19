@@ -44,6 +44,28 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   await welcome.getByRole('button', { name: 'Skip' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
+  // OB-127: the supplier pointer names the tab that contains Supplies.
+  const coach = page.getByRole('textbox', { name: 'Message', exact: true })
+  await coach.fill('My masala chai is running low. Find suppliers.')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByRole('log')).toContainText('Grow → Supplies', { timeout: 30_000 })
+  await expect(page.getByRole('log')).not.toContainText('Shop → Supplies')
+
+  // OB-129: demo message cards show a name and plain question, with a shared button edge.
+  await page.locator('[data-tour="nav-shop"]').click()
+  await page.getByRole('button', { name: /Messages/ }).click()
+  const messages = page.getByRole('dialog')
+  await expect(messages.getByText('Asha', { exact: true })).toBeVisible()
+  await expect(messages.getByText(/@example\.invalid/)).toHaveCount(0)
+  await expect(messages.getByText(/\[Demo\]/)).toHaveCount(0)
+  const openButtons = messages.getByRole('button', { name: 'Open conversation', exact: true })
+  const buttonLefts = await openButtons.evaluateAll((buttons) =>
+    buttons.map((button) => button.getBoundingClientRect().left),
+  )
+  expect(new Set(buttonLefts.map(Math.round)).size).toBe(1)
+  await page.keyboard.press('Escape')
+  await page.locator('[data-tour="nav-coach"]').click()
+
   // #286, #287: the owner bottom navigation.
   const nav = page.getByRole('navigation').last()
   for (const id of ['coach', 'shop', 'grow', 'you'])

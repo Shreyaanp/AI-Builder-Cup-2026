@@ -372,7 +372,10 @@ def test_radar_threshold_separation_decay_radius_window_and_bands(setup):
         signal(i)
     assert client.get(f"/api/v1/businesses/{bid}/radar").json()["opportunities"] == []
     demand.seed_demo_signals(store, **POINT, now=fixed)
-    rows = client.get(f"/api/v1/businesses/{bid}/radar").json()["opportunities"]
+    # OB-128: the scope supplies one "within" prefix, so the area label is only the anchor.
+    response = client.get(f"/api/v1/businesses/{bid}/radar").json()
+    assert response["area_label"] == "your shop"
+    rows = response["opportunities"]
     assert all(r["demo"] for r in rows)
     signal(4)
     rows = demand.radar(store, "owner", bid, fixed).opportunities

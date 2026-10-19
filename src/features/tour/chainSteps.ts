@@ -26,7 +26,10 @@ export function chainStep(
   const money = (minor: number) => formatPrice(minor, s.currency, locale)
   const steps = [
     {
-      title: c.today.title(s.today.item, dayLabel(s.today.runs_out, locale)),
+      title: c.today.title(
+        locale === 'hi' && s.today.item === 'Tea dust' ? 'चाय पत्ती' : s.today.item,
+        dayLabel(s.today.runs_out, locale),
+      ),
       body: c.today.body(
         amount(s.today.stock, s.today.unit, locale),
         amount(s.today.daily, s.today.unit, locale),

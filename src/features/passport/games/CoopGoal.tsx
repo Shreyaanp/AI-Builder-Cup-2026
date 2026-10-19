@@ -110,7 +110,7 @@ export function CoopGoal({
           {t.coopTitle}
         </Typography>
         {coop.demo && <Chip size="small" label={p.demo} />}
-        {!compact && <HowItWorks game="coop" />}
+        {!compact && <HowItWorks game="coop" singleLine />}
       </Stack>
       <Typography
         sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: 28, lineHeight: 1.15, mt: 1 }}

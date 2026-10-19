@@ -81,6 +81,7 @@ async function hindiOnly(page: Page, label: string) {
 const tab = (page: Page, name: string) =>
   page.getByRole('navigation', { name: 'मुख्य मेन्यू' }).getByRole('button', { name, exact: true })
 
+// OB-74: the tour's Today step uses a Hindi name for seeded tea stock.
 test('Hindi phone sweep: supply, reminders, onboarding, tour and demo', async ({ page }) => {
   test.setTimeout(150_000)
   await localOnly(page)
