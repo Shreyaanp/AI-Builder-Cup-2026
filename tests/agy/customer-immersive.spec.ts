@@ -110,11 +110,12 @@ test.describe('Customer immersive flow on phone (390px)', () => {
 
     // 4. Customer scans QR code (?source=qr&k=...)
     await page.goto(`${shopUrl}?source=qr&k=${qrKey}`)
+    await page.getByRole('button', { name: 'Collect your stamp' }).click()
 
     // Stamp moment dialog appears
     const momentDialog = page.getByRole('dialog')
     await expect(momentDialog).toBeVisible({ timeout: 15_000 })
-    const doneBtn = momentDialog.getByRole('button', { name: 'Done' })
+    const doneBtn = momentDialog.getByRole('button', { name: 'Keep browsing' })
     await expect(doneBtn).toBeVisible()
     await doneBtn.click()
     await expect(momentDialog).toBeHidden()

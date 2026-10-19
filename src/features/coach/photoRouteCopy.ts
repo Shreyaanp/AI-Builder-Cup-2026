@@ -7,7 +7,7 @@ export const PHOTO_ROUTES: PhotoRoute[] = ['shop_photo', 'menu', 'product', 'rec
 const en = {
   // "Looks like: Menu. Is that right?" — the picked kind is named, the chips below correct it.
   looks: (kind: string) => `Looks like: ${kind}. Is that right?`,
-  unsure: 'I’m not sure what this photo is. It’s kept here. What is it?',
+  unsure: 'I couldn’t tell what this photo shows. Is it your shop front, a menu, or a product?',
   notNow: 'Not now',
   group: 'What is this photo?',
   kinds: {

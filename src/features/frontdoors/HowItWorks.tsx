@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { AppearanceToggle } from './AppearanceToggle'
+import { BrandLogo } from '../../design/BrandLogo'
 import { LanguagePicker } from './LanguagePicker'
 import { pagesCopyFor, posterSrc, videoSrc, type PagesCopy } from './howItWorksCopy'
 import './how-it-works.css'
@@ -128,10 +129,7 @@ export function FlowVideo({ flow, label, sound }: { flow: Flow; label: string; s
 function Header({ t, page }: { t: PagesCopy; page: Page }) {
   return (
     <header className="hw-nav">
-      <a className="hw-logo" href="/">
-        <span className="hw-logo-mark" aria-hidden="true" />
-        {t.brand}
-      </a>
+      <BrandLogo name={t.brand} href="/" />
       <nav aria-label={t.brand}>
         {page !== 'how' && (
           <a className="hw-nav-link" href="/how-it-works">
@@ -244,17 +242,11 @@ function How({ t }: { t: PagesCopy }) {
         <nav className="hw-jump" aria-label={t.watch}>
           <a href="#vendor">
             <Store size={20} aria-hidden="true" />
-            <span>
-              <strong>{t.forShops}</strong>
-              {t.shopsLine}
-            </span>
+            <strong>{t.forShops}</strong>
           </a>
           <a href="#customer">
             <Footprints size={20} aria-hidden="true" />
-            <span>
-              <strong>{t.forCustomers}</strong>
-              {t.customersLine}
-            </span>
+            <strong>{t.forCustomers}</strong>
           </a>
         </nav>
       </section>

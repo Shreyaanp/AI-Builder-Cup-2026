@@ -6,7 +6,7 @@ Python 3.13, FastAPI, Uvicorn, Google ADK, Google Gen AI SDK, Pydantic/settings,
 
 From the repository root, `npm run dev:backend`; on this workstation `./start.ps1` starts both services. These launchers force offline mode. API docs: `http://127.0.0.1:3300/docs`.
 
-`GET /api/v1/bootstrap` establishes a signed, HttpOnly development cookie. This is a private local workspace, not Google sign-in or proof of business ownership. `POST /api/v1/coach/stream` accepts a message and optional owned conversation UUID. `GET /api/v1/health` reports configured modes and unconnected Google statuses. WebSocket `/api/v1/voice` is described in `../docs/AI_ARCHITECTURE.md`.
+`GET /api/v1/bootstrap` establishes a signed, HttpOnly development cookie. This is a private local workspace, not Google sign-in or proof of business ownership. `POST /api/v1/coach/stream` accepts a message and optional owned conversation UUID. `GET /api/v1/health` reports configured modes and unconnected Google statuses. WebSocket `/api/v1/voice` is defined in `app/main.py` and runs the Gemini Live session in `app/voice.py`.
 
 The default `.env.example` contains no key. No configuration is required for the offline fixture. The backend saves conversation events to `data/sessions.sqlite3` and a signing key to `data/local-session.key`; both are ignored. Treat these as private local files. They are not encrypted application records or cloud memory. Use fictional data during review.
 

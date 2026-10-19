@@ -159,13 +159,14 @@ test('guest on a 390 px phone: chat, follow, QR stamp, passport and claim gate',
     (r) => r.url().endsWith('/customer/passport/stamps') && r.request().method() === 'POST',
   )
   await page.goto(`${shop}?source=qr&k=${encodeURIComponent(qr)}`)
+  await page.getByRole('button', { name: 'Collect your stamp' }).click()
   const stamped = await (await scan).json()
   expect(stamped.outcome.verdict).toBe('stamped')
   await noGoogle()
   const reveal = page.getByRole('button', { name: /^Scratch card from Guest Corner/ })
   await expect(reveal).toBeVisible()
   await reveal.click()
-  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: 'Keep browsing', exact: true }).click()
   const before = await (await page.request.get('/api/v1/customer/passport')).json()
   expect(before.stamps).toHaveLength(1)
   const repeat = await page.request.post('/api/v1/customer/passport/stamps', {

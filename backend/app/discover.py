@@ -786,10 +786,11 @@ async def place_photo(
     request: Request,
     name: str = Query(min_length=1, max_length=4096),
     width: int = Query(default=800, ge=64, le=800),
+    sig: str = Query(default="", max_length=64),
 ) -> Response:
     await enforce_limits(request, [("discover:photo", client_ip(request))], anonymous=True)
     maps: MapsService = request.app.state.maps
-    body, media_type = await maps.photos.media(name, width)
+    body, media_type = await maps.photos.media(name, width, sig)
     # A photo for a given name never changes: let the browser keep it, so a repeat view is free.
     cache = {"Cache-Control": "private, max-age=86400"}
     return Response(body, media_type=media_type, headers=cache)

@@ -7,6 +7,8 @@ allowlist of reads and safe local writes runs; anything that would leave the san
 message, push, payment, face check) answers DEMO_NOT_SENT.
 """
 
+import hashlib
+import hmac
 import json
 import re
 import sqlite3
@@ -22,6 +24,7 @@ from uuid import uuid4
 
 import anyio
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from itsdangerous import URLSafeTimedSerializer
 from pydantic import BaseModel, ConfigDict, Field
 from sse_starlette import EventSourceResponse
 from starlette.datastructures import State
@@ -49,6 +52,10 @@ from .tour_story import (
 router = APIRouter(prefix="/api/v1/demo/sessions")
 TTL_SECONDS = 900
 MAX_SESSIONS = 128
+# New sandboxes per network address. Judges often share one office or venue address, and one
+# visitor reuses a sandbox per tab, so these allow a room of people without inviting abuse.
+OPEN_PER_MINUTE = 10
+OPEN_PER_HOUR = 200
 MAX_COACH_TURNS = 40
 CHAIN_OWNER = "demo-world-owner"
 
@@ -197,8 +204,8 @@ async def open_workspace(request: Request, zone: str) -> dict[str, Any]:
         retry = await anyio.to_thread.run_sync(
             request.app.state.rate_limiter.take,
             [
-                Bucket("public-demo", client_ip(request), 5, 60),
-                Bucket("public-demo", client_ip(request), 20, 3600),
+                Bucket("public-demo", client_ip(request), OPEN_PER_MINUTE, 60),
+                Bucket("public-demo", client_ip(request), OPEN_PER_HOUR, 3600),
             ],
             time.time(),
         )
@@ -300,14 +307,24 @@ async def exit_demo(session_id: str, request: Request) -> dict[str, bool]:
 class DemoIdentity:
     """Every owner call in the sandbox is the visitor's throwaway owner; nothing else."""
 
-    def __init__(self, uid: str) -> None:
+    def __init__(self, uid: str, secret: bytes) -> None:
         self.uid = uid
+        # QR keys and stamp receipts in the sandbox sign with a key of its own (OB-52), so a demo
+        # QR can never stamp a real shop.
+        self.signer = URLSafeTimedSerializer(secret, salt="public-demo")
 
     async def require(self, _request: Request) -> Principal:
         return Principal(self.uid, "public-demo")
 
     async def require_customer(self, _request: Request) -> Principal:
         raise HTTPException(403, "DEMO_NOT_SENT")
+
+
+def demo_secret(app: Any) -> bytes:
+    """The sandbox's signing key: derived from the app's, never equal to it."""
+    key = app.state.services.identity.signer.secret_key
+    key = key if isinstance(key, bytes) else str(key).encode()
+    return hmac.new(key, b"public-demo", hashlib.sha256).digest()
 
 
 class SandboxApp:
@@ -455,7 +472,7 @@ async def owner_api(
     app = request.scope["app"]
     state = State({**app.state._state, **offline(app)})
     state.merchant = entry.store
-    state.services = replace(app.state.services, identity=DemoIdentity(entry.uid))
+    state.services = replace(app.state.services, identity=DemoIdentity(entry.uid, demo_secret(app)))
     inner = dict(request.scope)
     for key in ("route", "endpoint", "path_params", "router"):
         inner.pop(key, None)

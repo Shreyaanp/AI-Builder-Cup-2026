@@ -139,6 +139,57 @@ jobs:
           name: browser-failures-${{ matrix.project }}-${{ matrix.shard }}
           path: test-results
           retention-days: 3
+  # UX gate (OB-63): the phone UX rules on the key screens (tests/ux/rules.ts) and the customer
+  # heatmap against its committed baseline. Blocks the PR on anything new; known problems are in
+  # tests/ux/allowlist.json (one OB number each). Same setup as the browser job, sharded.
+  ux-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: '0.13.0'
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --project backend --locked
+      - run: npm ci
+      - id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6.1.0
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}-chromium
+      - run: npx playwright install-deps chromium
+      - run: npx playwright install chromium
+        if: steps.browsers.outputs.cache-hit != 'true'
+      - name: Phone UX rules
+        run: npx playwright test -c tests/ux/playwright.config.ts --shard=${{ matrix.shard }}/3
+      - name: Heatmap against the baseline
+        run: |
+          npx playwright test -c tests/heatmap/playwright.config.ts --shard=${{ matrix.shard }}/3
+          node scripts/heatmap-gate.mjs
+        env:
+          HEATMAP_LABEL: ci
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: ux-gate-failures-${{ matrix.shard }}
+          path: |
+            test-results
+            docs/qa/heatmap/ci-*
+          retention-days: 3
   # Runs alongside the tests; it only checks that the packaged app starts and serves.
   container:
     runs-on: ubuntu-latest

@@ -27,7 +27,7 @@ export function NextRewardLine({ view }: { view: PassportView }) {
     <Stack
       direction="row"
       sx={{
-        p: 3,
+        p: { xs: 2, sm: 3 },
         gap: 2,
         alignItems: 'center',
         borderRadius: '20px',

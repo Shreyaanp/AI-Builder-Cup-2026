@@ -36,6 +36,7 @@ from tests.test_passport import (  # noqa: F401  (pytest fixtures app and client
     at_shop,
     client,
     demo_key,
+    midweek,
     shop,
     sign_in,
     sign_out,
@@ -168,7 +169,7 @@ def stamp_demo(client: TestClient) -> dict:
     return response.json()
 
 
-def test_stamp_scratch_coop_and_freeze_story(client: TestClient) -> None:
+def test_stamp_scratch_coop_and_freeze_story(client: TestClient, midweek: None) -> None:
     sign_in(client)
     first = stamp_demo(client)
     card = first["scratch"]
@@ -198,7 +199,7 @@ def test_stamp_scratch_coop_and_freeze_story(client: TestClient) -> None:
     assert stamp_demo(client)["scratch"] is None
 
 
-def test_coop_reward_once_the_goal_is_reached(client: TestClient) -> None:
+def test_coop_reward_once_the_goal_is_reached(client: TestClient, midweek: None) -> None:
     sign_in(client)
     coop = stamp_demo(client)["passport"]["games"]["coop"]
     body = {"area": coop["area"], "week": coop["week"]}

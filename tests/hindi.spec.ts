@@ -153,6 +153,8 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
   })
 
   await test.step('menu photo', async () => {
+    // A photo is ignored while the reply is still finishing: the attach button is the idle signal.
+    await expect(page.getByRole('button', { name: 'फ़ोटो या दस्तावेज़ जोड़ें' })).toBeEnabled()
     await page
       .locator('input[type=file][accept*="image"]')
       .first()
@@ -212,7 +214,8 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
     await expect(purchaseCard).toHaveCount(1)
     await purchaseCard.click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    await readsInHindi(page, '09-purchase-order')
+    // The sandbox supplier's name comes from the imported SAP document (data, not interface copy).
+    await readsInHindi(page, '09-purchase-order', ['SAP supplier'])
     await closeSheet(page)
   })
 

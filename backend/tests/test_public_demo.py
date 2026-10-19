@@ -1,11 +1,15 @@
 """Public demos never acquire an owner identity or use the durable merchant repository."""
 
+import json
 import time
+from datetime import date, datetime
 from unittest.mock import AsyncMock, Mock
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app import public_demo
 from tests.test_photos import app  # noqa: F401
 
 
@@ -81,6 +85,65 @@ def test_demo_is_the_full_owner_app_on_a_private_sandbox(app, monkeypatch):  # n
         provider.assert_not_called()
 
 
+def test_OB_62_bengaluru_public_demo_forecast_matches_both_surfaces_across_loads(
+    app,  # noqa: F811
+):
+    """OB-62: /demo keeps realistic tea-dust numbers across the card, tour and reload."""
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        app.state.rate_limiter.counters.clear()
+        session = open_demo(client).json()["session_id"]
+        business = owner(client, session, "businesses").json()[0]
+        bid = business["id"]
+
+        def surfaces():
+            supply_card = owner(client, session, f"businesses/{bid}/supply")
+            tour = owner(client, session, f"demo/chain/{bid}")
+            assert supply_card.status_code == tour.status_code == 200
+            return supply_card.json(), tour.json()
+
+        before_card, before_tour = surfaces()
+        loaded = owner(client, session, "demo/workspace", "POST")
+        assert loaded.json() == {"business_id": bid, "created": False}
+        card, tour = surfaces()
+        need = next(row for row in card["needs"] if row["item"] == "Tea dust")
+        first_need = next(row for row in before_card["needs"] if row["item"] == "Tea dust")
+        step = tour["today"]
+        assert need["stock"] >= 3 and need["daily"] >= 1.5
+        today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+        assert 1 <= (date.fromisoformat(need["runs_out"]) - today).days <= 4
+        assert (need["stock"], need["daily"], need["runs_out"]) == (
+            step["stock"],
+            step["daily"],
+            step["runs_out"],
+        )
+        assert (need["stock"], need["daily"], need["runs_out"]) == (
+            first_need["stock"],
+            first_need["daily"],
+            first_need["runs_out"],
+        )
+        assert (step["stock"], step["daily"], step["runs_out"]) == (
+            before_tour["today"]["stock"],
+            before_tour["today"]["daily"],
+            before_tour["today"]["runs_out"],
+        )
+        assert step["item"] == "Tea dust" and step["unit"] == "kg"
+        reorder = tour["order"]["lines"][0]
+        assert reorder["item"] == "Tea dust" and reorder["unit"] == "kg"
+        assert reorder["quantity"] >= 10
+        lines = tour["wholesaler"]["restock"]["lines"]
+        tea = next(line for line in lines if line["item"] == "Tea dust")
+        milk = next(line for line in lines if line["item"] == "Milk")
+        sugar = next(line for line in lines if line["item"] == "Sugar")
+        assert (tea["quantity"], tea["unit"], tea["price"], tea["total"]) == (
+            50,
+            "kg",
+            19000,
+            950000,
+        )
+        assert milk["unit"] == "litre" and sugar["unit"] == "kg"
+
+
 def test_demo_coach_answers_offline(app, monkeypatch):  # noqa: F811
     with TestClient(app) as client:
         app.state.v1_settings.public_demo_enabled = True
@@ -93,8 +156,55 @@ def test_demo_coach_answers_offline(app, monkeypatch):  # noqa: F811
         )
         assert reply.status_code == 200, reply.text
         assert "turn_complete" in reply.text
-        assert "weekday average" in reply.text.lower()
+        assert "demo forecast" in reply.text.lower()
         paid_forecast.forecast.assert_not_called()
+
+
+def test_public_demo_coach_covers_shop_intents_from_seeded_data(app):  # noqa: F811
+    prompts = [
+        ("Help me update my products", "demo menu"),
+        ("Help me close the day", "demo sales"),
+        ("Forecast demand for Masala chai", "demo forecast"),
+        ("Reorder milk for tomorrow", "Demo supply records"),
+        ("My flour is running low", "Demo supply records"),
+        ("Reply to customers", "demo customer questions"),
+        ("Something sold out?", "Demo stock shows"),
+        ("Change a price", "demo price"),
+        ("Samosa is 20 now", "demo price"),
+        ("How did I do today?", "demo sales"),
+        ("Order more Tea dust", "Demo supply records"),
+        ("What should I prep tomorrow?", "demo forecast"),
+        ("Hello", "menu items"),
+        ("नमस्ते", "menu items"),
+        ("आज बिक्री कैसी रही?", "demo sales"),
+        ("कल क्या तैयारी करूँ?", "demo forecast"),
+        ("ग्राहक क्या पूछ रहे हैं?", "customer questions"),
+        ("नमक खत्म है", "Demo stock shows"),
+        ("कीमत बदलो", "demo price"),
+        ("ऑर्डर और सामान", "Demo supply records"),
+        ("We are closed today", "Demo shop hours"),
+        ("What is my business called?", "I can help with"),
+    ]
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        app.state.rate_limiter.counters.clear()
+        session = open_demo(client).json()["session_id"]
+        for message, expected in prompts:
+            response = client.post(
+                f"/api/v1/demo/sessions/{session}/coach", json={"message": message}
+            )
+            assert response.status_code == 200, (message, response.text)
+            events = [
+                json.loads(line[6:])
+                for line in response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            reply = " ".join(event.get("text", "") for event in events)
+            assert expected in reply, (message, events)
+            assert "What is your business called?" not in reply
+            if expected != "I can help with":
+                assert "next" in reply.lower()
+        app.state.rate_limiter.counters.clear()
 
 
 def test_customer_snapshot_reads(app):  # noqa: F811
@@ -128,7 +238,7 @@ def test_rate_limit_per_ip_even_when_owner_limits_are_disabled(app):  # noqa: F8
     with TestClient(app) as client:
         app.state.v1_settings.public_demo_enabled = True
         app.state.v1_settings.rate_limits_enabled = False
-        for _ in range(5):
+        for _ in range(public_demo.OPEN_PER_MINUTE):
             assert open_demo(client).status_code == 200
         blocked = open_demo(client)
         assert blocked.status_code == 429
@@ -250,3 +360,19 @@ def test_snapshot_rejects_stale_writes_and_expired_sessions(app):  # noqa: F811
         entry.close()
         app.state.public_demos.clear()
         assert owner(client, session, "businesses").status_code == 410
+
+
+def test_ob52_demo_qr_key_works_and_never_matches_a_real_key(app):  # noqa: F811
+    """OB-52: the tour's QR key 500'd because the sandbox identity had no signer."""
+    from app.passport import qr_key
+
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        session = open_demo(client).json()["session_id"]
+        bid = owner(client, session, "businesses").json()[0]["id"]
+        made = owner(client, session, f"businesses/{bid}/qr-key")
+        assert made.status_code == 200, made.text
+        key = made.json()["key"]
+        assert key and owner(client, session, f"businesses/{bid}/qr-key").json()["key"] == key
+        real = app.state.services.identity.signer.secret_key
+        assert key != qr_key(real, bid)  # a demo QR can never stamp the real app

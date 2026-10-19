@@ -4283,6 +4283,17 @@
               "default": 800,
               "title": "Width"
             }
+          },
+          {
+            "name": "sig",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "default": "",
+              "title": "Sig"
+            }
           }
         ],
         "responses": {

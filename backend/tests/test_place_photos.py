@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
@@ -41,11 +42,14 @@ def test_photo_media_is_bounded_cached_and_key_stays_server_side() -> None:
             url, authors = photos.describe(PHOTO)
             assert url and "offline-fixture" not in url and "width=800" in url
             assert authors == ["Fixture photographer"]
-            first, second = await asyncio.gather(photos.media(NAME, 800), photos.media(NAME, 800))
+            first, second = await asyncio.gather(
+                photos.media(NAME, 800, photos.sign(NAME)),
+                photos.media(NAME, 800, photos.sign(NAME)),
+            )
             assert first == second == (b"fixture-webp", "image/webp")
             assert len(calls) == 2
             with pytest.raises(HTTPException) as unknown:
-                await photos.media("places/other/photos/arbitrary", 800)
+                await photos.media("places/other/photos/arbitrary", 800, photos.sign(NAME))
             assert unknown.value.status_code == 404
             assert len(calls) == 2
 
@@ -77,7 +81,7 @@ def test_untrusted_or_failed_media_is_not_cached(failure: str) -> None:
             photos = PlacesPhotos(client, "offline-fixture", True)
             photos.describe(PHOTO)
             with pytest.raises(HTTPException) as failed:
-                await photos.media(NAME, 800)
+                await photos.media(NAME, 800, photos.sign(NAME))
             assert failed.value.status_code == 503
             assert not photos.cache
 
@@ -96,7 +100,7 @@ def test_cancelled_media_releases_single_flight_lock() -> None:
         async with httpx.AsyncClient(transport=httpx.MockTransport(mock)) as client:
             photos = PlacesPhotos(client, "offline-fixture", True)
             photos.describe(PHOTO)
-            pending = asyncio.create_task(photos.media(NAME, 800))
+            pending = asyncio.create_task(photos.media(NAME, 800, photos.sign(NAME)))
             await entered.wait()
             pending.cancel()
             with pytest.raises(asyncio.CancelledError):
@@ -145,3 +149,32 @@ def test_photo_route_validation_demo_and_public_origin(tmp_path: Path) -> None:
 def test_customer_origin_rejects_non_origins(origin: str) -> None:
     with pytest.raises(ValidationError):
         Settings(customer_origin=origin, _env_file=None)
+
+
+def test_ob46_photo_link_works_on_any_instance_and_bad_links_are_clean_404s() -> None:
+    """OB-46: the signed link made by one instance loads on another; no photo is a clean 404."""
+
+    def mock(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "places.googleapis.com":
+            return httpx.Response(
+                200, json={"photoUri": "https://lh3.googleusercontent.com/fixture"}
+            )
+        return httpx.Response(200, content=b"fixture-webp", headers={"Content-Type": "image/webp"})
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(mock)) as client:
+            listing = PlacesPhotos(client, "offline-fixture", True)
+            other_instance = PlacesPhotos(client, "offline-fixture", True)
+            url, _ = listing.describe(PHOTO)
+            assert url
+            sig = parse_qs(urlsplit(url).query)["sig"][0]
+            assert await other_instance.media(NAME, 800, sig) == (b"fixture-webp", "image/webp")
+            for bad in ("", "0" * 32, "é" * 32):
+                with pytest.raises(HTTPException) as missing:
+                    await other_instance.media(NAME, 800, bad)
+                assert missing.value.status_code == 404
+            with pytest.raises(HTTPException) as forged:
+                await other_instance.media("places/x/photos/y", 800, sig)
+            assert forged.value.status_code == 404
+
+    asyncio.run(scenario())

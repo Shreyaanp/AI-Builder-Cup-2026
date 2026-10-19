@@ -20,6 +20,7 @@ from .recap import Summary
 from .rescue import buffer_for, local_now
 from .settings import Settings
 from .sourcing import OPEN, shop_pin
+from .supply_chain import need_from_forecast
 
 
 class Weather(BaseModel):
@@ -160,17 +161,32 @@ def facts(
         stock = product.get("stock")
         if stock is None:
             continue
-        rows = sorted(
-            (p for p in forecast.predictions if p.item.casefold() == product["name"].casefold()),
-            key=lambda p: p.date,
-        )
-        total = 0.0
-        runs_out = None
-        for row in rows:
-            total += row.quantity
-            if total >= stock:
-                runs_out = row.date
-                break
+        if business["fields"].get("demo"):
+            # Demo shops use the supply card's own rule and horizon (tomorrow on, the forecast's
+            # upper bound), so the brief and Today name the same day for the same item.
+            demo_rows = [
+                p.model_dump(mode="json")
+                for p in forecast.predictions
+                if p.item.casefold() == product["name"].casefold() and p.date > today
+            ]
+            found = need_from_forecast(product, {"predictions": demo_rows}, product["name"], today)
+            runs_out = date.fromisoformat(found["runs_out"]) if found["runs_out"] else None
+        else:
+            rows = sorted(
+                (
+                    p
+                    for p in forecast.predictions
+                    if p.item.casefold() == product["name"].casefold()
+                ),
+                key=lambda p: p.date,
+            )
+            total = 0.0
+            runs_out = None
+            for row in rows:
+                total += row.quantity
+                if total >= stock:
+                    runs_out = row.date
+                    break
         if runs_out is not None or stock <= 5:
             low.append(LowStock(name=product["name"], stock=stock, runs_out=runs_out))
     signals = store.recap_signals(uid, bid)
