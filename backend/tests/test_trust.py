@@ -142,6 +142,21 @@ def test_erase_removes_template_status_reviews_and_badge(tmp_path: Path):
         assert client.delete("/api/v1/me/data").json()["status"] == "erased"
 
 
+def test_ob26_74_stored_face_record_is_the_embedding_only_and_erasure_deletes_it(tmp_path: Path):
+    with TestClient(create_app(settings(tmp_path), InMemorySessionService())) as client:
+        bid = new_owner(client, "Courtyard Chai")
+        assert check(client, bid, "alice")["result"] == "verified"
+        store = client.app.state.community.docs  # type: ignore[attr-defined]
+        records = store.scoped(trust.TEMPLATE_KIND, trust.GALLERY)
+        assert len(records) == 1
+        # An encrypted vector plus the minimum metadata: no frame, image, video or base64 payload.
+        assert set(records[0]) >= {"uid", "sealed", "created", "version"}
+        assert not {"frames", "image", "video", "capture", "data"} & set(records[0])
+        assert len(str(records[0])) < 2000
+        assert client.delete("/api/v1/face/template").json() == {"status": "deleted"}
+        assert store.scoped(trust.TEMPLATE_KIND, trust.GALLERY) == []
+
+
 def test_worker_capture_reaches_the_private_worker_and_never_returns_the_template(
     tmp_path: Path, monkeypatch
 ):

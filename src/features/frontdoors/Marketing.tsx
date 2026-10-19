@@ -511,9 +511,6 @@ export default function Marketing() {
             </div>
           </section>
         </main>
-        <footer className="lp-footer">
-          <Typography variant="bodyMedium">{t.independent}</Typography>
-        </footer>
       </div>
     </ThemeProvider>
   )
