@@ -38,6 +38,8 @@ import { enterRise, fieldFade, scrollArea, shape } from '../../design/theme'
 import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { ShopLocation } from './CurrentLocation'
+import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 
 /** Before any shop exists: one start card, nothing else. */
 export function StartCard() {
@@ -140,6 +142,7 @@ export function ShopCard({
   onOpen: (productIndex?: number) => void
 }) {
   const t = useCopy()
+  const locale = useLocale()
   const ws = useWorkspace()
   const roles = useTheme().material
   const shop = ws.active
@@ -323,7 +326,7 @@ export function ShopCard({
           {shown.map((product, index) => (
             <Chip
               key={product.id ?? product.name}
-              label={product.name}
+              label={productName(product.name, locale)}
               onClick={() => onOpen(index)}
               variant="outlined"
               sx={{
@@ -376,6 +379,7 @@ export function ShopSheet({
   onAnswer?: (fact: AskFact) => void
 }) {
   const t = useCopy()
+  const locale = useLocale()
   const shopCopy = useShopCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
@@ -489,12 +493,12 @@ export function ShopSheet({
                     key={product.id ?? product.name}
                     id={`shop-sheet-product-${index}`}
                     divider={index < ws.products.length - 1}
-                    aria-label={`${t.editProduct} ${product.name}`}
+                    aria-label={`${t.editProduct} ${productName(product.name, locale)}`}
                     onClick={() => edit(() => ws.openEditor({ kind: 'product', product }))}
                     sx={{ borderRadius: 0 }}
                   >
                     <ListItemText
-                      primary={product.name}
+                      primary={productName(product.name, locale)}
                       secondary={
                         (available ? '' : `${t.soldOut} · `) +
                         `${formatPrice(product.price, currency)} / ${unitLabel(product.unit, shopCopy)}`

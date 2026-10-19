@@ -9,6 +9,7 @@ import { useShowcaseCopy } from './showcaseCopy'
 import { useSupplyCopy } from './copy'
 import { dayLabel, useDraftReorder, useSupply } from './supplyData'
 import type { PurchaseOrder } from './types'
+import { productName } from '../../i18n/productNames'
 
 export function TodaySupply() {
   const { products, active } = useWorkspace()
@@ -54,7 +55,8 @@ export function TodaySupply() {
           {s.title}
         </Typography>
         <Typography variant="titleLarge" component="p" aria-live="polite">
-          {item} {need ? `${s.runsOut} ${dayLabel(need.runs_out, locale)}` : s.restocked}
+          {productName(item, locale)}{' '}
+          {need ? `${s.runsOut} ${dayLabel(need.runs_out, locale)}` : s.restocked}
         </Typography>
         <Box>
           <Button

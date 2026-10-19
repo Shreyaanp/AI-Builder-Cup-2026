@@ -20,6 +20,7 @@ import { customerBack, customerNavigate } from '../frontdoors/navigation'
 import type { ReactNode } from 'react'
 import { type Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { leadTimeText } from './leadTime'
 import { ShopSkeleton } from '../customer/Skeletons'
 import { PlaceImage } from '../frontdoors/PlaceImage'
@@ -1085,7 +1086,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
                     primary={
                       product.name_local ? (
                         <>
-                          {product.name}
+                          {productName(product.name, locale)}
                           {/* The owner's name stays; the customer's language is a subtitle. */}
                           <Typography
                             component="span"
@@ -1097,7 +1098,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
                           </Typography>
                         </>
                       ) : (
-                        product.name
+                        productName(product.name, locale)
                       )
                     }
                     secondary={

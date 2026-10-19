@@ -62,6 +62,8 @@ import { CategoryGroups } from '../shop/CategoryGroups'
 import { MapsHandoff } from './MapsHandoff'
 import { shopZone } from '../../region/region'
 import { ShopIcon } from '../google/ShopIcon'
+import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 
 export type ShopSheetKind =
   'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
@@ -297,6 +299,7 @@ export function ShopTiles({
   onSheet: (kind: ShopSheetKind) => void
 }) {
   const t = useCopy()
+  const locale = useLocale()
   const tabs = useTabsCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
@@ -311,7 +314,7 @@ export function ShopTiles({
   )
   const soldOutNames = ws.products
     .filter((product) => product.available === false)
-    .map((product) => product.name)
+    .map((product) => productName(product.name, locale))
   const soldOut = soldOutNames.length
   const hoursValue =
     open === null ? shop.fields.hours || t.fields.hours : open ? t.openNow : t.closedNow
@@ -345,7 +348,7 @@ export function ShopTiles({
                     sx={{ gap: 2, justifyContent: 'space-between' }}
                   >
                     <Typography component="span" variant="bodyMedium" noWrap sx={{ minWidth: 0 }}>
-                      {product.name}
+                      {productName(product.name, locale)}
                       {/* Same item in two sizes (chai per cup and per pot): the unit tells them apart. */}
                       {product.unit &&
                         ws.products.filter((other) => other.name === product.name).length > 1 &&
@@ -421,6 +424,7 @@ export function ShopSheets({
   menuFocus?: string | null
 }) {
   const t = useCopy()
+  const locale = useLocale()
   const rewards = useRewardCopy()
   const plan = usePlanCopy()
   const ws = useWorkspace()
@@ -586,13 +590,15 @@ export function ShopSheets({
                         edge="end"
                         checked={available}
                         onChange={(_, checked) => void ws.setAvailability(product, checked)}
-                        slotProps={{ input: { 'aria-label': `${t.available}: ${product.name}` } }}
+                        slotProps={{
+                          input: { 'aria-label': `${t.available}: ${productName(product.name, locale)}` },
+                        }}
                       />
                     }
                     sx={{ minHeight: 56 }}
                   >
                     <ListItemText
-                      primary={product.name}
+                      primary={productName(product.name, locale)}
                       secondary={available ? t.available : t.soldOut}
                       slotProps={{
                         primary: { variant: 'bodyLarge' },

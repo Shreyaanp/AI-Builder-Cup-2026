@@ -1,5 +1,6 @@
 import { dayLabel } from '../supply/supplyData'
 import { formatPrice } from '../v1/format'
+import { productName } from '../../i18n/productNames'
 import type { ChainCopy } from './chainCopy'
 import type { ChainState } from './chainData'
 import { short } from './chainData'
@@ -27,7 +28,7 @@ export function chainStep(
   const steps = [
     {
       title: c.today.title(
-        locale === 'hi' && s.today.item === 'Tea dust' ? 'चाय पत्ती' : s.today.item,
+        productName(s.today.item, locale),
         dayLabel(s.today.runs_out, locale),
       ),
       body: c.today.body(
