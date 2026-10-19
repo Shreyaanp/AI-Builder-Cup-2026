@@ -299,3 +299,19 @@ def test_snapshot_rejects_stale_writes_and_expired_sessions(app):  # noqa: F811
         entry.close()
         app.state.public_demos.clear()
         assert owner(client, session, "businesses").status_code == 410
+
+
+def test_ob52_demo_qr_key_works_and_never_matches_a_real_key(app):  # noqa: F811
+    """OB-52: the tour's QR key 500'd because the sandbox identity had no signer."""
+    from app.passport import qr_key
+
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        session = open_demo(client).json()["session_id"]
+        bid = owner(client, session, "businesses").json()[0]["id"]
+        made = owner(client, session, f"businesses/{bid}/qr-key")
+        assert made.status_code == 200, made.text
+        key = made.json()["key"]
+        assert key and owner(client, session, f"businesses/{bid}/qr-key").json()["key"] == key
+        real = app.state.services.identity.signer.secret_key
+        assert key != qr_key(real, bid)  # a demo QR can never stamp the real app
