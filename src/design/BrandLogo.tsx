@@ -25,7 +25,7 @@ export function BrandLogo({
       sx={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 2.5,
+        gap: 3,
         minHeight: 48,
         color: 'text.primary',
         // The theme's title size (titleLarge), so the logo adds no type size of its own (OB-31).
