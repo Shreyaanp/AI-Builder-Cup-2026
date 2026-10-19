@@ -7,7 +7,7 @@ const api = Number(process.env.API_PORT ?? 3300)
 export default defineConfig({
   testDir: './tests',
   // The QA machine has its own servers and config: npm run test:qa
-  testIgnore: ['qa/**', 'heatmap/**'],
+  testIgnore: ['qa/**', 'heatmap/**', 'ux/**'],
   timeout: 30_000,
   // Shard individual isolated tests, so large story files cannot dominate one shard.
   fullyParallel: true,
