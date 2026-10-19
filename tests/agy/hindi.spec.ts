@@ -76,13 +76,15 @@ test.describe('Hindi language flows on phone (390px)', () => {
     )
   })
 
-  test('public demo in Hindi: banner and exit demo in Hindi', async ({ page }) => {
+  test('OB-131 public demo in Hindi: banner and exit demo in Hindi', async ({ page }) => {
     test.setTimeout(60_000)
     await page.addInitScript(() => {
       localStorage.setItem(
         'niva.starter.preferences',
         JSON.stringify({ appearance: 'light', language: 'hi' }),
       )
+      // Keep the tour offer from opening over the exit banner during this test.
+      sessionStorage.setItem('chalkboard.demo.welcome.v1', '1')
     })
 
     await page.goto('/demo')
