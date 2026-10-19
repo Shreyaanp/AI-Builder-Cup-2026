@@ -118,7 +118,7 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
           alignItems: 'baseline',
           gap: 2,
           flexWrap: 'wrap',
-          minHeight: 56,
+          minHeight: { xs: 48, sm: 56 },
         }}
       >
         <Typography
@@ -126,7 +126,7 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
           sx={{
             fontFamily: HAND_FONT,
             fontWeight: 700,
-            fontSize: 38,
+            fontSize: { xs: 32, sm: 38 },
             lineHeight: 1.1,
             overflowWrap: 'break-word',
           }}
@@ -157,7 +157,7 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
       )}
       {!view && status !== 'error' && <PassportSkeleton onRetry={refresh} />}
       {view && (
-        <Stack spacing={5} sx={{ mt: 3 }}>
+        <Stack spacing={{ xs: 2, sm: 4 }} sx={{ mt: { xs: 2, sm: 3 } }}>
           <LevelCard view={view} />
           <NextRewardLine view={view} />
           <PendingScratch view={view} place={place} onSignIn={() => setSignIn(true)} />
@@ -230,20 +230,26 @@ function LevelCard({ view }: { view: PassportView }) {
     <Box
       ref={scope}
       sx={{
-        p: 4,
-        borderRadius: '28px',
+        p: { xs: 2.5, sm: 4 },
+        borderRadius: { xs: '20px', sm: '28px' },
         bgcolor: tone.container,
         color: tone.onContainer,
         display: 'flex',
-        gap: 4,
+        gap: { xs: 2, sm: 4 },
         alignItems: 'center',
-        flexWrap: 'wrap',
       }}
     >
-      <LevelRing value={progress} label={number(view.total)} />
-      <Box sx={{ flex: '1 1 180px', minWidth: 0 }}>
+      <LevelRing size={96} value={progress} label={number(view.total)} />
+      <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography variant="labelLarge">{t.points}</Typography>
-        <Typography sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: 34, lineHeight: 1.15 }}>
+        <Typography
+          sx={{
+            fontFamily: HAND_FONT,
+            fontWeight: 700,
+            fontSize: { xs: 28, sm: 34 },
+            lineHeight: 1.15,
+          }}
+        >
           {t[view.level.key]}
         </Typography>
         <Typography variant="bodyLarge" sx={{ mt: 1 }}>
@@ -288,7 +294,7 @@ function PendingScratch({
       <Stack
         direction="row"
         sx={{
-          p: 3,
+          p: { xs: 2, sm: 3 },
           gap: 2,
           alignItems: 'center',
           flexWrap: 'wrap',

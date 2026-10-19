@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import {
+  Alert,
   Badge,
   Box,
   Button,
@@ -698,6 +699,11 @@ function CustomerPage() {
   const url = ws.shareUrl
   return (
     <Box>
+      {ws.readOnlyMessage && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          {ws.readOnlyMessage}
+        </Alert>
+      )}
       <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
         <Typography variant="bodyMedium" color="text.secondary" sx={{ flex: 1 }}>
           {shop.public ? t.customerPageOn : t.customerPageOff}
@@ -710,7 +716,7 @@ function CustomerPage() {
             if (busy) return
             setBusy(true)
             ws.setShared(checked)
-              .catch(() => ws.notify(t.actionFailed))
+              .catch(() => ws.notify(ws.readOnlyMessage ?? t.actionFailed))
               .finally(() => setBusy(false))
           }}
           slotProps={{ input: { 'aria-label': t.pageSwitch } }}
