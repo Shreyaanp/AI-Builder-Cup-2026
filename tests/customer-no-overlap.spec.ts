@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { scrollToEnd } from './scroll-to-end.js'
 
 // Customer phone screens: bars never cover content, loading never shows blank outlines, and a
 // rejected QR key never leaves a stamp behind. 360 and 390 px.
@@ -44,7 +45,7 @@ for (const width of [360, 390]) {
       await page.goto('/explore/s/demo-shop-1')
       const chat = page.getByRole('button', { name: 'Chat with the shop' })
       await expect(chat).toBeVisible({ timeout: 20_000 })
-      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+      await scrollToEnd(page)
       const last = page.getByText(/Prepared by the shop owner/).last()
       await expect(last).toBeVisible()
       const content = (await last.boundingBox())!
