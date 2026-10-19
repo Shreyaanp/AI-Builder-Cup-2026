@@ -1,6 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Browser, type Page } from '@playwright/test'
-import { closeSheet, enter, localOnly, phone, shareSigned, shot } from './support.js'
+import { closeSheet, enter, localOnly, phone, shareSigned, shot, collectStamp } from './support.js'
 
 /**
  * A rescue needs a pickup time later today and no later than closing, whatever the wall clock
@@ -224,8 +224,9 @@ async function customerHolds(customer: Page, shopName: string, qr: string, mode:
   })
   await test.step('8 · collected at the counter: the QR gives a rescue stamp', async () => {
     await customer.goto(qr)
+    await collectStamp(customer)
     const moment = customer.getByRole('dialog')
-    await expect(moment.getByRole('button', { name: 'Done' })).toBeVisible()
+    await expect(moment.getByRole('button', { name: 'Keep browsing' })).toBeVisible()
     // Tap only once the check is done: a tap during it has no celebration to skip, and axe
     // would then read lines still fading in (as S8 does).
     await expect(moment.getByRole('progressbar')).toHaveCount(0)
@@ -236,7 +237,7 @@ async function customerHolds(customer: Page, shopName: string, qr: string, mode:
     await expect(moment.getByText('Meals you kept out of the bin: 1')).toBeVisible()
     await expect(moment.getByText('+40 points')).toBeVisible()
     await evidence(customer, '8-customer-collected')
-    await moment.getByRole('button', { name: 'Done' }).click()
+    await moment.getByRole('button', { name: 'Keep browsing' }).click()
   })
   await test.step('9 · impact: one meal rescued, money saved', async () => {
     await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/rescue`)
