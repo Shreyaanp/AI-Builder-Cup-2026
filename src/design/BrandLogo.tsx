@@ -1,20 +1,10 @@
 import { Box } from '@mui/material'
 import { layout, shape } from './theme'
 
-/** Visually hidden but still read aloud: the name stays for screen readers on phones. */
-const hidden = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  overflow: 'hidden',
-  clipPath: 'inset(50%)',
-  whiteSpace: 'nowrap',
-} as const
-
 /**
  * The one Chalkboard logo: the tilted chalk-tile mark and the wordmark. Every front door and both
  * apps use this component, so size, shape and colour cannot drift page by page. `wordmark="wide"`
- * hides the name visually on phones where the header is crowded; the mark stays.
+ * shows only the mark on phones where the header is crowded; the link keeps the name as its label.
  */
 export function BrandLogo({
   name = 'Chalkboard',
@@ -30,6 +20,7 @@ export function BrandLogo({
       component={href ? 'a' : 'span'}
       href={href}
       data-brand-logo=""
+      aria-label={href && wordmark === 'wide' ? name : undefined}
       translate="no"
       sx={{
         display: 'inline-flex',
@@ -37,7 +28,8 @@ export function BrandLogo({
         gap: 2.5,
         minHeight: 48,
         color: 'text.primary',
-        fontSize: '1.25rem',
+        // The theme's title size (titleLarge), so the logo adds no type size of its own (OB-31).
+        fontSize: '1.375rem',
         fontWeight: 700,
         letterSpacing: '-0.02em',
         textDecoration: 'none',
@@ -64,7 +56,9 @@ export function BrandLogo({
       <Box
         component="span"
         data-brand-name=""
-        sx={wordmark === 'wide' ? { '@media (max-width: 599.95px)': hidden } : undefined}
+        sx={
+          wordmark === 'wide' ? { '@media (max-width: 599.95px)': { display: 'none' } } : undefined
+        }
       >
         {name}
       </Box>
