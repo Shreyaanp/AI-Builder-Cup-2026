@@ -176,31 +176,13 @@ test('390px phone: public demo, optional Hindi narration, interruption and remem
     .getByRole('dialog')
     .getByRole('button', { name: tourCopy('hi').next, exact: true })
     .tap()
-  // The seeded order is presented without a narration request until narration is enabled again.
+  // The seeded supply step is presented without a narration request until narration is enabled again.
   await expect(page.locator('#tour-title')).toContainText('Tea dust')
-  await expect(page.locator('[data-tour="feature"]')).toContainText('Tea dust')
+  // OB-51: no preview copy of any screen is ever drawn over the page.
+  await expect(page.locator('[data-tour="feature"]')).toHaveCount(0)
   expect(await clips()).toHaveLength(before)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: 'output/playwright/tour-narration-hi-390.png' })
-  // Walk the rest of the story and the spotlights to the feature stops, without importing or
-  // publishing.
-  for (let i = 0; i < 10; i++)
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: tourCopy('hi').next, exact: true })
-      .tap()
-  await expect(page.locator('[data-tour="feature"] #import-panel')).toBeVisible()
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: tourCopy('hi').next, exact: true })
-    .tap()
-  await expect(page.locator('[data-tour="feature"] [data-testid="first-customers"]')).toBeVisible()
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: tourCopy('hi').next, exact: true })
-    .tap()
-  await expect(page.locator('[data-tour="feature"]')).toContainText('Lantern Chai Corner (Demo)')
-  expect(await clips()).toHaveLength(before)
   await page
     .getByRole('dialog')
     .getByRole('button', { name: tourCopy('hi').close, exact: true })
