@@ -1,0 +1,10 @@
+{
+  "business-sign-in:primary": "OB-82",
+  "landing:primary": "OB-82",
+  "business-sign-in:target": "OB-83",
+  "landing:target": "OB-83",
+  "customer-explore:overlap": "OB-84",
+  "demo-shop-page:overlap": "OB-85",
+  "passport:overlap": "OB-85",
+  "qr-stamp:overlap": "OB-85"
+}

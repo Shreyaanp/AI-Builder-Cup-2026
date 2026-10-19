@@ -358,8 +358,11 @@ for (const theme of ['light', 'dark'] as const) {
       await page.addInitScript(
         ({ theme, first, area }) => {
           localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance: theme }))
-          localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place: area }))
-          if (!first) localStorage.setItem('chalkboard.customer.journey', 'done')
+          // First run: no area chosen yet, so the welcome (Use my location) shows.
+          if (!first) {
+            localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place: area }))
+            localStorage.setItem('chalkboard.customer.journey', 'done')
+          }
         },
         { theme, first: !!screen.firstRun, area: AREA },
       )
