@@ -35,7 +35,7 @@ from .demo_chains import CHAINS
 from .demo_data import SHOPS
 from .demo_sessions import KIND, repository, restore_files, save
 from .demo_workspace import ZONE_CITY
-from .limits import Bucket, client_ip
+from .limits import Bucket, client_ip, local_test_rate_limit_bypass
 from .merchant import MerchantStore
 from .merchant_routes import LEGAL_VERSION
 from .tour_catalogue import TOUR_SHOPS
@@ -200,17 +200,19 @@ def sandbox(zone: str) -> tuple[DemoSession, date]:
 async def open_workspace(request: Request, zone: str) -> dict[str, Any]:
     saved = sessions(request)
     # Always enforce this public allocation limit, even when owner limits are disabled locally.
-    try:
-        retry = await anyio.to_thread.run_sync(
-            request.app.state.rate_limiter.take,
-            [
-                Bucket("public-demo", client_ip(request), OPEN_PER_MINUTE, 60),
-                Bucket("public-demo", client_ip(request), OPEN_PER_HOUR, 3600),
-            ],
-            time.time(),
-        )
-    except Exception:
-        retry = 60
+    retry = 0
+    if not local_test_rate_limit_bypass(request):
+        try:
+            retry = await anyio.to_thread.run_sync(
+                request.app.state.rate_limiter.take,
+                [
+                    Bucket("public-demo", client_ip(request), OPEN_PER_MINUTE, 60),
+                    Bucket("public-demo", client_ip(request), OPEN_PER_HOUR, 3600),
+                ],
+                time.time(),
+            )
+        except Exception:
+            retry = 60
     if retry:
         raise HTTPException(429, "RATE_LIMITED", headers={"Retry-After": str(retry)})
     await anyio.to_thread.run_sync(repository(request).purge_before, KIND, time.time())

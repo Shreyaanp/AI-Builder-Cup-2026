@@ -49,7 +49,8 @@ for (const theme of THEMES) {
             // The demo's tour offer: measure the tabs, not the offer sheet over them.
             sessionStorage.setItem('chalkboard.demo.welcome.v1', '1')
           }, theme)
-          await context.setExtraHTTPHeaders({ 'x-forwarded-for': `ux-${Math.random()}` })
+          // OB-132: local test server bypasses shared limits without spoofing the client IP.
+          await context.setExtraHTTPHeaders({ 'x-test-rate-limit-bypass': '1' })
           await page.route('**/*', (route) =>
             ['127.0.0.1', 'localhost'].includes(new URL(route.request().url()).hostname)
               ? route.fallback()
