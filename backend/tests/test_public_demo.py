@@ -2,7 +2,9 @@
 
 import json
 import time
+from datetime import date, datetime
 from unittest.mock import AsyncMock, Mock
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -81,6 +83,65 @@ def test_demo_is_the_full_owner_app_on_a_private_sandbox(app, monkeypatch):  # n
         app.state.services.identity.require.assert_not_called()
         assert app.state.merchant.mock_calls == []
         provider.assert_not_called()
+
+
+def test_OB_62_bengaluru_public_demo_forecast_matches_both_surfaces_across_loads(
+    app,  # noqa: F811
+):
+    """OB-62: /demo keeps realistic tea-dust numbers across the card, tour and reload."""
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        app.state.rate_limiter.counters.clear()
+        session = open_demo(client).json()["session_id"]
+        business = owner(client, session, "businesses").json()[0]
+        bid = business["id"]
+
+        def surfaces():
+            supply_card = owner(client, session, f"businesses/{bid}/supply")
+            tour = owner(client, session, f"demo/chain/{bid}")
+            assert supply_card.status_code == tour.status_code == 200
+            return supply_card.json(), tour.json()
+
+        before_card, before_tour = surfaces()
+        loaded = owner(client, session, "demo/workspace", "POST")
+        assert loaded.json() == {"business_id": bid, "created": False}
+        card, tour = surfaces()
+        need = next(row for row in card["needs"] if row["item"] == "Tea dust")
+        first_need = next(row for row in before_card["needs"] if row["item"] == "Tea dust")
+        step = tour["today"]
+        assert need["stock"] >= 3 and need["daily"] >= 1.5
+        today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+        assert 1 <= (date.fromisoformat(need["runs_out"]) - today).days <= 4
+        assert (need["stock"], need["daily"], need["runs_out"]) == (
+            step["stock"],
+            step["daily"],
+            step["runs_out"],
+        )
+        assert (need["stock"], need["daily"], need["runs_out"]) == (
+            first_need["stock"],
+            first_need["daily"],
+            first_need["runs_out"],
+        )
+        assert (step["stock"], step["daily"], step["runs_out"]) == (
+            before_tour["today"]["stock"],
+            before_tour["today"]["daily"],
+            before_tour["today"]["runs_out"],
+        )
+        assert step["item"] == "Tea dust" and step["unit"] == "kg"
+        reorder = tour["order"]["lines"][0]
+        assert reorder["item"] == "Tea dust" and reorder["unit"] == "kg"
+        assert reorder["quantity"] >= 10
+        lines = tour["wholesaler"]["restock"]["lines"]
+        tea = next(line for line in lines if line["item"] == "Tea dust")
+        milk = next(line for line in lines if line["item"] == "Milk")
+        sugar = next(line for line in lines if line["item"] == "Sugar")
+        assert (tea["quantity"], tea["unit"], tea["price"], tea["total"]) == (
+            50,
+            "kg",
+            19000,
+            950000,
+        )
+        assert milk["unit"] == "litre" and sugar["unit"] == "kg"
 
 
 def test_demo_coach_answers_offline(app, monkeypatch):  # noqa: F811

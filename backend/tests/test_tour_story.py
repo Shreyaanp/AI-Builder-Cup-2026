@@ -533,6 +533,8 @@ def test_tour_chain_follows_one_order_on_seeded_records(app) -> None:  # noqa: F
         assert india["customers"]["stamps_today"] > 0
         _, sg = stories["Asia/Singapore"]
         assert sg["today"]["item"] == "Kopi powder"
+        # OB-62: a kopitiam's numbers read like a busy shop, not "1 kg left, about 1 kg a day".
+        assert sg["today"]["stock"] >= 3 and sg["today"]["daily"] >= 1.5
         assert sg["order"]["partner"] == "Ah Huat Provision (Demo)"
         assert sg["wholesaler"]["restock"]["partner"] == "Katong Trading (Demo)"
         assert sg["wholesaler"]["inbound"]["partner"] == "Sunny Side Kopitiam (Demo)"
