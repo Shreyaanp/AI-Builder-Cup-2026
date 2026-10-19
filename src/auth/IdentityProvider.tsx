@@ -7,6 +7,9 @@ import type { Identity } from './context'
 import { hiddenFeatures, readFeatures } from './features'
 import { upgradeGoogle } from './upgradeGoogle'
 import { readTrustStrip } from './trustStrip'
+import { firebaseAppName } from './appSide'
+import { clearSession, frontDoor } from './clearSession'
+import type { FarewellReason } from './farewellNote'
 
 type Operations = { auth: Auth; signIn: () => Promise<void>; signOut: () => Promise<void> }
 
@@ -64,7 +67,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
           import('firebase/auth'),
         ])
         if (controller.signal.aborted) return
-        const name = `ogoogle-web-${configuration.projectId}`
+        const name = firebaseAppName('owner', configuration.projectId)
         const app =
           appSdk.getApps().find((candidate) => candidate.name === name) ??
           appSdk.initializeApp(configuration, name)
@@ -143,12 +146,15 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       }))
     }
   }
-  async function signOut() {
+  async function signOut(reason: FarewellReason = 'signed-out') {
     try {
       await operations.current?.signOut()
-    } catch {
-      setState((current) => ({ ...current, error: 'Sign-out did not finish. Please try again.' }))
+    } catch (error) {
+      // Best effort: clearing this side's storage below also removes the saved user.
+      console.warn('Sign-out request failed', error)
     }
+    await clearSession('owner')
+    frontDoor('owner', reason)
   }
   // Token refreshes for the same account must not recreate API clients and abort conversations.
   const getToken = useCallback(async (): Promise<string | null> => {

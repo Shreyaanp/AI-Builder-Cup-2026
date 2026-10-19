@@ -93,7 +93,7 @@ export function TodayView({
   }
   return (
     <Stack spacing={{ xs: 4, sm: 5 }} sx={{ pt: { xs: 1, sm: 6 }, pb: 4 }} data-testid="today">
-      <Box>
+      <Box data-tour="today">
         <Typography
           component="h1"
           variant="headlineSmall"
@@ -626,6 +626,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   return (
     <ButtonBase
       data-testid="today-pulse"
+      data-tour="forecast"
       aria-label={`${lines.join('. ')}. ${tt.howYesterday}`}
       onClick={() => actions.ask(tt.howYesterday)}
       sx={{

@@ -73,7 +73,7 @@ class RequestBoundary:
         ):
             path = scope["path"]
             if (
-                path == "/api/v1/photos"
+                path in {"/api/v1/photos", "/api/v1/photos/classify"}
                 or path.endswith("/import")
                 # Close the day photos and shop gallery photos: real phone photos are megabytes,
                 # far over the JSON limit (they were rejected with 413 before reaching the route).
