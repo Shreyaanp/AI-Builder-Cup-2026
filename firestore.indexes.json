@@ -47,6 +47,38 @@
         { "fieldPath": "scope", "order": "ASCENDING" },
         { "fieldPath": "created", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "trust_review",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "scope", "order": "ASCENDING" },
+        { "fieldPath": "created", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "face_template",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "scope", "order": "ASCENDING" },
+        { "fieldPath": "created", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "demand_demo",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "scope", "order": "ASCENDING" },
+        { "fieldPath": "created", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "demand_real",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "scope", "order": "ASCENDING" },
+        { "fieldPath": "created", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
