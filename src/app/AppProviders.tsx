@@ -49,8 +49,9 @@ function readPreferences(): Preferences {
   return {
     language,
     languageChosen: chosen || language !== 'system',
+    // Nothing chosen yet: follow the phone's light or dark setting (OB-126).
     appearance:
-      saved?.appearance === 'dark' || saved?.appearance === 'light' ? saved.appearance : 'light',
+      saved?.appearance === 'dark' || saved?.appearance === 'light' ? saved.appearance : 'system',
     destination: 'coach',
   }
 }

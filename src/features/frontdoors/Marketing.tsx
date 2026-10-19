@@ -15,6 +15,7 @@ import {
 import { LOCALE_NAMES, LOCALES } from '../../i18n/locales'
 import { BrandLogo } from '../../design/BrandLogo'
 import { LanguagePicker } from './LanguagePicker'
+import { AppearanceToggle } from './AppearanceToggle'
 import { useDemoCopy, useFrontCopy, useStoryCopy } from './strings'
 import './landing.css'
 
@@ -259,6 +260,7 @@ export default function Marketing() {
             >
               {t.business}
             </Button>
+            <AppearanceToggle inline />
           </nav>
         </header>
 
