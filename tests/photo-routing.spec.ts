@@ -78,7 +78,7 @@ test('chat photo: confirmed in one line, corrected with chips, routed, never los
 test('chat photo: unknown photo is kept and the owner picks where it goes', async ({ page }) => {
   await ready(page)
   await send(page, 25)
-  await expect(page.getByText(/not sure what this photo is/)).toBeVisible()
+  await expect(page.getByText(/couldn’t tell what this photo shows/)).toBeVisible()
   const group = page.getByRole('group', { name: 'What is this photo?' })
   await expect(group.getByRole('button')).toHaveCount(6)
   // Nothing was saved or routed by a guess.

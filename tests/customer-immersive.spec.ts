@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { enter, localOnly, shareSigned } from './stories/support.js'
+import { enter, localOnly, shareSigned, collectStamp } from './stories/support.js'
 
 /**
  * The customer app as a phone app (owner brief, 17 Oct): at 390 px the front door leads with
@@ -171,8 +171,9 @@ test('customer app at 390 px: photos first, bars not floating, full-bleed shop, 
     // QR scan: the stamp moment slides up from the bottom edge; Done brings the card into
     // view with the new stamp on it.
     await c.goto(qr)
+    await collectStamp(c)
     const sheet = c.getByRole('dialog')
-    const done = sheet.getByRole('button', { name: 'Done' })
+    const done = sheet.getByRole('button', { name: 'Keep browsing' })
     await expect(done).toBeVisible({ timeout: 30_000 })
     await expect
       .poll(async () => Math.round((await box(sheet)).y + (await box(sheet)).height))

@@ -20,6 +20,8 @@ export type NewShopPhase = 'hero' | 'chat' | 'manual' | 'review'
 export interface Workspace {
   api: Api
   me: Me
+  /** Note shown when changes in this workspace cannot be saved (e.g. demo mode). */
+  readOnlyMessage?: string
   businesses: Business[]
   loading: boolean
   /** Shops could not be loaded; show recovery, never the empty "add your shop" state. */
@@ -41,6 +43,8 @@ export interface Workspace {
   /** True once products for the active shop have finished loading. */
   productsLoaded: boolean
   destination: Destination
+  /** The public read-only demo: it speaks only pre-recorded lines, never the live or phone voice. */
+  demo: boolean
   speakReplies: boolean
   setSpeakReplies: (value: boolean) => void
   go: (destination: Destination) => void

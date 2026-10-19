@@ -28,6 +28,7 @@ import { PlaybookEntry } from '../playbook/ShopPlaybook'
 import { usePlaybookCopy } from '../playbook/playbookCopy'
 import { shape } from '../../../design/theme'
 import { TrustCard } from '../../trust/TrustCard'
+import { useIdentity } from '../../../auth/useIdentity'
 
 function Section({
   icon,
@@ -65,6 +66,7 @@ export function PrivacyScreen() {
   const playbook = usePlaybookCopy()
   const language = useLocale()
   const ws = useWorkspace()
+  const identity = useIdentity()
   const [legal, setLegal] = useState<LegalDocument>(null)
   // Destructive actions always confirm first.
   const [confirming, setConfirming] = useState(false)
@@ -84,8 +86,7 @@ export function PrivacyScreen() {
       const result = await ws.api<EraseResult>('/me/data', { method: 'DELETE' })
       if (result.status === 'erased') {
         setErase({ kind: 'done' })
-        // Consent was erased too; restart into the welcome/consent flow.
-        setTimeout(() => location.reload(), 1500)
+        await identity.signOut('deleted')
       } else {
         setErase({ kind: 'partial', pending: result.pending })
       }

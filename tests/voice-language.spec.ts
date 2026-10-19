@@ -63,7 +63,7 @@ test('voice sockets carry the app language, and "speak Hindi" switches the app t
   await expect(page.locator('html')).toHaveAttribute('lang', 'hi')
   expect(
     await page.evaluate(
-      () => JSON.parse(localStorage.getItem('niva.starter.preferences') ?? '{}').language,
+      () => JSON.parse(localStorage.getItem('chalkboard.owner.preferences') ?? '{}').language,
     ),
   ).toBe('hi')
 

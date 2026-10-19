@@ -1,6 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Browser, type Page } from '@playwright/test'
-import { closeSheet, enter, localOnly, phone, shareSigned } from './support.js'
+import { closeSheet, enter, localOnly, phone, shareSigned, collectStamp } from './support.js'
 
 /**
  * Seeds one shared shop at its own map pin, away from every other test shop, so Today's 7 near
@@ -163,8 +163,9 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
   })
   await test.step('3 · scanning the counter QR: the stamp moment', async () => {
     await customer.goto(qr)
+    await collectStamp(customer)
     const moment = customer.getByRole('dialog')
-    await expect(moment.getByRole('button', { name: 'Done' })).toBeVisible()
+    await expect(moment.getByRole('button', { name: 'Keep browsing' })).toBeVisible()
     await expect(moment.getByRole('progressbar')).toHaveCount(0)
     // A tap skips the celebration to its end state.
     await moment.getByRole('heading').first().click()
@@ -178,7 +179,7 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     ).toBeVisible()
     await expect(moment.getByRole('button', { name: 'Sign in' })).toBeVisible()
     await evidence(customer, 3)
-    await moment.getByRole('button', { name: 'Done' }).click()
+    await moment.getByRole('button', { name: 'Keep browsing' }).click()
     await expect(moment).toBeHidden()
     // The signed link is spent from the address bar, and the phone card counted the visit.
     await expect(customer).not.toHaveURL(/[?&]k=/)
@@ -214,10 +215,11 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
   })
   await test.step('5 · a second scan the same day is honest', async () => {
     await customer.goto(qr)
+    await collectStamp(customer)
     const moment = customer.getByRole('dialog')
     await expect(moment.getByRole('heading', { name: 'Already stamped today' })).toBeVisible()
     await evidence(customer, 5)
-    await moment.getByRole('button', { name: 'Done' }).click()
+    await moment.getByRole('button', { name: 'Keep browsing' }).click()
     await expect(
       customer.getByRole('region', { name: 'Stamp card' }).getByRole('status'),
     ).toHaveText('3 stamps')
