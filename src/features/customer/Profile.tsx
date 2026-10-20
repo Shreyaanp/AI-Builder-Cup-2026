@@ -258,7 +258,10 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
         <Typography component="h2" variant="titleSmall">
           {tabs.help}
         </Typography>
-        <SeeAgain app="customer" />
+        {/* Same full-width shape as Sign out above (OB-140). */}
+        <Box sx={{ '& > button': { width: '100%' } }}>
+          <SeeAgain app="customer" />
+        </Box>
       </Box>
     </Sheet>
   )

@@ -1,11 +1,17 @@
 {
   "business-sign-in:primary": "OB-82",
   "business-sign-in:target": "OB-83",
+  "chats:fonts": "OB-103",
+  "chats:primary": "OB-147",
+  "chats:spacing": "OB-149",
   "customer-explore:overlap": "OB-84",
   "demo-shop-page:overlap": "OB-85",
   "demo-you:primary": "OB-106",
   "landing:primary": "OB-82",
   "landing:target": "OB-83",
   "passport:overlap": "OB-85",
-  "qr-stamp:overlap": "OB-85"
+  "qr-stamp:overlap": "OB-85",
+  "saved:fonts": "OB-103",
+  "saved:primary": "OB-147",
+  "saved:spacing": "OB-149"
 }

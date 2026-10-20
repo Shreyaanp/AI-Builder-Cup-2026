@@ -103,7 +103,7 @@ export function Saved() {
       <Typography
         component="h1"
         variant="headlineMedium"
-        sx={{ pt: 1, pb: 2, px: 1, fontWeight: 600 }}
+        sx={{ pt: 1, pb: 2, px: 2, fontWeight: 600 }}
       >
         {t.savedTitle}
       </Typography>
@@ -141,7 +141,7 @@ export function Saved() {
           spacing={2}
           className="c-rise"
           // Stack's spacing resets child margins, so mx:auto on the tile did nothing: centre the column (OB-102).
-          sx={{ pt: 4, textAlign: 'center', alignItems: 'center' }}
+          sx={{ px: 2, pt: 4, textAlign: 'center', alignItems: 'center' }}
         >
           <Box
             aria-hidden="true"
@@ -175,7 +175,7 @@ export function Saved() {
       ) : (
         <>
           <Box component="section" aria-labelledby="following-title">
-            <Typography id="following-title" component="h2" variant="titleMedium" sx={{ px: 1 }}>
+            <Typography id="following-title" component="h2" variant="titleMedium" sx={{ px: 2 }}>
               {t.followingTitle}
             </Typography>
             <Box
@@ -246,11 +246,11 @@ export function Saved() {
             </Stack>
           )}
           <Box component="section" aria-labelledby="updates-title" sx={{ mt: 4 }}>
-            <Typography id="updates-title" component="h2" variant="titleMedium" sx={{ px: 1 }}>
+            <Typography id="updates-title" component="h2" variant="titleMedium" sx={{ px: 2 }}>
               {t.updatesTitle}
             </Typography>
             {feed.updates.length === 0 ? (
-              <Typography color="text.secondary" sx={{ px: 1, mt: 1 }}>
+              <Typography color="text.secondary" sx={{ px: 2, mt: 1 }}>
                 {t.noUpdates}
               </Typography>
             ) : (

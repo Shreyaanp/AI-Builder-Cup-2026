@@ -100,3 +100,18 @@ export const SCREENS: Screen[] = [
     },
   },
 ]
+
+// Saved and Chats (OB-139): the customer tabs that were missing from the gate.
+for (const [name, path] of [
+  ['saved', '/explore/saved'],
+  ['chats', '/explore/chats'],
+] as const)
+  SCREENS.push({
+    name,
+    signedIn: true,
+    open: async (page) => {
+      await page.goto(path, { waitUntil: 'domcontentloaded' })
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
+      await settle(page)
+    },
+  })

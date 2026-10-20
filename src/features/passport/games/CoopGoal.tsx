@@ -104,9 +104,10 @@ export function CoopGoal({
       aria-label={t.coopTitle}
       sx={{ p: 4, borderRadius: '24px', bgcolor: sky.container, color: sky.onContainer }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
+      {/* OB-141: the chips drop to their own line instead of squeezing the title at 360. */}
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
         <HeartHandshake size={28} aria-hidden="true" />
-        <Typography component="h2" variant="titleMedium" sx={{ fontWeight: 700, flex: 1 }}>
+        <Typography component="h2" variant="titleMedium" sx={{ fontWeight: 700, flex: '1 1 auto' }}>
           {t.coopTitle}
         </Typography>
         {coop.demo && <Chip size="small" label={p.demo} />}
