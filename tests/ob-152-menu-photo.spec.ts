@@ -33,7 +33,8 @@ for (const [width, height] of [
             extraction: {
               uncertain: [],
               business: { name: '', category: '', location: '', hours: '', phone: '' },
-              products: [],
+              // OB-152 covers a readable photo; an empty menu stays open for OB-153 recovery.
+              products: [{ name: 'Chai', price: 15, unit: 'cup', category: 'Drinks' }],
             },
           },
         }),
