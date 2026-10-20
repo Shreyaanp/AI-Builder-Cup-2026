@@ -8,6 +8,7 @@ or price; every result comes from a shop's own data or from Google.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -769,10 +770,14 @@ async def match_local_shops(
     radius: int,
     repository: MerchantRepository | None,
     explain: bool = True,
+    shared: list[dict[str, Any]] | None = None,
 ) -> tuple[list[Pick], list[Pick], Personal | None, list[dict[str, Any]]]:
     """Our shops for this intent, ranked by the search engine. The instant answer skips the
     written "why" lines (a Gemini call) so it is never held up by them."""
-    shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
+    if shared is not None:
+        shops = shared
+    else:
+        shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
     in_sg = 1.15 <= lat <= 1.48 and 103.6 <= lng <= 104.1
     in_india = 6.5 <= lat <= 37.5 and 68.0 <= lng <= 97.5
     reachable: list[dict[str, Any]] = []
@@ -1095,9 +1100,14 @@ async def ask(body: AskRequest, request: Request) -> Any:
     if is_stream:
 
         async def stream_generator() -> AsyncIterator[ServerSentEvent]:
+            # One read of the shared shops serves the command check, the instant answer and the
+            # complete one (it was three Firestore sweeps; OB-97).
+            shared: list[dict[str, Any]] = (
+                await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
+            )
+
             # Step 1: Commands need no model
             if repository is not None:
-                shared = await anyio.to_thread.run_sync(repository.shared_shops)
                 command = customer_command(body.q, shared, body.lat, body.lng, body.radius)
                 if command is not None:
                     resp = AskResponse(
@@ -1119,63 +1129,138 @@ async def ask(body: AskRequest, request: Request) -> Any:
             lat, lng = (anchor.lat, anchor.lng) if anchor else (body.lat, body.lng)
             radius = min(body.radius, 1000) if anchor else body.radius
 
-            picks, for_you, personal, shops = await match_local_shops(
-                request, body, kw_intent, anchor, lat, lng, radius, repository, explain=False
+            # The places lookup for the first reading starts now, beside the model call.
+            places_task = asyncio.create_task(
+                query_google_places(maps, kw_intent, lat, lng, radius, body.q, anchor)
             )
-            instant_groups = await localize_picks(
-                request, body.language, assemble_groups(for_you, picks, []), wait=False
-            )
-            instant_resp = AskResponse(
-                intent=kw_intent,
-                mode="keywords",
-                groups=instant_groups,
-                personal=personal,
-                anchor=anchor,
-                engine=search_engine(request).mode,
-            )
-            yield ServerSentEvent(data=instant_resp.model_dump_json(), event="instant")
 
-            # Step 3: Stream Gemini words if enabled
-            ai_intent_result: Intent | None = None
-            settings = request.app.state.v1_settings
-            if settings.coach_mode == "gemini":
-                async for item in ai_intent_stream(request, body):
-                    if isinstance(item, str):
-                        yield ServerSentEvent(data=json.dumps({"text": item}), event="delta")
-                    elif isinstance(item, Intent):
-                        ai_intent_result = item
-
-            final_intent = resolve_intent_refinements(body, ai_intent_result or kw_intent)
-            mode: Literal["ai", "keywords"] = "ai" if ai_intent_result else "keywords"
-
-            # Re-score picks if ai_intent provided different keywords or category
-            if ai_intent_result and (
-                ai_intent_result.keywords != kw_intent.keywords
-                or ai_intent_result.category != kw_intent.category
-            ):
+            try:
                 picks, for_you, personal, shops = await match_local_shops(
-                    request, body, final_intent, anchor, lat, lng, radius, repository
+                    request,
+                    body,
+                    kw_intent,
+                    anchor,
+                    lat,
+                    lng,
+                    radius,
+                    repository,
+                    explain=False,
+                    shared=shared,
                 )
-            else:
-                await explain_picks(search_engine(request), for_you, body.language)
+                instant_groups = await localize_picks(
+                    request, body.language, assemble_groups(for_you, picks, []), wait=False
+                )
+                instant_resp = AskResponse(
+                    intent=kw_intent,
+                    mode="keywords",
+                    groups=instant_groups,
+                    personal=personal,
+                    anchor=anchor,
+                    engine=search_engine(request).mode,
+                )
+                yield ServerSentEvent(data=instant_resp.model_dump_json(), event="instant")
 
-            others = await query_google_places(maps, final_intent, lat, lng, radius, body.q, anchor)
-            await record_demand(request, repository, maps, final_intent, body, shops, others)
-            area = await area_answer(request, body, final_intent, maps)
+                # Step 3: Stream Gemini words (if enabled) while the places lookup finishes.
+                ai_intent_result: Intent | None = None
+                early_others: list[Pick] | None = None
+                events: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+                settings = request.app.state.v1_settings
 
-            final_groups = await localize_picks(
-                request, body.language, assemble_groups(for_you, picks, others), wait=True
-            )
-            final_resp = AskResponse(
-                intent=final_intent,
-                mode=mode,
-                groups=final_groups,
-                personal=personal,
-                anchor=anchor,
-                area=area,
-                engine=search_engine(request).mode,
-            )
-            yield ServerSentEvent(data=final_resp.model_dump_json(), event="complete")
+                async def read_model() -> None:
+                    try:
+                        if settings.coach_mode == "gemini":
+                            async for item in ai_intent_stream(request, body):
+                                kind = "intent" if isinstance(item, Intent) else "text"
+                                await events.put((kind, item))
+                    finally:
+                        await events.put(("model_done", None))
+
+                async def read_places() -> None:
+                    try:
+                        await events.put(("places", await places_task))
+                    except Exception:  # noqa: BLE001 - the final step asks again
+                        await events.put(("places", None))
+
+                watchers = [asyncio.create_task(read_model()), asyncio.create_task(read_places())]
+                try:
+                    while True:
+                        kind, item = await events.get()
+                        if kind == "text":
+                            yield ServerSentEvent(data=json.dumps({"text": item}), event="delta")
+                        elif kind == "intent":
+                            ai_intent_result = item
+                        elif kind == "places":
+                            early_others = item
+                            if item:
+                                early = await localize_picks(
+                                    request,
+                                    body.language,
+                                    assemble_groups(for_you, picks, item),
+                                    wait=False,
+                                )
+                                yield ServerSentEvent(
+                                    data=instant_resp.model_copy(
+                                        update={"groups": early}
+                                    ).model_dump_json(),
+                                    event="instant",
+                                )
+                        else:
+                            break
+                finally:
+                    for watcher in watchers:
+                        watcher.cancel()
+
+                final_intent = resolve_intent_refinements(body, ai_intent_result or kw_intent)
+                mode: Literal["ai", "keywords"] = "ai" if ai_intent_result else "keywords"
+
+                # Re-score picks if ai_intent provided different keywords or category
+                if ai_intent_result and (
+                    ai_intent_result.keywords != kw_intent.keywords
+                    or ai_intent_result.category != kw_intent.category
+                ):
+                    picks, for_you, personal, shops = await match_local_shops(
+                        request,
+                        body,
+                        final_intent,
+                        anchor,
+                        lat,
+                        lng,
+                        radius,
+                        repository,
+                        shared=shared,
+                    )
+                else:
+                    await explain_picks(search_engine(request), for_you, body.language)
+
+                same_search = early_others is not None and all(
+                    getattr(final_intent, field) == getattr(kw_intent, field)
+                    for field in ("keywords", "category", "deals", "open_now", "sort")
+                )
+                if same_search:
+                    area = await area_answer(request, body, final_intent, maps)
+                    others = early_others or []
+                else:
+                    others, area = await asyncio.gather(
+                        query_google_places(maps, final_intent, lat, lng, radius, body.q, anchor),
+                        area_answer(request, body, final_intent, maps),
+                    )
+                await record_demand(request, repository, maps, final_intent, body, shops, others)
+
+                final_groups = await localize_picks(
+                    request, body.language, assemble_groups(for_you, picks, others), wait=True
+                )
+                final_resp = AskResponse(
+                    intent=final_intent,
+                    mode=mode,
+                    groups=final_groups,
+                    personal=personal,
+                    anchor=anchor,
+                    area=area,
+                    engine=search_engine(request).mode,
+                )
+                yield ServerSentEvent(data=final_resp.model_dump_json(), event="complete")
+            finally:
+                places_task.cancel()
 
         return EventSourceResponse(
             stream_generator(),

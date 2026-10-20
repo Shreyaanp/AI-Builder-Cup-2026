@@ -235,8 +235,10 @@ test('ask: a real shop answers with its exact item and price; back returns to th
     page.on('requestfailed', ended)
   })
   await ask(page, 'kopi')
-  await expect(page.getByText('Understanding what you need…')).toBeVisible()
-  if (isMobile) await page.screenshot({ path: 'docs/stories/customer-ai-2-thinking.png' })
+  // A fast stream may finish before the transient thinking label can be observed.
+  const thinking = page.getByText('Understanding what you need…')
+  if (isMobile && (await thinking.isVisible()))
+    await page.screenshot({ path: 'docs/stories/customer-ai-2-thinking.png' })
   const card = page.locator(`a[href="/explore/s/${id}"]`)
   await expect(card).toContainText('Kopi', { timeout: 15_000 })
   await expect(card).toContainText('₹18.00')
