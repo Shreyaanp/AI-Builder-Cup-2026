@@ -200,6 +200,16 @@ def client_ip(connection: Request | WebSocket) -> str:
     return forwarded or (connection.client.host if connection.client else "unknown")
 
 
+def local_test_rate_limit_bypass(connection: Request | WebSocket) -> bool:
+    """Allow isolated browser suites to opt out of shared local rate-limit state."""
+    settings = getattr(connection.app.state, "v1_settings", None)
+    return (
+        settings is not None
+        and settings.app_env in {"local", "test"}
+        and connection.headers.get("x-test-rate-limit-bypass") == "1"
+    )
+
+
 async def enforce_limits(
     connection: Request | WebSocket,
     subjects: Sequence[tuple[str, str]],
@@ -208,6 +218,8 @@ async def enforce_limits(
     clock: Callable[[], float] | None = None,
 ) -> None:
     settings = getattr(connection.app.state, "v1_settings", None)
+    if local_test_rate_limit_bypass(connection):
+        return
     if settings is not None and not settings.rate_limits_enabled:
         return
     buckets = [

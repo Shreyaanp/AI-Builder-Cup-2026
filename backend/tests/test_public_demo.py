@@ -236,8 +236,16 @@ def test_sessions_are_isolated_expire_and_exit(app):  # noqa: F811
         assert owner(client, second, "businesses").status_code == 410
 
 
-def test_rate_limit_per_ip_even_when_owner_limits_are_disabled(app):  # noqa: F811
-    with TestClient(app) as client:
+def test_ob76_rate_limit_per_ip_even_when_owner_limits_are_disabled(app, monkeypatch):  # noqa: F811
+    from types import SimpleNamespace
+
+    from app.limits import InMemoryRateLimiter
+
+    # OB-76: keep all bucket operations in the same minute even at wall-clock boundaries.
+    monkeypatch.setattr(public_demo, "time", SimpleNamespace(time=lambda: 120.0))
+    with TestClient(app, headers={"x-forwarded-for": "192.0.2.1"}) as client:
+        # OB-76: allocate a fresh limiter so earlier app fixtures cannot consume this test's quota.
+        app.state.rate_limiter = InMemoryRateLimiter()
         app.state.v1_settings.public_demo_enabled = True
         app.state.v1_settings.rate_limits_enabled = False
         for _ in range(public_demo.OPEN_PER_MINUTE):
@@ -257,6 +265,33 @@ def test_demo_limit_store_failure_is_closed(app):  # noqa: F811
         app.state.rate_limiter.take = Mock(side_effect=RuntimeError("offline"))
         assert open_demo(client).status_code == 429
         assert app.state.public_demos == {}
+
+
+def test_ob132_rate_limit_bypass_is_opt_in_and_local_only(app):  # noqa: F811
+    import asyncio
+    from unittest.mock import Mock
+
+    from fastapi import HTTPException
+    from starlette.requests import Request
+
+    from app.limits import enforce_limits
+
+    with TestClient(app):
+        scope = {
+            "type": "http",
+            "app": app,
+            "headers": [(b"x-test-rate-limit-bypass", b"1")],
+        }
+        request = Request(scope)
+        app.state.rate_limiter.take = Mock(return_value=1)
+        asyncio.run(enforce_limits(request, [("discover:ask", "test")], anonymous=True))
+        app.state.rate_limiter.take.assert_not_called()
+
+        app.state.v1_settings.app_env = "production"
+        with pytest.raises(HTTPException) as limited:
+            asyncio.run(enforce_limits(request, [("discover:ask", "test")], anonymous=True))
+        assert limited.value.status_code == 429
+        app.state.rate_limiter.take.assert_called_once()
 
 
 def test_failed_seed_releases_capacity(app, monkeypatch):  # noqa: F811

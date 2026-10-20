@@ -81,3 +81,30 @@ for (const viewport of [
     })
   })
 }
+
+// OB-112: at 1280 the Caveat title wrapped onto lines that touched ("is live!" under "Stall").
+test.describe('ready moment at 1280', () => {
+  test.use({ reducedMotion: 'reduce', viewport: { width: 1280, height: 800 } })
+  test.setTimeout(90_000)
+  test('OB-112 the title lines have room between them', async ({ page }) => {
+    await localOnly(page)
+    await enter(page)
+    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+    await page.getByRole('button', { name: 'Let’s begin' }).click()
+    await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
+    await page
+      .getByLabel('Message', { exact: true })
+      .fill('name: Lakshmi Tea Stall; category: Tea stall; location: Indiranagar metro')
+    await page.getByRole('button', { name: 'Send', exact: true }).click()
+    await expect(page.getByTestId('shop-live')).toHaveText('Live')
+    await page.getByTestId('end-conversation').click()
+    await page.getByTestId('finish-review').click()
+    const title = page.getByRole('heading', { name: 'Congratulations, Lakshmi Tea Stall is live!' })
+    await expect(title).toBeVisible()
+    const ratio = await title.evaluate(
+      (el) =>
+        parseFloat(getComputedStyle(el).lineHeight) / parseFloat(getComputedStyle(el).fontSize),
+    )
+    expect(ratio).toBeGreaterThanOrEqual(1.25)
+  })
+})

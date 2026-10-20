@@ -123,15 +123,19 @@ export function StreakFlame({
       component="section"
       aria-label={fill(p.streak, { n: weeks })}
       sx={{
-        p: { xs: 2.5, sm: 4 },
+        p: { xs: 2, sm: 4 },
         borderRadius: { xs: '20px', sm: '24px' },
         bgcolor: weeks ? coral.container : roles.surfaceContainerLow,
         color: weeks ? coral.onContainer : roles.onSurface,
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: { xs: 2, sm: 3 } }}>
+      {/* The help button drops to its own line when the title would otherwise wrap (OB-99). */}
+      <Stack
+        direction="row"
+        sx={{ alignItems: 'center', flexWrap: 'wrap', columnGap: { xs: 1.5, sm: 3 } }}
+      >
         <Flame lit={weeks > 0} size={Math.min(60, 40 + weeks * 2)} />
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ flex: '1 1 140px', minWidth: 0 }}>
           <Typography component="h2" variant="titleMedium" sx={{ fontWeight: 700 }}>
             {t.streakFlame}
           </Typography>
@@ -149,7 +153,9 @@ export function StreakFlame({
             <Typography variant="labelLarge">{t.weeksLabel}</Typography>
           </Stack>
         </Box>
-        <HowItWorks game="streak" />
+        <Box sx={{ ml: 'auto' }}>
+          <HowItWorks game="streak" />
+        </Box>
       </Stack>
       {/* The bank of freezes, as ice tokens. */}
       <Stack

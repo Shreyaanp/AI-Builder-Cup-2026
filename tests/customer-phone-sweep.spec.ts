@@ -126,12 +126,24 @@ test.describe('customer phone sweep at 360px', () => {
   ] as const
 
   for (const [path, label] of screens) {
-    test(`${label} has no horizontal overflow or fixed overlay collision`, async ({ page }) => {
+    test(`OB-92 ${label} has no horizontal overflow or fixed overlay collision`, async ({
+      page,
+    }) => {
       test.skip(!test.info().project.name.includes('phone'), 'phone project only')
       await prepare(page)
       await page.goto(path, { waitUntil: 'domcontentloaded' })
       await expect(page.locator('main'), label).toBeVisible({ timeout: 20_000 })
+      await expect(page.getByRole('listitem').first(), `${label} results`).toBeVisible({
+        timeout: 20_000,
+      })
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+      // OB-92: wait for the scroll/layout frame to settle before measuring fixed overlays.
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          ),
+      )
       await checkLayout(page, label)
     })
   }
