@@ -1,3 +1,4 @@
+import { AppHeader } from '../../design/AppHeader'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
@@ -369,21 +370,7 @@ function TopBar() {
   useBackClose(Boolean(shopMenu), () => setShopMenu(null))
   // Settings live on the You tab now; the top bar keeps the shop switcher, new chat and "+".
   return (
-    <Box
-      component="header"
-      sx={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 5,
-        bgcolor: roles.surface,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        minHeight: 64,
-        px: { xs: 1, sm: 2 },
-        pt: 'env(safe-area-inset-top)',
-      }}
-    >
+    <AppHeader sx={{ gap: 1, justifyContent: 'flex-start' }}>
       <BrandLogo wordmark="wide" href="/" />
       <Button
         onClick={(event) => setShopMenu(event.currentTarget)}
@@ -395,7 +382,7 @@ function TopBar() {
           minWidth: 0,
           maxWidth: 'min(70vw, 420px)',
           flexShrink: 1,
-          px: 1.5,
+          px: 2,
         }}
       >
         {/* One line with an ellipsis: a long shop name must not grow the bar (OB-117). */}
@@ -479,6 +466,6 @@ function TopBar() {
           <ListItemText primary={t.newShop} />
         </MenuItem>
       </Menu>
-    </Box>
+    </AppHeader>
   )
 }
