@@ -44,7 +44,8 @@ function rememberSession(value: Session) {
 /** Forgets the stored sandbox, unless a newer one has replaced it since this one ended. */
 function forgetSession(id?: string) {
   try {
-    if (id && savedSession()?.session_id !== id && sessionStorage.getItem(SESSION_KEY)) return
+    const stored = JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null') as Session | null
+    if (id && stored?.session_id !== id && stored) return
     sessionStorage.removeItem(SESSION_KEY)
   } catch {
     /* Nothing was stored. */
@@ -190,7 +191,12 @@ export default function DemoApp() {
   )
   useEffect(() => {
     if (!session || customer) return
-    setCoachEndpoint(`/api/v1/demo/sessions/${session.session_id}/coach`)
+    const sessionId = session.session_id
+    setCoachEndpoint(`/api/v1/demo/sessions/${sessionId}/coach`, () => {
+      forgetSession(sessionId)
+      setSession(null)
+      setState('expired')
+    })
     return () => setCoachEndpoint(null)
   }, [session, customer])
   useEffect(() => {

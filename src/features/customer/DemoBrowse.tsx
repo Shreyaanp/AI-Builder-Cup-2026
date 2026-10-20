@@ -23,6 +23,7 @@ export function DemoBrowse({ shops, api }: { shops: DemoShop[]; api: Api }) {
   const locale = useLocale()
   const roles = useTheme().material
   const [details, setDetails] = useState<Record<string, ShopDetails>>({})
+  const [settled, setSettled] = useState<Set<string>>(() => new Set())
 
   useEffect(() => {
     let live = true
@@ -30,14 +31,15 @@ export function DemoBrowse({ shops, api }: { shops: DemoShop[]; api: Api }) {
       shops.map(async (shop) => {
         try {
           const value = await api<ShopDetails>(`/public/shops/${shop.id}`)
-          return [shop.id, value] as const
+          if (live) {
+            setDetails((current) => ({ ...current, [shop.id]: value }))
+            setSettled((current) => new Set(current).add(shop.id))
+          }
         } catch {
-          return null
+          if (live) setSettled((current) => new Set(current).add(shop.id))
         }
       }),
-    ).then((rows) => {
-      if (live) setDetails(Object.fromEntries(rows.filter((row) => row !== null)))
-    })
+    )
     return () => {
       live = false
     }
@@ -62,7 +64,7 @@ export function DemoBrowse({ shops, api }: { shops: DemoShop[]; api: Api }) {
                 index === 1
                   ? '/explore/s/demo-story-bengaluru-chai?source=qr'
                   : index === 2
-                    ? '/explore/passport'
+                    ? '/explore/passport?source=demo'
                     : undefined
               }
               sx={{
@@ -140,6 +142,10 @@ export function DemoBrowse({ shops, api }: { shops: DemoShop[]; api: Api }) {
                       eager={index === 0}
                     />
                   </Box>
+                ) : settled.has(shop.id) ? (
+                  <Box sx={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden' }}>
+                    <PlaceImage id={shop.id} category="Shop" compact eager={index === 0} />
+                  </Box>
                 ) : (
                   <Skeleton variant="rectangular" height={176} />
                 )}
@@ -170,6 +176,10 @@ export function DemoBrowse({ shops, api }: { shops: DemoShop[]; api: Api }) {
                         {formatDistance(350 + index * 250, locale)}
                       </Typography>
                     </Stack>
+                  ) : settled.has(shop.id) ? (
+                    <Typography variant="bodySmall" component="span" color="text.secondary">
+                      {passport.demo}
+                    </Typography>
                   ) : (
                     <Skeleton width="65%" />
                   )}

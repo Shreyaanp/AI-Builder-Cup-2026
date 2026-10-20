@@ -27,7 +27,16 @@ export function viewTransition(
   }
   const root = document.documentElement
   root.dataset.nav = direction
-  const transition = document.startViewTransition(update)
+  let transition: ViewTransition
+  try {
+    transition = document.startViewTransition(update)
+  } catch {
+    // Browsers can reject a new opt-in while another transition is being aborted (for example
+    // sign-out replacing the customer front door). The navigation still needs to complete.
+    if (root.dataset.nav === direction) delete root.dataset.nav
+    void update()
+    return
+  }
   transition.ready.catch(() => undefined)
   transition.finished
     .catch(() => undefined)

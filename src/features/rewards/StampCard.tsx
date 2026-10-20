@@ -16,7 +16,7 @@ import { HAND_FONT, shape } from '../../design/theme'
 import { stampThud } from '../../design/chalkMotion'
 import { useLocale } from '../../state/hooks'
 import { useRewardCopy } from './strings'
-import { celebrations, claimReward, useLanded, useRewards, visit } from './storage'
+import { celebrations, claimReward, useLanded, useRewards } from './storage'
 import { useCopy } from '../v1/strings'
 import { useCustomer } from '../customer/account'
 import { SignInSheet } from '../customer/SignIn'
@@ -118,12 +118,6 @@ export function StampCard({
   const [redeeming, setRedeeming] = useState(false)
   const [failedClaim, setFailedClaim] = useState(false)
   const target = validTarget(needed)
-  useEffect(() => {
-    // A keyed scan (`k`) is counted by the stamp moment once the server verifies it; counting it
-    // here too would show a stamp beside an "out of date" answer for a bad key.
-    const params = new URLSearchParams(location.search)
-    visit(shop, params.get('source') === 'qr' && !params.get('k'), timezone, target)
-  }, [shop, timezone, target])
   useEffect(() => {
     if (!redeeming) return
     const back = () => setRedeeming(false)

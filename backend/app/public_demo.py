@@ -34,7 +34,6 @@ from .auth import Principal
 from .demo_chains import CHAINS
 from .demo_data import SHOPS
 from .demo_sessions import KIND, repository, restore_files, save
-from .demo_workspace import ZONE_CITY
 from .limits import Bucket, client_ip
 from .merchant import MerchantStore
 from .merchant_routes import LEGAL_VERSION
@@ -172,8 +171,9 @@ def sandbox(zone: str) -> tuple[DemoSession, date]:
             r"(\s*\((?:Demo|Tour)\))+$", " (Demo)", business["fields"]["name"]
         )
         today = today_for(business["fields"])
-        city = ZONE_CITY.get(zone, "singapore")
-        city = city if city in {"bengaluru", "singapore"} else "singapore"
+        # The customer walk-through collects a stamp at Lantern Chai Corner in Bengaluru.
+        # Keep the browse list in that same market regardless of the visitor's time zone.
+        city = "bengaluru"
         shops = [shop for shop in SHOPS if shop.city == city]
         reads: dict[str, Any] = {
             "/shops": [{"id": shop.id, "name": shop.fields.name} for shop in shops]
