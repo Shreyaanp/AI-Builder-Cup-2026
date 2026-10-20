@@ -344,13 +344,14 @@ def test_new_shop_voice_draft_can_be_refreshed_mid_session(tmp_path: Path):
         assert business and business["name"] == "Photo Kopi"
 
 
+# OB-138: keep the synthetic cap above one slow offline fixture turn on CI.
 def test_new_shop_voice_session_end_resumes_the_same_conversation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     """A Live socket always ends (time cap); the app reconnects to the same session id and the
     conversation, its turns and the draft carry on. The open conversation also allows far more
     turns than a press-to-talk coach session."""
-    monkeypatch.setattr("app.voice.NEW_SHOP_SESSION_CAP_SECONDS", 1)
+    monkeypatch.setattr("app.voice.NEW_SHOP_SESSION_CAP_SECONDS", 10)
     app = create_app(settings(tmp_path), InMemorySessionService())
     origin = {"origin": "http://127.0.0.1:3200"}
     with TestClient(app) as client:
