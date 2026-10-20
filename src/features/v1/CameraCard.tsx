@@ -39,8 +39,8 @@ export function CameraCard({
   onActive,
 }: {
   shots: Shot[]
-  /** Reads the photo into the shop (the conversation shows the result). */
-  onPhoto: (file: File) => Promise<void>
+  /** Returns a localised recovery message when the photo could not be read. */
+  onPhoto: (file: File) => Promise<string | null>
   /** `quiet`: the X or a finished photo, nothing is said; otherwise the owner chose Skip. */
   onClose: (quiet: boolean) => void
   /** The owner is using the camera (the coach waits instead of nudging). */
@@ -55,6 +55,7 @@ export function CameraCard({
   const [index, setIndex] = useState(0)
   const [preview, setPreview] = useState<{ url: string; file: File } | null>(null)
   const [flash, setFlash] = useState(0)
+  const [readError, setReadError] = useState<string | null>(null)
   const stream = useRef<MediaStream | null>(null)
   const video = useRef<HTMLVideoElement>(null)
   const upload = useRef<HTMLInputElement>(null)
@@ -141,12 +142,17 @@ export function CameraCard({
     }
   }
   async function send(file: File) {
+    setReadError(null)
     setPhase('sending')
-    try {
-      await onPhoto(file)
-    } finally {
-      advance()
+    const error = await onPhoto(file)
+    if (error) {
+      stop()
+      setPreview(null)
+      setReadError(error)
+      setPhase('ask')
+      return
     }
+    advance()
   }
   function close(quiet: boolean) {
     stop()
@@ -215,8 +221,13 @@ export function CameraCard({
 
       {(phase === 'ask' || fullScreen) && (
         <Stack spacing={2}>
+          {readError && (
+            <Alert severity="warning" data-testid="photo-read-error">
+              {readError}
+            </Alert>
+          )}
           <Typography variant="bodyMedium" color="text.secondary">
-            {c.cameraWhy}
+            {readError ? guide : c.cameraWhy}
           </Typography>
           <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
             <Button
