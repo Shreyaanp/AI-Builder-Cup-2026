@@ -1305,12 +1305,11 @@ function TodayEntry({
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography
+          variant="titleMedium"
           sx={{
             // Keep numerals on the same baseline as Indic scripts; Caveat's Latin metrics
             // lift ASCII digits above Noto Sans Tamil glyphs.
-            fontSize: 'clamp(1.125rem, 5vw, 1.5rem)',
             fontWeight: 700,
-            lineHeight: 1.15,
             overflowWrap: 'break-word',
           }}
         >
