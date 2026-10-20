@@ -1,4 +1,4 @@
-import type { Locale } from './locales'
+import type { Locale } from './locales.js'
 
 /**
  * Script fonts load on demand: English users never download CJK/Thai/Tamil fonts.

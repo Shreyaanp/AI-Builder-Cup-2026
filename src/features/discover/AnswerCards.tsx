@@ -463,7 +463,11 @@ export function GoogleRows({
                   <Typography
                     variant="bodySmall"
                     color="text.secondary"
-                    sx={{ fontVariantNumeric: 'tabular-nums', lineHeight: 1.25 }}
+                    sx={{
+                      fontVariantNumeric: 'tabular-nums',
+                      lineHeight: 1.25,
+                      minHeight: { xs: '2.5em', sm: 0 },
+                    }}
                   >
                     {ratingLine(place.rating, place.user_rating_count, locale, search)}
                   </Typography>

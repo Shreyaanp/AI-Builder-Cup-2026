@@ -360,7 +360,12 @@ export function ScratchCard({
       <Stack direction="row" sx={{ mt: 1.5, gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
         {!done && (
           <>
-            <Typography id={hintId} variant="bodySmall" color="text.secondary" sx={{ flex: 1 }}>
+            <Typography
+              id={hintId}
+              variant="bodySmall"
+              color="text.secondary"
+              sx={{ flex: '1 1 100%' }}
+            >
               {t.scratchHint}
             </Typography>
             <Button
