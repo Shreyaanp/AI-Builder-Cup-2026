@@ -122,12 +122,12 @@ export function ChatList() {
       <Typography
         component="h1"
         variant="headlineMedium"
-        sx={{ pt: 1, pb: 2, px: 1, fontWeight: 600 }}
+        sx={{ pt: 1, pb: 2, px: 2, fontWeight: 600 }}
       >
         {t.chatsTitle}
       </Typography>
       {account.status === 'loading' ? null : !signedIn ? (
-        <Stack spacing={3} className="c-rise" sx={{ px: 1, pt: 4, textAlign: 'center' }}>
+        <Stack spacing={3} className="c-rise" sx={{ px: 2, pt: 4, textAlign: 'center' }}>
           <Box
             aria-hidden="true"
             sx={{
@@ -182,7 +182,7 @@ export function ChatList() {
           spacing={2}
           className="c-rise"
           // Stack's spacing resets child margins, so mx:auto on the tile did nothing: centre the column (OB-102).
-          sx={{ pt: 4, textAlign: 'center', alignItems: 'center' }}
+          sx={{ px: 2, pt: 4, textAlign: 'center', alignItems: 'center' }}
         >
           <Typography component="h2" variant="titleLarge">
             {t.noChats}
