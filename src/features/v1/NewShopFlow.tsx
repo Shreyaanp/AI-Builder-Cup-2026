@@ -934,6 +934,17 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
   }, [lines, live, reducedMotion])
+  // OB-152: the upload card, photo and keyboard can resize the chat after a reply lands.
+  useEffect(() => {
+    const scroller = end.current?.parentElement
+    if (!scroller) return
+    const observer = new ResizeObserver(() => {
+      if (!openCards.current.size)
+        end.current?.scrollIntoView({ block: 'end', behavior: 'instant' })
+    })
+    observer.observe(scroller)
+    return () => observer.disconnect()
+  }, [phase])
   const missing = missingForListing(draft)
   const summaryDue = complete(draft) && Boolean(draft.live_id)
   const showSummary = useEffectEvent(() => offerSummary())
