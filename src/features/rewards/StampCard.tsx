@@ -100,12 +100,15 @@ export function StampCard({
   timezone,
   reward,
   needed = 8,
+  countQr = false,
 }: {
   shop: string
   name: string
   timezone: string
   reward?: string
   needed?: number
+  /** This page arrived by an unkeyed counter scan, so the visit is stamped on arrival. */
+  countQr?: boolean
 }) {
   const { unavailable } = useRewards()
   const t = useRewardCopy()
@@ -119,11 +122,11 @@ export function StampCard({
   const [failedClaim, setFailedClaim] = useState(false)
   const target = validTarget(needed)
   useEffect(() => {
-    // A keyed scan (`k`) is counted by the stamp moment once the server verifies it; counting it
-    // here too would show a stamp beside an "out of date" answer for a bad key.
-    const params = new URLSearchParams(location.search)
-    visit(shop, params.get('source') === 'qr' && !params.get('k'), timezone, target)
-  }, [shop, timezone, target])
+    // OB-95: a keyed (or demo) scan is counted only after "Collect your stamp", once the stamp moment
+    // has the server's answer; counting it here showed the stamp before the tap. Every other
+    // counter scan still counts on arrival. The visit itself (days, streak) is always recorded.
+    visit(shop, countQr, timezone, target)
+  }, [shop, countQr, timezone, target])
   useEffect(() => {
     if (!redeeming) return
     const back = () => setRedeeming(false)

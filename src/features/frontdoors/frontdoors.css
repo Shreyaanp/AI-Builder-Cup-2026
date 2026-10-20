@@ -188,7 +188,7 @@
   }
 }
 @view-transition {
-  navigation: auto;
+  navigation: none;
 }
 .customer-tile {
   animation: tile-pop 400ms var(--customer-spring) both;

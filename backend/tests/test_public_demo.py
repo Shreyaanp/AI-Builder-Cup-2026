@@ -160,7 +160,7 @@ def test_demo_coach_answers_offline(app, monkeypatch):  # noqa: F811
         paid_forecast.forecast.assert_not_called()
 
 
-def test_public_demo_coach_covers_shop_intents_from_seeded_data(app):  # noqa: F811
+def test_OB_59_public_demo_coach_answers_Hindi_in_Hindi(app):  # noqa: N802, F811
     prompts = [
         ("Help me update my products", "demo menu"),
         ("Help me close the day", "demo sales"),
@@ -175,13 +175,13 @@ def test_public_demo_coach_covers_shop_intents_from_seeded_data(app):  # noqa: F
         ("Order more Tea dust", "Demo supply records"),
         ("What should I prep tomorrow?", "demo forecast"),
         ("Hello", "menu items"),
-        ("नमस्ते", "menu items"),
-        ("आज बिक्री कैसी रही?", "demo sales"),
-        ("कल क्या तैयारी करूँ?", "demo forecast"),
-        ("ग्राहक क्या पूछ रहे हैं?", "customer questions"),
-        ("नमक खत्म है", "Demo stock shows"),
-        ("कीमत बदलो", "demo price"),
-        ("ऑर्डर और सामान", "Demo supply records"),
+        ("नमस्ते", "मैं आज की बिक्री"),
+        ("आज बिक्री कैसी रही?", "आज डेमो में"),
+        ("कल क्या तैयारी करूँ?", "कल"),
+        ("ग्राहक क्या पूछ रहे हैं?", "ग्राहक सवाल"),
+        ("नमक खत्म है", "डेमो में"),
+        ("कीमत बदलो", "कीमत"),
+        ("ऑर्डर और सामान", "डेमो सप्लायर"),
         ("We are closed today", "Demo shop hours"),
         ("What is my business called?", "I can help with"),
     ]
@@ -202,7 +202,9 @@ def test_public_demo_coach_covers_shop_intents_from_seeded_data(app):  # noqa: F
             reply = " ".join(event.get("text", "") for event in events)
             assert expected in reply, (message, events)
             assert "What is your business called?" not in reply
-            if expected != "I can help with":
+            if expected != "I can help with" and not any(
+                "\u0900" <= ch <= "\u097f" for ch in message
+            ):
                 assert "next" in reply.lower()
         app.state.rate_limiter.counters.clear()
 
@@ -411,3 +413,15 @@ def test_ob52_demo_qr_key_works_and_never_matches_a_real_key(app):  # noqa: F811
         assert key and owner(client, session, f"businesses/{bid}/qr-key").json()["key"] == key
         real = app.state.services.identity.signer.secret_key
         assert key != qr_key(real, bid)  # a demo QR can never stamp the real app
+
+
+def test_OB_122_customer_demo_uses_the_stamp_shop_country(app):  # noqa: N802, F811
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        created = client.post("/api/v1/demo/workspace?public=true&zone=Asia/Singapore")
+        assert created.status_code == 200, created.text
+        session = created.json()["session_id"]
+        shops = read(client, session, "/shops").json()
+        assert shops and all("bengaluru" in shop["id"] for shop in shops)
+        detail = read(client, session, f"/public/shops/{shops[0]['id']}").json()
+        assert detail["currency"] == "INR"

@@ -139,8 +139,10 @@ export const TURN_IDLE_MS = 12_000
 
 // The public demo sends turns to its own sandbox coach (offline answers only).
 let coachUrl = '/api/v1/coach/stream'
-export function setCoachEndpoint(url: string | null) {
+let coachExpired: (() => void) | null = null
+export function setCoachEndpoint(url: string | null, onExpired?: () => void) {
   coachUrl = url ?? '/api/v1/coach/stream'
+  coachExpired = url ? (onExpired ?? null) : null
 }
 
 /**
@@ -231,6 +233,7 @@ async function streamTurn(
       })
       if (!response.ok) {
         if (response.status === 429) throw new RateLimitError('RATE_LIMITED')
+        if (response.status === 410) coachExpired?.()
         if (response.status >= 500) throw new Error('Coach connection unavailable.')
         throw new StreamFailure('The reply did not finish. Your note is still here.')
       }

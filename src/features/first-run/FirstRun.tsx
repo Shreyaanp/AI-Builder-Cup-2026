@@ -10,10 +10,19 @@ function qrArrival(app: Audience) {
   return app === 'customer' && new URLSearchParams(window.location.search).get('source') === 'qr'
 }
 
+/** Demo links must reach their promised destination even on a fresh device. */
+function customerDemo(app: Audience) {
+  const params = new URLSearchParams(window.location.search)
+  return (
+    app === 'customer' &&
+    (window.location.pathname.startsWith('/explore/demo') || params.get('source') === 'demo')
+  )
+}
+
 /** Blocks setup until the device's introduction is finished or skipped. A QR arrival defers it to
  * the next visit. */
 export function FirstRun({ app, children }: { app: Audience; children: ReactNode }) {
-  const [open, setOpen] = useState(() => !hasSeen(app) && !qrArrival(app))
+  const [open, setOpen] = useState(() => !hasSeen(app) && !qrArrival(app) && !customerDemo(app))
   return open && !hasSeen(app) ? (
     <Cards
       app={app}

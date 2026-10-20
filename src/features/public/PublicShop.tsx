@@ -1186,6 +1186,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           timezone={shopZone(shop)}
           reward={shop.reward_text}
           needed={shop.stamps_needed ?? 8}
+          countQr={scannedQr && !qrKeyed && !shop.demo}
         />
       )}
       {showStamps && (

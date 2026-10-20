@@ -30,6 +30,30 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     name = product["name"]
     stock = product.get("stock", 0)
     quantity = sum(row["quantity"] for row in history if row["item"] == name)
+    if re.search(r"[\u0900-\u097f]", question):
+        # This offline demo has no translation model. Keep its answers in the language of a
+        # Devanagari question, with the same seeded facts used by the English replies.
+        if any(term in words for term in ("आज", "बिक्री", "कमाई")):
+            rows = [row for row in history if row["date"] == today.isoformat()]
+            sold = sum(row["quantity"] for row in rows)
+            revenue = sum(row.get("revenue", row.get("amount", 0)) for row in rows)
+            return f"आज डेमो में {sold:g} चीज़ें बिकीं और बिक्री ₹{revenue:g} रही।"
+        if any(term in words for term in ("स्टॉक", "बचा", "उपलब्ध", "खत्म", "कम")):
+            return f"डेमो में {name} का स्टॉक {stock:g} {product.get('unit', 'चीज़ें')} है।"
+        if any(term in words for term in ("कीमत", "दाम", "भाव")):
+            return f"डेमो में {name} की कीमत ₹{product.get('price', 0):g} है।"
+        if any(term in words for term in ("ऑर्डर", "सप्लायर", "मंगाऊँ", "खरीद")):
+            orders = supply_chain.orders(store, uid, bid)
+            po = next((order for order in orders if order.get("supplier")), None)
+            supplier = po["supplier"]["name"] if po else "डेमो सप्लायर"
+            return f"डेमो सप्लायर {supplier} है। {name} का स्टॉक {stock:g} है।"
+        if any(term in words for term in ("कल", "तैयार", "बनाऊँ")):
+            return f"कल {name} की तैयारी के लिए डेमो बिक्री का औसत देखें।"
+        if any(term in words for term in ("समय", "खुला", "खुलती", "बंद")):
+            return f"डेमो दुकान का समय {fields.get('hours', 'दिया नहीं गया')} है।"
+        if any(term in words for term in ("ग्राहक", "सवाल", "जवाब", "संदेश")):
+            return f"डेमो दुकान में {len(inquiries)} ग्राहक सवाल हैं।"
+        return "मैं आज की बिक्री, कल की तैयारी या स्टॉक के बारे में बता सकती हूँ।"
     # Only a short hello is a greeting; "Hi, reorder milk" is an order.
     greeting = (
         re.search(r"\b(?:hello|hi|hey)\b", words) or "\u0928\u092e\u0938\u094d\u0924\u0947" in words
