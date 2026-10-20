@@ -16,7 +16,7 @@ import { HAND_FONT, shape } from '../../design/theme'
 import { stampThud } from '../../design/chalkMotion'
 import { useLocale } from '../../state/hooks'
 import { useRewardCopy } from './strings'
-import { celebrations, claimReward, useLanded, useRewards } from './storage'
+import { celebrations, claimReward, useLanded, useRewards, visit } from './storage'
 import { useCopy } from '../v1/strings'
 import { useCustomer } from '../customer/account'
 import { SignInSheet } from '../customer/SignIn'
@@ -100,12 +100,15 @@ export function StampCard({
   timezone,
   reward,
   needed = 8,
+  countQr = false,
 }: {
   shop: string
   name: string
   timezone: string
   reward?: string
   needed?: number
+  /** This page arrived by an unkeyed counter scan, so the visit is stamped on arrival. */
+  countQr?: boolean
 }) {
   const { unavailable } = useRewards()
   const t = useRewardCopy()
@@ -118,6 +121,12 @@ export function StampCard({
   const [redeeming, setRedeeming] = useState(false)
   const [failedClaim, setFailedClaim] = useState(false)
   const target = validTarget(needed)
+  useEffect(() => {
+    // OB-95: a keyed (or demo) scan is counted only after "Collect your stamp", once the stamp moment
+    // has the server's answer; counting it here showed the stamp before the tap. Every other
+    // counter scan still counts on arrival. The visit itself (days, streak) is always recorded.
+    visit(shop, countQr, timezone, target)
+  }, [shop, countQr, timezone, target])
   useEffect(() => {
     if (!redeeming) return
     const back = () => setRedeeming(false)
