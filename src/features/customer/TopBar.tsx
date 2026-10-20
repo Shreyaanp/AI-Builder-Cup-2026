@@ -32,11 +32,6 @@ export function CustomerTopBar({ back = false }: { back?: boolean }) {
         position: 'sticky',
         top: 0,
         zIndex: 1100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 1,
-        minHeight: 64,
         pt: 'env(safe-area-inset-top, 0px)',
         px: 'max(8px, env(safe-area-inset-left, 0px))',
         bgcolor: roles.surface,
@@ -47,29 +42,43 @@ export function CustomerTopBar({ back = false }: { back?: boolean }) {
         viewTransitionName: 'customer-top-bar',
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minWidth: 0 }}>
-        <BrandLogo wordmark="wide" href="/explore/" />
-        {back ? (
-          <Button
-            component="a"
-            href="/explore/"
-            onClick={customerBack}
-            startIcon={<ArrowLeft size={18} />}
-            sx={{ minHeight: 48 }}
-          >
-            {t.back}
-          </Button>
-        ) : (
-          <Button href="/explore/demo" sx={{ minHeight: 48 }}>
-            {demo.tryDemo}
-          </Button>
-        )}
-      </Stack>
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
-        {!back && <ProfileButton inline />}
-        <LanguagePicker variant="inline" />
-        <AppearanceToggle inline />
-      </Stack>
+      {/* The same 720 px column as the pages below, so the bar lines up with them at 1280 (OB-101). */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          minHeight: 64,
+          maxWidth: 720,
+          mx: 'auto',
+          px: { md: 1 },
+        }}
+      >
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minWidth: 0 }}>
+          <BrandLogo wordmark="wide" href="/explore/" />
+          {back ? (
+            <Button
+              component="a"
+              href="/explore/"
+              onClick={customerBack}
+              startIcon={<ArrowLeft size={18} />}
+              sx={{ minHeight: 48 }}
+            >
+              {t.back}
+            </Button>
+          ) : (
+            <Button href="/explore/demo" sx={{ minHeight: 48 }}>
+              {demo.tryDemo}
+            </Button>
+          )}
+        </Stack>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+          {!back && <ProfileButton inline />}
+          <LanguagePicker variant="inline" />
+          <AppearanceToggle inline />
+        </Stack>
+      </Box>
     </Box>
   )
 }

@@ -48,6 +48,8 @@ async function audit(page: Page, screen: string) {
       const style = getComputedStyle(el)
       // Visually hidden screen-reader labels deliberately occupy a 1px clipped box.
       if (box.width <= 1 && box.height <= 1) continue
+      // A deliberate one-line ellipsis that carries the full text in its title is not lost text (OB-117).
+      if (style.textOverflow === 'ellipsis' && el.title.trim() === el.textContent?.trim()) continue
       if (
         (el.scrollWidth > el.clientWidth + 1 && ['hidden', 'clip'].includes(style.overflowX)) ||
         (el.scrollHeight > el.clientHeight + 1 && ['hidden', 'clip'].includes(style.overflowY))

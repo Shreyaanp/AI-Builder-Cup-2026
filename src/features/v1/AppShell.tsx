@@ -390,12 +390,21 @@ function TopBar() {
         endIcon={<ChevronDown size={18} />}
         aria-haspopup="menu"
         aria-label={t.chooseShop + (ws.active ? `: ${ws.active.fields.name}` : '')}
-        sx={{ color: roles.onSurface, minWidth: 0, maxWidth: 'min(70vw, 420px)', px: 1.5 }}
+        sx={{
+          color: roles.onSurface,
+          minWidth: 0,
+          maxWidth: 'min(70vw, 420px)',
+          flexShrink: 1,
+          px: 1.5,
+        }}
       >
+        {/* One line with an ellipsis: a long shop name must not grow the bar (OB-117). */}
         <Typography
           variant="titleLarge"
           component="span"
-          sx={{ overflowWrap: 'anywhere', minWidth: 0 }}
+          noWrap
+          title={ws.active?.fields.name ?? t.appName}
+          sx={{ minWidth: 0 }}
         >
           {ws.active?.fields.name ?? t.appName}
         </Typography>

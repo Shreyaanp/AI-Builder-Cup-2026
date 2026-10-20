@@ -705,7 +705,7 @@ function CustomerPage() {
         </Alert>
       )}
       <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
-        <Typography variant="bodyMedium" color="text.secondary" sx={{ flex: 1 }}>
+        <Typography variant="bodySmall" color="text.secondary" sx={{ flex: 1 }}>
           {shop.public ? t.customerPageOn : t.customerPageOff}
         </Typography>
         <Switch

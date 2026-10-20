@@ -178,7 +178,12 @@ export function ChatList() {
           ))}
         </Stack>
       ) : chats.length === 0 ? (
-        <Stack spacing={2} className="c-rise" sx={{ px: 1, pt: 4, textAlign: 'center' }}>
+        <Stack
+          spacing={2}
+          className="c-rise"
+          // Stack's spacing resets child margins, so mx:auto on the tile did nothing: centre the column (OB-102).
+          sx={{ pt: 4, textAlign: 'center', alignItems: 'center' }}
+        >
           <Typography component="h2" variant="titleLarge">
             {t.noChats}
           </Typography>

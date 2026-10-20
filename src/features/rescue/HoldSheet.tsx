@@ -188,7 +188,7 @@ export function HoldSheet({
                       setName(choice.name)
                       setQty(1)
                     }}
-                    sx={{ minHeight: 40 }}
+                    sx={{ minHeight: 48 }}
                   />
                 ))}
               </Stack>
