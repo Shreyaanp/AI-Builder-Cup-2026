@@ -89,6 +89,8 @@ export const accountStrings = {
   savedTitle: 'Saved',
   followingTitle: 'Following',
   updatesTitle: 'Updates',
+  showAllUpdates: 'Show all',
+  showLessUpdates: 'Show less',
   noFollows: 'Follow shops to see their news here',
   noFollowsBody: 'Price changes, items back in stock, new dishes and today’s menu checks.',
   noUpdates: 'No updates yet. Changes appear here as the shops make them.',
