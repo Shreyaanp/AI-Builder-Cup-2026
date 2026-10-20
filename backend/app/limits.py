@@ -233,8 +233,7 @@ async def enforce_limits(
     except Exception:
         # Log no subject, IP, provider error or request content.
         log.warning("rate_limit_store_failed", anonymous=anonymous)
-        if not anonymous:
-            return
+        # A store outage must not bypass owner quotas or allow unmetered model calls.
         retry = 60
     if retry:
         raise HTTPException(429, "RATE_LIMITED", headers={"Retry-After": str(retry)})
