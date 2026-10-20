@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { mkdirSync, writeFileSync } from 'node:fs'
+import type { components } from '../../src/api/generated.js'
 
 /**
  * Attention / density audit of every customer screen (owner request, 16 Oct): what the eye
@@ -409,4 +410,106 @@ for (const theme of ['light', 'dark'] as const) {
       )
     })
   }
+}
+
+// OB-158: a four-update feed must stay calm without making older updates inaccessible.
+for (const theme of ['light', 'dark'] as const) {
+  test(`OB-158 Saved update disclosure - ${theme}`, async ({ page }, info) => {
+    await page.route('**/*', (route) =>
+      ['127.0.0.1', 'localhost'].includes(new URL(route.request().url()).hostname)
+        ? route.fallback()
+        : route.abort(),
+    )
+    await page.request.post('/api/v1/customer/session', { data: { name: 'Neighbour' } })
+    const shop = await demoShop(page)
+    await page.request.put(`/api/v1/customer/follows/${shop}`)
+    const feed: {
+      shops: components['schemas']['ShopCard'][]
+      updates: components['schemas']['Update'][]
+    } = {
+      shops: [
+        {
+          id: shop,
+          name: 'Corner Cup (Demo)',
+          category: 'cafe',
+          location: '',
+          currency: 'SGD',
+          demo: true,
+        },
+      ],
+      updates: ['menu_confirmed', 'price_change', 'back_in_stock', 'new_item'].map(
+        (kind, index) => ({
+          id: `ob158-${index}`,
+          shop_id: shop,
+          kind: kind as components['schemas']['Update']['kind'],
+          item: 'Coffee',
+          price: 200,
+          old_price: 220,
+          unit: 'cup',
+          currency: 'SGD',
+          created: Date.now() / 1000 - (index + 1) * 1800,
+          demo: true,
+        }),
+      ),
+    }
+    await page.route('**/api/v1/public/updates?*', (route) => route.fulfill({ json: feed }))
+    await page.addInitScript(
+      ({ theme, area }) => {
+        localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance: theme }))
+        localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place: area }))
+        localStorage.setItem('chalkboard.customer.journey', 'done')
+      },
+      { theme, area: AREA },
+    )
+    const sizes =
+      info.project.name === 'phone'
+        ? [
+            { width: 360, height: 800 },
+            { width: 390, height: 844 },
+            { width: 412, height: 915 },
+          ]
+        : [{ width: 1280, height: 800 }]
+    for (const size of sizes) {
+      await page.setViewportSize(size)
+      await page.goto('/explore/saved')
+      const updates = page.getByRole('region', { name: 'Updates', exact: true })
+      await expect(updates.getByRole('listitem')).toHaveCount(1)
+      await page.evaluate(async () => {
+        await document.fonts.ready
+      })
+      const numbers = await page.evaluate(measure)
+      expect(numbers.marks).toBeLessThanOrEqual(info.project.name === 'phone' ? 26 : 27)
+      expect(numbers.smallTargets).toBe(0)
+      expect(numbers.accentFamilies).toBeLessThanOrEqual(theme === 'light' ? 2 : 3)
+      const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
+      expect(axe.violations).toEqual([])
+      mkdirSync(`${out}/data`, { recursive: true })
+      const id = `ob158-${size.width}-${theme}`
+      await page.screenshot({ path: `${out}/${id}.jpg` })
+      writeFileSync(`${out}/data/${id}.json`, JSON.stringify(numbers, null, 2))
+      await page.evaluate(() => document.querySelector('[data-heatmap]')?.remove())
+      const toggle = updates.getByRole('button', { name: 'Show all', exact: true })
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await toggle.focus()
+      await page.keyboard.press('Enter')
+      await expect(updates.getByRole('listitem')).toHaveCount(4)
+      const collapse = updates.getByRole('button', { name: 'Show less', exact: true })
+      await expect(collapse).toHaveAttribute('aria-expanded', 'true')
+      await collapse.click()
+      await expect(updates.getByRole('listitem')).toHaveCount(1)
+    }
+    // A single update needs no disclosure control; no updates retains the empty state.
+    feed.updates = feed.updates.slice(0, 1)
+    await page.reload()
+    await expect(page.locator('#updates-title')).toBeVisible()
+    await expect(
+      page.getByRole('region', { name: 'Updates', exact: true }).getByRole('listitem'),
+    ).toHaveCount(1)
+    await expect(page.getByRole('button', { name: 'Show all', exact: true })).toHaveCount(0)
+    feed.updates = []
+    await page.reload()
+    await expect(
+      page.getByText('No updates yet. Changes appear here as the shops make them.'),
+    ).toBeVisible()
+  })
 }

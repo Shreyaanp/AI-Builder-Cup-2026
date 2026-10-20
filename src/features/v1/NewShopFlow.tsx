@@ -934,6 +934,17 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
   }, [lines, live, reducedMotion])
+  // OB-152: the upload card, photo and keyboard can resize the chat after a reply lands.
+  useEffect(() => {
+    const scroller = end.current?.parentElement
+    if (!scroller) return
+    const observer = new ResizeObserver(() => {
+      if (!openCards.current.size)
+        end.current?.scrollIntoView({ block: 'end', behavior: 'instant' })
+    })
+    observer.observe(scroller)
+    return () => observer.disconnect()
+  }, [phase])
   const missing = missingForListing(draft)
   const summaryDue = complete(draft) && Boolean(draft.live_id)
   const showSummary = useEffectEvent(() => offerSummary())
@@ -966,8 +977,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
 
   async function uploadPhoto(file: File) {
     if (!PHOTO_TYPES.includes(file.type) || file.size > 20_000_000) {
-      setError(t.photoType)
-      return
+      return t.photoType
     }
     clearSilence()
     nudges.current = 0
@@ -983,6 +993,16 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         headers: photoHeaders(photo),
         signal: AbortSignal.timeout(60_000),
       })
+      // OB-153: an unreadable menu needs recovery. A shopfront can have no text, and a
+      // readable menu may propose no new fields; both still follow the normal photo path.
+      if (
+        result.status === 'nothing_to_propose' &&
+        ['menu', 'price_list'].includes(result.photo_kind) &&
+        !result.extraction.products?.length
+      ) {
+        setBusy('idle')
+        return t.photoNothing
+      }
       const before = draftRef.current
       // A photo fills what the owner has not said yet, but never the shop's name: that is theirs
       // (said, typed or not yet synced). A different name on the photo is only offered as a chip.
@@ -1019,18 +1039,15 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       // name is the owner's, never the one printed on the photo.
       const read = [after.business?.name, after.business?.category].filter(Boolean)
       void say(f.photoNote(read.join(', ') || o.photoAdded))
+      return null
     } catch (cause) {
       setBusy('idle')
       const code = cause instanceof ApiError ? cause.code : ''
-      add({
-        role: 'coach',
-        text:
-          cause instanceof ApiError && cause.status === 429
-            ? t.rateLimited
-            : code === 'PHOTO_BLOCKED' || code === 'NOT_BUSINESS_PHOTO'
-              ? t.photoRefused
-              : t.photoFailed,
-      })
+      return cause instanceof ApiError && cause.status === 429
+        ? t.rateLimited
+        : code === 'PHOTO_BLOCKED' || code === 'NOT_BUSINESS_PHOTO'
+          ? t.photoRefused
+          : t.photoFailed
     }
   }
 

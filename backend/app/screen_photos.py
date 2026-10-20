@@ -212,4 +212,19 @@ async def read_batch(
         raise ImportRejected(422, "INVALID_PHOTOS") from None
     if any(not photo for photo in decoded) or sum(map(len, decoded)) > MAX_MEDIA_BYTES:
         raise ImportRejected(413, "FILE_TOO_LARGE")
-    return [await read_photo(mapper, document_ai, photo) for photo in decoded]
+    # Bound provider work while overlapping independent pages. Keep input order so cell
+    # flags still point to the owner's page, regardless of which read finishes first.
+    slots = asyncio.Semaphore(2)
+
+    async def read(photo: bytes) -> PhotoReading:
+        async with slots:
+            return await read_photo(mapper, document_ai, photo)
+
+    tasks = [asyncio.create_task(read(photo)) for photo in decoded]
+    try:
+        return await asyncio.gather(*tasks)
+    finally:
+        # gather alone leaves siblings running on failure. Also drain on disconnect/timeout.
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
