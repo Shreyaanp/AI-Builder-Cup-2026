@@ -20,6 +20,7 @@ import { customerBack, customerNavigate } from '../frontdoors/navigation'
 import type { ReactNode } from 'react'
 import { type Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { leadTimeText } from './leadTime'
 import { ShopSkeleton } from '../customer/Skeletons'
 import { PlaceImage } from '../frontdoors/PlaceImage'
@@ -969,26 +970,28 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
               ? ` · ${o.hoursNotSet}`
               : ''}
         </Button>
-        <Typography variant="bodySmall" color="text.secondary">
-          {shop.last_confirmed
-            ? (() => {
-                // "Today" in the shop's own timezone, so a late-night check reads correctly.
-                const parts = new Intl.DateTimeFormat('en-CA', {
-                  timeZone: shopZone(shop),
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                }).formatToParts(new Date())
-                const part = (name: string) => parts.find((p) => p.type === name)?.value
-                const today = `${part('year')}-${part('month')}-${part('day')}`
-                const days = Math.max(
-                  0,
-                  Math.round((Date.parse(today) - Date.parse(shop.last_confirmed)) / 86_400_000),
-                )
-                return days === 0 ? freshnessCopy.updatedToday : freshnessCopy.updatedDays(days)
-              })()
-            : freshnessCopy.menuUnconfirmed}
-        </Typography>
+        {(shop.last_confirmed || shop.products.length === 0) && (
+          <Typography variant="bodySmall" color="text.secondary">
+            {shop.last_confirmed
+              ? (() => {
+                  // "Today" in the shop's own timezone, so a late-night check reads correctly.
+                  const parts = new Intl.DateTimeFormat('en-CA', {
+                    timeZone: shopZone(shop),
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                  }).formatToParts(new Date())
+                  const part = (name: string) => parts.find((p) => p.type === name)?.value
+                  const today = `${part('year')}-${part('month')}-${part('day')}`
+                  const days = Math.max(
+                    0,
+                    Math.round((Date.parse(today) - Date.parse(shop.last_confirmed)) / 86_400_000),
+                  )
+                  return days === 0 ? freshnessCopy.updatedToday : freshnessCopy.updatedDays(days)
+                })()
+              : freshnessCopy.menuUnconfirmed}
+          </Typography>
+        )}
       </Stack>
       <Collapse in={detailsOpen} unmountOnExit>
         <Box sx={{ mt: 1 }}>
@@ -1083,7 +1086,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
                     primary={
                       product.name_local ? (
                         <>
-                          {product.name}
+                          {productName(product.name, locale)}
                           {/* The owner's name stays; the customer's language is a subtitle. */}
                           <Typography
                             component="span"
@@ -1095,7 +1098,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
                           </Typography>
                         </>
                       ) : (
-                        product.name
+                        productName(product.name, locale)
                       )
                     }
                     secondary={

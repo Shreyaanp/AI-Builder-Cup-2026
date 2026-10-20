@@ -99,6 +99,11 @@ test('marketing has two paths, all sections, no splash or auth bootstrap', async
   await expect(
     page.getByRole('heading', { name: 'Everything a corner shop needs. Nothing it doesn’t.' }),
   ).toBeVisible()
+  // OB-121: the landing phone story belongs to the Bengaluru rupee market.
+  const phonePreview = page.locator('.lp-screen.static')
+  await expect(phonePreview.locator('.lp-bubble.me')).toContainText('₹18')
+  await expect(phonePreview.locator('.lp-bubble.coach')).toContainText('₹20 → ₹18')
+  await expect(phonePreview).not.toContainText('$')
   expect(await page.locator('[data-testid="brand-splash"]').count()).toBe(0)
   expect(await page.locator('link[rel="manifest"]').count()).toBe(0)
   expect(

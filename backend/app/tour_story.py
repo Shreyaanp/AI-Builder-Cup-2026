@@ -80,15 +80,15 @@ def inquiries(demo: DemoShop, day: date) -> list[Inquiry]:
         [
             (
                 "Asha",
-                f"[Demo] Can I collect two {item} at five?",
+                f"Can I collect two {item} at five?",
                 "Yes, I'll keep two for you at the counter. See you at five!",
             ),
             (
                 "Wei",
-                "[Demo] Can I pay at the counter?",
+                "Can I pay at the counter?",
                 "Yes, cash and the listed local payment method are welcome.",
             ),
-            ("Priya", f"[Demo] Is {item} available this afternoon?", ""),
+            ("Priya", f"Is {item} available this afternoon?", ""),
         ]
     ):
         at = stamp(day - timedelta(days=2 - index), demo.fields.timezone, 0 if index == 2 else 10)
@@ -109,8 +109,8 @@ def inquiries(demo: DemoShop, day: date) -> list[Inquiry]:
         result.append(
             Inquiry(
                 id=iid,
-                name=f"{name} (Demo)",
-                contact=f"tour-{index}@example.invalid",
+                name=name,
+                contact=f"tour-{index}@guest.invalid",
                 message=question,
                 messages=messages,
                 created=at,

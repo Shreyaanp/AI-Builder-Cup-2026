@@ -64,7 +64,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         supplier = po["supplier"]["name"] if po else "the demo supplier"
         return (
             f"Demo supply records show {supplier}; {name} has {stock:g} in stock. "
-            "In your real shop, this would draft an order for review; open Shop → Supplies next."
+            "In your real shop, this would draft an order for review; open Grow → Supplies next."
         )
     if any(
         term in words

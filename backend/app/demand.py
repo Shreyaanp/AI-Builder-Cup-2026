@@ -195,7 +195,7 @@ def radar(store: MerchantRepository, uid: str, bid: str, now: datetime | None = 
         ideas.append((asks * unmet * fit, idea))
     ideas.sort(key=lambda row: (-row[0], row[1].key, row[1].demo))
     return Radar(
-        area_label="Within 2 km of shop pin",
+        area_label="your shop",
         approximate=pin.approximate,
         demo=any(i.demo for _, i in ideas),
         opportunities=[i for _, i in ideas[:20]],

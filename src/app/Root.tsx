@@ -36,7 +36,9 @@ class LoadBoundary extends Component<
 export default function Root() {
   if (/^\/(?:demo\/?|explore\/demo(?:\/.*)?)$/.test(location.pathname))
     return (
-      <Suspense fallback={<BrandSplash business />}>
+      <Suspense
+        fallback={<BrandSplash business={!/^\/explore\/demo(?:\/|$)/.test(location.pathname)} />}
+      >
         <DemoApp />
       </Suspense>
     )

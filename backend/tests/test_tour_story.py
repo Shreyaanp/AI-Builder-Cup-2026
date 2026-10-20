@@ -5,6 +5,7 @@ import json
 from collections import Counter
 from datetime import date, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
@@ -12,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from app import supply_chain
 from app.community import Community, SqliteDocuments
+from app.demo_coach import public_demo_reply
 from app.demo_world import WorldGenerator, WorldRequest, ensure_world
 from app.forecast import ForecastService
 from app.merchant import BusinessFields, MerchantStore, ProposalRequest
@@ -74,6 +76,11 @@ def test_seed_is_idempotent_and_preserves_replies_rewards_and_stock(world) -> No
         assert store.public_shop(demo.id)["gallery"]
     bid = tour_id("owner", "bengaluru")
     inventory = store.inventory("owner", bid)
+    # OB-129: visible tour inquiries use names and clean messages, without fake email contacts.
+    visible_inquiries = store.inquiries("owner", bid)
+    assert {item.name for item in visible_inquiries} == {"Asha", "Wei", "Priya"}
+    assert all(not item.message.startswith("[Demo]") for item in visible_inquiries)
+    assert all(item.contact.endswith("@guest.invalid") for item in visible_inquiries)
     store.set_availability("owner", bid, inventory[0]["id"], False)
     inquiry = store.inquiries("owner", bid)[0]
     store.thread_action("owner", bid, inquiry.id, "", "post", "See you at five.")
@@ -145,6 +152,20 @@ async def test_every_feature_has_connected_records_and_truthful_forecasts(world)
         assert record.messages[-1].author == "owner" and record.messages[-1].kind == "demo"
     with pytest.raises(HTTPException):
         community.thread("stranger", threads[0]["bid"], threads[0]["iid"])
+
+
+def test_ob127_demo_supplier_coach_points_to_grow_supplies(world) -> None:
+    # OB-127: the demo coach points owners to the Grow tab that contains Supplies.
+    store, _ = world
+    uid = "public-demo-ob127"
+    bid, _ = seed_workspace(store, uid, "bengaluru", DAY)
+    ctx = SimpleNamespace(store=store, uid=uid, business_id=bid)
+
+    reply = public_demo_reply(ctx, "My masala chai is running low. Find suppliers.")
+
+    assert reply is not None
+    assert "Grow → Supplies" in reply
+    assert "Shop → Supplies" not in reply
 
 
 def test_reset_is_scoped_and_restores_only_demo_records(world) -> None:

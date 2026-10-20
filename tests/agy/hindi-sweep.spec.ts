@@ -81,6 +81,7 @@ async function hindiOnly(page: Page, label: string) {
 const tab = (page: Page, name: string) =>
   page.getByRole('navigation', { name: 'मुख्य मेन्यू' }).getByRole('button', { name, exact: true })
 
+// OB-74: the tour's Today step uses a Hindi name for seeded tea stock.
 test('Hindi phone sweep: supply, reminders, onboarding, tour and demo', async ({ page }) => {
   test.setTimeout(150_000)
   await localOnly(page)
@@ -120,6 +121,10 @@ test('Hindi phone sweep: supply, reminders, onboarding, tour and demo', async ({
   await page.getByRole('button', { name: 'दौरा शुरू करें', exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible({ timeout: 30_000 })
   await hindiOnly(page, 'दुकान का निर्देशित दौरा')
+  // OB-74: every seeded tour surface uses the Hindi product name, including the story card.
+  await page.getByRole('button', { name: 'आगे', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('चाय पत्ती')
+  await expect(page.getByRole('dialog')).not.toContainText('Tea dust')
   await page.getByRole('button', { name: 'टूर बंद करें', exact: true }).click()
 
   await page.goto('/demo')

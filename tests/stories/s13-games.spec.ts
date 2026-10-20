@@ -224,6 +224,9 @@ async function walk(customer: Page, qr: string, name: string, mode: Mode) {
     await expect(coop.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1')
     await expect(coop).toContainText('Your visits: 1')
     await expect(coop).toContainText('100 visits')
+    // OB-77: keep the help label on one line beside the goal title and demo chip.
+    const howButton = coop.getByRole('button', { name: 'How it works: Neighbourhood goal' })
+    await expect(howButton).toHaveCSS('white-space', 'nowrap')
     await coop.scrollIntoViewIfNeeded()
     await evidence(customer, '5-coop')
     await sets.scrollIntoViewIfNeeded()
@@ -232,6 +235,8 @@ async function walk(customer: Page, qr: string, name: string, mode: Mode) {
   await test.step('5 · the streak: freeze next week ahead of a trip', async () => {
     const run = customer.getByRole('region', { name: 'Weekly streak: 1' })
     await run.scrollIntoViewIfNeeded()
+    // OB-75: English uses the singular unit for a one-week streak.
+    await expect(run.getByText('week', { exact: true })).toBeVisible()
     await expect(run.getByRole('img', { name: 'Freezes: 1' })).toBeVisible()
     await run.getByRole('button', { name: 'Freeze next week' }).click()
     await expect(run.getByRole('status')).toHaveText('Next week is frozen. Enjoy the break!')

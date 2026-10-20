@@ -150,7 +150,9 @@ export function StreakFlame({
             >
               {number(weeks)}
             </Typography>
-            <Typography variant="labelLarge">{t.weeksLabel}</Typography>
+            <Typography variant="labelLarge">
+              {weeks === 1 && locale.startsWith('en') ? 'week' : t.weeksLabel}
+            </Typography>
           </Stack>
         </Box>
         <Box sx={{ ml: 'auto' }}>
