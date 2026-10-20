@@ -330,7 +330,7 @@ export function SupplierCarousel({
                 size="small"
                 variant={index === 0 ? 'contained' : 'outlined'}
                 onClick={() => onChoose(card)}
-                sx={{ flexShrink: 0, minHeight: 48 }}
+                sx={{ flexShrink: 0 }}
               >
                 {s.choose}
               </Button>

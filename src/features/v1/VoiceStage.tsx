@@ -361,14 +361,14 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
         '--glow': glow,
         display: 'flex',
         flexDirection: 'column',
-        gap: { xs: 1.5, md: 2.5 },
-        p: { xs: 2.5, md: 4 },
+        gap: { xs: 1, md: 2.5 },
+        p: { xs: 2, md: 4 },
         borderRadius: `${shape.lg}px`,
         bgcolor: roles.surfaceContainer,
         border: `1.5px dashed ${roles.outlineVariant}`,
         minHeight: { md: 0 },
         // A phone keeps the conversation and the composer on screen: a tall card scrolls (#83).
-        maxHeight: { xs: '38dvh', md: 'none' },
+        maxHeight: { xs: '28dvh', md: 'none' },
         overflow: 'auto',
       }}
     >
@@ -504,8 +504,8 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
             md: 'none',
           },
           ...scrollArea,
-          mx: { xs: -2.5, md: 0 },
-          px: { xs: 2.5, md: 0 },
+          mx: { xs: -2, md: 0 },
+          px: { xs: 2, md: 0 },
           pb: { xs: 0.5, md: 0 },
         }}
       >
@@ -658,7 +658,7 @@ export function VoiceAlert({
       {body && (
         <Typography sx={{ typography: { xs: 'bodySmall', sm: 'bodyMedium' } }}>{body}</Typography>
       )}
-      <Stack direction="row" sx={{ gap: 1, mt: 1.5, flexWrap: 'wrap' }}>
+      <Stack direction="row" sx={{ gap: 1, mt: { xs: 1, sm: 1.5 }, flexWrap: 'wrap' }}>
         <Button
           variant="contained"
           size="small"

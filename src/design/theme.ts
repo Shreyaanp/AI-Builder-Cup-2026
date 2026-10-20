@@ -1,8 +1,8 @@
 import { alpha, createTheme, darken } from '@mui/material/styles'
 import type { CSSProperties } from 'react'
-import { FONT_STACK } from '../i18n/fonts'
-import { chalkDust, chalkRoles, chalkTones } from './chalkboard'
-import type { ChalkTone, FeatureKey } from './chalkboard'
+import { FONT_STACK } from '../i18n/fonts.js'
+import { chalkDust, chalkRoles, chalkTones } from './chalkboard.js'
+import type { ChalkTone, FeatureKey } from './chalkboard.js'
 
 export type Appearance = 'light' | 'dark'
 /** Owner tools stay calm; the customer app gets the full chalk energy (owner decision). */
@@ -120,20 +120,21 @@ const typeScale: Record<TypeRole, TypeStyle> = {
   titleMedium: role(16, 24, 600, 0.15),
   titleSmall: role(14, 20, 600, 0.1),
   bodyLarge: role(16, 24, 400, 0.5),
-  bodyMedium: role(14, 20, 400, 0.25),
-  bodySmall: role(12, 16, 400, 0.4),
+  bodyMedium: role(16, 24, 400, 0.25),
+  bodySmall: role(14, 20, 400, 0.25),
   labelLarge: role(14, 20, 500, 0.1),
-  labelMedium: role(12, 16, 500, 0.5),
-  labelSmall: role(11, 16, 500, 0.5),
+  labelMedium: role(14, 20, 500, 0.3),
+  labelSmall: role(12, 16, 500, 0.5),
 }
 
-// Compact windows: slightly tighter body/label sizes and tracking. Sizes stay ≥ 12px.
+// Compact windows: slightly tighter tracking. One scale (OB-116, OB-103): body 16px, labels and
+// small text 14px, nothing below 12px.
 const compactQuery = `@media (max-width:${windowClass.medium - 1}px)`
 const compactScale: Partial<Record<TypeRole, TypeStyle>> = {
-  bodyLarge: role(15, 22, 400, 0.15),
-  bodyMedium: role(14, 20, 400, 0.1),
+  bodyLarge: role(16, 24, 400, 0.15),
+  bodyMedium: role(16, 24, 400, 0.1),
   labelLarge: role(14, 20, 500, 0.05),
-  labelMedium: role(12, 16, 500, 0.3),
+  labelMedium: role(14, 20, 500, 0.3),
 }
 const responsiveScale = Object.fromEntries(
   (Object.keys(typeScale) as TypeRole[]).map((key) => [
@@ -226,6 +227,7 @@ export function nivaTheme(
           ':root': {
             '--scrollbar-thumb': roles.outlineVariant,
             '--scrollbar-thumb-hover': roles.outline,
+            '--art-filter': mode === 'dark' ? 'brightness(0.72) saturate(0.8)' : 'none',
           },
           html: {
             colorScheme: mode,
@@ -258,6 +260,8 @@ export function nivaTheme(
           '*::-webkit-scrollbar-thumb:hover': {
             backgroundColor: roles.outline,
           },
+          // Pastel illustrations glare on the dark board: tone them down with one token (OB-100).
+          'img[src^="/art/"], img[src^="/icons/"]': { filter: 'var(--art-filter)' },
           'button, a, input, textarea': { WebkitTapHighlightColor: 'transparent' },
           ':focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: '2px' },
           '::selection': {
@@ -342,9 +346,28 @@ export function nivaTheme(
       MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
       MuiChip: {
         styleOverrides: {
-          root: { borderRadius: audience === 'customer' ? shape.full : shape.sm, fontWeight: 500 },
+          root: {
+            borderRadius: audience === 'customer' ? shape.full : shape.sm,
+            fontWeight: 500,
+            // Chips you can tap are 48px tall, like every other control (OB-115).
+            '&.MuiChip-clickable, &.MuiChip-deletable': { minHeight: layout.target },
+          },
         },
       },
+      // Switches, checkboxes, radios and their labels are 48px targets (OB-115).
+      MuiSwitch: {
+        styleOverrides: {
+          root: {
+            height: layout.target,
+            paddingBlock: 17,
+            '& .MuiSwitch-switchBase': { padding: 14 },
+          },
+        },
+      },
+      MuiCheckbox: { styleOverrides: { root: { padding: 12 } } },
+      MuiRadio: { styleOverrides: { root: { padding: 12 } } },
+      MuiFormControlLabel: { styleOverrides: { root: { minHeight: layout.target } } },
+      MuiToggleButton: { styleOverrides: { root: { minHeight: layout.target } } },
       MuiDialog: {
         defaultProps: { fullWidth: true, maxWidth: 'sm' },
         styleOverrides: {

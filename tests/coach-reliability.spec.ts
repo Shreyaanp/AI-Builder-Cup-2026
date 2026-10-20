@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 
 async function openCoach(page: Page) {
-  await page.goto('/')
+  // OB-72: readiness is the explicit preview control below, not the window's load event.
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
@@ -89,8 +90,11 @@ for (const unavailable of [false, true]) {
   })
 }
 
-test('resume makes at most four attempts and stop cancels recovery', async ({ page }) => {
+test('OB-72 resume makes at most four attempts and stop cancels recovery', async ({ page }) => {
   await openCoach(page)
+  // Compile the lazily imported stream module before the time-bounded browser exercise.
+  const streamModule = await page.request.get('/src/api/stream.ts')
+  expect(streamModule.ok()).toBe(true)
   const result = await page.evaluate(async () => {
     const modulePath = '/src/api/stream.ts'
     const { streamCoach } = await import(/* @vite-ignore */ modulePath)
