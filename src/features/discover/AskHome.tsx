@@ -734,6 +734,7 @@ export default function AskHome({
             mx: -4,
             px: 4,
             alignItems: 'center',
+            flexWrap: 'wrap',
             gap: 1,
             pt: 'max(8px, env(safe-area-inset-top))',
             pb: 1,
@@ -741,9 +742,8 @@ export default function AskHome({
             bgcolor: roles.surface,
           }}
         >
-          {/* The row is full on a phone (place, demo, three buttons): the logo joins from 600px. */}
-          <Box sx={{ display: { xs: 'none', sm: 'flex' }, mr: 2 }}>
-            <BrandLogo href="/explore/" />
+          <Box sx={{ display: 'flex', mr: { sm: 2 } }}>
+            <BrandLogo wordmark="wide" href="/explore/" />
           </Box>
           <Button
             onClick={() => setChanging((open) => !open)}
@@ -754,8 +754,10 @@ export default function AskHome({
             sx={{
               minHeight: 48,
               minWidth: 0,
+              order: { xs: 1, sm: 0 },
+              flexBasis: { xs: '100%', sm: 'auto' },
               px: 3,
-              ml: -2,
+              ml: { sm: -2 },
               borderRadius: 999,
               color: roles.onSurface,
               bgcolor: roles.surfaceContainerLow,
@@ -764,10 +766,7 @@ export default function AskHome({
               '&:hover': { bgcolor: roles.surfaceContainer },
             }}
           >
-            <Box
-              component="span"
-              sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            >
+            <Box component="span" sx={{ overflowWrap: 'anywhere' }}>
               {place.label.split(',')[0]?.trim() || place.label}
             </Box>
           </Button>

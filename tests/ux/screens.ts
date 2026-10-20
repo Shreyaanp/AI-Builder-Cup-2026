@@ -101,10 +101,11 @@ export const SCREENS: Screen[] = [
   },
 ]
 
-// Saved and Chats (OB-139): the customer tabs that were missing from the gate.
+// Saved and Chats (OB-139), plus Rescue (OB-146): cover the shared customer header on every tab.
 for (const [name, path] of [
   ['saved', '/explore/saved'],
   ['chats', '/explore/chats'],
+  ['rescue', '/explore/rescue'],
 ] as const)
   SCREENS.push({
     name,
