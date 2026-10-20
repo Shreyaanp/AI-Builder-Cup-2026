@@ -37,7 +37,7 @@ async function evidence(page: Page, name: string) {
   await page.screenshot({ path: `docs/stories/new-shop-${name}.png`, animations: 'disabled' })
 }
 
-test('S10 · owner opens a new shop by talking to the coach', async ({ page, context }) => {
+test('OB-150 S10 · owner opens a new shop by talking to the coach', async ({ page, context }) => {
   test.setTimeout(150_000)
   await localOnly(page)
   // A local tone stands in for the microphone (the offline backend runs no speech recognition),
@@ -164,6 +164,10 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
   await test.step('7 · "Your shop is ready", and the Google Maps hand-off', async () => {
     await page.getByTestId('shop-summary').getByRole('button', { name: 'Skip for now' }).click()
     await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
+    // OB-150: the QR poster is generated asynchronously; audit only after its action is usable.
+    await expect(
+      page.getByTestId('shop-qr').getByRole('button', { name: /Download PDF/ }),
+    ).toBeEnabled()
     await shot(page, 10, '7-ready')
     await axe(page)
     const handoff = page.getByTestId('maps-handoff')
