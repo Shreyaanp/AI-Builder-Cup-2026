@@ -144,7 +144,7 @@ function RescueSheet({
           (ws.products.length === 0 ? (
             <NoItems onClose={onClose} />
           ) : (
-            <NewRescue used={used} onSent={onChanged} />
+            <NewRescue used={used} onSent={onChanged} onClose={onClose} />
           ))}
         {earlier.length > 0 && (
           <Box component="section" aria-labelledby="rescue-earlier-title">
@@ -260,7 +260,15 @@ function NoItems({ onClose }: { onClose: () => void }) {
   )
 }
 
-function NewRescue({ used, onSent }: { used: Set<string>; onSent: () => void }) {
+function NewRescue({
+  used,
+  onSent,
+  onClose,
+}: {
+  used: Set<string>
+  onSent: () => void
+  onClose: () => void
+}) {
   const t = useOwnerCopy()
   const v1 = useCopy()
   const locale = useLocale()
@@ -467,6 +475,15 @@ function NewRescue({ used, onSent }: { used: Set<string>; onSent: () => void }) 
       {noHours && (
         <Alert severity="info" sx={{ mt: 3 }}>
           {t.needHours}
+          <Button
+            sx={{ display: 'flex', minHeight: 48, mt: 1 }}
+            onClick={() => {
+              onClose()
+              ws.openEditor({ kind: 'business', fields: shop.fields, step: 'hours' })
+            }}
+          >
+            {v1.editDetails}
+          </Button>
         </Alert>
       )}
       {error && (

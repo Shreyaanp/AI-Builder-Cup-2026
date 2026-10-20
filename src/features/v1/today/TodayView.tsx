@@ -218,7 +218,8 @@ function useStepAction(step: StepId): StepAction {
   return {
     label: tt.add,
     icon: <PencilLine size={18} />,
-    run: () => ws.active && ws.openEditor({ kind: 'business', fields: ws.active.fields }),
+    run: () =>
+      ws.active && ws.openEditor({ kind: 'business', fields: ws.active.fields, step: 'phone' }),
   }
 }
 
