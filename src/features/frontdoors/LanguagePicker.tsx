@@ -55,8 +55,8 @@ export function LanguagePicker({
   }
 
   const navSx: SxProps<Theme> = {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     color: 'inherit',
     border: 1,
     borderColor: theme.material.outlineVariant,
