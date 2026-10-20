@@ -361,7 +361,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
         '--glow': glow,
         display: 'flex',
         flexDirection: 'column',
-        gap: { xs: 1, md: 2.5 },
+        gap: { xs: 1, md: 3 },
         p: { xs: 2, md: 4 },
         borderRadius: `${shape.lg}px`,
         bgcolor: roles.surfaceContainer,
@@ -409,7 +409,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
             component="p"
             sx={{
               fontFamily: HAND_FONT,
-              fontSize: { xs: '1.45rem', md: '2.1rem' },
+              typography: 'headlineSmall',
               // Room for the hand font's descenders.
               lineHeight: 1.25,
               overflowWrap: 'anywhere',
@@ -433,7 +433,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
         {/* A chalk tally of what is filled in. */}
         <Box
           aria-hidden="true"
-          sx={{ display: { xs: 'none', sm: 'flex' }, gap: 0.5, alignSelf: 'flex-start', pt: 1 }}
+          sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1, alignSelf: 'flex-start', pt: 1 }}
         >
           {Array.from({ length: total }, (_, i) => (
             <Box
@@ -455,8 +455,8 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
             data-testid="shop-live"
             sx={{
               flexShrink: 0,
-              px: 1.25,
-              py: 0.25,
+              px: 2,
+              py: 1,
               borderRadius: `${shape.full}px`,
               bgcolor: roles.primary,
               color: roles.onPrimary,
@@ -494,7 +494,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
           p: 0,
           display: 'flex',
           flexDirection: { xs: 'row', md: 'column' },
-          gap: { xs: 1, md: 1.5 },
+          gap: { xs: 1, md: 2 },
           overflowX: { xs: 'auto', md: 'visible' },
           // Holds the hidden "label:" spans (absolute) so they never widen the page.
           position: 'relative',
@@ -506,7 +506,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
           ...scrollArea,
           mx: { xs: -2, md: 0 },
           px: { xs: 2, md: 0 },
-          pb: { xs: 0.5, md: 0 },
+          pb: { xs: 1, md: 0 },
         }}
       >
         {slots.map((slot) => (
@@ -521,8 +521,8 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
               flexShrink: 0,
               maxWidth: { xs: 240, md: 'none' },
               minHeight: 36,
-              px: 1.5,
-              py: { xs: 0.75, md: 1.25 },
+              px: 2,
+              py: 1,
               borderRadius: `${shape.md}px`,
               color: slot.value ? roles.onSecondaryContainer : roles.onSurfaceVariant,
               bgcolor: slot.value ? roles.secondaryContainer : 'transparent',
@@ -532,7 +532,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
               ...(slot.value ? fillIn : {}),
             }}
           >
-            <Box aria-hidden="true" sx={{ display: 'flex', flexShrink: 0, pt: { md: 0.25 } }}>
+            <Box aria-hidden="true" sx={{ display: 'flex', flexShrink: 0, pt: { md: 1 } }}>
               {slot.icon}
             </Box>
             <Box sx={{ minWidth: 0 }}>
