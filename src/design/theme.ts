@@ -296,6 +296,12 @@ export function nivaTheme(
             minHeight: layout.target,
             borderRadius: shape.full,
             paddingInline: 24,
+            paddingBlock: 8,
+            // OB-156: control sizes change containers, not the screen's type scale.
+            '&.MuiButton-sizeSmall, &.MuiButton-sizeLarge': {
+              ...typeScale.labelLarge,
+              paddingBlock: 8,
+            },
             fontWeight: 600,
             transition:
               'background-color 150ms ease, box-shadow 120ms ease, border-color 150ms ease, transform 120ms ease',
@@ -344,9 +350,19 @@ export function nivaTheme(
         styleOverrides: { root: { borderRadius: shape.lgIncreased, backgroundImage: 'none' } },
       },
       MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
+      // OB-156: feedback and control internals follow the shared 4px grid.
+      MuiAlert: {
+        styleOverrides: {
+          root: { paddingBlock: 8 },
+          icon: { paddingBlock: 8 },
+          action: { paddingTop: 0 },
+        },
+      },
       MuiChip: {
         styleOverrides: {
+          label: { paddingInline: 12 },
           root: {
+            ...typeScale.labelLarge,
             borderRadius: audience === 'customer' ? shape.full : shape.sm,
             fontWeight: 500,
             // Chips you can tap are 48px tall, like every other control (OB-115).
