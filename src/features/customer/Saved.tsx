@@ -76,6 +76,7 @@ export function Saved() {
   const [failed, setFailed] = useState(false)
   // Bumped by Retry to fetch the feed again.
   const [attempt, setAttempt] = useState(0)
+  const [showAllUpdates, setShowAllUpdates] = useState(false)
   const key = account.follows.join(',')
   useEffect(() => {
     document.title = `${t.savedTitle} · Chalkboard`
@@ -99,6 +100,8 @@ export function Saved() {
   // No follows: nothing to fetch, an empty feed.
   const feed = key ? loaded : account.status === 'loading' ? null : EMPTY
   const shops = new Map(feed?.shops.map((shop) => [shop.id, shop]))
+  // OB-158: lead with the latest news; older updates are one tap away.
+  const updates = feed ? (showAllUpdates ? feed.updates : feed.updates.slice(0, 1)) : []
   return (
     <CollectionPage title={t.savedTitle}>
       {failed && (
@@ -210,16 +213,33 @@ export function Saved() {
             </Stack>
           )}
           <Box component="section" aria-labelledby="updates-title" sx={{ mt: 4 }}>
-            <Typography id="updates-title" component="h2" variant="titleMedium" sx={{ px: 2 }}>
-              {t.updatesTitle}
-            </Typography>
+            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography id="updates-title" component="h2" variant="titleMedium" sx={{ px: 2 }}>
+                {t.updatesTitle}
+              </Typography>
+              {feed.updates.length > 1 && (
+                <Button
+                  variant="text"
+                  aria-expanded={showAllUpdates}
+                  aria-controls="saved-updates"
+                  onClick={() => setShowAllUpdates((shown) => !shown)}
+                >
+                  {showAllUpdates ? t.showLessUpdates : t.showAllUpdates}
+                </Button>
+              )}
+            </Stack>
             {feed.updates.length === 0 ? (
               <Typography color="text.secondary" sx={{ px: 2, mt: 1 }}>
                 {t.noUpdates}
               </Typography>
             ) : (
-              <Stack component="ul" spacing={2} sx={{ listStyle: 'none', m: 0, mt: 2, p: 0 }}>
-                {feed.updates.map((update, index) => {
+              <Stack
+                id="saved-updates"
+                component="ul"
+                spacing={2}
+                sx={{ listStyle: 'none', m: 0, mt: 2, p: 0 }}
+              >
+                {updates.map((update, index) => {
                   const shop = shops.get(update.shop_id)
                   const { icon, title, body } = describe(update, shop, t)
                   return (
@@ -251,21 +271,6 @@ export function Saved() {
                           },
                         }}
                       >
-                        <Box data-shared sx={{ borderRadius: '16px', overflow: 'hidden' }}>
-                          {shop && (
-                            <Box
-                              sx={{
-                                width: 64,
-                                height: 64,
-                                borderRadius: '16px',
-                                overflow: 'hidden',
-                                '& > div': { borderRadius: 0, width: 64, height: 64 },
-                              }}
-                            >
-                              <ShopAvatar shop={shop} size={64} />
-                            </Box>
-                          )}
-                        </Box>
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                             <Typography variant="labelLarge" noWrap sx={{ flex: 1 }}>
