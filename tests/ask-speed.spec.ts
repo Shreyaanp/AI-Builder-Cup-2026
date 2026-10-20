@@ -123,3 +123,31 @@ test('OB-97: first result card within 1.5 s and the answer streams in after it',
   const order = await page.evaluate(() => (window as unknown as { __ask: string[] }).__ask)
   expect(order).toEqual(['instant', 'delta', 'delta', 'complete'])
 })
+
+// OB-92: the suggestion chips used to be added once /discover/suggest answered. On a slow
+// connection that was after the page was scrolled to its end, so the new chips landed under the
+// fixed composer. Their room is now held from the first frame, so they are already above the composer.
+test('OB-92 late suggestions do not grow the Ask page under the composer', async ({ page }) => {
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => (release = resolve))
+  await page.route('**/api/v1/discover/suggest?**', async (route) => {
+    await gate
+    await route.fallback()
+  })
+  await page.goto('/explore/', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByTestId('customer-chat-dock')).toBeVisible({ timeout: 20_000 })
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+  release()
+  await expect(page.locator('[data-chips]')).toBeVisible({ timeout: 20_000 })
+  const after = await page.evaluate(() => ({
+    chipsBottom: Math.max(
+      ...Array.from(document.querySelectorAll('[data-chips] button')).map(
+        (el) => el.getBoundingClientRect().bottom,
+      ),
+    ),
+    dockTop: document.querySelector('[data-testid="customer-chat-dock"]')!.getBoundingClientRect()
+      .top,
+  }))
+  // Measured while the chips are still dealing in: the rise must not reach the composer either.
+  expect(after.chipsBottom, 'chips end above the composer').toBeLessThanOrEqual(after.dockTop)
+})

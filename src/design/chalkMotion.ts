@@ -26,10 +26,11 @@ export function useChalkTimeline(
   }, deps)
 }
 
-/** Cards dealt onto the table: rise, straighten from a slight tilt. Use with `--deal-index`. */
+/** Cards dealt onto the table: rise, straighten from a slight tilt. Use with `--deal-index`.
+ * The rise stays under the 24 px reading gap above fixed bars, so a card mid-deal never touches one (OB-92). */
 export const dealIn = {
   '@keyframes chalkDealIn': {
-    from: { opacity: 0, transform: 'translateY(24px) rotate(var(--deal-tilt, -3deg))' },
+    from: { opacity: 0, transform: 'translateY(12px) rotate(var(--deal-tilt, -3deg))' },
     to: { opacity: 1, transform: 'none' },
   },
   animation: `chalkDealIn 450ms ${motion.easing.emphasizedDecelerate} both`,

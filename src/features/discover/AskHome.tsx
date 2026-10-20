@@ -697,8 +697,10 @@ export default function AskHome({
   )
   const nearbyShops = nearby?.key === placeKey ? nearby.shops : null
   const opening = turns.length === 0
-  // Chips appear once this area's suggestions are in (they grow up from the dock: no shift).
-  const showChips = opening && suggestions !== null && !draft.trim() && !busy
+  // The chips' room is held (hidden) from the first frame and they appear once this area's
+  // suggestions are in, so the page never grows after it is first measured or scrolled (OB-92).
+  const showChips = opening && !draft.trim() && !busy
+  const chipsReady = suggestions !== null
 
   function submit() {
     send(draft)
@@ -862,9 +864,12 @@ export default function AskHome({
               {showChips && (
                 <Box
                   component="ul"
+                  key={chipsReady ? 'ready' : 'holding'}
                   aria-label={c.composer}
+                  aria-hidden={chipsReady ? undefined : true}
                   data-chips
                   sx={{
+                    visibility: chipsReady ? 'visible' : 'hidden',
                     listStyle: 'none',
                     p: 0,
                     m: 0,
