@@ -217,8 +217,9 @@ CONCEPTS: dict[str, str] = {
     "tea": "tea teh chai masala tarik matcha hojicha chaa lemongrass",
     "breakfast": "breakfast idli dosa vada poha upma paratha toast kaya egg omelette porridge "
     "congee lemak bakar morning",
+    # A "Bakes" section can contain cake; it does not establish that an item is bread.
     "bread": "bread bakery bun buns loaf croissant baguette pav sourdough naan shokupan pan "
-    "roll rolls bakes bake baked puff",
+    "roll rolls puff",
     "sweet": "sweet sweets dessert desserts cake cakes pastry pastries kueh ladoo barfi halwa "
     "jamun cookie cookies biscuit biscuits chocolate mithai pudding tart cheesecake scone "
     "anpan jaggery",
@@ -817,4 +818,4 @@ def build_engine(settings: Any, docs: VectorDocuments | None) -> SearchEngine:
             settings.embedding_model,
         )
         return SearchEngine(embed, settings.embedding_model, docs, live=True, explainer=explainer)
-    return SearchEngine(fixture_embedder, "fixture-concepts-v1", docs, explainer=explainer)
+    return SearchEngine(fixture_embedder, "fixture-concepts-v2", docs, explainer=explainer)

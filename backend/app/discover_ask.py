@@ -422,10 +422,8 @@ PRICE_LEVELS = {
 
 
 def min_price(pick: Pick) -> int:
-    prices = [p.price for p in (pick.matched or pick.items) if p.available]
-    if pick.deal is not None:
-        prices.append(pick.deal.price)
-    return min(prices) if prices else 1 << 40
+    """The card/map headline price; a separate rescue must not change its ordering."""
+    return next((p.price for p in (pick.matched or pick.items) if p.available), 1 << 40)
 
 
 def ranking(intent: Intent, anchor: Anchor | None) -> Callable[[Pick], tuple[float, ...]]:
@@ -573,11 +571,10 @@ def shop_pick(
     products = [p for p in shop["products"] if p["available"]]
     matched = [p for p in products if item_matches(p, words)] if words else []
     by_words = bool(matched)
-    if words and not matched:
-        # "Something sweet" finds the pandan cake: items close in meaning, best first.
-        matched = sorted(
-            (p for p in products if meaning.items.get(p["name"], 0.0) >= recall),
-            key=lambda p: -meaning.items.get(p["name"], 0.0),
+    if words:
+        # Include synonyms even alongside literal matches (bread: loaf AND croissant).
+        matched.extend(
+            p for p in products if p not in matched and meaning.items.get(p["name"], 0.0) >= recall
         )
     if limit is not None:
         matched = (
@@ -585,6 +582,10 @@ def shop_pick(
             if words
             else [p for p in products if p["price"] <= limit]
         )
+    # The headline is the cheapest available matching item, chosen before capping the menu.
+    matched.sort(key=lambda p: p["price"])
+    if intent.sort == "price":
+        products.sort(key=lambda p: p["price"])
     shop_text = f"{shop['name']} {shop['category']}".casefold()
     category_hit = bool(intent.category) and any(
         term in shop_text for term in CATEGORIES.get(intent.category, ((), ()))[1]
@@ -622,7 +623,9 @@ def shop_pick(
             if shop.get("gallery")
             else None
         ),
-        items=[TopItem(**p) for p in shop["products"][:3]],
+        items=[
+            TopItem(**p) for p in (products if intent.sort == "price" else shop["products"])[:3]
+        ],
         sold_out=[p["name"] for p in shop["products"] if not p["available"]],
         halal=facts.get("halal") in {"yes", "muslim_owned"} if facts.get("halal") else None,
         locally_made=bool(facts.get("locally_made")),
@@ -879,6 +882,9 @@ async def match_local_shops(
         )
     picks.sort(key=ranking(intent, anchor))
     for_you.sort(key=ranking(intent, anchor))
+    if intent.sort == "price":
+        # Cheapest first applies to the whole list, including personal picks.
+        for_you = []
     return picks, for_you, personal, shops
 
 
