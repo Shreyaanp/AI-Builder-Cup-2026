@@ -175,7 +175,9 @@ async def approve(
     proposal_id: str, body: Approval, request: Request, background: BackgroundTasks
 ) -> dict[str, Any]:
     uid = await consented_owner(request)
+    started = time.perf_counter()
     receipt = await anyio.to_thread.run_sync(store(request).commit, uid, proposal_id, body.digest)
+    log.info("proposal_save_ms", save=round((time.perf_counter() - started) * 1000))
     from .trust_routes import scan_after_change
 
     if receipt.get("business_id"):
