@@ -29,7 +29,6 @@ import { Supporting, Tile } from '../v1/ShopTiles'
 import { useSupplyCopy } from './copy'
 import { orderTotal, poNumber, termsLabel } from './orderFormat'
 import { PurchaseOrderCard } from './PurchaseOrderCard'
-import { SapSandboxOrders } from './SapSandbox'
 import { useDraftReorder, useRulesActions, useSupply } from './supplyData'
 import type { ItemRule, PurchaseOrder, Relationship, RuleSet, SystemFormat } from './types'
 
@@ -226,7 +225,6 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
               ))}
             </List>
           )}
-          <SapSandboxOrders open={open} />
           {data && data.suppliers.length > 0 && (
             <Box>
               <Typography variant="titleSmall" component="h3" sx={{ mb: 2 }}>

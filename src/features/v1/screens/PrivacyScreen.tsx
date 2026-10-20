@@ -86,6 +86,8 @@ export function PrivacyScreen() {
       const result = await ws.api<EraseResult>('/me/data', { method: 'DELETE' })
       if (result.status === 'erased') {
         setErase({ kind: 'done' })
+        // Stop shop-scoped polls before sign-out changes the identity tree.
+        ws.select(null)
         await identity.signOut('deleted')
       } else {
         setErase({ kind: 'partial', pending: result.pending })
@@ -129,7 +131,7 @@ export function PrivacyScreen() {
           <Typography variant="bodyMedium" color="text.secondary">
             {t.dataBody}
           </Typography>
-          {(erase.kind === 'idle' || erase.kind === 'working') && (
+          {(erase.kind === 'idle' || erase.kind === 'working') && !ws.demo && (
             <Button
               variant="outlined"
               color="error"
@@ -140,6 +142,11 @@ export function PrivacyScreen() {
             >
               {t.deleteAll}
             </Button>
+          )}
+          {(erase.kind === 'idle' || erase.kind === 'working') && ws.demo && (
+            <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 2 }}>
+              {ws.readOnlyMessage}
+            </Typography>
           )}
           <Box role="status" aria-live="polite" sx={{ mt: erase.kind === 'idle' ? 0 : 2 }}>
             {erase.kind === 'working' && (

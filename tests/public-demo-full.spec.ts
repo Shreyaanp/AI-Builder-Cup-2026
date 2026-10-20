@@ -112,9 +112,9 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   await expect(sheet.locator('article')).toBeVisible()
   await page.screenshot({ path: 'output/playwright/demo-full-05-timeline.png', fullPage: true })
   await sheet.getByRole('button', { name: 'Purchase orders' }).first().click()
-  await expect(sheet.getByText(/SAP/).first()).toBeVisible({ timeout: 15_000 })
-  await page.screenshot({ path: 'output/playwright/demo-full-06-sap.png', fullPage: true })
-  await page.keyboard.press('Escape')
+  // OB-110: small-shop demos show their own purchase orders, not an SAP sandbox sample.
+  await expect(sheet.getByText(/SAP/)).toHaveCount(0)
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   // #285: Close the day opens on Grow.

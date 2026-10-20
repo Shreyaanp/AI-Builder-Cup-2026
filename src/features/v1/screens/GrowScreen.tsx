@@ -165,7 +165,7 @@ function GrowTiles() {
         icon={<Stamp size={20} />}
         label={tabs.perks}
         value={shop.fields.reward_text || tabs.perksOff}
-        onClick={() => ws.openEditor({ kind: 'business', fields: shop.fields })}
+        onClick={() => ws.openEditor({ kind: 'business', fields: shop.fields, step: 'reward' })}
       >
         {shop.fields.reward_text && <Supporting>{tabs.perksAfter(stamps)}</Supporting>}
       </Tile>,

@@ -224,7 +224,8 @@ test('owner tour connects Today, forecast, payment preview and supplier timeline
   await page.getByRole('button', { name: 'Back', exact: true }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /Purchase orders/ }).click()
-  await expect(page.getByText('Recorded sample of SAP’s sandbox, not live')).toBeVisible()
+  // OB-110: a small shop's Purchase orders hold its own orders only, no SAP sandbox sample.
+  await expect(page.getByText('Recorded sample of SAP’s sandbox, not live')).toHaveCount(0)
   await page
     .getByRole('list', { name: 'Purchase orders', exact: true })
     .getByRole('button', { name: /PO 4500000001.*Sri Lakshmi Provisions/ })
