@@ -11,7 +11,7 @@ export type Audience = 'owner' | 'customer'
 export const HAND_FONT = `"Caveat", ${FONT_STACK}`
 /** The user's choice; `system` follows prefers-color-scheme. */
 export type ColorMode = Appearance | 'system'
-export const layout = { pageWidth: 1160, edge: 4, cardPadding: 6, gap: 4, target: 48 }
+export const layout = { pageWidth: 1160, edge: 4, cardPadding: 6, gap: 4, target: 48, appBar: 64 }
 
 /** M3 shape scale (dp). Components pick a step by size and role, never "max radius everywhere". */
 export const shape = { xs: 4, sm: 8, md: 12, lg: 16, lgIncreased: 20, xl: 28, full: 9999 }

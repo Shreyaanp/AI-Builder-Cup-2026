@@ -1,4 +1,5 @@
-﻿import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { AppHeader } from '../../design/AppHeader'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Button, Typography, useTheme } from '@mui/material'
 import type { Theme } from '@mui/material'
 import {
@@ -128,7 +129,7 @@ export function FlowVideo({ flow, label, sound }: { flow: Flow; label: string; s
 
 function Header({ t, page }: { t: PagesCopy; page: Page }) {
   return (
-    <header className="hw-nav">
+    <AppHeader className="hw-nav">
       <BrandLogo name={t.brand} href="/" />
       <nav aria-label={t.brand}>
         {page !== 'how' && (
@@ -144,7 +145,7 @@ function Header({ t, page }: { t: PagesCopy; page: Page }) {
         <LanguagePicker variant="nav" />
         <AppearanceToggle inline />
       </nav>
-    </header>
+    </AppHeader>
   )
 }
 
