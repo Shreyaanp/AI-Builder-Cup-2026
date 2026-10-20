@@ -591,7 +591,9 @@ export function ShopSheets({
                         checked={available}
                         onChange={(_, checked) => void ws.setAvailability(product, checked)}
                         slotProps={{
-                          input: { 'aria-label': `${t.available}: ${productName(product.name, locale)}` },
+                          input: {
+                            'aria-label': `${t.available}: ${productName(product.name, locale)}`,
+                          },
                         }}
                       />
                     }
