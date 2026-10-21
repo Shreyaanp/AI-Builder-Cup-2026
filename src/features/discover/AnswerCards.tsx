@@ -300,7 +300,11 @@ export function PickCard({
           {deal && pick.currency ? (
             <Typography
               variant="labelMedium"
-              sx={{ color: theme.chalk.coral.onContainer, fontWeight: 700, ...oneLine }}
+              sx={{
+                color: theme.chalk.coral.onContainer,
+                fontWeight: 700,
+                overflowWrap: 'anywhere',
+              }}
             >
               {fillIn(copy.deal, {
                 item: deal.item,
