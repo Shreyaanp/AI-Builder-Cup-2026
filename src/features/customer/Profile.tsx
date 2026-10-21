@@ -17,6 +17,7 @@ import { History, UserRound } from 'lucide-react'
 import { Sheet } from '../v1/Sheet'
 import { useTabsCopy } from '../v1/tabsCopy'
 import { HoverTip } from '../frontdoors/HoverTip'
+import { useDemoCopy } from '../frontdoors/strings'
 import { useCustomer } from './account'
 import { useGuestCopy } from './guestCopy'
 import type { Profile } from './types'
@@ -88,6 +89,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
   const guest = useGuestCopy()
   const t = useAccountCopy()
   const tabs = useTabsCopy()
+  const demo = useDemoCopy()
   const locale = useLocale()
   // A deletion the server refused is said out loud, with a way to try it again.
   const [notice, setNotice] = useState<{
@@ -262,6 +264,9 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
         <Box sx={{ '& > button': { width: '100%' } }}>
           <SeeAgain app="customer" />
         </Box>
+        <Button component="a" href="/explore/demo" fullWidth sx={{ minHeight: 48 }}>
+          {demo.tryDemo}
+        </Button>
       </Box>
     </Sheet>
   )
