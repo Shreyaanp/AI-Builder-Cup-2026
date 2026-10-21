@@ -87,6 +87,32 @@ def test_ob94_bread_does_not_offer_coffee_shop_cake_from_bakes_section() -> None
     )
 
 
+def test_ob94_a_literal_match_keeps_the_headline_over_a_cheaper_close_one() -> None:
+    """Review of #474: "cake" headlined "Butter cookie S$1.20" because a cheaper item close in
+    meaning was sorted with the real cake."""
+    bakery = shop(
+        [
+            product("Butter cookie", 120, "Bakes"),
+            product("Chocolate cake", 450, "Bakes"),
+            product("Kaya toast", 150, "Bakes"),
+        ]
+    )
+    engine = SearchEngine(fixture_embedder, "ob94")
+    meaning = engine.relevance("cake", [bakery])
+    assert meaning["bakery"].items.get("Butter cookie", 0.0) >= item_recall(meaning)
+    for sort in ("best", "price"):
+        pick = shop_pick(
+            bakery,
+            Intent(keywords=["cake"], sort=sort),
+            1.28,
+            103.83,
+            meaning["bakery"],
+            item_recall(meaning),
+        )
+        assert pick is not None
+        assert (pick.matched[0].name, min_price(pick)) == ("Chocolate cake", 450)
+
+
 async def test_ob94_explicit_price_order_keeps_followed_shop_in_price_position(monkeypatch) -> None:
     bakery = shop([product("Iced coffee", 300)])
     cafe = {**shop([product("Coffee", 200)]), "id": "cafe", "name": "Corner Cup"}
@@ -130,10 +156,11 @@ def test_ob94_price_sort_without_subject_uses_cheapest_available_menu_item() -> 
 
 
 def test_ob94_ask_api_followup_and_bread_prices_match_discovery(tmp_path, monkeypatch) -> None:
+    # The headline is not the first menu item, so matching the listed card proves the price.
     bakery = shop(
         [
-            product("Croissant", 190, "Bakes"),
             product("Sourdough loaf", 610, "Bread"),
+            product("Croissant", 190, "Bakes"),
             product("Iced coffee", 300),
         ]
     )
@@ -179,5 +206,6 @@ def test_ob94_ask_api_followup_and_bread_prices_match_discovery(tmp_path, monkey
         ours = [p for g in bread["groups"] for p in g["places"] if p["source"] == "chalkboard"]
         assert [p["id"] for p in ours] == ["bakery"]
         headline = ours[0]["matched"][0]
-        assert headline == listed["bakery"][0]
         assert (headline["name"], headline["price"]) == ("Croissant", 190)
+        assert headline == next(i for i in listed["bakery"] if i["name"] == "Croissant")
+        assert listed["bakery"][0]["name"] == "Sourdough loaf"

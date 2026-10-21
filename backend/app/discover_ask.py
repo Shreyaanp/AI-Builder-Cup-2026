@@ -582,8 +582,11 @@ def shop_pick(
             if words
             else [p for p in products if p["price"] <= limit]
         )
-    # The headline is the cheapest available matching item, chosen before capping the menu.
-    matched.sort(key=lambda p: p["price"])
+    # The headline is the cheapest item named for what was asked ("cake": the chocolate cake, never
+    # a cheaper cookie close in meaning); else the cheapest close match (bread: the croissant).
+    # Chosen before capping the menu.
+    named = {p["name"] for p in matched if item_matches({"name": p["name"]}, words)}
+    matched.sort(key=lambda p: (p["name"] not in named, p["price"]))
     if intent.sort == "price":
         products.sort(key=lambda p: p["price"])
     shop_text = f"{shop['name']} {shop['category']}".casefold()
