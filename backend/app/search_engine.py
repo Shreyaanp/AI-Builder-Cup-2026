@@ -258,10 +258,16 @@ def _stem(word: str) -> str:
 def fixture_vector(text: str) -> list[float]:
     """Deterministic offline stand-in for an embedding: words plus their concept groups."""
     vector = np.zeros(DIMENSIONS, dtype=np.float32)
-    for word in words(text.casefold())[:400]:
+    tokens = words(text.casefold())[:400]
+    for index, word in enumerate(tokens):
         stem = _stem(word)
         vector[_slot("w:" + stem)] += 1.0
+        # In "banana bread" or "vegetable puff", produce describes the baked item,
+        # rather than making raw fruit/vegetables its closest recommendation.
+        following = _CONCEPT_OF.get(tokens[index + 1], set()) if index + 1 < len(tokens) else set()
         for concept in _CONCEPT_OF.get(word, set()) | _CONCEPT_OF.get(stem, set()):
+            if concept == "produce" and following & {"bread", "sweet"}:
+                continue
             vector[_slot("c:" + concept)] += 2.0
     return normalize(vector).tolist()
 

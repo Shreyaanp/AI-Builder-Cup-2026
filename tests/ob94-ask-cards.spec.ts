@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { measure } from './ux/measure'
+// OB-161 / OB-179: NodeNext needs .js to resolve the helper and infer its measured result.
+import { measure } from './ux/measure.js'
 
 const sizes = [
   { width: 360, height: 800 },

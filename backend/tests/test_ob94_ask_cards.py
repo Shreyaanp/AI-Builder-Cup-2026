@@ -11,7 +11,7 @@ from app.community import Profile
 from app.discover import TopItem
 from app.discover_ask import AskRequest, Intent, PickDeal, min_price, ranking, shop_pick
 from app.main import create_app
-from app.search_engine import SearchEngine, Taste, fixture_embedder, item_recall
+from app.search_engine import SearchEngine, Taste, fixture_embedder, fixture_vector, item_recall
 from tests.test_discover import settings
 
 
@@ -31,6 +31,16 @@ def shop(products: list[dict]) -> dict:
 
 def product(name: str, price: int, category: str = "Drinks") -> dict:
     return {"name": name, "price": price, "category": category, "available": True, "unit": "cup"}
+
+
+def test_ob160_baked_item_is_closer_to_bread_than_its_raw_ingredient() -> None:
+    import numpy as np
+
+    bread = fixture_vector("Banana bread (Bakes)")
+    bananas = fixture_vector("Bananas (Produce)")
+    loaf = fixture_vector("Multigrain loaf (Bread)")
+    assert np.dot(bread, loaf) > np.dot(bread, bananas)
+    assert np.dot(bananas, fixture_vector("Fruit")) > np.dot(bananas, loaf)
 
 
 def test_ob94_cheapest_uses_headline_not_unrelated_rescue() -> None:
