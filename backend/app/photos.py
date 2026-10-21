@@ -228,11 +228,20 @@ class PhotoPipeline:
 
         if self._vision is None:
             self._vision = vision.ImageAnnotatorClient()
-        response = self._vision.safe_search_detection(image=vision.Image(content=image))
-        if response.error.message:
-            raise PhotoRejected(503, "MODERATION_UNAVAILABLE")
-        found = response.safe_search_annotation
-        return {"adult": found.adult, "racy": found.racy, "violence": found.violence}
+        # One retry and a log line: a single Vision hiccup used to fail the owner's photo with a
+        # silent 503 (and a raised client error with a bare 500).
+        for attempt in (1, 2):
+            try:
+                response = self._vision.safe_search_detection(image=vision.Image(content=image))
+            except Exception as error:
+                problem = str(error)[:300]
+            else:
+                if not response.error.message:
+                    found = response.safe_search_annotation
+                    return {"adult": found.adult, "racy": found.racy, "violence": found.violence}
+                problem = response.error.message[:300]
+            log.warning("photo_moderation_failed", attempt=attempt, error=problem)
+        raise PhotoRejected(503, "MODERATION_UNAVAILABLE")
 
     @staticmethod
     def blocked(scores: dict[str, int]) -> bool:
@@ -261,26 +270,33 @@ class PhotoPipeline:
                 return FIXTURE_KIND_WIDTHS.get(opened.width, "menu")  # type: ignore[return-value]
         from google.genai import types
 
-        try:
-            response = await self._client().aio.models.generate_content(
-                model=self.settings.google_text_model,
-                contents=[
-                    types.Part.from_bytes(data=image, mime_type="image/jpeg"),
-                    CLASSIFY_PROMPT,
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=_KindSpec,
-                    temperature=0,
-                    max_output_tokens=200,
-                ),
-            )
-        except Exception as error:
-            log.warning("photo_classify_failed", error=str(error)[:300])
-            raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE") from None
-        if not isinstance(response.parsed, _KindSpec):
-            raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE")
-        return response.parsed.kind
+        # One retry: a single model hiccup used to fail the chat photo with a silent 503.
+        for attempt in (1, 2):
+            try:
+                response = await self._client().aio.models.generate_content(
+                    model=self.settings.google_text_model,
+                    contents=[
+                        types.Part.from_bytes(data=image, mime_type="image/jpeg"),
+                        CLASSIFY_PROMPT,
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=_KindSpec,
+                        temperature=0,
+                        # The model thinks first and its thinking counts against this limit
+                        # (75-100 tokens on menus and receipts); 200 left too little room.
+                        max_output_tokens=1024,
+                    ),
+                )
+            except Exception as error:
+                log.warning("photo_classify_failed", attempt=attempt, error=str(error)[:300])
+                continue
+            if isinstance(response.parsed, _KindSpec):
+                return response.parsed.kind
+            candidate = (response.candidates or [None])[0]
+            reason = str(getattr(candidate, "finish_reason", "") or "")
+            log.warning("photo_classify_unreadable", attempt=attempt, finish_reason=reason)
+        raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE")
 
     async def classify_upload(self, data: bytes) -> PhotoKind:
         image = await anyio.to_thread.run_sync(sanitize, data)
@@ -300,32 +316,35 @@ class PhotoPipeline:
             )
         from google.genai import types
 
-        try:
-            response = await self._client().aio.models.generate_content(
-                model=self.settings.google_text_model,
-                contents=[
-                    types.Part.from_bytes(data=image, mime_type="image/jpeg"),
-                    PROMPT.format(language=written_language(language)),
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=_PhotoSpec,
-                    temperature=0,
-                    max_output_tokens=16000,
-                ),
-            )
-        except Exception as error:
-            # Never a bare 500: the owner sees "couldn't read this photo, try again".
-            log.warning("photo_extraction_failed", error=str(error)[:300])
-            raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE") from None
-        feedback = getattr(response, "prompt_feedback", None)
-        candidate = (response.candidates or [None])[0]
-        reason = str(getattr(candidate, "finish_reason", "") or "")
-        if (feedback and feedback.block_reason) or "SAFETY" in reason or "PROHIBITED" in reason:
-            raise PhotoRejected(422, "PHOTO_BLOCKED")
-        if not isinstance(response.parsed, _PhotoSpec):
-            raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE")
-        return to_extraction(response.parsed)
+        # One retry: a single model hiccup used to send the owner back to "try again".
+        for attempt in (1, 2):
+            try:
+                response = await self._client().aio.models.generate_content(
+                    model=self.settings.google_text_model,
+                    contents=[
+                        types.Part.from_bytes(data=image, mime_type="image/jpeg"),
+                        PROMPT.format(language=written_language(language)),
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=_PhotoSpec,
+                        temperature=0,
+                        max_output_tokens=16000,
+                    ),
+                )
+            except Exception as error:
+                # Never a bare 500: the owner sees "couldn't read this photo, try again".
+                log.warning("photo_extraction_failed", attempt=attempt, error=str(error)[:300])
+                continue
+            feedback = getattr(response, "prompt_feedback", None)
+            candidate = (response.candidates or [None])[0]
+            reason = str(getattr(candidate, "finish_reason", "") or "")
+            if (feedback and feedback.block_reason) or "SAFETY" in reason or "PROHIBITED" in reason:
+                raise PhotoRejected(422, "PHOTO_BLOCKED")
+            if isinstance(response.parsed, _PhotoSpec):
+                return to_extraction(response.parsed)
+            log.warning("photo_extraction_unreadable", attempt=attempt, finish_reason=reason)
+        raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE")
 
     # --- storage ----------------------------------------------------------------------
     def store_sync(self, uid: str, bid: str | None, image: bytes) -> str | None:
