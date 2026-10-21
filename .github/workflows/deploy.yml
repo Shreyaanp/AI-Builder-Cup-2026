@@ -1,5 +1,11 @@
 name: Cloud Run release
 on:
+  # Continuous delivery: every push to main whose checks passed is released.
+  workflow_run:
+    workflows: ['oGoogle AI checks']
+    types: [completed]
+    branches: [main]
+  # Manual path (hotfix, redeploy, scripts/ship.ps1): same checked, candidate-first release.
   workflow_dispatch:
     inputs:
       revision:
@@ -7,10 +13,9 @@ on:
         type: string
         required: false
       release_tag:
-        description: Published release-* tag pointing to the selected main commit
+        description: Optional published release-* tag that must point to the selected main commit
         type: string
-        required: true
-  # scripts/ship.ps1 dispatches this same checked, tagged release path.
+        required: false
 permissions:
   contents: read
 concurrency:
@@ -20,12 +25,14 @@ jobs:
   revision:
     # Manual runs from main, or a main push whose checks passed (never a pull request's run).
     if: >-
-      github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push'))
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.select.outputs.sha }}
+      stale: ${{ steps.select.outputs.stale }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -33,17 +40,27 @@ jobs:
       - id: select
         env:
           REQUESTED_SHA: ${{ inputs.revision || github.event.workflow_run.head_sha }}
+          EVENT: ${{ github.event_name }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           revision="${REQUESTED_SHA:-$GITHUB_SHA}"
           [[ "$revision" =~ ^[a-f0-9]{40}$ ]]
           git merge-base --is-ancestor "$revision" origin/main
-          [[ "$RELEASE_TAG" =~ ^release-[a-zA-Z0-9._-]+$ ]]
-          test "$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")" = "$revision"
+          if [[ -n "$RELEASE_TAG" ]]; then
+            [[ "$RELEASE_TAG" =~ ^release-[a-zA-Z0-9._-]+$ ]]
+            test "$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")" = "$revision"
+          fi
+          # A push run is stale when main has moved on: the newer push has its own run.
+          if [[ "$EVENT" == "workflow_run" && "$revision" != "$(git rev-parse origin/main)" ]]; then
+            echo "::notice::$revision is no longer the tip of main; the newer commit releases itself."
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           echo "sha=$revision" >> "$GITHUB_OUTPUT"
   # Skip re-testing when the push checks already passed for this exact commit.
   gate:
     needs: revision
+    if: needs.revision.outputs.stale != 'true'
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -67,7 +84,8 @@ jobs:
   release:
     needs: [revision, gate, checks]
     if: >-
-      always() && needs.revision.result == 'success' && needs.gate.result == 'success' &&
+      always() && needs.revision.result == 'success' && needs.revision.outputs.stale != 'true' &&
+      needs.gate.result == 'success' &&
       (needs.gate.outputs.tested == 'true' || needs.checks.result == 'success')
     runs-on: ubuntu-latest
     environment: production
@@ -80,7 +98,7 @@ jobs:
       FIREBASE_WEB_APP_ID: ${{ vars.FIREBASE_WEB_APP_ID }}
       FEATURE_GOOGLE_GUIDE: ${{ vars.FEATURE_GOOGLE_GUIDE || 'true' }}
       GA_MEASUREMENT_ID: ${{ vars.GA_MEASUREMENT_ID || '' }}
-      LANDING_VARIANT: ${{ vars.LANDING_VARIANT || 'classic' }}
+      LANDING_VARIANT: ${{ vars.LANDING_VARIANT || 'new' }}
       PUBLIC_DEMO_ENABLED: ${{ vars.PUBLIC_DEMO_ENABLED || 'true' }}
       MAPS_GROUNDING: ${{ vars.MAPS_GROUNDING || 'live' }}
       MAPS_GROUNDING_CACHE_SECONDS: ${{ vars.MAPS_GROUNDING_CACHE_SECONDS || '86400' }}
@@ -117,6 +135,16 @@ jobs:
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: '24'
+          cache: npm
+      # First check after sign-in, before anything is built or pushed: stop if the live service
+      # holds an env var this release would not carry (names only are printed).
+      - name: Check live environment drift
+        run: |
+          FACE_WORKER_URL=$(gcloud run services describe ogoogle-face --project=ichiropractic --region=asia-south1 --format='value(status.url)')
+          export FACE_WORKER_URL
+          test -n "$FACE_WORKER_URL"
+          python deployment/runtime-config.py
+          python scripts/check-env-drift.py
       - name: Publish exact image assets to Firebase CDN (opt-in)
         if: vars.CDN_HOSTING_SITE != ''
         env:
@@ -178,20 +206,62 @@ jobs:
           url=$(gcloud run services describe ogoogle-face --project=ichiropractic --region=asia-south1 --format='value(status.url)')
           test -n "$url"
           echo "FACE_WORKER_URL=$url" >> "$GITHUB_ENV"
-      - name: Release main service
+      # Safe rollout: the new revision gets no traffic and a "candidate" tag URL, is smoke-tested
+      # there, and only then takes 100%. Any failure stops the run and traffic stays where it was.
+      # --update-env-vars / --update-secrets merge into the live service, so a variable set by
+      # hand is never dropped (the old release replaced the whole environment).
+      - name: Note the revision serving traffic now
+        run: |
+          previous=$(gcloud run services describe ogoogle-ai --project=ichiropractic --region=asia-south1 --format='value(status.traffic[0].revisionName)')
+          test -n "$previous"
+          echo "PREVIOUS_REVISION=$previous" >> "$GITHUB_ENV"
+          echo "Serving now: $previous"
+      - name: Deploy candidate revision (no traffic)
         run: |
           python deployment/runtime-config.py
-          gcloud run deploy ogoogle-ai --project=ichiropractic --region=asia-south1 \
-            --image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA" \
-            --service-account=ogoogle-runtime@ichiropractic.iam.gserviceaccount.com \
-            --env-vars-file=.deployment/runtime.json --allow-unauthenticated \
-            --update-secrets=FACE_WORKER_TOKEN=ogoogle-face-token:1,MAPS_SERVER_KEY=maps-server-key:1,MAPS_BROWSER_KEY=maps-browser-key:1 \
-            --cpu-boost --quiet
+          secrets=$(python -c 'import json; print(",".join(f"{k}={v}" for k, v in json.load(open("deployment/secrets.json")).items()))')
+          gcloud run deploy ogoogle-ai --project=ichiropractic --region=asia-south1             --image="asia-south1-docker.pkg.dev/ichiropractic/ogoogle-ai/app:$RELEASE_SHA"             --service-account=ogoogle-runtime@ichiropractic.iam.gserviceaccount.com             --update-env-vars="$(cat .deployment/update-env-vars.txt)"             --update-secrets="$secrets" --allow-unauthenticated             --min=1 --max=20 --concurrency=40 --timeout=3600 --cpu=1 --memory=2Gi             --no-cpu-throttling --session-affinity --cpu-boost             --no-traffic --tag=candidate --quiet
+          gcloud run services describe ogoogle-ai --project=ichiropractic --region=asia-south1 --format=json > .deployment/service.json
+          node -e '
+            const s = JSON.parse(require("fs").readFileSync(".deployment/service.json", "utf8"));
+            const t = s.status.traffic.find((x) => x.tag === "candidate");
+            if (!t) throw new Error("no candidate tag URL on the service");
+            console.log("CANDIDATE_URL=" + t.url);
+            console.log("CANDIDATE_REVISION=" + t.revisionName);
+          ' >> "$GITHUB_ENV"
+      - name: Install browser for the smoke check
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Smoke-test the candidate revision
+        env:
+          SMOKE_ORIGIN: ${{ env.CANDIDATE_URL }}
+          SMOKE_COACH_MODE: gemini
+          RELEASE_SHA: ${{ env.RELEASE_SHA }}
+        run: |
+          node scripts/hosting-smoke.mjs
+          node scripts/prod-smoke.mjs "$CANDIDATE_URL"
+      - name: Send all traffic to the candidate
+        id: cutover
+        run: |
+          gcloud run services update-traffic ogoogle-ai --project=ichiropractic --region=asia-south1             --to-revisions="$CANDIDATE_REVISION=100" --quiet
+          # Back to "always the latest revision" (a pinned revision makes the next deploy
+          # silently stay dark, OB-93), but only when the candidate is still the newest.
+          latest=$(gcloud run services describe ogoogle-ai --project=ichiropractic --region=asia-south1 --format='value(status.latestCreatedRevisionName)')
+          test "$latest" = "$CANDIDATE_REVISION"
+          gcloud run services update-traffic ogoogle-ai --project=ichiropractic --region=asia-south1 --to-latest --quiet
+          gcloud run services update-traffic ogoogle-ai --project=ichiropractic --region=asia-south1 --remove-tags=candidate --quiet
       - name: Verify the released revision
         env:
           SMOKE_ORIGIN: https://ogoogle-ai-176787245026.asia-south1.run.app
           SMOKE_COACH_MODE: gemini
+          RELEASE_SHA: ${{ env.RELEASE_SHA }}
         run: node scripts/hosting-smoke.mjs
+      - name: Roll back after a failed cutover
+        if: failure() && steps.cutover.outcome != 'skipped'
+        run: |
+          gcloud run services update-traffic ogoogle-ai --project=ichiropractic --region=asia-south1             --to-revisions="$PREVIOUS_REVISION=100" --quiet
+          echo "::error::Rolled traffic back to $PREVIOUS_REVISION; pin is left on purpose, see README (Deploy > Roll back)."
       - name: Remove generated credential configuration
         if: always()
-        run: rm -f .deployment/runtime.json
+        run: rm -f .deployment/runtime.json .deployment/update-env-vars.txt .deployment/service.json

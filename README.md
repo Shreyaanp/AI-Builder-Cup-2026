@@ -187,8 +187,49 @@ product rules; backend lint, format, types, tests against the Firestore emulator
 audit; the API contract (`backend/openapi.json` and `src/api/generated.d.ts` must match the
 code); frontend lint, build and formatting; Playwright on phone and desktop; the UX gate; and a
 check that the Docker image starts and answers. [`review-impact.yml`](.github/workflows/review-impact.yml)
-comments which areas a pull request can affect. Releases are manual
-([`deploy.yml`](.github/workflows/deploy.yml)) and rerun the checks first.
+comments which areas a pull request can affect.
+
+## Deploy
+
+[`deploy.yml`](.github/workflows/deploy.yml) releases to Cloud Run (project `ichiropractic`,
+service `ogoogle-ai`, `asia-south1`). It starts by itself when the checks pass on a push to
+main (docs-only pushes do not run them), and by hand from the Actions tab or
+`scripts/ship.ps1` for a hotfix or redeploy of a commit on main.
+
+1. **Gate.** Skipped when the commit is no longer the tip of main. The checks are rerun only
+   for a manual run whose commit has no passing push run.
+2. **Drift check.** `scripts/check-env-drift.py` stops the release if the live service holds an
+   env var or secret this release would not carry. Names only are printed, never values.
+3. **Build and push** the image tagged with the commit SHA. The face worker is built and
+   released only when the hash of its inputs changed.
+4. **Candidate.** The new revision is deployed with `--no-traffic --tag candidate`. Settings
+   merge into the live service (`--update-env-vars`, `--update-secrets`), so nothing set by
+   hand is dropped. Secrets are listed by name in `deployment/secrets.json` and are never
+   written to the repo. Minimum 1, maximum 20 instances, session affinity, CPU always on and
+   startup CPU boost are kept.
+5. **Smoke.** `scripts/hosting-smoke.mjs` (health, commit SHA) and `scripts/prod-smoke.mjs`
+   run against the candidate URL: landing, business sign-in, the `/demo` tour, explore, shop,
+   QR stamp and Passport, the voice websocket, and no 5xx response.
+6. **Cutover.** Only after the smoke passes: 100% of traffic to the candidate, then back to
+   "latest revision" and the tag removed. If anything fails before this step the run fails
+   and traffic stays where it was. A failure after it moves traffic back to the previous
+   revision.
+
+Run the same smoke by hand: `node scripts/prod-smoke.mjs [customerUrl] [businessUrl]` (defaults to
+production; one candidate URL serves both). Do not loop it: the demo workspace endpoint is rate
+limited and a burst of runs gets 429.
+
+**Roll back.**
+
+```sh
+gcloud run revisions list --service ogoogle-ai --region asia-south1 --project ichiropractic
+gcloud run services update-traffic ogoogle-ai --region asia-south1 --project ichiropractic   --to-revisions=<previous-revision>=100
+```
+
+That pins traffic to the old revision. The next release moves it again at its cutover. To go
+back to following the newest revision without a release, run the same command with
+`--to-latest`. Check `gcloud run services describe ogoogle-ai --format='value(status.traffic)'`
+afterwards: traffic left pinned is why a later deploy can silently serve nothing new.
 
 ## Privacy and safety
 

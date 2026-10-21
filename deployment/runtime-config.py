@@ -26,6 +26,8 @@ config = {
     "GOOGLE_LIVE_LOCATION": "us-central1",
     "GOOGLE_LIVE_MODEL": "gemini-3.8-live",
     "GOOGLE_EMBEDDING_LOCATION": "global",
+    # Cache the large shared Gemini prompt prefix (live since the context-cache release).
+    "GEMINI_CONTEXT_CACHE": "true",
     "V1_ENABLED": "true",
     "FEATURE_GOOGLE_GUIDE": os.environ.get("FEATURE_GOOGLE_GUIDE", "true"),
     "MERCHANT_BACKEND": "firestore",
@@ -52,13 +54,21 @@ config = {
     # Share links and QR codes made in the business app point customers here.
     "CUSTOMER_ORIGIN": "https://chalkboard.shreyaan.work",
     # Customer front door: "new" one-story page or "classic".
-    "LANDING_VARIANT": os.environ.get("LANDING_VARIANT", "classic").strip(),
+    "LANDING_VARIANT": os.environ.get("LANDING_VARIANT", "new").strip(),
     "GA_MEASUREMENT_ID": os.environ.get("GA_MEASUREMENT_ID", "").strip(),
-    # Hand-set on the live revision before; the env file replaces all env, so keep them here.
+    # Hand-set on the live revision before; keep them here so the drift check stays quiet.
     "PUBLIC_DEMO_ENABLED": os.environ.get("PUBLIC_DEMO_ENABLED", "true").strip(),
     "MAPS_GROUNDING": os.environ.get("MAPS_GROUNDING", "live").strip(),
     "MAPS_GROUNDING_CACHE_SECONDS": os.environ.get("MAPS_GROUNDING_CACHE_SECONDS", "86400").strip(),
-    "ALLOWED_ORIGINS": json.dumps([origin, "https://chalkboard.shreyaan.work", "https://business.chalkboard.shreyaan.work"]),
+    # Web Push and reminders: Cloud Scheduler calls the reminders endpoint with this account's
+    # OIDC token. The VAPID keys are secrets (deployment/secrets.json), never written here.
+    "WEB_PUSH_ENABLED": "true",
+    "WEB_PUSH_SUBJECT": "https://chalkboard.shreyaan.work",
+    "REMINDERS_CALLER": f"ogoogle-analytics-scheduler@{target['projectId']}.iam.gserviceaccount.com",
+    "REMINDERS_AUDIENCE": origin,
+    # The "candidate" tag URL is the no-traffic test address of a new revision (deploy.yml); the API and
+    # voice websocket must accept it, or the smoke check on it fails the origin check.
+    "ALLOWED_ORIGINS": json.dumps([origin, f"https://candidate---{target['service']}-{target['projectNumber']}.{target['region']}.run.app", "https://chalkboard.shreyaan.work", "https://business.chalkboard.shreyaan.work"]),
     "FIREBASE_WEB_API_KEY": os.environ["FIREBASE_WEB_API_KEY"].strip(),
     "FIREBASE_WEB_APP_ID": os.environ["FIREBASE_WEB_APP_ID"].strip(),
     "FIREBASE_AUTH_DOMAIN": f"{target['projectId']}.firebaseapp.com",
@@ -75,4 +85,12 @@ if config["LANDING_VARIANT"] not in {"new", "classic"}:
     raise SystemExit("LANDING_VARIANT must be new or classic.")
 output.parent.mkdir(exist_ok=True)
 output.write_text(json.dumps(config), encoding="utf-8")
+# Same values as a gcloud --update-env-vars argument. That flag merges into the live env, so a
+# variable set by hand and not listed here is kept, unlike --env-vars-file which replaces it all.
+# "^|^" makes | the separator, because ALLOWED_ORIGINS holds commas.
+if any("|" in value for value in config.values()):
+    raise SystemExit("Runtime configuration values must not contain the | character.")
+(output.parent / "update-env-vars.txt").write_text(
+    "^|^" + "|".join(f"{name}={value}" for name, value in config.items()), encoding="utf-8"
+)
 print("Prepared ignored Cloud Run runtime configuration; Vertex Gemini uses the runtime identity.")
