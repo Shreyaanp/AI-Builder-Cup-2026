@@ -7,8 +7,8 @@ import { useCopy } from './strings'
 import type { Api, Business, Me, Product, Proposal } from './api'
 import { WorkspaceContext } from './workspaceContext'
 import type { Destination, Editor, NewShopPhase, Workspace } from './workspaceContext'
-import { ReviewDialog } from './ReviewDialog'
-import { BusinessDialog, ProductDialog } from './EditDialogs'
+import { OnceOpened } from '../../app/OnceOpened'
+import { BusinessDialog, ProductDialog, ReviewDialog } from './workspaceDeferred'
 import { customerShopLink, safeCustomerOrigin } from '../../app/router'
 import { overlayHandled } from './backStack'
 import { track } from '../../app/analytics'
@@ -372,23 +372,25 @@ export function WorkspaceProvider({
   return (
     <WorkspaceContext value={value}>
       {children}
-      <ReviewDialog
-        proposal={proposal}
-        onClose={() => setProposal(null)}
-        onSaved={async (businessId) => {
-          const isNew = !businesses.some((shop) => shop.id === businessId)
-          const saved = proposal?.id
-          if (saved) setSavedProposals((ids) => [...ids, saved].slice(-40))
-          setProposal(null)
-          await reload()
-          setActiveId(businessId)
-          if (isNew) setDestination('coach')
-          await loadProducts(businessId).catch(() => undefined)
-          // Offer installation only after useful progress, never up front.
-          if (!isNew && canOfferInstall()) setInstallOffer(true)
-          else setToast(t.saved)
-        }}
-      />
+      <OnceOpened open={proposal !== null}>
+        <ReviewDialog
+          proposal={proposal}
+          onClose={() => setProposal(null)}
+          onSaved={async (businessId) => {
+            const isNew = !businesses.some((shop) => shop.id === businessId)
+            const saved = proposal?.id
+            if (saved) setSavedProposals((ids) => [...ids, saved].slice(-40))
+            setProposal(null)
+            await reload()
+            setActiveId(businessId)
+            if (isNew) setDestination('coach')
+            await loadProducts(businessId).catch(() => undefined)
+            // Offer installation only after useful progress, never up front.
+            if (!isNew && canOfferInstall()) setInstallOffer(true)
+            else setToast(t.saved)
+          }}
+        />
+      </OnceOpened>
       <Snackbar
         open={installOffer}
         message={t.install}
@@ -424,8 +426,16 @@ export function WorkspaceProvider({
           </>
         }
       />
-      <BusinessDialog />
-      <ProductDialog />
+      {value.editor.kind === 'business' && (
+        <Suspense fallback={null}>
+          <BusinessDialog />
+        </Suspense>
+      )}
+      {value.editor.kind === 'product' && (
+        <Suspense fallback={null}>
+          <ProductDialog />
+        </Suspense>
+      )}
       {value.active && faceLoaded && (
         <Suspense fallback={null}>
           <FaceDialog

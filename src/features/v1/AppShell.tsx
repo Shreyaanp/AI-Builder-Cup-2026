@@ -33,20 +33,30 @@ import { useTabsCopy } from './tabsCopy'
 import { PARENT_TAB, useWorkspace } from './workspaceContext'
 import type { Destination } from './workspaceContext'
 import { CoachWorkspace, type GalleryPhoto } from './screens/CoachScreen'
-import { NewShopFlow } from './NewShopFlow'
-import { TourHost } from '../tour/Tour'
 import { startDemoTour } from '../tour/tourActions'
 import { tourCopy } from '../tour/strings'
 import { useLocale } from '../../state/hooks'
-import { ShopOverview } from './ShopTiles'
 import { SubPage } from './screens/SubPage'
 import { DiscardPrompt } from './DiscardPrompt'
 import { useBackClose } from './backStack'
 import { useIdentity } from '../../auth/useIdentity'
 import { CoachGuide } from '../owner-tools/CoachGuide'
-import { PaymentsScreen } from '../owner-tools/PaymentsScreen'
 import { openOwnerFeature, useOwnerFeature } from '../owner-tools/entry'
 import { useToolCopy } from '../owner-tools/copy'
+import { deferred, useIdlePreload } from '../../app/deferred'
+import { BrandSplash } from '../frontdoors/Splash'
+import { coachDeferred } from './screens/coachDeferred'
+import { supplyDeferred } from '../supply/supplyDeferred'
+import { workspaceDeferred } from './workspaceDeferred'
+
+// OB-165: the coach is the first screen; the new-shop flow, the tour, payments and the large-
+// window shop tiles load apart from it, fetched while the phone is idle so a tap never waits.
+const NewShopFlow = deferred(() => import('./NewShopFlow').then((m) => m.NewShopFlow))
+const TourHost = deferred(() => import('../tour/Tour').then((m) => m.TourHost))
+const PaymentsScreen = deferred(() =>
+  import('../owner-tools/PaymentsScreen').then((m) => m.PaymentsScreen),
+)
+const ShopOverview = deferred(() => import('./ShopTiles').then((m) => m.ShopOverview))
 
 // Tab screens other than the coach load when first opened.
 const ShopScreen = lazy(() =>
@@ -84,6 +94,14 @@ export function AppShell() {
   const showNavBar = !rail && !keyboard && !inFlow
   // Large windows: My shop tiles beside the coach (phones keep the coach to one card).
   const supporting = useMediaQuery(`(min-width:${windowClass.large}px)`)
+  // Onboarding first: "+" must open the new-shop conversation at once.
+  useIdlePreload(
+    NewShopFlow.preload,
+    ...workspaceDeferred,
+    ...coachDeferred,
+    ...supplyDeferred,
+    PaymentsScreen.preload,
+  )
   useEffect(() => {
     if (!feature) return
     const previousTitle = document.title
@@ -131,7 +149,11 @@ export function AppShell() {
 
   return (
     <>
-      {inFlow && <NewShopFlow setGalleryPhoto={setGalleryPhoto} />}
+      {inFlow && (
+        <Suspense fallback={<BrandSplash business />}>
+          <NewShopFlow setGalleryPhoto={setGalleryPhoto} />
+        </Suspense>
+      )}
       <Box
         sx={{
           display: inFlow ? 'none' : 'flex',
@@ -168,7 +190,9 @@ export function AppShell() {
         )}
         <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <TopBar />
-          <TourHost />
+          <Suspense fallback={null}>
+            <TourHost />
+          </Suspense>
           <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
             <Box
               component="main"
@@ -189,13 +213,15 @@ export function AppShell() {
               <Box hidden={destination !== 'coach' || feature !== null} sx={{ height: '100%' }}>
                 <CoachWorkspace galleryPhoto={galleryPhoto} setGalleryPhoto={setGalleryPhoto} />
               </Box>
-              {feature === 'guide' ? (
-                <CoachGuide />
-              ) : feature === 'payments' ? (
-                <PaymentsScreen key={ws.activeId} />
-              ) : (
-                <Suspense fallback={null}>{screen}</Suspense>
-              )}
+              <Suspense fallback={null}>
+                {feature === 'guide' ? (
+                  <CoachGuide />
+                ) : feature === 'payments' ? (
+                  <PaymentsScreen key={ws.activeId} />
+                ) : (
+                  screen
+                )}
+              </Suspense>
             </Box>
             {supporting && destination === 'coach' && !feature && ws.active && !inFlow && (
               <Box
@@ -213,7 +239,9 @@ export function AppShell() {
                   overflowY: 'auto',
                 }}
               >
-                <ShopOverview key={ws.active.id} narrow />
+                <Suspense fallback={null}>
+                  <ShopOverview key={ws.active.id} narrow />
+                </Suspense>
               </Box>
             )}
           </Box>
@@ -410,7 +438,11 @@ function TopBar() {
       )}
       {/* "+" opens the full-screen new-shop flow (never a form dialog). */}
       <Tooltip title={t.addShop}>
-        <IconButton aria-label={t.addShop} onClick={ws.startNewShop}>
+        <IconButton
+          aria-label={t.addShop}
+          onPointerDown={() => void NewShopFlow.preload().catch(() => {})}
+          onClick={ws.startNewShop}
+        >
           <Plus size={22} />
         </IconButton>
       </Tooltip>

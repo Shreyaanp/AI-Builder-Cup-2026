@@ -112,6 +112,7 @@ from .today import router as today_router
 from .trust_routes import router as trust_router
 from .tts import Speech
 from .voice import serve_voice
+from .warmup import firestore_clients, warm_firestore
 
 log = structlog.get_logger()
 SSE_HEARTBEAT_SECONDS = 15
@@ -221,6 +222,14 @@ def create_app(
             app.state.maps.shared = shared_places(client, settings)
         app.state.grounding = AreaGrounding(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
+        # OB-78: the first visitor after a deploy no longer opens these connections.
+        await anyio.to_thread.run_sync(
+            warm_firestore,
+            firestore_clients(
+                app.state.merchant, app.state.recall, app.state.community, app.state.rate_limiter
+            ),
+            settings.firestore_namespace,
+        )
         retail = (
             RetailClient(settings.google_cloud_project)
             if (settings.recs_enabled or settings.recs_events_enabled)
