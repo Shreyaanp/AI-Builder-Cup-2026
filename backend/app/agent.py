@@ -55,7 +55,7 @@ from .region import region_rule, shop_region
 from .region import shop_currency as shop_currency_of
 from .reply_language import language_rule, reply_language
 from .settings import Settings
-from .shop_details import report_unsupported_request, update_shop_details
+from .shop_details import DAYS, clock, report_unsupported_request, update_shop_details
 from .sourcing_offline import sourcing_call, sourcing_reply
 from .supply_offline import supply_call, supply_reply
 from .supply_tools import SUPPLY_TOOLS
@@ -379,9 +379,16 @@ MOVE_SHOP = re.compile(
 )
 SHOP_TIME = re.compile(
     r"\b(?P<which>open|close)s?\s+(?:at\s+)?(?P<hour>\d{1,2})(?::(?P<minute>[0-5]\d))?"
-    r"\s*(?P<period>am|pm)?\b",
+    r"\s*(?P<period>am|pm)?\b(?!\s*days?\b)",
     re.I,
 )
+# "We open 7 to 9 every day" (the app guide's own example): the whole day, never half of it.
+SHOP_RANGE = re.compile(
+    r"\bopen\s+(?:from\s+|at\s+)?(?P<open>\d{1,2}(?::[0-5]\d)?\s*(?:am|pm)?)\s*"
+    r"(?:to|till|until|-|–)\s*(?P<close>\d{1,2}(?::[0-5]\d)?\s*(?:am|pm)?)\b(?!\s*days?\b)",
+    re.I,
+)
+SOME_DAYS = re.compile(r"\b(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\b|\bweek(?:day|end)s?\b", re.I)
 UNSUPPORTED = (
     (re.compile(r"\b(?:instagram|facebook|insta|tiktok|youtube)\b", re.I), "social_media_post"),
     (re.compile(r"\b(?:swiggy|zomato|grabfood|foodpanda)\b", re.I), "delivery_app_listing"),
@@ -396,6 +403,16 @@ UNCLEAR = re.compile(
 )
 CLARIFY = "What should I change: the name, hours, location or phone?"
 CLARIFY_TIME = "Opening or closing time, and what time?"
+CLARIFY_DAYS = "Which days are those hours for?"
+
+
+def said_time(said: str, *, night: bool) -> str | None:
+    """A time from an hours range: "9pm" and "21:00" as said; a bare "9" is the morning when the
+    shop opens and the night when it closes ("7 to 9" is 07:00-21:00)."""
+    if exact := clock(said):
+        return exact
+    hour, _, minute = said.strip().partition(":")
+    return clock(f"{int(hour) + (12 if night and int(hour) < 12 else 0)}:{minute or '00'}")
 
 
 def details_call(question: str, ctx: Any) -> types.Part | None:
@@ -419,7 +436,18 @@ def details_call(question: str, ctx: Any) -> types.Part | None:
             )
     if moved := MOVE_SHOP.match(text):
         return call("update_shop_details", {"field": "location", "value": moved["place"]})
+    if "?" not in text and (span := SHOP_RANGE.search(text)):
+        opens, closes = said_time(span["open"], night=False), said_time(span["close"], night=True)
+        if SOME_DAYS.search(text):
+            return types.Part(text=CLARIFY_DAYS)
+        if not (opens and closes and opens < closes):
+            return types.Part(text=CLARIFY_TIME)
+        week = [{"day": day, "closed": False, "open": opens, "close": closes} for day in DAYS]
+        return call("update_shop_details", {"field": "weekly_hours", "weekly_hours": week})
     if "?" not in text and (said := SHOP_TIME.search(text)):
+        if re.search(r"\d", text[: said.start()] + text[said.end() :]):
+            # A second number ("9 on weekdays, 10 on Sundays"): one question, never half of it.
+            return types.Part(text=CLARIFY_TIME)
         hour, period = int(said["hour"]), (said["period"] or "").lower()
         if period:
             value = f"{said['hour']}:{said['minute'] or '00'} {period}"

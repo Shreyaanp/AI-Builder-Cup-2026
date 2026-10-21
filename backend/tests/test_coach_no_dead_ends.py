@@ -100,6 +100,50 @@ def test_ob172_we_close_at_9_now_prepares_the_hours(coach) -> None:
         assert all(day["open"] == "07:00" and day["close"] == "21:00" for day in week)
 
 
+@pytest.mark.parametrize(
+    ("message", "opens", "closes"),
+    [
+        ("We open 7 to 9 every day", "07:00", "21:00"),
+        ("we're open from 8am till 10:30pm", "08:00", "22:30"),
+    ],
+)
+def test_ob172_the_guide_example_we_open_7_to_9_sets_the_whole_day(
+    coach, message: str, opens: str, closes: str
+) -> None:
+    """Review of #537: app_guide.py tells owners to say "We open 7 to 9 every day"; the offline
+    coach took only "open 7" and kept the old 14:00 closing time."""
+    with TestClient(coach) as client:
+        join(client)
+        bid = pinned_shop(client, items=True)
+        events = stream_events(client, {"message": message, "business_id": bid})
+        proposal = next(e["data"] for e in events if e["kind"] == "proposal")
+        assert isinstance(proposal, dict)
+        week = proposal["snapshot"]["business"]["weekly_hours"]
+        assert len(week) == 7
+        assert all(day["open"] == opens and day["close"] == closes for day in week)
+
+
+@pytest.mark.parametrize(
+    ("message", "question"),
+    [
+        ("we're open 7 days a week", None),
+        ("we close at 9 on weekdays and 10 on Sundays", "Opening or closing"),
+        ("we open 7 to 9 on weekdays", "Which days"),
+    ],
+)
+def test_ob172_hours_never_become_half_an_action(coach, message: str, question: str | None) -> None:
+    """Review of #537: "open 7 days a week" became opening_time 07:00. A day count is not a time,
+    and hours the coach can only half read get one question instead of a partial card."""
+    with TestClient(coach) as client:
+        join(client)
+        bid = pinned_shop(client, items=True)
+        events = stream_events(client, {"message": message, "business_id": bid})
+        assert "proposal" not in kinds(events)
+        if question:
+            text = reply(events)
+            assert question in text and text.count("?") == 1
+
+
 def test_ob172_post_on_instagram_is_honest_counted_and_invents_nothing(coach) -> None:
     with TestClient(coach) as client:
         join(client)
