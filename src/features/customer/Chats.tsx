@@ -1,3 +1,4 @@
+import { AppHeader } from '../../design/AppHeader'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import {
@@ -492,19 +493,12 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
       }}
     >
       {/* Header: back, the shop (shared element from the list), live state. */}
-      <Stack
-        direction="row"
-        spacing={2}
+      <AppHeader
         sx={{
-          position: 'sticky',
-          top: 0,
           zIndex: 3,
-          alignItems: 'center',
-          px: 1,
-          pt: 'calc(env(safe-area-inset-top) + 8px)',
-          pb: 1,
           bgcolor: roles.surfaceContainer,
-          borderBottom: `1px solid ${roles.outlineVariant}`,
+          justifyContent: 'flex-start',
+          boxShadow: `inset 0 -1px ${roles.outlineVariant}`,
         }}
       >
         <IconButton
@@ -547,7 +541,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
         ) : (
           <Skeleton variant="circular" width={40} height={40} />
         )}
-      </Stack>
+      </AppHeader>
 
       <Box
         component="ol"
