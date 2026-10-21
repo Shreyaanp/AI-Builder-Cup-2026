@@ -24,11 +24,14 @@ for (const theme of THEMES) {
       )
 
       await page.goto('/?app=landing')
+      // A cold dev server can take longer than the default 5 s to render the first page.
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
       const logo = page.locator('header').getByRole('link', { name: 'Chalkboard', exact: true })
       await expectTarget(logo)
       await expect(logo).toHaveAttribute('href', '/')
 
       await page.goto('/?app=business')
+      await expect(page.getByRole('button', { name: 'Terms' })).toBeVisible({ timeout: 20_000 })
       for (const name of ['Terms', 'Privacy Notice']) {
         const control = page.getByRole('button', { name, exact: true })
         await control.scrollIntoViewIfNeeded()
