@@ -200,7 +200,7 @@ export function CameraCard({
         ...enterRise,
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 1.5 }}>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 2 }}>
         <Camera size={20} aria-hidden="true" color={roles.primary} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography component="h3" variant="titleSmall">
@@ -269,7 +269,7 @@ export function CameraCard({
         >
           <AlertTitle>{problemTitle}</AlertTitle>
           <Typography variant="bodyMedium">{problemBody}</Typography>
-          <Stack direction="row" sx={{ gap: 1, mt: 1.5, flexWrap: 'wrap' }}>
+          <Stack direction="row" sx={{ gap: 1, mt: 2, flexWrap: 'wrap' }}>
             {problem !== 'no-camera' && (
               <Button variant="contained" size="small" onClick={() => void start()}>
                 {v.tryAgain}
