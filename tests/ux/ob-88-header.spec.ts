@@ -3,7 +3,7 @@ import { THEMES, VIEWPORTS } from './rules.js'
 
 for (const theme of THEMES) {
   for (const viewport of VIEWPORTS) {
-    test(`OB-88 Ask header keeps its logo and controls at ${viewport.width} in ${theme}`, async ({
+    test(`OB-88 OB-175 Ask header keeps its logo and controls at ${viewport.width} in ${theme}`, async ({
       page,
     }) => {
       await page.setViewportSize(viewport)
@@ -28,7 +28,17 @@ for (const theme of THEMES) {
       }, theme)
       await page.goto('/explore/')
       await expect(page.locator('main').getByRole('textbox').first()).toBeVisible()
-      const logo = page.locator('main [data-brand-logo]')
+      // OB-175: keep main's shared semantic header and safe-area baseline after merging OB-88.
+      const header = page.locator('main header[data-app-header]')
+      await expect(header).toHaveCSS('height', '64px')
+      await header.evaluate((element) =>
+        (element as HTMLElement).style.setProperty('--app-header-safe-top', '24px'),
+      )
+      await expect(header).toHaveCSS('height', '88px')
+      await header.evaluate((element) =>
+        (element as HTMLElement).style.removeProperty('--app-header-safe-top'),
+      )
+      const logo = header.locator('[data-brand-logo]')
       await expect(logo).toBeVisible()
       await expect(logo).toHaveAttribute('href', '/explore/')
       const area = page.getByRole('button', { name: /Tiong Bahru with a very long/ })

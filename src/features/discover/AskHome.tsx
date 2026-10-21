@@ -1,3 +1,4 @@
+import { AppHeader } from '../../design/AppHeader'
 import { carried, pushEntry } from '../../app/history'
 import { BrandLogo } from '../../design/BrandLogo'
 import { AiInfo } from '../v1/AiInfo'
@@ -724,19 +725,11 @@ export default function AskHome({
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
       <Box sx={{ maxWidth: 720, mx: 'auto', px: 4 }}>
         {/* Brand, nearby area and personal controls; secondary actions live in the profile. */}
-        <Stack
-          direction="row"
+        <AppHeader
           sx={{
-            position: 'sticky',
-            top: 0,
             zIndex: 1100,
             mx: -4,
-            px: 4,
-            alignItems: 'center',
             gap: 1,
-            pt: 'max(8px, env(safe-area-inset-top))',
-            pb: 1,
-            minHeight: 64,
             bgcolor: roles.surface,
           }}
         >
@@ -771,7 +764,7 @@ export default function AskHome({
             <LanguagePicker variant="inline" />
             <AppearanceToggle inline />
           </Stack>
-        </Stack>
+        </AppHeader>
         {changing && (
           <Box className="c-rise" sx={{ mb: 4 }}>
             <PlaceSearch value={place.label} onFound={(found) => choosePlace(found)} />
@@ -1297,12 +1290,11 @@ function TodayEntry({
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography
+          variant="titleMedium"
           sx={{
             // Keep numerals on the same baseline as Indic scripts; Caveat's Latin metrics
             // lift ASCII digits above Noto Sans Tamil glyphs.
-            fontSize: 'clamp(1.125rem, 5vw, 1.5rem)',
             fontWeight: 700,
-            lineHeight: 1.15,
             overflowWrap: 'break-word',
           }}
         >
