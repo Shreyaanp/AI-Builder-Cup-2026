@@ -1,3 +1,4 @@
+import { confirmShopPin, suggestShopPin } from '../pinSupport.js'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly } from '../stories/support.js'
 import { FIRST_QUESTION } from '../newShopTopics.js'
@@ -10,6 +11,7 @@ test.use({
 
 test.beforeEach(async ({ page }) => {
   await localOnly(page)
+  await suggestShopPin(page)
 })
 
 async function startNewShop(page: Page) {
@@ -95,7 +97,7 @@ test.describe('Onboarding end-to-end flows on phone (390px)', () => {
     )
   })
 
-  test('typed flow: providing all 3 fields upfront marks shop live automatically', async ({
+  test('typed flow: OB-168 providing all 3 fields upfront requires pin confirmation before going live', async ({
     page,
   }) => {
     test.setTimeout(90_000)
@@ -106,6 +108,9 @@ test.describe('Onboarding end-to-end flows on phone (390px)', () => {
       page,
       'name: Golden Bakes; category: Bakery; location: Koramangala 4th Block, Bengaluru',
     )
+    // OB-168: the supplied place stays private until the owner confirms its pin.
+    await expect(page.getByTestId('shop-live')).toHaveCount(0)
+    await confirmShopPin(page)
     await expect(page.getByTestId('shop-live')).toHaveText('Live', { timeout: 15_000 })
 
     // Ending conversation and reviewing goes directly to congratulations

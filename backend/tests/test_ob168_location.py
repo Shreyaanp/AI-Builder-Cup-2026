@@ -234,3 +234,26 @@ async def test_ob168_first_pin_repairs_legacy_usd_utc_without_changing_prices(
         client_country.reset(country)
         client_language_country.reset(language)
         client_timezone.reset(zone)
+
+
+@pytest.mark.parametrize("language", ["en", "hi"])
+def test_ob189_known_address_requests_pin_instead_of_repeating_place_question(language):
+    from types import SimpleNamespace
+
+    from app.agent import OFFLINE_HI, new_shop_reply, ui_language
+
+    token = ui_language.set(language)
+    try:
+        ctx = SimpleNamespace(
+            uid="owner",
+            new_shop_draft=NewShopDraft(
+                business=BusinessFields(name="Chai", category="Tea", location="Lajpat Nagar")
+            ),
+        )
+        reply = new_shop_reply(ctx)
+        assert ("map pin" if language == "en" else "नक्शे पर") in reply
+        question = "Are you at the shop right now?"
+        assert question not in reply
+        assert OFFLINE_HI[next(key for key in OFFLINE_HI if key.startswith(question))] not in reply
+    finally:
+        ui_language.reset(token)

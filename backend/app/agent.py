@@ -658,6 +658,7 @@ OFFLINE_HI = {
     "Which brands do customers mostly come to you for?": (
         "ग्राहक आपके पास ज़्यादातर किन ब्रांड के लिए आते हैं?"
     ),
+    "Confirm your shop on the map pin.": "नक्शे पर अपनी दुकान की जगह पक्की करें।",
     GOODBYE: "ठीक है, जल्द मिलते हैं। सब कुछ सहेज लिया गया है।",
     "No problem. Just say something like: I sell tea and snacks. ": (
         "कोई बात नहीं। बस ऐसे बताइए: मैं चाय और नाश्ता बेचता हूँ। "
@@ -815,6 +816,8 @@ def _new_shop_reply(
         prefix += "Your shop is live now. "
     questions = dict((key, q) for key, q, _ in NEW_SHOP_TOPICS)
     question = next((questions[key] for key in order if not done[key] and key not in skipped), None)
+    if question == questions["location"] and fields and fields.location:
+        return prefix + "Confirm your shop on the map pin."
     if not question and ready_to_go_live(draft):
         # The business's own follow-ups (within the budget of two), each once.
         pending = [k for k in pending_extras(draft) if f"extra:{k}" not in skipped]
@@ -1223,8 +1226,12 @@ questions: the menu is added later from Today).
   update_shop(skip=["hours"]) and move on cheerfully. Never invent hours.
 - Photo: ask for a photo of the shop and call show_step "camera" (it has a big Skip). "baad
   mein" or a skip: update_shop(skip=["photo"]) and move on.
-- The shop goes live by itself as soon as its name, kind and place are known; when that happens
-  say so once in a few words ("aapki dukaan ab live hai") and continue with what is left.
+- A place name alone is not a confirmed pin. When a place is known but its pin is missing,
+  call show_step "location" and ask them to confirm the suggested map pin; never ask the place
+  again. Wait for the confirmed coordinates before calling it live.
+- The shop goes live by itself as soon as its name, kind and confirmed pin are known;
+  when that happens say so once in a few words ("aapki dukaan ab live hai") and continue
+  with what is left.
 - When everything is gathered or skipped: one short closing sentence (the app shows the summary
   card), then offer the optional face check once (show_step "face_check"); if they decline,
   wish them well. No more questions after that.

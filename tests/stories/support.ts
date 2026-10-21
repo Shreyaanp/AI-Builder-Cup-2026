@@ -1,3 +1,4 @@
+import { confirmShopPin, suggestShopPin } from '../pinSupport.js'
 import { expect, test, type Page } from '@playwright/test'
 import { FIRST_QUESTION } from '../newShopTopics.js'
 import { readFileSync } from 'node:fs'
@@ -105,6 +106,7 @@ export async function openNewShopReview(
   page: Page,
   details = 'name: Courtyard Chai; category: Tea stall; location: Indiranagar, Bengaluru',
 ) {
+  await suggestShopPin(page)
   const begin = page.getByRole('button', { name: 'Let’s begin' })
   if (!(await begin.isVisible()))
     await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
@@ -144,16 +146,24 @@ export async function createShopFromReview(page: Page) {
   if (!(await summary.isVisible())) await page.getByTestId('review-my-shop').click()
   const empty = async (field: string) =>
     (await summary.locator(`[data-field="${field}"]`).getAttribute('data-filled')) === 'false'
+  const needsPin = await empty('location')
   const missing = [
     (await empty('category')) ? 'category: Tea stall' : '',
-    (await empty('location')) ? 'location: Indiranagar, Bengaluru' : '',
+    (await summary.locator('[data-field="location"]').getByText('Not yet', { exact: true }).count())
+      ? 'location: Tiong Bahru, Singapore'
+      : '',
   ].filter(Boolean)
   await closeSheet(page)
   if (missing.length) {
     await page.getByLabel('Message', { exact: true }).fill(missing.join('; '))
     await page.getByRole('button', { name: 'Send', exact: true }).click()
   }
+  if (needsPin) await confirmShopPin(page)
   await expect(page.getByTestId('shop-live')).toBeVisible()
+  // OB-190: finish the confirmation turn before setup leaves onboarding.
+  const mute = page.getByRole('button', { name: /^Mute the coach/ })
+  if (await mute.isVisible()) await mute.click()
+  await expect(page.getByRole('status').filter({ hasText: 'Type your answer' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
   await page.getByRole('button', { name: 'Continue with my shop' }).click()
@@ -232,6 +242,10 @@ export async function seedShop(page: Page, withPhotoPin = false, name = shopName
         reward_text: 'Your eighth chai is free',
         stamps_needed: 8,
       },
+      // OB-168: API setup confirms a pin too; photo setup retains its own GPS evidence.
+      ...(pinned
+        ? {}
+        : { owner_location: { lat: 12.9716, lng: 77.6412, accuracy_m: 0, source: 'pin' } }),
       products: pinned ? [] : products,
     },
   })

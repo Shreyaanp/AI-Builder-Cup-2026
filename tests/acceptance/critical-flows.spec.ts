@@ -1,3 +1,4 @@
+import { confirmShopPin, suggestShopPin } from '../pinSupport.js'
 import { readFileSync } from 'node:fs'
 import {
   expect,
@@ -21,6 +22,7 @@ import { expectCount } from './stamps.js'
 test.use({ colorScheme: 'light', reducedMotion: 'reduce' })
 test.beforeEach(async ({ page }) => {
   await localOnly(page)
+  await suggestShopPin(page)
 })
 
 const LANGUAGES = [
@@ -201,7 +203,7 @@ for (const language of LANGUAGES) {
   test.describe(`vendor onboarding · ${language.name}`, () => {
     test.use({ locale: language.locale })
 
-    test('one sentence puts the shop live; no menu or halal question; hours skip; photo Skip; summary; face skip; Today asks for the menu', async ({
+    test('OB-168 one sentence and pin confirmation put the shop live; no menu or halal question; hours skip; photo Skip; summary; face skip; Today asks for the menu', async ({
       page,
     }) => {
       dependsOn('onboarding v2 (#91)', onboardingV2)
@@ -215,6 +217,10 @@ for (const language of LANGUAGES) {
         copy,
         'name: Clean Helmet Point; category: self-cleaning helmet station; location: MG Road metro',
       )
+      await expect(page.getByTestId('shop-live')).toHaveCount(0)
+      expect(await businesses(page)).toHaveLength(0)
+      // OB-168: a place name is retained, but publication waits for its confirmed pin.
+      await confirmShopPin(page, copy.confirmPin!)
       await expect(page.getByTestId('shop-live')).toHaveText(copy.live!)
       await expect(page.getByTestId('shop-so-far')).toContainText('Clean Helmet Point')
       // Nothing already answered is asked; only hours and the photo are left (any order).
@@ -437,14 +443,9 @@ for (const language of LANGUAGES) {
     // The server saves the answer, but the network drops before the phone hears back.
     drop = true
     const afterPlace = await owner(first, 'location: Lajpat Nagar')
-    // A tea stall may get its one trade question first, then the hours, then the photo.
-    const rest = ['hours', 'photo'].find((topic) => afterPlace.includes(ASKED[topic as 'hours']))
-      ? afterPlace.includes(ASKED.hours)
-        ? 'hours'
-        : 'photo'
-      : 'extra'
-    if (rest === 'extra') expect(afterPlace).toMatch(EXTRA_QUESTION)
-    else expect(afterPlace).toContain(ASKED[rest])
+    // OB-168 / OB-189: the saved address still needs its pin, never another place question.
+    expect(afterPlace).toContain(language.code === 'hi' ? 'नक्शे पर' : 'map pin')
+    expect(afterPlace).not.toContain(ASKED.place)
     first.route.close({ code: 4000, reason: 'Connection interrupted' })
     drop = false
     // The app reconnects by itself to the same conversation, with no alert and no dead end.
@@ -455,11 +456,28 @@ for (const language of LANGUAGES) {
     await expect.poll(() => second.received.some((m) => m.includes('"ready"'))).toBe(true)
     expect(second.received.join('\n')).not.toContain('"kind":"error"')
     await expect(card).toContainText('Lajpat Nagar')
-    await expect(page.getByTestId('shop-live')).toHaveText(copy.live!)
+    await expect(page.getByTestId('shop-live')).toHaveCount(0)
+    expect(await businesses(page)).toHaveLength(0)
     await expect(page.getByTestId('voice-alert')).toHaveCount(0)
     // Silent resume, then the next missing field, never an answered one.
     await page.waitForTimeout(2_000)
     expect(second.received.filter((m) => m.includes('"kind":"reply"'))).toHaveLength(0)
+    await confirmShopPin(page, copy.confirmPin!)
+    await expect(page.getByTestId('shop-live')).toHaveText(copy.live!)
+    await expect.poll(() => completed(second)).toBeGreaterThan(0)
+    const afterPin =
+      second.received
+        .map((m) => JSON.parse(m) as { kind: string; text?: string })
+        .filter((e) => e.kind === 'reply')
+        .at(-1)?.text ?? ''
+    // A tea stall may get its trade question first, then hours, then photo.
+    const rest = afterPin.includes(ASKED.hours)
+      ? 'hours'
+      : afterPin.includes(ASKED.photo)
+        ? 'photo'
+        : 'extra'
+    if (rest === 'extra') expect(afterPin).toMatch(EXTRA_QUESTION)
+    else expect(afterPin).toContain(ASKED[rest])
     const next = await owner(second, DONT_KNOW[language.code]!)
     if (rest !== 'photo') expect(next).toContain(rest === 'hours' ? ASKED.photo : ASKED.hours)
     for (const done of [ASKED.name, ASKED.kind, ASKED.place]) expect(next).not.toContain(done)

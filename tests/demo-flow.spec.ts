@@ -1,3 +1,4 @@
+import { suggestShopPin } from './pinSupport.js'
 import { expect, test, type Page } from '@playwright/test'
 
 async function png(page: Page, width: number): Promise<Buffer> {
@@ -68,6 +69,16 @@ test('demo: photo, price correction, customer page and availability', async ({
   await expect(page.getByRole('button', { name: 'Edit price: Chai, S$12.00' })).toBeVisible()
   await closeSheet()
 
+  // OB-168: the photo's address needs an owner-confirmed pin before sharing.
+  await suggestShopPin(page)
+  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page
+    .getByTestId('map-card')
+    .getByRole('button', { name: 'This is my shop', exact: true })
+    .click()
+  await expect(review).toBeVisible()
+  await review.getByRole('button', { name: 'Confirm and save' }).click()
+  await expect(review).not.toBeVisible()
   await page.getByRole('button', { name: /^Customer page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   await sharing.click()
