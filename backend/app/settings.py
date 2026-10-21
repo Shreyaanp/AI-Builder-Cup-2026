@@ -9,6 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     app_env: Literal["local", "test", "production"] = "local"
+    # Number of trusted proxies appended to X-Forwarded-For. Keep zero for local/test.
+    trusted_proxy_hops: int = Field(default=0, ge=0)
     public_demo_enabled: bool = False
     coach_mode: Literal["offline", "gemini"] = "offline"
     forecast_backend: Literal["weekday_average", "bigquery"] = "weekday_average"

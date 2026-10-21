@@ -7,13 +7,16 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
+from fastapi.testclient import TestClient
 from google.auth.credentials import AnonymousCredentials
 from google.cloud import firestore
 from starlette.requests import Request
+from starlette.websockets import WebSocket
 
 from app.limits import (
     LIMITS,
+    PAID_OWNER_ACTIONS,
     Bucket,
     FirestoreRateLimiter,
     InMemoryRateLimiter,
@@ -92,13 +95,24 @@ def test_memory_discards_expired_windows() -> None:
     assert len(limiter.counters) == 1
 
 
-def connection(limiter: RateLimiter, forwarded: str = "") -> Request:
+def connection(
+    limiter: RateLimiter, *forwarded: str, app_env: str = "test", trusted_proxy_hops: int = 0
+) -> Request:
     return Request(
         {
             "type": "http",
-            "headers": [(b"x-forwarded-for", forwarded.encode())],
+            "headers": [(b"x-forwarded-for", value.encode()) for value in forwarded or ("",)],
             "client": ("127.0.0.1", 1234),
-            "app": SimpleNamespace(state=SimpleNamespace(rate_limiter=limiter)),
+            "app": SimpleNamespace(
+                state=SimpleNamespace(
+                    rate_limiter=limiter,
+                    v1_settings=SimpleNamespace(
+                        app_env=app_env,
+                        rate_limits_enabled=True,
+                        trusted_proxy_hops=trusted_proxy_hops,
+                    ),
+                )
+            ),
         }
     )
 
@@ -106,6 +120,64 @@ def connection(limiter: RateLimiter, forwarded: str = "") -> Request:
 def test_forwarded_ip_and_fallback() -> None:
     assert client_ip(connection(InMemoryRateLimiter(), " 192.0.2.1, 192.0.2.2")) == "192.0.2.1"
     assert client_ip(connection(InMemoryRateLimiter())) == "127.0.0.1"
+
+
+# Behind chalkboard-https: '<caller-supplied...>, <client>, <load balancer>' (PROD-FACTS).
+BALANCER = "198.51.100.1"
+
+
+def behind_balancer(*forwarded: str) -> str:
+    return client_ip(
+        connection(InMemoryRateLimiter(), *forwarded, app_env="production", trusted_proxy_hops=2)
+    )
+
+
+def test_ob90_spoofed_leading_entries_never_change_the_client() -> None:
+    real = "192.0.2.99"
+    assert behind_balancer(f"{real}, {BALANCER}") == real
+    assert behind_balancer(f"203.0.113.44, {real}, {BALANCER}") == real
+    assert behind_balancer(f"10.0.0.1, 203.0.113.44, 8.8.8.8, {real}, {BALANCER}") == real
+    # A second X-Forwarded-For header cannot hide the entries the balancer appended.
+    assert behind_balancer("203.0.113.44", f"{real}, {BALANCER}") == real
+
+
+def test_ob90_two_clients_behind_the_balancer_get_their_own_address() -> None:
+    assert behind_balancer(f"192.0.2.10, {BALANCER}") == "192.0.2.10"
+    assert behind_balancer(f"192.0.2.11, {BALANCER}") == "192.0.2.11"
+
+
+def test_ob90_zero_trusted_proxy_hops_keeps_first_entry_behavior() -> None:
+    assert client_ip(connection(InMemoryRateLimiter(), "203.0.113.44, 192.0.2.99")) == (
+        "203.0.113.44"
+    )
+    assert client_ip(connection(InMemoryRateLimiter(), "203.0.113.44", "192.0.2.99")) == (
+        "203.0.113.44"
+    )
+
+
+def test_ob90_direct_run_app_request_is_not_one_shared_bucket() -> None:
+    # Fewer entries than hops: the request skipped the balancer. Each caller keeps its own
+    # address instead of all of them sharing Google's front-end peer address.
+    assert behind_balancer("192.0.2.10") == "192.0.2.10"
+    assert behind_balancer("192.0.2.11") == "192.0.2.11"
+    assert behind_balancer() == "127.0.0.1"
+
+
+def test_ob90_voice_websocket_uses_the_same_client_address() -> None:
+    app = FastAPI()
+    app.state.v1_settings = Settings(trusted_proxy_hops=2, _env_file=None)
+
+    @app.websocket("/ws")
+    async def address(websocket: WebSocket) -> None:
+        await websocket.accept()
+        await websocket.send_text(client_ip(websocket))
+        await websocket.close()
+
+    with TestClient(app) as client:
+        for spoof in ("203.0.113.44", "198.51.100.88"):
+            headers = {"x-forwarded-for": f"{spoof}, 192.0.2.99, {BALANCER}"}
+            with client.websocket_connect("/ws", headers=headers) as socket:
+                assert socket.receive_text() == "192.0.2.99"
 
 
 @pytest.mark.asyncio
@@ -125,6 +197,42 @@ async def test_store_failure_opens_for_owner_closes_for_anonymous() -> None:
     assert rejected.value.status_code == 429
     assert rejected.value.detail == "RATE_LIMITED"
     assert rejected.value.headers == {"Retry-After": "60"}
+
+
+def failing_store() -> Request:
+    limiter = Mock(spec=RateLimiter)
+    limiter.take.side_effect = RuntimeError("Store unavailable")
+    return connection(limiter)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("action", sorted(PAID_OWNER_ACTIONS))
+async def test_ob91_store_outage_keeps_paid_owner_limits_per_instance(action: str) -> None:
+    request = failing_store()
+    maximum = LIMITS[action][0][0]
+    for _ in range(maximum):
+        # The happy path: a normal owner's use within the limit is never refused.
+        await enforce_limits(request, [(action, "alice")], clock=lambda: 0)
+    with pytest.raises(HTTPException) as rejected:
+        await enforce_limits(request, [(action, "alice")], clock=lambda: 0)
+    assert rejected.value.status_code == 429
+    assert rejected.value.detail == "RATE_LIMITED"
+    # Another owner on the same instance is unaffected.
+    await enforce_limits(request, [(action, "bob")], clock=lambda: 0)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "action", sorted(action for action in LIMITS if action not in PAID_OWNER_ACTIONS)
+)
+async def test_ob91_store_outage_never_blocks_cheap_owner_actions(action: str) -> None:
+    request = failing_store()
+    for _ in range(LIMITS[action][0][0] + 1):
+        await enforce_limits(request, [(action, "alice")], clock=lambda: 0)
+
+
+def test_ob91_paid_owner_actions_are_known_limits() -> None:
+    assert PAID_OWNER_ACTIONS <= LIMITS.keys()
 
 
 def test_backend_selection_matches_merchant_storage() -> None:
