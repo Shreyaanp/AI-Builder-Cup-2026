@@ -7,8 +7,8 @@ export function chatBubbleStyle(roles: MaterialRoles) {
     maxWidth: '85%',
     bgcolor: roles.surfaceContainerHigh,
     color: roles.onSurface,
-    px: 2.5,
-    py: 1.5,
+    px: 3,
+    py: 2,
     borderRadius: `${shape.xl}px ${shape.xs}px ${shape.xl}px ${shape.xl}px`,
   }
 }

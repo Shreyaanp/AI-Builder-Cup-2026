@@ -34,17 +34,9 @@
 
 /* Nav: glass bar that stays put. */
 .lp-nav {
-  position: sticky;
-  top: env(safe-area-inset-top);
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px clamp(16px, 4vw, 48px);
   backdrop-filter: blur(16px) saturate(1.4);
   background: color-mix(in srgb, var(--surface) 78%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--outline) 60%, transparent);
+  box-shadow: inset 0 -1px color-mix(in srgb, var(--outline) 60%, transparent);
 }
 .lp-nav nav {
   display: flex;
@@ -54,6 +46,13 @@
 .lp-nav nav > a:first-child {
   font-weight: 500;
   text-decoration: none;
+}
+@media (min-width: 900px) {
+  .lp-nav-find {
+    display: inline-flex;
+    align-items: center;
+    min-height: 48px;
+  }
 }
 @media (max-width: 899px) {
   .lp-nav .lp-nav-find,
@@ -906,7 +905,6 @@
   .lp-nav {
     gap: 12px;
     flex-wrap: wrap;
-    padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
   }
   .lp-nav nav {
     min-width: 0;
