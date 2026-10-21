@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react'
@@ -67,6 +68,21 @@ const demoMe = { legal_version: '', consent: null, consent_current: true }
 
 export default function DemoApp() {
   const t = useDemoCopy()
+  const bannerRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const banner = bannerRef.current
+    if (!banner) return
+    // The notice can wrap with translations or larger text; reserve its actual height.
+    const measure = () =>
+      banner.parentElement?.style.setProperty(
+        '--app-viewport',
+        `calc(100dvh - ${banner.getBoundingClientRect().height}px)`,
+      )
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(banner)
+    return () => observer.disconnect()
+  }, [])
   const [session, setSession] = useState<Session | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'failed' | 'expired'>('loading')
   const [attempt, setAttempt] = useState(0)
@@ -233,33 +249,42 @@ export default function DemoApp() {
       >
         <Box
           component="header"
+          ref={bannerRef}
           sx={{
-            px: 2,
+            px: 4,
             pt: 'env(safe-area-inset-top)',
             bgcolor: (theme) => theme.material.secondaryContainer,
             color: (theme) => theme.material.onSecondaryContainer,
           }}
         >
-          {/* One slim line: what this is, the other side, and the way out. */}
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minHeight: 48 }}>
-            <Typography variant="bodySmall" noWrap sx={{ flex: 1, minWidth: 0 }}>
+          {/* Keep the whole notice readable; move actions below it when space is tight. */}
+          <Stack
+            direction="row"
+            sx={{ alignItems: 'center', flexWrap: 'wrap', columnGap: 2, minHeight: 48 }}
+          >
+            <Typography
+              variant="bodySmall"
+              sx={{ flex: '1 0 auto', maxWidth: '100%', py: 1, overflowWrap: 'anywhere' }}
+            >
               {t.banner}
             </Typography>
-            <Button
-              size="small"
-              href={customer ? '/demo' : '/explore/demo'}
-              onClick={customerNavigate}
-              sx={{ minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }}
-            >
-              {customer ? t.owner : t.customer}
-            </Button>
-            <Button
-              size="small"
-              onClick={() => void exit()}
-              sx={{ minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }}
-            >
-              {t.exit}
-            </Button>
+            <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2, ml: 'auto', maxWidth: '100%' }}>
+              <Button
+                size="small"
+                href={customer ? '/demo' : '/explore/demo'}
+                onClick={customerNavigate}
+                sx={{ minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }}
+              >
+                {customer ? t.owner : t.customer}
+              </Button>
+              <Button
+                size="small"
+                onClick={() => void exit()}
+                sx={{ minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }}
+              >
+                {t.exit}
+              </Button>
+            </Stack>
           </Stack>
         </Box>
         {state === 'loading' ? (

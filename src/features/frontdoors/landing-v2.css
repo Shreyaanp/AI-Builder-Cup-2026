@@ -33,23 +33,14 @@
 
 /* Nav */
 .l2-nav {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 8px 6px var(--gutter);
-  padding-top: calc(6px + env(safe-area-inset-top));
-  background: color-mix(in srgb, var(--surface) 86%, transparent);
   backdrop-filter: blur(14px) saturate(1.4);
-  border-bottom: 1px solid color-mix(in srgb, var(--outline) 60%, transparent);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  box-shadow: inset 0 -1px color-mix(in srgb, var(--outline) 60%, transparent);
 }
 .l2-nav nav {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 .l2-banner {
   margin: 0;

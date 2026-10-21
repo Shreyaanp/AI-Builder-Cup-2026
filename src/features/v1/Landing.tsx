@@ -1,3 +1,4 @@
+import { AppHeader } from '../../design/AppHeader'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert, Box, Button, Link, Stack, Typography, useTheme } from '@mui/material'
@@ -32,19 +33,9 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
 
   return (
     <Box sx={{ bgcolor: roles.surface, minHeight: '100dvh' }}>
-      <Box
-        component="header"
-        sx={{
-          ...section,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-          pt: 'calc(16px + env(safe-area-inset-top))',
-          pb: 1,
-        }}
-      >
+      <AppHeader sx={{ maxWidth: 1080, mx: 'auto', justifyContent: 'flex-start' }}>
         <BrandLogo name={t.appName} />
-      </Box>
+      </AppHeader>
 
       <Box component="main">
         {/* Hero */}
