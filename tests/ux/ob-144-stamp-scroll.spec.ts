@@ -48,7 +48,25 @@ for (const theme of THEMES) {
         )
         expect(scroller).toBeGreaterThanOrEqual(0)
         const content = scroll.nth(scroller)
+        // OB-144: the whole foil must be available on arrival, before any swipe or auto-scroll.
+        await expect(content).toHaveJSProperty('scrollTop', 0)
+        await page.screenshot({
+          path: `test-results/ob-144-initial-${viewport.width}-${theme}.png`,
+        })
+        await expect
+          .poll(async () => {
+            const card = (await foil.boundingBox())!
+            const area = (await content.boundingBox())!
+            const action = (await passport.boundingBox())!
+            return (
+              card.y >= area.y && card.y + card.height <= Math.min(area.y + area.height, action.y)
+            )
+          })
+          .toBe(true)
         if (viewport.width < 600) {
+          // Also cover a shorter window (e.g. browser chrome): even the taller phones must
+          // still let a touch swipe reach the controls when the compact celebration overflows.
+          await page.setViewportSize({ width: viewport.width, height: 800 })
           // Swipe beside the foil: dragging the foil itself intentionally scratches it.
           const area = (await content.boundingBox())!
           const cdp = await page.context().newCDPSession(page)
