@@ -3,7 +3,7 @@ import { Alert, Box, Button, Stack, TextField, Typography, useTheme } from '@mui
 import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
 import { PlainText } from '../../design/PlainText'
-import { RichText } from '../../design/RichText'
+import { RichText } from '../../design/LazyRichText'
 import { chatBubbleStyle } from '../coach/bubbleStyle'
 import { fill, useOwnerCopy } from '../owner/copy'
 import { useRescueCopy } from '../rescue/copy'

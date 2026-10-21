@@ -30,7 +30,7 @@ import { useLocale } from '../../state/hooks'
 import { useKeyboardViewport } from '../../hooks/useKeyboardViewport'
 import type { Locale } from '../../i18n/locales'
 import { chalkWrite, dealIn } from '../../design/chalkMotion'
-import { RichText } from '../../design/RichText'
+import { RichText } from '../../design/LazyRichText'
 import { motion } from '../../design/theme'
 import { sentenceSummary } from './summary'
 import { customerNavigate, goTo } from '../frontdoors/navigation'
@@ -260,9 +260,11 @@ export default function AskHome({
     return () => clearInterval(timer)
   }, [busy, t.thinking.length])
 
-  // Route chunk prefetch: prefetch PublicShop and RescueScreen chunks during idle
+  // Route chunk prefetch: prefetch PublicShop and RescueScreen chunks during idle. The answer's
+  // markdown renderer comes first, so the first answer is formatted as it streams (OB-165).
   useEffect(() => {
     const prefetch = () => {
+      void import('../../design/RichText')
       void import('../public/PublicShop')
       void import('../rescue/RescueScreen')
     }
