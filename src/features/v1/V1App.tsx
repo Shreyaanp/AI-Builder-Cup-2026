@@ -14,6 +14,7 @@ import { TrustStrip } from './TrustStrip'
 import { LanguageStep } from '../language/LanguageStep'
 import { useNeedsLanguage } from '../language/needsLanguage'
 import { setAnalyticsConsent } from '../../app/analytics'
+import { useLocale } from '../../state/hooks'
 
 /** First run: splash → welcome/sign-in → language → consent → workspace. */
 export default function V1App() {
@@ -42,7 +43,8 @@ export default function V1App() {
 
 function Account({ onLeave }: { onLeave: () => void }) {
   const identity = useIdentity()
-  const api = useMemo(() => makeApi(identity.getToken), [identity.getToken])
+  const locale = useLocale()
+  const api = useMemo(() => makeApi(identity.getToken, locale), [identity.getToken, locale])
   const [me, setMe] = useState<Me | null>(null)
   const [failed, setFailed] = useState(false)
   const needsLanguage = useNeedsLanguage()

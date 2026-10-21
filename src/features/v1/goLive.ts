@@ -2,7 +2,13 @@
 export type ListingField = 'name' | 'category' | 'location'
 
 type Listable = {
-  business: { name?: string; category?: string; location?: string; lat?: number | null } | null
+  business: {
+    name?: string
+    category?: string
+    location?: string
+    lat?: number | null
+    lng?: number | null
+  } | null
 }
 
 /** The required answers still missing, in the order the coach asks them. */
@@ -11,6 +17,6 @@ export function missingForListing(draft: Listable): ListingField[] {
   const missing: ListingField[] = []
   if (!b?.name?.trim()) missing.push('name')
   if (!b?.category?.trim()) missing.push('category')
-  if (b?.lat == null && !b?.location?.trim()) missing.push('location')
+  if (b?.lat == null || b?.lng == null) missing.push('location')
   return missing
 }

@@ -121,7 +121,7 @@ FOLLOW_UPS = 2
 
 
 def has_place(fields: BusinessFields | None) -> bool:
-    return bool(fields and (fields.location or fields.lat is not None))
+    return bool(fields and fields.lat is not None and fields.lng is not None)
 
 
 def done_steps(draft: NewShopDraft | None) -> dict[str, bool]:
@@ -166,6 +166,11 @@ def known_and_missing(draft: NewShopDraft | None) -> tuple[list[str], list[str]]
     elif "photo" in skipped:
         known.append("shop photo: skipped (added later from Today)")
     missing = [label for key, label in BASICS if not done[key]]
+    if fields and fields.location and not done["place"]:
+        missing[-1] = (
+            'confirm the suggested map pin for the place already given (show_step "location");'
+            " do not ask for the place name again"
+        )
     understood = draft.understanding if draft else None
     answered = {fact.key: fact.value for fact in fields.custom_facts} if fields else {}
     extras, hours_follow_up = follow_up_plan(draft)

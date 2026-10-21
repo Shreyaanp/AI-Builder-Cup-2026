@@ -22,6 +22,7 @@ import { useNewShopCopy } from './newShopCopy'
 import { PinMap, type Point } from './PinMap'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
+import { discoverCopy } from '../discover/strings'
 
 /** What the owner confirmed: the measured point, or a pin they placed by hand. */
 export type PinChoice = Point & { accuracy_m: number; source: 'device' | 'pin' }
@@ -69,6 +70,7 @@ function useAddress(point: Point | null) {
  */
 export function MapCard({
   initial,
+  placeName = '',
   done,
   autoLocate = false,
   direct = false,
@@ -76,6 +78,7 @@ export function MapCard({
   onActive,
 }: {
   initial: Point | null
+  placeName?: string
   /** The saved place, once confirmed (the card then rests). */
   done: string | null
   /** Measure at once (the owner tapped "My location", so the request follows their tap). */
@@ -90,6 +93,8 @@ export function MapCard({
   onActive?: () => void
 }) {
   const t = useCopy()
+  const { api } = useWorkspace()
+  const pinCopy = discoverCopy(useLocale())
   const c = useInChatCopy()
   const roles = useTheme().material
   const [fix, setFix] = useState<(Point & { m: number }) | null>(null)
@@ -97,6 +102,24 @@ export function MapCard({
   const [big, setBig] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [resolvedPlace, setResolvedPlace] = useState('')
+  const finding = Boolean(!initial && placeName.trim() && !done && resolvedPlace !== placeName)
+  const touched = useRef(false)
+  useEffect(() => {
+    if (initial || !placeName.trim() || done) return
+    const abort = new AbortController()
+    void api<Point>(`/places/pin?q=${encodeURIComponent(placeName)}`, { signal: abort.signal })
+      .then((point) => {
+        if (!touched.current) setPin({ lat: point.lat, lng: point.lng })
+      })
+      .catch(() => {
+        if (!abort.signal.aborted && !touched.current) setError(pinCopy.pinError)
+      })
+      .finally(() => {
+        if (!abort.signal.aborted) setResolvedPlace(placeName)
+      })
+    return () => abort.abort()
+  }, [api, initial, placeName, done, pinCopy.pinError])
   const location = useMeasureLocation(async (point) => {
     setFix({ lat: point.lat, lng: point.lng, m: point.accuracy_m })
     setPin({ lat: point.lat, lng: point.lng })
@@ -104,6 +127,7 @@ export function MapCard({
   })
   const asked = useRef(false)
   async function locate() {
+    touched.current = true
     onActive?.()
     setError('')
     const failed = await location.locate()
@@ -166,7 +190,7 @@ export function MapCard({
       pin={pin}
       address={address}
       accuracy={!moved && fix ? fix.m : null}
-      busy={location.busy}
+      busy={location.busy || finding}
       saving={saving}
       error={error}
       onLocate={() => void locate()}
@@ -194,6 +218,7 @@ export function MapCard({
           size="small"
           startIcon={<Maximize2 size={16} />}
           onClick={() => {
+            touched.current = true
             setPin((current) => current ?? FALLBACK)
             onActive?.()
             setBig(true)
@@ -203,10 +228,14 @@ export function MapCard({
           {c.biggerMap}
         </Button>
       </Stack>
+      <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 1, textWrap: 'balance' }}>
+        {c.pinRequired}
+      </Typography>
       {pin ? (
         <PinMap
           value={pin}
           onChange={(point) => {
+            touched.current = true
             onActive?.()
             setPin(point)
           }}

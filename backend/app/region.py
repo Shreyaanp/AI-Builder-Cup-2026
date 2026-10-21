@@ -21,6 +21,9 @@ from .money import exponent, to_major
 # The phone's country from its Accept-Language region (en-IN → IN), set per request by
 # boundary.py next to the X-Client-Timezone header.
 client_country: ContextVar[str | None] = ContextVar("client_country", default=None)
+client_language_country: ContextVar[str | None] = ContextVar(
+    "client_language_country", default=None
+)
 # Scripts and tests send no phone signals at all; the offline test environment sets this to the
 # demo market. Real phones always send a timezone.
 NO_SIGNAL_COUNTRY: str | None = None
@@ -159,7 +162,12 @@ def phone_country() -> str | None:
     """Where the phone making this request is: its timezone, then its language region."""
     from .shop_time import client_timezone
 
-    return country_of_timezone(client_timezone.get()) or client_country.get() or NO_SIGNAL_COUNTRY
+    return (
+        country_of_timezone(client_timezone.get())
+        or client_country.get()
+        or client_language_country.get()
+        or NO_SIGNAL_COUNTRY
+    )
 
 
 def region_at(lat: float | None, lng: float | None, currency: str = "") -> Region:
@@ -221,7 +229,7 @@ def new_shop_zone(lat: float | None, lng: float | None) -> str:
     phone = client_timezone.get()
     if pinned and country_of_timezone(phone) != pinned:
         return profile(pinned).timezone
-    if phone:
+    if phone and (phone != "UTC" or not phone_country()):
         return phone
     return profile(phone_country()).timezone
 
