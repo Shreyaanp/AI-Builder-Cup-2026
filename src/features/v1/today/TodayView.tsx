@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { useIdentity } from '../../../auth/useIdentity'
 import { HAND_FONT, enterRise, motion, shape } from '../../../design/theme'
+import { productName } from '../../../i18n/productNames'
 import { useLocale } from '../../../state/hooks'
 import { closeDayCopy } from '../../closeday/strings'
 import { shopCurrency, toMajor } from '../format'
@@ -478,7 +479,7 @@ function NeedRow({
     )
   } else if (need.kind === 'low') {
     icon = <PackageMinus size={20} />
-    text = tt.low(need.item, need.left)
+    text = tt.low(productName(need.item, locale), need.left)
     buttons = (
       <Button
         variant={primary}

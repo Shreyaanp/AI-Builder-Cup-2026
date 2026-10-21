@@ -1,3 +1,4 @@
+import { AppHeader } from '../../design/AppHeader'
 import { Fragment, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Button, Typography, useTheme } from '@mui/material'
 import type { Theme } from '@mui/material'
@@ -289,13 +290,13 @@ export default function LandingV2({ preview = false }: { preview?: boolean }) {
       <a className="l2-skip" href="#l2-main">
         {t.skip}
       </a>
-      <header className="l2-nav">
+      <AppHeader className="l2-nav">
         <BrandLogo name={t.brand} href="/" />
         <nav aria-label={t.brand}>
           <LanguagePicker variant="nav" />
           <AppearanceToggle inline />
         </nav>
-      </header>
+      </AppHeader>
       {preview && (
         <p className="l2-banner" role="note">
           {t.previewBanner}

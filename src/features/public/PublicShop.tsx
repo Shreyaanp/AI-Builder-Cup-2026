@@ -1,3 +1,4 @@
+import { AppHeader } from '../../design/AppHeader'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Alert,
@@ -713,18 +714,10 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
       {/* Back and controls: one solid bar in the page flow, pinned while the page scrolls, so
           Back is always one thumb away and nothing scrolls through or under the buttons.
           48px targets. */}
-      <Stack
-        direction="row"
+      <AppHeader
         sx={{
-          position: 'sticky',
-          top: 0,
           zIndex: 10,
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          minHeight: 64,
           mx: { xs: -4, sm: 0 },
-          px: { xs: 2, sm: 0 },
-          pt: { xs: 'env(safe-area-inset-top, 0px)', sm: 0 },
           mb: { xs: 0, sm: 2 },
           bgcolor: 'background.default',
         }}
@@ -742,7 +735,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           <LanguagePicker variant="inline" />
           <AppearanceToggle inline />
         </Stack>
-      </Stack>
+      </AppHeader>
 
       {/* Hero photo / artwork banner with fixed aspect ratio + object-fit */}
       <Box
