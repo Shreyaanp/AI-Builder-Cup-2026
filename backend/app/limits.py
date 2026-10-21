@@ -7,7 +7,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from threading import Lock
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 from uuid import uuid4
 
 import anyio
@@ -82,6 +82,25 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "consent": ((30, 60),),
     "me": ((30, 60),),
 }
+
+# When the limit store errors (OB-91), signed-in actions that spend paid AI, voice or Maps
+# keep their limits in a per-instance counter: a normal owner is never refused, a scripted
+# loop still is. Every other signed-in action (reads, saves, cheap writes) stays open so the
+# owner's day is never blocked by the store; anonymous actions stay closed.
+PAID_OWNER_ACTIONS = frozenset(
+    {
+        "coach",
+        "voice",
+        "voice:resume",
+        "photo",
+        "import",
+        "tts",
+        "recap",
+        "playbook",
+        "playbook:regenerate",
+        "reverse",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -195,9 +214,39 @@ def rate_limiter(settings: Settings) -> RateLimiter:
     return InMemoryRateLimiter()
 
 
+def fallback_limiter(state: Any) -> RateLimiter:
+    """This instance's counter for paid owner actions while the shared store is down."""
+    limiter = getattr(state, "rate_limit_fallback", None)
+    if limiter is None:
+        limiter = InMemoryRateLimiter()
+        state.rate_limit_fallback = limiter
+    return cast(RateLimiter, limiter)
+
+
 def client_ip(connection: Request | WebSocket) -> str:
-    forwarded = connection.headers.get("x-forwarded-for", "").split(",", 1)[0].strip()
-    return forwarded or (connection.client.host if connection.client else "unknown")
+    """The caller's address for per-client limits (HTTP and the voice WebSocket alike).
+
+    Behind `trusted_proxy_hops` proxies that each append to X-Forwarded-For, the client is the
+    entry that many places from the right; anything further left is caller-supplied (OB-90).
+    Every X-Forwarded-For header counts, so a second header cannot hide the appended entries.
+    """
+    forwarded = [
+        address.strip()
+        for header in connection.headers.getlist("x-forwarded-for")
+        for address in header.split(",")
+        if address.strip()
+    ]
+    if not forwarded:
+        return connection.client.host if connection.client else "unknown"
+    settings = getattr(connection.app.state, "v1_settings", None)
+    hops = settings.trusted_proxy_hops if settings is not None else 0
+    if not hops:
+        # Local/test callers keep the historical first-entry convention.
+        return forwarded[0]
+    # Fewer entries than hops: the request skipped the balancer (a direct *.run.app call), and
+    # its leftmost entry is the one Google's front end added. One shared fallback bucket (the
+    # socket peer) would block every such caller at once.
+    return forwarded[max(len(forwarded) - hops, 0)]
 
 
 def local_test_rate_limit_bypass(connection: Request | WebSocket) -> bool:
@@ -228,14 +277,19 @@ async def enforce_limits(
         for maximum, seconds in LIMITS[action]
     ]
     limiter = cast(RateLimiter, connection.app.state.rate_limiter)
+    now = (clock or time.time)()
     try:
-        retry = await anyio.to_thread.run_sync(limiter.take, buckets, (clock or time.time)())
+        retry = await anyio.to_thread.run_sync(limiter.take, buckets, now)
     except Exception:
         # Log no subject, IP, provider error or request content.
         log.warning("rate_limit_store_failed", anonymous=anonymous)
-        if not anonymous:
+        if anonymous:
+            retry = 60
+        elif any(action in PAID_OWNER_ACTIONS for action, _ in subjects):
+            # Same limits, counted in this instance only: a normal owner is never refused.
+            retry = fallback_limiter(connection.app.state).take(buckets, now)
+        else:
             return
-        retry = 60
     if retry:
         raise HTTPException(429, "RATE_LIMITED", headers={"Retry-After": str(retry)})
 
