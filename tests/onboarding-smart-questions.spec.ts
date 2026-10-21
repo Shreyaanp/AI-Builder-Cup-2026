@@ -1,3 +1,4 @@
+import { confirmShopPin, suggestShopPin } from './pinSupport.js'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
 import {
@@ -14,6 +15,7 @@ import {
 test.use({ reducedMotion: 'reduce', viewport: { width: 390, height: 844 }, hasTouch: true })
 test.beforeEach(async ({ page }) => {
   await localOnly(page)
+  await suggestShopPin(page)
 })
 
 async function begin(page: Page) {
@@ -27,6 +29,10 @@ async function answer(page: Page, text: string): Promise<Topic | null> {
   const count = (await askedTopics(page)).length
   await page.getByLabel('Message', { exact: true }).fill(text)
   await page.getByRole('button', { name: 'Send', exact: true }).click()
+  // OB-168 / OB-188: follow-ups start after the owner confirms the known place.
+  if (text.includes('location:')) {
+    await confirmShopPin(page)
+  }
   return nextQuestion(page, count)
 }
 

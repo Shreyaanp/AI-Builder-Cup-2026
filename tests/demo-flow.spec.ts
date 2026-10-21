@@ -69,9 +69,11 @@ test('demo: photo, price correction, customer page and availability', async ({
   await expect(page.getByRole('button', { name: 'Edit price: Chai, S$12.00' })).toBeVisible()
   await closeSheet()
 
-  // OB-168: the photo's address needs an owner-confirmed pin before sharing.
+  // OB-168 / OB-188: this photo has no address; place its pin by hand before sharing.
   await suggestShopPin(page)
   await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByTestId('map-card').getByRole('button', { name: 'Bigger map' }).click()
+  await page.getByRole('button', { name: 'Close the big map' }).click()
   await page
     .getByTestId('map-card')
     .getByRole('button', { name: 'This is my shop', exact: true })

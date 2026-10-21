@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 
 test.use({ reducedMotion: 'reduce' })
 
-test('OB-156 conversation and photo recovery keep three type sizes and grid spacing', async ({
+test('OB-156 / OB-192 conversation and photo recovery keep three type sizes and grid spacing', async ({
   page,
 }) => {
   test.setTimeout(120_000)

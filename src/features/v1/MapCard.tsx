@@ -202,14 +202,14 @@ export function MapCard({
       data-testid="map-card"
       data-state="open"
       sx={{
-        p: { xs: 1.5, sm: 2 },
+        p: 2,
         borderRadius: `${shape.lg}px`,
         bgcolor: roles.surfaceContainerLow,
         border: `1px solid ${roles.outlineVariant}`,
         ...enterRise,
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 1.5 }}>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 2 }}>
         <MapPin size={20} aria-hidden="true" color={roles.primary} />
         <Typography component="h3" variant="titleSmall" sx={{ flex: 1 }}>
           {c.mapTitle}
@@ -228,9 +228,11 @@ export function MapCard({
           {c.biggerMap}
         </Button>
       </Stack>
-      <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 1, textWrap: 'balance' }}>
-        {c.pinRequired}
-      </Typography>
+      {placeName.trim() && (
+        <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 1, textWrap: 'balance' }}>
+          {c.pinRequired}
+        </Typography>
+      )}
       {pin ? (
         <PinMap
           value={pin}

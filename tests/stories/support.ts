@@ -105,8 +105,9 @@ export async function confirm(page: Page) {
 export async function openNewShopReview(
   page: Page,
   details = 'name: Courtyard Chai; category: Tea stall; location: Indiranagar, Bengaluru',
+  point?: { lat: number; lng: number; label: string },
 ) {
-  await suggestShopPin(page)
+  await suggestShopPin(page, point)
   const begin = page.getByRole('button', { name: 'Let’s begin' })
   if (!(await begin.isVisible()))
     await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()

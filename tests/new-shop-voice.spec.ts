@@ -2,6 +2,7 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { FIRST_QUESTION } from './newShopTopics.js'
 import { expect, test, type Page, type WebSocketRoute } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
+import { confirmShopPin, suggestShopPin } from './pinSupport.js'
 
 // The new-shop conversation as a "voice mode": one open conversation (the mic stays on), a chalk
 // orb that reacts to who is talking, the shop card filling up, the conversation on the same
@@ -10,6 +11,7 @@ import { enter, localOnly } from './stories/support.js'
 test.use({ reducedMotion: 'reduce' })
 test.beforeEach(async ({ page }, info) => {
   await localOnly(page)
+  await suggestShopPin(page)
   // Phone evidence at the owner's reference size.
   if (info.project.name === 'phone') await page.setViewportSize({ width: 390, height: 844 })
 })
@@ -187,7 +189,8 @@ for (const scheme of ['light', 'dark'] as const) {
     const card = page.getByTestId('shop-so-far')
     await expect(card).toContainText('Chai Corner')
     await expect(card.locator('[data-filled="true"]', { hasText: 'Indiranagar' })).toHaveCount(1)
-    // Name, kind and place: the shop is live by itself.
+    // OB-168 / OB-188: the known place needs the owner's pin confirmation before going live.
+    await confirmShopPin(page)
     await expect(page.getByTestId('shop-live')).toBeVisible()
     await capture('7-typing')
     await page.getByRole('button', { name: 'Talk instead' }).click()

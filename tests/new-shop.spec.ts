@@ -1,3 +1,4 @@
+import { confirmShopPin, suggestShopPin } from './pinSupport.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { FIRST_QUESTION } from './newShopTopics.js'
@@ -17,6 +18,7 @@ import {
 test.use({ reducedMotion: 'reduce' })
 test.beforeEach(async ({ page }) => {
   await localOnly(page)
+  await suggestShopPin(page)
 })
 
 test('bundled fonts load from linked local dependencies', async ({ page }) => {
@@ -52,6 +54,10 @@ async function begin(page: Page) {
 async function say(page: Page, text: string) {
   await page.getByLabel('Message', { exact: true }).fill(text)
   await page.getByRole('button', { name: 'Send', exact: true }).click()
+  // OB-168 / OB-188: an address must be confirmed before the remaining journey.
+  if (text.includes('location:')) {
+    await confirmShopPin(page)
+  }
 }
 
 const shops = async (page: Page) => (await page.request.get('/api/v1/businesses')).json()
