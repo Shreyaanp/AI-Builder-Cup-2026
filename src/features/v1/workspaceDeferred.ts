@@ -6,4 +6,8 @@ export const ReviewDialog = deferred(() => import('./ReviewDialog').then((m) => 
 export const BusinessDialog = deferred(() => import('./EditDialogs').then((m) => m.BusinessDialog))
 export const ProductDialog = deferred(() => import('./EditDialogs').then((m) => m.ProductDialog))
 
-export const workspaceDeferred = [ReviewDialog.preload, BusinessDialog.preload]
+export const workspaceDeferred = [
+  ReviewDialog.preload,
+  BusinessDialog.preload,
+  ProductDialog.preload,
+]

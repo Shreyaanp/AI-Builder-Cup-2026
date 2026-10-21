@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Button, IconButton, Snackbar, useTheme } from '@mui/material'
+import { Button, IconButton, Snackbar, useMediaQuery, useTheme } from '@mui/material'
 import { X } from 'lucide-react'
 import { canOfferInstall, offerInstall, rememberInstallDeclined } from '../../app/pwa'
 import { useCopy } from './strings'
@@ -9,6 +9,8 @@ import { WorkspaceContext } from './workspaceContext'
 import type { Destination, Editor, NewShopPhase, Workspace } from './workspaceContext'
 import { OnceOpened } from '../../app/OnceOpened'
 import { BusinessDialog, ProductDialog, ReviewDialog } from './workspaceDeferred'
+import { PendingDialog } from './PendingDialog'
+import { windowClass } from '../../design/theme'
 import { customerShopLink, safeCustomerOrigin } from '../../app/router'
 import { overlayHandled } from './backStack'
 import { track } from '../../app/analytics'
@@ -113,6 +115,9 @@ export function WorkspaceProvider({
   const [faceLoaded, setFaceLoaded] = useState(false)
   if (faceOpen && !faceLoaded) setFaceLoaded(true)
   const [editor, setEditor] = useState<Editor>({ kind: 'none' })
+  // The edit dialogs' code is deferred (OB-165): until it lands, a placeholder answers the tap.
+  const closeEditor = useCallback(() => setEditor({ kind: 'none' }), [])
+  const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
   const [speakReplies, setSpeak] = useState(readSpeak)
   const [customerOrigin, setCustomerOrigin] = useState<string | null>(null)
   useEffect(() => {
@@ -427,12 +432,28 @@ export function WorkspaceProvider({
         }
       />
       {value.editor.kind === 'business' && (
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <PendingDialog
+              title={value.editor.fields ? t.editDetails : t.newShop}
+              fullScreen
+              onClose={closeEditor}
+            />
+          }
+        >
           <BusinessDialog />
         </Suspense>
       )}
       {value.editor.kind === 'product' && (
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <PendingDialog
+              title={value.editor.product ? t.editProduct : t.addProduct}
+              fullScreen={compact}
+              onClose={closeEditor}
+            />
+          }
+        >
           <ProductDialog />
         </Suspense>
       )}

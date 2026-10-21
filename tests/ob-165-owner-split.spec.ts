@@ -92,3 +92,44 @@ test('OB-165: the deferred edit dialog opens with the saved details', async ({ p
   await editShopDetails(page)
   await expect(page.getByLabel('Shop name')).toHaveValue(shopName)
 })
+
+// Review of #525: the owner phone sweep tapped an item (the menu closes, the item's dialog opens)
+// while the dialog's code was still on its way. Nothing showed, Back had nothing to close, and the
+// dialog popped up later over Grow and blocked every tap.
+test('OB-165: a tap answers before its code arrives, and Back closes it for good', async ({
+  page,
+}) => {
+  const EDIT_DIALOGS = '/src/features/v1/EditDialogs.tsx'
+  let release = () => {}
+  const held = new Promise<void>((resolve) => (release = resolve))
+  await page.route(
+    (url) => url.pathname === EDIT_DIALOGS,
+    async (route) => {
+      await held
+      await route.continue()
+    },
+  )
+  await enter(page)
+  await seedShop(page)
+  await page.locator('[data-tour="nav-shop"]').click()
+  const menuButton = page.locator('[data-tour="menu"]')
+  await menuButton.click()
+  await page.getByRole('dialog').locator('[data-menu-item="Kopi"]').click()
+  // The tap answers at once, before the form's code is here, and Back closes it.
+  const pending = page.getByRole('dialog', { name: 'Edit' })
+  await expect(pending).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const landed = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === EDIT_DIALOGS,
+  )
+  release()
+  await landed
+  // The code arriving later opens nothing: the menu still takes a tap, and the item now opens
+  // the real form.
+  await menuButton.click()
+  await page.getByRole('dialog').locator('[data-menu-item="Kopi"]').click()
+  await expect(page.getByLabel('Product name')).toHaveValue('Kopi')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})
