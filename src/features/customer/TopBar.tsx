@@ -1,3 +1,4 @@
+import { AppHeader } from '../../design/AppHeader'
 import { useEffect, useState } from 'react'
 import { Box, Button, Stack, useTheme } from '@mui/material'
 import { ArrowLeft } from 'lucide-react'
@@ -25,20 +26,13 @@ export function CustomerTopBar({ back = false }: { back?: boolean }) {
     return () => window.removeEventListener('scroll', update)
   }, [])
   return (
-    <Box
-      component="header"
+    <AppHeader
       data-scrolled={scrolled || undefined}
       sx={{
-        position: 'sticky',
-        top: 0,
         zIndex: 1100,
-        pt: 'env(safe-area-inset-top, 0px)',
-        px: 'max(8px, env(safe-area-inset-left, 0px))',
         bgcolor: roles.surface,
         backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid transparent',
-        transition: 'border-color 200ms var(--c-ease)',
-        '&[data-scrolled]': { borderBottomColor: roles.outlineVariant },
+        '&[data-scrolled]': { boxShadow: `inset 0 -1px ${roles.outlineVariant}` },
         viewTransitionName: 'customer-top-bar',
       }}
     >
@@ -49,10 +43,9 @@ export function CustomerTopBar({ back = false }: { back?: boolean }) {
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 1,
-          minHeight: 64,
-          maxWidth: 720,
+          maxWidth: 688,
+          width: '100%',
           mx: 'auto',
-          px: { md: 1 },
         }}
       >
         <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minWidth: 0 }}>
@@ -73,12 +66,12 @@ export function CustomerTopBar({ back = false }: { back?: boolean }) {
             </Button>
           )}
         </Stack>
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 1, flexShrink: 0 }}>
           {!back && <ProfileButton inline />}
           <LanguagePicker variant="inline" />
           <AppearanceToggle inline />
         </Stack>
       </Box>
-    </Box>
+    </AppHeader>
   )
 }
