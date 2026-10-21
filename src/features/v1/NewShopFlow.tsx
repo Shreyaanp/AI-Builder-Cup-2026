@@ -1320,7 +1320,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
           onDelete={() => setNameSuggestion(null)}
           sx={{
             height: 48,
-            px: 0.5,
+            px: 0,
             maxWidth: '100%',
             '& .MuiChip-icon': { color: roles.primary },
           }}
@@ -1332,7 +1332,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         variant="outlined"
         disabled={!idle}
         onClick={() => openCamera()}
-        sx={{ height: 48, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
+        sx={{ height: 48, px: 0, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
       />
       <Chip
         icon={<LocateFixed size={18} />}
@@ -1340,7 +1340,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         variant="outlined"
         disabled={!idle}
         onClick={() => openMap(true)}
-        sx={{ height: 48, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
+        sx={{ height: 48, px: 0, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
       />
       <Chip
         icon={<SkipForward size={18} />}
@@ -1348,7 +1348,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         variant="outlined"
         disabled={!idle || !lastCoach}
         onClick={skip}
-        sx={{ height: 48, px: 0.5, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
+        sx={{ height: 48, px: 0, flexShrink: 0, '& .MuiChip-icon': { color: roles.primary } }}
       />
     </Stack>
   )
@@ -1368,7 +1368,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         mx: 'auto',
         px: { xs: hasActiveCard ? 2 : 4, sm: 4, md: 6 },
         columnGap: { md: 5, lg: 6 },
-        rowGap: { xs: hasActiveCard ? 1 : 1.5, md: 3 },
+        rowGap: { xs: hasActiveCard ? 1 : 2, md: 3 },
         pt: 'env(safe-area-inset-top)',
         pb: 'calc(12px + env(safe-area-inset-bottom))',
         gridTemplateColumns: {
@@ -1560,7 +1560,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                     >
                       {o.endedBody}
                     </Typography>
-                    <Stack sx={{ mt: 2, gap: 1.5 }}>
+                    <Stack sx={{ mt: 2, gap: 2 }}>
                       <Button
                         variant="contained"
                         size="large"
@@ -1720,7 +1720,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
           gridArea: 'controls',
           display: 'flex',
           flexDirection: 'column',
-          gap: 1.5,
+          gap: 2,
           minWidth: 0,
           pb: { md: 2 },
         }}
@@ -1767,7 +1767,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
             sx={{
               display: 'flex',
               alignItems: 'flex-end',
-              gap: 0.5,
+              gap: 1,
               bgcolor: roles.surfaceContainerHigh,
               borderRadius: `${shape.xl}px`,
               p: 1,
@@ -1815,7 +1815,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                 maxHeight: 'calc(5 * 1.5rem + 24px)',
                 m: 0,
                 px: 1,
-                py: 1.5,
+                py: 2,
                 border: 0,
                 outline: 0,
                 resize: 'none',
@@ -1862,7 +1862,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
               alignItems: 'center',
               justifyContent: 'center',
               gap: { xs: hasActiveCard ? 2 : 3, md: 4 },
-              py: hasActiveCard ? 0.5 : 1,
+              py: hasActiveCard ? 1 : 2,
               ...fieldFade,
             }}
           >
@@ -2271,7 +2271,7 @@ function ChatLine({ line }: { line: Exclude<Line, { role: 'camera' | 'map' | 'su
       >
         <Leaf size={18} />
       </Avatar>
-      <Box sx={{ minWidth: 0, pt: 0.5, flex: 1 }}>
+      <Box sx={{ minWidth: 0, pt: 1, flex: 1 }}>
         <Typography component="span" sx={visuallyHidden}>
           {t.coach}:{' '}
         </Typography>

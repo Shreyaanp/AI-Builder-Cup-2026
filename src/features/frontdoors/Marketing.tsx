@@ -1,3 +1,4 @@
+import { AppHeader } from '../../design/AppHeader'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Button, CssBaseline, ThemeProvider, Typography, useTheme } from '@mui/material'
 import type { Theme } from '@mui/material'
@@ -245,7 +246,7 @@ export default function Marketing() {
         <a className="lp-skip" href="#main">
           {t.skip}
         </a>
-        <header className="lp-nav">
+        <AppHeader className="lp-nav">
           <BrandLogo href="/" />
           <nav aria-label="Chalkboard">
             <LanguagePicker variant="nav" />
@@ -262,7 +263,7 @@ export default function Marketing() {
             </Button>
             <AppearanceToggle inline />
           </nav>
-        </header>
+        </AppHeader>
 
         <main id="main">
           {/* Hero: wireframe grid, morphing M3 shapes, a phone that talks. */}
@@ -309,7 +310,9 @@ export default function Marketing() {
                   </div>
                   <div className="lp-bubble coach delay">{s.bubbleCoach}</div>
                   <div className="lp-review delay2">
-                    <small>{s.checkBeforeSaving}</small>
+                    <Typography component="small" variant="bodyMedium">
+                      {s.checkBeforeSaving}
+                    </Typography>
                     <strong>
                       {s.item1} · {s.priceNew} / cup
                     </strong>
