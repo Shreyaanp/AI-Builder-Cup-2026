@@ -27,6 +27,7 @@ import {
   WifiOff,
 } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
+import { useKeyboardViewport } from '../../hooks/useKeyboardViewport'
 import type { Locale } from '../../i18n/locales'
 import { chalkWrite, dealIn } from '../../design/chalkMotion'
 import { RichText } from '../../design/RichText'
@@ -665,31 +666,7 @@ export default function AskHome({
     return () => observer.disconnect()
   }, [])
 
-  // Typing on a phone: the navigation bar steps aside so the composer sits on the keyboard.
-  // Browsers that cover the page with the keyboard (iOS) report it through visualViewport.
-  const [typing, setTyping] = useState(false)
-  useEffect(() => {
-    const root = document.documentElement
-    root.toggleAttribute('data-typing', typing)
-    return () => root.removeAttribute('data-typing')
-  }, [typing])
-  useEffect(() => {
-    const view = window.visualViewport
-    if (!view) return
-    const root = document.documentElement
-    const sync = () => {
-      const covered = view.scale > 1.01 ? 0 : innerHeight - view.height - view.offsetTop
-      root.style.setProperty('--c-keyboard', `${Math.max(0, Math.round(covered))}px`)
-    }
-    sync()
-    view.addEventListener('resize', sync)
-    view.addEventListener('scroll', sync)
-    return () => {
-      view.removeEventListener('resize', sync)
-      view.removeEventListener('scroll', sync)
-      root.style.removeProperty('--c-keyboard')
-    }
-  }, [])
+  const typing = useKeyboardViewport()
 
   const chips = startChips(suggestions, interests, c, t, discover, new Date().getHours())
   const last = turns.at(-1)
@@ -971,7 +948,7 @@ export default function AskHome({
           pl: 'max(16px, env(safe-area-inset-left))',
           pr: 'max(16px, env(safe-area-inset-right))',
           pt: 3,
-          pb: typing ? 'max(12px, env(safe-area-inset-bottom))' : 3,
+          pb: 3,
           // Solid, so a suggestion chip is never half-hidden behind a fading edge.
           bgcolor: roles.surface,
           borderTop: `1px solid ${roles.outlineVariant}`,
@@ -1038,8 +1015,6 @@ export default function AskHome({
                     submit()
                   }
                 }}
-                onFocus={() => setTyping(matchMedia('(pointer: coarse)').matches)}
-                onBlur={() => setTyping(false)}
                 placeholder={placeholderText}
                 inputProps={{ 'aria-label': c.composer, enterKeyHint: 'send', maxLength: 300 }}
                 sx={{
