@@ -30,6 +30,8 @@ export type CoachAction = {
   thread_id?: string
   question?: string
   text?: string
+  /** Offered after "I can't do that yet" (OB-172): shown as a chip, never opened by itself. */
+  offer?: boolean
 }
 
 const TARGETS = new Set<CoachAction['target']>([
