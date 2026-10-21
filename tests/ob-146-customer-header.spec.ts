@@ -37,15 +37,17 @@ for (const width of [360, 390, 412, 1280]) {
           await page.evaluate(() => document.fonts.ready)
           const demo = page.locator('a[href="/explore/demo"]').first()
           const languageButton = page.locator('#customer-language-button')
-          await expect(demo).toBeVisible()
           await expect(languageButton).toBeVisible()
           // The demo action belongs to the trailing controls, directly before Profile.
           const profile = languageButton.locator('xpath=preceding-sibling::button[1]')
-          const demoBox = (await demo.boundingBox())!
-          const profileBox = (await profile.boundingBox())!
-          expect(profileBox.x - (demoBox.x + demoBox.width)).toBeGreaterThanOrEqual(0)
-          expect(profileBox.x - (demoBox.x + demoBox.width)).toBeLessThanOrEqual(4)
-          expect(Math.abs(profileBox.y - demoBox.y)).toBeLessThanOrEqual(1)
+          if (path) {
+            await expect(demo).toBeVisible()
+            const demoBox = (await demo.boundingBox())!
+            const profileBox = (await profile.boundingBox())!
+            expect(profileBox.x - (demoBox.x + demoBox.width)).toBeGreaterThanOrEqual(0)
+            expect(profileBox.x - (demoBox.x + demoBox.width)).toBeLessThanOrEqual(4)
+            expect(Math.abs(profileBox.y - demoBox.y)).toBeLessThanOrEqual(1)
+          }
           if (!path) {
             const area = page.getByRole('button', { name: /Tiong Bahru/ }).first()
             await expect(area).toBeVisible()
@@ -54,6 +56,14 @@ for (const width of [360, 390, 412, 1280]) {
             await area.click()
             await expect(area).toHaveAttribute('aria-expanded', 'true')
             await area.click()
+            // OB-88 keeps Ask compact: its demo entry lives in Profile.
+            await expect(page.locator('header a[href="/explore/demo"]')).toHaveCount(0)
+            await profile.click()
+            const sheet = page.getByRole('dialog')
+            await expect(sheet.locator('a[href="/explore/demo"]')).toBeVisible()
+            await page.keyboard.press('Escape')
+            await expect(sheet).toHaveCount(0)
+            await expect(profile).toBeFocused()
           }
           expect(
             await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),

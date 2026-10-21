@@ -82,8 +82,8 @@ for (const theme of THEMES)
               ).toBeLessThanOrEqual(6)
             }
           }
-          // OB-146/OB-172: Ask puts the full area label below the controls on phones.
-          const height = name === 'ask' && viewport.width < 600 ? 116 : 64
+          // OB-88/OB-146: Ask keeps the area and controls on the shared single-row baseline.
+          const height = 64
           await expect(header, name).toHaveCSS('height', `${height}px`)
           // The separator never contributes an extra pixel to the shared baseline.
           await expect(header, name).toHaveCSS('border-bottom-width', '0px')
