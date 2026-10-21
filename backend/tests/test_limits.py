@@ -109,22 +109,24 @@ def test_forwarded_ip_and_fallback() -> None:
 
 
 @pytest.mark.asyncio
-async def test_store_failure_opens_for_owner_closes_for_anonymous() -> None:
+@pytest.mark.parametrize("action", LIMITS)
+@pytest.mark.parametrize("anonymous", [False, True])
+async def test_ob91_store_failure_closes_for_all_callers(action: str, anonymous: bool) -> None:
     limiter = Mock(spec=RateLimiter)
     limiter.take.side_effect = RuntimeError("Store unavailable")
     request = connection(limiter)
     with patch("app.limits.log.warning") as warning:
-        await enforce_limits(request, [("coach", "alice")], clock=lambda: 0)
         with pytest.raises(HTTPException) as rejected:
             await enforce_limits(
-                request, [("ask:ip", "192.0.2.1")], anonymous=True, clock=lambda: 0
+                request, [(action, "alice")], anonymous=anonymous, clock=lambda: 0
             )
-        assert warning.call_count == 2
-        warning.assert_any_call("rate_limit_store_failed", anonymous=False)
-        warning.assert_called_with("rate_limit_store_failed", anonymous=True)
+        warning.assert_called_once_with("rate_limit_store_failed", anonymous=anonymous)
     assert rejected.value.status_code == 429
     assert rejected.value.detail == "RATE_LIMITED"
     assert rejected.value.headers == {"Retry-After": "60"}
+    limiter.take.return_value = 0
+    limiter.take.side_effect = None
+    await enforce_limits(request, [(action, "alice")], anonymous=anonymous, clock=lambda: 0)
 
 
 def test_backend_selection_matches_merchant_storage() -> None:

@@ -250,7 +250,7 @@ def test_sse_resume_does_not_consume_another_message_quota(app: FastAPI) -> None
         assert "turn_complete" in resumed.text
 
 
-def test_store_outage_owner_open_public_closed(app: FastAPI) -> None:
+def test_ob91_store_outage_owner_and_public_closed_then_recover(app: FastAPI) -> None:
     with TestClient(app) as client:
         join(client)
         bid = create_shop(app.state.merchant)
@@ -258,6 +258,15 @@ def test_store_outage_owner_open_public_closed(app: FastAPI) -> None:
         failing = Mock(spec=RateLimiter)
         failing.take.side_effect = RuntimeError("Store unavailable")
         app.state.rate_limiter = failing
-        assert client.post("/api/v1/coach/stream", json={"message": "Hello"}).status_code == 200
+        with pytest.MonkeyPatch.context() as patch:
+            run = Mock(side_effect=AssertionError("OB-91: blocked calls must not run the coach"))
+            patch.setattr(app.state.services.runtime, "text_events", run)
+            assert_limited(client.post("/api/v1/coach/stream", json={"message": "Hello"}))
+            run.assert_not_called()
+        assert not app.state.services.registry.active
         assert_limited(client.post(f"/api/v1/public/shops/{bid}/ask", json={"question": "Hours?"}))
         assert_limited(client.get("/api/v1/bootstrap"))
+        failing.take.side_effect = None
+        failing.take.return_value = 0
+        assert client.post("/api/v1/coach/stream", json={"message": "Hello"}).status_code == 200
+        assert not app.state.services.registry.active
