@@ -747,14 +747,23 @@ export default function AskHome({
             sx={{
               minHeight: 48,
               minWidth: 0,
-              px: 3,
+              px: { xs: 2, sm: 3 },
               ml: -2,
               borderRadius: 999,
               color: roles.onSurface,
               bgcolor: roles.surfaceContainerLow,
               typography: 'titleSmall',
-              '& .MuiButton-startIcon': { color: roles.primary, mr: 1 },
-              '& .MuiButton-endIcon': { ml: 1 },
+              // Leave the decorative icons' room for the area name on phones (OB-146),
+              // without shrinking text or the touch target.
+              '& .MuiButton-startIcon': {
+                display: { xs: 'none', sm: 'inline-flex' },
+                color: roles.primary,
+                mr: 1,
+              },
+              '& .MuiButton-endIcon': {
+                display: { xs: 'none', sm: 'inline-flex' },
+                ml: 1,
+              },
               '&:hover': { bgcolor: roles.surfaceContainer },
             }}
           >

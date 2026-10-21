@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 for (const width of [360, 390, 412, 1280]) {
   for (const appearance of ['light', 'dark']) {
     for (const language of ['en', 'hi', 'ja']) {
-      test(`OB-146 customer headers stay aligned and show the area at ${width} ${appearance} ${language}`, async ({
+      test(`OB-146 OB-188 customer headers stay aligned and show the area at ${width} ${appearance} ${language}`, async ({
         page,
       }) => {
         await page.setViewportSize({
@@ -56,11 +56,13 @@ for (const width of [360, 390, 412, 1280]) {
             await area.click()
             await expect(area).toHaveAttribute('aria-expanded', 'true')
             await area.click()
-            // OB-88 keeps Ask compact: its demo entry lives in Profile.
-            await expect(page.locator('header a[href="/explore/demo"]')).toHaveCount(0)
+            // OB-188: main reverted OB-88; the demo entry stays in the header.
+            await expect(page.locator('header a[href="/explore/demo"]')).toHaveCount(1)
+            await expect(page.locator('header a[href="/explore/demo"]')).toBeVisible()
             await profile.click()
             const sheet = page.getByRole('dialog')
-            await expect(sheet.locator('a[href="/explore/demo"]')).toBeVisible()
+            await expect(sheet).toBeVisible()
+            await expect(sheet.locator('a[href="/explore/demo"]')).toHaveCount(0)
             await page.keyboard.press('Escape')
             await expect(sheet).toHaveCount(0)
             await expect(profile).toBeFocused()
