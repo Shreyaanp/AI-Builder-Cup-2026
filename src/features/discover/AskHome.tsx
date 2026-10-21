@@ -42,7 +42,7 @@ import { openedShops } from './opened'
 import { ProfileButton, ProfileSheet } from '../customer/Profile'
 import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
 import { LanguagePicker } from '../frontdoors/LanguagePicker'
-import { useFrontCopy } from '../frontdoors/strings'
+import { useDemoCopy, useFrontCopy } from '../frontdoors/strings'
 import { usePassportCopy } from '../passport/copy'
 import { TodayDeck } from '../passport/TodayDeck'
 import { AreaAnswerCard, GoogleRows, PickCard, PickList, PickSkeleton } from './AnswerCards'
@@ -157,6 +157,7 @@ export default function AskHome({
   const locale = useLocale()
   const t = askCopy(locale)
   const front = useFrontCopy()
+  const demo = useDemoCopy()
   const discover = discoverCopy(locale)
   const passport = usePassportCopy()
   const roles = useTheme().material
@@ -724,7 +725,7 @@ export default function AskHome({
     >
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
       <Box sx={{ maxWidth: 720, mx: 'auto', px: 4 }}>
-        {/* Brand, nearby area and personal controls; secondary actions live in the profile. */}
+        {/* Where we are looking, then the person's own controls: one light row. */}
         <AppHeader
           sx={{
             zIndex: 1100,
@@ -733,7 +734,10 @@ export default function AskHome({
             bgcolor: roles.surface,
           }}
         >
-          <BrandLogo wordmark="wide" href="/explore/" />
+          {/* The row is full on a phone (place, demo, three buttons): the logo joins from 600px. */}
+          <Box sx={{ display: { xs: 'none', sm: 'flex' }, mr: 2 }}>
+            <BrandLogo href="/explore/" />
+          </Box>
           <Button
             onClick={() => setChanging((open) => !open)}
             aria-expanded={changing}
@@ -742,8 +746,9 @@ export default function AskHome({
             endIcon={<ChevronDown size={18} aria-hidden="true" />}
             sx={{
               minHeight: 48,
-              minWidth: 48,
-              px: 1,
+              minWidth: 0,
+              px: 3,
+              ml: -2,
               borderRadius: 999,
               color: roles.onSurface,
               bgcolor: roles.surfaceContainerLow,
@@ -761,6 +766,9 @@ export default function AskHome({
             </Box>
           </Button>
           <Stack direction="row" sx={{ ml: 'auto', flexShrink: 0, alignItems: 'center' }}>
+            <Button component="a" href="/explore/demo" size="small" sx={{ minHeight: 48, px: 1 }}>
+              {demo.tryDemo}
+            </Button>
             <ProfileButton inline />
             <LanguagePicker variant="inline" />
             <AppearanceToggle inline />
