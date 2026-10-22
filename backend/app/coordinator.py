@@ -58,6 +58,8 @@ ASK_ORDER = (
     "preorders",
     "busy_hours",
 )
+# A shop's map pin; cleared when the coach prepares a new location (see discover.prepare_pin).
+PIN_FIELDS = ("lat", "lng", "place_id", "pin_label", "pin_source", "pin_accuracy_m")
 # A price moving by more than this factor is flagged so the model confirms with the owner.
 SUSPICIOUS_PRICE_RATIO = 2.0
 
@@ -618,6 +620,12 @@ def _propose_shop(
         }
         # Saved prices are minor units of the saved currency, so it never changes on edit.
         given["currency"] = shop_currency(existing)
+        if location.strip() and location.strip() != existing["fields"].get("location"):
+            # OB-172 (#527): a new place never keeps the old pin. The review card finds the new
+            # pin (geocode, the owner's consent) exactly like the owner's own edit.
+            for key in PIN_FIELDS:
+                given.pop(key, None)
+            given["pin_demo"] = False
     else:
         draft = ctx.new_shop_draft.business if ctx.new_shop_draft else None
         if ctx.new_shop and draft:

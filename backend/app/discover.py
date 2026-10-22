@@ -104,6 +104,7 @@ AREAS = {
     "Koramangala": (12.9352, 77.6245),
     "Hauz Khas": (28.5494, 77.2001),
     "Bandra": (19.0596, 72.8295),
+    "HITEC City": (17.4474, 78.3762),
     "Bangsar": (3.1302, 101.671),
     "Kemang": (-6.2604, 106.813),
     "Shimokitazawa": (35.6615, 139.6669),
@@ -116,6 +117,7 @@ AREAS = {
     "Delhi": (28.6139, 77.209),
     "Mumbai": (19.076, 72.8777),
     "Bombay": (19.076, 72.8777),
+    "Hyderabad": (17.385, 78.4867),
     "Kuala Lumpur": (3.139, 101.6869),
     "Jakarta": (-6.2088, 106.8456),
     "Tokyo": (35.6762, 139.6503),
@@ -510,6 +512,24 @@ class MapsService:
         return await self.cached(("place", place_id), lookup, shared=True)
 
 
+def follow_pin(body: ProposalRequest, old: dict[str, Any], priced: bool) -> None:
+    """A saved shop that moved to another country (OB-172: "change my location to HITEC City,
+    Hyderabad"): its clock follows the new pin, and so does its money while it has no items yet.
+    Saved prices are minor units of the saved currency, so a priced shop keeps it."""
+    from .region import country_at, country_of_timezone, profile
+
+    business = body.business
+    assert business is not None
+    country = country_at(business.lat, business.lng)
+    pinned = profile(country)
+    if not country or not pinned.known:
+        return
+    if country_of_timezone(old.get("timezone") or "") != country:
+        business.timezone = pinned.timezone
+    if not priced:
+        business.currency = pinned.currency
+
+
 async def prepare_pin(
     body: ProposalRequest, repository: MerchantRepository, uid: str, maps: MapsService
 ) -> None:
@@ -521,11 +541,13 @@ async def prepare_pin(
     import anyio
 
     old: dict[str, Any] = {}
+    priced = False
     if body.business_id:
         context = await anyio.to_thread.run_sync(repository.context, uid, body.business_id)
         if context["business"]["revision"] != body.revision:
             raise HTTPException(409, "The business changed. Reload before reviewing.")
         old = context["business"]["fields"]
+        priced = bool(context.get("inventory"))
     elif body.revision != 0:
         raise HTTPException(409, "A new business starts at revision zero.")
 
@@ -616,6 +638,8 @@ async def prepare_pin(
         # Validate provider coordinates before sealing them.
         body.business = type(body.business).model_validate(body.business.model_dump())
         correct_first_pin_region()
+        if old:
+            follow_pin(body, old, priced)
 
 
 def matches(place: DiscoveryPlace, q: str, category: str, only_open: bool) -> bool:

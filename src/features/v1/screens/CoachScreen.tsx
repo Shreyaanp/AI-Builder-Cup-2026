@@ -391,7 +391,7 @@ function CoachScreen({
             [...items, { role: 'action' as const, action, key: crypto.randomUUID() }].slice(-40),
           )
           // Screens open at once (everything by voice); pickers and Send wait for a tap.
-          if (!NEEDS_TAP.has(action.target)) {
+          if (!NEEDS_TAP.has(action.target) && !action.offer) {
             setShowToday(action.target === 'today')
             const sheet = SHEETS[action.target]
             if (action.target === 'games') go('grow')
