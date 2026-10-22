@@ -10,6 +10,7 @@ from google.adk.sessions import InMemorySessionService
 
 from app.main import create_app
 from app.settings import Settings
+from tests.pins import OWNER_PIN
 from tests.test_photos import join
 
 
@@ -33,6 +34,7 @@ def qa_client(tmp_path: Path):
             "/api/v1/proposals",
             json={
                 "kind": "business",
+                **OWNER_PIN,
                 "business": {"name": "QA tea stall"},
                 "products": [{"name": "QA tea", "price": 1800, "unit": "cup"}],
             },

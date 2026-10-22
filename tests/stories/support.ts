@@ -192,8 +192,12 @@ export async function image(page: Page) {
   return { name: 'fixture-board.png', mimeType: 'image/png', buffer: Buffer.from(data, 'base64') }
 }
 
-/** Arrange an owned shop in the same SQLite preview as existing specs; story actions use UI. */
-export async function seedShop(page: Page, withPhotoPin = false, name = shopName) {
+/**
+ * Arrange an owned shop in the same SQLite preview as existing specs; story actions use UI.
+ * OB-168: only a pinned shop can be shared, so the shop gets the owner's pin unless `pin` is
+ * false (a story about a shop that has no pin yet).
+ */
+export async function seedShop(page: Page, withPhotoPin = false, name = shopName, pin = true) {
   let pinned: { id: string; revision: number } | null = null
   if (withPhotoPin) {
     // Only the new-shop photo path can currently review GPS. Keep its empty address while
@@ -244,7 +248,7 @@ export async function seedShop(page: Page, withPhotoPin = false, name = shopName
         stamps_needed: 8,
       },
       // OB-168: API setup confirms a pin too; photo setup retains its own GPS evidence.
-      ...(pinned
+      ...(pinned || !pin
         ? {}
         : { owner_location: { lat: 12.9716, lng: 77.6412, accuracy_m: 0, source: 'pin' } }),
       products: pinned ? [] : products,
@@ -289,6 +293,31 @@ export async function share(page: Page) {
   expect(href).toBeTruthy()
   await expect(page.getByRole('img', { name: /QR code for/ })).toBeVisible()
   return new URL(href!, page.url()).toString()
+}
+
+/**
+ * OB-168: other owners' public shops near a point are pinned and so appear on customer pages
+ * (front door, results, "Similar nearby"). Their names and items are those owners' own words.
+ */
+export async function otherOwnersWords(page: Page, at: { lat: number; lng: number }, own: string) {
+  const response = await page.request.get(
+    `/api/v1/discover?lat=${at.lat}&lng=${at.lng}&radius=50000`,
+  )
+  expect(response.ok()).toBe(true)
+  const { places } = (await response.json()) as {
+    places: { id: string; name: string; source: string; items: { name: string }[] }[]
+  }
+  return places
+    .filter((place) => place.source === 'chalkboard' && place.id !== own)
+    .flatMap((place) => [place.name, ...place.items.map((item) => item.name)])
+}
+
+/** The shop's own menu rows on its customer page (not the "Similar nearby" cards). */
+export function menuRow(page: Page, name: string) {
+  return page
+    .getByRole('listitem')
+    .filter({ hasText: name })
+    .and(page.locator(':not([data-testid="similar-nearby"] li)'))
 }
 
 /** share(), plus the signed QR link the owner's poster encodes (`?source=qr&k=…`). */

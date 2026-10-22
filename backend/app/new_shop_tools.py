@@ -59,7 +59,7 @@ def progress(draft: NewShopDraft | None) -> dict[str, Any]:
     elif draft and draft.live_id:
         result["live"] = "The shop is already live for customers."
     elif ready_to_go_live(draft):
-        result["live"] = "Name, kind and place are known: the app puts the shop live now."
+        result["live"] = "Name, kind and pinned place are known: the app puts the shop live now."
     return result
 
 
@@ -226,6 +226,9 @@ async def update_shop(
             # Voice: never hold up the spoken reply; the profile joins with a later answer.
             await understand(ctx, said, wait=0 if ctx.spoken else UNDERSTAND_SECONDS)
             draft = ctx.new_shop_draft or draft
+        if location.strip():
+            # Pinned before it is recorded, so the shop card never shows an unpinned place.
+            await pin_typed_place(ctx, location.strip())
         result = _propose_shop(
             name=name,
             category=category,
@@ -307,6 +310,49 @@ def end_conversation() -> dict[str, Any]:
 # One owner's shop goes live once, even when a tool call and the app's draft update race.
 _live_locks: dict[str, threading.Lock] = {}
 _live_guard = threading.Lock()
+
+
+async def pin_typed_place(ctx: MerchantContext, place: str | None = None) -> None:
+    """OB-168: a shop is public only with a map pin, and the place the owner told the coach
+    ("Indiranagar metro ke paas") is where they asked customers to find them. Its pin is looked
+    up as it is said (biased to the phone's country), so the one-sentence flow still goes live
+    and the shop takes the money and clock of that place when it opens. A place that cannot be
+    found stays unpinned: the app asks the owner to confirm the spot on the map instead.
+
+    `place` is what the owner just said (None: the draft's own place, on a resume). A GPS or
+    hand-placed pin always wins; a pin found from an earlier wording follows a corrected place
+    (and stays as it was when the new one cannot be found)."""
+    from .discover import demo_pin
+    from .region import phone_country
+
+    draft = ctx.new_shop_draft or NewShopDraft()
+    fields = draft.business
+    typed = (place if place is not None else fields.location if fields else "").strip()
+    if not typed:
+        return
+    if fields and fields.lat is not None and fields.lng is not None:
+        if fields.pin_source is not None or fields.location.strip() == typed:
+            return
+    try:
+        # Scripts and unit tests have no maps service: the offline areas answer.
+        pin = (
+            await ctx.maps.geocode(typed, phone_country())
+            if ctx.maps is not None
+            else demo_pin(typed)
+        )
+    except HTTPException as error:
+        log.info("new_shop_place_unpinned", reason=str(error.detail)[:40])
+        return
+    business = BusinessFields.model_validate(
+        {
+            **(fields.model_dump() if fields else {"name": ""}),
+            **pin,
+            "location": typed[:300],
+            "pin_source": None,
+            "pin_accuracy_m": None,
+        }
+    )
+    ctx.new_shop_draft = draft.model_copy(update={"business": business})
 
 
 def _owner_lock(uid: str) -> threading.Lock:

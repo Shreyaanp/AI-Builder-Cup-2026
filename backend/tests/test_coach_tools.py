@@ -31,6 +31,7 @@ from app.coordinator import (
 from app.merchant import BusinessFields, MerchantStore, NewShopDraft, ProductFields, ProposalRequest
 from app.streaming import public_events
 from scripts.coach_eval import Turn, no_internal_leaks, prepared_not_saved, sane_prices
+from tests.pins import pin_shop
 
 
 @pytest.fixture
@@ -87,6 +88,8 @@ def assert_sealed(proposal: dict[str, Any]) -> None:
 @pytest.mark.parametrize("shared", [False, True])
 def test_context_exposes_only_readable_shop_and_major_unit_products(saved_shop, shared):
     ctx = saved_shop
+    if shared:
+        pin_shop(ctx.store, "alice", ctx.business_id)
     ctx.store.share("alice", ctx.business_id, shared)
     ctx.recalled.append("Owner prefers morning opening.")
     result = get_business_context()
@@ -604,6 +607,7 @@ def test_custom_fact_answers_merge_by_key_and_leave_the_plan(ctx):
     pending = [q["key"] for q in asyncio.run(get_question_plan())["pending"]]
     assert "walk_ins" not in pending and "booking" not in pending
     bid = ctx.business_id
+    pin_shop(ctx.store, "alice", bid)
     ctx.store.share("alice", bid, True)
     public = ctx.store.public_shop(bid)
     assert public is not None
@@ -634,6 +638,7 @@ def test_remember_note_is_private_deduplicated_and_in_context(saved_shop):
     notes = saved_shop.store.context("alice", saved_shop.business_id)["business"]["coach_notes"]
     assert len(notes) == 30 and notes[-1]["text"] == "Note 39"
     # Notes are the coach's private memory: never on the customer page.
+    pin_shop(saved_shop.store, "alice", saved_shop.business_id)
     saved_shop.store.share("alice", saved_shop.business_id, True)
     public = saved_shop.store.public_shop(saved_shop.business_id)
     assert "Note 39" not in json.dumps(public)

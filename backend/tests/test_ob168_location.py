@@ -237,23 +237,24 @@ async def test_ob168_first_pin_repairs_legacy_usd_utc_without_changing_prices(
 
 
 @pytest.mark.parametrize("language", ["en", "hi"])
-def test_ob189_known_address_requests_pin_instead_of_repeating_place_question(language):
+def test_ob189_known_address_is_never_asked_again_and_stays_private_until_pinned(language):
+    """A typed place the map could not find: the coach moves on (the app asks the owner to
+    confirm the pin), never asks the place again, and the shop does not go live without it."""
     from types import SimpleNamespace
 
     from app.agent import OFFLINE_HI, new_shop_reply, ui_language
 
     token = ui_language.set(language)
     try:
-        ctx = SimpleNamespace(
-            uid="owner",
-            new_shop_draft=NewShopDraft(
-                business=BusinessFields(name="Chai", category="Tea", location="Lajpat Nagar")
-            ),
+        draft = NewShopDraft(
+            business=BusinessFields(name="Chai", category="Tea", location="Lajpat Nagar")
         )
-        reply = new_shop_reply(ctx)
-        assert ("map pin" if language == "en" else "नक्शे पर") in reply
+        reply = new_shop_reply(SimpleNamespace(uid="owner", new_shop_draft=draft))
+        hours = "What are your opening hours?"
+        assert (hours if language == "en" else OFFLINE_HI[hours]) in reply
         question = "Are you at the shop right now?"
         assert question not in reply
         assert OFFLINE_HI[next(key for key in OFFLINE_HI if key.startswith(question))] not in reply
+        assert not ready_to_go_live(draft)
     finally:
         ui_language.reset(token)

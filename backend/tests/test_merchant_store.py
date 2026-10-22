@@ -16,6 +16,7 @@ from app.merchant import (
     ProposalRequest,
 )
 from app.merchant_firestore import FirestoreMerchantStore
+from tests.pins import SHOP_PIN
 
 EMULATOR = (os.getenv("FIRESTORE_EMULATOR_HOST") or "").split(":")[0] in {"127.0.0.1", "localhost"}
 
@@ -33,7 +34,7 @@ def store(request: pytest.FixtureRequest, tmp_path: Path) -> Iterator[MerchantRe
 
 
 def create(store: MerchantRepository, uid: str, name: str = "Ram Tea Stall") -> str:
-    request = ProposalRequest(kind="business", business=BusinessFields(name=name))
+    request = ProposalRequest(kind="business", business=BusinessFields(name=name, **SHOP_PIN))
     proposal = store.propose(uid, request)
     return str(store.commit(uid, proposal["id"], proposal["digest"])["business_id"])
 
@@ -83,7 +84,10 @@ def test_stamp_target_round_trip(store: MerchantRepository, needed: int) -> None
         ProposalRequest(
             kind="business",
             business=BusinessFields(
-                name="Neighbourhood Kopi", stamps_needed=needed, reward_text="A free kopi"
+                name="Neighbourhood Kopi",
+                stamps_needed=needed,
+                reward_text="A free kopi",
+                **SHOP_PIN,
             ),
         ),
     )
@@ -100,7 +104,7 @@ def test_stamp_target_round_trip(store: MerchantRepository, needed: int) -> None
             kind="business",
             business_id=bid,
             revision=1,
-            business=BusinessFields(name="Neighbourhood Kopi", stamps_needed=7),
+            business=BusinessFields(name="Neighbourhood Kopi", stamps_needed=7, **SHOP_PIN),
         ),
     )
     store.commit("alice", change["id"], change["digest"])
@@ -126,7 +130,9 @@ def test_global_payment_and_delivery_round_trip(store: MerchantRepository, deliv
         "alice",
         ProposalRequest(
             kind="business",
-            business=BusinessFields(name="Local shop", payment_methods=methods, delivery=delivery),
+            business=BusinessFields(
+                name="Local shop", payment_methods=methods, delivery=delivery, **SHOP_PIN
+            ),
         ),
     )
     bid = store.commit("alice", proposal["id"], proposal["digest"])["business_id"]
@@ -166,6 +172,7 @@ def create_with_products(store: MerchantRepository, uid: str = "alice") -> str:
                 location="Market Road",
                 hours="09:00–18:00",
                 phone="1234567890",
+                **SHOP_PIN,
             ),
             products=[
                 ProductFields(name="Chai", price=1500, unit="cup", stock=10),
@@ -266,8 +273,8 @@ def test_public_shop_exposes_only_customer_fields(store: MerchantRepository) -> 
         "name": "Ram Tea Stall",
         "category": "Tea",
         "location": "Market Road",
-        "lat": None,
-        "lng": None,
+        # OB-168: a shared shop always has its pin.
+        **SHOP_PIN,
         "place_id": None,
         "timezone": "Asia/Singapore",
         "hours": "09:00–18:00",
@@ -515,7 +522,16 @@ def test_customer_facts_are_sealed_saved_and_published(store: MerchantRepository
     bid = create_with_products(store)
     saved = store.context("alice", bid)["business"]["fields"]
     # The versioned default is additive; proposal snapshots/digests remain immutable.
-    assert set(saved) == {"name", "category", "location", "hours", "phone", "currency", "profile"}
+    assert set(saved) == {
+        "name",
+        "category",
+        "location",
+        "hours",
+        "phone",
+        "currency",
+        "profile",
+        *SHOP_PIN,
+    }
     proposal = store.propose(
         "alice",
         ProposalRequest(

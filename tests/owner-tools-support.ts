@@ -1,9 +1,10 @@
 import { expect, type Page } from '@playwright/test'
-import { enter, seedShop } from './stories/support.js'
+import { enter, seedShop, shopName } from './stories/support.js'
 
 export async function ownerTools(page: Page, pinned = false) {
   await enter(page)
-  await seedShop(page, pinned)
+  // OB-168: an unpinned owner really has no pin (the rides tool explains the next step).
+  await seedShop(page, pinned, shopName, pinned)
 }
 /** Payments & rides is a Grow card; the coach guide is under You → Help. */
 export async function openTool(page: Page, name: string) {

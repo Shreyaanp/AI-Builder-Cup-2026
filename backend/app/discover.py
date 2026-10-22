@@ -286,6 +286,34 @@ def open_now(
     return start <= current < end if start < end else current >= start or current < end
 
 
+# More places owners type during offline onboarding (OB-168: a typed place is pinned). Only
+# typed places look these up; a GPS point's "Near …" label stays with the catalogue's areas.
+TYPED_AREAS = {
+    "MG Road": (12.9756, 77.6066),
+    "Lajpat Nagar": (28.5677, 77.2433),
+    "Karol Bagh": (28.6519, 77.1909),
+    "Nehru Place": (28.5494, 77.2519),
+    "Jayanagar": (12.9299, 77.5826),
+}
+
+
+def demo_pin(location: str) -> dict[str, Any]:
+    """The offline pin of a typed place: the known areas only, never a guess."""
+    known = {**TYPED_AREAS, **AREAS}
+    # Whole words only: "Marina" must not match Bangkok's "Ari".
+    area = next((a for a in known if re.search(rf"\b{re.escape(a)}\b", location, re.I)), None)
+    if not area:
+        raise HTTPException(422, "PIN_NOT_FOUND")
+    lat, lng = known[area]
+    return {
+        "lat": lat,
+        "lng": lng,
+        "place_id": "demo-" + area.lower().replace(" ", "-"),
+        "pin_label": "Tiong Bahru Market" if area == "Tiong Bahru" else area,
+        "pin_demo": True,
+    }
+
+
 class MapsService:
     def __init__(self, settings: Settings, transport: httpx.AsyncBaseTransport | None = None):
         self.key = settings.maps_server_key.get_secret_value() if settings.maps_server_key else ""
@@ -342,20 +370,7 @@ class MapsService:
     async def geocode(self, location: str, country: str | None = None) -> dict[str, Any]:
         async def lookup() -> dict[str, Any]:
             if self.demo:
-                # Whole words only: "Marina" must not match Bangkok's "Ari".
-                area = next(
-                    (a for a in AREAS if re.search(rf"\b{re.escape(a)}\b", location, re.I)), None
-                )
-                if not area:
-                    raise HTTPException(422, "PIN_NOT_FOUND")
-                lat, lng = AREAS[area]
-                return {
-                    "lat": lat,
-                    "lng": lng,
-                    "place_id": "demo-" + area.lower().replace(" ", "-"),
-                    "pin_label": "Tiong Bahru Market" if area == "Tiong Bahru" else area,
-                    "pin_demo": True,
-                }
+                return demo_pin(location)
             try:
                 response = await self.client.get(
                     "https://maps.googleapis.com/maps/api/geocode/json",
@@ -526,7 +541,7 @@ async def prepare_pin(
         ):
             from .merchant import place_new_shop
 
-            place_new_shop(body)
+            place_new_shop(body, legacy_utc=True)
 
     # The "Demo shop" label is server-owned too: only the seed script sets it, and an owner's
     # edit can neither add nor remove it.

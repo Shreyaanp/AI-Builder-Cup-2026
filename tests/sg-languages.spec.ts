@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { enter, localOnly } from './stories/support.js'
+import { enter, localOnly, otherOwnersWords } from './stories/support.js'
 
 // Singapore languages end to end at 360px. A Singapore shop (pin
 // in Tiong Bahru, no currency sent) with the owner app set in turn to English, Mandarin, Malay
@@ -225,6 +225,8 @@ async function seedSingapore(page: Page) {
     data: {
       kind: 'business',
       revision: 0,
+      // OB-168: a shared shop needs the owner's pin, not only address text.
+      owner_location: { ...TIONG_BAHRU, accuracy_m: 0, source: 'pin' },
       business: {
         name: SHOP,
         category: 'Cafe',
@@ -327,10 +329,11 @@ for (const lang of LANGS) {
 
       // The customer page of the same shop, in the same language.
       await test.step('public shop page', async () => {
+        const others = await otherOwnersWords(page, TIONG_BAHRU, id)
         await page.goto(`/explore/s/${id}`)
-        await expect(page.getByRole('heading', { name: SHOP })).toBeVisible()
+        await expect(page.getByRole('heading', { name: SHOP, level: 1 })).toBeVisible()
         await expect(page.getByText(PRICE).first()).toBeVisible()
-        await readsIn(page, lang, '07-public-page')
+        await readsIn(page, lang, '07-public-page', others)
       })
     })
 
@@ -343,6 +346,7 @@ for (const lang of LANGS) {
       await localOnly(page)
       await enter(page)
       const id = await seedSingapore(page)
+      const others = await otherOwnersWords(page, TIONG_BAHRU, id)
       const context = await browser.newContext({
         baseURL,
         locale: lang.phone,
@@ -376,17 +380,17 @@ for (const lang of LANGS) {
         const ask = customer.getByRole('search').getByRole('textbox')
         await expect(ask).toBeVisible({ timeout: 30_000 })
         await expect(ask).toHaveAttribute('placeholder', /S\$/)
-        await readsIn(customer, lang, '20-ask-home')
+        await readsIn(customer, lang, '20-ask-home', others)
         await ask.fill(lang.ask)
         await customer.keyboard.press('Enter')
         await expect(customer.getByRole('article').first()).toBeVisible({ timeout: 20_000 })
         await customer.waitForTimeout(1500)
-        await readsIn(customer, lang, '21-ask-results', [lang.ask])
+        await readsIn(customer, lang, '21-ask-results', [lang.ask, ...others])
 
         await customer.goto(`/explore/s/${id}`)
-        await expect(customer.getByRole('heading', { name: SHOP })).toBeVisible()
+        await expect(customer.getByRole('heading', { name: SHOP, level: 1 })).toBeVisible()
         await expect(customer.getByText(PRICE).first()).toBeVisible()
-        await readsIn(customer, lang, '22-shop-page')
+        await readsIn(customer, lang, '22-shop-page', others)
 
         await customer.getByRole('button', { name: lang.chat }).first().click()
         await expect(customer.getByRole('dialog')).toBeVisible()

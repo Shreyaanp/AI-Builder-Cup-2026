@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { enter, image, localOnly, seedShop, share } from './stories/support.js'
+import { enter, image, localOnly, otherOwnersWords, seedShop, share } from './stories/support.js'
 
 // Hindi end to end at 360px. The owner app set to Hindi and a customer
 // whose phone is in Hindi walk the main screens; each must read in Hindi: no English UI words
@@ -277,6 +277,7 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
   await enter(page)
   await seedShop(page)
   const id = new URL(await share(page)).pathname.split('/').pop()!
+  const others = await otherOwnersWords(page, { lat: 12.9716, lng: 77.6412 }, id)
   const context = await browser.newContext({
     baseURL,
     locale: 'hi-IN',
@@ -290,7 +291,7 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
     await customer.goto('/explore/')
     // Release 3's front door (#60) opens on the Ask, with no welcome step to continue past.
     await expect(customer.getByRole('heading', { name: 'आस-पास क्या खोज रहे हैं?' })).toBeVisible()
-    await readsInHindi(customer, '20-front-door')
+    await readsInHindi(customer, '20-front-door', others)
 
     await customer.evaluate(() => localStorage.setItem('chalkboard.customer.journey', 'done'))
     await customer.goto('/explore/')
@@ -298,15 +299,15 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
     await customer.getByRole('search').getByRole('textbox').fill('पास में चाय')
     await customer.keyboard.press('Enter')
     await expect(customer.getByText(/^नमूना जवाब/).first()).toBeVisible({ timeout: 20_000 })
-    await readsInHindi(customer, '21-ask-results')
+    await readsInHindi(customer, '21-ask-results', others)
 
     await customer.goto(`/explore/s/${id}`)
     await expect(
-      customer.getByRole('heading', { name: 'Courtyard Chai · Bengaluru' }),
+      customer.getByRole('heading', { name: 'Courtyard Chai · Bengaluru', level: 1 }),
     ).toBeVisible()
     await expect(customer.getByText('कैफ़े').first()).toBeVisible()
     await expect(customer.getByText('₹18.00').first()).toBeVisible()
-    await readsInHindi(customer, '22-shop-page')
+    await readsInHindi(customer, '22-shop-page', others)
 
     await customer.getByRole('button', { name: 'दुकान से बात करें' }).first().click()
     await expect(customer.getByRole('dialog')).toBeVisible()

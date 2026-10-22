@@ -31,6 +31,7 @@ from .money import exponent
 from .playbook import migrate_stored
 from .region import (
     country_at,
+    country_of_timezone,
     new_shop_currency,
     new_shop_zone,
     phone_country,
@@ -627,23 +628,32 @@ def validate_proposal(request: ProposalRequest) -> None:
         place_new_shop(request)
 
 
-def place_new_shop(request: ProposalRequest) -> None:
+def place_new_shop(request: ProposalRequest, legacy_utc: bool = False) -> None:
     """A new shop takes its money and clock from where its pin is (an Indian pin is INR and
     Asia/Kolkata even from a phone set to Singapore), else from the owner's phone (the model
     validator). Its prices were typed in that same money, so only the minor unit is rescaled."""
     business = request.business
     assert business is not None
-    pinned = profile(country_at(business.lat, business.lng) or phone_country())
+    pin_country = country_at(business.lat, business.lng)
+    pinned = profile(pin_country or phone_country())
     if not pinned.known:
         return
-    if business.currency != pinned.currency:
+    # A pin decides the money. Without one, only the accidental USD default follows the phone
+    # (OB-168); a currency the owner or their app chose stays until the pin is confirmed.
+    if business.currency != pinned.currency and (pin_country or business.currency == "USD"):
         scale = 10 ** (exponent(pinned.currency) - exponent(business.currency))
         for product in request.products:
             product.price = round(product.price * scale)
         business.currency = pinned.currency
-    # Pins and accidental UTC defaults follow the shop's region. A deliberate clock choice
-    # without a pin remains intact until the owner confirms where the shop is.
-    if business.lat is not None or business.timezone == "UTC":
+    # A zone of another known country came from the phone; UTC or a far zone was chosen. An
+    # unpinned shop's UTC, and a legacy USD/UTC record's first pin (legacy_utc), were the
+    # accidental defaults (OB-168): they follow the shop's region.
+    zone_country = country_of_timezone(business.timezone)
+    if (
+        (business.lat is not None and zone_country not in (None, pinned.country))
+        or (business.lat is None and business.timezone == "UTC")
+        or legacy_utc
+    ):
         business.timezone = new_shop_zone(business.lat, business.lng)
 
 

@@ -15,6 +15,7 @@ from app.recap import TEMPLATES, RecapWriter, Summary, offline_summary, recap_fa
 from app.sales import daily_sales, today_for
 from app.settings import Settings
 from app.shop_time import shop_timezone
+from tests.pins import SHOP_PIN
 from tests.test_imports import SALES, make_shop, upload
 from tests.test_merchant_store import create, store  # noqa: F401
 from tests.test_photos import app, join  # noqa: F401
@@ -186,7 +187,7 @@ def test_freshness_owner_switch_and_sold_out_signals(store: MerchantRepository):
         "alice",
         ProposalRequest(
             kind="business",
-            business=BusinessFields(name="Ah Seng Kopi", timezone="UTC"),
+            business=BusinessFields(name="Ah Seng Kopi", timezone="UTC", **SHOP_PIN),
             products=[ProductFields(name="Kopi", price=180)],
         ),
     )

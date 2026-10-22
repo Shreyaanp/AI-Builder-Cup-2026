@@ -1,4 +1,3 @@
-import { confirmShopPin, suggestShopPin } from '../pinSupport.js'
 import { expect, test } from '@playwright/test'
 import { localOnly } from '../stories/support.js'
 
@@ -12,7 +11,6 @@ test.use({
 
 test.beforeEach(async ({ page }) => {
   await localOnly(page)
-  await suggestShopPin(page)
 })
 
 test.describe('Hindi language flows on phone (390px)', () => {
@@ -59,9 +57,6 @@ test.describe('Hindi language flows on phone (390px)', () => {
     await input.fill('name: Chai Point; category: Tea stall; location: MG Road, Bengaluru')
     await page.getByRole('button', { name: /भेजें|Send/i, exact: true }).click()
 
-    // OB-168: the supplied place stays private until the owner confirms its pin.
-    await expect(page.getByTestId('shop-live')).toHaveCount(0)
-    await confirmShopPin(page, 'यही मेरी दुकान है')
     // Verify live chip appears
     await expect(page.getByTestId('shop-live')).toBeVisible({ timeout: 15_000 })
 
