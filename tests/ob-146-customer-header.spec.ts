@@ -6,6 +6,8 @@ for (const width of [360, 390, 412, 1280]) {
       test(`OB-146 OB-188 customer headers stay aligned and show the area at ${width} ${appearance} ${language}`, async ({
         page,
       }) => {
+        // A cold dev server compiles the app on the first visits: wait for it, as the UX gate does.
+        test.setTimeout(120_000)
         await page.setViewportSize({
           width,
           height: width === 390 ? 844 : width === 412 ? 915 : 800,
@@ -30,10 +32,10 @@ for (const width of [360, 390, 412, 1280]) {
             : route.abort(),
         )
         for (const path of ['saved', 'chats', 'passport', 'rescue', '']) {
-          await page.goto(`/explore/${path}`)
-          await expect(
-            page.locator('main').getByRole('heading', { level: 1 }).first(),
-          ).toBeVisible()
+          await page.goto(`/explore/${path}`, { waitUntil: 'domcontentloaded' })
+          await expect(page.locator('main').getByRole('heading', { level: 1 }).first()).toBeVisible(
+            { timeout: 30_000 },
+          )
           await page.evaluate(() => document.fonts.ready)
           const demo = page.locator('a[href="/explore/demo"]').first()
           const languageButton = page.locator('#customer-language-button')
