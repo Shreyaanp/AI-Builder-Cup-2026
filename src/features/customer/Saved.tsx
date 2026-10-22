@@ -11,6 +11,7 @@ import { ShopAvatar } from './Chats'
 import { useAccountCopy, timeAgo } from './copy'
 import type { AccountCopy } from './copy'
 import { SignInButton } from './SignIn'
+import { CollectionEmptyState, CollectionPage } from './CollectionEmptyState'
 import './customer.css'
 
 /** Only the tapped card's photo morphs into the shop header (names must be unique). */
@@ -102,14 +103,7 @@ export function Saved() {
   // OB-158: lead with the latest news; older updates are one tap away.
   const updates = feed ? (showAllUpdates ? feed.updates : feed.updates.slice(0, 1)) : []
   return (
-    <Box component="main" sx={{ maxWidth: 720, mx: 'auto', px: 2, pb: 14 }}>
-      <Typography
-        component="h1"
-        variant="headlineMedium"
-        sx={{ pt: 1, pb: 2, px: 2, fontWeight: 600 }}
-      >
-        {t.savedTitle}
-      </Typography>
+    <CollectionPage title={t.savedTitle}>
       {failed && (
         <Alert
           severity="error"
@@ -140,41 +134,11 @@ export function Saved() {
           </Stack>
         )
       ) : feed.shops.length === 0 ? (
-        <Stack
-          spacing={2}
-          className="c-rise"
-          // Stack's spacing resets child margins, so mx:auto on the tile did nothing: centre the column (OB-102).
-          sx={{ px: 2, pt: 4, textAlign: 'center', alignItems: 'center' }}
-        >
-          <Box
-            aria-hidden="true"
-            sx={{
-              mx: 'auto',
-              width: 88,
-              height: 88,
-              borderRadius: '28px',
-              display: 'grid',
-              placeItems: 'center',
-              bgcolor: roles.secondaryContainer,
-              color: roles.onSecondaryContainer,
-            }}
-          >
-            <Bookmark size={40} />
-          </Box>
-          <Typography component="h2" variant="titleLarge">
-            {t.noFollows}
-          </Typography>
-          <Typography color="text.secondary">{t.noFollowsBody}</Typography>
-          <Button
-            component="a"
-            href="/explore/"
-            onClick={customerNavigate}
-            variant="contained"
-            sx={{ alignSelf: 'center' }}
-          >
-            {t.findShops}
-          </Button>
-        </Stack>
+        <CollectionEmptyState
+          title={t.noFollows}
+          body={t.noFollowsBody}
+          icon={<Bookmark size={40} />}
+        />
       ) : (
         <>
           <Box component="section" aria-labelledby="following-title">
@@ -356,6 +320,6 @@ export function Saved() {
           </Box>
         </>
       )}
-    </Box>
+    </CollectionPage>
   )
 }

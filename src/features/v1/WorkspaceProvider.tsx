@@ -1,14 +1,16 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Button, IconButton, Snackbar, useTheme } from '@mui/material'
+import { Button, IconButton, Snackbar, useMediaQuery, useTheme } from '@mui/material'
 import { X } from 'lucide-react'
 import { canOfferInstall, offerInstall, rememberInstallDeclined } from '../../app/pwa'
 import { useCopy } from './strings'
 import type { Api, Business, Me, Product, Proposal } from './api'
 import { WorkspaceContext } from './workspaceContext'
 import type { Destination, Editor, NewShopPhase, Workspace } from './workspaceContext'
-import { ReviewDialog } from './ReviewDialog'
-import { BusinessDialog, ProductDialog } from './EditDialogs'
+import { OnceOpened } from '../../app/OnceOpened'
+import { BusinessDialog, ProductDialog, ReviewDialog } from './workspaceDeferred'
+import { PendingDialog } from './PendingDialog'
+import { windowClass } from '../../design/theme'
 import { customerShopLink, safeCustomerOrigin } from '../../app/router'
 import { overlayHandled } from './backStack'
 import { track } from '../../app/analytics'
@@ -113,6 +115,9 @@ export function WorkspaceProvider({
   const [faceLoaded, setFaceLoaded] = useState(false)
   if (faceOpen && !faceLoaded) setFaceLoaded(true)
   const [editor, setEditor] = useState<Editor>({ kind: 'none' })
+  // The edit dialogs' code is deferred (OB-165): until it lands, a placeholder answers the tap.
+  const closeEditor = useCallback(() => setEditor({ kind: 'none' }), [])
+  const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
   const [speakReplies, setSpeak] = useState(readSpeak)
   const [customerOrigin, setCustomerOrigin] = useState<string | null>(null)
   useEffect(() => {
@@ -372,23 +377,25 @@ export function WorkspaceProvider({
   return (
     <WorkspaceContext value={value}>
       {children}
-      <ReviewDialog
-        proposal={proposal}
-        onClose={() => setProposal(null)}
-        onSaved={async (businessId) => {
-          const isNew = !businesses.some((shop) => shop.id === businessId)
-          const saved = proposal?.id
-          if (saved) setSavedProposals((ids) => [...ids, saved].slice(-40))
-          setProposal(null)
-          await reload()
-          setActiveId(businessId)
-          if (isNew) setDestination('coach')
-          await loadProducts(businessId).catch(() => undefined)
-          // Offer installation only after useful progress, never up front.
-          if (!isNew && canOfferInstall()) setInstallOffer(true)
-          else setToast(t.saved)
-        }}
-      />
+      <OnceOpened open={proposal !== null}>
+        <ReviewDialog
+          proposal={proposal}
+          onClose={() => setProposal(null)}
+          onSaved={async (businessId) => {
+            const isNew = !businesses.some((shop) => shop.id === businessId)
+            const saved = proposal?.id
+            if (saved) setSavedProposals((ids) => [...ids, saved].slice(-40))
+            setProposal(null)
+            await reload()
+            setActiveId(businessId)
+            if (isNew) setDestination('coach')
+            await loadProducts(businessId).catch(() => undefined)
+            // Offer installation only after useful progress, never up front.
+            if (!isNew && canOfferInstall()) setInstallOffer(true)
+            else setToast(t.saved)
+          }}
+        />
+      </OnceOpened>
       <Snackbar
         open={installOffer}
         message={t.install}
@@ -424,8 +431,32 @@ export function WorkspaceProvider({
           </>
         }
       />
-      <BusinessDialog />
-      <ProductDialog />
+      {value.editor.kind === 'business' && (
+        <Suspense
+          fallback={
+            <PendingDialog
+              title={value.editor.fields ? t.editDetails : t.newShop}
+              fullScreen
+              onClose={closeEditor}
+            />
+          }
+        >
+          <BusinessDialog />
+        </Suspense>
+      )}
+      {value.editor.kind === 'product' && (
+        <Suspense
+          fallback={
+            <PendingDialog
+              title={value.editor.product ? t.editProduct : t.addProduct}
+              fullScreen={compact}
+              onClose={closeEditor}
+            />
+          }
+        >
+          <ProductDialog />
+        </Suspense>
+      )}
       {value.active && faceLoaded && (
         <Suspense fallback={null}>
           <FaceDialog

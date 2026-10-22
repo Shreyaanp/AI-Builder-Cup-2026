@@ -97,6 +97,8 @@ jobs:
       - run: git diff --exit-code -- backend/openapi.json src/api/generated.d.ts
       - run: npm run lint
       - run: npm run build
+      # OB-165: the welcome and first owner screen stay within their JavaScript budget.
+      - run: npm run test:budget
       - run: npm run test:hooks
       - run: npm run format:check
   # Browser tests run per device project, each split into parallel shards.

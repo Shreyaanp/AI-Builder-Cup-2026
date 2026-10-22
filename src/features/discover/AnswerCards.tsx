@@ -297,19 +297,8 @@ export function PickCard({
               </Typography>
             )}
           </Stack>
-          {deal && pick.currency ? (
-            <Typography
-              variant="labelMedium"
-              sx={{ color: theme.chalk.coral.onContainer, fontWeight: 700, ...oneLine }}
-            >
-              {fillIn(copy.deal, {
-                item: deal.item,
-                price: formatPrice(deal.price, pick.currency),
-              })}{' '}
-              · {fillIn(copy.until, { time: time(deal.pickup_end, locale) })}
-            </Typography>
-          ) : item ? (
-            <Typography variant="bodySmall" sx={oneLine}>
+          {item && (
+            <Typography variant="bodySmall" sx={{ overflowWrap: 'anywhere' }}>
               {item.name}
               {pick.locally_made && (
                 <Box component="span" sx={{ color: theme.chalk.mint.main }}>
@@ -319,7 +308,23 @@ export function PickCard({
                 </Box>
               )}
             </Typography>
-          ) : null}
+          )}
+          {deal && pick.currency && (
+            <Typography
+              variant="labelMedium"
+              sx={{
+                color: theme.chalk.coral.onContainer,
+                fontWeight: 700,
+                overflowWrap: 'anywhere',
+              }}
+            >
+              {fillIn(copy.deal, {
+                item: deal.item,
+                price: formatPrice(deal.price, pick.currency),
+              })}{' '}
+              · {fillIn(copy.until, { time: time(deal.pickup_end, locale) })}
+            </Typography>
+          )}
           <Typography
             variant="bodySmall"
             color="text.secondary"
