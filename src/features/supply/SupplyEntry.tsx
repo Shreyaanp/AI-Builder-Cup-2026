@@ -6,8 +6,8 @@ import { useIoCopy } from './ioCopy'
 import { useBoard, useIoActions, useUndoableSend } from './ioData'
 import type { IoOrder, View } from './ioTypes'
 import { OrderCard, TaskCard } from './IoParts'
-import { OrderSheet } from './OrderSheet'
-import { SupplyHub } from './SupplyHub'
+import { OnceOpened } from '../../app/OnceOpened'
+import { OrderSheet, SupplyHub } from './supplyDeferred'
 
 /** Today: exceptions float up (shortages, changes, late, unsent); on-time documents stay quiet. */
 export function TodaySupplyNeeds() {
@@ -44,8 +44,12 @@ export function TodaySupplyNeeds() {
           {c.action.open}: {c.title}
         </Button>
       </Stack>
-      <SupplyHub open={open} onClose={() => setOpen(false)} />
-      <OrderSheet order={order} open={order !== null} onClose={() => setOrderId(null)} />
+      <OnceOpened open={open}>
+        <SupplyHub open={open} onClose={() => setOpen(false)} />
+      </OnceOpened>
+      <OnceOpened open={order !== null}>
+        <OrderSheet order={order} open={order !== null} onClose={() => setOrderId(null)} />
+      </OnceOpened>
     </>
   )
 }
@@ -130,12 +134,14 @@ export function SupplyChatCard({ data }: { data: SupplyCardData }) {
     return (
       <>
         <OrderCard order={latest} onOpen={() => setOpen(true)} />
-        <OrderSheet
-          order={latest}
-          open={open}
-          onClose={() => setOpen(false)}
-          sapDocId={data.view === 'sap' ? data.document_id : undefined}
-        />
+        <OnceOpened open={open}>
+          <OrderSheet
+            order={latest}
+            open={open}
+            onClose={() => setOpen(false)}
+            sapDocId={data.view === 'sap' ? data.document_id : undefined}
+          />
+        </OnceOpened>
       </>
     )
   const view: View = data.view === 'order' || data.view === 'sap' ? 'needs' : data.view
@@ -144,7 +150,9 @@ export function SupplyChatCard({ data }: { data: SupplyCardData }) {
       <Button variant="outlined" onClick={() => setOpen(true)} sx={{ minHeight: 48 }}>
         {c.action.open}: {c.tabs[view]}
       </Button>
-      <SupplyHub open={open} onClose={() => setOpen(false)} initial={view} />
+      <OnceOpened open={open}>
+        <SupplyHub open={open} onClose={() => setOpen(false)} initial={view} />
+      </OnceOpened>
     </>
   )
 }

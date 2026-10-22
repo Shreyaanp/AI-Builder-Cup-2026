@@ -11,7 +11,7 @@ import {
   photoRouteCopy,
   type PhotoRoute,
 } from '../../coach/photoRouteCopy'
-import { CloseDay, type Kind as DayKind } from '../../closeday/CloseDay'
+import type { Kind as DayKind } from '../../closeday/CloseDay'
 import {
   lazy,
   Suspense,
@@ -78,13 +78,10 @@ import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
 import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
-import { ConnectSheet } from '../../connect/ConnectSheet'
 import { useConnectCopy } from '../../connect/strings'
-import { SalesImportSheet } from '../ImportMenu'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
 import { StartCard } from '../ShopCard'
-import { TourOffer } from '../../tour/Tour'
-import { ShopSheets } from '../ShopTiles'
+import { TourOffer } from '../../tour/TourEntry'
 import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
@@ -98,12 +95,10 @@ import { OwnerJourney } from '../../frontdoors/OwnerJourney'
 import { LoadError } from '../LoadError'
 import { enterRise, shape } from '../../../design/theme'
 import { useSourcingCopy } from '../../sourcing/copy'
-import { OrdersSheet } from '../../sourcing/Orders'
 import { track } from '../../../app/analytics'
 import { useReceiveOrder } from '../../sourcing/orderData'
-import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
-import { SupplyChatCard, type SupplyCardData } from '../../supply/SupplyEntry'
+import type { SupplyCardData } from '../../supply/SupplyEntry'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
 import { utter } from '../phoneVoice'
 import { useLanguageSwitch } from '../languageSwitch'
@@ -113,7 +108,19 @@ import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
 import type { Destination } from '../workspaceContext'
 import { GuideChips } from '../../owner-tools/CoachGuide'
 import { openOwnerFeature } from '../../owner-tools/entry'
-import { PaymentCard } from '../../owner-tools/PaymentsScreen'
+import { OnceOpened } from '../../../app/OnceOpened'
+import {
+  CloseDay,
+  ConnectSheet,
+  OrderCard,
+  OrdersSheet,
+  PaymentCard,
+  SalesImportSheet,
+  SearchingSuppliers,
+  ShopSheets,
+  SupplierCarousel,
+  SupplyChatCard,
+} from './coachDeferred'
 import type { PaymentLink } from '../../owner-tools/links'
 
 // Charts, purchase orders and rules cards only appear mid-conversation; their code loads then.
@@ -1311,7 +1318,9 @@ function CoachScreen({
                     )
                   ) : message.role === 'payment' ? (
                     <Box component="li" key={message.key}>
-                      <PaymentCard payment={message.payment} />
+                      <Suspense fallback={null}>
+                        <PaymentCard payment={message.payment} />
+                      </Suspense>
                     </Box>
                   ) : message.role === 'chart' ? (
                     <Box component="li" key={message.key} sx={{ display: 'flex' }}>
@@ -1320,17 +1329,18 @@ function CoachScreen({
                       </Suspense>
                     </Box>
                   ) : message.role === 'suppliers' ? (
-                    <SupplierCarousel
-                      key={message.key}
-                      result={message.result}
-                      onChoose={(card) => {
-                        const amount = message.result.quantity
-                          ? `${message.result.quantity} ${message.result.unit} `
-                          : ''
-                        setNote(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
-                        messageInput.current?.focus()
-                      }}
-                    />
+                    <Suspense key={message.key} fallback={null}>
+                      <SupplierCarousel
+                        result={message.result}
+                        onChoose={(card) => {
+                          const amount = message.result.quantity
+                            ? `${message.result.quantity} ${message.result.unit} `
+                            : ''
+                          setNote(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
+                          messageInput.current?.focus()
+                        }}
+                      />
+                    </Suspense>
                   ) : message.role === 'po' ? (
                     pos[message.poId] && (
                       <Box component="li" key={message.poId} sx={{ pl: { xs: 0, sm: 10 } }}>
@@ -1344,7 +1354,9 @@ function CoachScreen({
                     )
                   ) : message.role === 'supply' ? (
                     <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
-                      <SupplyChatCard data={message.data} />
+                      <Suspense fallback={null}>
+                        <SupplyChatCard data={message.data} />
+                      </Suspense>
                     </Box>
                   ) : message.role === 'rules' ? (
                     <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
@@ -1365,25 +1377,30 @@ function CoachScreen({
                     </Box>
                   ) : message.role === 'order' ? (
                     orders[message.orderId] && (
-                      <OrderCard
-                        key={message.orderId}
-                        order={orders[message.orderId]!}
-                        onSend={sendOrder}
-                        onDiscard={discardOrder}
-                        onOpen={(order) => setThread(order.id)}
-                        onReceived={(order) =>
-                          void receiveOrder(order).then((received) => {
-                            if (received)
-                              setOrders((known) => ({ ...known, [received.id]: received }))
-                          })
-                        }
-                      />
+                      <Suspense key={message.orderId} fallback={null}>
+                        <OrderCard
+                          order={orders[message.orderId]!}
+                          onSend={sendOrder}
+                          onDiscard={discardOrder}
+                          onOpen={(order) => setThread(order.id)}
+                          onReceived={(order) =>
+                            void receiveOrder(order).then((received) => {
+                              if (received)
+                                setOrders((known) => ({ ...known, [received.id]: received }))
+                            })
+                          }
+                        />
+                      </Suspense>
                     )
                   ) : (
                     <Bubble key={index} message={message} you={t.you} coach={t.coach} />
                   ),
                 )}
-                {searching !== null && <SearchingSuppliers item={searching} />}
+                {searching !== null && (
+                  <Suspense fallback={null}>
+                    <SearchingSuppliers item={searching} />
+                  </Suspense>
+                )}
                 {liveReply && (
                   <Bubble
                     message={{ role: 'assistant', text: liveReply }}
@@ -1404,26 +1421,40 @@ function CoachScreen({
         )}
         <div ref={end} />
       </Box>
-      <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
-      {dayPhoto && <CloseDay initial={dayPhoto} onClose={() => setDayPhoto(null)} />}
-      <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
-      <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
-      <ShopSheets
-        kind={shopSheet}
-        menuFocus={menuFocus}
-        onClose={() => {
-          if (shopSheet === 'messages') refreshUnread()
-          setShopSheet(null)
-          setMenuFocus(null)
-        }}
-      />
-      {closeDayOpen && (
-        <CloseDay
+      <OnceOpened open={sales !== null}>
+        <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
+      </OnceOpened>
+      {dayPhoto && (
+        <Suspense fallback={null}>
+          <CloseDay initial={dayPhoto} onClose={() => setDayPhoto(null)} />
+        </Suspense>
+      )}
+      <OnceOpened open={thread !== null}>
+        <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
+      </OnceOpened>
+      <OnceOpened open={connectOpen}>
+        <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
+      </OnceOpened>
+      <OnceOpened open={shopSheet !== null}>
+        <ShopSheets
+          kind={shopSheet}
+          menuFocus={menuFocus}
           onClose={() => {
-            setCloseDayOpen(false)
-            void ws.reload()
+            if (shopSheet === 'messages') refreshUnread()
+            setShopSheet(null)
+            setMenuFocus(null)
           }}
         />
+      </OnceOpened>
+      {closeDayOpen && (
+        <Suspense fallback={null}>
+          <CloseDay
+            onClose={() => {
+              setCloseDayOpen(false)
+              void ws.reload()
+            }}
+          />
+        </Suspense>
       )}
 
       <Box
