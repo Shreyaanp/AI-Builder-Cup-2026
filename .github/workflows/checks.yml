@@ -74,6 +74,29 @@ jobs:
         env:
           FIRESTORE_EMULATOR_HOST: 127.0.0.1:8085
       - run: uv run pip-audit --local --progress-spinner off
+  # Coach evals (OB-173): the owner coach's expected tool calls, arguments and approval cards
+  # against the real tools, driven by a replay model (no provider, free, deterministic).
+  # Known failures are xfail with their issue number; live Gemini runs are by hand (README).
+  coach-evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: '0.13.0'
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked
+      - run: uv run ruff check evals
+      - run: uv run ruff format --check evals
+      - run: uv run mypy evals
+      - run: uv run pytest evals -q -rxX
   frontend:
     runs-on: ubuntu-latest
     steps:
