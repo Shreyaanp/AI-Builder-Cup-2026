@@ -5,9 +5,14 @@ import { useLocale } from '../../state/hooks'
 import { explainerCopy } from './copy'
 import { hasSeen, remember, type Audience } from './seen'
 
-/** A customer who scanned a shop's QR came for that shop and its stamp, not the intro (OB-65). */
-function qrArrival(app: Audience) {
-  return app === 'customer' && new URLSearchParams(window.location.search).get('source') === 'qr'
+/** A customer who scanned a shop's QR came for that shop and its stamp, not the intro (OB-65).
+ * A shared shop link (WhatsApp, not QR) is the same promise: open that shop first (A-20). */
+function shopArrival(app: Audience) {
+  return (
+    app === 'customer' &&
+    (new URLSearchParams(window.location.search).get('source') === 'qr' ||
+      /^\/explore\/s\/[^/]+\/?$/.test(window.location.pathname))
+  )
 }
 
 /** Demo links must reach their promised destination even on a fresh device. */
@@ -20,9 +25,9 @@ function customerDemo(app: Audience) {
 }
 
 /** Blocks setup until the device's introduction is finished or skipped. A QR arrival defers it to
- * the next visit. */
+ * the next visit, and so does a shared shop link. */
 export function FirstRun({ app, children }: { app: Audience; children: ReactNode }) {
-  const [open, setOpen] = useState(() => !hasSeen(app) && !qrArrival(app) && !customerDemo(app))
+  const [open, setOpen] = useState(() => !hasSeen(app) && !shopArrival(app) && !customerDemo(app))
   return open && !hasSeen(app) ? (
     <Cards
       app={app}

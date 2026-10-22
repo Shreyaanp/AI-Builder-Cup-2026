@@ -21,6 +21,8 @@ import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 
 import type { CustomerCopy } from './customerCopy'
+import type { Locale } from '../../i18n/locales'
+import { offlineCopy } from '../customer/offline'
 
 type Answer = components['schemas']['Answer']
 
@@ -36,8 +38,11 @@ async function send<T>(id: string, action: string, body: unknown, signal: AbortS
   return response.json() as Promise<T>
 }
 
-function errorCopy(error: unknown, t: CustomerCopy) {
+function errorCopy(error: unknown, t: CustomerCopy, locale: Locale, kind: 'ask' | 'send') {
   const status = error instanceof Error ? error.message : ''
+  // A-17: a server error is not the customer's connection.
+  if (/^5\d\d$/.test(status))
+    return kind === 'ask' ? offlineCopy(locale).serverBusy : offlineCopy(locale).failedBody
   return status === '429'
     ? t.rateLimited
     : status === '404'
@@ -95,7 +100,7 @@ export function CustomerQuestions({
       )
       if (!abort.signal.aborted) setAnswer({ answer: result, facts })
     } catch (failure) {
-      if (!abort.signal.aborted) setError(errorCopy(failure, t))
+      if (!abort.signal.aborted) setError(errorCopy(failure, t, locale, 'ask'))
     } finally {
       if (!abort.signal.aborted) setBusy(false)
     }
@@ -198,6 +203,7 @@ export function CustomerQuestions({
 }
 
 export function CustomerInquiry({ id, copy: t }: { id: string; copy: CustomerCopy }) {
+  const locale = useLocale()
   const [name, setName] = useState('')
   const [contact, setContact] = useState('')
   const [message, setMessage] = useState('')
@@ -256,7 +262,9 @@ export function CustomerInquiry({ id, copy: t }: { id: string; copy: CustomerCop
     } catch (failure) {
       if (!abort.signal.aborted)
         setError(
-          failure instanceof Error && failure.message === '409' ? t.closed : errorCopy(failure, t),
+          failure instanceof Error && failure.message === '409'
+            ? t.closed
+            : errorCopy(failure, t, locale, 'send'),
         )
     } finally {
       if (!abort.signal.aborted) setBusy(false)

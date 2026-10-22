@@ -1,4 +1,5 @@
 import { AppHeader } from '../../design/AppHeader'
+import { keepShop, keptShop, whenOnline } from '../customer/offline'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Alert,
@@ -486,6 +487,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
   // Data shown may be older than the last attempt when a refresh failed (network/server).
   const [stale, setStale] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   // A counter QR scan, read once: a shop without stamps has no stamp moment to answer it.
@@ -534,12 +536,16 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
       if (changed.length) setChangedPrices(changed.map((product) => product.name + product.unit))
       previous.current = data
       // A personal signal for this person's own search and Today's 7, kept on this device.
-      if (!previewApi) rememberOpened(data.id)
+      if (!previewApi) {
+        rememberOpened(data.id)
+        // A-18: a shop opened once opens again offline.
+        keepShop(id, locale, data)
+      }
       setShop(data)
       setStale(false)
       setState('ready')
     },
-    [previewApi],
+    [previewApi, id, locale],
   )
   const failRefresh = useCallback((error: unknown) => {
     if (error instanceof Error && error.message === 'missing') {
@@ -559,13 +565,32 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         if (!previewApi) recsEvent({ kind: 'shop_open', shop_id: data.id })
       })
       .catch((error: unknown) => {
-        if (!abort.signal.aborted)
-          setState(error instanceof Error && error.message === 'missing' ? 'missing' : 'error')
+        if (abort.signal.aborted) return
+        if (error instanceof Error && error.message === 'missing') {
+          setState('missing')
+          return
+        }
+        // A-18: offline or a failed load shows the copy kept from the last visit, marked as
+        // possibly out of date; the regular refresh replaces it once the shop answers.
+        const kept = previewApi ? null : keptShop(id, locale)
+        if (kept && typeof kept === 'object') {
+          const data = safePublicShop(kept)
+          previous.current = data
+          setShop(data)
+          setStale(true)
+          setState('ready')
+          document.title = `${data.name} · ${t.menu}`
+        } else setState('error')
       })
     return () => {
       abort.abort()
     }
-  }, [fetchShop, t.menu, apply, failRefresh, previewApi])
+  }, [fetchShop, t.menu, apply, failRefresh, previewApi, id, locale, attempt])
+  useEffect(() => {
+    // Back online after a failed first load: try again by itself.
+    if (state !== 'error') return
+    return whenOnline(() => setAttempt((n) => n + 1))
+  }, [state])
   useEffect(() => {
     let pending: AbortController | null = null
     const refresh = () => {
@@ -614,7 +639,14 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         <Typography variant="bodyLarge" color="text.secondary">
           {t.errorBody}
         </Typography>
-        <Button variant="contained" onClick={() => location.reload()} sx={{ alignSelf: 'center' }}>
+        <Button
+          variant="contained"
+          onClick={() => {
+            setState('loading')
+            setAttempt((n) => n + 1)
+          }}
+          sx={{ alignSelf: 'center' }}
+        >
           {t.retry}
         </Button>
       </Stack>
