@@ -10,6 +10,7 @@ import { accountCopyFor } from '../customer/copy'
 import { locallyMadeLabel } from '../public/locallyMade'
 import { formatPrice } from '../v1/format'
 import { askCopy } from './askStrings'
+import { cleanAreaText, plainModelText } from './areaText'
 import type { AreaAnswer, AskAnswer, AskPick } from './askThread'
 import { mapCopy } from './mapCopy'
 import { mapsLink } from './types'
@@ -156,6 +157,14 @@ function rowSx(roles: Theme['material'], selected = false) {
 
 /** One line, cut with an ellipsis rather than making the row taller. */
 const oneLine = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const
+/** Two lines, then an ellipsis: a long place name or credit wraps instead of being cut at one. */
+const twoLines = {
+  display: '-webkit-box',
+  WebkitBoxOrient: 'vertical',
+  WebkitLineClamp: 2,
+  overflow: 'hidden',
+  overflowWrap: 'anywhere',
+} as const
 
 /**
  * One shop that answers the question, as a compact row: photo, name and the handwritten price
@@ -198,7 +207,9 @@ export function PickCard({
   const item = pick.matched[0] ?? pick.items.find((i) => i.available)
   const reason = pick.reasons?.[0]
   // Their own signal, in one line: Gemini's words for the top picks, else the app's own.
-  const personal = pick.why ?? (pick.because ? becauseLine(pick.because, searchCopy(locale)) : null)
+  const personal =
+    (pick.why ? plainModelText(pick.why) : null) ??
+    (pick.because ? becauseLine(pick.because, searchCopy(locale)) : null)
   const distance = formatDistance(pick.distance_m, locale)
   const deal = pick.deal
   // The meta line already says "Demo shop"; the name keeps its room for the name itself.
@@ -453,7 +464,7 @@ export function GoogleRows({
             >
               <Thumb pick={place} />
               <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography variant="titleSmall" component="h4" sx={oneLine}>
+                <Typography variant="titleSmall" component="h4" title={place.name} sx={twoLines}>
                   {place.name}
                 </Typography>
                 <Typography variant="bodySmall" color="text.secondary" sx={oneLine}>
@@ -477,18 +488,25 @@ export function GoogleRows({
                     {ratingLine(place.rating, place.user_rating_count, locale, search)}
                   </Typography>
                 )}
-                {/* Google's attribution: the words "Google Maps", never translated, and the
-                    photo's author. */}
+                {/* Google's attribution: the words "Google Maps", never translated. The photo's
+                    author is a separate, labelled line, so a name never reads as the owner. */}
                 <Typography
                   variant="labelSmall"
                   translate="no"
                   sx={{ color: roles.onSurfaceVariant, ...oneLine }}
                 >
                   Google Maps
-                  {place.photo_url && place.photo_authors?.length
-                    ? ` · ${place.photo_authors.join(', ')}`
-                    : ''}
                 </Typography>
+                {place.photo_url && place.photo_authors?.length ? (
+                  <Typography
+                    variant="labelSmall"
+                    data-testid="photo-credit"
+                    title={fillIn(ask.photoBy, { name: place.photo_authors.join(', ') })}
+                    sx={{ color: roles.onSurfaceVariant, ...twoLines }}
+                  >
+                    {fillIn(ask.photoBy, { name: place.photo_authors.join(', ') })}
+                  </Typography>
+                ) : null}
               </Box>
               <ExternalLink size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
             </Box>
@@ -532,7 +550,9 @@ export function AreaAnswerCard({ area, locale }: { area: AreaAnswer; locale: Loc
         border: `1px solid ${roles.outlineVariant}`,
       }}
     >
-      <Typography variant="bodyLarge">{area.text}</Typography>
+      <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>
+        {cleanAreaText(area.text)}
+      </Typography>
       {area.sources.length > 0 && (
         <>
           <Typography

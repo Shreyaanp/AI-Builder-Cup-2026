@@ -188,7 +188,7 @@ export function DemoBrowse({
                       </Typography>
                       <Typography variant="bodySmall" component="span">
                         {info.products[0]
-                          ? formatPrice(info.products[0].price, info.currency, locale)
+                          ? `${info.products[0].name} ${formatPrice(info.products[0].price, info.currency, locale)}`
                           : passport.demo}
                       </Typography>
                       <Typography variant="bodySmall" component="span" aria-hidden="true">
