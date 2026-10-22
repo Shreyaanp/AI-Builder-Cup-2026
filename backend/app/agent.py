@@ -407,10 +407,10 @@ CLARIFY_DAYS = "Which days are those hours for?"
 
 
 def said_time(said: str, *, night: bool) -> str | None:
-    """A time from an hours range: "9pm" and "21:00" as said; a bare "9" is the morning when the
-    shop opens and the night when it closes ("7 to 9" is 07:00-21:00)."""
-    if exact := clock(said):
-        return exact
+    """A time from an hours range: "9pm" and "21:00" as said; without am/pm, "9" or "10:30" is the
+    morning when the shop opens and the night when it closes ("8 to 10:30" is 08:00-22:30)."""
+    if re.search(r"[ap]m", said, re.I):
+        return clock(said)
     hour, _, minute = said.strip().partition(":")
     return clock(f"{int(hour) + (12 if night and int(hour) < 12 else 0)}:{minute or '00'}")
 

@@ -105,6 +105,11 @@ def test_ob172_we_close_at_9_now_prepares_the_hours(coach) -> None:
     [
         ("We open 7 to 9 every day", "07:00", "21:00"),
         ("we're open from 8am till 10:30pm", "08:00", "22:30"),
+        # Second review of #537: a closing time with minutes and no am/pm was kept as 10:30 in
+        # the morning; it is the night, like "we close at 10:30" (22:30).
+        ("we open 8 to 10:30", "08:00", "22:30"),
+        ("open 7 to 9:30", "07:00", "21:30"),
+        ("open 7:30 to 21:00", "07:30", "21:00"),
     ],
 )
 def test_ob172_the_guide_example_we_open_7_to_9_sets_the_whole_day(
