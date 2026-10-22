@@ -8,7 +8,8 @@ const en = {
   voice: 'Gemini Live lets you talk with the coach when live voice is available.',
   photo:
     'Gemini vision reads photos, with Document AI for receipts and invoices when enabled; offline mode uses samples.',
-  places: 'Live place answers are grounded with Google Maps; demo mode uses sample places.',
+  places:
+    'We look up real places on Google Maps for you; in demo mode you see made-up sample places.',
 }
 
 const copy: Record<Locale, typeof en> = {

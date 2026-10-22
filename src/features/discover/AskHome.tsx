@@ -12,6 +12,7 @@ import {
   Stack,
   Tooltip,
   Typography,
+  useMediaQuery,
   useTheme,
 } from '@mui/material'
 import {
@@ -91,6 +92,8 @@ function fallbackPlace(): FoundPlace {
 const DOCK_ESTIMATE = 200
 /** The navigation bar under the dock (hidden while typing on a phone). */
 const NAV = 80
+/** The sticky app bar's height plus a little air: where a new turn lands when scrolled to. */
+const SCROLL_MARGIN = 80
 
 function savedPlace(): FoundPlace | null {
   try {
@@ -231,6 +234,8 @@ export default function AskHome({
   const requests = useRef(new Map<string, AbortController>())
   const Speech = speechRecognition()
   const busy = turns.some((turn) => turn.status === 'thinking')
+  // A tap fires a mouse hover that never ends on a touch screen, which left the tooltip stuck (A-34).
+  const noHover = useMediaQuery('(hover: none)')
 
   useEffect(() => {
     document.title = `${c.hello} · Chalkboard`
@@ -899,7 +904,14 @@ export default function AskHome({
               id={`turn-${turn.id}`}
               component="article"
               aria-label={turn.q}
-              sx={{ scrollMarginTop: 80 }}
+              // The newest turn is tall enough to scroll to the top (just under the app bar), so a
+              // follow-up's first card is never left behind the sticky header (A-35).
+              sx={{
+                scrollMarginTop: SCROLL_MARGIN,
+                ...(turn === last && {
+                  minHeight: `calc(100dvh - ${SCROLL_MARGIN + dockHeight + NAV + 24}px - env(safe-area-inset-bottom, 0px))`,
+                }),
+              }}
             >
               <UserBubble text={turn.q} copy={c} />
               <AssistantTurn
@@ -960,7 +972,7 @@ export default function AskHome({
         <Box sx={{ maxWidth: 720, mx: 'auto', position: 'relative' }}>
           <Stack direction="row" sx={{ alignItems: 'flex-end', gap: 2 }}>
             {!opening && (
-              <Tooltip title={c.newChat}>
+              <Tooltip title={c.newChat} disableHoverListener={noHover} disableTouchListener>
                 <IconButton
                   aria-label={c.newChat}
                   onClick={restart}
