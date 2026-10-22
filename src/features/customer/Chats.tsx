@@ -23,7 +23,7 @@ import { useCustomer } from './account'
 import { clockTime, useAccountCopy } from './copy'
 import type { AccountCopy } from './copy'
 import { PlainText } from '../../design/PlainText'
-import { RichText } from '../../design/RichText'
+import { RichText } from '../../design/LazyRichText'
 import { SignInButton } from './SignIn'
 import { fill } from '../passport/copy'
 import { useRescueCopy } from '../rescue/copy'
@@ -31,6 +31,7 @@ import type { RescueStrings } from '../rescue/copy'
 import { rescueMarker } from '../rescue/marker'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { chatPath, reduceMotion } from './paths'
+import { CollectionEmptyState, CollectionPage } from './CollectionEmptyState'
 import './customer.css'
 
 import type { ChatSummary, Message, ShopCard, Thread } from './types'
@@ -119,14 +120,7 @@ export function ChatList() {
   }, [signedIn, load])
 
   return (
-    <Box component="main" sx={{ maxWidth: 720, mx: 'auto', px: 2, pb: 14 }}>
-      <Typography
-        component="h1"
-        variant="headlineMedium"
-        sx={{ pt: 1, pb: 2, px: 2, fontWeight: 600 }}
-      >
-        {t.chatsTitle}
-      </Typography>
+    <CollectionPage title={t.chatsTitle}>
       {account.status === 'loading' ? null : !signedIn ? (
         <Stack spacing={3} className="c-rise" sx={{ px: 2, pt: 4, textAlign: 'center' }}>
           <Box
@@ -179,26 +173,7 @@ export function ChatList() {
           ))}
         </Stack>
       ) : chats.length === 0 ? (
-        <Stack
-          spacing={2}
-          className="c-rise"
-          // Stack's spacing resets child margins, so mx:auto on the tile did nothing: centre the column (OB-102).
-          sx={{ px: 2, pt: 4, textAlign: 'center', alignItems: 'center' }}
-        >
-          <Typography component="h2" variant="titleLarge">
-            {t.noChats}
-          </Typography>
-          <Typography color="text.secondary">{t.noChatsBody}</Typography>
-          <Button
-            component="a"
-            href="/explore/"
-            onClick={customerNavigate}
-            variant="contained"
-            sx={{ alignSelf: 'center' }}
-          >
-            {t.findShops}
-          </Button>
-        </Stack>
+        <CollectionEmptyState title={t.noChats} body={t.noChatsBody} />
       ) : (
         <Box component="ul" aria-label={t.chatsTitle} sx={{ listStyle: 'none', m: 0, p: 0 }}>
           {chats.map((chat, index) => {
@@ -306,7 +281,7 @@ export function ChatList() {
           })}
         </Box>
       )}
-    </Box>
+    </CollectionPage>
   )
 }
 

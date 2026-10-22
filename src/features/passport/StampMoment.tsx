@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Button, Stack, Typography, useTheme } from '@mui/material'
+import { Box, Button, Stack, Typography, useMediaQuery, useTheme } from '@mui/material'
 import { gsap } from 'gsap'
 import { Clock, MapPinOff, QrCode, Store, TriangleAlert } from 'lucide-react'
 import { useChalkTimeline } from '../../design/chalkMotion'
@@ -312,6 +312,7 @@ function Celebration({
   const g = useGamesCopy()
   const locale = useLocale()
   const theme = useTheme()
+  const compact = useMediaQuery(theme.breakpoints.down('sm'))
   const scope = useRef<HTMLDivElement>(null)
   const points = outcome.points ?? 0
   const coop = result.passport?.games?.coop
@@ -384,7 +385,15 @@ function Celebration({
   )
   return (
     <Box ref={scope} sx={{ position: 'relative' }}>
-      <Box sx={{ position: 'relative', display: 'grid', placeItems: 'center', height: 150 }}>
+      {/* OB-144: leave room for the whole scratch foil on arrival in compact sheets. */}
+      <Box
+        sx={{
+          position: 'relative',
+          display: 'grid',
+          placeItems: 'center',
+          height: { xs: 72, sm: 150 },
+        }}
+      >
         {Array.from({ length: 10 }, (_, i) => (
           <Box
             key={i}
@@ -405,7 +414,7 @@ function Celebration({
             id={shop.id}
             category={shop.category}
             kind={rescue ? 'rescue' : outcome.first ? 'first' : 'visit'}
-            size={128}
+            size={compact ? 72 : 128}
           />
         </Box>
       </Box>
