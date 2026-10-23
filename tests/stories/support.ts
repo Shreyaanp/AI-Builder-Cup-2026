@@ -195,7 +195,16 @@ export async function image(page: Page) {
  * OB-168: only a pinned shop can be shared, so the shop gets the owner's pin unless `pin` is
  * false (a story about a shop that has no pin yet).
  */
-export async function seedShop(page: Page, withPhotoPin = false, name = shopName, pin = true) {
+/** seedShop()'s default pin: Indiranagar, where many fixtures sit. */
+const INDIRANAGAR = { lat: 12.9716, lng: 77.6412 }
+
+/** `pin`: the owner's confirmed point (true: Indiranagar), or false for an unpinned shop. */
+export async function seedShop(
+  page: Page,
+  withPhotoPin = false,
+  name = shopName,
+  pin: boolean | { lat: number; lng: number } = true,
+) {
   let pinned: { id: string; revision: number } | null = null
   if (withPhotoPin) {
     // Only the new-shop photo path can currently review GPS. Keep its empty address while
@@ -248,7 +257,13 @@ export async function seedShop(page: Page, withPhotoPin = false, name = shopName
       // OB-168: API setup confirms a pin too; photo setup retains its own GPS evidence.
       ...(pinned || !pin
         ? {}
-        : { owner_location: { lat: 12.9716, lng: 77.6412, accuracy_m: 0, source: 'pin' } }),
+        : {
+            owner_location: {
+              ...(pin === true ? INDIRANAGAR : pin),
+              accuracy_m: 0,
+              source: 'pin',
+            },
+          }),
       products: pinned ? [] : products,
     },
   })
@@ -295,7 +310,8 @@ export async function share(page: Page) {
 
 /**
  * OB-168: other owners' public shops near a point are pinned and so appear on customer pages
- * (front door, results, "Similar nearby"). Their names and items are those owners' own words.
+ * (front door, results, "Similar nearby"). Their names, categories and items are those owners'
+ * own words ("Similar nearby" shows the category of a shop with no matching item).
  */
 export async function otherOwnersWords(page: Page, at: { lat: number; lng: number }, own: string) {
   const response = await page.request.get(
@@ -303,11 +319,17 @@ export async function otherOwnersWords(page: Page, at: { lat: number; lng: numbe
   )
   expect(response.ok()).toBe(true)
   const { places } = (await response.json()) as {
-    places: { id: string; name: string; source: string; items: { name: string }[] }[]
+    places: {
+      id: string
+      name: string
+      category: string
+      source: string
+      items: { name: string }[]
+    }[]
   }
   return places
     .filter((place) => place.source === 'chalkboard' && place.id !== own)
-    .flatMap((place) => [place.name, ...place.items.map((item) => item.name)])
+    .flatMap((place) => [place.name, place.category, ...place.items.map((item) => item.name)])
 }
 
 /** The shop's own menu rows on its customer page (not the "Similar nearby" cards). */
