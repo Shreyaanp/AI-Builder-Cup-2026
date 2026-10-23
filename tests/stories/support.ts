@@ -1,4 +1,4 @@
-import { confirmShopPin, suggestShopPin } from '../pinSupport.js'
+import { suggestShopPin } from '../pinSupport.js'
 import { expect, test, type Page } from '@playwright/test'
 import { FIRST_QUESTION } from '../newShopTopics.js'
 import { readFileSync } from 'node:fs'
@@ -147,7 +147,6 @@ export async function createShopFromReview(page: Page) {
   if (!(await summary.isVisible())) await page.getByTestId('review-my-shop').click()
   const empty = async (field: string) =>
     (await summary.locator(`[data-field="${field}"]`).getAttribute('data-filled')) === 'false'
-  const needsPin = await empty('location')
   const missing = [
     (await empty('category')) ? 'category: Tea stall' : '',
     (await summary.locator('[data-field="location"]').getByText('Not yet', { exact: true }).count())
@@ -159,9 +158,8 @@ export async function createShopFromReview(page: Page) {
     await page.getByLabel('Message', { exact: true }).fill(missing.join('; '))
     await page.getByRole('button', { name: 'Send', exact: true }).click()
   }
-  if (needsPin) await confirmShopPin(page)
   await expect(page.getByTestId('shop-live')).toBeVisible()
-  // OB-190: finish the confirmation turn before setup leaves onboarding.
+  // OB-190: finish the coach's turn before setup leaves onboarding.
   const mute = page.getByRole('button', { name: /^Mute the coach/ })
   if (await mute.isVisible()) await mute.click()
   await expect(page.getByRole('status').filter({ hasText: 'Type your answer' })).toBeVisible()
