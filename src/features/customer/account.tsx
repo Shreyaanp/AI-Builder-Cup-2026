@@ -4,7 +4,7 @@ import type { Auth } from 'firebase/auth'
 import { upgradeGoogle } from '../../auth/upgradeGoogle'
 import { firebaseAppName } from '../../auth/appSide'
 import { clearSession, frontDoor } from '../../auth/clearSession'
-import { loadBootstrap } from '../../api/bootstrap'
+import { loadBootstrap } from '../../api/appConfig'
 
 export type { Profile } from './types'
 import type { Me, Profile } from './types'

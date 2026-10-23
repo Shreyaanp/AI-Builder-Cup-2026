@@ -2,7 +2,7 @@
  * Google Maps JavaScript API with the existing browser key: loaded once, only when a map is
  * shown, and only in live maps mode. Every caller has a local fallback when this rejects.
  */
-import { loadBootstrap } from '../../api/bootstrap'
+import { loadBootstrap } from '../../api/appConfig'
 export type LatLng = { lat: number; lng: number }
 export type MapsListener = { remove: () => void }
 export type GoogleMap = {

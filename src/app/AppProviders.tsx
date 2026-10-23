@@ -15,7 +15,7 @@ import { useIdentity } from '../auth/useIdentity'
 import { isLanguagePref, resolveLocale } from '../i18n/locales'
 import { loadScriptFont } from '../i18n/fonts'
 import { configureAnalytics, watchRouteChanges } from './analytics'
-import { loadBootstrap } from '../api/bootstrap'
+import { loadBootstrap } from '../api/appConfig'
 import { sideKey } from '../auth/appSide'
 
 /** Kept apart from the preferences object, which older code and tests overwrite whole. */

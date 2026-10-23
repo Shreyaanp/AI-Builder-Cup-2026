@@ -235,7 +235,8 @@ export function keptShop(id: string, locale: string): unknown {
   return keptShops().find((item) => item.key === `${id}|${locale}`)?.data ?? null
 }
 
-/** Keep the last Passport this phone showed (for this account state and area). */
+/** Keep the last Passport this phone showed, for this area. It is not keyed by account: every
+ * customer key is cleared on sign-out (clearSession), so it is always this phone's own person. */
 export function keepPassport(key: string, view: unknown) {
   writeJson(PASSPORT, { key, view })
 }
