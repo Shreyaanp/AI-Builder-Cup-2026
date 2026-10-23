@@ -307,3 +307,33 @@ def test_a13_similar_nearby_lists_each_shop_once(ask_client: TestClient) -> None
         "/api/v1/discover/similar", params={"shop": LANTERN["id"], "radius": 4000}
     ).json()
     assert all(not p["name"].startswith("Lantern Chai Corner") for p in again["places"])
+
+
+def test_a1_a_price_word_beats_near_me() -> None:
+    from app.discover_ask import AskRequest, resolve_intent_refinements
+
+    def read(q: str) -> str:
+        body = AskRequest(q=q, **HERE)
+        return resolve_intent_refinements(body, keyword_intent(q)).sort
+
+    # "near me" only says where when the customer asked for it cheaper.
+    assert read("Cheap vegetarian breakfast near me") == "price"
+    assert read("cheapest masala chai nearby") == "price"
+    assert read("Coffee near me") == "distance"
+    # An explicit "closest" still asks for distance.
+    assert read("closest chai") == "distance"
+
+
+def test_a1_a_chip_label_is_not_reread(ask_client: TestClient) -> None:
+    ask_client.shops[:] = [TEA_HOUSE, COURTYARD, LANTERN, KAPI]
+    first = ask(ask_client, "cheapest masala chai")
+    assert first["intent"]["sort"] == "price"
+    # The app's own "Open now nearby" chip refines to open only; cheapest first stays.
+    chip = ask(ask_client, "Open now nearby", context=first["intent"], refine="open")
+    assert chip["intent"]["sort"] == "price" and chip["intent"]["open_now"]
+    assert chip["intent"]["keywords"] == ["masala", "chai"]
+    assert [headline(p) for p in ours(chip)[:3]] == [
+        ("Adrak Elaichi Chai", 1200),
+        ("Masala chai", 2000),
+        ("Masala chai", 3500),
+    ]

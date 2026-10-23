@@ -31,7 +31,8 @@ test('OB-104 the default Indiranagar area searches Indiranagar and finds its cha
     await page.addInitScript(() => localStorage.setItem('chalkboard.customer.journey', 'done'))
     await page.goto('/explore/')
     const field = page.getByRole('search').getByRole('textbox')
-    await expect(field).toBeVisible()
+    // The first load compiles the app (dev server); the splash can outlast the default 5 s.
+    await expect(field).toBeVisible({ timeout: 20_000 })
     await expect(page.getByText('Indiranagar').first()).toBeVisible()
 
     const asked = page.waitForRequest(

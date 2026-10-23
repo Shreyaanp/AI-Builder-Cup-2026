@@ -333,9 +333,11 @@ CHEAPER = re.compile(
     r"|सस्ता|सस्ते|सस्ती|更便宜|便宜|murah|より安い|安い|더 싼|ถูกกว่า|rẻ hơn|mas mura|மலிவ"
 )
 CLOSER = re.compile(
-    r"\b(closer|nearer|nearest|closest|near me|nearby|close by|walking distance|walkable)\b"
-    r"|पास में|आसपास|更近|近く|더 가까"
+    r"\b(closer|nearer|nearest|closest|walking distance|walkable)\b|पास में|更近|近く|더 가까"
 )
+# "Coffee near me": nearest first, unless the customer also asked for it cheaper ("cheap
+# breakfast near me" stays cheapest first; "near me" there only says where).
+NEARBY = re.compile(r"\b(near me|nearby|close by)\b|आसपास")
 TRANSIT = re.compile(r"\b(mrt|lrt|bts|mtr|metro|subway|station|train)\b|मेट्रो|地铁|駅|역|สถานี")
 OPEN = re.compile(r"\b(open now|open|still open|right now)\b|अभी खुल|营业|buka|営業|영업|เปิด|mở")
 DEALS = re.compile(
@@ -380,6 +382,8 @@ def refine(text: str, intent: Intent) -> Intent:
     if CHEAPER.search(text):
         intent.sort = "price"
     if CLOSER.search(text):
+        intent.sort = "distance"
+    elif NEARBY.search(text) and intent.sort == "best":
         intent.sort = "distance"
     if TRANSIT.search(text):
         intent.near = "transit"
@@ -784,13 +788,16 @@ async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[
 
 def resolve_intent_refinements(body: AskRequest, raw_intent: Intent) -> Intent:
     intent = raw_intent
+    # A chip says exactly what it refines (body.refine). Its label ("Open now nearby", in any
+    # language) is never a new subject and never re-read for other refinements: tapping "Open
+    # now nearby" after "cheapest masala chai" keeps cheapest first.
+    text = "" if body.refine else body.q
     if body.refine:
-        # A chip only refines: its label (any language) is never a new subject.
-        intent = intent.model_copy(update={"keywords": [], "category": ""})
+        intent = intent.model_copy(
+            update={"keywords": [], "category": "", "sort": "best", "near": "", "deals": False}
+        )
     intent = (
-        follow_up(body.q, body.context, intent)
-        if body.context
-        else refine(body.q.casefold(), intent)
+        follow_up(text, body.context, intent) if body.context else refine(text.casefold(), intent)
     )
     if body.refine in {"price", "distance"}:
         intent.sort = "price" if body.refine == "price" else "distance"
