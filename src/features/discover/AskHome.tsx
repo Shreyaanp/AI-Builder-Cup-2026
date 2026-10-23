@@ -69,13 +69,16 @@ import { localRankShops, prefetchAreaShops } from './shopCache'
 import { recsEvent } from '../recs/events'
 import { PlaceSearch, type FoundPlace } from './PlaceSearch'
 import { areaCurrency, defaultCurrency } from '../v1/format'
+import { countryArea } from '../../region/region'
 import '../customer/customer.css'
 
 const FILTERS = 'chalkboard.discover.filters'
 
 function fallbackPlace(): FoundPlace {
   const currency = defaultCurrency()
-  if (currency === 'INR') return { lat: 12.9716, lng: 77.5946, label: 'Indiranagar' }
+  // The label names the place the search measures from (OB-104: it said "Indiranagar" while
+  // searching the city centre, which missed Indiranagar's shops).
+  if (currency === 'INR') return { ...countryArea('IN'), label: 'Indiranagar' }
   if (currency === 'MYR') return { lat: 3.1319, lng: 101.6841, label: 'Bangsar' }
   if (currency === 'JPY') return { lat: 35.658, lng: 139.7016, label: 'Shibuya' }
   if (currency === 'KRW') return { lat: 37.5665, lng: 126.978, label: 'Hongdae' }
