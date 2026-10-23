@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Box, Button } from '@mui/material'
+import { Box, Button, Stack } from '@mui/material'
 import { Maximize2 } from 'lucide-react'
 import type { Locale } from '../../i18n/locales'
 import type { AskAnswer, AskPick } from './askThread'
@@ -113,29 +113,21 @@ export function AnswerMap({
         // A strip on phones, so the rows below start in the first screen.
         height={{ xs: 160, md: 220 }}
       />
-      {/* On the map's corner, so the legend keeps one line and the rows start sooner. */}
-      <Button
-        variant="contained"
-        color="inherit"
-        onClick={() => setExplorer({ open: true, initial: selected?.id ?? null })}
-        startIcon={<Maximize2 size={16} aria-hidden="true" />}
-        sx={(theme) => ({
-          position: 'absolute',
-          top: 8,
-          right: 8,
-          minHeight: 48,
-          borderRadius: 999,
-          bgcolor: theme.material.surfaceContainerHighest,
-          color: theme.material.onSurface,
-          boxShadow: 'none',
-          '&:hover': { bgcolor: theme.material.surfaceContainerHigh, boxShadow: 'none' },
-        })}
+      {/* Under the map, beside the legend: it never covers a pin. */}
+      <Stack
+        direction="row"
+        sx={{ mt: 2, alignItems: 'center', justifyContent: 'space-between', gap: 2 }}
       >
-        {copy.openMap}
-      </Button>
-      <Box sx={{ mt: 2 }}>
         <MapLegend copy={copy} />
-      </Box>
+        <Button
+          variant="outlined"
+          onClick={() => setExplorer({ open: true, initial: selected?.id ?? null })}
+          startIcon={<Maximize2 size={16} aria-hidden="true" />}
+          sx={{ minHeight: 48, borderRadius: 999, flexShrink: 0 }}
+        >
+          {copy.openMap}
+        </Button>
+      </Stack>
       {explorer.open && (
         <MapExplorer
           open

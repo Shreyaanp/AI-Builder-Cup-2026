@@ -620,3 +620,68 @@ def test_open_now_in_shop_timezone(
     hours: str, timezone: str, instant: str, expected: bool | None
 ) -> None:
     assert open_now(hours, timezone, datetime.fromisoformat(instant)) is expected
+
+
+def test_browse_google_distances_are_real_and_non_shops_are_dropped(tmp_path: Path) -> None:
+    """A-11: people and writers are pinned to the area centre, so every row said "10 m"."""
+    indiranagar = (12.9784, 77.6408)
+
+    def google(pid: str, name: str, lat: float, lng: float, types: list[str]) -> dict:
+        return {
+            "id": pid,
+            "displayName": {"text": name},
+            "location": {"latitude": lat, "longitude": lng},
+            "primaryType": types[0],
+            "types": types,
+        }
+
+    rows = [
+        google("cafe", "Corner Cafe", 12.9790, 77.6410, ["cafe", "food", "establishment"]),
+        google("shop", "Far Books", 12.9850, 77.6450, ["book_store", "store"]),
+        google("writer", "Novel writer", 12.9790, 77.6410, ["point_of_interest", "establishment"]),
+        *(
+            google(f"pin{n}", f"Person {n}", *indiranagar, ["store", "establishment"])
+            for n in range(3)
+        ),
+    ]
+    config = settings(tmp_path, live=True)
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json={"places": rows}))
+    app = create_app(config, InMemorySessionService(), maps_service=MapsService(config, transport))
+    with TestClient(app) as client:
+        data = client.get("/api/v1/discover?lat=12.9784&lng=77.6408").json()
+    found = {p["name"]: p["distance_m"] for p in data["places"] if p["source"] == "google"}
+    assert set(found) == {"Corner Cafe", "Far Books"}
+    assert 60 < found["Corner Cafe"] < 90
+    assert 800 < found["Far Books"] < 950
+
+
+def test_use_my_location_returns_a_neighbourhood_never_the_address(tmp_path: Path) -> None:
+    """A-9: the chip read "67/1" and the headline printed the street address with its PIN."""
+    address = "67/1, KG Halli, D' Souza Layout, Ashok Nagar, Bengaluru, Karnataka 560001, India"
+
+    def fixture(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "status": "OK",
+                "results": [
+                    {
+                        "place_id": "fixture-house",
+                        "formatted_address": address,
+                        "address_components": [
+                            {"long_name": "67/1", "types": ["street_number"]},
+                            {"long_name": "Ashok Nagar", "types": ["sublocality_level_1"]},
+                            {"long_name": "Bengaluru", "types": ["locality"]},
+                        ],
+                    }
+                ],
+            },
+        )
+
+    config = settings(tmp_path, live=True)
+    maps = MapsService(config, httpx.MockTransport(fixture))
+    app = create_app(config, InMemorySessionService(), maps_service=maps)
+    with TestClient(app) as client:
+        found = client.get("/api/v1/discover/place", params={"lat": 12.9716, "lng": 77.6}).json()
+    assert found["label"] == "Ashok Nagar"
+    assert "560001" not in str(found) and "67/1" not in str(found)
