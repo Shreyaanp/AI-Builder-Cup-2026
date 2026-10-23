@@ -50,7 +50,7 @@ export const gamesStrings = {
   odds_again: 'Try again tomorrow',
   oddsFirst: 'Your very first card always wins +25 points.',
   oddsNote:
-    'Chalkboard’s server decides each card when you earn it. Cards only come from verified stamps, never from money, and points never expire.',
+    'Each card is picked by chance the moment you earn it. Cards only come from verified stamps, never from money, and points never expire.',
   signInScratch: 'Signed-in neighbours get a scratch card with every stamp.',
   // Welcome stamps (endowed progress)
   welcomeStamps: 'Welcome stamps on us: {n}',
