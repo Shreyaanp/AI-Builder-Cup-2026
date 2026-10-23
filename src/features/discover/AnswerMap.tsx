@@ -8,6 +8,7 @@ import { mapCopy } from './mapCopy'
 import { MapExplorer, type ExplorerPlace } from './MapExplorer'
 import { MapLegend, ResultsMap } from './ResultsMap'
 import { mapsLink } from './types'
+import { plainShopName } from './sampleShop'
 
 /** Which place is highlighted, and whether a pin or a card asked for it. */
 export type MapSelection = { id: string; from: 'pin' | 'card' } | null
@@ -18,7 +19,8 @@ function answerPlaces(answer: AskAnswer, ours: AskPick[]): ExplorerPlace[] {
     const item = pick.matched[0] ?? pick.items.find((i) => i.available)
     return {
       id: pick.id,
-      name: pick.name,
+      name: plainShopName(pick.name),
+      demo: pick.demo_shop,
       kind: 'ours',
       lat: pick.lat,
       lng: pick.lng,

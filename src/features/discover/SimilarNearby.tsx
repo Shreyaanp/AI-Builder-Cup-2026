@@ -9,6 +9,7 @@ import { formatPrice } from '../v1/format'
 import { askCopy } from './askStrings'
 import { useSearchCopy } from './searchCopy'
 import { formatDistance } from './formatDistance'
+import { plainShopName } from './sampleShop'
 
 type Similar = components['schemas']['SimilarResponse']
 
@@ -63,10 +64,23 @@ export function SimilarNearby({ shop, items }: { shop: string; items: string[] }
         {choices.map((choice) => (
           <Button
             key={choice || 'shop'}
-            variant={choice === item ? 'contained' : 'outlined'}
+            // The picked chip is tonal, not filled: the shop page has one filled button.
+            variant="outlined"
             aria-pressed={choice === item}
             onClick={() => setItem(choice)}
-            sx={{ minHeight: 48, borderRadius: 999, px: 4, flexShrink: 0, whiteSpace: 'nowrap' }}
+            sx={{
+              minHeight: 48,
+              borderRadius: 999,
+              px: 4,
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+              ...(choice === item && {
+                bgcolor: roles.secondaryContainer,
+                color: roles.onSecondaryContainer,
+                borderColor: roles.secondaryContainer,
+                '&:hover': { bgcolor: roles.secondaryContainer },
+              }),
+            }}
           >
             {choice || copy.likeThisShop}
           </Button>
@@ -129,7 +143,7 @@ export function SimilarNearby({ shop, items }: { shop: string; items: string[] }
                 </Box>
                 <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <Typography variant="titleSmall" component="h3" noWrap>
-                    {place.name}
+                    {plainShopName(place.name)}
                   </Typography>
                   <Typography variant="bodySmall" noWrap>
                     {place.item

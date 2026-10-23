@@ -35,6 +35,7 @@ import { isBudget } from './budget'
 import { phoneArea } from '../../region/region'
 import { carried, entryState, pushEntry, replaceEntry, restoreScroll } from '../../app/history'
 import { overlayHandled } from '../v1/backStack'
+import { plainShopName } from './sampleShop'
 
 const DiscoverMap = lazy(() => import('./DiscoverMap'))
 const areas = {
@@ -578,7 +579,7 @@ export default function Discover({
                       customerNavigate(event)
                     }}
                   >
-                    {place.name}
+                    {plainShopName(place.name)}
                   </Button>
                 ) : (
                   <Button key={place.id} variant="outlined" onClick={() => openPlace(place)}>
@@ -680,7 +681,8 @@ export default function Discover({
                   href={`/explore/s/${encodeURIComponent(place.id)}`}
                   onClick={customerNavigate}
                 >
-                  {place.name}
+                  {plainShopName(place.name)}
+                  {place.demo_shop ? ` · ${t.demoShop}` : ''}
                 </Button>
               ) : (
                 <Button

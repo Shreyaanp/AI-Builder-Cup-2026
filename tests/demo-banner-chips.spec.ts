@@ -15,7 +15,7 @@ for (const width of [360, 412]) {
           : route.abort(),
       )
     await page.goto('/demo', { waitUntil: 'domcontentloaded' })
-    const banner = page.getByText('Demo shop - nothing here is real')
+    const banner = page.getByText('Demo shop – nothing here is real')
     await expect(banner).toBeVisible({ timeout: 60_000 })
     const box = await banner.boundingBox()
     expect(box!.height).toBeLessThanOrEqual(36)

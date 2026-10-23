@@ -71,7 +71,7 @@ export const accountStrings = {
   send: 'Send',
   back: 'Back',
   viewShop: 'View shop',
-  demoShop: 'Demo shop',
+  demoShop: 'Sample shop',
   closed: 'This conversation is closed.',
   chatLost: 'This chat is no longer available.',
   live: 'Live',

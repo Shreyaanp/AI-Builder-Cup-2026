@@ -10,6 +10,8 @@ import {
   Stack,
   Typography,
   useTheme,
+  type SxProps,
+  type Theme,
 } from '@mui/material'
 import { Check, Star, X } from 'lucide-react'
 import { HAND_FONT, shape } from '../../design/theme'
@@ -26,6 +28,7 @@ import type { PassportView } from '../passport/store'
 import { fill } from '../passport/copy'
 import { useGamesCopy } from '../passport/games/copy'
 import { HowItWorks } from '../passport/games/HowItWorks'
+import { midSentence } from './midSentence'
 
 /** Endowed progress: 2 welcome stamps printed on every card, on top of the owner's target. */
 const WELCOME = 2
@@ -61,7 +64,16 @@ function validTarget(needed: number) {
  * The card's progress near the top of the shop page, so the stamp card is never buried under
  * the menu: one tap jumps to the full card.
  */
-export function StampPeek({ shop, needed = 8 }: { shop: string; needed?: number }) {
+export function StampPeek({
+  shop,
+  needed = 8,
+  sx,
+}: {
+  shop: string
+  needed?: number
+  /** Layout from the page (an equal-width tile in a row of actions). */
+  sx?: SxProps<Theme>
+}) {
   const t = useRewardCopy()
   const locale = useLocale()
   const gold = useTheme().chalk.sunflower
@@ -80,13 +92,16 @@ export function StampPeek({ shop, needed = 8 }: { shop: string; needed?: number 
           block: 'start',
         })
       }}
-      sx={{
-        // PHONE-UX-RULES: every target at least 48px (caught on the QR arrival screen, OB-20).
-        minHeight: 48,
-        bgcolor: gold.container,
-        color: gold.onContainer,
-        '&:hover': { bgcolor: gold.container },
-      }}
+      sx={[
+        {
+          // PHONE-UX-RULES: every target at least 48px (caught on the QR arrival screen, OB-20).
+          minHeight: 48,
+          bgcolor: gold.container,
+          color: gold.onContainer,
+          '&:hover': { bgcolor: gold.container },
+        },
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
     >
       {t.stampCard} ·{' '}
       {t.progress.replace('{count}', number(stamps)).replace('{total}', number(target + WELCOME))}
@@ -274,7 +289,9 @@ export function StampCard({
         {reward
           ? full
             ? reward
-            : t.more.replace('{count}', number(target - count)).replace('{reward}', reward)
+            : t.more
+                .replace('{count}', number(target - count))
+                .replace('{reward}', midSentence(reward))
           : t.noReward}
       </Typography>
       {/* One short line; the full "not proof of purchase" note is on the claim screen. */}

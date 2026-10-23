@@ -19,7 +19,7 @@ const en = {
   open: 'Open now nearby',
   more: 'More nearby',
   from: 'From Google',
-  demo: 'Demo shop',
+  demo: 'Sample shop',
   openNow: 'Open now',
   closed: 'Closed',
   nothing: 'Nothing nearby matches that yet.',

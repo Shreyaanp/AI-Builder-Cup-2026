@@ -32,9 +32,12 @@ function GoogleMark() {
 export function SignInButton({
   onSignedIn,
   fullWidth = true,
+  variant = 'contained',
 }: {
   onSignedIn?: () => void
   fullWidth?: boolean
+  /** A page that already has its one filled button (the shop page's chat bar) asks quietly. */
+  variant?: 'contained' | 'outlined'
 }) {
   const account = useCustomer()
   const t = useAccountCopy()
@@ -47,7 +50,7 @@ export function SignInButton({
         </Alert>
       )}
       <Button
-        variant="contained"
+        variant={variant}
         size="large"
         fullWidth={fullWidth}
         disabled={busy || account.status === 'loading'}

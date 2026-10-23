@@ -102,6 +102,8 @@ export const gamesStrings = {
   // Social proof and shop thank-yous (reciprocity)
   tried: 'Neighbours who tried this in 30 days: {n}',
   perksHere: 'Thank-yous from this shop',
+  showMorePerks: 'Show more',
+  showFewerPerks: 'Show fewer',
   trigger_regular: 'When you become a Regular',
   trigger_full_card: 'When your card is full',
   trigger_quest_finale: 'When you finish a quest here',
