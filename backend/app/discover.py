@@ -199,6 +199,12 @@ class DiscoveryResponse(BaseModel):
     places: list[DiscoveryPlace]
 
 
+def consumer_shop(shop: dict[str, Any]) -> bool:
+    """Whether customers may see this shared shop. Wholesale suppliers sell to shops (sourcing.py):
+    their bulk prices and lead times never appear in what a customer finds nearby."""
+    return not shop.get("supplier")
+
+
 def distance(lat: float, lng: float, other_lat: float, other_lng: float) -> int:
     a, b = math.radians(lat), math.radians(other_lat)
     h = (
@@ -671,8 +677,8 @@ async def discover(
     for shop in shops:
         if shop["lat"] is None or shop["lng"] is None:
             continue
-        # Generated demo wholesalers serve shops (sourcing), not customers exploring nearby.
-        if shop.get("supplier") and shop.get("demo"):
+        # Wholesalers serve shops (sourcing), not customers exploring nearby.
+        if not consumer_shop(shop):
             continue
         # Singapore demo shops only when browsing Singapore
         is_sg_shop = shop.get("demo") and (

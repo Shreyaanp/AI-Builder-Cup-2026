@@ -156,7 +156,13 @@ export function shopZone(fields: ShopFields | null | undefined): string {
 /** Where a customer's map starts before they share a location: the phone's region's sample
  * area (Indiranagar for an Indian phone), never Singapore for India. */
 export function phoneArea(): { lat: number; lng: number; label: string } {
-  const raw = regions[phoneCountry() ?? ''] ?? data.fallback
+  return countryArea(phoneCountry() ?? '')
+}
+
+/** A country's sample area, at its own coordinates (Indiranagar is Indiranagar, not the city
+ * centre 5 km away, whose radius would miss the area's shops). */
+export function countryArea(country: string): { lat: number; lng: number; label: string } {
+  const raw = regions[country] ?? data.fallback
   return { lat: raw.area.point[0] ?? 0, lng: raw.area.point[1] ?? 0, label: raw.area.label }
 }
 
