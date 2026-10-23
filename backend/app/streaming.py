@@ -38,11 +38,14 @@ ACTION_TOOLS = {
     "end_conversation",
     "make_my_icon",
     "use_photo_as_icon",
+    # An honest "can't do that yet" offers the screen where the owner can do it (OB-172).
+    "report_unsupported_request",
 }
 # Tools that prepare a sealed proposal for the review dialog.
 PROPOSAL_TOOLS = {
     "update_shop",
     "propose_business",
+    "update_shop_details",
     "propose_customer_facts",
     "propose_products",
     "request_registration",

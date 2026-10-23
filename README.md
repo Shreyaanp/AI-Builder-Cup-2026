@@ -202,7 +202,8 @@ cd backend && uv run ruff check . && uv run mypy && uv run pytest -q
 
 CI ([`checks.yml`](.github/workflows/checks.yml)) runs on every pull request and on pushes to main:
 product rules; backend lint, format, types, tests against the Firestore emulator and a dependency
-audit; the API contract (`backend/openapi.json` and `src/api/generated.d.ts` must match the
+audit; the owner coach evals ([`backend/evals/coach`](backend/evals/coach/README.md), offline);
+the API contract (`backend/openapi.json` and `src/api/generated.d.ts` must match the
 code); frontend lint, build and formatting; Playwright on phone and desktop; the UX gate; and a
 check that the Docker image starts and answers. [`review-impact.yml`](.github/workflows/review-impact.yml)
 comments which areas a pull request can affect. Releases are manual
