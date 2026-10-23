@@ -3,6 +3,11 @@ import type { Proposal } from './api'
 import { ApiError } from './api'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
+import { preparePhoto } from './photoPrep'
+
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+/** Longer than the server's own limits (upload, then a read with one retry). */
+const IMPORT_TIMEOUT_MS = 240_000
 
 /** Menu or sales documents the import endpoint reads (spreadsheets, PDFs, notes, photos). */
 export const IMPORT_ACCEPT =
@@ -69,12 +74,17 @@ export function useImport({
     setBusy(true)
     setFailed('')
     try {
+      // OB-194: a phone original is megabytes on mobile data; only a shrunk copy is sent.
+      const sent = PHOTO_TYPES.includes(file.type) ? (await preparePhoto(file)).file : file
       const result = await ws.api<ImportResult>(
         `/businesses/${encodeURIComponent(shop.id)}/import`,
         {
           method: 'POST',
-          body: file,
-          headers: { 'Content-Type': file.type || 'text/csv' },
+          body: sent,
+          headers: { 'Content-Type': sent.type || 'text/csv' },
+          // OB-194: reading a menu photo or PDF takes 25-40 s in production; the default 25 s
+          // wait gave up first, so a real menu import "failed" while the server was reading it.
+          signal: AbortSignal.timeout(IMPORT_TIMEOUT_MS),
         },
       )
       onBeforeReview?.()

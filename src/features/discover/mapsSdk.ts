@@ -2,6 +2,7 @@
  * Google Maps JavaScript API with the existing browser key: loaded once, only when a map is
  * shown, and only in live maps mode. Every caller has a local fallback when this rejects.
  */
+import { loadBootstrap } from '../../api/appConfig'
 export type LatLng = { lat: number; lng: number }
 export type MapsListener = { remove: () => void }
 export type GoogleMap = {
@@ -67,9 +68,9 @@ function loadScript(key: string): Promise<MapsSdk> {
 
 /** The browser key, only when the server runs live maps (demo mode never loads Google). */
 function browserKey(): Promise<string> {
-  config ??= fetch('/api/v1/bootstrap')
-    .then((response) => (response.ok ? response.json() : Promise.reject(new Error('config'))))
-    .then((data: { maps_browser_key?: string; maps_mode?: string }) => {
+  // The page's one shared configuration read (A-4).
+  config ??= loadBootstrap()
+    .then((data) => {
       if (!data.maps_browser_key || data.maps_mode !== 'live') throw new Error('Map not connected')
       return data.maps_browser_key
     })

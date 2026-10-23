@@ -39,6 +39,9 @@ BLOCK_AT = {"adult": 3, "racy": 4, "violence": 4}
 # shows, so tests can pick each kind. Any other width reads as a menu.
 FIXTURE_KIND_WIDTHS = {21: "shop_photo", 22: "product", 23: "receipt", 24: "till", 25: "other"}
 PhotoKind = Literal["shop_photo", "menu", "product", "receipt", "till", "other"]
+# OB-194: reading a menu needs little reasoning; unbounded thinking made each read take 25-40 s
+# in production (and could spend the output limit before the menu rows were written).
+READ_THINKING_BUDGET = 1024
 
 
 Unit = Literal[UNITS]  # type: ignore[valid-type]
@@ -286,6 +289,9 @@ class PhotoPipeline:
                         # The model thinks first and its thinking counts against this limit
                         # (75-100 tokens on menus and receipts); 200 left too little room.
                         max_output_tokens=1024,
+                        # OB-194: unbounded thinking made this one-word answer take 39 s in
+                        # production before the owner even saw "Is this your menu?".
+                        thinking_config=types.ThinkingConfig(thinking_budget=0),
                     ),
                 )
             except Exception as error:
@@ -330,6 +336,7 @@ class PhotoPipeline:
                         response_schema=_PhotoSpec,
                         temperature=0,
                         max_output_tokens=16000,
+                        thinking_config=types.ThinkingConfig(thinking_budget=READ_THINKING_BUDGET),
                     ),
                 )
             except Exception as error:

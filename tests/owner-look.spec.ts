@@ -31,7 +31,8 @@ for (const viewport of [
     test.use({ viewport, isMobile: viewport.width < 600, hasTouch: viewport.width < 600 })
 
     for (const colorScheme of ['light', 'dark'] as const) {
-      test(`OB-107: Look defaults to System and remembers it after reload (${colorScheme})`, async ({
+      // OB-195 (owner, 23 Oct) replaces the OB-107 default: Light first, even on a dark phone.
+      test(`OB-195: Look defaults to Light and remembers System after reload (${colorScheme})`, async ({
         page,
       }, info) => {
         await localOnly(page)
@@ -41,8 +42,12 @@ for (const viewport of [
         await page.getByRole('button', { name: 'You', exact: true }).click()
         const look = page.getByRole('group', { name: 'Look', exact: true })
         const system = look.getByRole('button', { name: 'System', exact: true })
-        await expect(system).toHaveAttribute('aria-pressed', 'true')
-        await savedAppearance(page, 'system')
+        await expect(look.getByRole('button', { name: 'Light', exact: true })).toHaveAttribute(
+          'aria-pressed',
+          'true',
+        )
+        await expect(system).toHaveAttribute('aria-pressed', 'false')
+        await savedAppearance(page, 'light')
         const firstRun = await surface(page)
 
         // Capture each explicit mode as an independent reference for the rendered theme.
@@ -53,7 +58,7 @@ for (const viewport of [
         await savedAppearance(page, 'dark')
         const dark = await surface(page)
         expect(dark).not.toBe(light)
-        expect(firstRun).toBe(colorScheme === 'dark' ? dark : light)
+        expect(firstRun).toBe(light)
 
         await system.click()
         await savedAppearance(page, 'system')

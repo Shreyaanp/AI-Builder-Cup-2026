@@ -60,13 +60,14 @@ export function CustomerTopBar({ back = false }: { back?: boolean }) {
             >
               {t.back}
             </Button>
-          ) : (
-            <Button href="/explore/demo" sx={{ minHeight: 48 }}>
+          ) : null}
+        </Stack>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 1, flexShrink: 0 }}>
+          {!back && (
+            <Button href="/explore/demo" sx={{ minHeight: 48, px: 1 }}>
               {demo.tryDemo}
             </Button>
           )}
-        </Stack>
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 1, flexShrink: 0 }}>
           {!back && <ProfileButton inline />}
           <LanguagePicker variant="inline" />
           <AppearanceToggle inline />
