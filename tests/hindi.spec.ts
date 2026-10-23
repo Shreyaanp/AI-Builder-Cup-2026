@@ -277,7 +277,8 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
   await enter(page)
   await seedShop(page)
   const id = new URL(await share(page)).pathname.split('/').pop()!
-  const others = await otherOwnersWords(page, { lat: 12.9716, lng: 77.6412 }, id)
+  // Read just before each check: other tests' shops can be shared while this one runs.
+  const others = () => otherOwnersWords(page, { lat: 12.9716, lng: 77.6412 }, id)
   const context = await browser.newContext({
     baseURL,
     locale: 'hi-IN',
@@ -291,7 +292,7 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
     await customer.goto('/explore/')
     // Release 3's front door (#60) opens on the Ask, with no welcome step to continue past.
     await expect(customer.getByRole('heading', { name: 'आस-पास क्या खोज रहे हैं?' })).toBeVisible()
-    await readsInHindi(customer, '20-front-door', others)
+    await readsInHindi(customer, '20-front-door', await others())
 
     await customer.evaluate(() => localStorage.setItem('chalkboard.customer.journey', 'done'))
     await customer.goto('/explore/')
@@ -299,7 +300,7 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
     await customer.getByRole('search').getByRole('textbox').fill('पास में चाय')
     await customer.keyboard.press('Enter')
     await expect(customer.getByText(/^नमूना जवाब/).first()).toBeVisible({ timeout: 20_000 })
-    await readsInHindi(customer, '21-ask-results', others)
+    await readsInHindi(customer, '21-ask-results', await others())
 
     await customer.goto(`/explore/s/${id}`)
     await expect(
@@ -307,16 +308,16 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
     ).toBeVisible()
     await expect(customer.getByText('कैफ़े').first()).toBeVisible()
     await expect(customer.getByText('₹18.00').first()).toBeVisible()
-    await readsInHindi(customer, '22-shop-page', others)
+    await readsInHindi(customer, '22-shop-page', await others())
 
     await customer.getByRole('button', { name: 'दुकान से बात करें' }).first().click()
     await expect(customer.getByRole('dialog')).toBeVisible()
-    await readsInHindi(customer, '23-chat')
+    await readsInHindi(customer, '23-chat', await others())
     await customer.keyboard.press('Escape')
 
     await customer.goto('/explore/passport')
     await expect(customer.getByText('आपका पहला स्टैंप बस एक क्यूआर दूर है')).toBeVisible()
-    await readsInHindi(customer, '24-passport')
+    await readsInHindi(customer, '24-passport', await others())
   } finally {
     await context.close()
   }

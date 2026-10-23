@@ -258,3 +258,82 @@ def test_ob189_known_address_is_never_asked_again_and_stays_private_until_pinned
         assert not ready_to_go_live(draft)
     finally:
         ui_language.reset(token)
+
+
+def _typed_place_maps(results: list[dict], calls: list[str]) -> MapsService:
+    def geocode(request):
+        calls.append(request.url.params["address"])
+        status = "OK" if results else "ZERO_RESULTS"
+        return httpx.Response(200, json={"status": status, "results": results})
+
+    return MapsService(
+        Settings(maps_server_key="fixture", maps_browser_key="fixture", _env_file=None),
+        httpx.MockTransport(geocode),
+    )
+
+
+def _place(lat: float, lng: float, partial: bool = False) -> dict:
+    return {
+        "place_id": f"fixture-{lat}",
+        "formatted_address": "Fixture place, India",
+        "geometry": {"location": {"lat": lat, "lng": lng}},
+        **({"partial_match": True} if partial else {}),
+    }
+
+
+def test_ob168_one_found_place_goes_live_with_its_money_and_clock(tmp_path, monkeypatch):
+    from tests.test_onboarding_v2 import context, run
+
+    monkeypatch.setattr("app.region.NO_SIGNAL_COUNTRY", "SG")
+    calls: list[str] = []
+    ctx = context(tmp_path)
+    ctx.maps = _typed_place_maps([_place(28.5677, 77.2433)], calls)
+    result = run(ctx, name="Gupta Sweets", category="Sweets", location="Lajpat Nagar")
+    assert result["went_live"] is True
+    [shop] = ctx.store.list_businesses("alice")
+    assert shop["public"] is True
+    assert (shop["fields"]["lat"], shop["fields"]["lng"]) == (28.5677, 77.2433)
+    assert (shop["fields"]["currency"], shop["fields"]["timezone"]) == ("INR", "Asia/Kolkata")
+    assert calls == ["Lajpat Nagar"]
+
+
+@pytest.mark.parametrize(
+    "results",
+    [
+        [_place(21.27, 69.97, partial=True)],
+        [_place(21.27, 69.97), _place(26.1, 75.2)],
+    ],
+    ids=["partial-match", "several-places"],
+)
+def test_ob168_ambiguous_place_waits_for_the_owner_to_confirm_the_pin(tmp_path, results):
+    """ "माधवपुर" is many villages: the shop is never published on a guessed pin."""
+    from tests.test_onboarding_v2 import context, run
+
+    ctx = context(tmp_path)
+    ctx.maps = _typed_place_maps(results, [])
+    result = run(ctx, name="परीक्षण किराना", category="किराना", location="माधवपुर")
+    assert "went_live" not in result
+    assert ctx.new_shop_draft.business.lat is None
+    assert ctx.new_shop_draft.business.location == "माधवपुर"
+    assert ctx.store.list_businesses("alice") == []
+
+
+def test_ob168_a_place_not_found_is_looked_up_once(tmp_path):
+    from tests.test_onboarding_v2 import context, run
+
+    calls: list[str] = []
+    ctx = context(tmp_path)
+    ctx.maps = _typed_place_maps([], calls)
+    run(ctx, name="Chai", category="Tea", location="Nowhere Lane")
+    run(ctx, location="Nowhere Lane")
+    assert calls == ["Nowhere Lane"]
+    assert ctx.new_shop_draft.business.lat is None
+
+
+def test_ob168_hindi_place_names_pin_offline_so_hindi_onboarding_goes_live(tmp_path):
+    from tests.test_onboarding_v2 import context, run
+
+    ctx = context(tmp_path)
+    result = run(ctx, name="गुप्ता स्वीट्स", category="मिठाई", location="लाजपत नगर")
+    assert result["went_live"] is True
+    assert ctx.new_shop_draft.business.lat == 28.5677

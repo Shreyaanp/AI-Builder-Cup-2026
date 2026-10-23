@@ -297,13 +297,28 @@ TYPED_AREAS = {
     "Nehru Place": (28.5494, 77.2519),
     "Jayanagar": (12.9299, 77.5826),
 }
+# The same places as Hindi owners type them (OB-168: Hindi onboarding goes live offline too).
+PLACE_NAMES = {
+    "लाजपत नगर": "Lajpat Nagar",
+    "इंदिरानगर": "Indiranagar",
+    "करोल बाग": "Karol Bagh",
+    "नेहरू प्लेस": "Nehru Place",
+    "कोरमंगला": "Koramangala",
+    "एमजी रोड": "MG Road",
+    "जयनगर": "Jayanagar",
+}
 
 
 def demo_pin(location: str) -> dict[str, Any]:
     """The offline pin of a typed place: the known areas only, never a guess."""
     known = {**TYPED_AREAS, **AREAS}
+    # Devanagari vowel signs are not word characters, so its names match as written.
+    alias = next((alias for alias in PLACE_NAMES if alias in location), None)
+    area = PLACE_NAMES[alias] if alias else None
     # Whole words only: "Marina" must not match Bangkok's "Ari".
-    area = next((a for a in known if re.search(rf"\b{re.escape(a)}\b", location, re.I)), None)
+    area = area or next(
+        (a for a in known if re.search(rf"\b{re.escape(a)}\b", location, re.I)), None
+    )
     if not area:
         raise HTTPException(422, "PIN_NOT_FOUND")
     lat, lng = known[area]
@@ -311,7 +326,8 @@ def demo_pin(location: str) -> dict[str, Any]:
         "lat": lat,
         "lng": lng,
         "place_id": "demo-" + area.lower().replace(" ", "-"),
-        "pin_label": "Tiong Bahru Market" if area == "Tiong Bahru" else area,
+        # The owner reads the place in their own script.
+        "pin_label": alias or ("Tiong Bahru Market" if area == "Tiong Bahru" else area),
         "pin_demo": True,
     }
 
@@ -370,9 +386,23 @@ class MapsService:
         return result
 
     async def geocode(self, location: str, country: str | None = None) -> dict[str, Any]:
+        """The best point for a typed place (a suggestion the owner confirms)."""
+        pin, _ = await self.typed_pin(location, country)
+        return pin
+
+    async def typed_pin(
+        self, location: str, country: str | None = None
+    ) -> tuple[dict[str, Any], bool]:
+        """The point for a typed place, and whether it is unambiguous: one exact match, not a
+        partial one among several places of the same name ("माधवपुर"). A place that is not
+        found is remembered too (OB-168), so asking again costs no second paid lookup."""
+
         async def lookup() -> dict[str, Any]:
             if self.demo:
-                return demo_pin(location)
+                try:
+                    return {**demo_pin(location), "confident": True}
+                except HTTPException:
+                    return {"missing": True}
             try:
                 response = await self.client.get(
                     "https://maps.googleapis.com/maps/api/geocode/json",
@@ -385,10 +415,11 @@ class MapsService:
                 response.raise_for_status()
                 data = response.json()
                 if data.get("status") == "ZERO_RESULTS":
-                    raise HTTPException(422, "PIN_NOT_FOUND")
+                    return {"missing": True}
                 if data.get("status") != "OK":
                     raise HTTPException(503, "PIN_UNAVAILABLE")
-                result = data["results"][0]
+                results = data["results"]
+                result = results[0]
                 point = result["geometry"]["location"]
                 return {
                     "lat": point["lat"],
@@ -396,11 +427,16 @@ class MapsService:
                     "place_id": result["place_id"],
                     "pin_label": result["formatted_address"],
                     "pin_demo": False,
+                    "confident": len(results) == 1 and not result.get("partial_match"),
                 }
             except (httpx.HTTPError, KeyError, ValueError, IndexError) as error:
                 raise HTTPException(503, "PIN_UNAVAILABLE") from error
 
-        return dict(await self.cached(("pin", location.casefold(), country or ""), lookup))
+        found = dict(await self.cached(("pin", location.casefold(), country or ""), lookup))
+        if found.pop("missing", False):
+            raise HTTPException(422, "PIN_NOT_FOUND")
+        confident = bool(found.pop("confident", False))
+        return found, confident
 
     async def reverse(self, lat: float, lng: float) -> dict[str, Any]:
         """A photo's coordinates as a pin. The point itself is the evidence, so if the address

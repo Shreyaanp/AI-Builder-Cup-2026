@@ -346,7 +346,8 @@ for (const lang of LANGS) {
       await localOnly(page)
       await enter(page)
       const id = await seedSingapore(page)
-      const others = await otherOwnersWords(page, TIONG_BAHRU, id)
+      // Read just before each check: other tests' shops can be shared while this one runs.
+      const others = () => otherOwnersWords(page, TIONG_BAHRU, id)
       const context = await browser.newContext({
         baseURL,
         locale: lang.phone,
@@ -380,26 +381,26 @@ for (const lang of LANGS) {
         const ask = customer.getByRole('search').getByRole('textbox')
         await expect(ask).toBeVisible({ timeout: 30_000 })
         await expect(ask).toHaveAttribute('placeholder', /S\$/)
-        await readsIn(customer, lang, '20-ask-home', others)
+        await readsIn(customer, lang, '20-ask-home', await others())
         await ask.fill(lang.ask)
         await customer.keyboard.press('Enter')
         await expect(customer.getByRole('article').first()).toBeVisible({ timeout: 20_000 })
         await customer.waitForTimeout(1500)
-        await readsIn(customer, lang, '21-ask-results', [lang.ask, ...others])
+        await readsIn(customer, lang, '21-ask-results', [lang.ask, ...(await others())])
 
         await customer.goto(`/explore/s/${id}`)
         await expect(customer.getByRole('heading', { name: SHOP, level: 1 })).toBeVisible()
         await expect(customer.getByText(PRICE).first()).toBeVisible()
-        await readsIn(customer, lang, '22-shop-page', others)
+        await readsIn(customer, lang, '22-shop-page', await others())
 
         await customer.getByRole('button', { name: lang.chat }).first().click()
         await expect(customer.getByRole('dialog')).toBeVisible()
-        await readsIn(customer, lang, '23-chat')
+        await readsIn(customer, lang, '23-chat', await others())
         await customer.keyboard.press('Escape')
 
         await customer.goto('/explore/passport')
         await expect(customer.getByText(lang.passport)).toBeVisible()
-        await readsIn(customer, lang, '24-passport')
+        await readsIn(customer, lang, '24-passport', await others())
       } finally {
         await context.close()
       }

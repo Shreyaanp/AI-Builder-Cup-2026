@@ -307,6 +307,9 @@ def end_conversation() -> dict[str, Any]:
     return {"status": "ended", "card_id": card_id, "instruction": END_NOTE}
 
 
+# How long a spoken turn waits for a typed place's pin (the reply never waits longer).
+SPOKEN_PIN_SECONDS = 2.0
+
 # One owner's shop goes live once, even when a tool call and the app's draft update race.
 _live_locks: dict[str, threading.Lock] = {}
 _live_guard = threading.Lock()
@@ -317,7 +320,9 @@ async def pin_typed_place(ctx: MerchantContext, place: str | None = None) -> Non
     ("Indiranagar metro ke paas") is where they asked customers to find them. Its pin is looked
     up as it is said (biased to the phone's country), so the one-sentence flow still goes live
     and the shop takes the money and clock of that place when it opens. A place that cannot be
-    found stays unpinned: the app asks the owner to confirm the spot on the map instead.
+    found, or that is ambiguous (a partial match, or several places of the same name such as
+    "माधवपुर"), stays unpinned: the app shows the suggested spot on the map for the owner to
+    confirm instead. A spoken turn waits only briefly (the next answer or the map card follow).
 
     `place` is what the owner just said (None: the draft's own place, on a resume). A GPS or
     hand-placed pin always wins; a pin found from an earlier wording follows a corrected place
@@ -334,14 +339,22 @@ async def pin_typed_place(ctx: MerchantContext, place: str | None = None) -> Non
         if fields.pin_source is not None or fields.location.strip() == typed:
             return
     try:
-        # Scripts and unit tests have no maps service: the offline areas answer.
-        pin = (
-            await ctx.maps.geocode(typed, phone_country())
-            if ctx.maps is not None
-            else demo_pin(typed)
-        )
+        if ctx.maps is None:
+            # Scripts and unit tests have no maps service: the offline areas answer.
+            pin, confident = demo_pin(typed), True
+        else:
+            pin, confident = await asyncio.wait_for(
+                ctx.maps.typed_pin(typed, phone_country()),
+                SPOKEN_PIN_SECONDS if ctx.spoken else None,
+            )
     except HTTPException as error:
         log.info("new_shop_place_unpinned", reason=str(error.detail)[:40])
+        return
+    except TimeoutError:
+        log.info("new_shop_place_unpinned", reason="slow")
+        return
+    if not confident:
+        log.info("new_shop_place_unpinned", reason="ambiguous")
         return
     business = BusinessFields.model_validate(
         {
