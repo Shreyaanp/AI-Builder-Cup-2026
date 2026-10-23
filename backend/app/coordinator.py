@@ -89,6 +89,8 @@ class MerchantContext:
     ended: bool = False
     # A Live voice conversation: tools never hold up the spoken reply (first audio).
     spoken: bool = False
+    # The app's maps service (discover.MapsService): pins the place a new shop's owner typed.
+    maps: Any = None
 
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)

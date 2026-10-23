@@ -218,7 +218,8 @@ def test_pin_consent_sealed_review_and_changed_location_both_stores(
     def fixture(request: httpx.Request) -> httpx.Response:
         calls.append(request)
         assert request.url.host == "maps.googleapis.com"
-        assert "region" not in request.url.params  # global: no country bias
+        # OB-168: an owner's place-name lookup is biased to their phone country.
+        assert request.url.params["region"] == "sg"
         return httpx.Response(
             200,
             json={

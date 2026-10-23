@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from app.customer import InquiryInput
 from app.merchant import MerchantRepository, MerchantStore
 from app.threads import ThreadSignals, token_hash
+from tests.pins import OWNER_PIN
 from tests.test_customer import app as app
 from tests.test_customer import create_shop, owner_of
 from tests.test_merchant_store import store as store
@@ -102,7 +103,8 @@ def test_capabilities_messages_close_block_delete_and_erasure(store: MerchantRep
 def owned_shop(client: TestClient) -> str:
     join(client)
     proposal = client.post(
-        "/api/v1/proposals", json={"kind": "business", "business": {"name": "Kopi Corner"}}
+        "/api/v1/proposals",
+        json={"kind": "business", **OWNER_PIN, "business": {"name": "Kopi Corner"}},
     ).json()
     bid = client.post(
         f"/api/v1/proposals/{proposal['id']}/approve", json={"digest": proposal["digest"]}

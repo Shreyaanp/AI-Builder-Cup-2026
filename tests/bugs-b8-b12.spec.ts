@@ -56,6 +56,9 @@ const business = {
     name: 'Katong Kopi',
     category: 'Kopi shop',
     location: 'Katong, Singapore',
+    // OB-168: this fixture represents a public, pinned shop.
+    lat: 1.305,
+    lng: 103.905,
     hours: '09:00–18:00',
     phone: '',
     currency: 'SGD',
@@ -238,7 +241,7 @@ for (const mode of ['offline', 'gemini']) {
   })
 }
 
-test('B11: weekday hours are reviewed, saved and shown publicly', async ({ page }) => {
+test('B11 / OB-190: weekday hours are reviewed, saved and shown publicly', async ({ page }) => {
   await enter(page, false)
   await createShop(page, 'name: Katong Night Kopi')
   await editShopDetails(page)

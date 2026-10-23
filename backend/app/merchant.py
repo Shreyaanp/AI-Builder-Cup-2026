@@ -30,11 +30,13 @@ from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .money import exponent
 from .playbook import migrate_stored
 from .region import (
+    country_at,
     country_of_timezone,
     new_shop_currency,
     new_shop_zone,
+    phone_country,
+    profile,
     shop_currency,
-    shop_region,
     shop_zone,
 )
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
@@ -601,6 +603,11 @@ class ConsentRequest(BaseModel):
 
 
 NAME_REQUIRED = "Add your shop's name before opening it."
+PIN_REQUIRED = "Add your location so customers can find you."
+
+
+def has_pin(fields: dict[str, Any]) -> bool:
+    return fields.get("lat") is not None and fields.get("lng") is not None
 
 
 def require_name(data: dict[str, Any]) -> None:
@@ -621,22 +628,32 @@ def validate_proposal(request: ProposalRequest) -> None:
         place_new_shop(request)
 
 
-def place_new_shop(request: ProposalRequest) -> None:
+def place_new_shop(request: ProposalRequest, legacy_utc: bool = False) -> None:
     """A new shop takes its money and clock from where its pin is (an Indian pin is INR and
     Asia/Kolkata even from a phone set to Singapore), else from the owner's phone (the model
     validator). Its prices were typed in that same money, so only the minor unit is rescaled."""
     business = request.business
     assert business is not None
-    pinned = shop_region({"lat": business.lat, "lng": business.lng})
-    if business.lat is None or not pinned.known:
+    pin_country = country_at(business.lat, business.lng)
+    pinned = profile(pin_country or phone_country())
+    if not pinned.known:
         return
-    if business.currency != pinned.currency:
+    # A pin decides the money. Without one, only the accidental USD default follows the phone
+    # (OB-168); a currency the owner or their app chose stays until the pin is confirmed.
+    if business.currency != pinned.currency and (pin_country or business.currency == "USD"):
         scale = 10 ** (exponent(pinned.currency) - exponent(business.currency))
         for product in request.products:
             product.price = round(product.price * scale)
         business.currency = pinned.currency
-    # A zone of another known country came from the phone; UTC or a far zone was chosen.
-    if country_of_timezone(business.timezone) not in (None, pinned.country):
+    # A zone of another known country came from the phone; UTC or a far zone was chosen. An
+    # unpinned shop's UTC, and a legacy USD/UTC record's first pin (legacy_utc), were the
+    # accidental defaults (OB-168): they follow the shop's region.
+    zone_country = country_of_timezone(business.timezone)
+    if (
+        (business.lat is not None and zone_country not in (None, pinned.country))
+        or (business.lat is None and business.timezone == "UTC")
+        or legacy_utc
+    ):
         business.timezone = new_shop_zone(business.lat, business.lng)
 
 
@@ -800,7 +817,7 @@ class MerchantStore:
             "gallery": json.loads(row["gallery"] or "[]"),
             "icon": row["icon"],
             "registration": row["status"],
-            "public": bool(shared),
+            "public": bool(shared) and has_pin(json.loads(row["fields"])),
             "google_publication": "not_connected",
         }
 
@@ -893,6 +910,8 @@ class MerchantStore:
             if data["kind"] == "business":
                 # Only the record is migrated; the exact approved snapshot stays immutable.
                 data["business"] = migrate_profile(data["business"])
+                if not has_pin(data["business"]):
+                    db.execute("DELETE FROM shares WHERE business_id=?", (bid,))
                 if exists:
                     db.execute(
                         "UPDATE businesses SET fields=?,revision=revision+1 WHERE id=?",
@@ -1084,7 +1103,10 @@ class MerchantStore:
 
     def share(self, uid: str, bid: str, public: bool) -> dict[str, Any]:
         with self.connect() as db:
-            self.owned(db, uid, bid)
+            db.execute("BEGIN IMMEDIATE")
+            row = self.owned(db, uid, bid)
+            if public and not has_pin(json.loads(row["fields"])):
+                raise HTTPException(422, PIN_REQUIRED)
             if public:
                 db.execute("INSERT INTO shares VALUES(?) ON CONFLICT DO NOTHING", (bid,))
             else:
@@ -1204,7 +1226,7 @@ class MerchantStore:
                 "WHERE b.id=?",
                 (bid,),
             ).fetchone()
-            if not row:
+            if not row or not has_pin(json.loads(row[0])):
                 return None
             products = [
                 json.loads(item[0])

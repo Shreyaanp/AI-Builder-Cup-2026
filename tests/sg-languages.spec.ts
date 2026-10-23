@@ -1,9 +1,9 @@
 import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { enter, localOnly } from './stories/support.js'
+import { enter, localOnly, otherOwnersWords } from './stories/support.js'
 
-// Singapore languages end to end at 360px. A Singapore shop (pin
-// in Tiong Bahru, no currency sent) with the owner app set in turn to English, Mandarin, Malay
+// Singapore languages end to end at 360px. A Singapore shop (address
+// Tiong Bahru, pinned in Singapore, no currency sent) with the owner app set in turn to English, Mandarin, Malay
 // and Tamil, and a customer whose phone is in that language. Every screen must read in its
 // language (brands, units and the owner's own words excepted), show S$ and never ₹, and fit the
 // phone. Offline fixtures only: live Gemini replies were checked by hand (see the doc).
@@ -17,7 +17,16 @@ test.use({
 
 const SHOTS = 'docs/qa/sg-languages'
 const SHOP = 'Kopi Corner'
-const TIONG_BAHRU = { lat: 1.2847, lng: 103.832 }
+type Point = { lat: number; lng: number }
+/**
+ * OB-168: each test pins its shop at its own point in west Singapore, 4 km from the next and
+ * from the Tiong Bahru point other specs share, so "Similar nearby" (3 km) never collects
+ * another test's shops.
+ */
+const pinFor = (index: number): Point => ({
+  lat: 1.3 + 0.04 * (index % 2),
+  lng: 103.64 + 0.04 * Math.floor(index / 2),
+})
 /** Kopi at S$1.80; Tamil puts a space after the symbol (S$ 1.80), as Intl does for ta-SG. */
 const PRICE = /S\$\s?1\.80/
 
@@ -219,17 +228,19 @@ async function readsIn(page: Page, lang: Lang, name: string, more: string[] = []
 }
 
 /** A saved Singapore shop: its pin decides the money, so no currency or timezone is sent. */
-async function seedSingapore(page: Page) {
+async function seedSingapore(page: Page, pin: Point) {
   const prepared = await page.request.post('/api/v1/proposals', {
     headers: { 'X-Client-Timezone': 'Asia/Singapore' },
     data: {
       kind: 'business',
       revision: 0,
+      // OB-168: a shared shop needs the owner's pin, not only address text.
+      owner_location: { ...pin, accuracy_m: 0, source: 'pin' },
       business: {
         name: SHOP,
         category: 'Cafe',
         location: 'Tiong Bahru',
-        ...TIONG_BAHRU,
+        ...pin,
         halal: 'yes',
         phone: '',
         payment_methods: ['paynow', 'cash'],
@@ -259,10 +270,10 @@ async function seedSingapore(page: Page) {
   return id
 }
 
-async function ownerIn(page: Page, lang: Lang) {
+async function ownerIn(page: Page, lang: Lang, pin: Point) {
   await localOnly(page)
   await enter(page)
-  const id = await seedSingapore(page)
+  const id = await seedSingapore(page, pin)
   await page.evaluate(
     (code) =>
       localStorage.setItem(
@@ -277,8 +288,10 @@ async function ownerIn(page: Page, lang: Lang) {
   return id
 }
 
-for (const lang of LANGS) {
+for (const [index, lang] of LANGS.entries()) {
   test.describe(lang.code, () => {
+    const ownerPin = pinFor(2 * index)
+    const customerPin = pinFor(2 * index + 1)
     const tab = (page: Page, name: string) =>
       page
         .getByRole('navigation', { name: lang.nav.main })
@@ -288,7 +301,7 @@ for (const lang of LANGS) {
       page,
     }) => {
       test.setTimeout(180_000)
-      const id = await ownerIn(page, lang)
+      const id = await ownerIn(page, lang, ownerPin)
       await readsIn(page, lang, '01-today')
 
       await test.step('coach text turn', async () => {
@@ -327,10 +340,11 @@ for (const lang of LANGS) {
 
       // The customer page of the same shop, in the same language.
       await test.step('public shop page', async () => {
+        const others = await otherOwnersWords(page, ownerPin, id)
         await page.goto(`/explore/s/${id}`)
-        await expect(page.getByRole('heading', { name: SHOP })).toBeVisible()
+        await expect(page.getByRole('heading', { name: SHOP, level: 1 })).toBeVisible()
         await expect(page.getByText(PRICE).first()).toBeVisible()
-        await readsIn(page, lang, '07-public-page')
+        await readsIn(page, lang, '07-public-page', others)
       })
     })
 
@@ -342,7 +356,9 @@ for (const lang of LANGS) {
       test.setTimeout(120_000)
       await localOnly(page)
       await enter(page)
-      const id = await seedSingapore(page)
+      const id = await seedSingapore(page, customerPin)
+      // Read just before each check: other tests' shops can be shared while this one runs.
+      const others = () => otherOwnersWords(page, customerPin, id)
       const context = await browser.newContext({
         baseURL,
         locale: lang.phone,
@@ -376,26 +392,26 @@ for (const lang of LANGS) {
         const ask = customer.getByRole('search').getByRole('textbox')
         await expect(ask).toBeVisible({ timeout: 30_000 })
         await expect(ask).toHaveAttribute('placeholder', /S\$/)
-        await readsIn(customer, lang, '20-ask-home')
+        await readsIn(customer, lang, '20-ask-home', await others())
         await ask.fill(lang.ask)
         await customer.keyboard.press('Enter')
         await expect(customer.getByRole('article').first()).toBeVisible({ timeout: 20_000 })
         await customer.waitForTimeout(1500)
-        await readsIn(customer, lang, '21-ask-results', [lang.ask])
+        await readsIn(customer, lang, '21-ask-results', [lang.ask, ...(await others())])
 
         await customer.goto(`/explore/s/${id}`)
-        await expect(customer.getByRole('heading', { name: SHOP })).toBeVisible()
+        await expect(customer.getByRole('heading', { name: SHOP, level: 1 })).toBeVisible()
         await expect(customer.getByText(PRICE).first()).toBeVisible()
-        await readsIn(customer, lang, '22-shop-page')
+        await readsIn(customer, lang, '22-shop-page', await others())
 
         await customer.getByRole('button', { name: lang.chat }).first().click()
         await expect(customer.getByRole('dialog')).toBeVisible()
-        await readsIn(customer, lang, '23-chat')
+        await readsIn(customer, lang, '23-chat', await others())
         await customer.keyboard.press('Escape')
 
         await customer.goto('/explore/passport')
         await expect(customer.getByText(lang.passport)).toBeVisible()
-        await readsIn(customer, lang, '24-passport')
+        await readsIn(customer, lang, '24-passport', await others())
       } finally {
         await context.close()
       }

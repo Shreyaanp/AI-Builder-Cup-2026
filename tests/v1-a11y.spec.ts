@@ -1,4 +1,4 @@
-import { openNewShopReview, createShopFromReview } from './stories/support.js'
+import { openNewShopReview, createShopFromReview, menuRow } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
@@ -149,11 +149,9 @@ for (const colorScheme of ['light', 'dark'] as const) {
             expect(shared).toContain('/s/')
             await page.goto(shared!)
             await expect(
-              page.getByRole('heading', { name: 'Accessibility Tea Stall' }),
+              page.getByRole('heading', { name: 'Accessibility Tea Stall', level: 1 }),
             ).toBeVisible()
-            await expect(page.getByRole('listitem').filter({ hasText: 'Chai' })).toContainText(
-              '$15.00',
-            )
+            await expect(menuRow(page, 'Chai')).toContainText('$15.00')
           }
         }
       }
