@@ -252,7 +252,8 @@ test('H09: changed facts clear an old answer; errors preserve input and offer re
   )
   await message.press('Control+Enter')
   await expect(
-    page.getByText('Could not send. Check your connection and try again, or contact the shop.'),
+    // A-17: a server error (503) is ours, never the customer's connection.
+    page.getByText('Something went wrong on our side. Try again in a moment.'),
   ).toBeVisible()
   await expect(message).toHaveValue('Hello')
   await page.unroute('**/customer/shops/*/threads')

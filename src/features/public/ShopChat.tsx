@@ -27,24 +27,36 @@ import { chatPath, go } from '../customer/paths'
 import { SignInButton } from '../customer/SignIn'
 import type { ChatSummary } from '../customer/types'
 import type { CustomerCopy } from './customerCopy'
+import type { Locale } from '../../i18n/locales'
+import { offlineCopy } from '../customer/offline'
 
 type Answer = components['schemas']['Answer']
 type Entry = { role: 'you'; text: string } | { role: 'ai'; answer: Answer; question: string }
 
 async function post<T>(shop: string, action: string, body: unknown, signal: AbortSignal) {
-  const response = await fetch(`/api/v1/public/shops/${encodeURIComponent(shop)}/${action}`, {
-    method: 'POST',
-    credentials: 'omit',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.any([signal, AbortSignal.timeout(25_000)]),
-  })
+  const send = () =>
+    fetch(`/api/v1/public/shops/${encodeURIComponent(shop)}/${action}`, {
+      method: 'POST',
+      credentials: 'omit',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.any([signal, AbortSignal.timeout(25_000)]),
+    })
+  let response = await send()
+  // A-17: a busy assistant gets one quiet second try before the customer sees an error.
+  if (response.status === 503 && !signal.aborted) {
+    await new Promise((resolve) => setTimeout(resolve, 1200))
+    if (!signal.aborted) response = await send()
+  }
   if (!response.ok) throw new Error(String(response.status))
   return response.json() as Promise<T>
 }
 
-function errorCopy(error: unknown, t: CustomerCopy) {
+function errorCopy(error: unknown, t: CustomerCopy, locale: Locale, kind: 'ask' | 'send') {
   const status = error instanceof Error ? error.message : ''
+  // A-17: a server error is not the customer's connection.
+  if (/^5\d\d$/.test(status))
+    return kind === 'ask' ? offlineCopy(locale).serverBusy : offlineCopy(locale).failedBody
   return status === '429'
     ? t.rateLimited
     : status === '404'
@@ -141,7 +153,7 @@ export function ShopChat({
       })
       setQuestion('')
     } catch (failure) {
-      if (!abort.signal.aborted) setError(errorCopy(failure, t))
+      if (!abort.signal.aborted) setError(errorCopy(failure, t, locale, 'ask'))
     } finally {
       if (!abort.signal.aborted) setBusy(false)
     }
@@ -166,7 +178,9 @@ export function ShopChat({
       go(chatPath(id, chat.thread.id))
     } catch (failure) {
       setError(
-        failure instanceof Error && failure.message === '409' ? t.closed : errorCopy(failure, t),
+        failure instanceof Error && failure.message === '409'
+          ? t.closed
+          : errorCopy(failure, t, locale, 'send'),
       )
     } finally {
       setBusy(false)

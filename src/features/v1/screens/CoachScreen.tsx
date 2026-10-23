@@ -1,7 +1,7 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
 import { AiInfo } from '../AiInfo'
 import { photoCopy } from '../../coach/photoCopy'
-import { photoHeaders, preparePhoto } from '../photoPrep'
+import { PHOTO_READ_TIMEOUT_MS, photoHeaders, preparePhoto } from '../photoPrep'
 import { PlainText } from '../../../design/PlainText'
 import { RichText } from '../../../design/LazyRichText'
 import { stripMarkdown } from '../../../design/markdownUtils'
@@ -866,7 +866,7 @@ function CoachScreen({
         method: 'POST',
         body: file,
         headers: photoHeaders(photo),
-        signal: AbortSignal.any([operation.signal, AbortSignal.timeout(60_000)]),
+        signal: AbortSignal.any([operation.signal, AbortSignal.timeout(PHOTO_READ_TIMEOUT_MS)]),
       })
       if (!alive.current || operation.signal.aborted) return
       const uncertain = Array.isArray(result?.extraction?.uncertain)

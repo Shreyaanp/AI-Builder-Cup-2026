@@ -7,6 +7,7 @@ from difflib import SequenceMatcher
 from typing import Any, Literal
 
 import anyio
+import structlog
 from pydantic import BaseModel, Field
 
 from .gemini_schema import gemini_schema, parse_reply
@@ -19,7 +20,9 @@ from .imports import (
     ImportRejected,
     cell,
 )
-from .photos import PhotoPipeline, PhotoRejected, sanitize
+from .photos import READ_THINKING_BUDGET, PhotoPipeline, PhotoRejected, sanitize
+
+log = structlog.get_logger()
 
 IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
@@ -78,17 +81,27 @@ async def extract(
             if mime == "text/plain"
             else types.Part.from_bytes(data=data, mime_type=mime)
         )
-        response = await mapper.client().aio.models.generate_content(
-            model=mapper.settings.google_text_model,
-            contents=[content],
-            config=types.GenerateContentConfig(
-                system_instruction=PROMPT,
-                response_mime_type="application/json",
-                response_json_schema=gemini_schema(Extraction),
-                temperature=0,
-                max_output_tokens=16000,
-            ),
-        )
+    except UnicodeDecodeError:
+        raise ImportRejected(415, "UNREADABLE_FILE") from None
+    # OB-194: the menu sheet's photo and PDF import had none of the OB-167 hardening: one model
+    # hiccup failed the owner's menu with no log line, and unbounded thinking made reads slow.
+    for attempt in (1, 2):
+        try:
+            response = await mapper.client().aio.models.generate_content(
+                model=mapper.settings.google_text_model,
+                contents=[content],
+                config=types.GenerateContentConfig(
+                    system_instruction=PROMPT,
+                    response_mime_type="application/json",
+                    response_json_schema=gemini_schema(Extraction),
+                    temperature=0,
+                    max_output_tokens=16000,
+                    thinking_config=types.ThinkingConfig(thinking_budget=READ_THINKING_BUDGET),
+                ),
+            )
+        except Exception as error:
+            log.warning("import_extraction_failed", attempt=attempt, error=str(error)[:300])
+            continue
         candidate = (response.candidates or [None])[0]
         reason = str(getattr(candidate, "finish_reason", "") or "")
         feedback = getattr(response, "prompt_feedback", None)
@@ -97,13 +110,10 @@ async def extract(
         ):
             raise ImportRejected(422, "DOCUMENT_BLOCKED")
         extraction = parse_reply(Extraction, response)
-        if "MAX_TOKENS" in reason or extraction is None:
-            raise ImportRejected(503, "EXTRACTION_UNAVAILABLE")
-        return extraction
-    except ImportRejected:
-        raise
-    except Exception:
-        raise ImportRejected(503, "EXTRACTION_UNAVAILABLE") from None
+        if "MAX_TOKENS" not in reason and extraction is not None:
+            return extraction
+        log.warning("import_extraction_unreadable", attempt=attempt, finish_reason=reason)
+    raise ImportRejected(503, "EXTRACTION_UNAVAILABLE")
 
 
 def as_table(extracted: Extraction) -> tuple[list[str], list[list[str]], ColumnMap, list[int]]:

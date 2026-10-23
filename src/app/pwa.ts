@@ -59,9 +59,25 @@ export function setupPwa(app: AppKind) {
       const worker = app === 'customer' ? '/explore/sw.js' : '/sw.js'
       void navigator.serviceWorker
         .register(worker, { scope: app === 'customer' ? '/explore/' : '/' })
+        .then(() => (app === 'customer' ? keepLoadedFiles() : undefined))
         .catch(() => undefined)
     })
   }
+}
+
+/** A-18: the first visit loads its code before the worker takes over, so it never passed through
+ * the worker's cache. Hand the worker that list once it is active, so the screens and art shown
+ * so far open offline too. */
+async function keepLoadedFiles() {
+  const registration = await navigator.serviceWorker.ready
+  const urls = performance
+    .getEntriesByType('resource')
+    .map((entry) => entry.name)
+    .filter((name) => {
+      const url = new URL(name, location.origin)
+      return url.origin === location.origin && /^\/(?:assets|art|icons)\//.test(url.pathname)
+    })
+  registration.active?.postMessage({ type: 'keep', urls })
 }
 
 /** True when an install offer may be shown: installable, not installed, not declined before. */

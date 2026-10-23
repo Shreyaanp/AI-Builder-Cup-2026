@@ -488,7 +488,8 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
         try:
             mapper = request.app.state.column_mapper
             if content_type in IMAGE_TYPES | {"application/pdf", "text/plain"}:
-                async with asyncio.timeout(60):
+                # Room for one retry of a slow read (OB-194); the app waits longer than this.
+                async with asyncio.timeout(100):
                     extracted = await extract(
                         mapper, request.app.state.photos, bytes(buffer), content_type
                     )

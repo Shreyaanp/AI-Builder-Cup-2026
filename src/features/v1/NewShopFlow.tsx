@@ -56,7 +56,7 @@ import { HoursList } from '../shop/Hours'
 import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { ApiError } from './api'
-import { photoHeaders, preparePhoto } from './photoPrep'
+import { PHOTO_READ_TIMEOUT_MS, photoHeaders, preparePhoto } from './photoPrep'
 import type { Business, PhotoResult, Product, Proposal } from './api'
 import { CameraCard, type Shot } from './CameraCard'
 import { LocationPin } from './CurrentLocation'
@@ -996,7 +996,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         method: 'POST',
         body: photo.file,
         headers: photoHeaders(photo),
-        signal: AbortSignal.timeout(60_000),
+        signal: AbortSignal.timeout(PHOTO_READ_TIMEOUT_MS),
       })
       // OB-153: an unreadable menu needs recovery. A shopfront can have no text, and a
       // readable menu may propose no new fields; both still follow the normal photo path.

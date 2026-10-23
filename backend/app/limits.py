@@ -78,9 +78,10 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "helpful": ((30, 600),),
     "today": ((30, 60), (600, 86_400)),
     "thread:translate": ((30, 60),),
-    "bootstrap": ((30, 60),),
-    "consent": ((30, 60),),
-    "me": ((30, 60),),
+    # A-4: no cost; many phones share one IP (carrier NAT, office wifi, a demo room).
+    "bootstrap": ((300, 60),),
+    "consent": ((120, 60),),
+    "me": ((300, 60),),
 }
 
 # When the limit store errors (OB-91), signed-in actions that spend paid AI, voice or Maps

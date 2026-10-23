@@ -47,12 +47,19 @@ test.describe('phone', () => {
   test.skip(({ isMobile }) => !isMobile, 'Phone first')
 
   test('OB-100: illustrations are dimmed in dark and untouched in light', async ({ page }) => {
+    // OB-195: dark is only ever the person's own pick, so each look is picked here.
+    await page.emulateMedia({ colorScheme: 'dark' })
     for (const [scheme, dimmed] of [
       ['dark', true],
       ['light', false],
     ] as const) {
-      await page.emulateMedia({ colorScheme: scheme })
       await page.goto('/explore/')
+      await page.evaluate(
+        (appearance) =>
+          localStorage.setItem('chalkboard.customer.preferences', JSON.stringify({ appearance })),
+        scheme,
+      )
+      await page.reload()
       const filter = await page.evaluate(async () => {
         const img = document.createElement('img')
         img.src = '/art/category-kopi.svg'
@@ -63,18 +70,26 @@ test.describe('phone', () => {
     }
   })
 
-  // OB-126 (#423): the landing follows the phone's dark setting and offers a theme switch.
+  // OB-126 (#423) offers a theme switch on the landing; OB-195 (owner, 23 Oct) makes it start in
+  // light even on a dark phone, so dark is the person's own pick and is remembered.
   for (const path of ['/?app=landing', '/?app=landing&landing=new']) {
-    test(`OB-126: landing ${path} follows dark mode and has a theme switch`, async ({ page }) => {
+    test(`OB-195: landing ${path} starts light on a dark phone and switches to dark`, async ({
+      page,
+    }) => {
       await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' })
       await page.goto(path)
+      const toDark = page.getByRole('button', { name: 'Switch to dark mode' })
+      await expect(toDark).toBeVisible()
+      const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+      const light = await bg()
+      await toDark.click()
       const toLight = page.getByRole('button', { name: 'Switch to light mode' })
       await expect(toLight).toBeVisible()
-      const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
       const dark = await bg()
-      await toLight.click()
-      await expect(page.getByRole('button', { name: 'Switch to dark mode' })).toBeVisible()
-      expect(await bg()).not.toBe(dark)
+      expect(dark).not.toBe(light)
+      await page.reload()
+      await expect(toLight).toBeVisible()
+      expect(await bg()).toBe(dark)
     })
   }
 })
