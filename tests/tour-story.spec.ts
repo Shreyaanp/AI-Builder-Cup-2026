@@ -17,14 +17,14 @@ for (const appearance of ['light', 'dark']) {
     {
       city: 'bengaluru',
       slug: 'chai',
-      name: 'Lantern Chai Corner (Demo)',
+      name: 'Lantern Chai Corner',
       item: 'Masala chai',
-      price: '₹20.00',
+      price: '₹20',
     },
     {
       city: 'singapore',
       slug: 'kopi',
-      name: 'Sunny Side Kopitiam (Demo)',
+      name: 'Sunny Side Kopitiam',
       item: 'Kopi',
       price: '$1.70',
     },
@@ -42,11 +42,9 @@ for (const appearance of ['light', 'dark']) {
       await expect(page.getByRole('heading', { name: world.name, exact: true })).toBeVisible()
       await expect(page.getByText(world.item, { exact: true }).first()).toBeVisible()
       await expect(page.getByText(world.price, { exact: false }).first()).toBeVisible()
-      const badge = page.getByRole('button', { name: 'Verified owner · Demo shop' })
-      await badge.click()
-      await expect(
-        page.getByText('Demo badge only. No identity or business check was performed.'),
-      ).toBeVisible()
+      // A sample shop is labelled "Sample shop" and never claims "Verified owner" (A-12).
+      await expect(page.getByTestId('sample-shop-chip')).toHaveText('Sample shop')
+      await expect(page.getByText('Verified owner')).toHaveCount(0)
       await expect(page.locator('img').first()).toBeVisible()
       expect(
         await page

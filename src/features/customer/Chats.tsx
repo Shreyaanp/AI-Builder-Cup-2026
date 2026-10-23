@@ -32,6 +32,7 @@ import { rescueMarker } from '../rescue/marker'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { chatPath, reduceMotion } from './paths'
 import { CollectionEmptyState, CollectionPage } from './CollectionEmptyState'
+import { plainShopName } from '../discover/sampleShop'
 import './customer.css'
 
 import type { ChatSummary, Message, ShopCard, Thread } from './types'
@@ -213,7 +214,7 @@ export function ChatList() {
                         noWrap
                         sx={{ flex: 1, fontWeight: chat.unread ? 700 : 500 }}
                       >
-                        {chat.shop.name}
+                        {plainShopName(chat.shop.name)}
                       </Typography>
                       {last && (
                         <Typography
@@ -530,7 +531,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
             <ShopAvatar shop={shop} size={40} name="chat-avatar" />
             <Box sx={{ minWidth: 0 }}>
               <Typography component="h1" variant="titleMedium" noWrap sx={{ fontWeight: 600 }}>
-                {shop.name}
+                {plainShopName(shop.name)}
               </Typography>
               <Typography variant="labelSmall" color="text.secondary" noWrap component="p">
                 {shop.demo ? `${t.demoShop} · ` : ''}

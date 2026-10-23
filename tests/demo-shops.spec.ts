@@ -38,7 +38,7 @@ test('a demo shop is labelled on its customer page and its discovery card', asyn
   await page.route(`**/api/v1/public/shops/${shop.id}`, (route) => route.fulfill({ json: shop }))
   await page.goto(`/s/${shop.id}`)
   await expect(page.getByRole('heading', { name: shop.name })).toBeVisible()
-  await expect(page.getByText('Demo shop', { exact: true })).toBeVisible()
+  await expect(page.getByText('Sample shop', { exact: true })).toBeVisible()
   await expect(
     page.getByText('Sample shop for this prototype — not a real business.'),
   ).toBeVisible()
@@ -74,5 +74,5 @@ test('a demo shop is labelled on its customer page and its discovery card', asyn
   await page.goto('/discover')
   const card = page.getByRole('list').getByRole('link').filter({ hasText: shop.name })
   await expect(card).toBeVisible()
-  await expect(card.getByText('Demo shop', { exact: true })).toBeVisible()
+  await expect(card.getByText('Sample shop', { exact: true })).toBeVisible()
 })

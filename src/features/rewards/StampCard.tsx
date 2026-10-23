@@ -291,7 +291,7 @@ export function StampCard({
             ? reward
             : t.more
                 .replace('{count}', number(target - count))
-                .replace('{reward}', midSentence(reward))
+                .replace('{reward}', t.more.startsWith('{reward}') ? reward : midSentence(reward))
           : t.noReward}
       </Typography>
       {/* One short line; the full "not proof of purchase" note is on the claim screen. */}
