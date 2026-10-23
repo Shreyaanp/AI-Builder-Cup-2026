@@ -15,6 +15,7 @@ import { useIdentity } from '../auth/useIdentity'
 import { isLanguagePref, resolveLocale } from '../i18n/locales'
 import { loadScriptFont } from '../i18n/fonts'
 import { configureAnalytics, watchRouteChanges } from './analytics'
+import { loadBootstrap } from '../api/appConfig'
 import { sideKey } from '../auth/appSide'
 
 /** Kept apart from the preferences object, which older code and tests overwrite whole. */
@@ -131,9 +132,10 @@ function Providers({
     if (!analyticsApp) return
     const stopWatching = watchRouteChanges()
     const abort = new AbortController()
-    void fetch('/api/v1/bootstrap', { signal: abort.signal })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((config: { ga_measurement_id?: string } | null) => {
+    // One shared read per page (A-4): the account and maps use the same answer.
+    void loadBootstrap()
+      .catch(() => null)
+      .then((config) => {
         if (!abort.signal.aborted) {
           const region = navigator.languages.some((language) => /-SG(?:-|$)/i.test(language))
             ? 'SG'

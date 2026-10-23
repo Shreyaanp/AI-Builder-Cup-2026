@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useOfflineCopy, useOnline } from '../customer/offline'
 import {
   Alert,
   Box,
@@ -96,6 +97,8 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
       : (initialLocation?.place ?? lastPlace()),
   )
   const { view, status, refresh, signedIn } = usePassport(place)
+  const online = useOnline()
+  const offline = useOfflineCopy()
   const [signIn, setSignIn] = useState(false)
   useEffect(() => {
     document.title = `${t.title} · Chalkboard`
@@ -146,7 +149,13 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
           />
         )}
       </Stack>
-      {status === 'error' && (
+      {status === 'error' && !online && (
+        // A-18: offline is not a failure; the Passport comes back by itself when online.
+        <Alert severity="info" sx={{ mt: 4 }}>
+          {view ? offline.offlineKept : offline.offlineBody}
+        </Alert>
+      )}
+      {status === 'error' && online && (
         <Alert
           severity="error"
           sx={{ mt: 4 }}

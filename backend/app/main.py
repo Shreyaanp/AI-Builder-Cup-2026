@@ -190,6 +190,8 @@ def create_app(
         )
         app.state.photos = PhotoPipeline(settings) if settings.v1_enabled else None
         app.state.customer_answers = CustomerAnswers(settings)
+        # A-17: the first shop-chat question must not pay for building the model client.
+        await app.state.customer_answers.warm()
         app.state.shop_translator = ShopTranslator(settings)
         app.state.community = (
             await anyio.to_thread.run_sync(community_service, settings)
