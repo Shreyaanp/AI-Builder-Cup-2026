@@ -127,6 +127,9 @@ const typeScale: Record<TypeRole, TypeStyle> = {
   labelSmall: role(12, 16, 500, 0.5),
 }
 
+/** The one size the handwritten font is set at: the scale's headlineLarge (A-22: three sizes per screen). */
+export const HAND_SIZE = typeScale.headlineLarge.fontSize
+
 // Phones (below 600px): the whole scale one step smaller, with slightly tighter tracking (OB-198).
 // Roles that share a size on larger windows still share one here, so a screen keeps the same
 // number of sizes: body 15px, labels and small text 13px, nothing below 12px (OB-116, OB-103).
@@ -351,6 +354,14 @@ export function nivaTheme(
             }
           },
           outlined: { borderColor: roles.outline, borderWidth: audience === 'customer' ? 2 : 1 },
+          // A-25: a text button's label sits one 16px step inside its box; 24px left the icon
+          // 40px in from the gutter.
+          text: {
+            paddingInline: 16,
+            // The icon is not pulled out past the label's padding either: it sits on the 16px.
+            '& .MuiButton-startIcon': { marginLeft: 0 },
+            '& .MuiButton-endIcon': { marginRight: 0 },
+          },
         },
       },
       MuiIconButton: {
@@ -412,7 +423,12 @@ export function nivaTheme(
       MuiDialog: {
         defaultProps: { fullWidth: true, maxWidth: 'sm' },
         styleOverrides: {
-          paper: { borderRadius: shape.xl, backgroundColor: roles.surfaceContainerHigh },
+          paper: {
+            borderRadius: shape.xl,
+            backgroundColor: roles.surfaceContainerHigh,
+            // A-38: a full-screen dialog has no outer corners (grey slivers showed at the edges).
+            '&.MuiDialog-paperFullScreen': { borderRadius: 0 },
+          },
         },
       },
       MuiDialogTitle: { styleOverrides: { root: responsiveScale.headlineSmall } },

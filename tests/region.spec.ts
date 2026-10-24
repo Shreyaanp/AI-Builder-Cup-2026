@@ -172,7 +172,8 @@ test.describe('India', () => {
     await page.goto('/explore/rescue')
     await expect(page.getByRole('heading', { name: 'रेस्क्यू' })).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('body')).toContainText('Indiranagar')
-    await expect(page.locator('body')).toContainText('प्रकाशित जीवन-चक्र अध्ययन')
+    // The study note belongs to the impact card, which appears with the first rescue (A-30).
+    await expect(page.locator('body')).not.toContainText('प्रकाशित जीवन-चक्र अध्ययन')
     await expect(page.locator('body')).not.toContainText(
       /Tiong Bahru|Too Good To Go|S\$|SGD|\bAI\b/,
     )

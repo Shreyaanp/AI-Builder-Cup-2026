@@ -28,6 +28,11 @@ export const accountStrings = {
   notNow: 'Not now',
   signedInAs: 'Signed in as {name}',
   signOut: 'Sign out',
+  clearDevice: 'Clear my stamps and follows',
+  clearDeviceBody: 'This removes your stamps and followed shops. It cannot be undone.',
+  clearDeviceDo: 'Clear',
+  clearDeviceDone: 'Cleared. Your stamps and followed shops are gone.',
+  clearDeviceFailed: 'Couldn’t clear everything. Please try again.',
   // Profile
   profile: 'Your profile',
   profileButton: 'Profile and preferences',

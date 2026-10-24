@@ -15,11 +15,14 @@ export function FollowButton({
   id,
   name,
   variant = 'button',
+  icon: showIcon = true,
 }: {
   id: string
   name: string
   /** `icon`: a compact round toggle for cards. */
   variant?: 'button' | 'icon'
+  /** `false`: the label alone (a card that already shows a lot). */
+  icon?: boolean
 }) {
   const roles = useTheme().material
   const account = useCustomer()
@@ -80,7 +83,7 @@ export function FollowButton({
           aria-label={label}
           variant="outlined"
           size="small"
-          startIcon={icon}
+          startIcon={showIcon || busy ? icon : undefined}
           aria-busy={busy}
           disabled={busy}
           onClick={() => void toggle()}

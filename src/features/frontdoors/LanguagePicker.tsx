@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { IconButton, Menu, MenuItem, useTheme } from '@mui/material'
+import { Box, Button, IconButton, Menu, MenuItem, useTheme } from '@mui/material'
 import { HoverTip } from './HoverTip'
+import { settingsRowSx } from './settingsRow'
 import type { SxProps, Theme } from '@mui/material'
 import { Globe } from 'lucide-react'
 import { LOCALE_NAMES, LOCALES, systemLocale } from '../../i18n/locales'
@@ -12,7 +13,8 @@ export function LanguagePicker({
   variant = 'fixed',
   sx,
 }: {
-  variant?: 'fixed' | 'nav' | 'inline'
+  /** `row`: a full-width settings row (the profile sheet) naming the language in use. */
+  variant?: 'fixed' | 'nav' | 'inline' | 'row'
   sx?: SxProps<Theme>
 }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
@@ -65,26 +67,48 @@ export function LanguagePicker({
 
   const inlineSx: SxProps<Theme> = { width: 48, height: 48 }
 
+  const row = variant === 'row'
+  const ids = row
+    ? { button: 'profile-language-button', menu: 'profile-language-menu' }
+    : { button: 'customer-language-button', menu: 'customer-language-menu' }
   return (
     <>
-      <HoverTip title={`${t.language}: ${currentLabel}`}>
-        <IconButton
-          id="customer-language-button"
+      {row ? (
+        <Button
+          id={ids.button}
           aria-label={`${t.language}: ${currentLabel}`}
           aria-haspopup="true"
           aria-expanded={open ? 'true' : undefined}
-          aria-controls={open ? 'customer-language-menu' : undefined}
+          aria-controls={open ? ids.menu : undefined}
           onClick={handleOpen}
-          sx={{
-            ...(variant === 'fixed' ? fixedSx : variant === 'inline' ? inlineSx : navSx),
-            ...sx,
-          }}
+          startIcon={<Globe size={20} />}
+          sx={settingsRowSx}
         >
-          <Globe size={20} />
-        </IconButton>
-      </HoverTip>
+          {t.language}
+          <Box component="span" sx={{ ml: 'auto', pl: 3, color: 'text.secondary' }}>
+            {currentLabel}
+          </Box>
+        </Button>
+      ) : (
+        <HoverTip title={`${t.language}: ${currentLabel}`}>
+          <IconButton
+            id={ids.button}
+            aria-label={`${t.language}: ${currentLabel}`}
+            aria-haspopup="true"
+            aria-expanded={open ? 'true' : undefined}
+            aria-controls={open ? ids.menu : undefined}
+            onClick={handleOpen}
+            sx={{
+              ...(variant === 'fixed' ? fixedSx : variant === 'inline' ? inlineSx : navSx),
+              ...sx,
+            }}
+          >
+            <Globe size={20} />
+          </IconButton>
+        </HoverTip>
+      )}
       <Menu
-        id="customer-language-menu"
+        id={ids.menu}
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}

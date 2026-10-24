@@ -11387,6 +11387,10 @@
             "type": "integer",
             "title": "You"
           },
+          "helped": {
+            "type": "boolean",
+            "title": "Helped"
+          },
           "helpers": {
             "type": "integer",
             "title": "Helpers"
@@ -11418,6 +11422,7 @@
           "total",
           "demo_visits",
           "you",
+          "helped",
           "helpers",
           "reached",
           "claimed",

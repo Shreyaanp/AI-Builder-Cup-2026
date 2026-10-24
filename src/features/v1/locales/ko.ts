@@ -164,7 +164,7 @@ export const ko: Copy = {
   suggestPrice: '가격 변경',
   suggestHours: '영업시간 변경',
   message: '메시지',
-  messagePlaceholder: '가게 이야기를 들려주세요…',
+  messagePlaceholder: '가게 이야기…',
   send: '보내기',
   stop: '중지',
   photo: '사진 추가',
