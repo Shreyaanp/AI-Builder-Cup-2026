@@ -3,8 +3,8 @@ import { Box, Chip, Stack, Typography, useTheme } from '@mui/material'
 import { gsap } from 'gsap'
 import { Check, Coffee, HandHeart, Moon, type LucideIcon } from 'lucide-react'
 import type { FeatureKey } from '../../../design/chalkboard'
-import { dealIn, useChalkTimeline } from '../../../design/chalkMotion'
-import { HAND_FONT } from '../../../design/theme'
+import { dealIn, hits, useChalkTimeline } from '../../../design/chalkMotion'
+import { HAND_FONT, HAND_SIZE } from '../../../design/theme'
 import { useLocale } from '../../../state/hooks'
 import { FESTIVAL_ART } from '../artData'
 import { fill, usePassportCopy } from '../copy'
@@ -93,11 +93,13 @@ export function SetComplete({ set }: { set: Pick<SetView, 'id' | 'art'> }) {
   const p = usePassportCopy()
   const scope = useRef<HTMLDivElement>(null)
   useChalkTimeline(scope, (root) => {
-    gsap.fromTo(
-      root.querySelector('.set-badge'),
-      { rotateY: 180, scale: 0.6, opacity: 0 },
-      { rotateY: 0, scale: 1, opacity: 1, duration: 0.7, ease: 'back.out(1.8)', delay: 0.4 },
-    )
+    const badge = hits(root, '.set-badge')
+    if (badge.length)
+      gsap.fromTo(
+        badge,
+        { rotateY: 180, scale: 0.6, opacity: 0 },
+        { rotateY: 0, scale: 1, opacity: 1, duration: 0.7, ease: 'back.out(1.8)', delay: 0.4 },
+      )
   })
   return (
     <Stack
@@ -138,7 +140,7 @@ export function CollectionSets({ sets }: { sets: SetView[] }) {
   return (
     <Box component="section" aria-label={t.setsTitle}>
       <Stack direction="row" sx={{ alignItems: 'center', gap: 2, mb: 2 }}>
-        <Typography component="h2" variant="titleLarge" sx={{ flex: 1 }}>
+        <Typography component="h2" variant="titleMedium" sx={{ flex: 1, fontWeight: 700 }}>
           {t.setsTitle}
         </Typography>
         <HowItWorks game="sets" />
@@ -178,7 +180,12 @@ export function CollectionSets({ sets }: { sets: SetView[] }) {
                 <Box sx={{ minWidth: 0 }}>
                   <Typography
                     component="h3"
-                    sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: 28, lineHeight: 1.1 }}
+                    sx={{
+                      fontFamily: HAND_FONT,
+                      fontWeight: 700,
+                      fontSize: HAND_SIZE,
+                      lineHeight: 1.1,
+                    }}
                   >
                     {name}
                   </Typography>

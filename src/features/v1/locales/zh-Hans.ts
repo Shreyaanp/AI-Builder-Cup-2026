@@ -157,7 +157,7 @@ export const zhHans: Copy = {
   suggestPrice: '更新价格',
   suggestHours: '更改营业时间',
   message: '消息',
-  messagePlaceholder: '说说您的店铺…',
+  messagePlaceholder: '聊聊你的店铺…',
   send: '发送',
   stop: '停止',
   photo: '添加照片',

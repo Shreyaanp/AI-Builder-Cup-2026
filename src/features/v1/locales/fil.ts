@@ -174,7 +174,7 @@ export const fil: Copy = {
   suggestPrice: 'Baguhin ang presyo',
   suggestHours: 'Baguhin ang oras',
   message: 'Mensahe',
-  messagePlaceholder: 'Ikuwento ang tindahan mo…',
+  messagePlaceholder: 'Tungkol sa shop…',
   send: 'Ipadala',
   stop: 'Ihinto',
   photo: 'Magdagdag ng litrato',

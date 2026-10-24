@@ -82,7 +82,7 @@ export const gamesStrings = {
   setDone: 'Set complete!',
   setComplete: 'Set complete: {set}!',
   setStops: 'Stops nearby',
-  setEnds: 'Until {date} (approximate)',
+  setEnds: 'Ends around {date}',
   // Neighbourhood goal (co-op)
   coopTitle: 'Neighbourhood goal',
   coopGoal: '{goal} visits in {area} this week',

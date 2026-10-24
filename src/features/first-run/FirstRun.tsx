@@ -1,7 +1,8 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Box, Button, Dialog, Stack, Typography, useTheme } from '@mui/material'
-import { MapPin, QrCode, Gift, Store, Stamp, Bot } from 'lucide-react'
+import { MapPin, QrCode, Gift, Store, Stamp, Bot, CircleHelp } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
+import { settingsRowSx } from '../frontdoors/settingsRow'
 import { explainerCopy } from './copy'
 import { hasSeen, remember, type Audience } from './seen'
 
@@ -41,14 +42,25 @@ export function FirstRun({ app, children }: { app: Audience; children: ReactNode
   )
 }
 
-export function SeeAgain({ app }: { app: Audience }) {
+export function SeeAgain({ app, row = false }: { app: Audience; row?: boolean }) {
   const [open, setOpen] = useState(false)
   const t = explainerCopy[useLocale()]
   return (
     <>
-      <Button onClick={() => setOpen(true)} sx={{ minHeight: 48 }}>
-        {t[9]}
-      </Button>
+      {row ? (
+        // A full-width settings row, like the others in the profile sheet.
+        <Button
+          onClick={() => setOpen(true)}
+          startIcon={<CircleHelp size={20} />}
+          sx={settingsRowSx}
+        >
+          {t[9]}
+        </Button>
+      ) : (
+        <Button onClick={() => setOpen(true)} sx={{ minHeight: 48 }}>
+          {t[9]}
+        </Button>
+      )}
       {open && <Cards app={app} onClose={() => setOpen(false)} />}
     </>
   )
@@ -58,7 +70,9 @@ function Cards({ app, onClose }: { app: Audience; onClose: () => void }) {
   const [step, setStep] = useState(0)
   const start = useRef<{ x: number; y: number } | null>(null)
   const t = explainerCopy[useLocale()]
-  const roles = useTheme().material
+  const theme = useTheme()
+  const roles = theme.material
+  const dark = theme.palette.mode === 'dark'
   const Icon = (app === 'owner' ? [Store, Stamp, Bot] : [MapPin, QrCode, Gift])[step]!
   const headline = t[(app === 'owner' ? 0 : 3) + step]!
   const move = (delta: number) => setStep((n) => Math.max(0, Math.min(2, n + delta)))
@@ -126,8 +140,10 @@ function Cards({ app, onClose }: { app: Audience; onClose: () => void }) {
               display: 'grid',
               placeItems: 'center',
               borderRadius: '28px',
-              bgcolor: roles.primaryContainer,
-              color: roles.onPrimaryContainer,
+              // A-38: on the dark board the container colour is a muddy olive; use the theme's
+              // own surface tone with the one yellow accent instead.
+              bgcolor: dark ? roles.surfaceContainerHighest : roles.primaryContainer,
+              color: dark ? roles.primary : roles.onPrimaryContainer,
             }}
           >
             <Icon size="60%" strokeWidth={1.25} />

@@ -9,6 +9,8 @@ export type Appearance = 'light' | 'dark'
 export type Audience = 'owner' | 'customer'
 /** Handwritten chalk accent: short headings, prices and notes only. */
 export const HAND_FONT = `"Caveat", ${FONT_STACK}`
+/** The one size the handwritten font is set at: the scale's headlineLarge (A-22: three sizes per screen). */
+export const HAND_SIZE = 32
 /** The user's choice; `system` follows prefers-color-scheme. */
 export type ColorMode = Appearance | 'system'
 export const layout = { pageWidth: 1160, edge: 4, cardPadding: 6, gap: 4, target: 48, appBar: 64 }
@@ -331,6 +333,14 @@ export function nivaTheme(
             }
           },
           outlined: { borderColor: roles.outline, borderWidth: audience === 'customer' ? 2 : 1 },
+          // A-25: a text button's label sits one 16px step inside its box; 24px left the icon
+          // 40px in from the gutter.
+          text: {
+            paddingInline: 16,
+            // The icon is not pulled out past the label's padding either: it sits on the 16px.
+            '& .MuiButton-startIcon': { marginLeft: 0 },
+            '& .MuiButton-endIcon': { marginRight: 0 },
+          },
         },
       },
       MuiIconButton: {
@@ -387,7 +397,12 @@ export function nivaTheme(
       MuiDialog: {
         defaultProps: { fullWidth: true, maxWidth: 'sm' },
         styleOverrides: {
-          paper: { borderRadius: shape.xl, backgroundColor: roles.surfaceContainerHigh },
+          paper: {
+            borderRadius: shape.xl,
+            backgroundColor: roles.surfaceContainerHigh,
+            // A-38: a full-screen dialog has no outer corners (grey slivers showed at the edges).
+            '&.MuiDialog-paperFullScreen': { borderRadius: 0 },
+          },
         },
       },
       MuiDialogTitle: { styleOverrides: { root: typeScale.headlineSmall } },

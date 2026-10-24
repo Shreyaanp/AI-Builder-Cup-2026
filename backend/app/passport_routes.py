@@ -610,11 +610,17 @@ async def coop_view(
         return None
     week = week_of(today)
     data = await anyio.to_thread.run_sync(coops(request).get, area, week)
-    real = int(data.get("visits", 0))
+    key = coop_key(area, week)
+    # The passport's own stamps this week in this area are this customer's visits, so the goal
+    # agrees with the weekly quest (a phone-only passport never wrote to the shared tally).
+    mine = max(
+        state.coop_helped.get(key, 0),
+        sum(1 for s in state.stamps if s.area == area and s.week == week),
+    )
+    real = max(int(data.get("visits", 0)), mine)
     generated = demo_coop_visits(area, week, today) if demo else 0
     goal = COOP_GOAL_DEMO if demo else COOP_GOAL
     total = real + generated
-    key = coop_key(area, week)
     return CoopView(
         area=area,
         area_name=name,
@@ -623,7 +629,7 @@ async def coop_view(
         goal=goal,
         total=total,
         demo_visits=generated,
-        you=state.coop_helped.get(key, 0),
+        you=mine,
         helpers=len(data.get("helpers", {})),
         reached=total >= goal,
         claimed=key in state.coop_claimed,

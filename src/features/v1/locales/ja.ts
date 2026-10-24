@@ -166,7 +166,7 @@ export const ja: Copy = {
   suggestPrice: '価格を更新',
   suggestHours: '営業時間を変更',
   message: 'メッセージ',
-  messagePlaceholder: 'お店について教えてください…',
+  messagePlaceholder: 'お店について…',
   send: '送信',
   stop: '停止',
   photo: '写真を追加',

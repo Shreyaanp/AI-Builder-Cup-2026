@@ -166,7 +166,7 @@ export const vi: Copy = {
   suggestPrice: 'Cập nhật giá',
   suggestHours: 'Đổi giờ mở cửa',
   message: 'Tin nhắn',
-  messagePlaceholder: 'Kể về cửa hàng của bạn…',
+  messagePlaceholder: 'Về cửa hàng…',
   send: 'Gửi',
   stop: 'Dừng',
   photo: 'Thêm ảnh',
