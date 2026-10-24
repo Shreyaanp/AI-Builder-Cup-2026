@@ -123,6 +123,7 @@ export function AppShell() {
   ]
   // A sub-page (Google, Privacy) keeps its tab selected.
   const tab = PARENT_TAB[destination] ?? destination
+  const coachShown = destination === 'coach' && !feature
   // Leaving for a tab closes an open owner feature (guide, payments).
   const go = (destination: Destination) => {
     openOwnerFeature(null)
@@ -204,7 +205,8 @@ export function AppShell() {
                 minHeight: 0,
                 px: { xs: 2, sm: 3, md: 4 },
                 // Clear the fixed bar by its measured height: labels wrap and fonts differ.
-                pb: rail ? 3 : `${navHeight + 16}px`,
+                // The coach's composer sits right on the bar (OB-199); other tabs keep 16px.
+                pb: rail ? 3 : `${navHeight + (coachShown && showNavBar ? 0 : 16)}px`,
                 outline: 'none',
               }}
             >

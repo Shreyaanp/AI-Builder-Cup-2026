@@ -70,7 +70,8 @@ export function ProfileButton({ inline = false }: { inline?: boolean }) {
               sx={{
                 width: 34,
                 height: 34,
-                fontSize: 16,
+                // The body size (16px, 15px on phones), so the initial adds no extra size to a screen.
+                typography: 'body1',
                 fontWeight: 700,
                 bgcolor: roles.primary,
                 color: roles.onPrimary,

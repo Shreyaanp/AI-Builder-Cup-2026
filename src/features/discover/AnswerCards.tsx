@@ -509,7 +509,7 @@ export function GoogleRows({
                     sx={{
                       fontVariantNumeric: 'tabular-nums',
                       lineHeight: 1.25,
-                      minHeight: { xs: '2.5em', sm: 0 },
+                      minHeight: { xs: '2lh', sm: 0 },
                     }}
                   >
                     {ratingLine(place.rating, place.user_rating_count, locale, search)}
