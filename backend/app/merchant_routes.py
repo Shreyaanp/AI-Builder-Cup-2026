@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from . import erasure
 from .coordinator import MerchantContext, ProductInput, current, propose_products
-from .discover import prepare_pin
+from .discover import pin_fields, prepare_pin
 from .imports import MAX_BYTES as MAX_IMPORT_BYTES
 from .imports import MAX_MEDIA_BYTES as MAX_IMPORT_MEDIA_BYTES
 from .imports import SAMPLE_ROWS, ImportRejected, menu_items, parse_table, sales_summary
@@ -366,7 +366,7 @@ async def photo(
     # It is only ever proposed: the owner sees the pin in the review sheet before saving.
     # A phone that resized the photo in the browser lost its EXIF, so it sends the location itself.
     gps = outcome.get("gps") or header_gps(request.headers.get("x-photo-gps"))
-    pin = await request.app.state.maps.reverse(*gps) if gps else {}
+    pin = pin_fields(await request.app.state.maps.reverse(*gps)) if gps else {}
     proposal = None
     if business is None and found.name.strip():
         # A new shop and its menu are reviewed together in one sheet.

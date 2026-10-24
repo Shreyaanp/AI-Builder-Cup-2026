@@ -263,6 +263,30 @@
     "smallTargets": 0,
     "contrastIssues": 0
   },
+  "welcome-area-sheet-desktop-dark": {
+    "marks": 69,
+    "accentFamilies": 2,
+    "smallTargets": 0,
+    "contrastIssues": 0
+  },
+  "welcome-area-sheet-desktop-light": {
+    "marks": 69,
+    "accentFamilies": 1,
+    "smallTargets": 0,
+    "contrastIssues": 0
+  },
+  "welcome-area-sheet-phone-dark": {
+    "marks": 48,
+    "accentFamilies": 2,
+    "smallTargets": 0,
+    "contrastIssues": 0
+  },
+  "welcome-area-sheet-phone-light": {
+    "marks": 48,
+    "accentFamilies": 1,
+    "smallTargets": 0,
+    "contrastIssues": 0
+  },
   "welcome-desktop-dark": {
     "marks": 68,
     "accentFamilies": 2,
