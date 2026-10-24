@@ -127,21 +127,33 @@ const typeScale: Record<TypeRole, TypeStyle> = {
   labelSmall: role(12, 16, 500, 0.5),
 }
 
-// Compact windows: slightly tighter tracking. One scale (OB-116, OB-103): body 16px, labels and
-// small text 14px, nothing below 12px.
+// Phones (below 600px): the whole scale one step smaller, with slightly tighter tracking (OB-198).
+// Roles that share a size on larger windows still share one here, so a screen keeps the same
+// number of sizes: body 15px, labels and small text 13px, nothing below 12px (OB-116, OB-103).
+// Controls keep their 48px height; only their text shrinks.
 const compactQuery = `@media (max-width:${windowClass.medium - 1}px)`
-const compactScale: Partial<Record<TypeRole, TypeStyle>> = {
-  bodyLarge: role(16, 24, 400, 0.15),
-  bodyMedium: role(16, 24, 400, 0.1),
-  labelLarge: role(14, 20, 500, 0.05),
-  labelMedium: role(14, 20, 500, 0.3),
+const compactScale: Record<TypeRole, TypeStyle> = {
+  displaySmall: role(32, 40, 700, -0.5),
+  headlineLarge: role(28, 36, 700, -0.25),
+  headlineMedium: role(24, 32, 650, 0),
+  headlineSmall: role(22, 28, 650, 0),
+  titleLarge: role(20, 28, 600, 0),
+  titleMedium: role(15, 22, 600, 0.1),
+  titleSmall: role(13, 18, 600, 0.1),
+  bodyLarge: role(15, 22, 400, 0.15),
+  bodyMedium: role(15, 22, 400, 0.1),
+  bodySmall: role(13, 18, 400, 0.2),
+  labelLarge: role(13, 18, 500, 0.05),
+  labelMedium: role(13, 18, 500, 0.3),
+  labelSmall: role(12, 16, 500, 0.4),
 }
 const responsiveScale = Object.fromEntries(
   (Object.keys(typeScale) as TypeRole[]).map((key) => [
     key,
-    compactScale[key] ? { ...typeScale[key], [compactQuery]: compactScale[key] } : typeScale[key],
+    { ...typeScale[key], [compactQuery]: compactScale[key] },
   ]),
-) as Record<TypeRole, CSSProperties>
+) as Record<TypeRole, TypeStyle & { [query: string]: TypeStyle | string | number }>
+const fieldText = { fontSize: '1rem', [compactQuery]: { fontSize: '1rem' } }
 
 export function nivaTheme(
   mode: Appearance,
@@ -197,10 +209,10 @@ export function nivaTheme(
         letterSpacing: '-0.015em',
       },
       h3: { fontSize: '1rem', lineHeight: '1.5rem', fontWeight: 600 },
-      body1: typeScale.bodyLarge,
-      body2: typeScale.bodyMedium,
-      button: { ...typeScale.labelLarge, textTransform: 'none' },
-      caption: typeScale.bodySmall,
+      body1: responsiveScale.bodyLarge,
+      body2: responsiveScale.bodyMedium,
+      button: { ...responsiveScale.labelLarge, textTransform: 'none' },
+      caption: responsiveScale.bodySmall,
     },
     components: {
       MuiTypography: {
@@ -273,6 +285,10 @@ export function nivaTheme(
             left: -10000,
             top: 8,
             zIndex: 2000,
+            // A 48px target whatever the text size (OB-198 made phone text smaller).
+            display: 'flex',
+            alignItems: 'center',
+            minHeight: layout.target,
             padding: '12px 16px',
             borderRadius: shape.sm,
             backgroundColor: roles.inverseSurface,
@@ -299,7 +315,7 @@ export function nivaTheme(
             paddingBlock: 8,
             // OB-156: control sizes change containers, not the screen's type scale.
             '&.MuiButton-sizeSmall, &.MuiButton-sizeLarge': {
-              ...typeScale.labelLarge,
+              ...responsiveScale.labelLarge,
               paddingBlock: 8,
             },
             fontWeight: 600,
@@ -345,6 +361,11 @@ export function nivaTheme(
           input: { fontSize: '1rem' },
         },
       },
+      // Fields stay 16px on phones (OB-198): iOS zooms into smaller inputs, and the floating
+      // label (75% of this) stays at 12px. The phone query is repeated: body1's own phone query
+      // comes later in the same rule and would win.
+      MuiInputBase: { styleOverrides: { root: fieldText } },
+      MuiInputLabel: { styleOverrides: { root: fieldText } },
       MuiCard: {
         defaultProps: { elevation: 0 },
         styleOverrides: { root: { borderRadius: shape.lgIncreased, backgroundImage: 'none' } },
@@ -362,7 +383,7 @@ export function nivaTheme(
         styleOverrides: {
           label: { paddingInline: 12 },
           root: {
-            ...typeScale.labelLarge,
+            ...responsiveScale.labelLarge,
             borderRadius: audience === 'customer' ? shape.full : shape.sm,
             fontWeight: 500,
             // Chips you can tap are 48px tall, like every other control (OB-115).
@@ -390,7 +411,7 @@ export function nivaTheme(
           paper: { borderRadius: shape.xl, backgroundColor: roles.surfaceContainerHigh },
         },
       },
-      MuiDialogTitle: { styleOverrides: { root: typeScale.headlineSmall } },
+      MuiDialogTitle: { styleOverrides: { root: responsiveScale.headlineSmall } },
       MuiDrawer: { styleOverrides: { paper: { backgroundColor: roles.surfaceContainerLow } } },
       MuiMenu: {
         styleOverrides: {
