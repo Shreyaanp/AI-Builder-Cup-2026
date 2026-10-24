@@ -153,7 +153,11 @@ const responsiveScale = Object.fromEntries(
     { ...typeScale[key], [compactQuery]: compactScale[key] },
   ]),
 ) as Record<TypeRole, TypeStyle & { [query: string]: TypeStyle | string | number }>
-const fieldText = { fontSize: '1rem', [compactQuery]: { fontSize: '1rem' } }
+const fieldText = {
+  fontSize: '1rem',
+  lineHeight: '1.5rem',
+  [compactQuery]: { fontSize: '1rem', lineHeight: '1.5rem' },
+}
 
 export function nivaTheme(
   mode: Appearance,
