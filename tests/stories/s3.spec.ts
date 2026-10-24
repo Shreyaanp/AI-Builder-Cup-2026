@@ -93,9 +93,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
     })
     await test.step('4 · shop menu categories, hours and customer facts', async () => {
       await expect(customer.getByRole('heading', { name: shopName })).toBeVisible()
-      await expect(customer.getByRole('listitem').filter({ hasText: /^Kopi/ })).toContainText(
-        '₹18.00',
-      )
+      await expect(customer.getByRole('listitem').filter({ hasText: /^Kopi/ })).toContainText('₹18')
       await expect(customer.getByText('UPI', { exact: true })).toBeVisible()
       await expect(customer.getByText('Locally made', { exact: true })).toBeVisible()
       await expect(customer.getByRole('heading', { name: 'Drinks', exact: true })).toBeVisible()
@@ -110,7 +108,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
         route.fulfill({ json: sample }),
       )
       await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/s/${sample.id}`)
-      await expect(customer.getByText('Demo shop', { exact: true })).toBeVisible()
+      await expect(customer.getByText('Sample shop', { exact: true })).toBeVisible()
       await expect(
         customer.getByText('Sample shop for this prototype — not a real business.'),
       ).toBeVisible()

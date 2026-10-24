@@ -132,7 +132,7 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     ).toBeVisible()
     // The menu comes before the similar-nearby list, which can hold a same-named chai from other runs.
     await expect(customer.getByRole('listitem').filter({ hasText: /^Chai/ }).first()).toContainText(
-      '₹15.00',
+      /₹15(?![.0-9])/,
     )
     await expect(customer.getByText('UPI', { exact: true })).toBeVisible()
     await shot(customer, 1, '7-customer')

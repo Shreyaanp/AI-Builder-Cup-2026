@@ -126,7 +126,7 @@ export const passportStrings = {
   // Today's 7
   todayIn: 'Today near {area}',
   todayNear: 'Today near you',
-  demoLabel: 'Sample neighbourhood · demo shops are generated',
+  demoLabel: 'Sample neighbourhood · these are sample shops',
   cardOf: '{n} of {total}',
   sketching: 'Sketching your neighbourhood…',
   empty: 'Quiet here so far. Try a nearby area.',

@@ -27,6 +27,8 @@ export type ExplorerPlace = MapPin & {
   item?: { name: string; price: number; currency: string } | null
   rating?: number | null
   href?: string | null
+  /** A sample shop: its row says so, the same way its card does. */
+  demo?: boolean
 }
 
 // Bottom sheet stops, as the share of the sheet that shows: peek, half, nearly full.
@@ -358,6 +360,7 @@ function ExplorerRow({
               place.open === null ? null : place.open ? ask.openNow : ask.closed,
               formatDistance(place.distance_m, locale),
               place.rating ? `★ ${place.rating.toFixed(1)}` : null,
+              place.demo ? ask.demo : null,
               ours ? null : copy.google,
             ]
               .filter(Boolean)

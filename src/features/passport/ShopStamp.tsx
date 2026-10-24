@@ -105,8 +105,9 @@ export function ShopStamp({
       )}
       {shop.demo && scan === null && (
         <Box sx={{ mt: 2 }}>
+          {/* Outlined: the shop page's one filled button is the chat bar. */}
           <Button
-            variant="contained"
+            variant="outlined"
             startIcon={<Stamp size={18} />}
             disabled={busy}
             onClick={() => void collect(false)}

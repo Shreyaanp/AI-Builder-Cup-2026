@@ -28,6 +28,8 @@ import { CustomerTopBar } from '../customer/TopBar'
 import { FirstRun } from '../first-run/FirstRun'
 import { Farewell } from '../../auth/Farewell'
 import { track } from '../../app/analytics'
+import { DemoBanner } from '../demo/DemoBanner'
+import { exitDemo, inCustomerTour, savedSession, setCustomerTour } from '../demo/demoSession'
 import { retryableLazy, retryFailedScreens } from '../../app/retryLazy'
 import { useOfflineCopy, useOnline, whenOnline } from '../customer/offline'
 
@@ -169,6 +171,12 @@ function CustomerPages() {
     ['q', 'category', 'area', 'open', 'halal', 'budget', 'view'].some((key) =>
       new URLSearchParams(location.search).has(key),
     )
+  // The customer demo's steps open a sample shop and the Passport in this app: they keep the demo
+  // banner and Exit demo. Any other page leaves the demo, so the banner never sits on a real one.
+  const demoStep = Boolean(id?.startsWith('demo-') || passport) && inCustomerTour()
+  useEffect(() => {
+    if (!demoStep) setCustomerTour(false)
+  }, [demoStep])
   useEffect(() => {
     // A-18: the Passport and shop screens open offline, so fetch their code while online.
     const preload = () => {
@@ -216,6 +224,9 @@ function CustomerPages() {
             : null
   return (
     <>
+      {demoStep && (
+        <DemoBanner customer onExit={() => void exitDemo(savedSession(), '/explore/')} />
+      )}
       <a href="#customer-content" className="skip-link">
         {t.skip}
       </a>
