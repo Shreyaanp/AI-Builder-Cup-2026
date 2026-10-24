@@ -87,7 +87,8 @@ function preview(message: Message | undefined, t: AccountCopy, r: RescueStrings)
 
 /** The Chats tab: one row per shop, newest first, like a messaging app. */
 export function ChatList() {
-  const roles = useTheme().material
+  const theme = useTheme()
+  const roles = theme.material
   const locale = useLocale()
   const account = useCustomer()
   const t = useAccountCopy()
@@ -247,7 +248,7 @@ export function ChatList() {
                             borderRadius: 999,
                             bgcolor: roles.primary,
                             color: roles.onPrimary,
-                            fontSize: 14,
+                            fontSize: theme.typography.labelMedium.fontSize,
                             fontWeight: 700,
                             display: 'grid',
                             placeItems: 'center',

@@ -361,7 +361,13 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
             )}
             <circle r={r} fill={colors.bg} stroke={roles.surface} strokeWidth={2} />
             {pin.label ? (
-              <text y={4} textAnchor="middle" fontSize={14} fontWeight={700} fill={colors.fg}>
+              <text
+                y={4}
+                textAnchor="middle"
+                fontSize={theme.typography.labelMedium.fontSize}
+                fontWeight={700}
+                fill={colors.fg}
+              >
                 {pin.label}
               </text>
             ) : (
@@ -377,7 +383,7 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
           textAnchor={
             spots[chosen]!.x > W - 80 ? 'end' : spots[chosen]!.x < 80 ? 'start' : 'middle'
           }
-          fontSize={14}
+          fontSize={theme.typography.labelMedium.fontSize}
           fontWeight={600}
           fill={roles.onSurface}
           stroke={roles.surface}

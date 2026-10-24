@@ -279,6 +279,7 @@ class CoopView(BaseModel):
     total: int
     demo_visits: int  # generated neighbours' visits included in total (demo areas only)
     you: int
+    helped: bool  # this account has a share in the shared tally, so it may collect the bonus
     helpers: int
     reached: bool
     claimed: bool
@@ -615,7 +616,11 @@ async def coop_view(
     # agrees with the weekly quest (a phone-only passport never wrote to the shared tally).
     mine = max(
         state.coop_helped.get(key, 0),
-        sum(1 for s in state.stamps if s.area == area and s.week == week),
+        sum(
+            1
+            for s in state.stamps
+            if s.area == area and s.week == week and s.kind in ("visit", "first")
+        ),
     )
     real = max(int(data.get("visits", 0)), mine)
     generated = demo_coop_visits(area, week, today) if demo else 0
@@ -630,6 +635,7 @@ async def coop_view(
         total=total,
         demo_visits=generated,
         you=mine,
+        helped=state.coop_helped.get(key, 0) > 0,
         helpers=len(data.get("helpers", {})),
         reached=total >= goal,
         claimed=key in state.coop_claimed,

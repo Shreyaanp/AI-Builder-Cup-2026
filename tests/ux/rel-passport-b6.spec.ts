@@ -187,10 +187,10 @@ for (const size of PHONES) {
         await settled(page)
         const m = await page.evaluate(measure, true)
         expect(m.fontSizes.length, `${path}: ${m.fontSizes.join(', ')}`).toBeLessThanOrEqual(3)
-        // The shared bottom bar: the theme's 14px label and a 4px gap, not 9.7-11px and 2px.
+        // The shared bottom bar: the theme's label size (13-14px by phone scale) and a 4px gap, not 9.7-11px and 2px.
         const nav = page.locator('nav.c-nav a').first()
         const label = nav.locator('span, p').last()
-        await expect(label).toHaveCSS('font-size', '14px')
+        await expect(label).toHaveCSS('font-size', /^1[34]px$/)
         await expect(nav).toHaveCSS('row-gap', '4px')
       }
     })

@@ -189,7 +189,7 @@ export function CoopGoal({
           </Typography>
         </>
       )}
-      {coop.reached && coop.you > 0 && (signedIn || account.status === 'guest') ? (
+      {coop.reached && coop.helped && (signedIn || account.status === 'guest') ? (
         coop.claimed ? (
           <Typography variant="titleSmall" role="status" sx={{ mt: 2, fontWeight: 700 }}>
             {t.coopClaimed}

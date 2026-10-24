@@ -64,6 +64,7 @@ test('OB-141 (#449): 360px Hindi neighbourhood goal title stays on one line', as
         total: 284,
         demo_visits: 200,
         you: 1,
+        helped: true,
         helpers: 12,
         reached: false,
         claimed: false,

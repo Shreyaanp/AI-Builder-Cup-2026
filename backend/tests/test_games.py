@@ -347,3 +347,28 @@ def test_card_count_is_zero_without_a_card_and_never_overflows() -> None:
     assert (full.stamps, full.slots) == (WELCOME_STAMPS + 10, WELCOME_STAMPS + 10)
     off = shop_stamp("kopi", progress, {"reward_text": "", "stamps_enabled": False})
     assert (off.stamps, off.slots, off.reward) == (0, 0, "")
+
+
+def test_merged_stamps_show_the_goal_but_never_a_claim_that_would_fail(
+    client: TestClient, midweek: None
+) -> None:
+    """A stamp made signed out counts as "you", but only a recorded share may collect."""
+    body = {"shop_id": DEMO, "key": demo_key(client), **at_shop(client)}
+    receipt = client.post("/api/v1/public/passport/check", json=body).json()["receipt"]
+    sign_in(client)
+    merged = client.post("/api/v1/customer/passport/merge", json={"receipts": [receipt]}).json()
+    coop = merged["games"]["coop"]
+    assert coop["you"] == 1 and coop["helped"] is False
+    store: CoopStore = client.app.state.coop
+    data = store.get(coop["area"], coop["week"])
+
+    def fill(_: dict | None) -> tuple[float, dict]:
+        return 0.0, {**data, "visits": coop["goal"]}
+
+    store.docs.update("coop", f"{coop['area']}|{coop['week']}", coop["area"], fill)
+    after = client.get("/api/v1/customer/passport").json()["games"]["coop"]
+    assert after["reached"] and after["you"] == 1 and after["helped"] is False
+    claim = client.post(
+        "/api/v1/customer/games/coop/claim", json={"area": after["area"], "week": after["week"]}
+    )
+    assert claim.status_code == 409

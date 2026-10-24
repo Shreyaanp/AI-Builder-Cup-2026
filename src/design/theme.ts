@@ -9,8 +9,6 @@ export type Appearance = 'light' | 'dark'
 export type Audience = 'owner' | 'customer'
 /** Handwritten chalk accent: short headings, prices and notes only. */
 export const HAND_FONT = `"Caveat", ${FONT_STACK}`
-/** The one size the handwritten font is set at: the scale's headlineLarge (A-22: three sizes per screen). */
-export const HAND_SIZE = 32
 /** The user's choice; `system` follows prefers-color-scheme. */
 export type ColorMode = Appearance | 'system'
 export const layout = { pageWidth: 1160, edge: 4, cardPadding: 6, gap: 4, target: 48, appBar: 64 }
@@ -128,6 +126,9 @@ const typeScale: Record<TypeRole, TypeStyle> = {
   labelMedium: role(14, 20, 500, 0.3),
   labelSmall: role(12, 16, 500, 0.5),
 }
+
+/** The one size the handwritten font is set at: the scale's headlineLarge (A-22: three sizes per screen). */
+export const HAND_SIZE = typeScale.headlineLarge.fontSize
 
 // Compact windows: slightly tighter tracking. One scale (OB-116, OB-103): body 16px, labels and
 // small text 14px, nothing below 12px.

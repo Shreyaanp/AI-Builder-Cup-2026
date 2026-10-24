@@ -295,8 +295,15 @@ export function PickCard({
             {item && pick.currency && (
               <Typography
                 // The theme's title size, not a size of its own (A-22: three sizes per screen).
+                // A span, not the theme's h3: the name beside it is the row's only heading.
                 variant="titleMedium"
-                sx={{ fontWeight: 700, color: roles.primary, flexShrink: 0 }}
+                component="span"
+                sx={{
+                  fontWeight: 700,
+                  color: roles.primary,
+                  flexShrink: 0,
+                  lineHeight: theme.typography.titleSmall.lineHeight,
+                }}
               >
                 {formatPrice(item.price, pick.currency)}
               </Typography>
