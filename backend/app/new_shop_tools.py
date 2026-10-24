@@ -26,6 +26,7 @@ from .business_understanding import (
     with_owner_kind,
 )
 from .coordinator import FactInput, MerchantContext, _card, _propose_shop, current
+from .discover import pin_fields
 from .merchant import (
     BusinessFields,
     CustomFact,
@@ -359,7 +360,7 @@ async def pin_typed_place(ctx: MerchantContext, place: str | None = None) -> Non
     business = BusinessFields.model_validate(
         {
             **(fields.model_dump() if fields else {"name": ""}),
-            **pin,
+            **pin_fields(pin),
             "location": typed[:300],
             "pin_source": None,
             "pin_accuracy_m": None,

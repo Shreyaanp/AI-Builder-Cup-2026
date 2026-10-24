@@ -167,6 +167,29 @@ async def test_live_typed_address_with_a_named_area_saves(tmp_path: Path):
     assert saved["lat"] == 12.9718234 and "locality" not in saved
 
 
+async def test_live_spoken_place_with_a_named_area_is_pinned(tmp_path: Path):
+    from app.new_shop_tools import pin_typed_place
+
+    maps = MapsService(
+        settings(tmp_path, live=True),
+        httpx.MockTransport(lambda request: httpx.Response(200, json=NAMED_AREA)),
+    )
+    store = MerchantStore(str(tmp_path / "shops.sqlite"))
+    context = MerchantContext(
+        store, "alice", None, [], new_shop=True, new_shop_draft=NewShopDraft(), maps=maps
+    )
+    token = current.set(context)
+    try:
+        await pin_typed_place(context, "12 Example Road")
+    finally:
+        current.reset(token)
+        await maps.close()
+    business = context.new_shop_draft.business if context.new_shop_draft else None
+    assert business and business.place_id == "fixture-place"
+    assert business.lat == 12.9718234
+    assert "locality" not in business.model_dump()
+
+
 def test_guided_tools_accumulate_one_new_shop_without_writes(tmp_path: Path):
     store = MerchantStore(str(tmp_path / "shops.sqlite"))
     context = MerchantContext(
