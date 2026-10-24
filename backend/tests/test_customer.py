@@ -21,6 +21,7 @@ from app.merchant import (
     ProposalRequest,
 )
 from app.settings import Settings
+from tests.pins import OWNER_PIN, SHOP_PIN
 from tests.test_merchant_store import EMULATOR
 from tests.test_merchant_store import store as store
 from tests.test_photos import join
@@ -54,6 +55,7 @@ def create_shop(
                 location="Tiong Bahru, Singapore",
                 hours="07:00–14:00",
                 phone="+65 6123 4567",
+                **SHOP_PIN,
             ),
             products=[
                 ProductFields(name="Kopi", price=180, unit="cup", stock=987),
@@ -267,7 +269,8 @@ def test_inquiry_routes_consent_capability_and_owner_scope(app) -> None:
     with TestClient(app) as client:
         join(client)
         proposal = client.post(
-            "/api/v1/proposals", json={"kind": "business", "business": {"name": "Kopi Corner"}}
+            "/api/v1/proposals",
+            json={"kind": "business", **OWNER_PIN, "business": {"name": "Kopi Corner"}},
         ).json()
         bid = client.post(
             f"/api/v1/proposals/{proposal['id']}/approve", json={"digest": proposal["digest"]}

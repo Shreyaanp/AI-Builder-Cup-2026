@@ -169,7 +169,7 @@ function withServerDraft(previous: Draft, server: Draft): Draft {
 }
 
 const hasPlace = (draft: Draft) =>
-  Boolean(draft.business && (draft.business.lat != null || draft.business.location))
+  Boolean(draft.business && draft.business.lat != null && draft.business.lng != null)
 /** Everything onboarding asks is answered or skipped (owner decision, 17 Oct). */
 function complete(draft: Draft) {
   const b = draft.business
@@ -599,7 +599,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   }
   /** The coach opened a card of the flow (show_step): it appears at once. */
   function showStep(step: string) {
-    if (step === 'location') openMap(true)
+    if (step === 'location') openMap(!draftRef.current.business?.location)
     else if (step === 'camera') openCamera()
     else if (step === 'review') setReviewOpen(true)
     else if (step === 'summary' || step === 'face_check') offerSummary()
@@ -675,7 +675,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   function answerMissing(field: ListingField) {
     setListOpen(false)
     if (endedRef.current) continueConversation()
-    if (field === 'location') openMap(true)
+    if (field === 'location') openMap(!draftRef.current.business?.location)
     else void say(g.ask[field])
   }
   /** Done: the live shop opens (and the face check, when the owner chose it). */
@@ -946,6 +946,11 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     return () => observer.disconnect()
   }, [phase])
   const missing = missingForListing(draft)
+  const unconfirmedPlace = !hasPlace(draft) ? (draft.business?.location ?? '') : ''
+  const showPlaceConfirmation = useEffectEvent(() => openMap(false))
+  useEffect(() => {
+    if (unconfirmedPlace) showPlaceConfirmation()
+  }, [unconfirmedPlace])
   const summaryDue = complete(draft) && Boolean(draft.live_id)
   const showSummary = useEffectEvent(() => offerSummary())
   useEffect(() => {
@@ -1515,6 +1520,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                 ) : line.role === 'map' ? (
                   <Box component="li" key={line.id} sx={{ ml: { xs: 0, sm: 6 } }}>
                     <MapCard
+                      placeName={draft.business?.location}
                       initial={
                         draft.business?.lat != null && draft.business.lng != null
                           ? { lat: draft.business.lat, lng: draft.business.lng }

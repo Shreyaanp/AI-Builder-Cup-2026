@@ -69,7 +69,16 @@ async function shop(
       await route.fulfill({ response, json: { ...(await response.json()), face: 'verified' } })
     })
   const prepared = await page.request.post('/api/v1/proposals', {
-    data: { kind: 'business', revision: 0, business: fields, products },
+    data: {
+      kind: 'business',
+      revision: 0,
+      business: fields,
+      products,
+      // OB-168: a shared shop needs the owner's pin, not only address text.
+      ...(options.share
+        ? { owner_location: { lat: 12.9716, lng: 77.6412, accuracy_m: 0, source: 'pin' } }
+        : {}),
+    },
   })
   expect(prepared.ok()).toBe(true)
   const proposal = await prepared.json()

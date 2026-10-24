@@ -23,6 +23,8 @@ async function sharedBakery(page: Page) {
   const prepared = await page.request.post('/api/v1/proposals', {
     data: {
       kind: 'business',
+      // OB-168: a shared shop needs an owner-confirmed point, not only address text.
+      owner_location: { lat: 12.9352, lng: 77.6245, accuracy_m: 0, source: 'pin' },
       business: {
         name: 'Butter Window Bakery',
         category: 'Bakery',
