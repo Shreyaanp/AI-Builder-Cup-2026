@@ -16,6 +16,7 @@ from app.merchant import (
 )
 from app.merchant_firestore import FirestoreMerchantStore
 from app.stock_alerts import ALERT_SECONDS, StockAlertInput
+from tests.pins import OWNER_PIN, SHOP_PIN
 from tests.test_merchant_store import store as merchant_store
 from tests.test_photos import join
 from tests.test_sharing_routes import app as route_app
@@ -30,7 +31,9 @@ def setup_shop(repo: MerchantRepository) -> tuple[str, str]:
         "owner",
         ProposalRequest(
             kind="business",
-            business=BusinessFields(name="Tiong Bahru Kopi", reward_text="10th kopi free"),
+            business=BusinessFields(
+                name="Tiong Bahru Kopi", reward_text="10th kopi free", **SHOP_PIN
+            ),
             products=[ProductFields(name="Kaya toast", price=240, unit="set", available=False)],
         ),
     )
@@ -146,6 +149,7 @@ def test_anonymous_routes_validate_and_rate_limit(app) -> None:
             "/api/v1/proposals",
             json={
                 "kind": "business",
+                **OWNER_PIN,
                 "business": {"name": "Kopi", "reward_text": "10th kopi free"},
                 "products": [
                     {"name": "Kaya toast", "price": 240, "unit": "set", "available": False}

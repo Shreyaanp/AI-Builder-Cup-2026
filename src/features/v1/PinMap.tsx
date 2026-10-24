@@ -457,23 +457,32 @@ function TilePinMap({
         </Typography>
       )}
       <Box
+        onPointerDown={(event) => event.stopPropagation()}
         sx={{
           position: 'absolute',
-          right: 0,
+          left: 0,
           bottom: 0,
           zIndex: 3,
-          px: 0.75,
-          bgcolor: roles.surfaceContainerHighest,
+          px: 1,
+          display: 'flex',
+          alignItems: 'flex-end',
           color: roles.onSurface,
           fontSize: 11,
           lineHeight: '18px',
-          borderTopLeftRadius: 4,
-          '& a': { color: 'inherit' },
+          borderTopRightRadius: 4,
+          '& a': {
+            color: 'inherit',
+            display: 'inline-flex',
+            alignItems: 'flex-end',
+            minHeight: 48,
+            minWidth: 48,
+          },
         }}
       >
-        ©{' '}
         <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
-          OpenStreetMap
+          <Box component="span" sx={{ bgcolor: roles.surfaceContainerHighest }}>
+            <span aria-hidden="true">© </span>OpenStreetMap
+          </Box>
         </a>
       </Box>
     </Box>

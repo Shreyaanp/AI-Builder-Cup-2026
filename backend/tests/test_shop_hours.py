@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from app.coordinator import MerchantContext, current, propose_business
 from app.discover import open_now
 from app.merchant import BusinessFields, DayHours, MerchantRepository, ProposalRequest
+from tests.pins import SHOP_PIN
 
 pytest_plugins = ("tests.test_merchant_store",)
 
@@ -22,7 +23,9 @@ WEEK = [
 
 
 def test_weekly_hours_are_sealed_owned_and_public_on_both_adapters(store: MerchantRepository):
-    fields = BusinessFields(name="Katong Kopi", hours="Ask us on holidays", weekly_hours=WEEK)
+    fields = BusinessFields(
+        name="Katong Kopi", hours="Ask us on holidays", weekly_hours=WEEK, **SHOP_PIN
+    )
     proposal = store.propose("owner", ProposalRequest(kind="business", business=fields))
     assert not store.list_businesses("owner")
     assert proposal["snapshot"]["business"]["weekly_hours"] == WEEK
