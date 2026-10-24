@@ -43,8 +43,8 @@ for (const width of [360, 390, 412]) {
         await page.goto('/demo')
         const banner =
           language === 'en'
-            ? 'Demo shop - nothing here is real'
-            : 'डेमो दुकान - यहाँ कुछ भी असली नहीं है'
+            ? 'Demo shop – nothing here is real'
+            : 'डेमो दुकान – यहाँ कुछ भी असली नहीं है'
         await expect(page.getByText(banner, { exact: true })).toBeVisible({ timeout: 30_000 })
         await page
           .getByRole('dialog')

@@ -44,10 +44,17 @@ import { openedShops } from './opened'
 import { ProfileButton, ProfileSheet } from '../customer/Profile'
 import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
 import { LanguagePicker } from '../frontdoors/LanguagePicker'
-import { useDemoCopy, useFrontCopy } from '../frontdoors/strings'
+import { useDemoCopy } from '../frontdoors/strings'
 import { usePassportCopy } from '../passport/copy'
 import { TodayDeck } from '../passport/TodayDeck'
-import { AreaAnswerCard, GoogleRows, PickCard, PickList, PickSkeleton } from './AnswerCards'
+import {
+  AreaAnswerCard,
+  GoogleRows,
+  PickCard,
+  PickEmpty,
+  PickList,
+  PickSkeleton,
+} from './AnswerCards'
 import type { AskPick } from './askThread'
 import { AnswerMap, type MapSelection } from './AnswerMap'
 import { askCopy } from './askStrings'
@@ -68,6 +75,8 @@ import { ensureDemoWorld, isIndianArea } from './demoWorld'
 import { localRankShops, prefetchAreaShops } from './shopCache'
 import { recsEvent } from '../recs/events'
 import { PlaceSearch, type FoundPlace } from './PlaceSearch'
+import { areaLabel } from './areaLabel'
+import { Sheet } from '../v1/Sheet'
 import { areaCurrency, defaultCurrency } from '../v1/format'
 import { countryArea } from '../../region/region'
 import '../customer/customer.css'
@@ -103,10 +112,8 @@ function savedPlace(): FoundPlace | null {
     const place = (JSON.parse(localStorage.getItem(FILTERS) || '{}') as { place?: FoundPlace })
       .place
     if (!place || !Number.isFinite(place.lat) || !Number.isFinite(place.lng)) return null
-    if (place.label?.toLowerCase() === 'you') {
-      return { ...place, label: 'Nearby' }
-    }
-    return place
+    // A label saved before neighbourhood names ("67/1, KG Halli, ...") shows as "Nearby".
+    return { ...place, label: areaLabel(place.label, 'Nearby') }
   } catch {
     return null
   }
@@ -163,7 +170,6 @@ export default function AskHome({
 }) {
   const locale = useLocale()
   const t = askCopy(locale)
-  const front = useFrontCopy()
   const demo = useDemoCopy()
   const discover = discoverCopy(locale)
   const passport = usePassportCopy()
@@ -176,10 +182,7 @@ export default function AskHome({
         : initialLocation?.place) ??
       savedPlace() ??
       fallbackPlace()
-    if (initial.label?.toLowerCase() === 'you') {
-      return { ...initial, label: t.here }
-    }
-    return initial
+    return { ...initial, label: areaLabel(initial.label, t.here) }
   })
 
   useEffect(() => {
@@ -189,23 +192,22 @@ export default function AskHome({
         .then((res) => (res.ok ? res.json() : null))
         .then((data: { label?: string; lat: number; lng: number } | null) => {
           if (data?.label && data.label.toLowerCase() !== 'you') {
-            setPlace((current) => ({ ...current, lat, lng, label: data.label! }))
+            setPlace((current) => ({ ...current, lat, lng, label: areaLabel(data.label, t.here) }))
           }
         })
         .catch(() => undefined)
     }
-  }, [initialLocation?.gps])
+  }, [initialLocation?.gps, t.here])
 
   const currency = areaCurrency(place)
   const c = useConversationCopy(currency)
-  // A first visit has not said where yet: the page asks inline, never a wizard before it.
-  const [located, setLocated] = useState(() => !!initialLocation || savedPlace() !== null)
   const [locating, setLocating] = useState(false)
   const [denied, setDenied] = useState(false)
   const [nearby, setNearby] = useState<{ key: string; shops: AskPick[] } | null>(null)
   const [turns, setTurns] = useState<Turn[]>(loadTurns)
   const [draft, setDraft] = useState('')
   const [changing, setChanging] = useState(false)
+  const areaField = useRef<HTMLInputElement>(null)
   const [listening, setListening] = useState(false)
   // The example on the opening page; in a conversation the composer is narrower, so plain words.
   const placeholderText = useMemo(() => {
@@ -572,11 +574,12 @@ export default function AskHome({
     requestAnimationFrame(() => input.current?.focus())
   }
 
-  function choosePlace(found: FoundPlace, gps: [number, number] | null = null) {
+  function choosePlace(typed: FoundPlace, gps: [number, number] | null = null) {
+    // A neighbourhood name, never a house number or full address (A-9).
+    const found = { ...typed, label: areaLabel(typed.label, t.here) }
     setPlace(found)
     onLocationChange?.({ gps, place: gps ? null : found })
     rememberPlace(found)
-    setLocated(true)
     setChanging(false)
     setDenied(false)
     // An open question is asked again for the new area.
@@ -608,10 +611,11 @@ export default function AskHome({
         choosePlace({ lat, lng, label: t.here }, [lat, lng])
         void placeLabel(lat, lng).then((label) => {
           if (!label) return
+          const name = areaLabel(label, t.here)
           setPlace((current) =>
-            current.lat === lat && current.lng === lng ? { ...current, label } : current,
+            current.lat === lat && current.lng === lng ? { ...current, label: name } : current,
           )
-          rememberPlace({ lat, lng, label })
+          rememberPlace({ lat, lng, label: name })
         })
       },
       () => {
@@ -758,7 +762,7 @@ export default function AskHome({
               component="span"
               sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
-              {place.label.split(',')[0]?.trim() || place.label}
+              {place.label}
             </Box>
           </Button>
           <Stack direction="row" sx={{ ml: 'auto', flexShrink: 0, alignItems: 'center' }}>
@@ -770,11 +774,29 @@ export default function AskHome({
             <AppearanceToggle inline />
           </Stack>
         </AppHeader>
-        {changing && (
-          <Box className="c-rise" sx={{ mb: 4 }}>
-            <PlaceSearch value={place.label} onFound={(found) => choosePlace(found)} />
-          </Box>
-        )}
+        <Sheet
+          open={changing}
+          onClose={() => setChanging(false)}
+          titleId="ask-area-title"
+          title={discover.place}
+          // The sheet's own focus trap runs first: the field takes focus once it is in place.
+          onEntered={() => areaField.current?.focus()}
+        >
+          <Stack spacing={3} sx={{ pb: 2 }}>
+            {denied && <Alert severity="info">{discover.gpsError}</Alert>}
+            <Button
+              variant="outlined"
+              fullWidth
+              disabled={locating}
+              onClick={locate}
+              startIcon={<LocateFixed size={18} aria-hidden="true" />}
+              sx={{ minHeight: 48 }}
+            >
+              {discover.gps}
+            </Button>
+            <PlaceSearch inputRef={areaField} onFound={(found) => choosePlace(found)} />
+          </Stack>
+        </Sheet>
 
         {/* One purpose: ask for what you want nearby. */}
         <Box component="section" aria-labelledby="ask-hello" sx={{ pt: opening ? 4 : 0 }}>
@@ -809,42 +831,6 @@ export default function AskHome({
                   ? fillIn(c.helloBody, { count: suggestions.shops, place: place.label })
                   : fillIn(c.helloBodyEmpty, { place: place.label })}
               </Typography>
-              {!located && (
-                <Box
-                  component="section"
-                  aria-labelledby="ask-where"
-                  className="c-rise"
-                  sx={{
-                    mt: 5,
-                    p: 4,
-                    borderRadius: '20px',
-                    bgcolor: roles.secondaryContainer,
-                    color: roles.onSecondaryContainer,
-                  }}
-                >
-                  <Typography id="ask-where" component="h2" variant="titleMedium">
-                    {front.location}
-                  </Typography>
-                  {denied && (
-                    <Alert severity="info" sx={{ mt: 3 }}>
-                      {discover.gpsError}
-                    </Alert>
-                  )}
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    disabled={locating}
-                    onClick={locate}
-                    startIcon={<LocateFixed size={18} aria-hidden="true" />}
-                    sx={{ mt: 3, minHeight: 48 }}
-                  >
-                    {discover.gps}
-                  </Button>
-                  <Box sx={{ mt: 3 }}>
-                    <PlaceSearch onFound={(found) => choosePlace(found)} />
-                  </Box>
-                </Box>
-              )}
               <NearbyShops shops={nearbyShops} copy={c} locale={locale} browse={t.browse} />
               <TodayEntry
                 copy={c}
@@ -1170,8 +1156,9 @@ function NearbyShops({
       {browse}
     </Button>
   )
-  // Skeleton cards hold the carousel's height while it loads, so the Today card below never jumps.
-  if (shops && shops.length === 0) return <Box sx={{ mt: 3 }}>{all}</Box>
+  // Skeleton cards hold the carousel's height while it loads. With no shops here the same room
+  // holds a plain note, so the Today card below never jumps when the answer arrives (A-24).
+  const empty = shops !== null && shops.length === 0
   return (
     <Box component="section" aria-labelledby="ask-nearby" sx={{ mt: 6 }}>
       <Typography id="ask-nearby" component="h2" variant="titleMedium">
@@ -1179,20 +1166,24 @@ function NearbyShops({
       </Typography>
       {/* Big photos first: the neighbourhood's shops as cards the thumb swipes through. */}
       <PickList label={copy.nearbyNow} busy={shops === null} carousel>
-        {shops
-          ? shops.map((pick, index) => (
-              <PickCard
-                key={pick.id}
-                pick={pick}
-                index={index}
-                anchor={null}
-                copy={copy}
-                locale={locale}
-                numbered={false}
-                tile
-              />
-            ))
-          : [0, 1, 2].map((n) => <PickSkeleton key={n} tile />)}
+        {empty ? (
+          <PickEmpty note={copy.nearbyEmpty} />
+        ) : shops ? (
+          shops.map((pick, index) => (
+            <PickCard
+              key={pick.id}
+              pick={pick}
+              index={index}
+              anchor={null}
+              copy={copy}
+              locale={locale}
+              numbered={false}
+              tile
+            />
+          ))
+        ) : (
+          [0, 1, 2].map((n) => <PickSkeleton key={n} tile />)
+        )}
       </PickList>
       {all}
     </Box>

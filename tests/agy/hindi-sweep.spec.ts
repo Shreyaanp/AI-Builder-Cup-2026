@@ -128,7 +128,7 @@ test('Hindi phone sweep: supply, reminders, onboarding, tour and demo', async ({
   await page.getByRole('button', { name: 'टूर बंद करें', exact: true }).click()
 
   await page.goto('/demo')
-  await expect(page.getByText('डेमो दुकान - यहाँ कुछ भी असली नहीं है')).toBeVisible({
+  await expect(page.getByText('डेमो दुकान – यहाँ कुछ भी असली नहीं है')).toBeVisible({
     timeout: 30_000,
   })
   await hindiOnly(page, 'डेमो दुकान')

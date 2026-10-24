@@ -29,7 +29,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
   await localOnly(customer)
   await customer.goto(url)
   const kopi = menuRow(customer, 'Kopi')
-  await expect(kopi).toContainText('₹18.00')
+  await expect(kopi).toContainText(/₹18(?![.0-9])/)
   await test.step('1 · natural text and voice path', async () => {
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Press to talk' })).toBeVisible()
@@ -50,7 +50,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
     await confirm(page)
   })
   await test.step('3 · already-open customer page updates within five seconds', async () => {
-    await expect(kopi).toContainText('₹20.00', { timeout: 5200 })
+    await expect(kopi).toContainText(/₹20(?![.0-9])/, { timeout: 5200 })
     await shot(customer, 2, 3)
   })
   await test.step('4 · sold-out switch reaches customer page', async () => {
@@ -103,7 +103,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
     await confirm(page)
     await customer.getByRole('button', { name: 'Refresh', exact: true }).click()
     await expect(customer.getByRole('listitem').filter({ hasText: 'Masala chai' })).toContainText(
-      '₹35.00',
+      /₹35(?![.0-9])/,
     )
     liveOnly('Photo/PDF extraction requires live AI; CSV review is the offline import path')
   })

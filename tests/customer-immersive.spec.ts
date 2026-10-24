@@ -106,7 +106,8 @@ test('customer app at 390 px: photos first, bars not floating, full-bleed shop, 
 
     // Front door: the shops nearby are big photo cards in one swipeable row.
     await c.goto(`${origin}/explore/`)
-    await c.getByRole('button', { name: 'Use my location' }).click()
+    await c.getByRole('button', { name: /^Area: / }).click()
+    await c.getByRole('dialog').getByRole('button', { name: 'Use my location' }).click()
     const nearby = c.getByRole('list', { name: 'Near you now' })
     const card = nearby.getByRole('link').filter({ hasText: name })
     await expect(card).toBeVisible({ timeout: 30_000 })
