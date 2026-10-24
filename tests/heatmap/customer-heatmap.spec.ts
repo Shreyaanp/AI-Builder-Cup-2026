@@ -47,7 +47,19 @@ const screens: Screen[] = [
     firstRun: true,
     open: async (page) => {
       await page.goto('/explore/')
-      await expect(page.getByRole('button', { name: 'Use my location' })).toBeVisible()
+      await expect(page.getByRole('button', { name: /^Area: / })).toBeVisible({ timeout: 60_000 })
+    },
+  },
+  {
+    // The area sheet the chip opens (A-7, A-33): "Use my location" and the typed place live here.
+    name: 'welcome-area-sheet',
+    firstRun: true,
+    open: async (page) => {
+      await page.goto('/explore/')
+      await page.getByRole('button', { name: /^Area: / }).click()
+      await expect(
+        page.getByRole('dialog').getByRole('button', { name: 'Use my location' }),
+      ).toBeVisible()
     },
   },
   {
@@ -367,7 +379,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page.addInitScript(
         ({ theme, first, area }) => {
           localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance: theme }))
-          // First run: no area chosen yet, so the welcome (Use my location) shows.
+          // First run: no area chosen yet, so the area sheet offers Use my location.
           if (!first) {
             localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place: area }))
             localStorage.setItem('chalkboard.customer.journey', 'done')

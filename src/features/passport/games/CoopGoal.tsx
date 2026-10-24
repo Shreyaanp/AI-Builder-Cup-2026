@@ -2,8 +2,8 @@ import { useRef, useState } from 'react'
 import { Alert, Box, Button, Chip, Stack, Typography, useTheme } from '@mui/material'
 import { gsap } from 'gsap'
 import { HeartHandshake } from 'lucide-react'
-import { useChalkTimeline } from '../../../design/chalkMotion'
-import { HAND_FONT } from '../../../design/theme'
+import { hits, useChalkTimeline } from '../../../design/chalkMotion'
+import { HAND_FONT, HAND_SIZE } from '../../../design/theme'
 import { useLocale } from '../../../state/hooks'
 import { fill, usePassportCopy } from '../copy'
 import { useGameActions } from './api'
@@ -54,18 +54,12 @@ export function CoopGoal({
   useChalkTimeline(
     scope,
     (root) => {
-      gsap.from(root.querySelector('.coop-fill'), {
-        scaleX: 0,
-        duration: 1.1,
-        ease: 'power3.out',
-        delay: 0.2,
-      })
-      gsap.from(root.querySelector('.coop-you'), {
-        scaleY: 0,
-        duration: 0.4,
-        ease: 'back.out(3)',
-        delay: 1.1,
-      })
+      const bar = hits(root, '.coop-fill')
+      if (bar.length) gsap.from(bar, { scaleX: 0, duration: 1.1, ease: 'power3.out', delay: 0.2 })
+      // The gold "you" mark exists once this customer has helped.
+      const mark = hits(root, '.coop-you')
+      if (mark.length)
+        gsap.from(mark, { scaleY: 0, duration: 0.4, ease: 'back.out(3)', delay: 1.1 })
       const counter = root.querySelector('.coop-total')
       if (counter) {
         const value = { n: 0 }
@@ -114,7 +108,13 @@ export function CoopGoal({
         {!compact && <HowItWorks game="coop" singleLine />}
       </Stack>
       <Typography
-        sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: 28, lineHeight: 1.15, mt: 1 }}
+        sx={{
+          fontFamily: HAND_FONT,
+          fontWeight: 700,
+          fontSize: HAND_SIZE,
+          lineHeight: 1.15,
+          mt: 1,
+        }}
       >
         {coop.area_name
           ? fill(t.coopGoal, { goal: number(coop.goal), area: coop.area_name })
@@ -189,7 +189,7 @@ export function CoopGoal({
           </Typography>
         </>
       )}
-      {coop.reached && coop.you > 0 && (signedIn || account.status === 'guest') ? (
+      {coop.reached && coop.helped && (signedIn || account.status === 'guest') ? (
         coop.claimed ? (
           <Typography variant="titleSmall" role="status" sx={{ mt: 2, fontWeight: 700 }}>
             {t.coopClaimed}

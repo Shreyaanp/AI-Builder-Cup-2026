@@ -169,7 +169,7 @@ export const hi: Copy = {
   suggestPrice: 'दाम अपडेट करें',
   suggestHours: 'खुलने का समय बदलें',
   message: 'संदेश',
-  messagePlaceholder: 'अपनी दुकान के बारे में बताएँ…',
+  messagePlaceholder: 'दुकान के बारे में…',
   send: 'भेजें',
   stop: 'रोकें',
   photo: 'फ़ोटो जोड़ें',

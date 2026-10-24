@@ -167,7 +167,7 @@ export const ms: Copy = {
   suggestPrice: 'Kemas kini harga',
   suggestHours: 'Ubah waktu operasi',
   message: 'Mesej',
-  messagePlaceholder: 'Ceritakan tentang kedai anda…',
+  messagePlaceholder: 'Tentang kedai…',
   send: 'Hantar',
   stop: 'Henti',
   photo: 'Tambah foto',

@@ -175,7 +175,7 @@ export const en = {
   suggestPrice: 'Update a price',
   suggestHours: 'Change opening hours',
   message: 'Message',
-  messagePlaceholder: 'Tell me about your shop…',
+  messagePlaceholder: 'Your shop…',
   send: 'Send',
   stop: 'Stop',
   photo: 'Add photo',

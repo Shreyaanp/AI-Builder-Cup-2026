@@ -51,13 +51,18 @@ for (const width of [360, 390, 412, 1280]) {
             expect(Math.abs(profileBox.y - demoBox.y)).toBeLessThanOrEqual(1)
           }
           if (!path) {
-            const area = page.getByRole('button', { name: /Tiong Bahru/ }).first()
+            const area = page
+              .getByRole('button', { name: /Tiong Bahru/, includeHidden: true })
+              .first()
             await expect(area).toBeVisible()
             const label = area.locator('span').filter({ hasText: /^Tiong Bahru$/ })
             expect(await label.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
             await area.click()
             await expect(area).toHaveAttribute('aria-expanded', 'true')
-            await area.click()
+            // The area picker is a sheet: Escape closes it and focus returns to the chip.
+            await page.keyboard.press('Escape')
+            await expect(area).toHaveAttribute('aria-expanded', 'false')
+            await expect(area).toBeFocused()
             // OB-188: main reverted OB-88; the demo entry stays in the header.
             await expect(page.locator('header a[href="/explore/demo"]')).toHaveCount(1)
             await expect(page.locator('header a[href="/explore/demo"]')).toBeVisible()

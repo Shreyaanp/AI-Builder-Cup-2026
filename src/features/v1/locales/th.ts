@@ -160,7 +160,7 @@ export const th: Copy = {
   suggestPrice: 'ปรับราคา',
   suggestHours: 'เปลี่ยนเวลาเปิด',
   message: 'ข้อความ',
-  messagePlaceholder: 'เล่าเรื่องร้านของคุณ…',
+  messagePlaceholder: 'เรื่องร้านของคุณ…',
   send: 'ส่ง',
   stop: 'หยุด',
   photo: 'เพิ่มรูป',

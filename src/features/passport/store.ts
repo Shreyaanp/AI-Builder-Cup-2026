@@ -64,7 +64,7 @@ export function keepReceipt(receipt: string) {
 export function refreshPassport() {
   window.dispatchEvent(new Event(change))
 }
-function clearReceipts() {
+export function clearReceipts() {
   try {
     localStorage.removeItem(RECEIPTS)
   } catch {

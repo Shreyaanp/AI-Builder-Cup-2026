@@ -168,7 +168,7 @@ export const kn: Copy = {
   suggestPrice: 'ಬೆಲೆ ನವೀಕರಿಸಿ',
   suggestHours: 'ತೆರೆಯುವ ಸಮಯ ಬದಲಿಸಿ',
   message: 'ಸಂದೇಶ',
-  messagePlaceholder: 'ನಿಮ್ಮ ಅಂಗಡಿಯ ಬಗ್ಗೆ ಹೇಳಿ…',
+  messagePlaceholder: 'ನಿಮ್ಮ ಅಂಗಡಿ…',
   send: 'ಕಳುಹಿಸಿ',
   stop: 'ನಿಲ್ಲಿಸಿ',
   photo: 'ಫೋಟೋ ಸೇರಿಸಿ',

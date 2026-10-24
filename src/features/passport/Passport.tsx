@@ -14,7 +14,7 @@ import {
 import { gsap } from 'gsap'
 import { Check, Gift, Leaf, Trophy } from 'lucide-react'
 import { useChalkTimeline, dealIn } from '../../design/chalkMotion'
-import { HAND_FONT } from '../../design/theme'
+import { HAND_FONT, HAND_SIZE } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { useCustomer } from '../customer/account'
@@ -129,7 +129,7 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
           sx={{
             fontFamily: HAND_FONT,
             fontWeight: 700,
-            fontSize: { xs: 32, sm: 38 },
+            fontSize: HAND_SIZE,
             lineHeight: 1.1,
             overflowWrap: 'break-word',
           }}
@@ -212,7 +212,7 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Box component="section" aria-label={title}>
-      <Typography component="h2" variant="titleLarge" sx={{ mb: 2 }}>
+      <Typography component="h2" variant="titleMedium" sx={{ mb: 2, fontWeight: 700 }}>
         {title}
       </Typography>
       {children}
@@ -256,7 +256,7 @@ function LevelCard({ view }: { view: PassportView }) {
           sx={{
             fontFamily: HAND_FONT,
             fontWeight: 700,
-            fontSize: { xs: 28, sm: 34 },
+            fontSize: HAND_SIZE,
             lineHeight: 1.15,
           }}
         >
@@ -329,7 +329,7 @@ function PendingScratch({
       aria-label={t.scratchTitle}
       sx={{ p: 4, borderRadius: '24px', bgcolor: theme.material.surfaceContainerLow }}
     >
-      <Typography component="h2" variant="titleLarge" sx={{ mb: 2 }}>
+      <Typography component="h2" variant="titleMedium" sx={{ mb: 2, fontWeight: 700 }}>
         {fill(t.scratchWaiting, { n: new Intl.NumberFormat(locale).format(waiting.length || 1) })}
       </Typography>
       <ScratchCard key={card.id} card={card} place={place} onOpened={setShown} />
@@ -384,7 +384,7 @@ function StampBook({ view }: { view: PassportView }) {
                   sx={{
                     fontFamily: HAND_FONT,
                     fontWeight: 700,
-                    fontSize: 28,
+                    fontSize: HAND_SIZE,
                     overflowWrap: 'break-word',
                   }}
                 >
@@ -460,7 +460,7 @@ function StampBook({ view }: { view: PassportView }) {
                           {shop.name.replace(/\s*\(Demo\)$/, '')}
                         </Typography>
                       </a>
-                      <Typography variant="labelSmall" color="text.secondary">
+                      <Typography variant="labelLarge" color="text.secondary">
                         {/* A shop with a stamp card: the same count as its shop page. */}
                         {shop.slots
                           ? rewards.progress
@@ -666,7 +666,7 @@ function Impact({ view }: { view: PassportView }) {
         <Box sx={{ minWidth: 0 }}>
           {meals ? (
             <>
-              <Typography variant="titleLarge" sx={{ fontWeight: 700 }}>
+              <Typography variant="titleMedium" sx={{ fontWeight: 700 }}>
                 {fill(t.meals, { n: new Intl.NumberFormat(locale).format(meals) })}
               </Typography>
               <Typography variant="bodyMedium" title={t.co2Note}>
@@ -858,7 +858,12 @@ function Leaderboard({
                     }}
                   >
                     <Typography
-                      sx={{ width: 32, fontFamily: HAND_FONT, fontSize: 22, fontWeight: 700 }}
+                      sx={{
+                        width: 32,
+                        fontFamily: HAND_FONT,
+                        fontSize: HAND_SIZE,
+                        fontWeight: 700,
+                      }}
                     >
                       {new Intl.NumberFormat(locale).format(row.rank)}
                     </Typography>

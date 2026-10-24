@@ -19,11 +19,7 @@ export function CollectionPage({ title, children }: { title: string; children: R
         flexDirection: 'column',
       }}
     >
-      <Typography
-        component="h1"
-        variant="headlineMedium"
-        sx={{ pt: 1, pb: 2, px: 2, fontWeight: 600 }}
-      >
+      <Typography component="h1" variant="titleLarge" sx={{ pt: 1, pb: 2, px: 2, fontWeight: 600 }}>
         {title}
       </Typography>
       {children}
@@ -31,54 +27,70 @@ export function CollectionPage({ title, children }: { title: string; children: R
   )
 }
 
-/** OB-147: the empty tab's next step belongs above the phone navigation, within reach. */
+/**
+ * OB-147: the empty tab's next step belongs above the phone navigation, within reach. `action`
+ * replaces the default "Find shops" (the signed-out tabs ask to sign in there, A-43). On a phone
+ * the groups are spread by the column itself, not by auto margins, so the grid stays on 4px.
+ */
 export function CollectionEmptyState({
   title,
   body,
   icon,
+  action,
 }: {
   title: string
   body: string
   icon?: ReactNode
+  action?: ReactNode
 }) {
   const roles = useTheme().material
   const t = useAccountCopy()
   return (
     <Stack
       className="c-rise"
-      sx={{ flex: 1, gap: 2, px: 2, pt: 4, textAlign: 'center', alignItems: 'center' }}
+      sx={{
+        flex: 1,
+        gap: 4,
+        px: 2,
+        pt: 4,
+        justifyContent: { xs: 'space-between', sm: 'flex-start' },
+      }}
     >
-      {icon && (
-        <Box
-          aria-hidden="true"
-          sx={{
-            width: 88,
-            height: 88,
-            borderRadius: '28px',
-            display: 'grid',
-            placeItems: 'center',
-            bgcolor: roles.secondaryContainer,
-            color: roles.onSecondaryContainer,
-          }}
-        >
-          {icon}
-        </Box>
-      )}
-      <Typography component="h2" variant="titleLarge">
-        {title}
-      </Typography>
-      <Typography color="text.secondary">{body}</Typography>
-      <Box sx={{ mt: { xs: 'auto', sm: 0 }, pt: 2, width: { xs: '100%', sm: 'auto' } }}>
-        <Button
-          component="a"
-          href="/explore/"
-          onClick={customerNavigate}
-          variant="contained"
-          fullWidth
-        >
-          {t.findShops}
-        </Button>
-      </Box>
+      <Stack sx={{ gap: 2, textAlign: 'center', alignItems: 'center' }}>
+        {icon && (
+          <Box
+            aria-hidden="true"
+            sx={{
+              width: 88,
+              height: 88,
+              borderRadius: '28px',
+              display: 'grid',
+              placeItems: 'center',
+              bgcolor: roles.secondaryContainer,
+              color: roles.onSecondaryContainer,
+            }}
+          >
+            {icon}
+          </Box>
+        )}
+        <Typography component="h2" variant="titleMedium">
+          {title}
+        </Typography>
+        <Typography color="text.secondary">{body}</Typography>
+      </Stack>
+      <Stack sx={{ width: { xs: '100%', sm: 'auto' }, gap: 2, alignItems: { sm: 'center' } }}>
+        {action ?? (
+          <Button
+            component="a"
+            href="/explore/"
+            onClick={customerNavigate}
+            variant="contained"
+            fullWidth
+          >
+            {t.findShops}
+          </Button>
+        )}
+      </Stack>
     </Stack>
   )
 }

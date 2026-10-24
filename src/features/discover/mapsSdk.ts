@@ -11,11 +11,14 @@ export type GoogleMap = {
   getZoom: () => number | undefined
   setZoom: (zoom: number) => void
   fitBounds: (bounds: unknown, padding?: number | object) => void
+  addListener: (name: string, listener: () => void) => MapsListener
 }
 export type AdvancedMarker = {
   map: unknown
   zIndex: number | null
-  addListener: (name: string, listener: () => void) => MapsListener
+  /** Advanced markers are elements: they say `gmp-click` (the old `click` listener is deprecated). */
+  addEventListener: (name: 'gmp-click', listener: () => void) => void
+  removeEventListener: (name: 'gmp-click', listener: () => void) => void
 }
 type Libraries = {
   Map: new (node: HTMLElement, options: object) => GoogleMap

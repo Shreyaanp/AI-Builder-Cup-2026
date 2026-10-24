@@ -26,6 +26,15 @@ export function useChalkTimeline(
   }, deps)
 }
 
+/**
+ * The elements a timeline animates. GSAP warns "target not found" for an empty selection, and
+ * several of these exist only sometimes (no pins on an empty Rescue map, no "you" mark before a
+ * first visit), so a timeline asks for them here and skips what is absent (A-44).
+ */
+export function hits<T extends Element = Element>(root: ParentNode, selector: string): T[] {
+  return Array.from(root.querySelectorAll<T>(selector))
+}
+
 /** Cards dealt onto the table: rise, straighten from a slight tilt. Use with `--deal-index`.
  * The rise stays under the 24 px reading gap above fixed bars, so a card mid-deal never touches one (OB-92). */
 export const dealIn = {

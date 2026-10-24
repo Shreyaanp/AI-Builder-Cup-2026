@@ -26,6 +26,7 @@ export function FollowButton({
   name,
   variant = 'button',
   sx,
+  icon: showIcon = true,
 }: {
   id: string
   name: string
@@ -33,6 +34,8 @@ export function FollowButton({
   variant?: 'button' | 'icon'
   /** Layout from the page (an equal-width tile in a row of actions). */
   sx?: SxProps<Theme>
+  /** `false`: the label alone (a card that already shows a lot). */
+  icon?: boolean
 }) {
   const roles = useTheme().material
   const account = useCustomer()
@@ -93,7 +96,7 @@ export function FollowButton({
           aria-label={label}
           variant="outlined"
           size="small"
-          startIcon={icon}
+          startIcon={showIcon || busy ? icon : undefined}
           aria-busy={busy}
           disabled={busy}
           onClick={() => void toggle()}
