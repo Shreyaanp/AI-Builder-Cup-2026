@@ -1425,6 +1425,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/places/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Suggest Owner Pin
+         * @description Suggest a country-biased point; the owner must confirm it before it is saved.
+         */
+        get: operations["suggest_owner_pin_api_v1_places_pin_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/places/reverse": {
         parameters: {
             query?: never;
@@ -9926,6 +9946,37 @@ export interface operations {
                 q?: string | null;
                 lat?: number | null;
                 lng?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceMatch"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_owner_pin_api_v1_places_pin_get: {
+        parameters: {
+            query: {
+                q: string;
             };
             header?: never;
             path?: never;

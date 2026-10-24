@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   closeSheet,
+  menuRow,
   confirm,
   enter,
   liveOnly,
@@ -27,7 +28,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
   const customer = await context.newPage()
   await localOnly(customer)
   await customer.goto(url)
-  const kopi = customer.getByRole('listitem').filter({ hasText: 'Kopi' })
+  const kopi = menuRow(customer, 'Kopi')
   await expect(kopi).toContainText(/₹18(?![.0-9])/)
   await test.step('1 · natural text and voice path', async () => {
     await page.getByRole('button', { name: 'Coach', exact: true }).click()

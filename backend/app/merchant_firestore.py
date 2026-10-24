@@ -26,6 +26,7 @@ from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .merchant import (
     CHALLENGE_SECONDS,
     DEMO_ID,
+    PIN_REQUIRED,
     PROPOSAL_SECONDS,
     SUPPLY_KINDS,
     BusinessFields,
@@ -33,6 +34,7 @@ from .merchant import (
     ProposalRequest,
     challenge_prompts,
     check_demo_seed,
+    has_pin,
     preserve_profile,
     public_projection,
     require_name,
@@ -135,7 +137,7 @@ class FirestoreMerchantStore:
             "gallery": data.get("gallery") or [],
             "icon": data.get("icon"),
             "registration": data["status"],
-            "public": bool(data.get("public")),
+            "public": bool(data.get("public")) and has_pin(data["fields"]),
             "google_publication": "not_connected",
         }
 
@@ -269,7 +271,12 @@ class FirestoreMerchantStore:
                 data["business"] = migrate_profile(data["business"])
             if data["kind"] == "business" and business.exists:
                 transaction.update(
-                    business_ref, {"fields": data["business"], "revision": data["revision"] + 1}
+                    business_ref,
+                    {
+                        "fields": data["business"],
+                        "revision": data["revision"] + 1,
+                        **({"public": False} if not has_pin(data["business"]) else {}),
+                    },
                 )
             elif data["kind"] == "business":
                 transaction.create(
@@ -479,8 +486,15 @@ class FirestoreMerchantStore:
 
     def share(self, uid: str, bid: str, public: bool) -> dict[str, Any]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
-        self.owned(ref.get(), uid)
-        ref.update({"public": public})
+
+        @firestore.transactional
+        def run(transaction: Any) -> None:
+            data = self.owned(ref.get(transaction=transaction), uid)
+            if public and not has_pin(data["fields"]):
+                raise HTTPException(422, PIN_REQUIRED)
+            transaction.update(ref, {"public": public})
+
+        run(self.client.transaction())
         self.forget_shared()
         return {"business_id": ref.id, "public": public}
 
@@ -642,7 +656,7 @@ class FirestoreMerchantStore:
         return self.shop_view(ref, snapshot.to_dict() if snapshot.exists else None)
 
     def shop_view(self, ref: Any, data: dict[str, Any] | None) -> dict[str, Any] | None:
-        if not data or not data.get("public"):
+        if not data or not data.get("public") or not has_pin(data["fields"]):
             return None
         rows = [s.to_dict() or {} for s in ref.collection("inventory").limit(500).stream()]
         rows.sort(key=lambda row: row.get("created", 0))

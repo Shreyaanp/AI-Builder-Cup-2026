@@ -4107,6 +4107,48 @@
         }
       }
     },
+    "/api/v1/places/pin": {
+      "get": {
+        "summary": "Suggest Owner Pin",
+        "description": "Suggest a country-biased point; the owner must confirm it before it is saved.",
+        "operationId": "suggest_owner_pin_api_v1_places_pin_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 300,
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceMatch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/places/reverse": {
       "get": {
         "summary": "Reverse Pin",

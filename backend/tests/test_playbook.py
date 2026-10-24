@@ -36,6 +36,7 @@ from app.playbook import (
     today_hints,
 )
 from app.settings import Settings
+from tests.pins import SHOP_PIN
 from tests.test_merchant_store import store  # noqa: F401
 from tests.test_photos import app, join  # noqa: F401
 
@@ -233,7 +234,7 @@ def make(store: MerchantRepository, uid: str = "alice") -> str:  # noqa: F811
         uid,
         ProposalRequest(
             kind="business",
-            business=BusinessFields(name="Ram Tea", category="Tea stall", profile=TEA),
+            business=BusinessFields(name="Ram Tea", category="Tea stall", profile=TEA, **SHOP_PIN),
         ),
     )
     return str(store.commit(uid, proposal["id"], proposal["digest"])["business_id"])

@@ -178,7 +178,13 @@ test('customer facts: the card starts the chat, the owner confirms, customers se
   // see shopProgress.halalAsked), saved straight through the API: not shared yet.
   const proposal = await (
     await page.request.post('/api/v1/proposals', {
-      data: { kind: 'business', revision: 0, business: { name: 'Halal Corner' } },
+      data: {
+        kind: 'business',
+        revision: 0,
+        business: { name: 'Halal Corner' },
+        // OB-168: the owner shares this shop below, so it has the owner's pin.
+        owner_location: { lat: 1.2847, lng: 103.832, accuracy_m: 0, source: 'pin' },
+      },
     })
   ).json()
   expect(

@@ -6,6 +6,7 @@ import {
   gap,
   liveOnly,
   localOnly,
+  menuRow,
   phone,
   seedShop,
   share,
@@ -68,7 +69,7 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
   await localOnly(customer)
   await test.step('2 · shop prices use INR on an Indian phone', async () => {
     await customer.goto(url)
-    await expect(customer.getByRole('listitem').filter({ hasText: 'Kopi' })).toContainText('₹18')
+    await expect(menuRow(customer, 'Kopi')).toContainText('₹18')
     await expect(customer.getByText('UPI', { exact: true })).toBeVisible()
     await shot(customer, 7, 2)
   })

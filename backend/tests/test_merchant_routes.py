@@ -7,6 +7,7 @@ from google.adk.sessions import InMemorySessionService
 
 from app.main import create_app
 from app.settings import Settings
+from tests.pins import pin_shop_over_http
 from tests.test_photos import join
 
 
@@ -297,6 +298,7 @@ def test_offline_coach_halal_answer_is_reviewed_then_published(app) -> None:
         # The coach only prepared it; nothing changed yet.
         assert "halal" not in client.get("/api/v1/businesses").json()[0]["fields"]
         approve(client, proposal)
+        pin_shop_over_http(client, bid)
         client.post(f"/api/v1/businesses/{bid}/share", json={"public": True})
         public = client.get(f"/api/v1/public/shops/{bid}").json()
         assert public["facts"] == {"halal": "yes"}

@@ -64,6 +64,8 @@ import { shopZone } from '../../region/region'
 import { ShopIcon } from '../google/ShopIcon'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
+import { MapCard } from './MapCard'
+import type { Proposal } from './api'
 
 export type ShopSheetKind =
   'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
@@ -620,7 +622,7 @@ export function ShopSheets({
     case 'customer':
       return (
         <Sheet {...common} titleId="customer-sheet-title" title={t.customerPage}>
-          <CustomerPage />
+          <CustomerPage onReview={onClose} />
         </Sheet>
       )
     case 'messages':
@@ -697,13 +699,35 @@ export function ShopSheets({
 }
 
 /** Customer page switch, link and share actions (moved from the old My shop page). */
-function CustomerPage() {
+function CustomerPage({ onReview }: { onReview: () => void }) {
   const t = useCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
   const shop = ws.active
   if (!shop) return null
+  if (shop.fields.lat == null || shop.fields.lng == null)
+    return (
+      <MapCard
+        initial={null}
+        placeName={shop.fields.location}
+        done={null}
+        onConfirm={async (owner_location) => {
+          const proposal = await ws.api<Proposal>('/proposals', {
+            method: 'POST',
+            body: JSON.stringify({
+              kind: 'business',
+              business_id: shop.id,
+              revision: shop.revision,
+              business: shop.fields,
+              owner_location,
+            }),
+          })
+          onReview()
+          ws.review(proposal)
+        }}
+      />
+    )
   const url = ws.shareUrl
   return (
     <Box>

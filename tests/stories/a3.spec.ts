@@ -1,5 +1,15 @@
 import { expect, test } from '@playwright/test'
-import { closeSheet, confirm, enter, localOnly, phone, seedShop, share, shot } from './support.js'
+import {
+  closeSheet,
+  confirm,
+  enter,
+  localOnly,
+  menuRow,
+  phone,
+  seedShop,
+  share,
+  shot,
+} from './support.js'
 
 test.use(phone)
 test.skip(({ isMobile }) => !isMobile, 'Phone evidence')
@@ -17,7 +27,7 @@ test('A3 · independent customer context polls visible prices and availability',
   try {
     await localOnly(customer)
     await customer.goto(url)
-    const kopi = customer.getByRole('listitem').filter({ hasText: 'Kopi' })
+    const kopi = menuRow(customer, 'Kopi')
     await expect(kopi).toContainText('₹18')
     await page.getByRole('button', { name: /^Menu/ }).click()
     await page.getByRole('button', { name: /^Edit Kopi/ }).click()

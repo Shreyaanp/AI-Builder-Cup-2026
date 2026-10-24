@@ -294,6 +294,50 @@ def open_now(
     return start <= current < end if start < end else current >= start or current < end
 
 
+# More places owners type during offline onboarding (OB-168: a typed place is pinned). Only
+# typed places look these up; a GPS point's "Near …" label stays with the catalogue's areas.
+TYPED_AREAS = {
+    "MG Road": (12.9756, 77.6066),
+    "Lajpat Nagar": (28.5677, 77.2433),
+    "Karol Bagh": (28.6519, 77.1909),
+    "Nehru Place": (28.5494, 77.2519),
+    "Jayanagar": (12.9299, 77.5826),
+}
+# The same places as Hindi owners type them (OB-168: Hindi onboarding goes live offline too).
+PLACE_NAMES = {
+    "लाजपत नगर": "Lajpat Nagar",
+    "इंदिरानगर": "Indiranagar",
+    "करोल बाग": "Karol Bagh",
+    "नेहरू प्लेस": "Nehru Place",
+    "कोरमंगला": "Koramangala",
+    "एमजी रोड": "MG Road",
+    "जयनगर": "Jayanagar",
+}
+
+
+def demo_pin(location: str) -> dict[str, Any]:
+    """The offline pin of a typed place: the known areas only, never a guess."""
+    known = {**TYPED_AREAS, **AREAS}
+    # Devanagari vowel signs are not word characters, so its names match as written.
+    alias = next((alias for alias in PLACE_NAMES if alias in location), None)
+    area = PLACE_NAMES[alias] if alias else None
+    # Whole words only: "Marina" must not match Bangkok's "Ari".
+    area = area or next(
+        (a for a in known if re.search(rf"\b{re.escape(a)}\b", location, re.I)), None
+    )
+    if not area:
+        raise HTTPException(422, "PIN_NOT_FOUND")
+    lat, lng = known[area]
+    return {
+        "lat": lat,
+        "lng": lng,
+        "place_id": "demo-" + area.lower().replace(" ", "-"),
+        # The owner reads the place in their own script.
+        "pin_label": alias or ("Tiong Bahru Market" if area == "Tiong Bahru" else area),
+        "pin_demo": True,
+    }
+
+
 class MapsService:
     def __init__(self, settings: Settings, transport: httpx.AsyncBaseTransport | None = None):
         self.key = settings.maps_server_key.get_secret_value() if settings.maps_server_key else ""
@@ -347,35 +391,41 @@ class MapsService:
                 log.warning("places_cache_unavailable", kind=key[0])
         return result
 
-    async def geocode(self, location: str) -> dict[str, Any]:
+    async def geocode(self, location: str, country: str | None = None) -> dict[str, Any]:
+        """The best point for a typed place (a suggestion the owner confirms)."""
+        pin, _ = await self.typed_pin(location, country)
+        return pin
+
+    async def typed_pin(
+        self, location: str, country: str | None = None
+    ) -> tuple[dict[str, Any], bool]:
+        """The point for a typed place, and whether it is unambiguous: one exact match, not a
+        partial one among several places of the same name ("माधवपुर"). A place that is not
+        found is remembered too (OB-168), so asking again costs no second paid lookup."""
+
         async def lookup() -> dict[str, Any]:
             if self.demo:
-                # Whole words only: "Marina" must not match Bangkok's "Ari".
-                area = next(
-                    (a for a in AREAS if re.search(rf"\b{re.escape(a)}\b", location, re.I)), None
-                )
-                if not area:
-                    raise HTTPException(422, "PIN_NOT_FOUND")
-                lat, lng = AREAS[area]
-                return {
-                    "lat": lat,
-                    "lng": lng,
-                    "place_id": "demo-" + area.lower().replace(" ", "-"),
-                    "pin_label": "Tiong Bahru Market" if area == "Tiong Bahru" else area,
-                    "pin_demo": True,
-                }
+                try:
+                    return {**demo_pin(location), "confident": True}
+                except HTTPException:
+                    return {"missing": True}
             try:
                 response = await self.client.get(
                     "https://maps.googleapis.com/maps/api/geocode/json",
-                    params={"address": location, "key": self.key},
+                    params={
+                        "address": location,
+                        "key": self.key,
+                        **({"region": country.lower()} if country else {}),
+                    },
                 )
                 response.raise_for_status()
                 data = response.json()
                 if data.get("status") == "ZERO_RESULTS":
-                    raise HTTPException(422, "PIN_NOT_FOUND")
+                    return {"missing": True}
                 if data.get("status") != "OK":
                     raise HTTPException(503, "PIN_UNAVAILABLE")
-                result = data["results"][0]
+                results = data["results"]
+                result = results[0]
                 point = result["geometry"]["location"]
                 return {
                     "lat": point["lat"],
@@ -383,11 +433,16 @@ class MapsService:
                     "place_id": result["place_id"],
                     "pin_label": result["formatted_address"],
                     "pin_demo": False,
+                    "confident": len(results) == 1 and not result.get("partial_match"),
                 }
             except (httpx.HTTPError, KeyError, ValueError, IndexError) as error:
                 raise HTTPException(503, "PIN_UNAVAILABLE") from error
 
-        return dict(await self.cached(("pin", location.casefold()), lookup))
+        found = dict(await self.cached(("pin", location.casefold(), country or ""), lookup))
+        if found.pop("missing", False):
+            raise HTTPException(422, "PIN_NOT_FOUND")
+        confident = bool(found.pop("confident", False))
+        return found, confident
 
     async def reverse(self, lat: float, lng: float) -> dict[str, Any]:
         """A photo's coordinates as a pin. The point itself is the evidence, so if the address
@@ -537,6 +592,21 @@ async def prepare_pin(
         priced = bool(context.get("inventory"))
     elif body.revision != 0:
         raise HTTPException(409, "A new business starts at revision zero.")
+
+    def correct_first_pin_region() -> None:
+        # OB-168: older unpinned shops persisted the accidental USD/UTC defaults. Correct
+        # those in the review when their first pin arrives; existing pinned shops keep theirs.
+        if (
+            old
+            and old.get("lat") is None
+            and old.get("lng") is None
+            and old.get("currency") == "USD"
+            and old.get("timezone") == "UTC"
+        ):
+            from .merchant import place_new_shop
+
+            place_new_shop(body, legacy_utc=True)
+
     # The "Demo shop" label is server-owned too: only the seed script sets it, and an owner's
     # edit can neither add nor remove it.
     body.business.demo = bool(old.get("demo"))
@@ -558,6 +628,7 @@ async def prepare_pin(
                 else body.business.location,
             }
         )
+        correct_first_pin_region()
         return
     exact = body.business
     if (
@@ -575,6 +646,7 @@ async def prepare_pin(
         exact.pin_label = f"{exact.lat:.5f}, {exact.lng:.5f}"
         exact.pin_source = None
         exact.pin_accuracy_m = None
+        correct_first_pin_region()
         return
     if (
         old
@@ -600,9 +672,14 @@ async def prepare_pin(
         setattr(body.business, field, None)
     body.business.pin_demo = False
     if body.geocode_confirmed and body.business.location:
-        body.business = body.business.model_copy(update=await maps.geocode(body.business.location))
+        from .region import phone_country
+
+        body.business = body.business.model_copy(
+            update=await maps.geocode(body.business.location, phone_country())
+        )
         # Validate provider coordinates before sealing them.
         body.business = type(body.business).model_validate(body.business.model_dump())
+        correct_first_pin_region()
         if old:
             follow_pin(body, old, priced)
 
@@ -654,6 +731,20 @@ class PinAddress(BaseModel):
     label: str
     # No street address was found (offline maps, or open country): the label is only an area.
     approximate: bool
+
+
+@router.get("/places/pin", response_model=PlaceMatch)
+async def suggest_owner_pin(
+    request: Request, q: str = Query(min_length=2, max_length=300)
+) -> PlaceMatch:
+    """Suggest a country-biased point; the owner must confirm it before it is saved."""
+    from .region import phone_country
+
+    uid = str((await request.app.state.services.identity.require(request)).uid)
+    await enforce_limits(request, [("reverse", uid)])
+    maps: MapsService = request.app.state.maps
+    pin = await maps.geocode(q.strip(), phone_country())
+    return PlaceMatch(lat=pin["lat"], lng=pin["lng"], label=pin["pin_label"] or q.strip())
 
 
 @router.get("/places/reverse", response_model=PinAddress)
