@@ -50,7 +50,7 @@ export const english = {
   place: 'City or area',
   placeHint: 'Search any city or neighbourhood',
   placeError: 'Couldn’t find that place. Try a city or neighbourhood name.',
-  demoShop: 'Demo shop',
+  demoShop: 'Sample shop',
   changeArea: 'Change area',
 }
 type Copy = typeof english

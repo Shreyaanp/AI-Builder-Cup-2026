@@ -199,7 +199,7 @@ export function Tips({ shop }: { shop: string }) {
             <Box sx={{ flex: 1 }} />
             <Button
               type="submit"
-              variant="contained"
+              variant="outlined"
               disabled={busy || text.trim().length < 3}
               startIcon={busy ? <CircularProgress size={16} color="inherit" /> : undefined}
             >
@@ -232,7 +232,7 @@ export function Tips({ shop }: { shop: string }) {
             <Typography variant="bodyMedium" color="text.secondary">
               {t.signInTips}
             </Typography>
-            <SignInButton fullWidth={false} />
+            <SignInButton fullWidth={false} variant="outlined" />
           </Stack>
         )
       )}

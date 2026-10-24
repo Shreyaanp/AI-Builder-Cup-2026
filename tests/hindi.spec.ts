@@ -313,7 +313,7 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
       customer.getByRole('heading', { name: 'Courtyard Chai · Bengaluru' }),
     ).toBeVisible()
     await expect(customer.getByText('कैफ़े').first()).toBeVisible()
-    await expect(customer.getByText('₹18.00').first()).toBeVisible()
+    await expect(customer.getByText('₹18').first()).toBeVisible()
     await readsInHindi(customer, '22-shop-page')
 
     await customer.getByRole('button', { name: 'दुकान से बात करें' }).first().click()

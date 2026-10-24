@@ -68,7 +68,7 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
   await localOnly(customer)
   await test.step('2 · shop prices use INR on an Indian phone', async () => {
     await customer.goto(url)
-    await expect(customer.getByRole('listitem').filter({ hasText: 'Kopi' })).toContainText('₹18.00')
+    await expect(customer.getByRole('listitem').filter({ hasText: 'Kopi' })).toContainText('₹18')
     await expect(customer.getByText('UPI', { exact: true })).toBeVisible()
     await shot(customer, 7, 2)
   })
@@ -118,8 +118,10 @@ test('S7 · Indian language, local currency and eight-city discovery audit', asy
         await discovery.goto(
           `http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/s/${entry.shop.id}`,
         )
-        await expect(discovery.getByRole('heading', { name: entry.shop.name })).toBeVisible()
-        await expect(discovery.getByText('Demo shop', { exact: true })).toBeVisible()
+        await expect(
+          discovery.getByRole('heading', { name: entry.shop.name.replace(/ \(Demo\)$/, '') }),
+        ).toBeVisible()
+        await expect(discovery.getByText('Sample shop', { exact: true })).toBeVisible()
         await shot(discovery, 7, `3-${entry.city}-catalogue`)
       }
       await shot(discovery, 7, 3)

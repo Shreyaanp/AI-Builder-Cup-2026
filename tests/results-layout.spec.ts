@@ -147,7 +147,7 @@ for (const width of [360, 390, 412])
       // Ours first and numbered like the map pins; names never run under the price.
       await expect(rows.first()).toContainText('Corner Cup')
       await expect(rows.first()).not.toContainText('(Demo)')
-      await expect(rows.first()).toContainText('Demo shop')
+      await expect(rows.first()).toContainText('Sample shop')
       const clipped = await rows.evaluateAll((links) =>
         links.flatMap((link) =>
           Array.from(link.querySelectorAll<HTMLElement>('h3, p, span'))

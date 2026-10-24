@@ -35,7 +35,7 @@ for (const size of PHONES) {
     }) => {
       await quiet(page, size)
       await page.goto('/demo')
-      await expect(page.getByText('Demo shop - nothing here is real', { exact: true })).toBeVisible(
+      await expect(page.getByText('Demo shop – nothing here is real', { exact: true })).toBeVisible(
         { timeout: 30_000 },
       )
       await page.getByRole('dialog').getByRole('button', { name: 'Take the tour' }).click()

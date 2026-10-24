@@ -1,5 +1,15 @@
 import { useState } from 'react'
-import { Alert, Box, Button, CircularProgress, IconButton, Snackbar, useTheme } from '@mui/material'
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  Snackbar,
+  useTheme,
+  type SxProps,
+  type Theme,
+} from '@mui/material'
 import { Check, Plus } from 'lucide-react'
 import { HoverTip } from '../frontdoors/HoverTip'
 import { popIn } from '../../design/chalkMotion'
@@ -15,11 +25,14 @@ export function FollowButton({
   id,
   name,
   variant = 'button',
+  sx,
 }: {
   id: string
   name: string
   /** `icon`: a compact round toggle for cards. */
   variant?: 'button' | 'icon'
+  /** Layout from the page (an equal-width tile in a row of actions). */
+  sx?: SxProps<Theme>
 }) {
   const roles = useTheme().material
   const account = useCustomer()
@@ -84,11 +97,14 @@ export function FollowButton({
           aria-busy={busy}
           disabled={busy}
           onClick={() => void toggle()}
-          sx={{
-            minHeight: 48,
-            minWidth: 112,
-            transition: 'background-color 200ms, color 200ms, border-color 200ms',
-          }}
+          sx={[
+            {
+              minHeight: 48,
+              minWidth: 112,
+              transition: 'background-color 200ms, color 200ms, border-color 200ms',
+            },
+            ...(Array.isArray(sx) ? sx : [sx]),
+          ]}
         >
           {following ? t.following : t.follow}
         </Button>
