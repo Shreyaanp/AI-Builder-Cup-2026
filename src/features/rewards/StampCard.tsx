@@ -17,6 +17,7 @@ import { Check, Star, X } from 'lucide-react'
 import { HAND_FONT, shape } from '../../design/theme'
 import { stampThud } from '../../design/chalkMotion'
 import { useLocale } from '../../state/hooks'
+import { rewardCardEnglish } from './cardCopy'
 import { useRewardCopy } from './strings'
 import { celebrations, claimReward, useLanded, useRewards, visit } from './storage'
 import { useCopy } from '../v1/strings'
@@ -291,7 +292,10 @@ export function StampCard({
             ? reward
             : t.more
                 .replace('{count}', number(target - count))
-                .replace('{reward}', t.more.startsWith('{reward}') ? reward : midSentence(reward))
+                .replace(
+                  '{reward}',
+                  t.more === rewardCardEnglish.more ? midSentence(reward) : reward,
+                )
           : t.noReward}
       </Typography>
       {/* One short line; the full "not proof of purchase" note is on the claim screen. */}

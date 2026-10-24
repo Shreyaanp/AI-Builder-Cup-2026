@@ -5,7 +5,7 @@ import { scrollArea } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { customerNavigate } from '../frontdoors/navigation'
 import { PlaceImage } from '../frontdoors/PlaceImage'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { askCopy } from './askStrings'
 import { useSearchCopy } from './searchCopy'
 import { formatDistance } from './formatDistance'
@@ -147,7 +147,7 @@ export function SimilarNearby({ shop, items }: { shop: string; items: string[] }
                   </Typography>
                   <Typography variant="bodySmall" noWrap>
                     {place.item
-                      ? `${place.item.name} · ${formatPrice(place.item.price, place.currency)}`
+                      ? `${place.item.name} · ${formatShopPrice(place.item.price, place.currency)}`
                       : place.category}
                   </Typography>
                   <Typography variant="bodySmall" color="text.secondary" noWrap>

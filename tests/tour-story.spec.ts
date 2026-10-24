@@ -154,8 +154,8 @@ test('customer has no demo-story entry; seeded fixture shows passport and replie
     animations: 'disabled',
   })
   await page.goto('/explore/chats')
-  await expect(page.getByText('Lantern Chai Corner (Demo)', { exact: true })).toBeVisible()
-  await expect(page.getByText('Sunny Side Kopitiam (Demo)', { exact: true })).toBeVisible()
+  await expect(page.getByText('Lantern Chai Corner', { exact: true })).toBeVisible()
+  await expect(page.getByText('Sunny Side Kopitiam', { exact: true })).toBeVisible()
   const threads = await (await page.request.get('/api/v1/customer/threads')).json()
   const thread = threads.find((t: { shop: { id: string } }) => t.shop.id.includes('bengaluru'))
   await page.goto(`/explore/chats/${thread.shop.id}/${thread.thread.id}`)

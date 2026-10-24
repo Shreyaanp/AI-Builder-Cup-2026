@@ -1078,7 +1078,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
       {/* Menu: dense, aligned prices, readable at a glance. Its heading stays pinned under the app
           bar while the menu scrolls, and leaves with the section: it never labels the stamp card,
           perks and tips below. */}
-      <Box component="section" aria-labelledby="shop-menu-title" data-testid="shop-menu">
+      <Box data-testid="shop-menu">
         <Stack
           direction="row"
           sx={{

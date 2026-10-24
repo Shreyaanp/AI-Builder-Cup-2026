@@ -11,5 +11,5 @@ const words = (text: string) => text.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?
 export function repeatsCondition(text: string, condition: string): boolean {
   const have = new Set(words(text))
   const need = words(condition)
-  return text.includes(':') || (need.length > 0 && need.every((word) => have.has(word)))
+  return need.length > 0 && need.every((word) => have.has(word))
 }

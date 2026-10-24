@@ -262,6 +262,7 @@ export default function Discover({
       name: place.name,
       source: place.source,
       demo: place.demo,
+      demo_shop: place.demo_shop,
       google_maps_uri: mapsLink(place.google_maps_uri) ?? null,
     }
     const next = [minimal, ...usuals.filter((row) => row.id !== place.id)].slice(0, 6)
@@ -580,6 +581,7 @@ export default function Discover({
                     }}
                   >
                     {plainShopName(place.name)}
+                    {place.demo_shop ? ` · ${t.demoShop}` : ''}
                   </Button>
                 ) : (
                   <Button key={place.id} variant="outlined" onClick={() => openPlace(place)}>
