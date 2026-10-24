@@ -120,7 +120,7 @@ export class ApiError extends Error {
   }
 }
 export type Api = <T>(path: string, init?: RequestInit & { raw?: boolean }) => Promise<T>
-export function makeApi(getToken: () => Promise<string | null>): Api {
+export function makeApi(getToken: () => Promise<string | null>, language?: string): Api {
   return async <T>(path: string, init: RequestInit & { raw?: boolean } = {}) => {
     const { raw, ...requestInit } = init
     const token = await getToken()
@@ -132,6 +132,7 @@ export function makeApi(getToken: () => Promise<string | null>): Api {
         ...(typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: 'Bearer ' + token } : {}),
         ...clientTimezoneHeader(),
+        ...(language ? { 'X-App-Language': language } : {}),
         ...init.headers,
       },
     })

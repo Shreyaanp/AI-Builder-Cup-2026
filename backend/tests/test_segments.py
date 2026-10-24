@@ -23,6 +23,7 @@ from app.vendor_profile import (
     menu_non_veg,
     segment_from_menu,
 )
+from tests.pins import pin_shop
 from tests.test_merchant_store import store  # noqa: F401
 
 DIET_QUESTIONS = {"diet", "serves_meat", "halal", "vegetarian_options", "jain_allergens"}
@@ -258,6 +259,7 @@ async def test_owner_goals_are_asked_once_skippable_and_private(store) -> None: 
             "regulars": "Auto drivers at dawn",
             "skipped": [],
         }
+        pin_shop(store, "alice", context.business_id)
         store.share("alice", context.business_id, True)
         public = str(store.public_shop(context.business_id))
         assert "Auto drivers" not in public and "less_waste" not in public
