@@ -90,6 +90,15 @@ function save(data: Rewards) {
   window.dispatchEvent(new Event(change))
   return !unavailable
 }
+/** Forget every stamp card kept on this phone (the profile's "clear stamps and follows"). */
+export function clearRewards() {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    /* Nothing to clear. */
+  }
+  window.dispatchEvent(new Event(change))
+}
 export function useRewards() {
   const raw = useSyncExternalStore(subscribe, snapshot, () => empty)
   const failed = useSyncExternalStore(

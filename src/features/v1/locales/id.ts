@@ -167,7 +167,7 @@ export const id: Copy = {
   suggestPrice: 'Ubah harga',
   suggestHours: 'Ubah jam buka',
   message: 'Pesan',
-  messagePlaceholder: 'Ceritakan tentang toko Anda…',
+  messagePlaceholder: 'Tentang toko…',
   send: 'Kirim',
   stop: 'Hentikan',
   photo: 'Tambah foto',

@@ -171,7 +171,7 @@ export const te: Copy = {
   suggestPrice: 'ధర నవీకరించండి',
   suggestHours: 'తెరిచే వేళలు మార్చండి',
   message: 'సందేశం',
-  messagePlaceholder: 'మీ దుకాణం గురించి చెప్పండి…',
+  messagePlaceholder: 'మీ దుకాణం…',
   send: 'పంపండి',
   stop: 'ఆపండి',
   photo: 'ఫోటో జోడించండి',

@@ -3,22 +3,80 @@ import type { MouseEvent, ReactNode } from 'react'
 import { Alert, Box, Button, Chip, Skeleton, Stack, Typography, useTheme } from '@mui/material'
 import { BadgeCheck, Bookmark, PackageCheck, Sparkle, TrendingDown, TrendingUp } from 'lucide-react'
 import type { Feed, ShopCard, Update } from './types'
-import { scrollArea } from '../../design/theme'
 import { customerNavigate } from '../frontdoors/navigation'
 import { formatPrice } from '../v1/format'
 import { useCustomer } from './account'
-import { ShopAvatar } from './Chats'
 import { useAccountCopy, timeAgo } from './copy'
 import type { AccountCopy } from './copy'
 import { SignInButton } from './SignIn'
+import { FollowButton } from './FollowButton'
 import { CollectionEmptyState, CollectionPage } from './CollectionEmptyState'
 import './customer.css'
 
 /** Only the tapped card's photo morphs into the shop header (names must be unique). */
 function openShop(event: MouseEvent<HTMLAnchorElement>, id: string) {
-  const image = event.currentTarget.querySelector<HTMLElement>('[data-shared]')
+  const scope = event.currentTarget.closest('li') ?? event.currentTarget
+  const image = scope.querySelector<HTMLElement>('[data-shared]')
   if (image) image.style.viewTransitionName = `shop-${id.replace(/[^a-zA-Z0-9-]/g, '')}`
   customerNavigate(event)
+}
+
+/**
+ * A followed shop as a card (A-31): the whole name (it wraps, never "Lantern …") and a visible
+ * Following button that unfollows. No photo: the heatmap budget for this view is spent on the
+ * name and the button. The name is the link; its hit area is the
+ * card, and the button sits above it.
+ */
+function FollowedShop({ shop, index }: { shop: ShopCard; index: number }) {
+  const roles = useTheme().material
+  return (
+    <li className="c-rise" style={{ ['--i' as string]: index }}>
+      <Box
+        className="c-press"
+        sx={{
+          position: 'relative',
+          display: 'flex',
+          gap: 3,
+          alignItems: 'center',
+          p: 3,
+          borderRadius: '24px',
+          bgcolor: roles.surfaceContainerLow,
+          border: `1px solid ${roles.outlineVariant}`,
+          '&:hover': { bgcolor: roles.surfaceContainer },
+          '&:has(a:focus-visible)': { outline: `3px solid ${roles.primary}`, outlineOffset: 2 },
+        }}
+      >
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
+            component="a"
+            variant="titleMedium"
+            href={`/explore/s/${encodeURIComponent(shop.id)}`}
+            onClick={(event: MouseEvent<HTMLAnchorElement>) => openShop(event, shop.id)}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              minHeight: 48,
+              color: 'inherit',
+              textDecoration: 'none',
+              overflowWrap: 'anywhere',
+              '&:focus-visible': { outline: 'none' },
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                inset: 0,
+                borderRadius: 'inherit',
+              },
+            }}
+          >
+            {shop.name}
+          </Typography>
+          <Box sx={{ position: 'relative', zIndex: 1, mt: 2 }}>
+            <FollowButton id={shop.id} name={shop.name} icon={false} />
+          </Box>
+        </Box>
+      </Box>
+    </li>
+  )
 }
 
 function describe(
@@ -145,73 +203,12 @@ export function Saved() {
             <Typography id="following-title" component="h2" variant="titleMedium" sx={{ px: 2 }}>
               {t.followingTitle}
             </Typography>
-            <Box
-              component="ul"
-              sx={{
-                listStyle: 'none',
-                m: 0,
-                mt: 2,
-                mx: -2,
-                px: 2,
-                pb: 1,
-                display: 'flex',
-                gap: 2,
-                overflowX: 'auto',
-                ...scrollArea,
-              }}
-            >
+            <Stack component="ul" spacing={2} sx={{ listStyle: 'none', m: 0, mt: 2, p: 0 }}>
               {feed.shops.map((shop, index) => (
-                <li key={shop.id} className="c-rise" style={{ ['--i' as string]: index }}>
-                  <Box
-                    component="a"
-                    href={`/explore/s/${encodeURIComponent(shop.id)}`}
-                    onClick={(event: MouseEvent<HTMLAnchorElement>) => openShop(event, shop.id)}
-                    className="c-press"
-                    sx={{
-                      width: 76,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 1,
-                      color: 'inherit',
-                      textDecoration: 'none',
-                      borderRadius: 2,
-                      '&:focus-visible': { outline: `3px solid ${roles.primary}` },
-                    }}
-                  >
-                    <Box
-                      data-shared
-                      sx={{
-                        p: '3px',
-                        borderRadius: '50%',
-                        background: `conic-gradient(${roles.primary}, ${roles.tertiary}, ${roles.primary})`,
-                      }}
-                    >
-                      <Box sx={{ p: '2px', borderRadius: '50%', bgcolor: roles.surface }}>
-                        <ShopAvatar shop={shop} size={60} />
-                      </Box>
-                    </Box>
-                    <Typography
-                      variant="labelMedium"
-                      sx={{ width: '100%', textAlign: 'center' }}
-                      noWrap
-                    >
-                      {shop.name}
-                    </Typography>
-                  </Box>
-                </li>
+                <FollowedShop key={shop.id} shop={shop} index={index} />
               ))}
-            </Box>
-          </Box>
-          {account.status === 'signed-out' && (
-            <Stack
-              spacing={2}
-              sx={{ mt: 2, p: 2, borderRadius: '20px', bgcolor: roles.surfaceContainerLow }}
-            >
-              <Typography variant="bodyMedium">{t.deviceOnly}</Typography>
-              <SignInButton />
             </Stack>
-          )}
+          </Box>
           <Box component="section" aria-labelledby="updates-title" sx={{ mt: 4 }}>
             <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
               <Typography id="updates-title" component="h2" variant="titleMedium" sx={{ px: 2 }}>
@@ -276,7 +273,7 @@ export function Saved() {
                             <Typography variant="labelLarge" noWrap sx={{ flex: 1 }}>
                               {shop?.name}
                             </Typography>
-                            <Typography variant="labelSmall" color="text.secondary">
+                            <Typography variant="bodySmall" color="text.secondary">
                               {timeAgo(update.created, t)}
                             </Typography>
                           </Stack>
@@ -295,7 +292,7 @@ export function Saved() {
                               {title}
                             </Typography>
                           </Stack>
-                          <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 0.25 }}>
+                          <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
                             {body}
                           </Typography>
                           {update.demo && (
@@ -304,7 +301,6 @@ export function Saved() {
                               size="small"
                               sx={{
                                 mt: 1,
-                                height: 22,
                                 bgcolor: roles.tertiaryContainer,
                                 color: roles.onTertiaryContainer,
                               }}
@@ -318,6 +314,26 @@ export function Saved() {
               </Stack>
             )}
           </Box>
+          {account.status === 'signed-out' && (
+            // The one filled button sits at the bottom, above the navigation, in thumb reach (A-43).
+            <Box
+              sx={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-end',
+                pt: 4,
+              }}
+            >
+              <Stack
+                spacing={2}
+                sx={{ p: 4, borderRadius: '20px', bgcolor: roles.surfaceContainerLow }}
+              >
+                <Typography variant="bodyMedium">{t.deviceOnly}</Typography>
+                <SignInButton />
+              </Stack>
+            </Box>
+          )}
         </>
       )}
     </CollectionPage>

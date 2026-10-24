@@ -167,7 +167,7 @@ export const mr: Copy = {
   suggestPrice: 'दर अपडेट करा',
   suggestHours: 'उघडण्याची वेळ बदला',
   message: 'संदेश',
-  messagePlaceholder: 'तुमच्या दुकानाबद्दल सांगा…',
+  messagePlaceholder: 'दुकानाबद्दल…',
   send: 'पाठवा',
   stop: 'थांबवा',
   photo: 'फोटो जोडा',

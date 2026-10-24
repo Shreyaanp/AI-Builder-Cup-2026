@@ -167,7 +167,7 @@ export const bn: Copy = {
   suggestPrice: 'দাম আপডেট করুন',
   suggestHours: 'খোলার সময় বদলান',
   message: 'বার্তা',
-  messagePlaceholder: 'আপনার দোকানের কথা বলুন…',
+  messagePlaceholder: 'দোকানের কথা…',
   send: 'পাঠান',
   stop: 'থামান',
   photo: 'ছবি যোগ করুন',

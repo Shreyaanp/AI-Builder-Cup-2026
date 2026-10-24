@@ -303,6 +303,22 @@ def test_flagged_accounts_get_no_scratch_card() -> None:
     assert flagged(state, at(0))
 
 
+def test_phone_only_passport_counts_its_own_visit_in_the_goal(
+    client: TestClient, midweek: None
+) -> None:
+    """A-29: after one stamp the weekly quest and the neighbourhood goal agree (1, not 0)."""
+    body = {"shop_id": DEMO, "key": demo_key(client), **at_shop(client)}
+    receipt = client.post("/api/v1/public/passport/check", json=body).json()["receipt"]
+    view = client.post(
+        "/api/v1/public/passport/preview", json={"receipts": [receipt], "cards": {}}
+    ).json()
+    coop = view["games"]["coop"]
+    assert coop["you"] == 1
+    assert coop["total"] >= coop["you"] + coop["demo_visits"]
+    quest = next(q for q in view["quests"] if q["kind"] == "breakthrough")
+    assert quest["have"] == coop["you"]
+
+
 def test_card_count_includes_welcome_stamps_everywhere(client: TestClient) -> None:
     """One count for "stamps on this card": the welcome stamps plus the customer's own."""
     # Signed out, from this phone's receipt; then signed in, from the account.

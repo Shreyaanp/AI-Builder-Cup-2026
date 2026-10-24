@@ -122,28 +122,13 @@ export function ChatList() {
   return (
     <CollectionPage title={t.chatsTitle}>
       {account.status === 'loading' ? null : !signedIn ? (
-        <Stack spacing={3} className="c-rise" sx={{ px: 2, pt: 4, textAlign: 'center' }}>
-          <Box
-            aria-hidden="true"
-            sx={{
-              mx: 'auto',
-              width: 88,
-              height: 88,
-              borderRadius: '28px',
-              display: 'grid',
-              placeItems: 'center',
-              bgcolor: roles.secondaryContainer,
-              color: roles.onSecondaryContainer,
-            }}
-          >
-            <MessageCircle size={40} />
-          </Box>
-          <Typography component="h2" variant="titleLarge">
-            {t.chatsSignedOut}
-          </Typography>
-          <Typography color="text.secondary">{t.signInBody}</Typography>
-          <SignInButton />
-        </Stack>
+        // The one filled button sits above the navigation, in thumb reach (A-43).
+        <CollectionEmptyState
+          title={t.chatsSignedOut}
+          body={t.signInBody}
+          icon={<MessageCircle size={40} />}
+          action={<SignInButton />}
+        />
       ) : failed && !chats ? (
         <Alert
           severity="error"
@@ -217,7 +202,7 @@ export function ChatList() {
                       </Typography>
                       {last && (
                         <Typography
-                          variant="labelSmall"
+                          variant="bodySmall"
                           sx={{
                             color: chat.unread ? roles.primary : 'text.secondary',
                             fontWeight: chat.unread ? 700 : 400,
@@ -227,14 +212,12 @@ export function ChatList() {
                         </Typography>
                       )}
                     </Stack>
-                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 0.25 }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 1 }}>
                       {chat.shop.demo && (
                         <Chip
                           label={t.demoShop}
                           size="small"
                           sx={{
-                            height: 20,
-                            fontSize: 11,
                             bgcolor: roles.tertiaryContainer,
                             color: roles.onTertiaryContainer,
                           }}
@@ -264,7 +247,7 @@ export function ChatList() {
                             borderRadius: 999,
                             bgcolor: roles.primary,
                             color: roles.onPrimary,
-                            fontSize: 12,
+                            fontSize: 14,
                             fontWeight: 700,
                             display: 'grid',
                             placeItems: 'center',
