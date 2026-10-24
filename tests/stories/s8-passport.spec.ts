@@ -130,7 +130,8 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
   await localOnly(customer)
   await test.step("1 · Today's 7 on the Ask home", async () => {
     await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/`)
-    await customer.getByRole('button', { name: 'Use my location' }).click()
+    await customer.getByRole('button', { name: /^Area: / }).click()
+    await customer.getByRole('dialog').getByRole('button', { name: 'Use my location' }).click()
     // Today's 7 is one tap away in the conversation.
     await customer.getByRole('button', { name: /Today’s 7 near you/ }).click()
     const today = customer.getByRole('region', { name: /^Today near/ })

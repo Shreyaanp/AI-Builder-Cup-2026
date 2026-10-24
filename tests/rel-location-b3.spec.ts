@@ -91,6 +91,23 @@ test('A-33 an area name with a number in it stays the area', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Area: Sector 18. Change' })).toBeVisible()
 })
 
+test('A-33 an ordinal area name ("1st Block Koramangala") stays the area', async ({ page }) => {
+  await freshVisit(page)
+  await page.route('**/api/v1/discover/place?q=*', (route) =>
+    route.fulfill({
+      json: { lat: 12.9352, lng: 77.6245, label: '1st Block Koramangala, Bengaluru, India' },
+    }),
+  )
+  await page.getByRole('button', { name: /Area: Indiranagar/ }).click()
+  const field = page.getByRole('dialog').getByRole('textbox', { name: 'City or area' })
+  await field.fill('1st Block Koramangala')
+  await field.press('Enter')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: 'Area: 1st Block Koramangala. Change' }),
+  ).toBeVisible()
+})
+
 async function useMyLocation(page: Page, label: string) {
   await page.context().grantPermissions(['geolocation'])
   await page.context().setGeolocation({ latitude: 12.9716, longitude: 77.6, accuracy: 15 })

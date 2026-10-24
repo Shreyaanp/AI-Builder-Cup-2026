@@ -47,7 +47,15 @@ const screens: Screen[] = [
     firstRun: true,
     open: async (page) => {
       await page.goto('/explore/')
-      // One input on the page; the area chip opens the area sheet (A-7, A-33).
+      await expect(page.getByRole('button', { name: /^Area: / })).toBeVisible({ timeout: 60_000 })
+    },
+  },
+  {
+    // The area sheet the chip opens (A-7, A-33): "Use my location" and the typed place live here.
+    name: 'welcome-area-sheet',
+    firstRun: true,
+    open: async (page) => {
+      await page.goto('/explore/')
       await page.getByRole('button', { name: /^Area: / }).click()
       await expect(
         page.getByRole('dialog').getByRole('button', { name: 'Use my location' }),

@@ -5,7 +5,9 @@
  */
 export function areaLabel(label: string | undefined, fallback: string): string {
   const first = (label ?? '').split(',')[0]?.trim() ?? ''
-  // A leading number is a house number ("67/1"); "Sector 18" or "DLF Phase 3" is an area name.
-  if (!first || /^\d/.test(first) || first.toLowerCase() === 'you') return fallback
+  // A house number ("67/1", "12") is not an area; "1st Block Koramangala", "Sector 18" or
+  // "DLF Phase 3" are. The server's English "Nearby" is shown in the screen's own language.
+  const houseNumber = /^\d+(\/|$|\s*,)|^\d+[-/]\d/.test(first)
+  if (!first || houseNumber || ['you', 'nearby'].includes(first.toLowerCase())) return fallback
   return first
 }

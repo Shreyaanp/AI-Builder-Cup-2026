@@ -35,11 +35,12 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
     await localOnly(customer)
     await test.step('1 · open customer entry', async () => {
       await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/`)
-      await expect(customer.getByRole('button', { name: 'Use my location' })).toBeVisible()
+      await expect(customer.getByRole('button', { name: /^Area: / })).toBeVisible()
       await shot(customer, 3, 1)
     })
     await test.step('2 · GPS discovery and typed city fallback', async () => {
-      await customer.getByRole('button', { name: 'Use my location' }).click()
+      await customer.getByRole('button', { name: /^Area: / }).click()
+      await customer.getByRole('dialog').getByRole('button', { name: 'Use my location' }).click()
       // The front door is an AI ask; browsing everything nearby is one tap away.
       await expect(
         customer.getByRole('heading', { name: 'What are you looking for nearby?' }),
