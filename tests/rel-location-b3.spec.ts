@@ -75,6 +75,22 @@ test('A-33 choosing an area in the sheet changes the chip', async ({ page }) => 
   await expect(page.getByRole('button', { name: 'Area: Koramangala. Change' })).toBeVisible()
 })
 
+test('A-33 an area name with a number in it stays the area', async ({ page }) => {
+  await freshVisit(page)
+  await page.route('**/api/v1/discover/place?q=*', (route) =>
+    route.fulfill({
+      json: { lat: 28.5708, lng: 77.3261, label: 'Sector 18, Noida, Uttar Pradesh, India' },
+    }),
+  )
+  await page.getByRole('button', { name: /Area: Indiranagar/ }).click()
+  const field = page.getByRole('dialog').getByRole('textbox', { name: 'City or area' })
+  await field.fill('Sector 18')
+  await field.press('Enter')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  // Only a leading house number is dropped; "Sector 18" is the name the customer chose.
+  await expect(page.getByRole('button', { name: 'Area: Sector 18. Change' })).toBeVisible()
+})
+
 async function useMyLocation(page: Page, label: string) {
   await page.context().grantPermissions(['geolocation'])
   await page.context().setGeolocation({ latitude: 12.9716, longitude: 77.6, accuracy: 15 })
@@ -177,6 +193,9 @@ test('A-24 Near you now keeps its room when the area has no shops', async ({ pag
   await expect(today).toBeVisible({ timeout: 20_000 })
   const loading = page.getByRole('list', { name: 'Near you now' })
   await expect(loading).toHaveAttribute('aria-busy', 'true')
+  // Measure once the card has finished dealing in (it rises 12 px), so only the
+  // skeleton-to-note change is compared.
+  await today.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
   const before = (await today.boundingBox())!.y
   release()
   await expect(page.getByText('No Chalkboard shops here yet.')).toBeVisible()

@@ -116,6 +116,11 @@ def locality_name(results: list[dict[str, Any]]) -> str | None:
     return None
 
 
+def pin_fields(pin: dict[str, Any]) -> dict[str, Any]:
+    """A geocode answer without its display-only neighbourhood name, ready to save on a shop."""
+    return {key: value for key, value in pin.items() if key != "locality"}
+
+
 def is_local_shop(row: dict[str, Any]) -> bool:
     """Whether a Google row is a shop or eatery (rows without type data are kept)."""
     kinds = {*row.get("types", ()), *([row["primaryType"]] if row.get("primaryType") else ())}
@@ -589,7 +594,7 @@ async def prepare_pin(
     body.business.demo = bool(old.get("demo"))
     if body.owner_location is not None:
         point = body.owner_location
-        pin = await maps.reverse(point.lat, point.lng)
+        pin = pin_fields(await maps.reverse(point.lat, point.lng))
         body.business = type(body.business).model_validate(
             {
                 **body.business.model_dump(),
@@ -647,7 +652,9 @@ async def prepare_pin(
         setattr(body.business, field, None)
     body.business.pin_demo = False
     if body.geocode_confirmed and body.business.location:
-        body.business = body.business.model_copy(update=await maps.geocode(body.business.location))
+        body.business = body.business.model_copy(
+            update=pin_fields(await maps.geocode(body.business.location))
+        )
         # Validate provider coordinates before sealing them.
         body.business = type(body.business).model_validate(body.business.model_dump())
         if old:
@@ -822,7 +829,11 @@ async def discover(
     except HTTPException:
         google = []
         unavailable = True
-    google = without_centre_pins([row for row in google if is_local_shop(row)])
+    if not q:
+        # Nearby lists only shops; a search ("gym", "dentist", a small shop typed only as an
+        # establishment) keeps whatever Google matched.
+        google = [row for row in google if is_local_shop(row)]
+    google = without_centre_pins(google)
     relevant_shop_ids = {p.id for p in places}
     owned_place_ids = {s.get("place_id") for s in shops if s["id"] in relevant_shop_ids}
     for row in google:

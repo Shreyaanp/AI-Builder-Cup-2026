@@ -5,6 +5,7 @@
  */
 export function areaLabel(label: string | undefined, fallback: string): string {
   const first = (label ?? '').split(',')[0]?.trim() ?? ''
-  if (!first || /\d/.test(first) || first.toLowerCase() === 'you') return fallback
+  // A leading number is a house number ("67/1"); "Sector 18" or "DLF Phase 3" is an area name.
+  if (!first || /^\d/.test(first) || first.toLowerCase() === 'you') return fallback
   return first
 }
