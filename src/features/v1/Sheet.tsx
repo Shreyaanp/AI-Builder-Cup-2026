@@ -172,7 +172,8 @@ export function Sheet({
                   <X size={20} />
                 </IconButton>
               ) : (
-                <Button onClick={onClose} sx={{ minHeight: 48, mr: 'auto' }}>
+                // ml: the label sits on the content's own left edge, not 16px in from it (A-21).
+                <Button onClick={onClose} sx={{ minHeight: 48, mr: 'auto', ml: -4 }}>
                   {t.close}
                 </Button>
               ))}

@@ -174,7 +174,9 @@ function GoogleLayer({
             gmpClickable: true,
             zIndex: pin.kind === 'ours' ? 2 : 1,
           })
-          listeners.push(marker.addListener('click', () => onSelectRef.current(pin.id)))
+          const select = () => onSelectRef.current(pin.id)
+          marker.addEventListener('gmp-click', select)
+          listeners.push({ remove: () => marker.removeEventListener('gmp-click', select) })
           placed.set(pin.id, { marker, el })
           bounds.extend({ lat: pin.lat, lng: pin.lng })
         })
@@ -362,7 +364,7 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
               <text
                 y={4}
                 textAnchor="middle"
-                fontSize={on ? 14 : 12}
+                fontSize={theme.typography.labelMedium.fontSize}
                 fontWeight={700}
                 fill={colors.fg}
               >
@@ -381,7 +383,7 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
           textAnchor={
             spots[chosen]!.x > W - 80 ? 'end' : spots[chosen]!.x < 80 ? 'start' : 'middle'
           }
-          fontSize={13}
+          fontSize={theme.typography.labelMedium.fontSize}
           fontWeight={600}
           fill={roles.onSurface}
           stroke={roles.surface}

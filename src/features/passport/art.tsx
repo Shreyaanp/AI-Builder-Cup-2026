@@ -1,7 +1,7 @@
 import { Box, useTheme } from '@mui/material'
 import { Leaf, PencilLine, Star } from 'lucide-react'
 import type { FeatureKey } from '../../design/chalkboard'
-import { HAND_FONT } from '../../design/theme'
+import { HAND_FONT, HAND_SIZE } from '../../design/theme'
 
 import { CATEGORY_ICONS, FESTIVAL_ART, categoryArt, seed } from './artData'
 
@@ -167,7 +167,7 @@ export function LevelRing({
           textAlign: 'center',
           fontFamily: HAND_FONT,
           fontWeight: 700,
-          fontSize: size * 0.27,
+          fontSize: HAND_SIZE,
           lineHeight: 1,
           color: theme.material.onSurface,
         }}

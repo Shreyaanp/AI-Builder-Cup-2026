@@ -241,6 +241,15 @@ export function keepPassport(key: string, view: unknown) {
   writeJson(PASSPORT, { key, view })
 }
 
+/** Drop the offline copy of the Passport (it holds the stamps being cleared). */
+export function forgetKeptPassport() {
+  try {
+    localStorage.removeItem(PASSPORT)
+  } catch {
+    /* Nothing to clear. */
+  }
+}
+
 export function keptPassport(key: string): unknown {
   const value = readJson(PASSPORT) as { key?: unknown; view?: unknown } | null
   return value && value.key === key ? (value.view ?? null) : null

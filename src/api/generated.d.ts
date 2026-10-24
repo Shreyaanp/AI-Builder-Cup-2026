@@ -3992,6 +3992,8 @@ export interface components {
             demo_visits: number;
             /** You */
             you: number;
+            /** Helped */
+            helped: boolean;
             /** Helpers */
             helpers: number;
             /** Reached */

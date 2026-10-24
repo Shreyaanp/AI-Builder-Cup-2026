@@ -175,7 +175,7 @@ export const ta: Copy = {
   suggestPrice: 'விலையை மாற்றுங்கள்',
   suggestHours: 'நேரத்தை மாற்றுங்கள்',
   message: 'செய்தி',
-  messagePlaceholder: 'உங்கள் கடையைப் பற்றிச் சொல்லுங்கள்…',
+  messagePlaceholder: 'உங்கள் கடை…',
   send: 'அனுப்புங்கள்',
   stop: 'நிறுத்துங்கள்',
   photo: 'படம் சேருங்கள்',

@@ -3,7 +3,6 @@ import { Box, Stack, Typography, useTheme, type Theme } from '@mui/material'
 import { ExternalLink, Leaf, MapPinned } from 'lucide-react'
 import type { Locale } from '../../i18n/locales'
 import { dealIn } from '../../design/chalkMotion'
-import { HAND_FONT } from '../../design/theme'
 import { customerNavigate } from '../frontdoors/navigation'
 import { PlaceImage } from '../frontdoors/PlaceImage'
 import { accountCopyFor } from '../customer/copy'
@@ -295,13 +294,15 @@ export function PickCard({
             </Typography>
             {item && pick.currency && (
               <Typography
+                // The theme's title size, not a size of its own (A-22: three sizes per screen).
+                // A span, not the theme's h3: the name beside it is the row's only heading.
+                variant="titleMedium"
+                component="span"
                 sx={{
-                  fontFamily: HAND_FONT,
-                  fontSize: '1.25rem',
-                  lineHeight: 1,
                   fontWeight: 700,
                   color: roles.primary,
                   flexShrink: 0,
+                  lineHeight: theme.typography.titleSmall.lineHeight,
                 }}
               >
                 {formatPrice(item.price, pick.currency)}
