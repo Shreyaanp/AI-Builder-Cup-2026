@@ -277,8 +277,11 @@ for (const [locale, t] of Object.entries({ en: rewardCardEnglish, ...rewardCardT
       page.getByText(
         t.more
           .replace('{count}', new Intl.NumberFormat(locale).format(7))
-          // A-28: "A free kopi" reads "a free kopi" mid-sentence; at the start (Hindi) it is kept.
-          .replace('{reward}', t.more.startsWith('{reward}') ? shop.reward_text : 'a free kopi'),
+          // A-28: English "A free kopi" reads "a free kopi" mid-sentence; other languages keep it as typed.
+          .replace(
+            '{reward}',
+            t.more === rewardCardEnglish.more ? 'a free kopi' : shop.reward_text,
+          ),
         {
           exact: true,
         },

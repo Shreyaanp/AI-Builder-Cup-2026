@@ -375,3 +375,48 @@ test('A-41: the loading screen and the header show the same brand mark', async (
   const inHeader = await look(page)
   expect(onSplash).toEqual(inHeader)
 })
+
+test('A-12: a sample shop opened from Browse is a usual labelled "Sample shop"', async ({
+  page,
+}) => {
+  const sample = {
+    id: SAMPLE,
+    name: 'Lantern Chai Corner (Demo)',
+    source: 'chalkboard',
+    category: 'cafe',
+    lat: 19.076,
+    lng: 72.8777,
+    distance_m: 180,
+    open_now: true,
+    currency: 'INR',
+    items: [{ name: 'Masala chai', price: 2000, available: true }],
+    sold_out: [],
+    locally_made: false,
+    demo: false,
+    demo_shop: true,
+    photo_url: null,
+    photo_authors: [],
+    halal: null,
+  }
+  await page.route('**/api/v1/discover?**', (route) =>
+    route.fulfill({ json: { mode: 'live', google_unavailable: false, places: [sample] } }),
+  )
+  await page.addInitScript(() => {
+    localStorage.setItem('chalkboard.customer.journey', 'done')
+    localStorage.setItem(
+      'chalkboard.discover.filters',
+      JSON.stringify({ place: { lat: 19.076, lng: 72.8777, label: 'Mumbai' } }),
+    )
+  })
+  await page.goto('/explore/browse')
+  const rows = page.getByRole('list', { name: /around me/i })
+  await expect(rows).toBeVisible({ timeout: 20_000 })
+  await rows.getByRole('link', { name: /Lantern Chai Corner/ }).click()
+  await expect(page).toHaveURL(new RegExp('/explore/s/' + SAMPLE))
+  await page.goBack()
+  await expect(rows).toBeVisible({ timeout: 20_000 })
+  // The usual keeps the plain name and says it is a sample.
+  await expect(
+    page.getByRole('link', { name: 'Lantern Chai Corner · Sample shop', exact: true }),
+  ).toBeVisible()
+})
