@@ -425,3 +425,153 @@ def test_OB_122_customer_demo_uses_the_stamp_shop_country(app):  # noqa: N802, F
         assert shops and all("bengaluru" in shop["id"] for shop in shops)
         detail = read(client, session, f"/public/shops/{shops[0]['id']}").json()
         assert detail["currency"] == "INR"
+
+
+def coach_events(client: TestClient, session: str, message: str) -> list[dict]:
+    response = client.post(f"/api/v1/demo/sessions/{session}/coach", json={"message": message})
+    assert response.status_code == 200, (message, response.text)
+    return [
+        json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")
+    ]
+
+
+def test_O_1_demo_menu_files_get_a_labelled_sample_and_a_real_413(app, monkeypatch):  # noqa: N802, F811
+    """O-1: imports and photo reads in the demo answer with a sample review, never a model."""
+    read_file = AsyncMock(side_effect=AssertionError("a demo file reached the photo pipeline"))
+    monkeypatch.setattr("app.photos.PhotoPipeline.classify_upload", read_file)
+    monkeypatch.setattr("app.photos.PhotoPipeline.process", read_file)
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        app.state.rate_limiter.counters.clear()
+        session = open_demo(client).json()["session_id"]
+        bid = owner(client, session, "businesses").json()[0]["id"]
+        for content_type in ("text/csv", "application/pdf", "image/jpeg"):
+            made = owner(
+                client,
+                session,
+                f"businesses/{bid}/import",
+                "POST",
+                content=b"item,price\nTea,10\n",
+                headers={"Content-Type": content_type},
+            )
+            assert made.status_code == 200, made.text
+            body = made.json()
+            assert body["kind"] == "menu" and body["sample"] is True
+            assert "Sample read" in body["sample_note"]
+            names = [p["name"] for p in body["proposal"]["snapshot"]["products"]]
+            assert "Masala dosa" in names and "Filter coffee" in names
+        approved = owner(
+            client,
+            session,
+            f"proposals/{body['proposal']['id']}/approve",
+            "POST",
+            json={"digest": body["proposal"]["digest"]},
+        )
+        assert approved.status_code == 200, approved.text
+        menu = [p["name"] for p in owner(client, session, f"businesses/{bid}/inventory").json()]
+        assert "Masala dosa" in menu
+        too_big = owner(
+            client,
+            session,
+            f"businesses/{bid}/import",
+            "POST",
+            content=b"x" * 5_000_001,
+            headers={"Content-Type": "text/csv"},
+        )
+        assert too_big.status_code == 413 and too_big.json()["detail"] == "FILE_TOO_LARGE"
+        guessed = owner(
+            client,
+            session,
+            "photos/classify",
+            "POST",
+            content=b"\xff\xd8" + b"x" * 200_000,
+            headers={"Content-Type": "image/jpeg"},
+        )
+        assert guessed.status_code == 200, guessed.text
+        assert guessed.json()["kind"] == "menu"
+        photo = owner(
+            client,
+            session,
+            f"photos?business_id={bid}&language=en",
+            "POST",
+            content=b"\xff\xd8" + b"x" * 1000,
+            headers={"Content-Type": "image/jpeg"},
+        )
+        assert photo.status_code == 200, photo.text
+        assert photo.json()["proposal"]["snapshot"]["products"]
+        assert "Sample read" in photo.json()["extraction"]["uncertain"][0]
+        other = owner(
+            client,
+            session,
+            "businesses/someone-else/import",
+            "POST",
+            content=b"item,price\n",
+            headers={"Content-Type": "text/csv"},
+        )
+        assert other.status_code == 403
+        app.state.v1_settings.max_photo_bytes = 65_536
+        huge = owner(
+            client,
+            session,
+            "photos/classify",
+            "POST",
+            content=b"x" * 70_000,
+            headers={"Content-Type": "image/jpeg"},
+        )
+        assert huge.status_code == 413
+        read_file.assert_not_called()
+        app.state.rate_limiter.counters.clear()
+
+
+def test_O_2_demo_coach_prepares_the_real_cards_offline(app):  # noqa: N802, F811
+    """O-2: common owner requests get proposal, chart and answer cards; the rest get chips."""
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        app.state.rate_limiter.counters.clear()
+        session = open_demo(client).json()["session_id"]
+        cases = {
+            "Change my closing time to 10pm": ("proposal", "Closing time 21:00 → 22:00"),
+            "add cutting chai for 15 rupees": ("proposal", "New item: Cutting chai"),
+            "samosa sold out": ("proposal", "Samosa: sold out"),
+            "how many visits this week?": ("reply", "page was opened"),
+            "what are my best sellers?": ("chart", "best sellers: Masala chai"),
+            "What should I prep tomorrow?": ("chart", "demo forecast"),
+            "add masala chai for 20 rupees": ("reply", "already on your demo menu at ₹20"),
+            # Saved prices are paise; the demo once said ₹2000 for a ₹20 samosa.
+            "Samosa is 20 now": ("reply", "demo price for Samosa is ₹20."),
+        }
+        for message, (kind, words) in cases.items():
+            events = coach_events(client, session, message)
+            assert kind in [event["kind"] for event in events], (message, events)
+            reply = " ".join(event.get("text") or "" for event in events)
+            assert words in reply, (message, reply)
+        proposal = next(
+            event["data"]
+            for event in coach_events(client, session, "Change my closing time to 10pm")
+            if event["kind"] == "proposal"
+        )
+        hours = proposal["snapshot"]["business"]["weekly_hours"]
+        assert {day["close"] for day in hours} == {"22:00"}
+        fallback = coach_events(client, session, "What is my business called?")
+        offered = next(e for e in fallback if e["kind"] == "reply")["data"]["suggestions"]
+        assert "What are my best sellers?" in offered and len(offered) == 6
+        for suggestion in offered:
+            events = coach_events(client, session, suggestion)
+            reply = " ".join(event.get("text") or "" for event in events)
+            assert "I can help with these in the demo" not in reply, (suggestion, reply)
+        app.state.rate_limiter.counters.clear()
+
+
+def test_O_4_demo_pin_address_is_answered_offline(app, monkeypatch):  # noqa: N802, F811
+    """O-4: the address under a demo map pin comes from the offline area list (no Maps call)."""
+    paid = AsyncMock(side_effect=AssertionError("paid Maps call"))
+    monkeypatch.setattr("httpx.AsyncClient.get", paid)
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        session = open_demo(client).json()["session_id"]
+        found = owner(client, session, "places/reverse?lat=12.96880&lng=77.63820")
+        assert found.status_code == 200, found.text
+        assert found.json() == {"label": "Near Indiranagar", "approximate": True}
+        pin = owner(client, session, "places/pin?q=Indiranagar")
+        assert pin.status_code == 200, pin.text
+        paid.assert_not_called()

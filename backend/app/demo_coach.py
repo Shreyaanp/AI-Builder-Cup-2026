@@ -2,17 +2,245 @@
 
 from __future__ import annotations
 
-from typing import Any
+import re
+from datetime import timedelta
+from typing import Any, cast
+
+from .contracts import StreamEvent
+
+FALLBACK = (
+    "I can help with these in the demo: change your hours, add an item, mark something sold "
+    "out, visits this week, best sellers or tomorrow’s prep. Tap one to try it."
+)
+# Tappable examples under the fallback (O-2); each one has a deterministic demo answer.
+SUGGESTIONS = (
+    "Change my closing time to 10pm",
+    "Add cutting chai for 15 rupees",
+    "Samosa sold out",
+    "How many visits this week?",
+    "What are my best sellers?",
+    "What should I prep tomorrow?",
+)
+DEMO_NOTE = "This is the demo shop, so nothing reaches real customers."
+CLOCK = r"(\d{1,2})(?:[:.](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?"
+HOURS_CHANGE = re.compile(
+    rf"\b(?P<which>clos(?:e|es|ing)|open(?:s|ing)?)\b(?:\s+(?:time|hours?))?"
+    rf"(?:\s+\w+){{0,3}}?\s+(?:to|at|by|till|until)\s+{CLOCK}(?![\d%])",
+    re.I,
+)
+ADD_ITEM = re.compile(
+    r"^(?:please\s+)?(?:can\s+you\s+)?add\s+(?:a\s+|an\s+|new\s+)?(?:item\s+)?"
+    r"(?P<name>[^\d₹,.?!]{2,40}?)\s+(?:for|at|@|priced\s+at|costing)\s+"
+    r"(?:rs\.?\s*|₹\s*|inr\s*)?(?P<price>\d+(?:\.\d{1,2})?)\s*(?:rupees?|rs\.?|inr)?"
+    r"(?:\s+(?:per|a|each)\s+(?P<unit>[a-z]+))?\s*[.!]?$",
+    re.I,
+)
+BEST_SELLERS = re.compile(
+    r"\b(?:best|top)[\s-]*sell\w*|\bsells?\s+(?:the\s+)?(?:best|most)\b|\bmost\s+popular\b",
+    re.I,
+)
+VISITS = re.compile(
+    r"\bvisit(?:s|ors?)?\b|\bfootfall\b|\bhow\s+many\s+(?:people|customers)\b", re.I
+)
+
+
+def _is_demo(ctx: Any) -> bool:
+    if not ctx or not ctx.business_id or not ctx.uid.startswith("public-demo-"):
+        return False
+    business = ctx.store.context(ctx.uid, ctx.business_id)["business"]
+    return bool(business and business["fields"].get("demo"))
+
+
+def _proposed(ctx: Any, result: dict[str, Any]) -> list[StreamEvent] | None:
+    """The review card and reply for a prepared change, or None when nothing would change."""
+    if result.get("status") != "needs_review" or not result.get("changes"):
+        return None
+    proposal = ctx.proposals.get(str(result.get("proposal_id")))
+    if not proposal:
+        return None
+    changes = "; ".join(result["changes"])
+    return [
+        StreamEvent(kind="proposal", data=proposal),
+        StreamEvent(
+            kind="reply",
+            text=f"I've prepared this for you to check: {changes}. Confirm it on screen. "
+            + DEMO_NOTE,
+        ),
+    ]
+
+
+def _clock(hour: str, minute: str | None, suffix: str | None, closing: bool) -> str | None:
+    h, m = int(hour), int(minute or 0)
+    marker = (suffix or "").replace(".", "").casefold()
+    if marker:
+        if not 1 <= h <= 12:
+            return None
+        h = h % 12 + (12 if marker == "pm" else 0)
+    elif closing and 1 <= h <= 11:
+        h += 12  # "close at 10" means 10 in the evening
+    if h > 23 or m > 59:
+        return None
+    return f"{h:02d}:{m:02d}"
+
+
+def _hours_change(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """A weekly-hours proposal ("Change my closing time to 10pm"), as the real coach prepares."""
+    match = HOURS_CHANGE.search(question)
+    if not match:
+        return None
+    from .coordinator import propose_business
+    from .merchant import DayHours
+
+    closing = match["which"].casefold().startswith("clos")
+    time = _clock(match[2], match[3], match[4], closing)
+    if time is None:
+        return None
+    fields = ctx.store.context(ctx.uid, ctx.business_id)["business"]["fields"]
+    key = "close" if closing else "open"
+    days, before = [], set()
+    for day in fields.get("weekly_hours") or []:
+        if not day.get("closed"):
+            before.add(day.get(key))
+            day = {**day, key: time}
+            if day.get("open") == day.get("close"):
+                return None
+        days.append(DayHours(**day))
+    if not days or before == {time}:
+        return None
+    # The one-line hours customers read follow the new times (when every open day is the same).
+    spans = {(day.open, day.close) for day in days if not day.closed}
+    hours = f"{next(iter(spans))[0]}–{next(iter(spans))[1]}" if len(spans) == 1 else ""
+    result = propose_business(name="", hours=hours, weekly_hours=days)
+    if result.get("status") == "needs_review":
+        label = "Closing time" if closing else "Opening time"
+        result["changes"] = [f"{label} {' / '.join(sorted(before))} → {time} on every open day"]
+    return _proposed(ctx, result)
+
+
+def _add_item(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """A new item or a price change for review ("Add masala chai for 20 rupees")."""
+    match = ADD_ITEM.match(" ".join(question.split()))
+    if not match:
+        return None
+    from .coordinator import ProductInput, propose_products, shop_currency
+    from .money import to_major
+    from .product_units import UNITS
+
+    context = ctx.store.context(ctx.uid, ctx.business_id)
+    name = match["name"].strip()
+    price = float(match["price"])
+    known = next((p for p in context["inventory"] if p["name"].casefold() == name.casefold()), None)
+    if known and to_major(known["price"], shop_currency(context["business"])) == price:
+        return [
+            StreamEvent(
+                kind="reply",
+                text=f"{known['name']} is already on your demo menu at ₹{price:g} per "
+                f"{known['unit']}. Open Shop → Menu next to see it.",
+            )
+        ]
+    item: dict[str, Any] = {"name": known["name"] if known else name[0].upper() + name[1:]}
+    item["price"] = price
+    unit = (match["unit"] or "").casefold()
+    if not known:
+        item["unit"] = unit if unit in UNITS else "item"
+    return _proposed(ctx, propose_products([ProductInput(**item)]))
+
+
+def _upkeep(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """Sold out, back or a new price ("Samosa sold out"): the offline fixture the coach uses too."""
+    from .agent import upkeep_call
+    from .coordinator import propose_products
+    from .instant import PRICE_CUE
+
+    call = upkeep_call(question, ctx)
+    if call is None or not call.function_call:
+        return None
+    items = (call.function_call.args or {})["items"]
+    if any("price" in item for item in items) and not PRICE_CUE.search(question):
+        return None
+    return _proposed(ctx, propose_products(items))
+
+
+def _best_sellers() -> list[StreamEvent]:
+    from .charts import insights_card
+    from .coordinator import get_insights
+
+    result = get_insights()
+    top = result.get("top_sellers") or []
+    if not top:
+        return [StreamEvent(kind="reply", text="The demo shop has no sales saved this week yet.")]
+    names = ", ".join(f"{row['item']} ({row['quantity']:g} sold)" for row in top[:3])
+    card = insights_card(result)
+    return [
+        *([StreamEvent(kind="chart", data=card)] if card else []),
+        StreamEvent(
+            kind="reply",
+            text=f"This week's demo best sellers: {names}. "
+            "In your real shop, these come from your saved sales; open Grow → Insights next.",
+        ),
+    ]
+
+
+def _visits(ctx: Any) -> list[StreamEvent]:
+    from .analytics import counters_for
+    from .sales import today_for
+
+    fields = ctx.store.context(ctx.uid, ctx.business_id)["business"]["fields"]
+    today = today_for(fields)
+    week = [today - timedelta(days=offset) for offset in range(7)]
+    counters = counters_for(ctx.store, ctx.business_id, week).values()
+    views = sum(int(day.get("views") or 0) for day in counters)
+    stamps = sum(int(day.get("stamps") or 0) for day in counters)
+    returning = sum(int(day.get("returning") or 0) for day in counters)
+    return [
+        StreamEvent(
+            kind="reply",
+            text=f"In the last 7 days the demo shop page was opened {views} times and customers "
+            f"collected {stamps} stamps at the counter ({returning} returning visits). "
+            "In your real shop, these count real page opens and QR scans; open Grow → Insights "
+            "next.",
+        )
+    ]
+
+
+async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """A whole offline demo turn: the proposal and chart cards the real coach would show, then
+    the reply. Deterministic and model-free, so the public demo never calls a paid model."""
+    if not _is_demo(ctx):
+        return None
+    if not re.search(r"[ऀ-ॿ]", question):
+        for intent in (_hours_change, _add_item, _upkeep):
+            events = intent(ctx, question)
+            if events:
+                return events
+        if BEST_SELLERS.search(question):
+            return _best_sellers()
+        if VISITS.search(question):
+            return _visits(ctx)
+    reply = public_demo_reply(ctx, question)
+    if reply is None:
+        return None
+    if reply == FALLBACK:
+        return [StreamEvent(kind="reply", text=reply, data={"suggestions": list(SUGGESTIONS)})]
+    events = [StreamEvent(kind="reply", text=reply)]
+    if reply.startswith("The demo forecast"):
+        from .charts import forecast_card
+        from .coordinator import get_forecast
+
+        card = forecast_card(await get_forecast())
+        if card:
+            events.insert(0, StreamEvent(kind="chart", data=card))
+    return events
 
 
 def public_demo_reply(ctx: Any, question: str) -> str | None:
     """Answer public demo questions from seeded records, without tools or providers."""
     if not ctx.business_id or not ctx.uid.startswith("public-demo-"):
         return None
-    import re
-
     from . import supply_chain
+    from .coordinator import shop_currency
     from .forecast import weekday_average
+    from .money import to_major
     from .sales import today_for
 
     store, uid, bid = ctx.store, ctx.uid, ctx.business_id
@@ -29,6 +257,8 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     product = product or next(iter(inventory), {"name": "your menu", "stock": 0, "unit": "items"})
     name = product["name"]
     stock = product.get("stock", 0)
+    # Saved prices are minor units (paise); the reply shows rupees.
+    price = to_major(cast(int, product.get("price", 0)), shop_currency(business))
     quantity = sum(row["quantity"] for row in history if row["item"] == name)
     if re.search(r"[\u0900-\u097f]", question):
         # This offline demo has no translation model. Keep its answers in the language of a
@@ -41,7 +271,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         if any(term in words for term in ("स्टॉक", "बचा", "उपलब्ध", "खत्म", "कम")):
             return f"डेमो में {name} का स्टॉक {stock:g} {product.get('unit', 'चीज़ें')} है।"
         if any(term in words for term in ("कीमत", "दाम", "भाव")):
-            return f"डेमो में {name} की कीमत ₹{product.get('price', 0):g} है।"
+            return f"डेमो में {name} की कीमत ₹{price:g} है।"
         if any(term in words for term in ("ऑर्डर", "सप्लायर", "मंगाऊँ", "खरीद")):
             orders = supply_chain.orders(store, uid, bid)
             po = next((order for order in orders if order.get("supplier")), None)
@@ -133,7 +363,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         term in words for term in ("price", "\u0915\u0940\u092e\u0924", "\u0926\u093e\u092e")
     ) or re.search(r"\b(?:is|now)\s+\d+|\b\d+\s+now\b", words):
         return (
-            f"The demo price for {name} is ₹{product.get('price', 0):g}. "
+            f"The demo price for {name} is ₹{price:g}. "
             "In your real shop, a price change waits for review; open Shop → Menu next."
         )
     if any(
@@ -192,7 +422,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         )
     ):
         return (
-            f"Your demo menu has {len(inventory)} items; {name} costs ₹{product.get('price', 0):g}. "  # noqa: E501
+            f"Your demo menu has {len(inventory)} items; {name} costs ₹{price:g}. "  # noqa: E501
             "In your real shop, edits wait for review; open Shop → Menu next."
         )
     if "sales" in words or (
@@ -202,7 +432,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
             f"The demo has {len(history)} saved sales rows and {quantity:g} {name} sold. "
             "In your real shop, these figures come from saved sales; open Grow → Insights next."
         )
-    return "I can help with today’s sales, tomorrow’s prep or stock. Try ‘How did I do today?’, ‘What should I prep tomorrow?’ or ‘Order more Tea dust’."  # noqa: E501
+    return FALLBACK
 
 
 # Products listed in the instruction snapshot; larger menus still use get_business_context.

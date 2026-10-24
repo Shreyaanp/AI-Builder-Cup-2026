@@ -62,13 +62,15 @@ import { CategoryGroups } from '../shop/CategoryGroups'
 import { MapsHandoff } from './MapsHandoff'
 import { shopZone } from '../../region/region'
 import { ShopIcon } from '../google/ShopIcon'
+import { GalleryEditor } from '../google/GalleryEditor'
+import { useGallery } from '../google/useGallery'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
 import { MapCard } from './MapCard'
 import type { Proposal } from './api'
 
 export type ShopSheetKind =
-  'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
+  'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness' | 'photos'
 
 /** A glanceable tile: icon + label, one big value, a little supporting detail. */
 export function Tile({
@@ -397,7 +399,8 @@ export function ShopTiles({
         icon={<Images size={20} />}
         label={tabs.photos}
         value={photos ? tabs.photoCount(photos) : tabs.addPhotos}
-        onClick={() => ws.go('google')}
+        // O-3: the shop's own photos sheet (the Google guide may be switched off, as in the demo).
+        onClick={() => onSheet('photos')}
       />
       <Tile
         icon={
@@ -412,6 +415,12 @@ export function ShopTiles({
       <ConnectTile />
     </Box>
   )
+}
+
+/** The Photos sheet's body: the gallery loads only while the sheet is open. */
+function ShopPhotos() {
+  const gallery = useGallery()
+  return <GalleryEditor gallery={gallery} />
 }
 
 /** Every My shop sheet. Also opened from coach suggestion chips. */
@@ -429,6 +438,7 @@ export function ShopSheets({
   const locale = useLocale()
   const rewards = useRewardCopy()
   const plan = usePlanCopy()
+  const tabs = useTabsCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   // Keep the last sheet's content while it slides away.
@@ -623,6 +633,12 @@ export function ShopSheets({
       return (
         <Sheet {...common} titleId="customer-sheet-title" title={t.customerPage}>
           <CustomerPage onReview={onClose} />
+        </Sheet>
+      )
+    case 'photos':
+      return (
+        <Sheet {...common} titleId="photos-sheet-title" title={tabs.photos}>
+          {kind === 'photos' && <ShopPhotos />}
         </Sheet>
       )
     case 'messages':

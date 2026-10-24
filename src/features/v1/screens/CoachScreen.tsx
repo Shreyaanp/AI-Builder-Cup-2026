@@ -246,6 +246,8 @@ function CoachScreen({
   const s = useSourcingCopy()
   // Sourcing: the item being searched for, every order shown in the chat, the open thread.
   const [searching, setSearching] = useState<string | null>(null)
+  // Example requests a reply offers (the offline demo coach): one tap sends one.
+  const [prompts, setPrompts] = useState<string[]>([])
   const [orders, setOrders] = useState<Record<string, Order>>({})
   const [pos, setPos] = useState<Record<string, PurchaseOrder>>({})
   const [thread, setThread] = useState<string | null>(null)
@@ -333,6 +335,14 @@ function CoachScreen({
       }
       if (event.kind === 'delta') setReply((text) => text + (event.text ?? ''))
       if (event.kind === 'reply' || event.kind === 'output_transcript') setReply(event.text ?? '')
+      if (event.kind === 'reply') {
+        const offered = event.data?.suggestions
+        setPrompts(
+          Array.isArray(offered)
+            ? offered.filter((item): item is string => typeof item === 'string').slice(0, 6)
+            : [],
+        )
+      }
       if (event.kind === 'input_transcript') {
         setShowToday(false)
         setMessages((items) => [...items, { role: 'user', text: event.text ?? '' }])
@@ -648,6 +658,7 @@ function CoachScreen({
     setError('')
     setMessages((items) => [...items, { role: 'user' as const, text: message }].slice(-40))
     setNote('')
+    setPrompts([])
     let finalReply = ''
     let proposed = false
     try {
@@ -1416,7 +1427,32 @@ function CoachScreen({
                 )}
               </Stack>
             </Box>
-            {lastIsReply && <Box sx={{ pt: 4, pl: 10 }}>{chips}</Box>}
+            {lastIsReply && (
+              <Box sx={{ pt: 4, pl: 10 }}>
+                {prompts.length > 0 ? (
+                  <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2 }}>
+                    {prompts.map((prompt) => (
+                      <Chip
+                        key={prompt}
+                        label={prompt}
+                        variant="outlined"
+                        onClick={() => void send(prompt)}
+                        sx={{
+                          height: 'auto',
+                          minHeight: 48,
+                          maxWidth: '100%',
+                          borderColor: roles.outlineVariant,
+                          '& .MuiChip-label': { whiteSpace: 'normal', py: 1 },
+                          ...enterRise,
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                ) : (
+                  chips
+                )}
+              </Box>
+            )}
           </>
         )}
         <div ref={end} />

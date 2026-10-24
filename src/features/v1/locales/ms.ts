@@ -320,6 +320,7 @@ export const ms: Copy = {
   importing: 'Membaca fail anda…',
   importFailed:
     'Fail itu tidak dapat dibaca. Hantar eksport CSV atau Excel dengan nama item dan harga.',
+  importTooLarge: 'Fail terlalu besar. Hantar foto atau PDF bawah 20 MB, atau hamparan bawah 5 MB.',
   salesSummary: 'Ringkasan jualan',
   salesNotSaved: 'Daripada fail anda. Tiada apa-apa disimpan.',
   salesCurrencyMismatch: 'Baris dalam mata wang lain telah diketepikan.',

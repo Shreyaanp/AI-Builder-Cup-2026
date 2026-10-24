@@ -1,31 +1,17 @@
 import { useRef, useState, type ReactNode } from 'react'
+import { Alert, Box, Button, Chip, Stack, Typography, useTheme } from '@mui/material'
 import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  CircularProgress,
-  IconButton,
-  Stack,
-  Typography,
-  useMediaQuery,
-  useTheme,
-} from '@mui/material'
-import {
-  Camera,
   Check,
   CheckCircle2,
   Circle,
   Copy,
   ExternalLink,
-  ImagePlus,
   MapPin,
   MapPinned,
   Navigation,
   Pencil,
   Phone,
   Utensils,
-  X,
 } from 'lucide-react'
 import { formatPrice, shopCurrency } from '../format'
 import { useCopy } from '../strings'
@@ -38,10 +24,10 @@ import { useShopCopy } from '../../shop/strings'
 import { useLocale } from '../../../state/hooks'
 import { categoryArt } from '../../frontdoors/photos'
 import { fill, useGoogleCopy } from '../../google/strings'
-import { GALLERY_LIMIT, useGallery } from '../../google/useGallery'
+import { useGallery } from '../../google/useGallery'
+import { GalleryEditor } from '../../google/GalleryEditor'
 import { TrustCard } from '../../trust/TrustCard'
 
-const PHOTO_TYPES = 'image/jpeg,image/png,image/webp'
 const EASE = 'cubic-bezier(0.2, 0, 0, 1)' // M3 emphasized decelerate
 
 // Motion, defined once for the screen; the global reduced-motion rule makes these instant.
@@ -245,7 +231,7 @@ export function GoogleScreen() {
           </Stack>
         )}
 
-        {step === 1 && <PhotosStep gallery={gallery} />}
+        {step === 1 && <GalleryEditor gallery={gallery} />}
 
         {step === 2 && (
           <Stack spacing={3} sx={{ mt: 2 }}>
@@ -460,124 +446,6 @@ function StepRail({
         )
       })}
     </Box>
-  )
-}
-
-function PhotosStep({ gallery }: { gallery: ReturnType<typeof useGallery> }) {
-  const g = useGoogleCopy()
-  const roles = useTheme().material
-  const phone = useMediaQuery('(pointer: coarse)')
-  const upload = useRef<HTMLInputElement>(null)
-  const camera = useRef<HTMLInputElement>(null)
-  const pick = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (file) void gallery.add(file)
-  }
-  return (
-    <Stack spacing={3} sx={{ mt: 2 }}>
-      <Tip>{g.photosTip}</Tip>
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-          gap: 2,
-        }}
-      >
-        {gallery.ids.map((id, index) => (
-          <Box
-            key={id}
-            sx={{
-              position: 'relative',
-              aspectRatio: '1 / 1',
-              borderRadius: `${shape.md}px`,
-              overflow: 'hidden',
-              bgcolor: roles.surfaceContainerHigh,
-              animation: `cbPop 360ms ${EASE} both`,
-            }}
-          >
-            {gallery.urls[id] && (
-              <Box
-                component="img"
-                src={gallery.urls[id]}
-                alt=""
-                sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
-            )}
-            <IconButton
-              aria-label={fill(g.removePhoto, { n: index + 1 })}
-              onClick={() => void gallery.remove(id)}
-              size="small"
-              sx={{
-                position: 'absolute',
-                top: 4,
-                right: 4,
-                bgcolor: 'rgba(0,0,0,0.55)',
-                color: '#fff',
-                '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
-              }}
-            >
-              <X size={16} />
-            </IconButton>
-          </Box>
-        ))}
-        {!gallery.full && (
-          <Box
-            component="button"
-            type="button"
-            onClick={() => upload.current?.click()}
-            disabled={gallery.busy}
-            aria-label={g.addPhoto}
-            sx={{
-              all: 'unset',
-              cursor: 'pointer',
-              aspectRatio: '1 / 1',
-              borderRadius: `${shape.md}px`,
-              border: `2px dashed ${roles.outlineVariant}`,
-              display: 'grid',
-              placeItems: 'center',
-              color: roles.primary,
-              transition: `background-color 200ms ${EASE}`,
-              '&:hover': { bgcolor: roles.surfaceContainerLow },
-              '&:focus-visible': { outline: `3px solid ${roles.primary}` },
-            }}
-          >
-            {gallery.busy ? <CircularProgress size={24} /> : <ImagePlus size={28} />}
-          </Box>
-        )}
-      </Box>
-      <Stack direction="row" sx={{ gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-        {phone && !gallery.full && (
-          <Button
-            variant="outlined"
-            startIcon={<Camera size={18} />}
-            disabled={gallery.busy}
-            onClick={() => camera.current?.click()}
-          >
-            {g.takePhoto}
-          </Button>
-        )}
-        <Typography variant="bodySmall" color="text.secondary" aria-live="polite">
-          {gallery.busy
-            ? g.adding
-            : fill(g.photosCount, { n: gallery.ids.length, max: GALLERY_LIMIT })}
-        </Typography>
-      </Stack>
-      {gallery.failed && (
-        <Alert severity="error" role="alert">
-          {g.photoFailed}
-        </Alert>
-      )}
-      <input ref={upload} type="file" accept={PHOTO_TYPES} hidden onChange={pick} />
-      <input
-        ref={camera}
-        type="file"
-        accept={PHOTO_TYPES}
-        capture="environment"
-        hidden
-        onChange={pick}
-      />
-    </Stack>
   )
 }
 

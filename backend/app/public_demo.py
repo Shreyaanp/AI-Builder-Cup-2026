@@ -34,6 +34,7 @@ from .auth import Principal
 from .demo_chains import CHAINS
 from .demo_data import SHOPS
 from .demo_sessions import KIND, repository, restore_files, save
+from .demo_uploads import demo_upload, is_upload
 from .limits import Bucket, RateLimiter, client_ip, local_test_rate_limit_bypass
 from .merchant import MerchantStore
 from .merchant_routes import LEGAL_VERSION
@@ -72,6 +73,9 @@ ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("GET", rf"demo/chain/{_ID}"),
         ("GET", "reminders/?"),
         ("GET", "trust"),
+        # O-4: the address under a map pin. The demo's maps service has no key, so these are
+        # answered offline from the area list (never a paid Maps call).
+        ("GET", "places/(?:reverse|pin)"),
         ("POST", "proposals"),
         ("POST", rf"proposals/{_ID}/approve"),
         ("POST", rf"{_BIZ}/inventory/{_ID}/availability"),
@@ -491,6 +495,12 @@ async def owner_api(
         result = reminders(entry, method, await request.body())
         if method != "GET":
             await anyio.to_thread.run_sync(save, repository(request), session_id, entry)
+        return result
+    if is_upload(method, path):
+        # O-1: menu photos and files get a labelled sample read; the file is never read by AI.
+        await limit(request, "public-demo-write", 120)
+        result = await demo_upload(request, entry, path)
+        await anyio.to_thread.run_sync(save, repository(request), session_id, entry)
         return result
     if not allowed(method, path):
         raise HTTPException(403, "DEMO_NOT_SENT")

@@ -326,6 +326,8 @@ export const mr: Copy = {
   prepQuestion: 'उद्या किती तयारी करू?',
   importing: 'तुमची फाइल वाचत आहोत…',
   importFailed: 'फाइल वाचता आली नाही. उत्पादनांची नावे आणि दर असलेली CSV किंवा Excel फाइल पाठवा.',
+  importTooLarge:
+    'फाइल खूप मोठी आहे. 20 MB पेक्षा लहान फोटो किंवा PDF, किंवा 5 MB पेक्षा लहान स्प्रेडशीट पाठवा.',
   salesSummary: 'विक्रीचा सारांश',
   salesNotSaved: 'तुमच्या फाइलमधून. काहीही जतन झाले नाही.',
   salesCurrencyMismatch: 'वेगळ्या चलनाच्या ओळी वगळल्या आहेत.',

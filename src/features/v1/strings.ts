@@ -334,6 +334,8 @@ export const en = {
   prepQuestion: 'How much should I prep tomorrow?',
   importing: 'Reading your file…',
   importFailed: 'Couldn’t read that file. Send a CSV or Excel export with item names and prices.',
+  importTooLarge:
+    'That file is too large. Send a photo or PDF under 20 MB, or a spreadsheet under 5 MB.',
   salesSummary: 'Sales summary',
   salesNotSaved: 'From your file. Nothing was saved.',
   salesCurrencyMismatch: 'Rows in another currency were left out.',

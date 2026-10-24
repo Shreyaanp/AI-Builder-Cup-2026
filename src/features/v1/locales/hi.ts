@@ -328,6 +328,8 @@ export const hi: Copy = {
   prepQuestion: 'कल कितनी तैयारी करूँ?',
   importing: 'आपकी फ़ाइल पढ़ रहे हैं…',
   importFailed: 'फ़ाइल पढ़ नहीं पाए। सामान के नाम और दाम वाली CSV या Excel फ़ाइल भेजें।',
+  importTooLarge:
+    'फ़ाइल बहुत बड़ी है। 20 MB से छोटी फ़ोटो या PDF, या 5 MB से छोटी स्प्रेडशीट भेजें।',
   salesSummary: 'बिक्री का सार',
   salesNotSaved: 'आपकी फ़ाइल से। कुछ सहेजा नहीं गया।',
   salesCurrencyMismatch: 'दूसरी मुद्रा वाली पंक्तियाँ छोड़ दी गईं।',

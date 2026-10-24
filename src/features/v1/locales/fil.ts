@@ -327,6 +327,8 @@ export const fil: Copy = {
   importing: 'Binabasa ang file…',
   importFailed:
     'Hindi mabasa ang file. Magpadala ng CSV o Excel na may pangalan ng item at presyo.',
+  importTooLarge:
+    'Masyadong malaki ang file. Magpadala ng larawan o PDF na wala pang 20 MB, o spreadsheet na wala pang 5 MB.',
   salesSummary: 'Buod ng benta',
   salesNotSaved: 'Mula sa file mo. Walang na-save.',
   salesCurrencyMismatch: 'Hindi isinama ang mga row na ibang currency.',
