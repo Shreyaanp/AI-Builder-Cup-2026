@@ -1461,7 +1461,8 @@ function CoachScreen({
         sx={{
           position: 'relative',
           flexShrink: 0,
-          pb: 2,
+          // Phones: the composer sits directly on the bottom navigation (OB-199).
+          pb: { xs: 0, sm: 2 },
           pt: 1,
           bgcolor: 'background.default',
           zIndex: 2,
