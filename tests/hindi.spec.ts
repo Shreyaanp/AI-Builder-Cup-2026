@@ -292,13 +292,16 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
   })
   const customer = await context.newPage()
   await localOnly(customer)
-  // Central Bengaluru, named as such: the default Indiranagar area (OB-104 now measures from
-  // Indiranagar itself) also holds the English-named tour story shops.
-  await customer.addInitScript(() =>
-    localStorage.setItem(
-      'chalkboard.discover.filters',
-      JSON.stringify({ place: { lat: 12.9716, lng: 77.5946, label: 'बेंगलुरु' } }),
-    ),
+  // Browses from Whitefield too, the shop's own cell: the default Indiranagar area holds the
+  // English-named tour story shops, and central Bengaluru the shops other tests pin there
+  // (OB-168), whose address text would name the passport's neighbourhood goal.
+  await customer.addInitScript(
+    (at) =>
+      localStorage.setItem(
+        'chalkboard.discover.filters',
+        JSON.stringify({ place: { ...at, label: 'व्हाइटफ़ील्ड' } }),
+      ),
+    WHITEFIELD,
   )
   try {
     await customer.goto('/explore/')
