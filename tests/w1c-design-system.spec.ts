@@ -3,7 +3,9 @@ import { nivaTheme } from '../src/design/theme.js'
 
 // Wave 1c: design system part 2. Theme-level checks run without a browser; the page checks are phone only.
 
-const px = (rem: unknown) => parseFloat(String(rem)) * 16
+// Since OB-198 a size is `var(--type-<role>-size, <desktop rem>)`: these checks read the desktop fallback.
+const px = (rem: unknown) =>
+  parseFloat(/^var\(--type-\w+-size, (.+)\)$/.exec(String(rem))?.[1] ?? String(rem)) * 16
 
 test('OB-116 and OB-103: one type scale, body 16px, nothing under 12px', () => {
   const { typography: type } = nivaTheme('light')
