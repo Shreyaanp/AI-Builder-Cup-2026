@@ -17,7 +17,7 @@ import { shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { countdown, useNow } from '../rescue/holds'
 import { ApiError } from '../v1/api'
-import { formatPrice, shopCurrency } from '../v1/format'
+import { formatShopPrice, shopCurrency } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useCopy } from '../v1/strings'
@@ -215,8 +215,8 @@ function LiveDeal({ deal, now, onEnded }: { deal: Deal; now: number; onEnded: ()
           </Typography>
           <Typography variant="bodyMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
             {fill(t.priceLine, {
-              was: formatPrice(item.was, deal.currency, locale),
-              price: formatPrice(item.price, deal.currency, locale),
+              was: formatShopPrice(item.was, deal.currency, locale),
+              price: formatShopPrice(item.price, deal.currency, locale),
             })}
           </Typography>
         </Stack>
@@ -380,8 +380,8 @@ function NewRescue({
                 </Typography>
                 <Typography variant="bodySmall" color="text.secondary">
                   {fill(t.priceLine, {
-                    was: formatPrice(was, currency, locale),
-                    price: formatPrice(price(was), currency, locale),
+                    was: formatShopPrice(was, currency, locale),
+                    price: formatShopPrice(price(was), currency, locale),
                   })}
                 </Typography>
               </Box>

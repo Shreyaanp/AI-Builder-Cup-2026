@@ -112,7 +112,7 @@ test.describe('India', () => {
     expect(shop.currency).toBe('INR')
     expect(shop.timezone).toMatch(/^Asia\/(Kolkata|Calcutta)$/)
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    await expect(page.getByText('₹18.00').first()).toBeVisible()
+    await expect(page.getByText('₹18', { exact: true }).first()).toBeVisible()
     await expect(page.getByText(/S\$|SGD/)).toHaveCount(0)
 
     await openPayments(page)

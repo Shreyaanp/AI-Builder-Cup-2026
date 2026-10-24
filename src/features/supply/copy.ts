@@ -43,6 +43,10 @@ const en = {
   discard: 'Discard',
   discarded: 'Discarded. Nothing was sent.',
   autoSent: 'Sent automatically: under your approval limit',
+  justSent: (supplier: string, simulated: boolean) =>
+    simulated
+      ? `Marked Sent. In the demo ${supplier} gets a pretend WhatsApp message; nothing really went out.`
+      : `Marked Sent. ${supplier} has your order.`,
   status: {
     draft: 'Needs your OK',
     sent: 'Sent',

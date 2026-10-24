@@ -403,6 +403,7 @@ export const ja: Copy = {
   dataSection: 'あなたのデータ',
   dataBody: 'Chalkboard からお店、商品、会話、記憶、写真、顔データを削除します。',
   deleteAll: 'すべてのデータを削除',
+  deleteDemo: 'デモではデータを削除できません。本物のアカウントなら、ここからすべて削除できます。',
   deleteTitle: 'すべて削除しますか？',
   deleteBody: 'お店、商品、会話、写真、顔データをすべて完全に削除します。元に戻せません。',
   deleteConfirm: '完全に削除',

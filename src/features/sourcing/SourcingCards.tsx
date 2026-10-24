@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { enterRise, fieldFade, motion, scrollArea, shape } from '../../design/theme'
-import { formatPrice, toMinor } from '../v1/format'
+import { formatShopPrice, toMinor } from '../v1/format'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { useSourcingCopy } from './copy'
 import { deliveryLabel } from './orderData'
@@ -190,7 +190,7 @@ export function SupplierCarousel({
   const locale = useLocale()
   const km = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   const money = (major: number) =>
-    formatPrice(toMinor(major, result.currency), result.currency, locale)
+    formatShopPrice(toMinor(major, result.currency), result.currency, locale)
   const anyDemo = result.suppliers.some((card) => card.demo)
   return (
     <Box
@@ -379,7 +379,7 @@ export function OrderCard({
   const [busy, setBusy] = useState(false)
   // Plays the flight once, when this card's own Send succeeds.
   const [flying, setFlying] = useState(false)
-  const money = (minor: number) => formatPrice(minor, order.currency, locale)
+  const money = (minor: number) => formatShopPrice(minor, order.currency, locale)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
   const actionable = order.status === 'draft' || Boolean(order.pending)
   const reply = [...order.messages].reverse().find((message) => message.author === 'supplier')

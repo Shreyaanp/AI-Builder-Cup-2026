@@ -1,5 +1,5 @@
 import { useLocale } from '../../state/hooks'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { dayLabel } from './supplyData'
 import type { IoCopy } from './ioCopy'
 import type { Board, Change, IoOrder, Task, View } from './ioTypes'
@@ -18,7 +18,7 @@ export function useIoFormat(currency = '') {
         minute: '2-digit',
       }).format(new Date(at * 1000)),
     money: (minor: number | string | null | undefined) =>
-      minor == null || minor === '' ? '–' : formatPrice(Number(minor), currency, locale),
+      minor == null || minor === '' ? '–' : formatShopPrice(Number(minor), currency, locale),
   }
 }
 export type IoFormat = ReturnType<typeof useIoFormat>

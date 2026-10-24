@@ -418,6 +418,8 @@ export const fil: Copy = {
   dataBody:
     'Burahin ang tindahan, produkto, usapan, memorya, litrato at data ng mukha sa Chalkboard.',
   deleteAll: 'Burahin lahat ng data ko',
+  deleteDemo:
+    'Hindi available ang pagbura ng data sa demo. Sa totoong account, mabubura mo rito ang lahat.',
   deleteTitle: 'Burahin ang lahat?',
   deleteBody:
     'Permanente nitong buburahin ang lahat ng tindahan, produkto, usapan, litrato at data ng mukha. Hindi na maibabalik.',

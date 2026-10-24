@@ -10,7 +10,7 @@ import { HAND_FONT } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useAnalyticsCopy } from './copy'
 
@@ -59,7 +59,7 @@ export function WeekPulseTile() {
         icon={<BarChart3 size={20} />}
         label={t.title}
         value={
-          value.week.sales != null ? formatPrice(value.week.sales, value.currency, locale) : '—'
+          value.week.sales != null ? formatShopPrice(value.week.sales, value.currency, locale) : '—'
         }
         onClick={() => setOpen(true)}
       >
@@ -89,7 +89,7 @@ export function WeekPulse({ data }: { data: Analytics }) {
       ease: 'power2.out',
     })
   })
-  const money = (minor: number) => formatPrice(minor, data.currency, locale)
+  const money = (minor: number) => formatShopPrice(minor, data.currency, locale)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 })
   const weekday = new Intl.DateTimeFormat(locale, { weekday: 'narrow' })
   const days = data.days.slice(-7)

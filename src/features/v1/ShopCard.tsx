@@ -26,7 +26,7 @@ import {
   Store,
   Tag,
 } from 'lucide-react'
-import { formatPrice, shopCurrency } from './format'
+import { formatShopPrice, shopCurrency } from './format'
 import { LoadError } from './LoadError'
 import { FactList } from './FactList'
 import { Sheet } from './Sheet'
@@ -501,7 +501,7 @@ export function ShopSheet({
                       primary={productName(product.name, locale)}
                       secondary={
                         (available ? '' : `${t.soldOut} · `) +
-                        `${formatPrice(product.price, currency)} / ${unitLabel(product.unit, shopCopy)}`
+                        `${formatShopPrice(product.price, currency)} / ${unitLabel(product.unit, shopCopy)}`
                       }
                       slotProps={{
                         primary: { variant: 'bodyLarge' },

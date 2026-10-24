@@ -33,7 +33,10 @@ export function ReminderSettings() {
   const [status, setStatus] = useState<Status | null>(null)
   const [sid, setSid] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
+  // The kind, not the words: switching language re-words it instead of reloading the status.
+  const [problem, setProblem] = useState<'' | 'failed' | 'denied'>('')
+  const message =
+    problem === 'failed' ? t.reminderFailed : problem === 'denied' ? t.reminderDenied : ''
   const [attempt, setAttempt] = useState(0)
   const enabled = !!sid && !!status?.subscriptions.includes(sid)
 
@@ -49,22 +52,22 @@ export function ReminderSettings() {
         if (!cancelled) {
           setStatus(next)
           setSid(next.demo && next.subscriptions.includes('demo') ? 'demo' : id)
-          setMessage('')
+          setProblem('')
         }
       } catch {
-        if (!cancelled) setMessage(t.reminderFailed)
+        if (!cancelled) setProblem('failed')
       }
     }
     void load()
     return () => {
       cancelled = true
     }
-  }, [api, attempt, t.reminderFailed])
+  }, [api, attempt])
 
   async function toggle(checked: boolean) {
     if (busy || !status) return
     setBusy(true)
-    setMessage('')
+    setProblem('')
     try {
       if (status.demo) {
         const next = await api<Status>('/reminders', {
@@ -88,7 +91,7 @@ export function ReminderSettings() {
       // This is the only permission request, called directly by the owner's Remind me tap.
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
-        setMessage(t.reminderDenied)
+        setProblem('denied')
         return
       }
       await navigator.serviceWorker.register('/sw.js', { scope: '/' })
@@ -127,7 +130,7 @@ export function ReminderSettings() {
       setSid(id)
       setStatus({ ...status, subscriptions: [...status.subscriptions, id] })
     } catch {
-      setMessage(t.reminderFailed)
+      setProblem('failed')
     } finally {
       setBusy(false)
     }
