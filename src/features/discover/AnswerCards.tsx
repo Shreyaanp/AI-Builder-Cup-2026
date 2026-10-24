@@ -389,6 +389,32 @@ export function PickCard({
  * A same-size placeholder row while the area's shops load, so nothing below moves. It draws
  * the card's own shape (photo, name, details) so it never reads as an empty outline.
  */
+/** The carousel's empty state: one card the skeletons' size, so nothing below it moves. */
+export function PickEmpty({ note }: { note: string }) {
+  const roles = useTheme().material
+  return (
+    <Box
+      component="li"
+      sx={{
+        listStyle: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        p: 4,
+        flex: '0 0 min(72%, 264px)',
+        aspectRatio: '4/4.4',
+        borderRadius: '20px',
+        bgcolor: roles.surfaceContainerLow,
+        border: `1px dashed ${roles.outline}`,
+        color: roles.onSurfaceVariant,
+      }}
+    >
+      <Typography variant="bodyMedium">{note}</Typography>
+    </Box>
+  )
+}
+
 export function PickSkeleton({ tile = false }: { tile?: boolean }) {
   const roles = useTheme().material
   const bar = (width: string) => (

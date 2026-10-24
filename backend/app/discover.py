@@ -29,6 +29,7 @@ PLACES_MASK = ",".join(
         "displayName",
         "location",
         "primaryType",
+        "types",
         "rating",
         "userRatingCount",
         "currentOpeningHours.openNow",
@@ -90,6 +91,55 @@ LOCAL_SHOP_TYPES = [
     *("electronics_store", "home_goods_store", "pet_store", "store"),
     *("beauty_salon", "hair_care", "laundry"),
 ]
+# Google lists people, writers and home businesses as bare "establishment" rows, often pinned to
+# the neighbourhood centre (every one "10 m" away). Browse keeps a Google row only when it names a
+# type of shop customers walk into.
+SHOP_TYPES = frozenset(LOCAL_SHOP_TYPES) | {
+    *(t for types, _ in CATEGORIES.values() for t in types),
+    *("cafe", "coffee_shop", "ice_cream_shop", "tea_house", "bar", "market", "shopping_mall"),
+    *("butcher_shop", "liquor_store", "jewelry_store", "gift_shop", "furniture_store"),
+    *("department_store", "wholesaler", "barber_shop", "spa", "tailor", "dry_cleaner"),
+}
+# Rows that share one exact point (three or more) are a neighbourhood's centre, not shops.
+CENTRE_PILE = 3
+# The address parts that name a neighbourhood, best first (never a house number or street).
+LOCALITY_TYPES = ("neighborhood", "sublocality_level_1", "sublocality", "locality")
+
+
+def locality_name(results: list[dict[str, Any]]) -> str | None:
+    """The neighbourhood a geocode answer names ("Ashok Nagar"), from its address parts."""
+    for kind in LOCALITY_TYPES:
+        for result in results:
+            for part in result.get("address_components", []):
+                if kind in part.get("types", []) and part.get("long_name"):
+                    return str(part["long_name"])
+    return None
+
+
+def pin_fields(pin: dict[str, Any]) -> dict[str, Any]:
+    """A geocode answer without its display-only neighbourhood name, ready to save on a shop."""
+    return {key: value for key, value in pin.items() if key != "locality"}
+
+
+def is_local_shop(row: dict[str, Any]) -> bool:
+    """Whether a Google row is a shop or eatery (rows without type data are kept)."""
+    kinds = {*row.get("types", ()), *([row["primaryType"]] if row.get("primaryType") else ())}
+    return not kinds or bool(kinds & SHOP_TYPES)
+
+
+def without_centre_pins(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Drop rows that Google pinned to the same exact point as two or more others."""
+
+    def point(row: dict[str, Any]) -> tuple[float, float]:
+        location = row["location"]
+        return round(location["latitude"], 5), round(location["longitude"], 5)
+
+    counts: dict[tuple[float, float], int] = {}
+    for row in rows:
+        counts[point(row)] = counts.get(point(row), 0) + 1
+    return [row for row in rows if counts[point(row)] < CENTRE_PILE]
+
+
 AREAS = {
     "Tiong Bahru": (1.2847, 103.832),
     "Chinatown": (1.283, 103.843),
@@ -382,6 +432,7 @@ class MapsService:
                     "lng": point["lng"],
                     "place_id": result["place_id"],
                     "pin_label": result["formatted_address"],
+                    "locality": locality_name([result]),
                     "pin_demo": False,
                 }
             except (httpx.HTTPError, KeyError, ValueError, IndexError) as error:
@@ -420,6 +471,7 @@ class MapsService:
                     result = data["results"][0]
                     pin["place_id"] = result.get("place_id")
                     pin["pin_label"] = result.get("formatted_address") or pin["pin_label"]
+                    pin["locality"] = locality_name(data["results"])
             except (httpx.HTTPError, KeyError, ValueError, IndexError):
                 log.warning("reverse_geocode_unavailable")
             return pin
@@ -542,7 +594,7 @@ async def prepare_pin(
     body.business.demo = bool(old.get("demo"))
     if body.owner_location is not None:
         point = body.owner_location
-        pin = await maps.reverse(point.lat, point.lng)
+        pin = pin_fields(await maps.reverse(point.lat, point.lng))
         body.business = type(body.business).model_validate(
             {
                 **body.business.model_dump(),
@@ -600,7 +652,9 @@ async def prepare_pin(
         setattr(body.business, field, None)
     body.business.pin_demo = False
     if body.geocode_confirmed and body.business.location:
-        body.business = body.business.model_copy(update=await maps.geocode(body.business.location))
+        body.business = body.business.model_copy(
+            update=pin_fields(await maps.geocode(body.business.location))
+        )
         # Validate provider coordinates before sealing them.
         body.business = type(body.business).model_validate(body.business.model_dump())
         if old:
@@ -639,15 +693,21 @@ async def find_place(
     maps: MapsService = request.app.state.maps
     if lat is not None and lng is not None:
         pin = await maps.reverse(lat, lng)
-        raw_label = str(pin.get("pin_label") or "")
-        label = re.sub(r"^Near\s+", "", raw_label, flags=re.I).strip()
+        # Only a neighbourhood name leaves here: never a house number, street or full address.
+        label = str(pin.get("locality") or "")
+        if not label and not pin.get("place_id"):
+            label = re.sub(r"^Near\s+", "", str(pin.get("pin_label") or ""), flags=re.I).strip()
         if not label or label.lower() in ("your current location", "you"):
             label = "Nearby"
         return PlaceMatch(lat=lat, lng=lng, label=label)
     if not q or len(q.strip()) < 2:
         raise HTTPException(422, "PIN_NOT_FOUND")
     pin = await maps.geocode(q.strip())
-    return PlaceMatch(lat=pin["lat"], lng=pin["lng"], label=pin["pin_label"] or q.strip())
+    label = str(pin["pin_label"] or q.strip())
+    # A street address typed in is shown as its neighbourhood.
+    if re.match(r"\s*\d", label) and pin.get("locality"):
+        label = str(pin["locality"])
+    return PlaceMatch(lat=pin["lat"], lng=pin["lng"], label=label)
 
 
 class PinAddress(BaseModel):
@@ -769,6 +829,11 @@ async def discover(
     except HTTPException:
         google = []
         unavailable = True
+    if not q:
+        # Nearby lists only shops; a search ("gym", "dentist", a small shop typed only as an
+        # establishment) keeps whatever Google matched.
+        google = [row for row in google if is_local_shop(row)]
+    google = without_centre_pins(google)
     relevant_shop_ids = {p.id for p in places}
     owned_place_ids = {s.get("place_id") for s in shops if s["id"] in relevant_shop_ids}
     for row in google:

@@ -16,6 +16,7 @@ from app.discover import (
     MapsService,
     matches,
     open_now,
+    without_centre_pins,
 )
 from app.main import create_app
 from app.merchant import BusinessFields, MerchantRepository, ProductFields, ProposalRequest
@@ -620,3 +621,113 @@ def test_open_now_in_shop_timezone(
     hours: str, timezone: str, instant: str, expected: bool | None
 ) -> None:
     assert open_now(hours, timezone, datetime.fromisoformat(instant)) is expected
+
+
+def test_browse_google_distances_are_real_and_non_shops_are_dropped(tmp_path: Path) -> None:
+    """A-11: people and writers are pinned to the area centre, so every row said "10 m"."""
+    indiranagar = (12.9784, 77.6408)
+
+    def google(pid: str, name: str, lat: float, lng: float, types: list[str]) -> dict:
+        return {
+            "id": pid,
+            "displayName": {"text": name},
+            "location": {"latitude": lat, "longitude": lng},
+            "primaryType": types[0],
+            "types": types,
+        }
+
+    rows = [
+        google("cafe", "Corner Cafe", 12.9790, 77.6410, ["cafe", "food", "establishment"]),
+        google("shop", "Far Books", 12.9850, 77.6450, ["book_store", "store"]),
+        google("writer", "Novel writer", 12.9790, 77.6410, ["point_of_interest", "establishment"]),
+        *(
+            google(f"pin{n}", f"Person {n}", *indiranagar, ["store", "establishment"])
+            for n in range(3)
+        ),
+    ]
+    config = settings(tmp_path, live=True)
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json={"places": rows}))
+    app = create_app(config, InMemorySessionService(), maps_service=MapsService(config, transport))
+    with TestClient(app) as client:
+        data = client.get("/api/v1/discover?lat=12.9784&lng=77.6408").json()
+    found = {p["name"]: p["distance_m"] for p in data["places"] if p["source"] == "google"}
+    assert set(found) == {"Corner Cafe", "Far Books"}
+    assert 60 < found["Corner Cafe"] < 90
+    assert 800 < found["Far Books"] < 950
+
+
+def test_browse_search_keeps_places_that_are_not_shops(tmp_path: Path) -> None:
+    """A typed search shows what Google matched, even a gym or a shop typed only as an
+    establishment; only the nearby list is limited to shops."""
+
+    def google(pid: str, name: str, lat: float, lng: float, types: list[str]) -> dict:
+        return {
+            "id": pid,
+            "displayName": {"text": name},
+            "location": {"latitude": lat, "longitude": lng},
+            "primaryType": types[0],
+            "types": types,
+        }
+
+    rows = [
+        google("gym", "Iron Gym", 12.9790, 77.6410, ["gym", "point_of_interest", "establishment"]),
+        google("kirana", "Sri Ganesh Stores", 12.9795, 77.6415, ["point_of_interest"]),
+    ]
+    config = settings(tmp_path, live=True)
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json={"places": rows}))
+    app = create_app(config, InMemorySessionService(), maps_service=MapsService(config, transport))
+    with TestClient(app) as client:
+        searched = client.get("/api/v1/discover?lat=12.9784&lng=77.6408&q=gym").json()
+        nearby = client.get("/api/v1/discover?lat=12.9784&lng=77.6408").json()
+    assert {p["name"] for p in searched["places"] if p["source"] == "google"} == {
+        "Iron Gym",
+        "Sri Ganesh Stores",
+    }
+    assert not [p for p in nearby["places"] if p["source"] == "google"]
+
+
+def test_three_shops_at_one_exact_point_are_treated_as_a_centre_pin() -> None:
+    """The trade-off, made explicit: three or more rows at one exact point (to about a metre) are
+    read as an area centre and hidden, even real shops Google pinned to one building's point.
+    Two rows at one point, or shops a few metres apart in the same arcade, stay."""
+
+    def row(pid: str, lat: float, lng: float) -> dict:
+        return {"id": pid, "location": {"latitude": lat, "longitude": lng}}
+
+    mall = [row(f"mall{n}", 12.97150, 77.64120) for n in range(3)]
+    pair = [row(f"pair{n}", 12.98000, 77.65000) for n in range(2)]
+    arcade = [row(f"arcade{n}", 12.99000, 77.66000 + n * 0.00003) for n in range(3)]
+    kept = {r["id"] for r in without_centre_pins([*mall, *pair, *arcade])}
+    assert kept == {"pair0", "pair1", "arcade0", "arcade1", "arcade2"}
+
+
+def test_use_my_location_returns_a_neighbourhood_never_the_address(tmp_path: Path) -> None:
+    """A-9: the chip read "67/1" and the headline printed the street address with its PIN."""
+    address = "67/1, KG Halli, D' Souza Layout, Ashok Nagar, Bengaluru, Karnataka 560001, India"
+
+    def fixture(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "status": "OK",
+                "results": [
+                    {
+                        "place_id": "fixture-house",
+                        "formatted_address": address,
+                        "address_components": [
+                            {"long_name": "67/1", "types": ["street_number"]},
+                            {"long_name": "Ashok Nagar", "types": ["sublocality_level_1"]},
+                            {"long_name": "Bengaluru", "types": ["locality"]},
+                        ],
+                    }
+                ],
+            },
+        )
+
+    config = settings(tmp_path, live=True)
+    maps = MapsService(config, httpx.MockTransport(fixture))
+    app = create_app(config, InMemorySessionService(), maps_service=maps)
+    with TestClient(app) as client:
+        found = client.get("/api/v1/discover/place", params={"lat": 12.9716, "lng": 77.6}).json()
+    assert found["label"] == "Ashok Nagar"
+    assert "560001" not in str(found) and "67/1" not in str(found)
