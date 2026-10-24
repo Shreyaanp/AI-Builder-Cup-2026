@@ -47,7 +47,7 @@ async function openDemo(page: Page, width: number, appearance: string) {
       : route.abort(),
   )
   await page.goto('/demo', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByText('Demo shop - nothing here is real', { exact: true })).toBeVisible()
+  await expect(page.getByText('Demo shop – nothing here is real', { exact: true })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible({ timeout: 30_000 })
   await page.evaluate(() => document.fonts.ready)
 }
@@ -86,8 +86,13 @@ test.describe('phone', () => {
     await page.goto('/explore/', { waitUntil: 'domcontentloaded' })
     await expect(page.locator('main').getByRole('textbox').first()).toBeVisible()
     expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('15px')
-    // A field label stays 16px, so when it floats (75%) it is still 12px.
-    await expect(page.locator('label', { hasText: 'City or area' })).toHaveCSS('font-size', '16px')
+    // A field label stays 16px, so when it floats (75%) it is still 12px. Since #554 the area field lives in the
+    // sheet the Area chip opens.
+    await page.getByRole('button', { name: /^Area: / }).click()
+    await expect(page.getByRole('dialog').locator('label', { hasText: 'City or area' })).toHaveCSS(
+      'font-size',
+      '16px',
+    )
   })
 })
 
