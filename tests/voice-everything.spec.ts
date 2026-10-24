@@ -21,6 +21,8 @@ async function seedShop(page: Page) {
     await page.request.post('/api/v1/proposals', {
       data: {
         kind: 'business',
+        // OB-168: "share my page" shares this shop, so it has the owner's pin.
+        owner_location: { lat: 1.3052, lng: 103.9045, accuracy_m: 0, source: 'pin' },
         business: {
           name: 'Katong Kopi',
           category: 'Kopitiam',

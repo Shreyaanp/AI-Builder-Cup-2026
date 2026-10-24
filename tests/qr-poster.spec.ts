@@ -39,6 +39,8 @@ test('phone: first customers, localized sharing, printable A4/A5 and stamp dismi
     data: {
       kind: 'business',
       revision: 0,
+      // OB-168: a shared shop needs the owner's pin, not only address text.
+      owner_location: { lat: 12.9716, lng: 77.5946, accuracy_m: 0, source: 'pin' },
       business: { name, category: 'Tea stall', location: 'Bengaluru', currency: 'INR' },
       products: [],
     },

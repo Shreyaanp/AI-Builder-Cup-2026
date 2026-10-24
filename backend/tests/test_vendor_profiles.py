@@ -30,6 +30,7 @@ from app.merchant import (
 from app.merchant_firestore import FirestoreMerchantStore
 from app.settings import Settings
 from app.vendor_profile import BusinessTypeProfile, infer_profile, migrate_profile
+from tests.pins import pin_shop
 from tests.test_merchant_store import store as store
 
 CASES = [
@@ -125,6 +126,7 @@ async def test_each_vendor_gets_only_relevant_questions_and_round_trips(
             assert not {"seating", "signature_dish", "price_range"} & keys
         if category in {"Home baker", "Tea stall"}:
             assert not {"seating", "diet", "serves_meat", "cuisine", "vegetarian_options"} & keys
+        pin_shop(store, "alice", bid)
         store.share("alice", bid, True)
         public = store.public_shop(bid)
         assert public and public["facts"]["profile"]["kind"] == profile["kind"]
