@@ -410,7 +410,7 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
               <text
                 y={4}
                 textAnchor="middle"
-                fontSize={theme.typography.labelMedium.fontSize}
+                style={{ fontSize: theme.typography.labelMedium.fontSize }}
                 fontWeight={700}
                 fill={colors.fg}
               >
@@ -429,7 +429,7 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
           textAnchor={
             spots[chosen]!.x > W - 80 ? 'end' : spots[chosen]!.x < 80 ? 'start' : 'middle'
           }
-          fontSize={theme.typography.labelMedium.fontSize}
+          style={{ fontSize: theme.typography.labelMedium.fontSize }}
           fontWeight={600}
           fill={roles.onSurface}
           stroke={roles.surface}

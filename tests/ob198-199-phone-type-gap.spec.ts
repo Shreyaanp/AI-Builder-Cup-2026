@@ -9,28 +9,40 @@ const PHONE = '@media (max-width:599px)'
 type Style = { fontSize: string; [query: string]: unknown }
 
 test('OB-198: every type role is smaller or equal on phones, body 15px, nothing under 12px', () => {
-  const type = nivaTheme('light').typography as unknown as Record<string, Style>
-  const roles = Object.keys(type).filter((key) => (type[key] as Style)?.[PHONE])
+  // Each role reads its size from a :root variable set under the phone query, with the larger
+  // size as the fallback (a component's own sx size still wins over it).
+  const theme = nivaTheme('light')
+  const type = theme.typography as unknown as Record<string, Style>
+  const css = (theme.components!.MuiCssBaseline as { styleOverrides: Record<string, Style> })
+    .styleOverrides[':root']!
+  const vars = css[PHONE] as Record<string, string>
+  const sizes = (key: string) => {
+    const match = /^var\((--type-\w+-size), (.+)\)$/.exec(String(type[key]?.fontSize))
+    return match ? { phone: px(vars[match[1]!]), desktop: px(match[2]) } : undefined
+  }
+  const roles = Object.keys(type).filter((key) => sizes(key))
   // All 13 M3 roles plus body1, body2, button and caption.
   expect(roles.length).toBeGreaterThanOrEqual(17)
   for (const key of roles) {
-    const phone = px((type[key][PHONE] as Style).fontSize)
-    expect(phone, key).toBeLessThanOrEqual(px(type[key].fontSize))
+    const { phone, desktop } = sizes(key)!
+    expect(phone, key).toBeLessThanOrEqual(desktop)
     expect(phone, key).toBeGreaterThanOrEqual(12)
   }
-  const phone = (key: string) => px((type[key][PHONE] as Style).fontSize)
+  const phone = (key: string) => sizes(key)!.phone
+  const desktop = (key: string) => sizes(key)!.desktop
   expect(phone('bodyLarge')).toBe(15)
   expect(phone('bodyMedium')).toBe(15)
   expect(phone('body1')).toBe(15)
-  expect(phone('headlineSmall')).toBeLessThan(px(type.headlineSmall.fontSize))
-  expect(phone('titleLarge')).toBeLessThan(px(type.titleLarge.fontSize))
-  // Fields stay 16px: iOS zooms into smaller inputs.
-  const c = nivaTheme('light').components!
+  expect(desktop('body1')).toBe(16)
+  expect(phone('headlineSmall')).toBeLessThan(desktop('headlineSmall'))
+  expect(phone('titleLarge')).toBeLessThan(desktop('titleLarge'))
+  // Fields stay 16px: iOS zooms into smaller inputs. A fixed size, not a phone variable.
+  const c = theme.components!
   const root = (k: keyof typeof c) =>
     (c[k] as { styleOverrides: { root: Style } }).styleOverrides.root
   for (const k of ['MuiInputBase', 'MuiInputLabel'] as const) {
+    expect(root(k).fontSize, k).toBe('1rem')
     expect(px(root(k).fontSize), k).toBe(16)
-    expect(px((root(k)[PHONE] as Style).fontSize), k).toBe(16)
   }
 })
 

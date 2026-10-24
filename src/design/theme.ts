@@ -150,17 +150,32 @@ const compactScale: Record<TypeRole, TypeStyle> = {
   labelMedium: role(13, 18, 500, 0.3),
   labelSmall: role(12, 16, 500, 0.4),
 }
+// The phone sizes are CSS variables set on :root under the phone query (CssBaseline below), with
+// the larger sizes as fallbacks. A media query inside a variant would come after a component's own
+// sx in the same rule and override it (a 22px handwritten line set at the 15px body size).
+const typeVar = (key: TypeRole, part: string, fallback: string) =>
+  `var(--type-${key}-${part}, ${fallback})`
 const responsiveScale = Object.fromEntries(
   (Object.keys(typeScale) as TypeRole[]).map((key) => [
     key,
-    { ...typeScale[key], [compactQuery]: compactScale[key] },
+    {
+      fontSize: typeVar(key, 'size', typeScale[key].fontSize),
+      lineHeight: typeVar(key, 'line', typeScale[key].lineHeight),
+      fontWeight: typeScale[key].fontWeight,
+      letterSpacing: typeVar(key, 'tracking', typeScale[key].letterSpacing),
+    },
   ]),
-) as Record<TypeRole, TypeStyle & { [query: string]: TypeStyle | string | number }>
-const fieldText = {
-  fontSize: '1rem',
-  lineHeight: '1.5rem',
-  [compactQuery]: { fontSize: '1rem', lineHeight: '1.5rem' },
-}
+) as Record<TypeRole, TypeStyle>
+const compactTypeVars = Object.fromEntries(
+  (Object.keys(compactScale) as TypeRole[]).flatMap((key) => [
+    [`--type-${key}-size`, compactScale[key].fontSize],
+    [`--type-${key}-line`, compactScale[key].lineHeight],
+    [`--type-${key}-tracking`, compactScale[key].letterSpacing],
+  ]),
+)
+// Fields stay 16px on phones (OB-198): iOS zooms into smaller inputs, and the floating label (75%
+// of this) stays at 12px.
+const fieldText = { fontSize: '1rem', lineHeight: '1.5rem' }
 
 export function nivaTheme(
   mode: Appearance,
@@ -244,6 +259,7 @@ export function nivaTheme(
       MuiCssBaseline: {
         styleOverrides: {
           ':root': {
+            [compactQuery]: compactTypeVars,
             '--scrollbar-thumb': roles.outlineVariant,
             '--scrollbar-thumb-hover': roles.outline,
             '--art-filter': mode === 'dark' ? 'brightness(0.72) saturate(0.8)' : 'none',
@@ -376,9 +392,6 @@ export function nivaTheme(
           input: { fontSize: '1rem' },
         },
       },
-      // Fields stay 16px on phones (OB-198): iOS zooms into smaller inputs, and the floating
-      // label (75% of this) stays at 12px. The phone query is repeated: body1's own phone query
-      // comes later in the same rule and would win.
       MuiInputBase: { styleOverrides: { root: fieldText } },
       MuiInputLabel: { styleOverrides: { root: fieldText } },
       MuiCard: {

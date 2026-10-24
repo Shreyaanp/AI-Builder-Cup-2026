@@ -481,7 +481,7 @@ const tile = {
   lineHeight: 1.25,
   textAlign: 'center',
   flexDirection: { xs: 'column', sm: 'row' },
-  gap: { xs: 0.5, sm: 0 },
+  gap: { xs: 1, sm: 0 },
   '& .MuiButton-startIcon': { m: { xs: 0, sm: '0 8px 0 -4px' } },
   '&.MuiButton-root': { width: { xs: '100%', sm: 'auto' } },
 } as const
@@ -860,11 +860,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           {shopName}
         </Typography>
 
-        <Stack
-          direction="row"
-          spacing={1.5}
-          sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1.5 }}
-        >
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 2 }}>
           {openLabel && (
             <Typography
               variant="labelLarge"
@@ -944,10 +940,10 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         data-testid="shop-actions"
         sx={{
           mt: 3,
-          py: 0.5,
+          py: 1,
           display: { xs: 'grid', sm: 'flex' },
           gridTemplateColumns: `repeat(${Math.min(3, Math.max(1, tileCount))}, minmax(0, 1fr))`,
-          gap: 1.5,
+          gap: 2,
           flexWrap: 'wrap',
           alignItems: 'stretch',
           '& > *': { minWidth: 0, maxWidth: '100%' },
@@ -1011,7 +1007,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         <Stack
           direction="row"
           data-testid="shop-address"
-          sx={{ mt: 2, gap: 1.5, alignItems: 'flex-start', color: 'text.secondary' }}
+          sx={{ mt: 2, gap: 2, alignItems: 'flex-start', color: 'text.secondary' }}
         >
           <MapPin size={18} aria-hidden="true" style={{ flexShrink: 0, marginTop: 3 }} />
           <Typography variant="bodyMedium" sx={{ overflowWrap: 'anywhere', minWidth: 0 }}>
@@ -1158,6 +1154,8 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
                     sx={{ py: 2, px: 2, gap: 2 }}
                   >
                     <ListItemText
+                      // 4px above and below, not MUI's 6px: the page stays on the 4px grid.
+                      sx={{ my: 1 }}
                       primary={
                         product.name_local ? (
                           <>
