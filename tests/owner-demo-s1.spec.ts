@@ -111,7 +111,7 @@ test('O-2 the demo coach prepares real cards and offers tappable examples', asyn
   await expect(review).toHaveCount(0)
   await expect(log).toContainText('Closing time 22:00 → 23:00')
 
-  await coach.fill('can you add a new item called Cutting chai for 15')
+  await coach.fill('add a new item called Cutting chai for 15')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(review).toContainText('Cutting chai', { timeout: 30_000 })
   await page.keyboard.press('Escape')

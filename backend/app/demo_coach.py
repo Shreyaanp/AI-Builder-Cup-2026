@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import Any, cast
 
 from .contracts import StreamEvent
+from .demo_food_words import FOOD_UNITS, NUMBER_WORDS, is_food, singular
 
 FALLBACK = (
     "I can help with these in the demo: change your hours, add an item, mark something sold "
@@ -44,16 +45,10 @@ HOURS = (
 NAME = r"[a-z][a-z'-]*(?:\s+[a-z][a-z'-]*){0,3}"
 PRICE = r"(?:rs\.?\s*|₹\s*|inr\s*)?(?P<price>\d+(?:\.\d{1,2})?)(?:\s*(?:rupees?|rs\.?|inr))?"
 ADD_ITEM = re.compile(
-    r"(?:please\s+)?(?:can\s+you\s+)?add\s+(?:a\s+|an\s+)?(?:new\s+)?(?:item\s+)?"
+    r"(?:please\s+)?add\s+(?:a\s+|an\s+|one\s+|the\s+)?(?:new\s+)?(?:item\s+)?"
     rf"(?:(?:called|named)\s+)?(?P<name>{NAME})\s+(?:for|at|@)\s+{PRICE}"
     r"(?:\s+(?:per|a|an)\s+(?P<unit>[a-z]+)|\s+each)?",
     re.I,
-)
-# Words that are never a whole new item ("add it for 20", "add GST at 18", "add stock of …").
-NOT_AN_ITEM = frozenset(
-    "the a an it this that these those item items thing something new called named more extra "
-    "another some my our stock of to for at on in with and or price prices tax taxes gst vat "
-    "delivery discount charge charges fee fees tip service".split()
 )
 SOLD_OUT = re.compile(
     rf"(?:please\s+)?(?:mark\s+)?(?P<name>{NAME}?)\s+(?:(?:is|are|as)\s+)?"
@@ -79,6 +74,11 @@ CHANGE_CUE = re.compile(
     r"\b(?:clos\w*|open\w*|add|sold\s+out|stock|price|mark|change|set|hours)\b", re.I
 )
 QUESTION = re.compile(r"(?:is|are|do|does|did|what|when|which|how|can|should|will)\b", re.I)
+# A question never builds a change card ("close at 10pm?", "can we close at 10pm"); it may still
+# get an answer such as visits or best sellers.
+ASKED = re.compile(
+    r"(?:what|how|why|can|could|should|is|are|do|does|did|will|would|kya|kaise)\b", re.I
+)
 BEST_SELLERS = re.compile(
     r"(?:(?:what\s+(?:are|were|is)|what's|show(?:\s+me)?|which\s+are)\s+)?(?:my\s+|the\s+)?"
     r"(?:best[\s-]*sell(?:ers?|ing\s+items?)|top[\s-]*sell(?:ers?|ing\s+items?)"
@@ -127,6 +127,13 @@ def _proposed(ctx: Any, result: dict[str, Any]) -> list[StreamEvent] | None:
 def _plain(question: str) -> str:
     """One line, curly apostrophes made straight, without the closing "?", "!" or "."."""
     return re.sub(r"[\s.!?]+$", "", " ".join(question.replace("’", "'").split()))
+
+
+def _same_item(said: str, saved: str) -> bool:
+    """One menu item, ignoring case and plurals ("samosas" is the saved "Samosa")."""
+    return [singular(w) for w in said.casefold().split()] == [
+        singular(w) for w in saved.casefold().split()
+    ]
 
 
 def _clock(hour: str, minute: str | None, suffix: str | None, closing: bool) -> str | None:
@@ -202,17 +209,25 @@ def _add_item(ctx: Any, text: str) -> list[StreamEvent] | None:
         return None
     from .coordinator import ProductInput, shop_currency
     from .money import to_major
-    from .product_units import UNITS
+    from .product_units import known_unit
     from .region import symbol
 
-    name = match["name"].strip()
+    name = " ".join(match["name"].split())
     price = float(match["price"])
-    if not 0 < price <= 100_000 or NOT_AN_ITEM & set(name.casefold().split()):
+    # Only food units: "per hour" or "per service" is not a menu item.
+    unit = known_unit(match["unit"]) if match["unit"] else "item"
+    if not 0 < price <= 100_000 or unit not in {"item", *FOOD_UNITS}:
+        return None
+    # "add five samosas for 100" is a pack price, never a new item called "Five samosas".
+    if NUMBER_WORDS & set(name.casefold().split()):
         return None
     context = ctx.store.context(ctx.uid, ctx.business_id)
     currency = shop_currency(context["business"])
     sign = symbol(currency) or f"{currency} "
-    known = next((p for p in context["inventory"] if p["name"].casefold() == name.casefold()), None)
+    known = next((p for p in context["inventory"] if _same_item(name, p["name"])), None)
+    # A new item must name a food or drink: "add rent for 5000" is a cost, not a menu item.
+    if not known and not is_food(name):
+        return None
     if known and to_major(known["price"], currency) == price:
         return [
             StreamEvent(
@@ -223,9 +238,8 @@ def _add_item(ctx: Any, text: str) -> list[StreamEvent] | None:
         ]
     item: dict[str, Any] = {"name": known["name"] if known else name[0].upper() + name[1:]}
     item["price"] = price
-    unit = (match["unit"] or "").casefold()
     if not known:
-        item["unit"] = unit if unit in UNITS else "item"
+        item["unit"] = unit
     return _priced(ctx, [ProductInput(**item)])
 
 
@@ -238,7 +252,7 @@ def _upkeep(ctx: Any, text: str) -> list[StreamEvent] | None:
         return None
     said = next(found[group] for group in ("name", "of", "own") if found.groupdict().get(group))
     inventory = ctx.store.context(ctx.uid, ctx.business_id)["inventory"]
-    known = next((p for p in inventory if p["name"].casefold() == said.strip().casefold()), None)
+    known = next((p for p in inventory if _same_item(said, p["name"])), None)
     if not known:
         return None
     item = ProductInput(name=known["name"], unit=known["unit"])
@@ -270,7 +284,7 @@ def _unclear_change(question: str, text: str) -> bool:
         return True
     if re.search(r"\d", text) and (
         re.search(r"\b(?:clos\w*|open\w*)\b", text, re.I)
-        or re.match(r"(?:please\s+)?(?:can\s+you\s+)?add\b", text, re.I)
+        or re.match(r"(?:please\s+)?(?:(?:can|could|will|would)\s+you\s+)?add\b", text, re.I)
     ):
         return True
     upkeep = re.search(r"\b(?:sold\s+out|out\s+of\s+stock|back\s+in\s+stock)\b", text, re.I)
@@ -327,8 +341,9 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     text = _plain(question)
     reply: str | None = None
     if not re.search(r"[ऀ-ॿ]", question):
+        asked = "?" in question or ASKED.match(text)
         if not NEGATION.search(text):
-            for intent in (_hours_change, _add_item, _upkeep):
+            for intent in () if asked else (_hours_change, _add_item, _upkeep):
                 events = intent(ctx, text)
                 if events:
                     return events
