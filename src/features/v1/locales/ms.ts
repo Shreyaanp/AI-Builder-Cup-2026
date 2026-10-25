@@ -408,6 +408,8 @@ export const ms: Copy = {
   dataSection: 'Data anda',
   dataBody: 'Padam kedai, produk, perbualan, ingatan, foto dan data wajah daripada Chalkboard.',
   deleteAll: 'Padam semua data saya',
+  deleteDemo:
+    'Padam data tidak tersedia dalam demo. Dalam akaun sebenar, anda boleh padam semuanya di sini.',
   deleteTitle: 'Padam semuanya?',
   deleteBody:
     'Semua kedai, produk, perbualan, foto dan data wajah dipadam kekal. Tidak boleh dibatalkan.',

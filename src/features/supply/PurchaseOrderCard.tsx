@@ -26,7 +26,7 @@ import {
 import { useLocale } from '../../state/hooks'
 import { enterRise, fieldFade, shape } from '../../design/theme'
 import { chalkWrite, stampThud } from '../../design/chalkMotion'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
 import { Code } from './Code'
 import { useShowcaseCopy } from './showcaseCopy'
@@ -56,7 +56,7 @@ function useFormat(order: PurchaseOrder) {
   return {
     locale,
     money: (minor: number | null | undefined) =>
-      minor == null ? '–' : formatPrice(minor, order.currency, locale),
+      minor == null ? '–' : formatShopPrice(minor, order.currency, locale),
     qty: (value: number | null | undefined) => number.format(value ?? 0),
     day: (iso: string) => dayLabel(iso, locale),
   }
@@ -145,6 +145,7 @@ export function PurchaseOrderCard({
   )
   const actions = usePoActions(onChange)
   const [busy, setBusy] = useState<string | null>(null)
+  const [justSent, setJustSent] = useState(false)
   const draft = order.status === 'draft'
   const blocking = order.checks.filter((check) => check.blocking)
   const reasons = order.checks.filter((check) => !check.blocking)
@@ -333,7 +334,12 @@ export function PurchaseOrderCard({
           <Button
             variant="contained"
             disabled={busy !== null || order.blocked}
-            onClick={() => void act('approve', () => actions.approve(order))}
+            onClick={() =>
+              void act('approve', async () => {
+                await actions.approve(order)
+                setJustSent(true)
+              })
+            }
             startIcon={spinner('approve', <Send size={18} />)}
             sx={{ minHeight: 48, px: 6 }}
           >
@@ -346,6 +352,11 @@ export function PurchaseOrderCard({
         </Typography>
       ) : (
         <>
+          {justSent && (
+            <Typography role="status" variant="bodyMedium" color="text.secondary">
+              {s.justSent(order.supplier.name, !!order.simulated)}
+            </Typography>
+          )}
           {order.auto_sent && (
             <Typography variant="bodyMedium" color="text.secondary">
               {s.autoSent}

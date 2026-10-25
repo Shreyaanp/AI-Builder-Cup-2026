@@ -34,7 +34,7 @@ import {
   UtensilsCrossed,
   ZapOff,
 } from 'lucide-react'
-import { formatPrice, shopCurrency } from './format'
+import { formatShopPrice, shopCurrency } from './format'
 import { FactList } from './FactList'
 import { PendingCard } from './PendingCard'
 import { MenuSheet } from '../shop/MenuSheet'
@@ -363,7 +363,7 @@ export function ShopTiles({
                     >
                       {product.available === false
                         ? t.soldOut
-                        : formatPrice(product.price, currency)}
+                        : formatShopPrice(product.price, currency)}
                     </Typography>
                   </Stack>
                 ))}

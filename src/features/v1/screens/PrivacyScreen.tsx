@@ -145,7 +145,7 @@ export function PrivacyScreen() {
           )}
           {(erase.kind === 'idle' || erase.kind === 'working') && ws.demo && (
             <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 2 }}>
-              {ws.readOnlyMessage}
+              {t.deleteDemo}
             </Typography>
           )}
           <Box role="status" aria-live="polite" sx={{ mt: erase.kind === 'idle' ? 0 : 2 }}>

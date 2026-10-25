@@ -16,7 +16,7 @@ import {
 import { Camera, Check, ClipboardList, Keyboard, Moon, Plus, Receipt, Truck, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useLocale } from '../../state/hooks'
-import { currencySymbol, formatPrice, shopCurrency, toMinor } from '../v1/format'
+import { currencySymbol, formatShopPrice, shopCurrency, toMinor } from '../v1/format'
 import { useNextStepsCopy } from '../v1/nextStepsCopy'
 import { useOnline } from '../v1/useOnline'
 import { Tile, Supporting } from '../v1/ShopTiles'
@@ -477,14 +477,14 @@ export function CloseDay({
                   {t.salesTitle}
                 </Typography>
                 <Typography variant="displaySmall" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {formatPrice(toMinor(revenue, currency), currency)}
+                  {formatShopPrice(toMinor(revenue, currency), currency)}
                 </Typography>
                 <ReviewList
                   rows={sales.map(({ line, key: k }) => ({
                     key: k,
                     label: line.item,
                     sub: line.read_as !== line.item ? t.readAs.replace('{text}', line.read_as) : '',
-                    value: `${line.quantity} · ${formatPrice(toMinor(line.amount ?? 0, currency), currency)}`,
+                    value: `${line.quantity} · ${formatShopPrice(toMinor(line.amount ?? 0, currency), currency)}`,
                     warn: !line.matched,
                   }))}
                   onDrop={(k) => setDropped((all) => new Set(all).add(k))}
@@ -560,7 +560,7 @@ export function CloseDay({
                 saved.revenue > 0 &&
                   t.doneSales.replace(
                     '{sales}',
-                    formatPrice(toMinor(saved.revenue, currency), currency),
+                    formatShopPrice(toMinor(saved.revenue, currency), currency),
                   ),
                 saved.stock > 0 && t.doneStock.replace('{n}', String(saved.stock)),
                 t.donePlan,
@@ -799,7 +799,7 @@ function TypedSales({
                 sx={{ overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}
               >
                 {line.item} · {line.quantity} ·{' '}
-                {formatPrice(toMinor(line.amount ?? 0, currency), currency)}
+                {formatShopPrice(toMinor(line.amount ?? 0, currency), currency)}
               </Typography>
             ))}
           </Box>

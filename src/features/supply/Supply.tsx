@@ -21,7 +21,7 @@ import {
 import { ArrowLeft, ChevronRight, FileText, Settings2, Sparkles } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { enterRise, shape } from '../../design/theme'
-import { formatPrice, toMajor, toMinor } from '../v1/format'
+import { formatShopPrice, toMajor, toMinor } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useShowcaseCopy } from './showcaseCopy'
@@ -84,7 +84,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
   const locale = useLocale()
   const money = (order: PurchaseOrder) => {
     const total = orderTotal(order)
-    return total == null ? '–' : formatPrice(total, order.currency, locale)
+    return total == null ? '–' : formatShopPrice(total, order.currency, locale)
   }
   const { data, refresh } = useSupply(open)
   const [view, setView] = useState<View>({ kind: 'list' })
@@ -293,7 +293,7 @@ export function RulesEditor({ row, onSaved }: { row: Relationship; onSaved: () =
       )}
       {row.open_balance ? (
         <Typography variant="bodyMedium">
-          {s.openBalance(formatPrice(row.open_balance, currency, locale))}
+          {s.openBalance(formatShopPrice(row.open_balance, currency, locale))}
         </Typography>
       ) : null}
       <Box>
@@ -539,7 +539,7 @@ export function RulesChangeCard({
     if (Array.isArray(raw)) return raw.join(', ')
     if (key === 'terms_days') return Number(raw) === 0 ? s.cash : s.days(Number(raw))
     if (key === 'credit_limit' || key === 'approval_over' || key === 'tier_price')
-      return formatPrice(toMinor(Number(raw), row.currency), row.currency, locale)
+      return formatShopPrice(toMinor(Number(raw), row.currency), row.currency, locale)
     if (key === 'system_format') return s.system[raw as SystemFormat] ?? String(raw)
     return String(raw)
   }

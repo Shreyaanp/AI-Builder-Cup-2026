@@ -22,7 +22,7 @@ import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
 import { Sheet } from '../v1/Sheet'
 import { Tile, Supporting } from '../v1/ShopTiles'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
 
@@ -254,15 +254,17 @@ function RecapDetails({ week }: { week: string }) {
             {t.revenue}
           </Typography>
           <Typography variant="headlineSmall">
-            {formatPrice(recap.revenue, recap.currency)}
+            {formatShopPrice(recap.revenue, recap.currency)}
           </Typography>
           <Typography variant="bodyMedium">
             {t.recapPrevious}:{' '}
-            {recap.previous_sales_days ? formatPrice(recap.previous_revenue, recap.currency) : '–'}
+            {recap.previous_sales_days
+              ? formatShopPrice(recap.previous_revenue, recap.currency)
+              : '–'}
           </Typography>
           {recap.previous_sales_days > 0 && (
             <Typography variant="bodyMedium">
-              {formatPrice(recap.revenue_change, recap.currency)}{' '}
+              {formatShopPrice(recap.revenue_change, recap.currency)}{' '}
               {recap.revenue_change_percent !== null ? `(${recap.revenue_change_percent}%)` : ''}
             </Typography>
           )}
@@ -285,7 +287,7 @@ function RecapDetails({ week }: { week: string }) {
                 <ListItem key={item.item} disableGutters divider>
                   <ListItemText
                     primary={item.item}
-                    secondary={`${item.quantity} · ${formatPrice(item.revenue, recap.currency)}`}
+                    secondary={`${item.quantity} · ${formatShopPrice(item.revenue, recap.currency)}`}
                   />
                 </ListItem>
               ))}

@@ -171,7 +171,7 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
 
   await test.step('Shop: ₹ prices', async () => {
     await tab(page, 'दुकान').click()
-    await expect(page.getByText('₹18.00')).toBeVisible()
+    await expect(page.getByText('₹18', { exact: true })).toBeVisible()
     await readsInHindi(page, '04-shop')
   })
 

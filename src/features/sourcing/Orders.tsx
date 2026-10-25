@@ -17,7 +17,7 @@ import {
 import { ArrowLeft, ArrowUp, PackageCheck, Truck } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { enterRise, shape } from '../../design/theme'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
@@ -185,7 +185,7 @@ export function OrdersSheet({
                         .map((line) => `${line.quantity} ${line.unit} ${line.name}`)
                         .join(', ')}
                       <Box component="span" sx={{ display: 'block' }}>
-                        {formatPrice(order.total, order.currency, locale)} ·{' '}
+                        {formatShopPrice(order.total, order.currency, locale)} ·{' '}
                         {deliveryLabel(order, locale)}
                       </Box>
                     </>
@@ -256,7 +256,7 @@ function Thread({
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
         <StatusChip status={order.status} />
         <Typography variant="bodyMedium" color="text.secondary" sx={{ flex: 1 }}>
-          {formatPrice(order.total, order.currency, locale)} · {deliveryLabel(order, locale)}
+          {formatShopPrice(order.total, order.currency, locale)} · {deliveryLabel(order, locale)}
         </Typography>
       </Stack>
       <Stack component="ol" spacing={2} sx={{ listStyle: 'none', m: 0, p: 0 }} aria-live="polite">

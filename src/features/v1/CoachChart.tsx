@@ -8,7 +8,7 @@ import { useChalkTimeline } from '../../design/chalkMotion'
 import { HAND_FONT } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { fillChart, useChartCopy } from './chartCopy'
-import { toMinor, formatPrice } from './format'
+import { toMinor, formatShopPrice } from './format'
 
 type Day = { date: string; quantity: number; lower: number | null; upper: number | null }
 export type ForecastChart = {
@@ -227,7 +227,7 @@ function Insights({ chart }: { chart: InsightsChart }) {
   const t = useChartCopy()
   const locale = useLocale()
   const money = (major: number) =>
-    formatPrice(toMinor(major, chart.currency), chart.currency, locale)
+    formatShopPrice(toMinor(major, chart.currency), chart.currency, locale)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 })
   const up = (chart.change_percent ?? 0) >= 0
   const change =
