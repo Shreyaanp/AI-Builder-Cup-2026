@@ -149,7 +149,7 @@ async function ownerSends(page: Page, mode: Mode) {
       'aria-pressed',
       'true',
     )
-    await expect(sheet.getByText('₹25.00 → ₹17.50')).toBeVisible()
+    await expect(sheet.getByText('₹25 → ₹17.50')).toBeVisible()
     await expect(sheet.getByLabel('Pickup until')).toHaveValue('22:45')
     await evidence(page, '2-owner-rescue')
   })

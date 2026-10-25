@@ -46,7 +46,7 @@ const en = {
   justSent: (supplier: string, simulated: boolean) =>
     simulated
       ? `Marked Sent. In the demo ${supplier} gets a pretend WhatsApp message; nothing really went out.`
-      : `Marked Sent. ${supplier} has your order.`,
+      : `Marked Sent. Chalkboard keeps this order; send it to ${supplier} the way you usually do.`,
   status: {
     draft: 'Needs your OK',
     sent: 'Sent',
