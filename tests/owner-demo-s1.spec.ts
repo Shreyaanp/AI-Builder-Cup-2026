@@ -103,12 +103,20 @@ test('O-2 the demo coach prepares real cards and offers tappable examples', asyn
   await expect(review).toHaveCount(0)
   await expect(log).toContainText('Closing time 21:00 → 22:00')
 
-  await coach.fill('add cutting chai for 15 rupees')
+  // "Open until" is a closing time, never a 23:00 opening.
+  await coach.fill('We are open until 11pm')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(review).toContainText('06:30–23:00', { timeout: 30_000 })
+  await page.keyboard.press('Escape')
+  await expect(review).toHaveCount(0)
+  await expect(log).toContainText('Closing time 22:00 → 23:00')
+
+  await coach.fill('can you add a new item called Cutting chai for 15')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(review).toContainText('Cutting chai', { timeout: 30_000 })
   await page.keyboard.press('Escape')
   await expect(review).toHaveCount(0)
-  await expect(log).toContainText('New item: Cutting chai')
+  await expect(log).toContainText('New item: Cutting chai, ₹15 per item')
 
   await coach.fill('how many visits this week?')
   await page.getByRole('button', { name: 'Send', exact: true }).click()

@@ -22,14 +22,21 @@ SUGGESTIONS = (
     "What should I prep tomorrow?",
 )
 DEMO_NOTE = "This is the demo shop, so nothing reaches real customers."
-CLOCK = r"(\d{1,2})(?:[:.](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?"
+CLOCK = r"(?P<hour>\d{1,2})(?:[:.](?P<minute>\d{2}))?\s*(?P<suffix>a\.?m\.?|p\.?m\.?)?"
 HOURS_CHANGE = re.compile(
     rf"\b(?P<which>clos(?:e|es|ing)|open(?:s|ing)?)\b(?:\s+(?:time|hours?))?"
-    rf"(?:\s+\w+){{0,3}}?\s+(?:to|at|by|till|until)\s+{CLOCK}(?![\d%])",
+    rf"(?:\s+\w+){{0,3}}?\s+(?P<to>to|at|by|till|until)\s+{CLOCK}(?![\d%])",
+    re.I,
+)
+# A request about one day ("close on Sunday at 6", "open till 11 tonight") is not a weekly change.
+ONE_DAY = re.compile(
+    r"\b(?:mon|tues?|wed(?:nes)?|thu(?:rs?)?|fri|sat(?:ur)?|sun)(?:day)?s?\b"
+    r"|\b(?:today|tonight|tomorrow|weekends?|weekdays?)\b",
     re.I,
 )
 ADD_ITEM = re.compile(
-    r"^(?:please\s+)?(?:can\s+you\s+)?add\s+(?:a\s+|an\s+|new\s+)?(?:item\s+)?"
+    r"^(?:please\s+)?(?:can\s+you\s+)?add\s+(?:a\s+|an\s+)?(?:new\s+)?(?:item\s+)?"
+    r"(?:(?:called|named)\s+)?"
     r"(?P<name>[^\d₹,.?!]{2,40}?)\s+(?:for|at|@|priced\s+at|costing)\s+"
     r"(?:rs\.?\s*|₹\s*|inr\s*)?(?P<price>\d+(?:\.\d{1,2})?)\s*(?:rupees?|rs\.?|inr)?"
     r"(?:\s+(?:per|a|each)\s+(?P<unit>[a-z]+))?\s*[.!]?$",
@@ -39,8 +46,11 @@ BEST_SELLERS = re.compile(
     r"\b(?:best|top)[\s-]*sell\w*|\bsells?\s+(?:the\s+)?(?:best|most)\b|\bmost\s+popular\b",
     re.I,
 )
+# Shop visits and page views, not the owner's own trips ("visit the wholesaler").
 VISITS = re.compile(
-    r"\bvisit(?:s|ors?)?\b|\bfootfall\b|\bhow\s+many\s+(?:people|customers)\b", re.I
+    r"\bvisit(?:s|ors?)\b(?!\s+(?:to\s+)?(?:the|a|an|my|our)\s+(?!(?:shop|store|stall|page)\b))"
+    r"|\bpage\s+views?\b|\bfootfall\b|\bhow\s+many\s+(?:people|customers)\b",
+    re.I,
 )
 
 
@@ -86,13 +96,17 @@ def _clock(hour: str, minute: str | None, suffix: str | None, closing: bool) -> 
 def _hours_change(ctx: Any, question: str) -> list[StreamEvent] | None:
     """A weekly-hours proposal ("Change my closing time to 10pm"), as the real coach prepares."""
     match = HOURS_CHANGE.search(question)
-    if not match:
+    if not match or ONE_DAY.search(question):
         return None
     from .coordinator import propose_business
     from .merchant import DayHours
 
-    closing = match["which"].casefold().startswith("clos")
-    time = _clock(match[2], match[3], match[4], closing)
+    # "Open until 10pm" (or "till") is when the shop closes.
+    closing = match["which"].casefold().startswith("clos") or match["to"].casefold() in {
+        "till",
+        "until",
+    }
+    time = _clock(match["hour"], match["minute"], match["suffix"], closing)
     if time is None:
         return None
     fields = ctx.store.context(ctx.uid, ctx.business_id)["business"]["fields"]
@@ -102,8 +116,8 @@ def _hours_change(ctx: Any, question: str) -> list[StreamEvent] | None:
         if not day.get("closed"):
             before.add(day.get(key))
             day = {**day, key: time}
-            if day.get("open") == day.get("close"):
-                return None
+            if not day.get("open") or not day.get("close") or day["open"] >= day["close"]:
+                return None  # never a day that opens at or after it closes
         days.append(DayHours(**day))
     if not days or before == {time}:
         return None
@@ -125,16 +139,19 @@ def _add_item(ctx: Any, question: str) -> list[StreamEvent] | None:
     from .coordinator import ProductInput, propose_products, shop_currency
     from .money import to_major
     from .product_units import UNITS
+    from .region import symbol
 
     context = ctx.store.context(ctx.uid, ctx.business_id)
     name = match["name"].strip()
     price = float(match["price"])
+    currency = shop_currency(context["business"])
+    sign = symbol(currency) or f"{currency} "
     known = next((p for p in context["inventory"] if p["name"].casefold() == name.casefold()), None)
-    if known and to_major(known["price"], shop_currency(context["business"])) == price:
+    if known and to_major(known["price"], currency) == price:
         return [
             StreamEvent(
                 kind="reply",
-                text=f"{known['name']} is already on your demo menu at ₹{price:g} per "
+                text=f"{known['name']} is already on your demo menu at {sign}{price:g} per "
                 f"{known['unit']}. Open Shop → Menu next to see it.",
             )
         ]
@@ -143,7 +160,13 @@ def _add_item(ctx: Any, question: str) -> list[StreamEvent] | None:
     unit = (match["unit"] or "").casefold()
     if not known:
         item["unit"] = unit if unit in UNITS else "item"
-    return _proposed(ctx, propose_products([ProductInput(**item)]))
+    result = propose_products([ProductInput(**item)])
+    # The review lines show amounts in the shop's currency ("₹25 per item").
+    result["changes"] = [
+        re.sub(r"(?<![\w.])(\d+(?:\.\d+)?)(?= per | →)", lambda m: sign + m[1], change)
+        for change in result.get("changes") or []
+    ]
+    return _proposed(ctx, result)
 
 
 def _upkeep(ctx: Any, question: str) -> list[StreamEvent] | None:

@@ -562,6 +562,104 @@ def test_O_2_demo_coach_prepares_the_real_cards_offline(app):  # noqa: N802, F81
         app.state.rate_limiter.counters.clear()
 
 
+def test_O_2_demo_coach_reads_hours_items_and_visits_as_meant(app, monkeypatch):  # noqa: N802, F811
+    """O-2 review: "open until X" is a closing time, a named day never changes every day, filler
+    words stay out of item names, and only shop visits get the page-views answer."""
+    from app import demo_coach
+
+    offline = demo_coach.public_demo_turn
+
+    async def demo_only(ctx: object, question: str) -> list:
+        events = await offline(ctx, question)
+        # OB-155: every phrasing, matched or not, is answered offline; none reaches a model.
+        assert events, question
+        return events
+
+    monkeypatch.setattr(demo_coach, "public_demo_turn", demo_only)
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        app.state.rate_limiter.counters.clear()
+        session = open_demo(client).json()["session_id"]
+
+        def turn(message: str) -> list[dict]:
+            # Many phrasings in one session; the per-IP demo limit is tested on its own above.
+            app.state.rate_limiter.counters.clear()
+            return coach_events(client, session, message)
+
+        def proposal(message: str) -> dict | None:
+            return next((e["data"] for e in turn(message) if e["kind"] == "proposal"), None)
+
+        def reply(message: str) -> str:
+            return " ".join(event.get("text") or "" for event in turn(message))
+
+        before = proposal("Change my closing time to 10pm")
+        assert before is not None
+        saved = [d for d in before["snapshot"]["business"]["weekly_hours"] if not d["closed"]]
+        opens = {day["open"] for day in saved}
+        for message in ("We are open until 10pm", "We're open till 10 pm", "Open until 10pm"):
+            found = proposal(message)
+            assert found is not None, message
+            days = [d for d in found["snapshot"]["business"]["weekly_hours"] if not d["closed"]]
+            assert {day["close"] for day in days} == {"22:00"}, (message, days)
+            assert {day["open"] for day in days} == opens, (message, days)
+            assert "Closing time" in reply(message), message
+        # Opening at or after closing is no schedule at all: no card, never open >= close.
+        for message in ("Change my opening time to 11pm", "Open at 10pm", "Opening time to 23:30"):
+            assert proposal(message) is None, message
+        opening = proposal("Change my opening time to 6am")
+        assert opening is not None
+        days = [d for d in opening["snapshot"]["business"]["weekly_hours"] if not d["closed"]]
+        assert {day["open"] for day in days} == {"06:00"}
+        assert all(day["open"] < day["close"] for day in days)
+        # A named day (or today/tonight) must not change the whole week.
+        for message in (
+            "Close on Sunday at 6",
+            "Close at 6 on Sundays",
+            "Stay open till 11pm tonight",
+            "Close at 8pm today",
+            "Change Monday closing time to 10pm",
+            "Open at 8am tomorrow",
+            "Close at 7pm on weekends",
+        ):
+            assert proposal(message) is None, message
+            assert "on every open day" not in reply(message), message
+
+        for message, name in {
+            "can you add a new item called Vada pav for 25": "Vada pav",
+            "add an item named Poha for 30": "Poha",
+            "Add new item called Misal for 60 rupees": "Misal",
+            "please add item Bun maska for 40": "Bun maska",
+        }.items():
+            found = proposal(message)
+            assert found is not None, message
+            names = [p["name"] for p in found["snapshot"]["products"]]
+            assert name in names and not any("called" in n or "named" in n for n in names), (
+                message,
+                names,
+            )
+        text = reply("can you add a new item called Vada pav for 25")
+        assert "New item: Vada pav, ₹25 per item" in text, text
+        text = reply("add samosa for 25 rupees")
+        assert "Samosa: price ₹20 → ₹25 per" in text, text
+
+        for message in (
+            "Should I visit the wholesaler tomorrow?",
+            "I want to visit my supplier",
+            "How many visits to the wholesaler this month?",
+            "When should I visit the market?",
+        ):
+            assert "page was opened" not in reply(message), message
+        for message in (
+            "how many visits this week?",
+            "How many visitors did my shop get?",
+            "visits to my page",
+            "How many people visited my shop this week?",
+            "What was my footfall?",
+        ):
+            assert "page was opened" in reply(message), message
+        app.state.rate_limiter.counters.clear()
+
+
 def test_O_4_demo_pin_address_is_answered_offline(app, monkeypatch):  # noqa: N802, F811
     """O-4: the address under a demo map pin comes from the offline area list (no Maps call)."""
     paid = AsyncMock(side_effect=AssertionError("paid Maps call"))
