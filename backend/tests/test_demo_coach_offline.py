@@ -370,6 +370,10 @@ DEMO_COACH_PHRASINGS: list[tuple[str, dict]] = [
     ("add stock of samosa for 20", {"reply": EXAMPLES}),
     ("add the samosa for 0", {"reply": EXAMPLES}),
     ("add samosa for 0", {"reply": EXAMPLES}),
+    # A unit other than the saved item's prices something else (a plate is often two samosas).
+    ("add samosa for 25 per plate", {"reply": EXAMPLES}),
+    ("add samosa for 25 per kg", {"reply": EXAMPLES}),
+    ("add samosa for 25 per glass", {"reply": EXAMPLES}),
     ("Add GST at 18", {"reply": EXAMPLES}),
     ("add tax at 5", {"reply": EXAMPLES}),
     ("add delivery for 30", {"reply": EXAMPLES}),

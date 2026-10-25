@@ -228,6 +228,9 @@ def _add_item(ctx: Any, text: str) -> list[StreamEvent] | None:
     # A new item must name a food or drink: "add rent for 5000" is a cost, not a menu item.
     if not known and not is_food(name):
         return None
+    # "add samosa for 25 per plate" prices a plate, not the saved per-piece Samosa: no card.
+    if known and match["unit"] and unit != known["unit"]:
+        return None
     if known and to_major(known["price"], currency) == price:
         return [
             StreamEvent(
