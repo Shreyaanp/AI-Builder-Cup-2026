@@ -84,13 +84,13 @@
     "contrastIssues": 0
   },
   "ask-today-phone-dark": {
-    "marks": 39,
+    "marks": 43,
     "accentFamilies": 3,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "ask-today-phone-light": {
-    "marks": 39,
+    "marks": 43,
     "accentFamilies": 1,
     "smallTargets": 0,
     "contrastIssues": 0
@@ -108,13 +108,13 @@
     "contrastIssues": 0
   },
   "browse-phone-dark": {
-    "marks": 45,
+    "marks": 49,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "browse-phone-light": {
-    "marks": 45,
+    "marks": 49,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
@@ -228,13 +228,13 @@
     "contrastIssues": 0
   },
   "shop-chat-phone-dark": {
-    "marks": 39,
+    "marks": 44,
     "accentFamilies": 3,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "shop-chat-phone-light": {
-    "marks": 39,
+    "marks": 44,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0
@@ -252,13 +252,13 @@
     "contrastIssues": 0
   },
   "shop-phone-dark": {
-    "marks": 29,
+    "marks": 34,
     "accentFamilies": 3,
     "smallTargets": 0,
     "contrastIssues": 0
   },
   "shop-phone-light": {
-    "marks": 29,
+    "marks": 34,
     "accentFamilies": 2,
     "smallTargets": 0,
     "contrastIssues": 0

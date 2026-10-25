@@ -101,7 +101,11 @@ function recorder(mode: Mode) {
 async function ownerSetsPerks(page: Page, mode: Mode, name: string) {
   await localOnly(page)
   await enter(page)
-  const at = { lat: 12.3 + Math.random() * 0.4, lng: 76.2 + Math.random() * 0.4 }
+  // The neighbourhood goal is one weekly tally per ~5 km cell, so a walk that shares a cell with
+  // another counts its visits too ("2 of 100"). Each mode gets its own part of rural Karnataka,
+  // away from S8's pins (12.3–12.7, 76.2–76.6), with about 250 cells to land in.
+  const west = mode === 'light' ? 75.0 : 75.6
+  const at = { lat: 13.2 + Math.random() * 0.8, lng: west + Math.random() * 0.6 }
   await seedChaiStall(page, name, at)
   const { qr } = await shareSigned(page)
   // The Customer page sheet holds the owner's thank-you perks: calm fields, one save.

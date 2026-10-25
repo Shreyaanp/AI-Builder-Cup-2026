@@ -206,6 +206,9 @@ test('A-27: Follow, Stamp card and Directions share one equal-width row; one fil
     })
   })
   await openSample(page)
+  // The handwritten story above the row rewraps when Caveat arrives (font-display: swap); the
+  // boxes are read one at a time, so measure the settled page.
+  await page.evaluate(() => document.fonts.ready)
   const tiles = page.getByTestId('shop-actions').locator('> *')
   await expect(tiles).toHaveCount(3)
   const boxes = (await Promise.all((await tiles.all()).map((tile) => tile.boundingBox()))).map(

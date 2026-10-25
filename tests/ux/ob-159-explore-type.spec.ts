@@ -22,8 +22,9 @@ for (const appearance of THEMES) {
       await expect(title).toBeVisible()
       await page.evaluate(() => document.fonts.ready)
 
-      // The card title shares the theme's titleMedium role instead of adding a vw-based size.
-      await expect(title).toHaveCSS('font-size', '16px')
+      // The card title shares the theme's titleMedium role instead of adding a vw-based size
+      // (15px on phones since OB-198, 16px on larger windows).
+      await expect(title).toHaveCSS('font-size', viewport.width < 600 ? '15px' : '16px')
       const metrics = await page.evaluate(measure, viewport.width < 600)
       expect(metrics.fontSizes.length, metrics.fontSizes.join(', ')).toBeLessThanOrEqual(6)
       expect(metrics.overflow).toEqual([])
