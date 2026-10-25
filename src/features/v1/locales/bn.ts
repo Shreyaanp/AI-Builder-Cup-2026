@@ -326,6 +326,7 @@ export const bn: Copy = {
   prepQuestion: 'কাল কতটা তৈরি করব?',
   importing: 'আপনার ফাইল পড়ছি…',
   importFailed: 'ফাইল পড়া যায়নি। পণ্যের নাম ও দামসহ CSV বা Excel ফাইল পাঠান।',
+  importTooLarge: 'ফাইলটি খুব বড়। ২০ MB-এর কম ছবি বা PDF, অথবা ৫ MB-এর কম স্প্রেডশিট পাঠান।',
   salesSummary: 'বিক্রির সারাংশ',
   salesNotSaved: 'আপনার ফাইল থেকে। কিছু সেভ হয়নি।',
   salesCurrencyMismatch: 'অন্য মুদ্রার সারিগুলি বাদ দেওয়া হয়েছে।',

@@ -313,6 +313,8 @@ export const ko: Copy = {
   prepQuestion: '내일 얼마나 준비해야 하나요?',
   importing: '파일을 읽는 중…',
   importFailed: '파일을 읽지 못했어요. 상품명과 가격이 있는 CSV나 Excel 파일을 보내 주세요.',
+  importTooLarge:
+    '파일이 너무 커요. 20MB 미만의 사진이나 PDF, 또는 5MB 미만의 스프레드시트를 보내 주세요.',
   salesSummary: '판매 요약',
   salesNotSaved: '파일 내용이에요. 아무것도 저장하지 않았어요.',
   salesCurrencyMismatch: '다른 통화의 행은 제외했어요.',

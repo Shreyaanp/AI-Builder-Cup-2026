@@ -309,6 +309,8 @@ export const th: Copy = {
   prepQuestion: 'พรุ่งนี้ควรเตรียมเท่าไร?',
   importing: 'กำลังอ่านไฟล์…',
   importFailed: 'อ่านไฟล์นี้ไม่ได้ กรุณาส่งไฟล์ CSV หรือ Excel ที่มีชื่อสินค้าและราคา',
+  importTooLarge:
+    'ไฟล์ใหญ่เกินไป กรุณาส่งรูปภาพหรือ PDF ที่เล็กกว่า 20 MB หรือสเปรดชีตที่เล็กกว่า 5 MB',
   salesSummary: 'สรุปยอดขาย',
   salesNotSaved: 'จากไฟล์ของคุณ ไม่ได้บันทึกอะไร',
   salesCurrencyMismatch: 'ไม่นับแถวที่ใช้สกุลเงินอื่น',

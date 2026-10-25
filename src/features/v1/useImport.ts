@@ -46,7 +46,15 @@ export interface SalesImport {
 }
 
 type ImportResult =
-  | { kind: 'menu'; proposal: Proposal; items: number; skipped: number; flags?: ImportFlag[] }
+  | {
+      kind: 'menu'
+      proposal: Proposal
+      items: number
+      skipped: number
+      flags?: ImportFlag[]
+      /** The public demo's fixed sample read (O-1): the review says so. */
+      sample_note?: string
+    }
   | SalesImport
 
 /**
@@ -88,13 +96,20 @@ export function useImport({
         },
       )
       onBeforeReview?.()
-      if (result.kind === 'menu') ws.review({ ...result.proposal, import_flags: result.flags })
+      if (result.kind === 'menu')
+        ws.review({
+          ...result.proposal,
+          import_flags: result.flags,
+          ...(result.sample_note ? { photo_notes: [result.sample_note] } : {}),
+        })
       else onSales(result)
     } catch (cause) {
       const message =
         cause instanceof ApiError && cause.code === 'EXTRACTION_UNAVAILABLE'
           ? t.importUnavailable
-          : t.importFailed
+          : cause instanceof ApiError && cause.status === 413
+            ? t.importTooLarge
+            : t.importFailed
       setFailed(message)
       ws.notify(message)
     } finally {

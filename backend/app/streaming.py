@@ -322,11 +322,12 @@ class CoachRuntime:
         ui_language.set(language)
         timer = FirstOutput("text_agent")
         if merchant and merchant.uid.startswith("public-demo-"):
-            from .demo_coach import public_demo_reply
+            from .demo_coach import public_demo_turn
 
-            reply = public_demo_reply(merchant, text)
-            if reply:
-                yield StreamEvent(kind="reply", text=reply)
+            demo = await public_demo_turn(merchant, text)
+            if demo:
+                for event in demo:
+                    yield event
                 timer.mark("text_demo")
                 yield StreamEvent(kind="turn_complete", session_id=session_id)
                 return

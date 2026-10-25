@@ -320,6 +320,8 @@ export const id: Copy = {
   importing: 'Membaca file Anda…',
   importFailed:
     'File itu tidak bisa dibaca. Kirim ekspor CSV atau Excel dengan nama item dan harga.',
+  importTooLarge:
+    'File terlalu besar. Kirim foto atau PDF di bawah 20 MB, atau spreadsheet di bawah 5 MB.',
   salesSummary: 'Ringkasan penjualan',
   salesNotSaved: 'Dari file Anda. Tidak ada yang disimpan.',
   salesCurrencyMismatch: 'Baris dengan mata uang lain tidak disertakan.',

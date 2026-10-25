@@ -330,6 +330,8 @@ export const te: Copy = {
   prepQuestion: 'రేపు ఎంత సిద్ధం చేయాలి?',
   importing: 'మీ ఫైల్ చదువుతున్నాం…',
   importFailed: 'ఫైల్ చదవలేకపోయాం. వస్తువుల పేర్లు, ధరలతో CSV లేదా Excel ఫైల్ పంపండి.',
+  importTooLarge:
+    'ఫైల్ చాలా పెద్దది. 20 MB కంటే చిన్న ఫోటో లేదా PDF, లేదా 5 MB కంటే చిన్న స్ప్రెడ్‌షీట్ పంపండి.',
   salesSummary: 'అమ్మకాల సారాంశం',
   salesNotSaved: 'మీ ఫైల్ నుంచి. ఏదీ సేవ్ కాలేదు.',
   salesCurrencyMismatch: 'వేరే కరెన్సీ వరుసలు వదిలివేయబడ్డాయి.',

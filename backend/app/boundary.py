@@ -78,6 +78,11 @@ class RequestBoundary:
             if (
                 path in {"/api/v1/photos", "/api/v1/photos/classify"}
                 or path.endswith("/import")
+                # The demo's menu photos get the same bounded stream (its sample read, O-1).
+                or (
+                    path.startswith("/api/v1/demo/sessions/")
+                    and path.endswith(("/api/photos", "/api/photos/classify"))
+                )
                 # Close the day photos and shop gallery photos: real phone photos are megabytes,
                 # far over the JSON limit (they were rejected with 413 before reaching the route).
                 or (path.startswith("/api/v1/businesses/") and path.endswith("/day/read"))

@@ -316,6 +316,8 @@ export const ja: Copy = {
   importing: 'ファイルを読み込んでいます…',
   importFailed:
     'ファイルを読み込めませんでした。商品名と価格を含む CSV または Excel を送ってください。',
+  importTooLarge:
+    'ファイルが大きすぎます。20 MB 未満の写真か PDF、または 5 MB 未満の表計算ファイルを送ってください。',
   salesSummary: '売上の概要',
   salesNotSaved: 'ファイルの内容です。何も保存していません。',
   salesCurrencyMismatch: '別の通貨の行は除外しました。',

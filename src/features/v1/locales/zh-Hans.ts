@@ -306,6 +306,7 @@ export const zhHans: Copy = {
   prepQuestion: '明天应该准备多少？',
   importing: '正在读取文件…',
   importFailed: '无法读取这个文件。请上传包含品名和价格的 CSV 或 Excel 文件。',
+  importTooLarge: '文件太大。请上传小于 20 MB 的照片或 PDF，或小于 5 MB 的表格文件。',
   salesSummary: '销售概览',
   salesNotSaved: '来自你的文件，未保存任何内容。',
   salesCurrencyMismatch: '已跳过使用其他货币的行。',

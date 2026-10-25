@@ -317,6 +317,7 @@ export const vi: Copy = {
   prepQuestion: 'Ngày mai nên chuẩn bị bao nhiêu?',
   importing: 'Đang đọc tệp…',
   importFailed: 'Không đọc được tệp. Hãy gửi tệp CSV hoặc Excel có tên món và giá.',
+  importTooLarge: 'Tệp quá lớn. Hãy gửi ảnh hoặc PDF dưới 20 MB, hoặc bảng tính dưới 5 MB.',
   salesSummary: 'Tóm tắt doanh số',
   salesNotSaved: 'Từ tệp của bạn. Chưa lưu gì.',
   salesCurrencyMismatch: 'Đã bỏ qua các dòng dùng tiền tệ khác.',
