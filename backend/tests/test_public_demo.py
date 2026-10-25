@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import public_demo
+from app.demo_coach import SUGGESTIONS
 from tests.test_photos import app  # noqa: F401
 
 
@@ -657,6 +658,212 @@ def test_O_2_demo_coach_reads_hours_items_and_visits_as_meant(app, monkeypatch):
             "What was my footfall?",
         ):
             assert "page was opened" in reply(message), message
+        app.state.rate_limiter.counters.clear()
+
+
+EXAMPLES = "I can help with these in the demo"
+CLOSE_22 = {"line": "Closing time 21:00 → 22:00 on every open day", "close": "22:00"}
+NEW_PRICE = {
+    "line": "Samosa: price ₹20 → ₹25 per piece",
+    "product": ("Samosa", 2500, "piece", True),
+}
+SOLD_OUT = {"line": "Samosa: sold out", "product": ("Samosa", 2000, "piece", False)}
+# O-2 (second review): a card only for a short request that is exactly one the demo knows.
+# Each row is a message and either the exact card or the words of the card-free reply.
+DEMO_COACH_PHRASINGS: list[tuple[str, dict]] = [
+    # Hours, the whole week.
+    ("Change my closing time to 10pm", CLOSE_22),
+    ("close at 10pm", CLOSE_22),
+    ("Close at 10", CLOSE_22),
+    ("Set the closing time to 22:00", CLOSE_22),
+    ("close at 10pm daily", CLOSE_22),
+    (
+        "We close at 10:30pm",
+        {"line": "Closing time 21:00 → 22:30 on every open day", "close": "22:30"},
+    ),
+    ("We are open until 10pm", CLOSE_22),
+    ("We're open till 10 pm", CLOSE_22),
+    ("We’re open till 10pm", CLOSE_22),
+    (
+        "Open until 11pm.",
+        {"line": "Closing time 21:00 → 23:00 on every open day", "close": "23:00"},
+    ),
+    ("open at 7am", {"line": "Opening time 06:30 → 07:00 on every open day", "open": "07:00"}),
+    (
+        "We open at 7 am every day",
+        {"line": "Opening time 06:30 → 07:00 on every open day", "open": "07:00"},
+    ),
+    (
+        "Change my opening time to 6am",
+        {"line": "Opening time 06:30 → 06:00 on every open day", "open": "06:00"},
+    ),
+    # A new item or a new price.
+    (
+        "add cutting chai for 15 rupees",
+        {
+            "line": "New item: Cutting chai, ₹15 per item",
+            "product": ("Cutting chai", 1500, "item", True),
+        },
+    ),
+    (
+        "Add Vada pav for ₹25",
+        {"line": "New item: Vada pav, ₹25 per item", "product": ("Vada pav", 2500, "item", True)},
+    ),
+    (
+        "can you add a new item called Vada pav for 25",
+        {"line": "New item: Vada pav, ₹25 per item", "product": ("Vada pav", 2500, "item", True)},
+    ),
+    (
+        "add an item named Poha for 30",
+        {"line": "New item: Poha, ₹30 per item", "product": ("Poha", 3000, "item", True)},
+    ),
+    (
+        "please add item Kanda bhaji for 40",
+        {
+            "line": "New item: Kanda bhaji, ₹40 per item",
+            "product": ("Kanda bhaji", 4000, "item", True),
+        },
+    ),
+    (
+        "please add item Bun maska for 40",
+        {
+            "line": "Bun maska: price ₹35 → ₹40 per piece",
+            "product": ("Bun maska", 4000, "piece", True),
+        },
+    ),
+    (
+        "Add filter coffee for 25 rupees per cup",
+        {
+            "line": "New item: Filter coffee, ₹25 per cup",
+            "product": ("Filter coffee", 2500, "cup", True),
+        },
+    ),
+    ("add samosa for 25 rupees", NEW_PRICE),
+    ("Add samosa for 25 rupees each", NEW_PRICE),
+    ("samosa price 25", NEW_PRICE),
+    ("Change samosa price to 25", NEW_PRICE),
+    ("set the price of samosa to ₹25", NEW_PRICE),
+    ("Samosa price is now 25 rupees", NEW_PRICE),
+    # Sold out.
+    ("samosa sold out", SOLD_OUT),
+    ("Samosa is sold out", SOLD_OUT),
+    ("mark samosa as sold out", SOLD_OUT),
+    ("Samosa out of stock!", SOLD_OUT),
+    # Negation never flips into the opposite card.
+    ("Samosa not sold out", {"reply": EXAMPLES}),
+    ("Samosa isn't sold out", {"reply": EXAMPLES}),
+    ("Don't close at 10pm", {"reply": EXAMPLES}),
+    ("Do not close at 10pm", {"reply": EXAMPLES}),
+    ("We no longer close at 9pm", {"reply": EXAMPLES}),
+    ("Never open at 7am", {"reply": EXAMPLES}),
+    ("We won't open at 7am", {"reply": EXAMPLES}),
+    ("don't add cutting chai for 15", {"reply": EXAMPLES}),
+    # A reason, a day or a part-day close is not the whole week's closing time.
+    ("We close at 2pm for lunch", {"reply": EXAMPLES}),
+    ("Close at 6 during Diwali", {"reply": EXAMPLES}),
+    ("Close at 10 on holidays", {"reply": EXAMPLES}),
+    ("close at 10pm because of the festival", {"reply": EXAMPLES}),
+    ("Open at 7am except Sundays", {"reply": EXAMPLES}),
+    ("Close at 10pm only on Fridays", {"reply": EXAMPLES}),
+    ("Close at 10pm next week", {"reply": EXAMPLES}),
+    ("close at 10pm from Monday", {"reply": EXAMPLES}),
+    ("open at 7am from 1st November", {"reply": EXAMPLES}),
+    ("close at 2pm to 4pm for lunch", {"reply": EXAMPLES}),
+    ("Close on Sunday at 6", {"reply": EXAMPLES}),
+    ("Close at 6 on Sundays", {"reply": EXAMPLES}),
+    ("Stay open till 11pm tonight", {"reply": EXAMPLES}),
+    ("Close at 8pm today", {"reply": EXAMPLES}),
+    ("Change Monday closing time to 10pm", {"reply": EXAMPLES}),
+    ("Open at 8am tomorrow", {"reply": EXAMPLES}),
+    ("Close at 7pm on weekends", {"reply": EXAMPLES}),
+    ("We close at 10pm and open at 7am", {"reply": EXAMPLES}),
+    ("Should we close at 10pm?", {"reply": EXAMPLES}),
+    ("Close at 12", {"reply": EXAMPLES}),
+    ("Change my opening time to 11pm", {"reply": EXAMPLES}),
+    ("Open at 10pm", {"reply": EXAMPLES}),
+    ("Opening time to 23:30", {"reply": EXAMPLES}),
+    # Words that are not a menu item.
+    ("add a new item called for 20", {"reply": EXAMPLES}),
+    ("add stock of samosa for 20", {"reply": EXAMPLES}),
+    ("add the samosa for 0", {"reply": EXAMPLES}),
+    ("add samosa for 0", {"reply": EXAMPLES}),
+    ("Add GST at 18", {"reply": EXAMPLES}),
+    ("add tax at 5", {"reply": EXAMPLES}),
+    ("add delivery for 30", {"reply": EXAMPLES}),
+    ("add it for 20", {"reply": EXAMPLES}),
+    ("add item for 20", {"reply": EXAMPLES}),
+    ("add 2 samosas for 40", {"reply": EXAMPLES}),
+    ("add cutting chai for 15 for the festival", {"reply": EXAMPLES}),
+    ("add cutting chai for 15 and samosa for 20", {"reply": EXAMPLES}),
+    ("Add a discount of 10 on samosa", {"reply": EXAMPLES}),
+    # Sold out, back and prices only as asked.
+    ("samosa sold out tomorrow", {"reply": EXAMPLES}),
+    ("samosa sold out on Sunday", {"reply": EXAMPLES}),
+    ("Kaya toast sold out", {"reply": EXAMPLES}),
+    ("Samosa sold out and masala chai price 25", {"reply": EXAMPLES}),
+    ("samosa back in stock", {"reply": "Samosa is already available on your demo menu"}),
+    ("Is samosa sold out?", {"reply": "Demo stock shows Samosa: on sale"}),
+    ("samosa is 25 years old", {"reply": "demo price for Samosa is ₹20."}),
+    ("Samosa is 20 now", {"reply": "demo price for Samosa is ₹20."}),
+    ("add masala chai for 20 rupees", {"reply": "already on your demo menu at ₹20"}),
+    # Answers, not cards: only shop visits and menu best sellers get them.
+    ("how many visits this week?", {"reply": "page was opened"}),
+    ("How many people visited my shop this week?", {"reply": "page was opened"}),
+    ("what are my best sellers?", {"reply": "best sellers: Masala chai"}),
+    ("What sells the most?", {"reply": "best sellers: Masala chai"}),
+    ("how many people bought samosa", {"absent": "page was opened"}),
+    ("Should I visit the wholesaler tomorrow?", {"absent": "page was opened"}),
+    ("most popular supplier", {"absent": "best sellers:"}),
+    ("best seller among suppliers", {"absent": "best sellers:"}),
+]
+
+
+def test_O_2_demo_coach_builds_a_card_only_for_an_exact_request(app):  # noqa: N802, F811
+    """O-2 (second review): every phrasing gets exactly its card, or no card at all."""
+    assert len(DEMO_COACH_PHRASINGS) >= 60
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        wrong = []
+        for index, (message, expected) in enumerate(DEMO_COACH_PHRASINGS):
+            # The per-IP and per-session demo limits are tested on their own above.
+            app.state.rate_limiter.counters.clear()
+            if index % 30 == 0:
+                session = open_demo(client).json()["session_id"]
+            events = coach_events(client, session, message)
+            text = " ".join(event.get("text") or "" for event in events)
+            cards = [event["data"]["snapshot"] for event in events if event["kind"] == "proposal"]
+            got: dict = {"text": text, "cards": cards}
+            if "line" not in expected:
+                offered = next((e.get("data") for e in events if e["kind"] == "reply"), None)
+                if cards or ("reply" in expected and expected["reply"] not in text):
+                    wrong.append((message, expected, got))
+                elif expected.get("absent", "\0") in text:
+                    wrong.append((message, expected, got))
+                elif expected.get("reply") == EXAMPLES and offered != {
+                    "suggestions": list(SUGGESTIONS)
+                }:
+                    wrong.append((message, expected, got))
+                continue
+            if len(cards) != 1 or f"check: {expected['line']}." not in text:
+                wrong.append((message, expected, got))
+                continue
+            card = cards[0]
+            if "product" in expected:
+                name, price, unit, available = expected["product"]
+                want = [{"name": name, "price": price, "unit": unit, "available": available}]
+                have = [
+                    {key: p[key] for key in ("name", "price", "unit", "available")}
+                    for p in card["products"]
+                ]
+                if card["business"] is not None or have != want:
+                    wrong.append((message, expected, got))
+                continue
+            days = [day for day in card["business"]["weekly_hours"] if not day["closed"]]
+            spans = {(day["open"], day["close"]) for day in days}
+            want_span = (expected.get("open", "06:30"), expected.get("close", "21:00"))
+            if card["products"] or not days or spans != {want_span}:
+                wrong.append((message, expected, got))
+        assert wrong == [], "\n".join(map(repr, wrong))
         app.state.rate_limiter.counters.clear()
 
 

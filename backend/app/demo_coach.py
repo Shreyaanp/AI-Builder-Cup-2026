@@ -22,34 +22,79 @@ SUGGESTIONS = (
     "What should I prep tomorrow?",
 )
 DEMO_NOTE = "This is the demo shop, so nothing reaches real customers."
+# The offline coach is conservative: a review card only for a short request that is all one of
+# the patterns below. Anything more (a reason, a day, a "not") gets the examples instead, since
+# a wrong card is worse than none.
 CLOCK = r"(?P<hour>\d{1,2})(?:[:.](?P<minute>\d{2}))?\s*(?P<suffix>a\.?m\.?|p\.?m\.?)?"
-HOURS_CHANGE = re.compile(
-    rf"\b(?P<which>clos(?:e|es|ing)|open(?:s|ing)?)\b(?:\s+(?:time|hours?))?"
-    rf"(?:\s+\w+){{0,3}}?\s+(?P<to>to|at|by|till|until)\s+{CLOCK}(?![\d%])",
-    re.I,
+DAILY = r"(?:\s+(?:every\s*day|daily))?"
+HOURS = (
+    re.compile(
+        rf"(?:please\s+)?(?:change|set|move|make)\s+(?:my|the|our)\s+(?P<which>closing|opening)"
+        rf"\s+time\s+to\s+{CLOCK}",
+        re.I,
+    ),
+    re.compile(rf"(?:(?:we|i)\s+(?:will\s+)?)?(?P<which>close|open)\s+at\s+{CLOCK}{DAILY}", re.I),
+    # "Open until 10pm" (or "till") is when the shop closes.
+    re.compile(
+        rf"(?:(?:we|i)\s+(?:are|am)\s+|we're\s+|i'm\s+)?(?:open|stay\s+open)\s+(?P<till>until|till)"
+        rf"\s+{CLOCK}{DAILY}",
+        re.I,
+    ),
 )
-# A request about one day ("close on Sunday at 6", "open till 11 tonight") is not a weekly change.
-ONE_DAY = re.compile(
-    r"\b(?:mon|tues?|wed(?:nes)?|thu(?:rs?)?|fri|sat(?:ur)?|sun)(?:day)?s?\b"
-    r"|\b(?:today|tonight|tomorrow|weekends?|weekdays?)\b",
-    re.I,
-)
+NAME = r"[a-z][a-z'-]*(?:\s+[a-z][a-z'-]*){0,3}"
+PRICE = r"(?:rs\.?\s*|₹\s*|inr\s*)?(?P<price>\d+(?:\.\d{1,2})?)(?:\s*(?:rupees?|rs\.?|inr))?"
 ADD_ITEM = re.compile(
-    r"^(?:please\s+)?(?:can\s+you\s+)?add\s+(?:a\s+|an\s+)?(?:new\s+)?(?:item\s+)?"
-    r"(?:(?:called|named)\s+)?"
-    r"(?P<name>[^\d₹,.?!]{2,40}?)\s+(?:for|at|@|priced\s+at|costing)\s+"
-    r"(?:rs\.?\s*|₹\s*|inr\s*)?(?P<price>\d+(?:\.\d{1,2})?)\s*(?:rupees?|rs\.?|inr)?"
-    r"(?:\s+(?:per|a|each)\s+(?P<unit>[a-z]+))?\s*[.!]?$",
+    r"(?:please\s+)?(?:can\s+you\s+)?add\s+(?:a\s+|an\s+)?(?:new\s+)?(?:item\s+)?"
+    rf"(?:(?:called|named)\s+)?(?P<name>{NAME})\s+(?:for|at|@)\s+{PRICE}"
+    r"(?:\s+(?:per|a|an)\s+(?P<unit>[a-z]+)|\s+each)?",
     re.I,
 )
+# Words that are never a whole new item ("add it for 20", "add GST at 18", "add stock of …").
+NOT_AN_ITEM = frozenset(
+    "the a an it this that these those item items thing something new called named more extra "
+    "another some my our stock of to for at on in with and or price prices tax taxes gst vat "
+    "delivery discount charge charges fee fees tip service".split()
+)
+SOLD_OUT = re.compile(
+    rf"(?:please\s+)?(?:mark\s+)?(?P<name>{NAME}?)\s+(?:(?:is|are|as)\s+)?"
+    r"(?:sold\s+out|out\s+of\s+stock)",
+    re.I,
+)
+BACK = re.compile(
+    rf"(?:please\s+)?(?:mark\s+)?(?P<name>{NAME}?)\s+(?:(?:is|are|as)\s+)?"
+    r"(?:back\s+in\s+stock|available\s+again)",
+    re.I,
+)
+NEW_PRICE = re.compile(
+    rf"(?:(?:please\s+)?(?:change|set|make)\s+(?:the\s+)?(?:price\s+of\s+(?P<of>{NAME})"
+    rf"|(?P<own>{NAME})(?:'s)?\s+price)\s+to|(?P<name>{NAME})\s+price\s+(?:is\s+)?(?:now\s+)?)"
+    rf"\s*{PRICE}",
+    re.I,
+)
+NEGATION = re.compile(
+    r"\b(?:not|no|never|don't|dont|do\s+not|doesn't|isn't|aren't|won't|can't|cannot|no\s+longer)\b",
+    re.I,
+)
+CHANGE_CUE = re.compile(
+    r"\b(?:clos\w*|open\w*|add|sold\s+out|stock|price|mark|change|set|hours)\b", re.I
+)
+QUESTION = re.compile(r"(?:is|are|do|does|did|what|when|which|how|can|should|will)\b", re.I)
 BEST_SELLERS = re.compile(
-    r"\b(?:best|top)[\s-]*sell\w*|\bsells?\s+(?:the\s+)?(?:best|most)\b|\bmost\s+popular\b",
+    r"(?:(?:what\s+(?:are|were|is)|what's|show(?:\s+me)?|which\s+are)\s+)?(?:my\s+|the\s+)?"
+    r"(?:best[\s-]*sell(?:ers?|ing\s+items?)|top[\s-]*sell(?:ers?|ing\s+items?)"
+    r"|most\s+popular\s+items?|top\s+items?)(?:\s+(?:this|last)\s+week)?"
+    r"|what\s+sells\s+(?:the\s+)?(?:best|most)(?:\s+(?:this|last)\s+week)?",
     re.I,
 )
 # Shop visits and page views, not the owner's own trips ("visit the wholesaler").
+WHEN = r"(?:\s+(?:this|last)\s+week|\s+today|\s+in\s+the\s+last\s+7\s+days)?"
 VISITS = re.compile(
-    r"\bvisit(?:s|ors?)\b(?!\s+(?:to\s+)?(?:the|a|an|my|our)\s+(?!(?:shop|store|stall|page)\b))"
-    r"|\bpage\s+views?\b|\bfootfall\b|\bhow\s+many\s+(?:people|customers)\b",
+    r"(?:(?:how\s+many|what\s+(?:are|were|was|is))\s+)?(?:my\s+|the\s+)?(?:shop\s+|page\s+)?"
+    r"(?:visits|visitors|page\s+views|footfall)(?:\s+(?:to|on)\s+my\s+(?:shop|store|page))?"
+    r"(?:\s+(?:did|has|have)\s+(?:i|we|my\s+(?:shop|store|page))\s+(?:get|got|had))?"
+    rf"{WHEN}"
+    r"|how\s+many\s+(?:people|customers)\s+visited\s+(?:my|the)\s+(?:shop|store|page)"
+    rf"{WHEN}",
     re.I,
 )
 
@@ -79,6 +124,11 @@ def _proposed(ctx: Any, result: dict[str, Any]) -> list[StreamEvent] | None:
     ]
 
 
+def _plain(question: str) -> str:
+    """One line, curly apostrophes made straight, without the closing "?", "!" or "."."""
+    return re.sub(r"[\s.!?]+$", "", " ".join(question.replace("’", "'").split()))
+
+
 def _clock(hour: str, minute: str | None, suffix: str | None, closing: bool) -> str | None:
     h, m = int(hour), int(minute or 0)
     marker = (suffix or "").replace(".", "").casefold()
@@ -86,6 +136,8 @@ def _clock(hour: str, minute: str | None, suffix: str | None, closing: bool) -> 
         if not 1 <= h <= 12:
             return None
         h = h % 12 + (12 if marker == "pm" else 0)
+    elif closing and h == 12:
+        return None  # "close at 12" could be noon or midnight
     elif closing and 1 <= h <= 11:
         h += 12  # "close at 10" means 10 in the evening
     if h > 23 or m > 59:
@@ -93,19 +145,16 @@ def _clock(hour: str, minute: str | None, suffix: str | None, closing: bool) -> 
     return f"{h:02d}:{m:02d}"
 
 
-def _hours_change(ctx: Any, question: str) -> list[StreamEvent] | None:
+def _hours_change(ctx: Any, text: str) -> list[StreamEvent] | None:
     """A weekly-hours proposal ("Change my closing time to 10pm"), as the real coach prepares."""
-    match = HOURS_CHANGE.search(question)
-    if not match or ONE_DAY.search(question):
+    match = next((m for pattern in HOURS if (m := pattern.fullmatch(text))), None)
+    if not match:
         return None
     from .coordinator import propose_business
     from .merchant import DayHours
 
-    # "Open until 10pm" (or "till") is when the shop closes.
-    closing = match["which"].casefold().startswith("clos") or match["to"].casefold() in {
-        "till",
-        "until",
-    }
+    groups = match.groupdict()
+    closing = bool(groups.get("till")) or str(groups.get("which")).casefold().startswith("clos")
     time = _clock(match["hour"], match["minute"], match["suffix"], closing)
     if time is None:
         return None
@@ -131,19 +180,36 @@ def _hours_change(ctx: Any, question: str) -> list[StreamEvent] | None:
     return _proposed(ctx, result)
 
 
-def _add_item(ctx: Any, question: str) -> list[StreamEvent] | None:
+def _priced(ctx: Any, items: list[Any]) -> list[StreamEvent] | None:
+    """The product review card, with amounts in the shop's currency ("₹25 per item")."""
+    from .coordinator import propose_products, shop_currency
+    from .region import symbol
+
+    currency = shop_currency(ctx.store.context(ctx.uid, ctx.business_id)["business"])
+    sign = symbol(currency) or f"{currency} "
+    result = propose_products(items)
+    result["changes"] = [
+        re.sub(r"(?<![\w.])(\d+(?:\.\d+)?)(?= per | →)", lambda m: sign + m[1], change)
+        for change in result.get("changes") or []
+    ]
+    return _proposed(ctx, result)
+
+
+def _add_item(ctx: Any, text: str) -> list[StreamEvent] | None:
     """A new item or a price change for review ("Add masala chai for 20 rupees")."""
-    match = ADD_ITEM.match(" ".join(question.split()))
+    match = ADD_ITEM.fullmatch(text)
     if not match:
         return None
-    from .coordinator import ProductInput, propose_products, shop_currency
+    from .coordinator import ProductInput, shop_currency
     from .money import to_major
     from .product_units import UNITS
     from .region import symbol
 
-    context = ctx.store.context(ctx.uid, ctx.business_id)
     name = match["name"].strip()
     price = float(match["price"])
+    if not 0 < price <= 100_000 or NOT_AN_ITEM & set(name.casefold().split()):
+        return None
+    context = ctx.store.context(ctx.uid, ctx.business_id)
     currency = shop_currency(context["business"])
     sign = symbol(currency) or f"{currency} "
     known = next((p for p in context["inventory"] if p["name"].casefold() == name.casefold()), None)
@@ -160,28 +226,55 @@ def _add_item(ctx: Any, question: str) -> list[StreamEvent] | None:
     unit = (match["unit"] or "").casefold()
     if not known:
         item["unit"] = unit if unit in UNITS else "item"
-    result = propose_products([ProductInput(**item)])
-    # The review lines show amounts in the shop's currency ("₹25 per item").
-    result["changes"] = [
-        re.sub(r"(?<![\w.])(\d+(?:\.\d+)?)(?= per | →)", lambda m: sign + m[1], change)
-        for change in result.get("changes") or []
+    return _priced(ctx, [ProductInput(**item)])
+
+
+def _upkeep(ctx: Any, text: str) -> list[StreamEvent] | None:
+    """Sold out, back in stock or a new price for one saved item ("Samosa sold out")."""
+    from .coordinator import ProductInput
+
+    found = SOLD_OUT.fullmatch(text) or BACK.fullmatch(text) or NEW_PRICE.fullmatch(text)
+    if not found:
+        return None
+    said = next(found[group] for group in ("name", "of", "own") if found.groupdict().get(group))
+    inventory = ctx.store.context(ctx.uid, ctx.business_id)["inventory"]
+    known = next((p for p in inventory if p["name"].casefold() == said.strip().casefold()), None)
+    if not known:
+        return None
+    item = ProductInput(name=known["name"], unit=known["unit"])
+    if found.re is NEW_PRICE:
+        item.price = float(found["price"])
+        if not 0 < item.price <= 100_000:
+            return None
+    else:
+        item.available = found.re is BACK
+    events = _priced(ctx, [item])
+    if events:
+        return events
+    if found.re is NEW_PRICE:
+        state = "already has that price"
+    else:
+        state = "is already available" if item.available else "is already sold out"
+    return [
+        StreamEvent(
+            kind="reply",
+            text=f"{known['name']} {state} on your demo menu. Open Shop → Menu next to see it.",
+        )
     ]
-    return _proposed(ctx, result)
 
 
-def _upkeep(ctx: Any, question: str) -> list[StreamEvent] | None:
-    """Sold out, back or a new price ("Samosa sold out"): the offline fixture the coach uses too."""
-    from .agent import upkeep_call
-    from .coordinator import propose_products
-    from .instant import PRICE_CUE
-
-    call = upkeep_call(question, ctx)
-    if call is None or not call.function_call:
-        return None
-    items = (call.function_call.args or {})["items"]
-    if any("price" in item for item in items) and not PRICE_CUE.search(question):
-        return None
-    return _proposed(ctx, propose_products(items))
+def _unclear_change(question: str, text: str) -> bool:
+    """A change request that is not exactly one the demo can prepare ("don't close at 10pm",
+    "close at 2pm for lunch"): it gets the examples, never a guessed card."""
+    if NEGATION.search(text) and CHANGE_CUE.search(text):
+        return True
+    if re.search(r"\d", text) and (
+        re.search(r"\b(?:clos\w*|open\w*)\b", text, re.I)
+        or re.match(r"(?:please\s+)?(?:can\s+you\s+)?add\b", text, re.I)
+    ):
+        return True
+    upkeep = re.search(r"\b(?:sold\s+out|out\s+of\s+stock|back\s+in\s+stock)\b", text, re.I)
+    return bool(upkeep) and "?" not in question and not QUESTION.match(text)
 
 
 def _best_sellers() -> list[StreamEvent]:
@@ -231,16 +324,21 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     the reply. Deterministic and model-free, so the public demo never calls a paid model."""
     if not _is_demo(ctx):
         return None
+    text = _plain(question)
+    reply: str | None = None
     if not re.search(r"[ऀ-ॿ]", question):
-        for intent in (_hours_change, _add_item, _upkeep):
-            events = intent(ctx, question)
-            if events:
-                return events
-        if BEST_SELLERS.search(question):
-            return _best_sellers()
-        if VISITS.search(question):
-            return _visits(ctx)
-    reply = public_demo_reply(ctx, question)
+        if not NEGATION.search(text):
+            for intent in (_hours_change, _add_item, _upkeep):
+                events = intent(ctx, text)
+                if events:
+                    return events
+            if BEST_SELLERS.fullmatch(text):
+                return _best_sellers()
+            if VISITS.fullmatch(text):
+                return _visits(ctx)
+        if _unclear_change(question, text):
+            reply = FALLBACK
+    reply = reply or public_demo_reply(ctx, question)
     if reply is None:
         return None
     if reply == FALLBACK:
@@ -279,7 +377,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     product = next((item for item in inventory if item["name"].casefold() in words), None)
     product = product or next(iter(inventory), {"name": "your menu", "stock": 0, "unit": "items"})
     name = product["name"]
-    stock = product.get("stock", 0)
+    stock = product.get("stock") or 0  # a saved item may have no stock count
     # Saved prices are minor units (paise); the reply shows rupees.
     price = to_major(cast(int, product.get("price", 0)), shop_currency(business))
     quantity = sum(row["quantity"] for row in history if row["item"] == name)
@@ -378,8 +476,14 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
             "\u0938\u094d\u091f\u0949\u0915",
         )
     ):
+        if product.get("available") is False:
+            count = "sold out"
+        elif product.get("stock") is None:
+            count = "on sale (no stock count saved)"
+        else:
+            count = f"{stock:g} {product.get('unit', 'items')}"
         return (
-            f"Demo stock shows {name}: {stock:g} {product.get('unit', 'items')}. "
+            f"Demo stock shows {name}: {count}. "
             "In your real shop, this would update customer availability; open Shop → Sold out next."
         )
     if any(
