@@ -6,6 +6,7 @@ import { holdAt } from '../rescue/holds'
 import { StampMoment } from './StampMoment'
 import { demoKey } from './store'
 import { landStamp } from '../rewards/storage'
+import { remember } from '../first-run/seen'
 import { track } from '../../app/analytics'
 
 /**
@@ -131,6 +132,7 @@ export function ShopStamp({
             if (answered) onSpent?.()
             if (stamped) {
               landStamp(shop.id)
+              remember('customer')
               track('stamp_added')
             }
           }}

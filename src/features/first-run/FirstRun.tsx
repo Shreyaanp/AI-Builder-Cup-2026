@@ -28,7 +28,13 @@ function customerDemo(app: Audience) {
 /** Blocks setup until the device's introduction is finished or skipped. A QR arrival defers it to
  * the next visit, and so does a shared shop link. */
 export function FirstRun({ app, children }: { app: Audience; children: ReactNode }) {
-  const [open, setOpen] = useState(() => !hasSeen(app) && !shopArrival(app) && !customerDemo(app))
+  const [open, setOpen] = useState(() => {
+    // A QR arrival has engaged already: the intro is spent, not just deferred to the next screen.
+    if (app === 'customer' && new URLSearchParams(window.location.search).get('source') === 'qr') {
+      remember(app)
+    }
+    return !hasSeen(app) && !shopArrival(app) && !customerDemo(app)
+  })
   return open && !hasSeen(app) ? (
     <Cards
       app={app}
