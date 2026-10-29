@@ -1,4 +1,6 @@
 import { clientTimezoneHeader } from '../../api/timezone'
+import type { DayHours } from '../shop/hoursModel'
+import type { RiderProvider } from '../owner-tools/links'
 /** Optional facts customers ask about; absent until the owner confirms them. */
 export interface ShopFacts {
   halal?: 'yes' | 'no' | 'muslim_owned' | 'not_stated' | null
@@ -30,7 +32,7 @@ export interface Business {
     description?: string
     timezone?: string
     hours: string
-    weekly_hours?: import('../shop/hoursModel').DayHours[]
+    weekly_hours?: DayHours[]
     /** Shop-local date the owner closed the shop for ("closed today"). */
     closed_on?: string
     phone: string
@@ -40,7 +42,7 @@ export interface Business {
     /** Singapore PayNow: +65 mobile or the business UEN. */
     paynow_id?: string
     /** Unset: the region's ride apps (src/region/region.ts). */
-    rider_providers?: import('../owner-tools/links').RiderProvider[] | null
+    rider_providers?: RiderProvider[] | null
     /** ISO 4217; shops saved before currencies existed have none (their region's: shopCurrency). */
     currency?: string
   } & ShopFacts
