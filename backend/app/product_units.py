@@ -97,3 +97,34 @@ def known_unit(text: str) -> str | None:
 def normalize_unit(text: str) -> str:
     """One of UNITS for new data; anything unrecognised becomes "item"."""
     return known_unit(text) or "item"
+
+
+# OB-213: models sometimes read the price tag's "Rs" as the unit and the board's title as a section.
+CURRENCY_WORDS = {
+    "rs", "inr", "rupee", "rupees", "usd", "sgd", "idr", "rp", "dollar", "dollars", "s", "us",
+}  # fmt: skip
+EMPTY_WORDS = {"", "null", "none", "n/a", "na", "nil", "-"}  # a missing value the model spelled out
+HEADING_NOISE = {
+    "menu", "menu card", "our menu", "the menu", "food menu", "price list", "rate list",
+    "price", "prices", "rates", "list", "mrp",
+}  # fmt: skip
+
+
+def clean_unit(text: str) -> str:
+    """A unit that is only a currency token ("Rs", "₹", "S$", "Rp 20") is really "item"."""
+    if (text or "").strip().casefold() in EMPTY_WORDS:
+        return "item"
+    words = re.findall(r"[^\W\d_]+", (text or "").casefold())
+    has_symbol = bool(re.search(r"[$₹€£]", text or ""))
+    if (words or has_symbol) and all(word in CURRENCY_WORDS for word in words):
+        return "item"
+    return text
+
+
+def clean_category(text: str, shop_name: str = "") -> str:
+    """A category that is the menu's title or the shop's own name is not a section: empty."""
+    key = " ".join(re.sub(r"[^\w\s]", " ", (text or "").casefold()).split())
+    shop = " ".join(re.sub(r"[^\w\s]", " ", (shop_name or "").casefold()).split())
+    if key in HEADING_NOISE or key in EMPTY_WORDS or (shop and key == shop):
+        return ""
+    return text
