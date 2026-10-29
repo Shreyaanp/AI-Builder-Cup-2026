@@ -7,7 +7,7 @@ import { customerNavigate } from '../frontdoors/navigation'
 import { PlaceImage } from '../frontdoors/PlaceImage'
 import { accountCopyFor } from '../customer/copy'
 import { locallyMadeLabel } from '../public/locallyMade'
-import { formatPrice, formatShopPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { askCopy } from './askStrings'
 import { cleanAreaText, plainModelText } from './areaText'
 import type { AreaAnswer, AskAnswer, AskPick } from './askThread'
@@ -305,7 +305,7 @@ export function PickCard({
                   lineHeight: theme.typography.titleSmall.lineHeight,
                 }}
               >
-                {(tile ? formatShopPrice : formatPrice)(item.price, pick.currency)}
+                {formatShopPrice(item.price, pick.currency)}
               </Typography>
             )}
           </Stack>
@@ -332,7 +332,7 @@ export function PickCard({
             >
               {fillIn(copy.deal, {
                 item: deal.item,
-                price: (tile ? formatShopPrice : formatPrice)(deal.price, pick.currency),
+                price: formatShopPrice(deal.price, pick.currency),
               })}{' '}
               · {fillIn(copy.until, { time: time(deal.pickup_end, locale) })}
             </Typography>

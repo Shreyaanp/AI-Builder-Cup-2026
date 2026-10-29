@@ -6,7 +6,7 @@ import { weekdays } from '../shop/hoursModel'
 import { useShopCopy } from '../shop/strings'
 import { useLocale } from '../../state/hooks'
 import type { Business, Product } from './api'
-import { formatPrice } from './format'
+import { formatShopPrice } from './format'
 import { useInChatCopy } from './inChatCopy'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
@@ -58,7 +58,7 @@ function placeDetails(
           .slice(0, 12)
           .map(
             (p) =>
-              `${p.name} ${formatPrice(p.price, fields.currency || shopRegion(fields).currency)}`,
+              `${p.name} ${formatShopPrice(p.price, fields.currency || shopRegion(fields).currency)}`,
           )
           .join(', '),
   ]

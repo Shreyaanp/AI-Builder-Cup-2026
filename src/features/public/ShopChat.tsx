@@ -16,7 +16,7 @@ import { ArrowUp, MessageCircle, UserRound } from 'lucide-react'
 import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { CustomerConversation } from './CustomerConversation'
@@ -252,7 +252,7 @@ export function ShopChat({
                 </Typography>
                 {entry.answer.price != null && (
                   <Typography variant="titleMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {formatPrice(entry.answer.price, currency)} /{' '}
+                    {formatShopPrice(entry.answer.price, currency)} /{' '}
                     {unitLabel(entry.answer.unit ?? '', shopCopy)}
                   </Typography>
                 )}

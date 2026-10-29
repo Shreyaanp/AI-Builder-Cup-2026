@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Alert, Box, Button, Stack, Typography, useTheme } from '@mui/material'
 import { Camera, ExternalLink, Share2, Sparkles, Store } from 'lucide-react'
 import { gsap } from 'gsap'
-import { useChalkTimeline } from '../../design/chalkMotion'
+import { hits, useChalkTimeline } from '../../design/chalkMotion'
 import { HAND_FONT, shape } from '../../design/theme'
 import { tourCopy } from '../tour/strings'
 import { startDemoTour } from '../tour/tourActions'
@@ -31,16 +31,19 @@ export function NewShopReady({ preview = false }: { preview?: boolean }) {
   const [failed, setFailed] = useState(false)
   const name = ws.active?.fields.name ?? ''
   const link = ws.shareUrl ? new URL(ws.shareUrl, location.origin).href : null
-  useChalkTimeline(root, () => {
+  useChalkTimeline(root, (root) => {
     if (preview) return
-    gsap.from('[data-ready-shop]', {
-      scale: 1.3,
-      rotate: -8,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'back.out(1.5)',
-    })
-    gsap.from('[data-chalk-spark]', { scale: 0.3, opacity: 0, duration: 0.5, stagger: 0.12 })
+    const shop = hits(root, '[data-ready-shop]')
+    const sparks = hits(root, '[data-chalk-spark]')
+    if (shop.length)
+      gsap.from(shop, {
+        scale: 1.3,
+        rotate: -8,
+        opacity: 0,
+        duration: 0.6,
+        ease: 'back.out(1.5)',
+      })
+    if (sparks.length) gsap.from(sparks, { scale: 0.3, opacity: 0, duration: 0.5, stagger: 0.12 })
   })
   useEffect(() => {
     if (!preview) title.current?.focus()

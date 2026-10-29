@@ -1,8 +1,4 @@
 {
   "business-sign-in:primary": "OB-82",
-  "customer-explore:overlap": "OB-84",
-  "demo-shop-page:overlap": "OB-85",
-  "landing:primary": "OB-82",
-  "passport:overlap": "OB-85",
-  "qr-stamp:overlap": "OB-85"
+  "landing:primary": "OB-82"
 }

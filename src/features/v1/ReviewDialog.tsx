@@ -6,7 +6,7 @@ import type { Proposal } from './api'
 import { ApiError } from './api'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
-import { formatPrice, shopCurrency } from './format'
+import { formatShopPrice, shopCurrency } from './format'
 import { FactList } from './FactList'
 import { Sheet } from './Sheet'
 import { useLocale } from '../../state/hooks'
@@ -263,7 +263,7 @@ export function ReviewDialog({
                   )}
                 </Box>
                 <Typography variant="titleMedium" sx={{ whiteSpace: 'nowrap' }}>
-                  {formatPrice(product.price, currency)} / {unitLabel(product.unit, shopCopy)}
+                  {formatShopPrice(product.price, currency)} / {unitLabel(product.unit, shopCopy)}
                 </Typography>
               </Stack>
             ))}

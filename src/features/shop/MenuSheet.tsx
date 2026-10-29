@@ -16,7 +16,7 @@ import {
 import { Plus, X } from 'lucide-react'
 import { shape } from '../../design/theme'
 import type { Product, Proposal } from '../v1/api'
-import { currencySymbol, formatPrice, shopCurrency, toMajor, toMinor } from '../v1/format'
+import { currencySymbol, formatShopPrice, shopCurrency, toMajor, toMinor } from '../v1/format'
 import { ImportButton, ImportPanel, SalesImportSheet } from '../v1/ImportMenu'
 import { Sheet } from '../v1/Sheet'
 import { useCopy } from '../v1/strings'
@@ -273,7 +273,7 @@ function PriceField({ product }: { product: Product }) {
   const [state, setState] = useState<PriceState>({ mode: 'view' })
   const shop = ws.active
   const currency = shopCurrency(shop)
-  const shown = formatPrice(product.price, currency)
+  const shown = formatShopPrice(product.price, currency)
 
   async function prepare(text: string) {
     const value = Number(text.trim().replace(',', '.'))
@@ -392,7 +392,7 @@ function PriceField({ product }: { product: Product }) {
           }}
           sx={{ minHeight: 48, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
         >
-          {copy.savePrice(formatPrice(state.price, currency))}
+          {copy.savePrice(formatShopPrice(state.price, currency))}
         </Button>
         <Button
           size="small"

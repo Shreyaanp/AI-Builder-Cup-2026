@@ -38,7 +38,7 @@ export const accountStrings = {
   profileButton: 'Profile and preferences',
   preferences: 'What Chalkboard remembers',
   preferencesBody:
-    'Said in Ask, like “I’m vegetarian” or “my budget is under ₹100”. Used to rank results For you.',
+    'Said in Ask, like “I’m vegetarian” or “my budget is under {price}”. Used to rank results For you.',
   vegetarian: 'Vegetarian',
   halal: 'Halal only',
   budget: 'Budget under {amount}',
