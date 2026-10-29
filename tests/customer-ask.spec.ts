@@ -241,7 +241,7 @@ test('ask: a real shop answers with its exact item and price; back returns to th
     await page.screenshot({ path: 'docs/stories/customer-ai-2-thinking.png' })
   const card = page.locator(`a[href="/explore/s/${id}"]`)
   await expect(card).toContainText('Kopi', { timeout: 15_000 })
-  await expect(card).toContainText('₹18')
+  await expect(card).toContainText(/₹18(?![.d])/)
   await expect(card).toContainText(/\d+ (m|km)/)
   await expect(page.getByRole('group', { name: 'Map of these places' })).toBeVisible()
   await streamed
@@ -313,7 +313,7 @@ test('errors keep the conversation: retry, cancel, stop and offline recovery', a
   await page.screenshot({ path: 'docs/stories/customer-ai-5-error.png' })
   fail = false
   await alert.getByRole('button', { name: 'Try again' }).click()
-  await expect(page.locator('a[href="/explore/s/demo-fixture-kopi"]')).toContainText('₹18')
+  await expect(page.locator('a[href="/explore/s/demo-fixture-kopi"]')).toContainText(/₹18(?![.d])/)
   // Cancel removes only the failed turn.
   fail = true
   await ask(page, 'bread')

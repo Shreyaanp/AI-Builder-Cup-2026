@@ -146,5 +146,7 @@ test('actual offline public question preserves input and reconnect retry works',
     await context.setOffline(false)
   }
   await page.getByRole('button', { name: 'Ask the shop assistant' }).click()
-  await expect(page.getByRole('status').filter({ hasText: 'Listed price' })).toContainText('₹18')
+  await expect(page.getByRole('status').filter({ hasText: 'Listed price' })).toContainText(
+    /₹18(?![.d])/,
+  )
 })

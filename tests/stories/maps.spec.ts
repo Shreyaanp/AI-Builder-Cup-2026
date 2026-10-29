@@ -106,7 +106,7 @@ for (const mode of ['light', 'dark'] as const)
     // A shop of ours that sells kopi is the first answer, with the exact item and price.
     const first = page.locator('li[id^="pick-"]').first()
     const card = first.getByRole('link').first()
-    await expect(card).toContainText('₹18', { timeout: 20_000 })
+    await expect(card).toContainText(/₹18(?![.d])/, { timeout: 20_000 })
     const id = (await first.getAttribute('id'))!.slice('pick-'.length)
     const name = (await first.getByRole('heading').textContent())!
     expect(id).toBe(ours.id)
@@ -223,7 +223,7 @@ test('switch off or Google down: one honest line, our list and straight-line dis
   })
   await page.goto('/explore/')
   await ask(page, 'Best kopi near me')
-  await expect(page.locator('li[id^="pick-"]').first()).toContainText('₹18', {
+  await expect(page.locator('li[id^="pick-"]').first()).toContainText(/₹18(?![.d])/, {
     timeout: 20_000,
   })
   await expect(page.getByText('Live Google Maps answers are off.', { exact: false })).toBeVisible()
