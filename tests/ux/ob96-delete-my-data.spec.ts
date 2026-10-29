@@ -45,9 +45,14 @@ async function busyCustomer(page: Page) {
 }
 
 async function openProfile(page: Page) {
-  await page.getByRole('button', { name: 'Profile and preferences' }).first().click()
   const sheet = page.getByRole('dialog')
-  await expect(sheet.getByRole('heading', { name: 'Your profile' })).toBeVisible()
+  // The button shows before the app has hydrated; retry the click until the sheet opens.
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Profile and preferences' }).first().click()
+    await expect(sheet.getByRole('heading', { name: 'Your profile' })).toBeVisible({
+      timeout: 1500,
+    })
+  }).toPass()
   return sheet
 }
 
@@ -143,19 +148,17 @@ for (const size of SIZES) {
     }) => {
       await prepare(page, 'light')
       await busyCustomer(page)
-      await page.addInitScript(() => {
-        // Device-kept follows: must be gone even though the sign-out fails.
-        if (!sessionStorage.getItem('ob96.seeded')) {
-          localStorage.setItem('chalkboard.customer.follows', JSON.stringify(['x']))
-          sessionStorage.setItem('ob96.seeded', '1')
-        }
-      })
       await page.route('**/api/v1/customer/session', (route) =>
         route.request().method() === 'DELETE'
           ? route.fulfill({ status: 503, json: { detail: 'unavailable' } })
           : route.fallback(),
       )
       await page.goto('/explore/saved')
+      // Device-kept follows, seeded once (no init script, so the reload cannot re-seed them):
+      // they must be gone even though the sign-out fails.
+      await page.evaluate(() =>
+        localStorage.setItem('chalkboard.customer.follows', JSON.stringify(['x'])),
+      )
       const sheet = await openProfile(page)
       await sheet.getByRole('button', { name: 'Delete my data' }).click()
       const erased = page.waitForResponse(
@@ -168,8 +171,14 @@ for (const size of SIZES) {
       await expect(page.getByText('but sign-out didn’t finish')).toBeVisible()
       await expect(page).toHaveURL(/\/explore\/$/)
       // The phone's follows are gone (the reloaded app may write back an empty list).
-      const follows = await page.evaluate(() => localStorage.getItem('chalkboard.customer.follows'))
-      expect(JSON.parse(follows ?? '[]')).toEqual([])
+      await expect
+        .poll(async () =>
+          JSON.parse(
+            (await page.evaluate(() => localStorage.getItem('chalkboard.customer.follows'))) ??
+              '[]',
+          ),
+        )
+        .toEqual([])
     })
 
     for (const appearance of ['light', 'dark'] as const) {
