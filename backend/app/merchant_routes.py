@@ -491,7 +491,11 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
                 # Room for one retry of a slow read (OB-194); the app waits longer than this.
                 async with asyncio.timeout(100):
                     extracted = await extract(
-                        mapper, request.app.state.photos, bytes(buffer), content_type
+                        mapper,
+                        request.app.state.photos,
+                        bytes(buffer),
+                        content_type,
+                        str(business["fields"].get("name") or ""),
                     )
                 headers, rows, mapping, low_confidence = as_table(extracted)
             else:

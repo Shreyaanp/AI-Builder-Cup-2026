@@ -41,7 +41,8 @@ FIXTURE_KIND_WIDTHS = {21: "shop_photo", 22: "product", 23: "receipt", 24: "till
 PhotoKind = Literal["shop_photo", "menu", "product", "receipt", "till", "other"]
 # OB-194: reading a menu needs little reasoning; unbounded thinking made each read take 25-40 s
 # in production (and could spend the output limit before the menu rows were written).
-READ_THINKING_BUDGET = 1024
+# OB-211: Gemini rejects a thinking budget on image + JSON calls, so reads use a level instead.
+READ_THINKING_LEVEL = "LOW"
 
 
 Unit = Literal[UNITS]  # type: ignore[valid-type]
@@ -293,7 +294,11 @@ class PhotoPipeline:
                         max_output_tokens=1024,
                         # OB-194: unbounded thinking made this one-word answer take 39 s in
                         # production before the owner even saw "Is this your menu?".
-                        thinking_config=types.ThinkingConfig(thinking_budget=0),
+                        # OB-211: a level, not a budget; Gemini rejects a thinking budget on
+                        # image + JSON calls.
+                        thinking_config=types.ThinkingConfig(
+                            thinking_level=types.ThinkingLevel.MINIMAL
+                        ),
                     ),
                 )
             except Exception as error:
@@ -338,7 +343,9 @@ class PhotoPipeline:
                         response_schema=_PhotoSpec,
                         temperature=0,
                         max_output_tokens=16000,
-                        thinking_config=types.ThinkingConfig(thinking_budget=READ_THINKING_BUDGET),
+                        thinking_config=types.ThinkingConfig(
+                            thinking_level=types.ThinkingLevel[READ_THINKING_LEVEL]
+                        ),
                     ),
                 )
             except Exception as error:

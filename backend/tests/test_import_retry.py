@@ -9,11 +9,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from google.genai import types
 from structlog.testing import capture_logs
 
 from app.imports import ImportRejected
 from app.ingestion import ExtractedRow, Extraction, extract
-from app.photos import READ_THINKING_BUDGET, PhotoPipeline
+from app.photos import PhotoPipeline
 from app.settings import Settings
 
 PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
@@ -50,7 +51,8 @@ async def test_menu_pdf_read_retries_a_failed_call_once_and_bounds_thinking() ->
     assert found.rows[0].name == "Masala Dosa"
     assert [entry["event"] for entry in logs] == ["import_extraction_failed"]
     config = reader.calls.call_args.kwargs["config"]
-    assert config.thinking_config.thinking_budget == READ_THINKING_BUDGET <= 1024
+    assert config.thinking_config.thinking_level == types.ThinkingLevel.LOW
+    assert config.thinking_config.thinking_budget is None
 
 
 async def test_menu_read_retries_a_cut_off_reply_then_gives_up_with_reasons() -> None:
@@ -93,5 +95,51 @@ async def test_chat_photo_sorting_skips_thinking_and_reading_bounds_it() -> None
     calls = client.aio.models.generate_content.call_args_list
     sort, read = (call.kwargs["config"] for call in calls)
     # Production 22 Oct: sorting one photo took 39.5 s while the model thought about it.
-    assert sort.thinking_config.thinking_budget == 0
-    assert read.thinking_config.thinking_budget == READ_THINKING_BUDGET
+    assert sort.thinking_config.thinking_level == types.ThinkingLevel.MINIMAL
+    assert read.thinking_config.thinking_level == types.ThinkingLevel.LOW
+    # OB-211 / #567: Gemini rejects a thinking budget on image + JSON calls.
+    assert sort.thinking_config.thinking_budget is None
+    assert read.thinking_config.thinking_budget is None
+
+
+async def test_every_file_read_uses_a_thinking_level_never_a_budget_ob211() -> None:
+    """OB-211 / #567: image, PDF and text reads in photos.py and ingestion.py."""
+    from app.photos import _KindSpec, _PhotoSpec
+
+    pipeline = photos()
+    pipeline.settings = SimpleNamespace(
+        coach_mode="gemini", moderation_mode="vision", google_text_model="fixture-model"
+    )
+    client = Mock()
+    client.aio.models.generate_content = AsyncMock(
+        side_effect=[
+            reply(_KindSpec(kind="menu")),
+            reply(_PhotoSpec.model_validate({"photo_kind": "menu", "products": []})),
+        ]
+    )
+    pipeline._genai = client
+    await pipeline.classify(b"jpeg")
+    await pipeline.extract(b"jpeg")
+    configs = [call.kwargs["config"] for call in client.aio.models.generate_content.call_args_list]
+
+    csv = b"name,price\nTea,10\n"
+    for data, mime in ((PDF, "application/pdf"), (csv, "text/plain")):
+        reader = mapper(reply(MENU))
+        await extract(reader, photos(), data, mime)
+        configs.append(reader.calls.call_args.kwargs["config"])
+
+    assert len(configs) == 4
+    for config in configs:
+        assert config.thinking_config.thinking_level is not None
+        assert config.thinking_config.thinking_budget is None
+
+
+async def test_ob213_import_category_equal_to_shop_name_is_emptied() -> None:
+    rows = [
+        ExtractedRow(name="Chai", price=10, category="RAJU TEA STALL"),
+        ExtractedRow(name="Vada", price=12, category="Raju Tea Stall."),
+        ExtractedRow(name="Coffee", price=15, category="Drinks"),
+    ]
+    reader = mapper(reply(Extraction(kind="menu", rows=rows)))
+    found = await extract(reader, photos(), PDF, "application/pdf", "Raju Tea Stall")
+    assert [r.category for r in found.rows] == ["", "", "Drinks"]
