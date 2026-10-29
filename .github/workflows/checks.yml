@@ -73,7 +73,8 @@ jobs:
       - run: uv run pytest -q
         env:
           FIRESTORE_EMULATOR_HOST: 127.0.0.1:8085
-      - run: uv run pip-audit --local --progress-spinner off
+      # google-adk caps opentelemetry-api<=1.44; remove when adk allows >=1.45.1 (#582)
+      - run: uv run pip-audit --local --progress-spinner off --ignore-vuln CVE-2026-114603
   # Coach evals (OB-173): the owner coach's expected tool calls, arguments and approval cards
   # against the real tools, driven by a replay model (no provider, free, deterministic).
   # Known failures are xfail with their issue number; live Gemini runs are by hand (README).
