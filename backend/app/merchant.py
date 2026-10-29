@@ -501,6 +501,10 @@ class MerchantRepository(Protocol):
         """UIDs that own this shop (trust checks only; never shown to customers)."""
         ...
 
+    def sealed_shops(self) -> list[str]:
+        """Shops marked as being deleted (or removed by hand) whose records still exist."""
+        ...
+
     def seed_demo_shop(
         self,
         uid: str,
@@ -1119,6 +1123,10 @@ class MerchantStore:
                 "SELECT uid FROM memberships WHERE business_id=? AND role='owner'", (bid,)
             ).fetchall()
         return [row[0] for row in rows]
+
+    def sealed_shops(self) -> list[str]:
+        # SQLite erases a shop in one transaction: there is never a half-deleted one.
+        return []
 
     def shared_shops(self) -> list[dict[str, Any]]:
         with self.connect() as db:

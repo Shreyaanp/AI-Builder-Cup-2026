@@ -647,6 +647,11 @@ class FirestoreMerchantStore:
         snapshot = ref.get()
         return list((snapshot.to_dict() or {}).get("owners") or []) if snapshot.exists else []
 
+    def sealed_shops(self) -> list[str]:
+        # An erasure that stopped half way, or a shop hidden by hand (OB-136).
+        query = self.businesses.where(filter=FieldFilter("deleting", "==", True))
+        return [snapshot.id for snapshot in query.select(["owners"]).stream()]
+
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         try:
             ref = self.businesses.document(document_id(bid, "Not found."))

@@ -4,6 +4,7 @@ import type { Auth } from 'firebase/auth'
 import { upgradeGoogle } from '../../auth/upgradeGoogle'
 import { firebaseAppName } from '../../auth/appSide'
 import { clearSession, frontDoor } from '../../auth/clearSession'
+import type { FarewellReason } from '../../auth/farewellNote'
 import { loadBootstrap } from '../../api/appConfig'
 
 export type { Profile } from './types'
@@ -25,7 +26,8 @@ export interface CustomerAccount {
   signIn: () => Promise<boolean>
   /** Read the sign-in configuration again after it failed ('unavailable'). */
   retry: () => void
-  signOut: () => Promise<void>
+  /** `deleted` after "Delete my data": the front door says the account was deleted. */
+  signOut: (reason?: FarewellReason) => Promise<void>
   /** Same-origin fetch with the customer's credentials. Throws `Error(status)` on failure. */
   api: <T>(path: string, init?: RequestInit) => Promise<T>
   /** The same credentials on a raw response (live streams). */
@@ -219,24 +221,27 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
     }
   }, [api, load, mode])
 
-  const signOut = useCallback(async () => {
-    ending.current = true
-    try {
-      if (mode === 'firebase') await firebase.current?.signOut()
-      else await api('/api/v1/customer/session', { method: 'DELETE' })
-    } catch {
-      ending.current = false
-      setError('unfinished')
-      return
-    }
-    await clearSession('customer')
-    setProfile(null)
-    setDeviceFollows([])
-    setName('')
-    setUnread(0)
-    setStatus('signed-out')
-    frontDoor('customer')
-  }, [api, mode])
+  const signOut = useCallback(
+    async (reason: FarewellReason = 'signed-out') => {
+      ending.current = true
+      try {
+        if (mode === 'firebase') await firebase.current?.signOut()
+        else await api('/api/v1/customer/session', { method: 'DELETE' })
+      } catch {
+        ending.current = false
+        setError('unfinished')
+        return
+      }
+      await clearSession('customer')
+      setProfile(null)
+      setDeviceFollows([])
+      setName('')
+      setUnread(0)
+      setStatus('signed-out')
+      frontDoor('customer', reason)
+    },
+    [api, mode],
+  )
 
   const refreshUnread = useCallback(() => {
     if (status !== 'signed-in' && status !== 'guest') return

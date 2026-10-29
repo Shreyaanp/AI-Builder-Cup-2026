@@ -1098,17 +1098,21 @@ async def passport(
 @router.delete("/customer/passport")
 async def erase_passport(request: Request) -> dict[str, bool]:
     principal = await customer(request)
-    state = await anyio.to_thread.run_sync(passports(request).get, principal.uid)
+    await forget_passport(request, principal.uid)
+    return {"deleted": True}
+
+
+async def forget_passport(request: Request, uid: str) -> list[str]:
+    """Erase the passport and this customer's share of the shared tallies; returns its shops."""
+    state = await anyio.to_thread.run_sync(passports(request).get, uid)
     # The shared tallies forget this customer too (co-op help, "neighbours tried this").
     helped: dict[str, list[str]] = {}
     for key in state.coop_helped:
         area, _, week = key.partition("|")
         helped.setdefault(area, []).append(week)
-    await anyio.to_thread.run_sync(
-        coops(request).erase_member, principal.uid, helped, list(state.shops)
-    )
-    await anyio.to_thread.run_sync(passports(request).erase, principal.uid)
-    return {"deleted": True}
+    await anyio.to_thread.run_sync(coops(request).erase_member, uid, helped, list(state.shops))
+    await anyio.to_thread.run_sync(passports(request).erase, uid)
+    return list(state.shops)
 
 
 @router.post("/customer/passport/shops/{business_id}/claim", response_model=PassportView)

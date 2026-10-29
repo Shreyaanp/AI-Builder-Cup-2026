@@ -147,22 +147,39 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
       setClearing(false)
     }
   }
-  /** Stamps and follows: the account's when there is one, always what this phone kept. */
-  async function clearMine() {
+  /**
+   * OB-96 "Delete my data": with an account, everything the server keeps for it (chats and the
+   * shops' copies, passport, tips, follows, preferences, searches) and then a sign-out; on this
+   * phone, the stamps and follows it kept.
+   */
+  async function deleteMine() {
     if (clearing) return
     setClearing(true)
     setNotice(null)
     try {
-      if (identified) await account.api('/api/v1/customer/passport', { method: 'DELETE' })
-      for (const id of [...account.follows]) await account.setFollow(id, false)
+      if (identified) {
+        const result = await account.api<{ status: 'erased' | 'partial' }>(
+          '/api/v1/customer/data',
+          { method: 'DELETE' },
+        )
+        if (result.status !== 'erased') throw new Error('partial')
+      } else {
+        for (const id of [...account.follows]) await account.setFollow(id, false)
+      }
       clearReceipts()
       clearRewards()
       forgetKeptPassport()
+      forgetOpened()
       refreshPassport()
       setConfirming(false)
-      setNotice({ kind: 'success', text: t.clearDeviceDone })
+      if (identified) {
+        // Clears the rest of this phone's customer data and says "Account deleted" on Ask.
+        await account.signOut('deleted')
+        return
+      }
+      setNotice({ kind: 'success', text: t.deleteDataDone })
     } catch {
-      setNotice({ kind: 'error', text: t.clearDeviceFailed, retry: () => void clearMine() })
+      setNotice({ kind: 'error', text: t.deleteDataFailed, retry: () => void deleteMine() })
     } finally {
       setClearing(false)
     }
@@ -303,19 +320,21 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
             startIcon={<Trash2 size={20} />}
             sx={settingsRowSx}
           >
-            {t.clearDevice}
+            {t.deleteData}
           </Button>
           {confirming && (
-            <Alert severity="warning" role="group" aria-label={t.clearDevice}>
-              <Typography variant="bodyMedium">{t.clearDeviceBody}</Typography>
+            <Alert severity="warning" role="group" aria-label={t.deleteData}>
+              <Typography variant="bodyMedium">
+                {identified ? t.deleteDataBody : t.deleteDataDeviceBody}
+              </Typography>
               <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
                 <Button
                   variant="contained"
                   color="error"
                   disabled={clearing}
-                  onClick={() => void clearMine()}
+                  onClick={() => void deleteMine()}
                 >
-                  {t.clearDeviceDo}
+                  {t.deleteDataDo}
                 </Button>
                 <Button disabled={clearing} onClick={() => setConfirming(false)}>
                   {t.notNow}

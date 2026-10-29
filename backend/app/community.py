@@ -28,6 +28,7 @@ from pydantic import BaseModel, ConfigDict, Field
 MAX_FOLLOWS = 100
 MAX_SEARCHES = 10
 MAX_THREADS = 50
+MAX_TIPPED = 500
 # A start that died mid-way frees its shop after this long, so the customer can try again.
 CLAIM_SECONDS = 30
 TRANSACTION_ATTEMPTS = 10
@@ -833,10 +834,41 @@ class Community:
             mine=True,
         )
         self.docs.put("tip", f"{bid}\0{uid}", bid, tip.created, {**tip.model_dump(), "uid": uid})
+        self.index_tip(uid, bid, True)
         return tip
 
     def delete_tip(self, uid: str, bid: str) -> None:
         self.docs.delete("tip", f"{bid}\0{uid}")
+        self.index_tip(uid, bid, False)
+
+    # Tips are filed under their shop; this per-customer list is how "Delete my data" finds them.
+
+    def index_tip(self, uid: str, bid: str, on: bool) -> None:
+        def change(data: dict[str, Any] | None) -> tuple[float, dict[str, Any]] | None:
+            shops = [b for b in (data or {}).get("shops", []) if b != bid]
+            if on:
+                shops.insert(0, bid)
+            return time.time(), {"shops": shops[:MAX_TIPPED]}
+
+        with self.lock:
+            self.docs.update("tipped", uid, uid, change)
+
+    def tipped(self, uid: str) -> list[str]:
+        return list((self.docs.get("tipped", uid) or {}).get("shops", []))
+
+    # Customer erasure ("Delete my data"): what this customer keeps here besides the chats in
+    # the shops' inboxes and the passport, which erasure.erase_customer erases first.
+
+    def erase_tips(self, uid: str, bids: list[str]) -> None:
+        """This customer's tips: the indexed ones, and any at these shops from before the index."""
+        for bid in dict.fromkeys([*self.tipped(uid), *bids]):
+            self.docs.delete("tip", f"{bid}\0{uid}")
+        self.docs.delete("tipped", uid)
+
+    def erase_customer(self, uid: str) -> None:
+        """Profile (name, follows, preferences, searches), chat slots, guest contact, Today."""
+        for kind in ("profile", "threadslots", "guest_identity", "today"):
+            self.docs.delete(kind, uid)
 
 
 def community_service(settings: Any) -> Community:
