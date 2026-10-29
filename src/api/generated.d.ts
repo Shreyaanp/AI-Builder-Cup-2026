@@ -360,7 +360,8 @@ export interface paths {
         /**
          * Add Gallery Photo
          * @description An explicit owner action ("Add photo"), like the sold-out switch: no AI, no proposal.
-         *     The photo is re-encoded (metadata stripped) and safety-checked before it is kept.
+         *     The photo is re-encoded (metadata stripped) and safety-checked before it is kept. `kind`
+         *     (shop front, inside, menu, product, other) is what the Photos sheet groups by.
          */
         post: operations["add_gallery_photo_api_v1_businesses__business_id__gallery_post"];
         delete?: never;
@@ -381,6 +382,26 @@ export interface paths {
         post?: never;
         /** Remove Gallery Photo */
         delete: operations["remove_gallery_photo_api_v1_businesses__business_id__gallery__photo_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/gallery/{photo_id}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make Cover Photo
+         * @description The first gallery photo is the one customers see on the shop page and in search.
+         */
+        post: operations["make_cover_photo_api_v1_businesses__business_id__gallery__photo_id__cover_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -7721,7 +7742,9 @@ export interface operations {
     };
     add_gallery_photo_api_v1_businesses__business_id__gallery_post: {
         parameters: {
-            query?: never;
+            query?: {
+                kind?: string;
+            };
             header?: never;
             path: {
                 business_id: string;
@@ -7753,6 +7776,40 @@ export interface operations {
         };
     };
     remove_gallery_photo_api_v1_businesses__business_id__gallery__photo_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                photo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    make_cover_photo_api_v1_businesses__business_id__gallery__photo_id__cover_post: {
         parameters: {
             query?: never;
             header?: never;
