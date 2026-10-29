@@ -20,7 +20,7 @@ from .imports import (
     ImportRejected,
     cell,
 )
-from .photos import READ_THINKING_BUDGET, PhotoPipeline, PhotoRejected, sanitize
+from .photos import READ_THINKING_LEVEL, PhotoPipeline, PhotoRejected, sanitize
 
 log = structlog.get_logger()
 
@@ -96,7 +96,9 @@ async def extract(
                     response_json_schema=gemini_schema(Extraction),
                     temperature=0,
                     max_output_tokens=16000,
-                    thinking_config=types.ThinkingConfig(thinking_budget=READ_THINKING_BUDGET),
+                    thinking_config=types.ThinkingConfig(
+                        thinking_level=types.ThinkingLevel[READ_THINKING_LEVEL]
+                    ),
                 ),
             )
         except Exception as error:
