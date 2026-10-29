@@ -1,7 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
 
 // Owner app polish from the live walk-through (O-6..O-15), in the public demo at 390x844.
-test.use({ viewport: { width: 390, height: 844 } })
+// OB-212 (#569): a touch phone in both projects, so the desktop run can tap() as well.
+test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 test.setTimeout(120_000)
 
 async function openDemo(page: Page, info: { testId: string }) {
@@ -59,7 +60,11 @@ test('O-10 and O-11: approving a reorder says it is sent; whole rupees have no .
 }, info) => {
   await openDemo(page, info)
   await page.locator('[data-tour="nav-grow"]').click()
-  await expect(page.getByRole('button', { name: /Your week.*₹44,552/ })).toBeVisible()
+  // OB-212 (#569): the demo week is the last 7 days of date-seeded sales, so the total moves
+  // every day (₹44,552 was 25 Oct only). Assert a whole-rupee amount, never one day's figure.
+  await expect(
+    page.getByRole('button', { name: /Your week\D*₹\d{1,3}(,\d{2,3})*(?![\d.,])/ }),
+  ).toBeVisible()
   await expect(page.getByText(/₹[\d,]+\.00/)).toHaveCount(0)
   await page.getByRole('button', { name: /^Purchase orders/ }).tap()
   await page.getByRole('button', { name: 'Draft a reorder' }).tap()

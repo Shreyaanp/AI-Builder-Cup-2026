@@ -30,6 +30,13 @@ DAY = date(2026, 10, 17)
 
 
 @pytest.fixture
+def seeded_day(monkeypatch) -> None:
+    # OB-206 (#557): the story is seeded for DAY, so the shop's "today" is DAY too. Reading
+    # the real clock left a week-old history that the forecast rightly refuses after 7 days.
+    monkeypatch.setattr(supply_chain, "shop_today", lambda _context: DAY)
+
+
+@pytest.fixture
 def world(tmp_path: Path):
     return (
         MerchantStore(str(tmp_path / "merchant.sqlite3")),
@@ -466,7 +473,7 @@ def test_private_tour_stays_private_during_seeding_and_resumes_a_partial_seed(
         ("singapore", "Kopi powder", "Ah Huat Provision (Demo)"),
     ],
 )
-def test_tour_reorder_drafts_from_the_wholesaler(world, city, item, supplier) -> None:
+def test_tour_reorder_drafts_from_the_wholesaler(world, seeded_day, city, item, supplier) -> None:
     """#264: Reorder on the tour shop drafts the stocked supply, not the chai brewed from it."""
     store, community = world
     seed_story(store, community, owner_uid="owner", today=DAY)
@@ -566,7 +573,9 @@ def test_tour_chain_follows_one_order_on_seeded_records(app) -> None:  # noqa: F
 
 
 @pytest.mark.parametrize("city", CENTRES)
-async def test_today_reorder_on_the_tour_shop_drafts_from_its_wholesaler(world, city) -> None:
+async def test_today_reorder_on_the_tour_shop_drafts_from_its_wholesaler(
+    world, seeded_day, city
+) -> None:
     # #264: the Today card's item is a drink sold by the cup; its wholesaler sells the
     # ingredient by the kg. The draft orders that ingredient instead of finding no supplier.
     from app.coordinator import DEMO_OWNER_UID, SupplierGenerator
