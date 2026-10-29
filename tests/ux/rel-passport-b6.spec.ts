@@ -66,7 +66,9 @@ for (const size of PHONES) {
         sheet.getByRole('button', { name: 'Switch to dark mode' }),
         sheet.getByRole('button', { name: 'Clear preferences and searches' }),
         sheet.getByRole('button', { name: 'Clear my stamps and follows' }),
-        sheet.getByRole('region', { name: 'Help' }).getByRole('button', { name: 'See again' }),
+        sheet
+          .getByRole('region', { name: 'Help' })
+          .getByRole('button', { name: 'Replay the intro' }),
         sheet.getByRole('button', { name: 'Sign out' }),
         sheet.getByRole('button', { name: 'Close', exact: true }),
       ]

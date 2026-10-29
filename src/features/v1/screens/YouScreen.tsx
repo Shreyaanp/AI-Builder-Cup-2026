@@ -16,11 +16,13 @@ import {
 import {
   Check,
   ChevronRight,
+  CircleHelp,
   Download,
   LogOut,
   MessageCircleQuestion,
   Plus,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react'
 import { openOwnerFeature } from '../../owner-tools/entry'
 import { useToolCopy } from '../../owner-tools/copy'
@@ -260,8 +262,13 @@ export function YouScreen() {
         </Group>
 
         <Group title={tabs.help}>
-          <SeeAgain app="owner" />
-          <TourMenuButton onStart={() => undefined} />
+          {/* Every Help entry is a Row, so icons and labels share one edge (OB-71). */}
+          <SeeAgain app="owner">
+            {(open, label) => <Row icon={<CircleHelp size={20} />} label={label} onClick={open} />}
+          </SeeAgain>
+          <TourMenuButton onStart={() => undefined}>
+            {(start, label) => <Row icon={<Sparkles size={20} />} label={label} onClick={start} />}
+          </TourMenuButton>
           <Row
             icon={<MessageCircleQuestion size={20} />}
             label={tools.guideTitle}

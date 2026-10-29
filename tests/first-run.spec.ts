@@ -118,7 +118,7 @@ for (const app of ['owner', 'customer'] as const) {
     } else {
       await page.getByRole('button', { name: 'Profile and preferences' }).click()
     }
-    await page.getByRole('button', { name: 'See again', exact: true }).click()
+    await page.getByRole('button', { name: 'Replay the intro', exact: true }).click()
     await expect(page.getByRole('heading', { name: copy[offset], exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Skip', exact: true }).click()
     await page.reload({ waitUntil: 'domcontentloaded' })

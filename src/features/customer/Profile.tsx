@@ -32,6 +32,8 @@ import { forgetKeptPassport } from './offline'
 import { clearReceipts, refreshPassport } from '../passport/store'
 import { clearRewards } from '../rewards/storage'
 import type { PreferenceKey } from './preferences'
+import { samplePrice } from '../discover/conversationCopy'
+import { areaCurrency } from '../v1/format'
 
 /** Fixed beside the appearance switch on Ask, Chats and Saved. */
 /** `inline` sits in a page's own header row instead of floating top-right. */
@@ -87,6 +89,20 @@ export function ProfileButton({ inline = false }: { inline?: boolean }) {
       <ProfileSheet open={open} onClose={() => setOpen(false)} />
     </>
   )
+}
+
+/** The area Ask last searched (shared with Ask, Rescue and Passport), for its currency. */
+function askedArea(): { lat: number; lng: number } | null {
+  try {
+    const place = (
+      JSON.parse(localStorage.getItem('chalkboard.discover.filters') || '{}') as {
+        place?: { lat: number; lng: number }
+      }
+    ).place
+    return place && Number.isFinite(place.lat) && Number.isFinite(place.lng) ? place : null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -214,7 +230,11 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                 {t.preferences}
               </Typography>
               <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
-                {t.preferencesBody}
+                {/* The budget example is in the area's own money: S$ in Tiong Bahru (OB-148). */}
+                {t.preferencesBody.replace(
+                  '{price}',
+                  samplePrice(areaCurrency(askedArea()), locale),
+                )}
               </Typography>
               {chips.length === 0 ? (
                 <Typography variant="bodyMedium" sx={{ mt: 2 }}>

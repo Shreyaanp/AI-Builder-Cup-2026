@@ -24,7 +24,7 @@ export const explainerCopy: Record<Locale, Copy> = {
     'Skip',
     'Next',
     'Start',
-    'See again',
+    'Replay the intro',
     'Back',
   ],
   hi: [
