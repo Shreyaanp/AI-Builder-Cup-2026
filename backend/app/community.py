@@ -689,15 +689,15 @@ class Community:
         if not products:
             return
         now = time.time()
-        # One set per week with fixed IDs, so concurrent first looks write the same documents.
-        week = int(now // (7 * DAY))
+        # One set with fixed IDs: concurrent looks write the same documents, and the weekly
+        # refresh overwrites them instead of stacking another four cards (OB-133).
         currency = shop.get("currency", "")
         first = products[0]
         newest = products[-1]
         available = next((p for p in products[1:] if p["available"]), first)
         seeds = [
             Update(
-                id=f"demo-{week}-0",
+                id="demo-update-0",
                 shop_id=bid,
                 kind="menu_confirmed",
                 created=now - 1800,
@@ -705,7 +705,7 @@ class Community:
                 demo=True,
             ),
             Update(
-                id=f"demo-{week}-1",
+                id="demo-update-1",
                 shop_id=bid,
                 kind="price_change",
                 item=first["name"],
@@ -717,7 +717,7 @@ class Community:
                 demo=True,
             ),
             Update(
-                id=f"demo-{week}-2",
+                id="demo-update-2",
                 shop_id=bid,
                 kind="back_in_stock",
                 item=available["name"],
@@ -728,7 +728,7 @@ class Community:
                 demo=True,
             ),
             Update(
-                id=f"demo-{week}-3",
+                id="demo-update-3",
                 shop_id=bid,
                 kind="new_item",
                 item=newest["name"],
