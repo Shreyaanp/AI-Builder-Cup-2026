@@ -295,6 +295,7 @@ export const hi: Copy = {
   shopEmptyTitle: 'आपकी दुकान जोड़ें',
   addShop: 'दुकान की जानकारी जोड़ें',
   startPhoto: 'फ़ोटो से शुरू करें',
+  opening: 'Opening…',
   editDetails: 'जानकारी बदलें',
   details: 'जानकारी',
   products: 'सामान और दाम',

@@ -301,6 +301,7 @@ export const en = {
   shopEmptyTitle: 'Let’s add your shop',
   addShop: 'Add shop details',
   startPhoto: 'Start from a photo',
+  opening: 'Opening…',
   editDetails: 'Edit details',
   details: 'Details',
   products: 'Products & prices',

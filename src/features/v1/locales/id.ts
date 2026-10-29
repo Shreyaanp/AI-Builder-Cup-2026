@@ -286,6 +286,7 @@ export const id: Copy = {
   shopEmptyTitle: 'Tambahkan toko Anda',
   addShop: 'Tambah info toko',
   startPhoto: 'Mulai dari foto',
+  opening: 'Membuka…',
   editDetails: 'Edit detail',
   details: 'Detail',
   products: 'Produk & harga',

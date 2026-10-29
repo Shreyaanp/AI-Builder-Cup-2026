@@ -280,6 +280,7 @@ export const ko: Copy = {
   shopEmptyTitle: '가게를 추가해 볼까요',
   addShop: '가게 정보 추가',
   startPhoto: '사진으로 시작',
+  opening: '여는 중…',
   editDetails: '정보 수정',
   details: '정보',
   products: '상품과 가격',

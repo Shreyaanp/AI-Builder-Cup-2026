@@ -282,6 +282,7 @@ export const ja: Copy = {
   shopEmptyTitle: 'お店を追加しましょう',
   addShop: '店舗情報を追加',
   startPhoto: '写真から始める',
+  opening: '開いています…',
   editDetails: '情報を編集',
   details: '店舗情報',
   products: '商品と価格',

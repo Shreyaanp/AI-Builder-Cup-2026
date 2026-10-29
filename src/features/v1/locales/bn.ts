@@ -293,6 +293,7 @@ export const bn: Copy = {
   shopEmptyTitle: 'আপনার দোকান যোগ করি',
   addShop: 'দোকানের তথ্য যোগ করুন',
   startPhoto: 'ছবি দিয়ে শুরু করুন',
+  opening: 'খুলছে…',
   editDetails: 'তথ্য সম্পাদনা করুন',
   details: 'তথ্য',
   products: 'পণ্য ও দাম',

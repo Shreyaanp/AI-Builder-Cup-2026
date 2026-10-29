@@ -261,6 +261,11 @@ function CoachScreen({
   const [menuFocus, setMenuFocus] = useState<string | null>(null)
   const next = useNextStepsCopy()
   const { unread, refresh: refreshUnread } = useUnread()
+  const closeShopSheet = () => {
+    if (shopSheet === 'messages') refreshUnread()
+    setShopSheet(null)
+    setMenuFocus(null)
+  }
   const messageInput = useRef<HTMLTextAreaElement>(null)
   const session = useRef<string | null>(null)
   const controller = useRef<AbortController | null>(null)
@@ -1457,7 +1462,7 @@ function CoachScreen({
         )}
         <div ref={end} />
       </Box>
-      <OnceOpened open={sales !== null}>
+      <OnceOpened open={sales !== null} onClose={() => setSales(null)}>
         <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
       </OnceOpened>
       {dayPhoto && (
@@ -1465,22 +1470,14 @@ function CoachScreen({
           <CloseDay initial={dayPhoto} onClose={() => setDayPhoto(null)} />
         </Suspense>
       )}
-      <OnceOpened open={thread !== null}>
+      <OnceOpened open={thread !== null} onClose={() => setThread(null)}>
         <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
       </OnceOpened>
-      <OnceOpened open={connectOpen}>
+      <OnceOpened open={connectOpen} onClose={() => setConnectOpen(false)}>
         <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
       </OnceOpened>
-      <OnceOpened open={shopSheet !== null}>
-        <ShopSheets
-          kind={shopSheet}
-          menuFocus={menuFocus}
-          onClose={() => {
-            if (shopSheet === 'messages') refreshUnread()
-            setShopSheet(null)
-            setMenuFocus(null)
-          }}
-        />
+      <OnceOpened open={shopSheet !== null} onClose={closeShopSheet}>
+        <ShopSheets kind={shopSheet} menuFocus={menuFocus} onClose={closeShopSheet} />
       </OnceOpened>
       {closeDayOpen && (
         <Suspense fallback={null}>
