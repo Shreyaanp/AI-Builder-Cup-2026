@@ -48,12 +48,24 @@ export function FirstRun({ app, children }: { app: Audience; children: ReactNode
   )
 }
 
-export function SeeAgain({ app, row = false }: { app: Audience; row?: boolean }) {
+/** Replays the intro. `children` draws the control itself, so a settings list can show it as one
+ * of its own rows, on the same edge as the rest (OB-71). */
+export function SeeAgain({
+  app,
+  row = false,
+  children,
+}: {
+  app: Audience
+  row?: boolean
+  children?: (open: () => void, label: string) => ReactNode
+}) {
   const [open, setOpen] = useState(false)
   const t = explainerCopy[useLocale()]
   return (
     <>
-      {row ? (
+      {children ? (
+        children(() => setOpen(true), t[9]!)
+      ) : row ? (
         // A full-width settings row, like the others in the profile sheet.
         <Button
           onClick={() => setOpen(true)}

@@ -867,15 +867,23 @@ function Leaderboard({
                     >
                       {new Intl.NumberFormat(locale).format(row.rank)}
                     </Typography>
-                    <Typography variant="bodyLarge" sx={{ flex: 1, fontWeight: 'inherit' }}>
-                      {row.name}
-                    </Typography>
+                    {/* The level is the person's overall one; the points are this week's, so
+                        they read "+230 points", never "Regular 230" beside a 300-point level (OB-104). */}
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="bodyLarge" sx={{ fontWeight: 'inherit' }}>
+                        {row.name}
+                      </Typography>
+                      <Typography variant="bodySmall" color="text.secondary">
+                        {t[row.level]}
+                      </Typography>
+                    </Box>
                     {row.demo && <Chip size="small" label={t.demo} />}
-                    <Typography variant="labelLarge" color="text.secondary">
-                      {t[row.level]}
-                    </Typography>
-                    <Typography variant="labelLarge" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                      {new Intl.NumberFormat(locale).format(row.points)}
+                    <Typography
+                      variant="labelLarge"
+                      data-board-points
+                      sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+                    >
+                      {fill(t.plus, { n: new Intl.NumberFormat(locale).format(row.points) })}
                     </Typography>
                   </Stack>
                 ))}
