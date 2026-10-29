@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -13,6 +13,7 @@ import {
 import { Camera, ImagePlus, X } from 'lucide-react'
 import { shape } from '../../design/theme'
 import { fill, useGoogleCopy } from './strings'
+import { GALLERY_KINDS, galleryGroupCopy as groups, type GalleryKind } from './galleryGroups'
 import { GALLERY_LIMIT, type useGallery } from './useGallery'
 
 const PHOTO_TYPES = 'image/jpeg,image/png,image/webp'
@@ -34,16 +35,125 @@ export function GalleryEditor({ gallery }: { gallery: ReturnType<typeof useGalle
   const phone = useMediaQuery('(pointer: coarse)')
   const upload = useRef<HTMLInputElement>(null)
   const camera = useRef<HTMLInputElement>(null)
+  const [kind, setKind] = useState<GalleryKind>('storefront')
   const pick = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
-    if (file) void gallery.add(file)
+    if (file) void gallery.add(file, kind)
   }
   return (
     <Stack spacing={3} sx={{ mt: 2, ...pop }}>
       <Typography variant="bodyMedium" color="text.secondary">
         {g.photosTip}
       </Typography>
+      {GALLERY_KINDS.map((group) => {
+        const members = gallery.ids.filter((id) => gallery.kinds[id] === group)
+        if (!members.length) return null
+        return (
+          <Stack key={group} component="section" spacing={1} aria-label={groups.kinds[group]}>
+            <Typography variant="titleSmall" component="h3">
+              {groups.kinds[group]} · {members.length}
+            </Typography>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                gap: 2,
+              }}
+            >
+              {members.map((id) => {
+                const index = gallery.ids.indexOf(id)
+                return (
+                  <Stack key={id} spacing={1}>
+                    <Box
+                      sx={{
+                        position: 'relative',
+                        aspectRatio: '1 / 1',
+                        borderRadius: `${shape.md}px`,
+                        overflow: 'hidden',
+                        bgcolor: roles.surfaceContainerHigh,
+                        animation: `cbPop 360ms ${EASE} both`,
+                      }}
+                    >
+                      {gallery.urls[id] && (
+                        <Box
+                          component="img"
+                          src={gallery.urls[id]}
+                          alt=""
+                          sx={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            display: 'block',
+                          }}
+                        />
+                      )}
+                      <IconButton
+                        aria-label={fill(g.removePhoto, { n: index + 1 })}
+                        onClick={() => void gallery.remove(id)}
+                        size="small"
+                        sx={{
+                          position: 'absolute',
+                          top: 4,
+                          right: 4,
+                          bgcolor: 'rgba(0,0,0,0.55)',
+                          color: '#fff',
+                          '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
+                        }}
+                      >
+                        <X size={16} />
+                      </IconButton>
+                    </Box>
+                    {index === 0 ? (
+                      <Typography
+                        variant="labelLarge"
+                        data-testid="cover-photo"
+                        sx={{ color: roles.primary, textAlign: 'center' }}
+                      >
+                        {groups.cover}
+                      </Typography>
+                    ) : (
+                      <Button
+                        sx={{ minHeight: 48 }}
+                        aria-label={fill(groups.makeCover, { n: index + 1 })}
+                        onClick={() => void gallery.makeCover(id)}
+                      >
+                        {groups.makeCoverLabel}
+                      </Button>
+                    )}
+                  </Stack>
+                )
+              })}
+            </Box>
+          </Stack>
+        )
+      })}
+      {gallery.ids.length > 0 && (
+        <Typography variant="bodySmall" color="text.secondary">
+          {groups.usedNote}
+        </Typography>
+      )}
+      {!gallery.full && (
+        <Stack spacing={1} role="radiogroup" aria-label={groups.addTo}>
+          <Typography variant="labelLarge" color="text.secondary">
+            {groups.addTo}
+          </Typography>
+          <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+            {GALLERY_KINDS.map((option) => (
+              <Button
+                key={option}
+                role="radio"
+                aria-checked={kind === option}
+                variant={kind === option ? 'contained' : 'outlined'}
+                sx={{ minHeight: 48 }}
+                onClick={() => setKind(option)}
+              >
+                {groups.kinds[option]}
+              </Button>
+            ))}
+          </Stack>
+        </Stack>
+      )}
       <Box
         sx={{
           display: 'grid',
@@ -51,43 +161,6 @@ export function GalleryEditor({ gallery }: { gallery: ReturnType<typeof useGalle
           gap: 2,
         }}
       >
-        {gallery.ids.map((id, index) => (
-          <Box
-            key={id}
-            sx={{
-              position: 'relative',
-              aspectRatio: '1 / 1',
-              borderRadius: `${shape.md}px`,
-              overflow: 'hidden',
-              bgcolor: roles.surfaceContainerHigh,
-              animation: `cbPop 360ms ${EASE} both`,
-            }}
-          >
-            {gallery.urls[id] && (
-              <Box
-                component="img"
-                src={gallery.urls[id]}
-                alt=""
-                sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
-            )}
-            <IconButton
-              aria-label={fill(g.removePhoto, { n: index + 1 })}
-              onClick={() => void gallery.remove(id)}
-              size="small"
-              sx={{
-                position: 'absolute',
-                top: 4,
-                right: 4,
-                bgcolor: 'rgba(0,0,0,0.55)',
-                color: '#fff',
-                '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
-              }}
-            >
-              <X size={16} />
-            </IconButton>
-          </Box>
-        ))}
         {!gallery.full && (
           <Box
             component="button"

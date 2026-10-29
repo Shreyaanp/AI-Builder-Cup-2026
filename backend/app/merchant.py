@@ -448,8 +448,11 @@ class MerchantRepository(Protocol):
         """Replace the coach's private notes for a shop (owner-only, never public)."""
         ...
 
-    def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
-        """Replace the shop's gallery (photo IDs the owner chose to show customers)."""
+    def set_gallery(
+        self, uid: str, bid: str, photos: list[str], kinds: dict[str, str] | None = None
+    ) -> list[str]:
+        """Replace the shop's gallery (photo IDs the owner chose to show customers). `kinds`
+        (photo ID -> kind) is replaced with it when given and left alone when None."""
         ...
 
     def set_icon(self, uid: str, bid: str, icon: str | None) -> str | None:
@@ -749,6 +752,8 @@ class MerchantStore:
                 db.execute("ALTER TABLE businesses ADD COLUMN gallery TEXT")
             if "icon" not in columns:
                 db.execute("ALTER TABLE businesses ADD COLUMN icon TEXT")
+            if "photo_kinds" not in columns:
+                db.execute("ALTER TABLE businesses ADD COLUMN photo_kinds TEXT")
             # Lazy schema migration: older databases gain the column; rows stay NULL until a
             # playbook is first generated for that shop (never a bulk backfill).
             if "playbook" not in columns:
@@ -815,6 +820,7 @@ class MerchantStore:
             "last_confirmed": row["last_confirmed"],
             "coach_notes": json.loads(row["coach_notes"] or "[]"),
             "gallery": json.loads(row["gallery"] or "[]"),
+            "photo_kinds": json.loads(row["photo_kinds"] or "{}"),
             "icon": row["icon"],
             "registration": row["status"],
             "public": bool(shared) and has_pin(json.loads(row["fields"])),
@@ -1368,11 +1374,17 @@ class MerchantStore:
             db.execute("UPDATE businesses SET coach_notes=? WHERE id=?", (json.dumps(notes), bid))
             return notes
 
-    def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
+    def set_gallery(
+        self, uid: str, bid: str, photos: list[str], kinds: dict[str, str] | None = None
+    ) -> list[str]:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             self.owned(db, uid, bid)
             db.execute("UPDATE businesses SET gallery=? WHERE id=?", (json.dumps(photos), bid))
+            if kinds is not None:
+                db.execute(
+                    "UPDATE businesses SET photo_kinds=? WHERE id=?", (json.dumps(kinds), bid)
+                )
             return photos
 
     def set_icon(self, uid: str, bid: str, icon: str | None) -> str | None:

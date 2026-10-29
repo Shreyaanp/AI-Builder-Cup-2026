@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useWorkspace } from '../v1/workspaceContext'
+import { kindOf, type GalleryKind } from './galleryGroups'
 
 export const GALLERY_LIMIT = 12
 
@@ -11,6 +12,7 @@ export function useGallery() {
   const ws = useWorkspace()
   const shop = ws.active
   const ids = shop?.gallery ?? []
+  const kinds = Object.fromEntries(ids.map((id) => [id, kindOf(shop?.photo_kinds?.[id])]))
   const [urls, setUrls] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -55,12 +57,12 @@ export function useGallery() {
     [],
   )
 
-  async function add(file: File) {
+  async function add(file: File, kind: GalleryKind = 'other') {
     if (!shop || busy) return
     setBusy(true)
     setFailed(false)
     try {
-      await ws.api(`/businesses/${encodeURIComponent(shop.id)}/gallery`, {
+      await ws.api(`/businesses/${encodeURIComponent(shop.id)}/gallery?kind=${kind}`, {
         method: 'POST',
         body: file,
         headers: { 'Content-Type': file.type || 'image/jpeg' },
@@ -86,5 +88,28 @@ export function useGallery() {
     }
   }
 
-  return { ids, urls, busy, failed, add, remove, full: ids.length >= GALLERY_LIMIT }
+  /** The first photo is the cover customers see; this moves a photo to the front. */
+  async function makeCover(id: string) {
+    if (!shop) return
+    try {
+      await ws.api(`/businesses/${encodeURIComponent(shop.id)}/gallery/${id}/cover`, {
+        method: 'POST',
+      })
+      await ws.reload()
+    } catch {
+      setFailed(true)
+    }
+  }
+
+  return {
+    ids,
+    kinds,
+    urls,
+    busy,
+    failed,
+    add,
+    remove,
+    makeCover,
+    full: ids.length >= GALLERY_LIMIT,
+  }
 }

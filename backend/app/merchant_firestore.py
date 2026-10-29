@@ -135,6 +135,7 @@ class FirestoreMerchantStore:
             "last_confirmed": data.get("last_confirmed"),
             "coach_notes": data.get("coach_notes") or [],
             "gallery": data.get("gallery") or [],
+            "photo_kinds": data.get("photo_kinds") or {},
             "icon": data.get("icon"),
             "registration": data["status"],
             "public": bool(data.get("public")) and has_pin(data["fields"]),
@@ -857,13 +858,18 @@ class FirestoreMerchantStore:
         self.forget_shared()
         return result
 
-    def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
+    def set_gallery(
+        self, uid: str, bid: str, photos: list[str], kinds: dict[str, str] | None = None
+    ) -> list[str]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
 
         @firestore.transactional
         def run(transaction: Any) -> list[str]:
             self.owned(ref.get(transaction=transaction), uid)
-            transaction.update(ref, {"gallery": photos})
+            transaction.update(
+                ref,
+                {"gallery": photos} if kinds is None else {"gallery": photos, "photo_kinds": kinds},
+            )
             return photos
 
         result = cast(list[str], run(self.client.transaction()))

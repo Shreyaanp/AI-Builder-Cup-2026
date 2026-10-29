@@ -638,21 +638,36 @@ async def delete_note(business_id: str, note_id: str, request: Request) -> dict[
 # --- Shop gallery: photos the owner explicitly chose to show customers -------------------
 GALLERY_LIMIT = 12
 PHOTO_ID = re.compile(r"^[0-9a-f-]{36}$")
+# What a gallery photo shows, so the owner sees them grouped. Unsorted photos are "other".
+GALLERY_KINDS = ("storefront", "inside", "menu", "product", "other")
 
 
-async def owned_gallery(request: Request, business_id: str) -> tuple[str, list[str]]:
+async def owned_gallery_kinds(
+    request: Request, business_id: str
+) -> tuple[str, list[str], dict[str, str]]:
     uid = await consented_owner(request)
     context = await anyio.to_thread.run_sync(store(request).context, uid, business_id)
     if not context["business"]:
         raise HTTPException(404, "Business not found.")
-    return uid, list(context["business"].get("gallery") or [])
+    business = context["business"]
+    return uid, list(business.get("gallery") or []), dict(business.get("photo_kinds") or {})
+
+
+async def owned_gallery(request: Request, business_id: str) -> tuple[str, list[str]]:
+    uid, gallery, _ = await owned_gallery_kinds(request, business_id)
+    return uid, gallery
 
 
 @router.post("/businesses/{business_id}/gallery")
-async def add_gallery_photo(business_id: str, request: Request) -> dict[str, Any]:
+async def add_gallery_photo(
+    business_id: str, request: Request, kind: str = "other"
+) -> dict[str, Any]:
     """An explicit owner action ("Add photo"), like the sold-out switch: no AI, no proposal.
-    The photo is re-encoded (metadata stripped) and safety-checked before it is kept."""
-    uid, gallery = await owned_gallery(request, business_id)
+    The photo is re-encoded (metadata stripped) and safety-checked before it is kept. `kind`
+    (shop front, inside, menu, product, other) is what the Photos sheet groups by."""
+    if kind not in GALLERY_KINDS:
+        raise HTTPException(422, "Unknown photo kind.")
+    uid, gallery, kinds = await owned_gallery_kinds(request, business_id)
     await enforce_limits(request, [("gallery", uid)])
     if len(gallery) >= GALLERY_LIMIT:
         raise HTTPException(409, "GALLERY_FULL")
@@ -676,21 +691,44 @@ async def add_gallery_photo(business_id: str, request: Request) -> dict[str, Any
     photo_id = str(uuid4())
     await anyio.to_thread.run_sync(pipeline.save_gallery_sync, business_id, photo_id, image)
     saved = await anyio.to_thread.run_sync(
-        store(request).set_gallery, uid, business_id, [*gallery, photo_id]
+        store(request).set_gallery,
+        uid,
+        business_id,
+        [*gallery, photo_id],
+        {**kinds, photo_id: kind},
     )
-    return {"gallery": saved, "photo_id": photo_id}
+    return {"gallery": saved, "photo_id": photo_id, "kind": kind}
 
 
 @router.delete("/businesses/{business_id}/gallery/{photo_id}")
 async def remove_gallery_photo(business_id: str, photo_id: str, request: Request) -> dict[str, Any]:
+    uid, gallery, kinds = await owned_gallery_kinds(request, business_id)
+    if photo_id not in gallery:
+        raise HTTPException(404, "Photo not found.")
+    saved = await anyio.to_thread.run_sync(
+        store(request).set_gallery,
+        uid,
+        business_id,
+        [p for p in gallery if p != photo_id],
+        {k: v for k, v in kinds.items() if k != photo_id},
+    )
+    pipeline: PhotoPipeline = request.app.state.photos
+    await anyio.to_thread.run_sync(pipeline.delete_gallery_sync, business_id, photo_id)
+    return {"gallery": saved}
+
+
+@router.post("/businesses/{business_id}/gallery/{photo_id}/cover")
+async def make_cover_photo(business_id: str, photo_id: str, request: Request) -> dict[str, Any]:
+    """The first gallery photo is the one customers see on the shop page and in search."""
     uid, gallery = await owned_gallery(request, business_id)
     if photo_id not in gallery:
         raise HTTPException(404, "Photo not found.")
     saved = await anyio.to_thread.run_sync(
-        store(request).set_gallery, uid, business_id, [p for p in gallery if p != photo_id]
+        store(request).set_gallery,
+        uid,
+        business_id,
+        [photo_id, *(p for p in gallery if p != photo_id)],
     )
-    pipeline: PhotoPipeline = request.app.state.photos
-    await anyio.to_thread.run_sync(pipeline.delete_gallery_sync, business_id, photo_id)
     return {"gallery": saved}
 
 
