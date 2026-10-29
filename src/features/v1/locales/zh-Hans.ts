@@ -273,6 +273,7 @@ export const zhHans: Copy = {
   shopEmptyTitle: '添加您的店铺',
   addShop: '添加店铺资料',
   startPhoto: '从照片开始',
+  opening: '正在打开…',
   editDetails: '编辑资料',
   details: '资料',
   products: '商品与价格',

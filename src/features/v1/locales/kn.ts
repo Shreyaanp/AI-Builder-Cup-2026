@@ -295,6 +295,7 @@ export const kn: Copy = {
   shopEmptyTitle: 'ನಿಮ್ಮ ಅಂಗಡಿ ಸೇರಿಸೋಣ',
   addShop: 'ಅಂಗಡಿ ವಿವರ ಸೇರಿಸಿ',
   startPhoto: 'ಫೋಟೋದಿಂದ ಆರಂಭಿಸಿ',
+  opening: 'ತೆರೆಯಲಾಗುತ್ತಿದೆ…',
   editDetails: 'ವಿವರ ತಿದ್ದಿ',
   details: 'ವಿವರಗಳು',
   products: 'ವಸ್ತುಗಳು ಮತ್ತು ಬೆಲೆಗಳು',

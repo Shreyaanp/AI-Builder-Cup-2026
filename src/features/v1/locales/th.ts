@@ -276,6 +276,7 @@ export const th: Copy = {
   shopEmptyTitle: 'มาเพิ่มร้านของคุณกันค่ะ',
   addShop: 'เพิ่มข้อมูลร้าน',
   startPhoto: 'เริ่มจากรูป',
+  opening: 'กำลังเปิด…',
   editDetails: 'แก้ไขข้อมูล',
   details: 'ข้อมูล',
   products: 'สินค้าและราคา',

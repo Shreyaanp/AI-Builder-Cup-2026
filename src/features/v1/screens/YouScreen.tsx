@@ -171,8 +171,6 @@ export function YouScreen() {
       </Stack>
 
       <Stack spacing={4}>
-        <TrustCard compact />
-
         <Group title={t.settings}>
           <ReminderSettings />
           <Box sx={{ px: 3, py: 2 }}>
@@ -249,6 +247,9 @@ export function YouScreen() {
           ))}
           <Row icon={<Plus size={20} />} label={t.newShop} onClick={ws.startNewShop} />
         </Group>
+
+        {/* Optional, so it follows settings and shops instead of leading the screen (OB-106). */}
+        <TrustCard compact />
 
         <Group>
           <Row

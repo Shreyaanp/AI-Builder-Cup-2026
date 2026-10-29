@@ -49,6 +49,18 @@ export function ReviewDialog({
   const open = proposal !== null
   // A reader that found nothing (e.g. a photo without connected AI) has nothing to confirm.
   const empty = Boolean(snapshot && !snapshot.business && snapshot.products.length === 0)
+  // A place without a found pin offers Find pin. A changed place must have found its pin (any
+  // point, even an approximate demo one) before saving, or the shop is saved unpinned and is no
+  // longer public (OB-178).
+  const unpinned = Boolean(
+    snapshot?.business?.location && (!snapshot.business.pin_label || snapshot.business.pin_demo),
+  )
+  const placeChanged = (snapshot?.business?.location ?? '') !== (target?.fields.location ?? '')
+  const needsPin = Boolean(
+    snapshot?.business?.location &&
+    placeChanged &&
+    (snapshot.business.lat == null || snapshot.business.lng == null),
+  )
   async function findPin() {
     if (!proposal || busy) return
     setBusy(true)
@@ -209,17 +221,16 @@ export function ReviewDialog({
               {snapshot.business.pin_demo && ` · ${pinCopy.demo}`}
             </Typography>
           )}
-          {snapshot.business.location &&
-            (!snapshot.business.pin_label || snapshot.business.pin_demo) && (
-              <Stack spacing={2}>
-                <Typography variant="bodyMedium" color="text.secondary">
-                  {pinCopy.pinReason}
-                </Typography>
-                <Button variant="outlined" disabled={busy} onClick={() => void findPin()}>
-                  {pinCopy.findPin}
-                </Button>
-              </Stack>
-            )}
+          {unpinned && (
+            <Stack spacing={2}>
+              <Typography variant="bodyMedium" color="text.secondary">
+                {pinCopy.pinReason}
+              </Typography>
+              <Button variant="outlined" disabled={busy} onClick={() => void findPin()}>
+                {pinCopy.findPin}
+              </Button>
+            </Stack>
+          )}
         </>
       )}
       {snapshot.products.length > 0 && (
@@ -280,7 +291,7 @@ export function ReviewDialog({
       <Button disabled={busy} onClick={close}>
         {t.cancel}
       </Button>
-      <Button variant="contained" disabled={busy} onClick={() => void confirm()}>
+      <Button variant="contained" disabled={busy || needsPin} onClick={() => void confirm()}>
         {t.confirmSave}
       </Button>
     </>
