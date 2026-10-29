@@ -5,6 +5,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -354,7 +355,9 @@ def test_ob133_weekly_demo_refresh_replaces_the_four_cards_not_adds_four(docs, m
     }
     start = 1_760_000_000.0
     for offset in (0, 8 * 86_400, 16 * 86_400, 40 * 86_400):
-        monkeypatch.setattr("app.community.time.time", lambda offset=offset: start + offset)
+        monkeypatch.setattr(
+            "app.community.time", SimpleNamespace(time=lambda offset=offset: start + offset)
+        )
         community.seed_demo_updates("demo-shop", shop)
         feed = community.updates(["demo-shop"])
         assert [u.kind for u in feed if u.demo].count("menu_confirmed") == 1
