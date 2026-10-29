@@ -20,7 +20,7 @@ from PIL import Image, ImageOps
 from pydantic import BaseModel, Field, field_validator
 
 from .gemini_schema import to_number
-from .product_units import UNITS, normalize_unit
+from .product_units import UNITS, clean_category, normalize_unit
 from .reply_language import reply_language, written_language
 from .settings import Settings
 
@@ -114,7 +114,7 @@ def to_extraction(spec: _PhotoSpec) -> PhotoExtraction:
                     else None
                 ),
                 unit=product.unit,
-                category=product.category[:80],
+                category=clean_category(product.category, spec.business.name)[:80],
             )
             for product in spec.products[:200]
             if product.name.strip()
@@ -145,8 +145,10 @@ Copy only text that is clearly visible; never guess. Keep the original language/
 Prices: a plain number in the local currency, only when printed next to the item.
 Give every product a category: the visible menu section it sits under, otherwise a short
 section a customer would expect (for example Drinks, Mains, Desserts, Services), in the
-board's language. Categories are suggestions the owner reviews.
-Give every product a unit from the allowed list; use "item" when none fits.
+board's language. Categories are suggestions the owner reviews. A title such as "MENU" or
+the shop's name is never a category; use a real section or leave it empty.
+Give every product a unit from the allowed list; use "item" when none fits. A currency
+symbol or word (Rs, ₹, INR, $) is never a unit.
 List every field or item you are unsure about in "uncertain".
 Write the "uncertain" notes for the owner in {language}."""
 # The offline note in the owner's language (live notes follow the prompt above).
