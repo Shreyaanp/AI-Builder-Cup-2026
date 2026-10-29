@@ -49,7 +49,7 @@ import { RateLimitError, streamCoach, TooSlowError, TURN_IDLE_MS } from '../../a
 import type { CoachEvent } from '../../api/stream'
 import { useIdentity } from '../../auth/useIdentity'
 import { useLocale } from '../../state/hooks'
-import { useChalkTimeline } from '../../design/chalkMotion'
+import { hits, useChalkTimeline } from '../../design/chalkMotion'
 import { enterRise, fieldFade, HAND_FONT, motion, shape } from '../../design/theme'
 import { discoverCopy } from '../discover/strings'
 import { HoursList } from '../shop/Hours'
@@ -65,7 +65,7 @@ import { useInChatCopy } from './inChatCopy'
 import { readablePlace, type OwnerLocation } from './location'
 import { MapCard, type PinChoice } from './MapCard'
 import { FactList } from './FactList'
-import { defaultCurrency, formatPrice } from './format'
+import { defaultCurrency, formatShopPrice } from './format'
 import { NewShopReady } from './NewShopStage'
 import { useNewShopCopy } from './newShopCopy'
 import { useNameSuggestion, useOnboardingCopy } from './onboardingCopy'
@@ -1949,26 +1949,37 @@ function Hero({ onBegin, onCancel }: { onBegin: () => void; onCancel: () => void
   useEffect(() => {
     heading.current?.focus()
   }, [])
-  useChalkTimeline(root, () => {
-    const strokes = gsap.utils.toArray<SVGPathElement>('[data-hero-stroke]')
+  useChalkTimeline(root, (scope) => {
+    const strokes = hits<SVGPathElement>(scope, '[data-hero-stroke]')
     strokes.forEach((path) => {
       const length = path.getTotalLength()
       gsap.set(path, { strokeDasharray: length, strokeDashoffset: length })
     })
-    gsap
-      .timeline()
-      .to(strokes, { strokeDashoffset: 0, duration: 0.9, ease: 'power2.inOut', stagger: 0.14 })
-      .from(
-        '[data-hero-title]',
+    const timeline = gsap.timeline()
+    if (strokes.length)
+      timeline.to(strokes, {
+        strokeDashoffset: 0,
+        duration: 0.9,
+        ease: 'power2.inOut',
+        stagger: 0.14,
+      })
+    const title = hits(scope, '[data-hero-title]')
+    if (title.length)
+      timeline.from(
+        title,
         { clipPath: 'inset(0 100% 0 0)', duration: 0.8, ease: 'power2.out' },
         '-=0.6',
       )
-      .from(
-        '[data-hero-spark]',
+    const sparks = hits(scope, '[data-hero-spark]')
+    if (sparks.length)
+      timeline.from(
+        sparks,
         { scale: 0, rotate: -40, opacity: 0, duration: 0.45, stagger: 0.1, ease: 'back.out(2.2)' },
         '-=0.4',
       )
-      .from('[data-hero-rise]', { opacity: 0, y: 18, duration: 0.5, stagger: 0.12 }, '-=0.3')
+    const rise = hits(scope, '[data-hero-rise]')
+    if (rise.length)
+      timeline.from(rise, { opacity: 0, y: 18, duration: 0.5, stagger: 0.12 }, '-=0.3')
   })
   return (
     <Box
@@ -2447,7 +2458,8 @@ function Review({
                       {product.name}
                     </Typography>
                     <Typography sx={{ flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-                      {formatPrice(product.price, currency)} / {unitLabel(product.unit, shopCopy)}
+                      {formatShopPrice(product.price, currency)} /{' '}
+                      {unitLabel(product.unit, shopCopy)}
                     </Typography>
                   </Box>
                 ))}

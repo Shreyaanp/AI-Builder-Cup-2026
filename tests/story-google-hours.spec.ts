@@ -18,6 +18,6 @@ test('Google handoff copies structured hours, not just the free-text note', asyn
   await expect(page.getByText('Listing details copied', { exact: true })).toBeVisible()
   const copied = await page.evaluate(() => navigator.clipboard.readText())
   expect(copied).toContain('Thursday: 07:00–20:00')
-  expect(copied).toContain('Kopi ₹18.00/cup')
+  expect(copied).toContain('Kopi ₹18/cup')
   await shot(page, 5, '4-copy-hours')
 })

@@ -56,7 +56,7 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     const review = page.getByRole('dialog', { name: reviewName })
     await expect(review).toContainText('Offline Fixture Tea Stall')
     await expect(review).toContainText('Chai')
-    await expect(review).toContainText('₹15.00 / cup')
+    await expect(review).toContainText('₹15 / cup')
     // The decision surface itself says what the reader was unsure of, or that it was a fixture.
     await expect(review.getByRole('alert')).toContainText('From your photo — please check')
     await expect(review.getByRole('alert')).toContainText(

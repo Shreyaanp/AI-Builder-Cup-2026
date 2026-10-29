@@ -22,7 +22,7 @@ import { useAccountCopy } from '../customer/copy'
 import { SignInSheet } from '../customer/SignIn'
 import { customerNavigate } from '../frontdoors/navigation'
 import { useRewardCopy } from '../rewards/strings'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { LevelRing, Sticker } from './art'
 import { FESTIVAL_ART } from './artData'
 import { fill, requirementText, usePassportCopy } from './copy'
@@ -674,7 +674,7 @@ function Impact({ view }: { view: PassportView }) {
               </Typography>
               {Object.entries(view.impact.saved).map(([currency, minor]) => (
                 <Typography key={currency} variant="bodyMedium">
-                  {fill(t.moneySaved, { amount: formatPrice(minor, currency, locale) })}
+                  {fill(t.moneySaved, { amount: formatShopPrice(minor, currency, locale) })}
                 </Typography>
               ))}
               <Typography variant="bodySmall" sx={{ mt: 1, opacity: 0.8 }}>
@@ -867,15 +867,23 @@ function Leaderboard({
                     >
                       {new Intl.NumberFormat(locale).format(row.rank)}
                     </Typography>
-                    <Typography variant="bodyLarge" sx={{ flex: 1, fontWeight: 'inherit' }}>
-                      {row.name}
-                    </Typography>
+                    {/* The level is the person's overall one; the points are this week's, so
+                        they read "+230 points", never "Regular 230" beside a 300-point level (OB-104). */}
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="bodyLarge" sx={{ fontWeight: 'inherit' }}>
+                        {row.name}
+                      </Typography>
+                      <Typography variant="bodySmall" color="text.secondary">
+                        {t[row.level]}
+                      </Typography>
+                    </Box>
                     {row.demo && <Chip size="small" label={t.demo} />}
-                    <Typography variant="labelLarge" color="text.secondary">
-                      {t[row.level]}
-                    </Typography>
-                    <Typography variant="labelLarge" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                      {new Intl.NumberFormat(locale).format(row.points)}
+                    <Typography
+                      variant="labelLarge"
+                      data-board-points
+                      sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+                    >
+                      {fill(t.plus, { n: new Intl.NumberFormat(locale).format(row.points) })}
                     </Typography>
                   </Stack>
                 ))}

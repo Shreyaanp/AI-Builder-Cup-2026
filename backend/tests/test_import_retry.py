@@ -132,3 +132,14 @@ async def test_every_file_read_uses_a_thinking_level_never_a_budget_ob211() -> N
     for config in configs:
         assert config.thinking_config.thinking_level is not None
         assert config.thinking_config.thinking_budget is None
+
+
+async def test_ob213_import_category_equal_to_shop_name_is_emptied() -> None:
+    rows = [
+        ExtractedRow(name="Chai", price=10, category="RAJU TEA STALL"),
+        ExtractedRow(name="Vada", price=12, category="Raju Tea Stall."),
+        ExtractedRow(name="Coffee", price=15, category="Drinks"),
+    ]
+    reader = mapper(reply(Extraction(kind="menu", rows=rows)))
+    found = await extract(reader, photos(), PDF, "application/pdf", "Raju Tea Stall")
+    assert [r.category for r in found.rows] == ["", "", "Drinks"]

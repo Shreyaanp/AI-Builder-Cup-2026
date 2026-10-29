@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Box, Button, ButtonBase, CircularProgress, Typography, useTheme } from '@mui/material'
+import { useState, type ReactNode } from 'react'
+import { Box, Button, CircularProgress, Typography, useTheme } from '@mui/material'
 import { Sparkles } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { useWorkspace } from '../v1/workspaceContext'
@@ -47,20 +47,19 @@ export function TourOffer() {
   )
 }
 
-/** Settings entry: replay the tour on the demo shop at any time. */
-export function TourMenuButton({ onStart }: { onStart: () => void }) {
+/** Settings entry: replay the tour on the demo shop at any time. The settings list draws it as one
+ * of its own rows, so it shares their edge (OB-71). */
+export function TourMenuButton({
+  onStart,
+  children,
+}: {
+  onStart: () => void
+  children: (start: () => void, label: string) => ReactNode
+}) {
   const ws = useWorkspace()
   const t = tourCopy(useLocale())
-  return (
-    <ButtonBase
-      onClick={() => {
-        onStart()
-        void startDemoTour(ws)
-      }}
-      sx={{ minHeight: 48, width: '100%', px: 2, gap: 2, justifyContent: 'flex-start' }}
-    >
-      <Sparkles size={18} aria-hidden="true" />
-      <Typography variant="bodyLarge">{t.settings}</Typography>
-    </ButtonBase>
-  )
+  return children(() => {
+    onStart()
+    void startDemoTour(ws)
+  }, t.settings)
 }

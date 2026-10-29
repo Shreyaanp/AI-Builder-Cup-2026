@@ -1,5 +1,5 @@
 import { dayLabel } from '../supply/supplyData'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { productName } from '../../i18n/productNames'
 import type { ChainCopy } from './chainCopy'
 import type { ChainState } from './chainData'
@@ -24,7 +24,7 @@ export function chainStep(
   if (!state || 'failed' in state)
     return { title: titles[index] ?? '', body: state ? c.failed : c.loading }
   const s = state.story
-  const money = (minor: number) => formatPrice(minor, s.currency, locale)
+  const money = (minor: number) => formatShopPrice(minor, s.currency, locale)
   const steps = [
     {
       title: c.today.title(productName(s.today.item, locale), dayLabel(s.today.runs_out, locale)),

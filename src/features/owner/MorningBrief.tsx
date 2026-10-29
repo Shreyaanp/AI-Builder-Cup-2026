@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react'
 import type { components } from '../../api/generated'
-import { useChalkTimeline } from '../../design/chalkMotion'
+import { hits, useChalkTimeline } from '../../design/chalkMotion'
 import { scrollArea, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { CloseDay } from '../closeday/CloseDay'
@@ -85,7 +85,9 @@ export function MorningBrief({
   useChalkTimeline(
     scope,
     (root) => {
-      gsap.from(root.querySelectorAll('.brief-line'), {
+      const lines = hits(root, '.brief-line')
+      if (!lines.length) return
+      gsap.from(lines, {
         y: 6,
         opacity: 0,
         duration: 0.35,

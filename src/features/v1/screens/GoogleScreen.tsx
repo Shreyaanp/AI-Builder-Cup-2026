@@ -13,7 +13,7 @@ import {
   Phone,
   Utensils,
 } from 'lucide-react'
-import { formatPrice, shopCurrency } from '../format'
+import { formatShopPrice, shopCurrency } from '../format'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
 import { mapsSearch, OWNER_URL } from '../../google-sim/links'
@@ -125,7 +125,9 @@ export function GoogleScreen() {
     f.phone && `${t.fields.phone}: ${f.phone}`,
     ws.products.length > 0 &&
       `${t.products}: ` +
-        ws.products.map((p) => `${p.name} ${formatPrice(p.price, currency)}/${p.unit}`).join(', '),
+        ws.products
+          .map((p) => `${p.name} ${formatShopPrice(p.price, currency)}/${p.unit}`)
+          .join(', '),
   ]
     .filter(Boolean)
     .join('\n')
@@ -252,7 +254,7 @@ export function GoogleScreen() {
               items={ws.products
                 .filter((p) => p.available)
                 .slice(0, 3)
-                .map((p) => ({ name: p.name, price: formatPrice(p.price, currency) }))}
+                .map((p) => ({ name: p.name, price: formatShopPrice(p.price, currency) }))}
             />
           </Stack>
         )}

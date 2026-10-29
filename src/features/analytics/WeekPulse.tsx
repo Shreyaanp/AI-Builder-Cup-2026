@@ -5,7 +5,7 @@ import { visuallyHidden } from '@mui/utils'
 import { gsap } from 'gsap'
 import { BarChart3, TrendingDown, TrendingUp } from 'lucide-react'
 import type { components } from '../../api/generated'
-import { useChalkTimeline } from '../../design/chalkMotion'
+import { hits, useChalkTimeline } from '../../design/chalkMotion'
 import { HAND_FONT } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { Sheet } from '../v1/Sheet'
@@ -81,7 +81,9 @@ export function WeekPulse({ data }: { data: Analytics }) {
   const locale = useLocale()
   const scope = useRef<HTMLDivElement>(null)
   useChalkTimeline(scope, (root) => {
-    gsap.from(root.querySelectorAll('[data-grow]'), {
+    const bars = hits(root, '[data-grow]')
+    if (!bars.length) return
+    gsap.from(bars, {
       scaleY: 0,
       transformOrigin: '50% 100%',
       duration: 0.45,

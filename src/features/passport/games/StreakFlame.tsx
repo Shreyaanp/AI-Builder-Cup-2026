@@ -111,6 +111,9 @@ export function StreakFlame({
       setBusy(false)
     }
   }
+  // A running streak warms the card in light. In dark the coral container is a loud brick red on
+  // the dark page (OB-145), so the card stays calm and the lit flame carries the colour.
+  const warm = weeks > 0 && theme.palette.mode === 'light'
   const labels = {
     done: p.weekDone,
     rain: t.weekCovered,
@@ -126,8 +129,8 @@ export function StreakFlame({
       sx={{
         p: { xs: 2, sm: 4 },
         borderRadius: { xs: '20px', sm: '24px' },
-        bgcolor: weeks ? coral.container : roles.surfaceContainerLow,
-        color: weeks ? coral.onContainer : roles.onSurface,
+        bgcolor: warm ? coral.container : roles.surfaceContainerLow,
+        color: warm ? coral.onContainer : roles.onSurface,
       }}
     >
       {/* The help button drops to its own line when the title would otherwise wrap (OB-99). */}

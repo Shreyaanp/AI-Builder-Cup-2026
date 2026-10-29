@@ -242,7 +242,7 @@ test('A-32: the demo shop list names the item next to its price, with the right 
     .getByRole('listitem')
   await expect(rows).toHaveCount(4)
   for (let i = 0; i < 4; i++) {
-    // A price always follows the item it is for ("Filter coffee ₹60.00"), never a bare "Cafe · ₹60.00".
+    // A price always follows the item it is for ("Filter coffee ₹60"), never a bare "Cafe · ₹60".
     await expect(rows.nth(i)).toContainText(/[A-Za-z] ₹\d/)
     await expect(rows.nth(i)).not.toContainText(/· ₹\d/)
   }

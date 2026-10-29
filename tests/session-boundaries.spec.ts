@@ -384,7 +384,7 @@ for (const finish of ['Skip', 'Start']) {
     await customerProfile(second)
     await second
       .getByRole('region', { name: 'Help', exact: true })
-      .getByRole('button', { name: 'See again' })
+      .getByRole('button', { name: 'Replay the intro' })
       .click()
     await expect(
       second.getByRole('heading', { name: 'Find local shops near you', exact: true }),

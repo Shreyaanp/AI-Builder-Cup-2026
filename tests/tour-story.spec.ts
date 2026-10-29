@@ -75,7 +75,7 @@ for (const area of [
     lng: 77.6412,
     label: 'Indiranagar, Bengaluru',
     query: 'masala chai',
-    price: '₹20.00',
+    price: /₹20(?![.\d])/,
   },
   {
     city: 'singapore',

@@ -4,7 +4,7 @@ import { Alert, Box, Button, Chip, Skeleton, Stack, Typography, useTheme } from 
 import { BadgeCheck, Bookmark, PackageCheck, Sparkle, TrendingDown, TrendingUp } from 'lucide-react'
 import type { Feed, ShopCard, Update } from './types'
 import { customerNavigate } from '../frontdoors/navigation'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { useCustomer } from './account'
 import { useAccountCopy, timeAgo } from './copy'
 import type { AccountCopy } from './copy'
@@ -89,7 +89,7 @@ function describe(
   body: string
 } {
   const currency = update.currency || shop?.currency || shopRegion(shop).currency
-  const price = update.price != null ? formatPrice(update.price, currency) : ''
+  const price = update.price != null ? formatShopPrice(update.price, currency) : ''
   const unit = update.unit ? ` / ${update.unit}` : ''
   switch (update.kind) {
     case 'price_change': {
@@ -100,7 +100,7 @@ function describe(
         title: `${down ? t.priceDown : t.priceUp}: ${update.item}`,
         body: `${price}${unit}${
           update.old_price != null
-            ? ` · ${t.was.replace('{price}', formatPrice(update.old_price, currency))}`
+            ? ` · ${t.was.replace('{price}', formatShopPrice(update.old_price, currency))}`
             : ''
         }`,
       }
