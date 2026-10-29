@@ -44,7 +44,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
   })
   await test.step('2 · one review card for both changes, one tap to confirm', async () => {
     const review = page.getByRole('dialog', { name: reviewName })
-    await expect(review).toContainText('₹20.00 / cup')
+    await expect(review).toContainText('₹20 / cup')
     await expect(review).toContainText(/Kaya toast/i)
     await shot(page, 2, 2)
     await confirm(page)
@@ -82,14 +82,14 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
   await test.step('6 · tap a price, review inline and save', async () => {
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await page.getByRole('button', { name: /^Menu/ }).click()
-    await page.getByRole('button', { name: 'Edit price: Kopi, ₹20.00' }).click()
+    await page.getByRole('button', { name: 'Edit price: Kopi, ₹20' }).click()
     const price = page.getByRole('textbox', { name: 'Edit price: Kopi' })
     await expect(price).toBeFocused()
     await price.fill('22')
     await price.press('Enter')
     await shot(page, 2, 6)
-    await page.getByRole('button', { name: 'Save ₹22.00' }).click()
-    await expect(page.getByRole('button', { name: 'Edit price: Kopi, ₹22.00' })).toBeVisible()
+    await page.getByRole('button', { name: 'Save ₹22' }).click()
+    await expect(page.getByRole('button', { name: 'Edit price: Kopi, ₹22' })).toBeVisible()
   })
   await test.step('7 · document import uses exact review before saving', async () => {
     await page.getByRole('button', { name: 'Import sales or menu (Excel, photo, notes)' }).click()
@@ -98,7 +98,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
       mimeType: 'text/csv',
       buffer: Buffer.from('Item Name,Price\nMasala chai,35\n'),
     })
-    await expect(page.getByRole('dialog', { name: reviewName })).toContainText('₹35.00')
+    await expect(page.getByRole('dialog', { name: reviewName })).toContainText('₹35')
     await shot(page, 2, 7)
     await confirm(page)
     await customer.getByRole('button', { name: 'Refresh', exact: true }).click()

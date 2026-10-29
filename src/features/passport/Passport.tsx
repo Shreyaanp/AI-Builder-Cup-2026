@@ -22,7 +22,7 @@ import { useAccountCopy } from '../customer/copy'
 import { SignInSheet } from '../customer/SignIn'
 import { customerNavigate } from '../frontdoors/navigation'
 import { useRewardCopy } from '../rewards/strings'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { LevelRing, Sticker } from './art'
 import { FESTIVAL_ART } from './artData'
 import { fill, requirementText, usePassportCopy } from './copy'
@@ -674,7 +674,7 @@ function Impact({ view }: { view: PassportView }) {
               </Typography>
               {Object.entries(view.impact.saved).map(([currency, minor]) => (
                 <Typography key={currency} variant="bodyMedium">
-                  {fill(t.moneySaved, { amount: formatPrice(minor, currency, locale) })}
+                  {fill(t.moneySaved, { amount: formatShopPrice(minor, currency, locale) })}
                 </Typography>
               ))}
               <Typography variant="bodySmall" sx={{ mt: 1, opacity: 0.8 }}>

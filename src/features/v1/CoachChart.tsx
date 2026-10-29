@@ -4,7 +4,7 @@ import { useTheme } from '@mui/material/styles'
 import { visuallyHidden } from '@mui/utils'
 import { gsap } from 'gsap'
 import { TrendingDown, TrendingUp } from 'lucide-react'
-import { useChalkTimeline } from '../../design/chalkMotion'
+import { hits, useChalkTimeline } from '../../design/chalkMotion'
 import { HAND_FONT } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { fillChart, useChartCopy } from './chartCopy'
@@ -51,22 +51,28 @@ export function CoachChart({ chart }: { chart: CoachChartData }) {
         '<0.1',
       )
     })
-    timeline.from(
-      root.querySelectorAll('[data-grow]'),
-      { scaleY: 0, transformOrigin: '50% 100%', duration: 0.45, stagger: 0.035 },
-      '<0.1',
-    )
-    timeline.from(
-      root.querySelectorAll('[data-bar]'),
-      { scaleX: 0, transformOrigin: '0% 50%', duration: 0.5, stagger: 0.06 },
-      '<',
-    )
-    timeline.from(root.querySelectorAll('[data-pop]'), {
-      scale: 0,
-      transformOrigin: '50% 50%',
-      duration: 0.3,
-      ease: 'back.out(3)',
-    })
+    const grow = hits(root, '[data-grow]')
+    if (grow.length)
+      timeline.from(
+        grow,
+        { scaleY: 0, transformOrigin: '50% 100%', duration: 0.45, stagger: 0.035 },
+        '<0.1',
+      )
+    const bars = hits(root, '[data-bar]')
+    if (bars.length)
+      timeline.from(
+        bars,
+        { scaleX: 0, transformOrigin: '0% 50%', duration: 0.5, stagger: 0.06 },
+        '<',
+      )
+    const pops = hits(root, '[data-pop]')
+    if (pops.length)
+      timeline.from(pops, {
+        scale: 0,
+        transformOrigin: '50% 50%',
+        duration: 0.3,
+        ease: 'back.out(3)',
+      })
   })
   return (
     <Box

@@ -12,7 +12,7 @@ import {
 import { ExternalLink, X } from 'lucide-react'
 import type { Locale } from '../../i18n/locales'
 import { customerNavigate } from '../frontdoors/navigation'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { askCopy } from './askStrings'
 import { fillIn } from './conversationCopy'
 import type { MapCopy } from './mapCopy'
@@ -352,7 +352,7 @@ function ExplorerRow({
           </Typography>
           {place.item && (
             <Typography variant="bodyMedium" noWrap>
-              {place.item.name} · {formatPrice(place.item.price, place.item.currency)}
+              {place.item.name} · {formatShopPrice(place.item.price, place.item.currency)}
             </Typography>
           )}
           <Typography variant="bodySmall" color="text.secondary" noWrap>

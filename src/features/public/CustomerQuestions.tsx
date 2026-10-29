@@ -16,7 +16,7 @@ import {
 import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 
@@ -184,7 +184,7 @@ export function CustomerQuestions({
             </Typography>
             {answer.price != null && (
               <Typography variant="bodyLarge" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {formatPrice(answer.price, currency)} / {unitLabel(answer.unit ?? '', shopCopy)}
+                {formatShopPrice(answer.price, currency)} / {unitLabel(answer.unit ?? '', shopCopy)}
               </Typography>
             )}
             <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>

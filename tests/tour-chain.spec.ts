@@ -23,8 +23,12 @@ interface Story {
   customers: { stamps_today: number; stamps_needed: number; reward: string }
 }
 
+// Whole rupees drop the ".00" (OB-210); real paise stay.
 const money = (minor: number) =>
-  (minor / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  (minor / 100).toLocaleString('en-IN', {
+    minimumFractionDigits: minor % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  })
 // Same rounding as the tour (chainSteps.amount): one decimal, so 2.71 kg reads 2.7 kg (OB-62).
 const qty = (n: number, unit: string) =>
   `${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 1 }).format(n)} ${unit}`

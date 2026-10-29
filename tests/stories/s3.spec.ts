@@ -87,7 +87,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       const card = customer.getByRole('list').getByRole('link').filter({ hasText: shopName })
       await expect(card).toBeVisible()
       // Cards show the first dish only; the full menu is checked on the shop page.
-      await expect(card).toContainText('₹15.00')
+      await expect(card).toContainText('₹15')
       await shot(customer, 3, 3)
       await card.click()
     })

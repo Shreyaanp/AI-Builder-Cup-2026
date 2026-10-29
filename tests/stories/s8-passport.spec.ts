@@ -146,7 +146,7 @@ async function walk(customer: Page, shopName: string, qr: string, mode: Mode) {
     await customer.getByRole('button', { name: 'Send', exact: true }).click()
     const match = customer.getByRole('link', { name: new RegExp(shopName) })
     await expect(match).toContainText('Honey cake slice')
-    await expect(match).toContainText('₹40.00')
+    await expect(match).toContainText('₹40')
     await evidence(customer, '1-search')
     // The finds stay earlier in the same conversation.
   })

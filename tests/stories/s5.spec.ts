@@ -28,7 +28,7 @@ test('S5 · shop details to Google preview and truthful handoff', async ({ page 
   })
   await test.step('3 · profile preview shows local prices and saved details', async () => {
     await expect(flow.getByRole('heading', { name: shopName })).toBeVisible()
-    await expect(flow).toContainText('₹18.00')
+    await expect(flow).toContainText('₹18')
     await expect(flow).toContainText('Indiranagar, Bengaluru')
     await expect(flow).toContainText('07:00')
     await shot(page, 5, 3)
