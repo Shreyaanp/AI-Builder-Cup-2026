@@ -21,7 +21,7 @@ import { ensureDemoWorld } from '../discover/demoWorld'
 import { fill, usePassportCopy } from '../passport/copy'
 import { CollectionEmptyState } from '../customer/CollectionEmptyState'
 import { usePassport } from '../passport/store'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { useOnline } from '../v1/useOnline'
 import { phoneArea } from '../../region/region'
 import { useRescueCopy } from './copy'
@@ -371,7 +371,7 @@ function Impact({ place }: { place: Place }) {
             {fill(p.co2, { kg: new Intl.NumberFormat(locale).format(view.impact.co2_kg) })}
             {Object.entries(view.impact.saved).map(
               ([currency, minor]) =>
-                ` · ${fill(p.moneySaved, { amount: formatPrice(minor, currency, locale) })}`,
+                ` · ${fill(p.moneySaved, { amount: formatShopPrice(minor, currency, locale) })}`,
             )}
           </Typography>
         )}
@@ -733,7 +733,7 @@ function DealCard({
                 fontSize: HAND_SIZE,
               }}
             >
-              {formatPrice(item.price, deal.currency, locale)}
+              {formatShopPrice(item.price, deal.currency, locale)}
             </Typography>
             <Typography
               variant="bodyMedium"
@@ -741,9 +741,9 @@ function DealCard({
             >
               {/* Struck through for the eye; said in words ("Was ₹25") for a screen reader. */}
               <Box component="span" sx={visuallyHidden}>
-                {fill(t.was, { price: formatPrice(item.was, deal.currency, locale) })}
+                {fill(t.was, { price: formatShopPrice(item.was, deal.currency, locale) })}
               </Box>
-              <span aria-hidden="true">{formatPrice(item.was, deal.currency, locale)}</span>
+              <span aria-hidden="true">{formatShopPrice(item.was, deal.currency, locale)}</span>
             </Typography>
           </Stack>
         ))}

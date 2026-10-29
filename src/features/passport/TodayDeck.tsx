@@ -20,7 +20,7 @@ import { useCustomer } from '../customer/account'
 import { FollowButton } from '../customer/FollowButton'
 import { customerNavigate } from '../frontdoors/navigation'
 import { PlaceImage } from '../frontdoors/PlaceImage'
-import { defaultCurrency, formatPrice } from '../v1/format'
+import { defaultCurrency, formatShopPrice } from '../v1/format'
 import { FESTIVAL_ART } from './artData'
 import { fill, usePassportCopy } from './copy'
 import type { PassportStrings } from './copy'
@@ -107,7 +107,7 @@ function words(find: Find, t: PassportStrings, locale: string, now: number) {
   const str = (key: string) => String(p[key] ?? '')
   const num = (key: string) => Number(p[key] ?? 0)
   const price = (key: string) =>
-    p[key] == null ? '' : formatPrice(num(key), str('currency') || undefined, locale)
+    p[key] == null ? '' : formatShopPrice(num(key), str('currency') || defaultCurrency(), locale)
   const shop = find.shop
   switch (find.kind) {
     case 'only_one':

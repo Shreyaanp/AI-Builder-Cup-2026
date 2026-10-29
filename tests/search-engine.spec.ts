@@ -88,7 +88,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await ask(page, 'a hot brew')
     // (The local test database holds many fixture cafés; any of them is a correct answer.)
     const card = page.locator('a[href^="/explore/s/"]').filter({ hasText: 'Kopi' }).first()
-    await expect(card).toContainText('₹18.00', { timeout: 20_000 })
+    await expect(card).toContainText(/₹18(?![.\d])/, { timeout: 20_000 })
     const id = decodeURIComponent((await card.getAttribute('href'))!.split('/').pop()!)
     await page.waitForTimeout(900)
     await shot('1-meaning')

@@ -23,8 +23,15 @@ interface Story {
   customers: { stamps_today: number; stamps_needed: number; reward: string }
 }
 
-const money = (minor: number) =>
-  (minor / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+// Whole rupees drop the ".00" (OB-210); real paise stay.
+const money = (minor: number) => {
+  const text = (minor / 100).toLocaleString('en-IN', {
+    minimumFractionDigits: minor % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  })
+  // Not followed by more digits or a decimal part, so "6,492" cannot match "6,492.00" or "6,4925", but may end a sentence.
+  return new RegExp(text.replace('.', '\\.') + '(?!\\.?\\d)')
+}
 // Same rounding as the tour (chainSteps.amount): one decimal, so 2.71 kg reads 2.7 kg (OB-62).
 const qty = (n: number, unit: string) =>
   `${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 1 }).format(n)} ${unit}`
