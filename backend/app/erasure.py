@@ -219,11 +219,15 @@ async def retry_quietly(request: Request, uid: str, steps: list[str]) -> None:
 
 # Customer erasure ("Delete my data" in the customer profile). Scoped to the signed-in customer
 # only: their chats are removed from the shops' inboxes, but the shops and what owners own stay.
-CUSTOMER_STEPS = ("chats", "passport", "tips", "profile")
+# Tips run first: tips from before the per-customer index are found only through the follows,
+# chats and stamps, so those sources are erased only once the shops they name are kept in the
+# index (Try again then still finds every tip).
+CUSTOMER_STEPS = ("tips", "chats", "passport", "profile")
+TIP_SOURCES = ("chats", "passport", "profile")
 
 
 async def erase_customer(request: Request, uid: str) -> dict[str, Any]:
-    """Run every customer erase step on its own and report each one (Try again repeats them)."""
+    """Run every customer erase step and report each one (Try again repeats them)."""
     # Imported here: the passport routes build on the merchant routes, which import this module.
     from .passport_routes import forget_passport, passports
 
@@ -231,15 +235,18 @@ async def erase_customer(request: Request, uid: str) -> dict[str, Any]:
     service = state.community
     store = state.merchant
     counts = {"chats": 0}
-    # Shops this customer may have left a tip at before tips were indexed per customer.
-    shops: list[str] = []
-    try:
+    noted = False
+
+    async def tips() -> None:
+        nonlocal noted
+        # A failed listing fails this step (never an empty list) and holds the sources back.
         profile = await anyio.to_thread.run_sync(service.profile, uid)
         threads = await anyio.to_thread.run_sync(service.threads, uid)
         stamps = await anyio.to_thread.run_sync(passports(request).get, uid)
-        shops = list(dict.fromkeys([*profile.follows, *(t["bid"] for t in threads), *stamps.shops]))
-    except Exception as error:
-        log.warning("customer_erase_list_failed", error=str(error)[:300])
+        shops = [*profile.follows, *(t["bid"] for t in threads), *stamps.shops]
+        await anyio.to_thread.run_sync(service.note_tipped, uid, shops)
+        noted = True
+        await anyio.to_thread.run_sync(service.erase_tips, uid)
 
     async def chats() -> None:
         left = 0
@@ -252,7 +259,11 @@ async def erase_customer(request: Request, uid: str) -> dict[str, Any]:
                 )
                 thread_signals(request).wake(bid)
             except HTTPException as error:
-                if error.status_code != 404:  # 404: the owner or an erased shop removed it.
+                # Erased only when the chat is really gone (the owner or an erased shop removed
+                # it); one still stored, e.g. at a sealed shop, stays pending with its pointer.
+                if error.status_code != 404 or await anyio.to_thread.run_sync(
+                    store.thread_exists, bid, iid
+                ):
                     left += 1
                     continue
             except Exception as error:
@@ -267,21 +278,22 @@ async def erase_customer(request: Request, uid: str) -> dict[str, Any]:
     async def passport() -> None:
         await forget_passport(request, uid)
 
-    async def tips() -> None:
-        await anyio.to_thread.run_sync(service.erase_tips, uid, shops)
-
     async def profile_step() -> None:
         await anyio.to_thread.run_sync(service.erase_customer, uid)
 
     runners: dict[str, Callable[[], Awaitable[None]]] = {
+        "tips": tips,
         "chats": chats,
         "passport": passport,
-        "tips": tips,
         "profile": profile_step,
     }
     done: list[str] = []
     failed: list[str] = []
     for name in CUSTOMER_STEPS:
+        if name in TIP_SOURCES and not noted:
+            log.warning("customer_erase_step_held", step=name)
+            failed.append(name)
+            continue
         try:
             await runners[name]()
             done.append(name)

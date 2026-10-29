@@ -89,11 +89,16 @@ for (const size of SIZES) {
       }
       expect(body).toMatchObject({
         status: 'erased',
-        erased: ['chats', 'passport', 'tips', 'profile'],
+        erased: ['tips', 'chats', 'passport', 'profile'],
         chats: 1,
       })
-      // Signed out on Ask, told the account was deleted, nothing personal left on this phone.
-      await expect(page.getByRole('status').filter({ hasText: 'Account deleted.' })).toBeVisible()
+      // Signed out on Ask, told the data was deleted (never "account deleted": the Google
+      // sign-in itself stays), nothing personal left on this phone.
+      const told = page.getByRole('status').filter({
+        hasText: 'Your data is deleted. You are signed out.',
+      })
+      await expect(told).toBeVisible()
+      await expect(told).not.toContainText('Account')
       await expect(page).toHaveURL(/\/explore\/$/)
       const me = (await (await page.request.get('/api/v1/customer/me')).json()) as {
         signed_in: boolean
@@ -127,8 +132,44 @@ for (const size of SIZES) {
       // Still signed in: nothing claims success.
       await expect(sheet.getByText('Signed in as Neighbour')).toBeVisible()
       await alert.getByRole('button', { name: 'Try again' }).click()
-      await expect(page.getByRole('status').filter({ hasText: 'Account deleted.' })).toBeVisible()
+      await expect(
+        page.getByRole('status').filter({ hasText: 'Your data is deleted.' }),
+      ).toBeVisible()
       expect(calls).toBe(2)
+    })
+
+    test(`OB-96 a failed sign-out after the erasure still clears this phone and says so · ${size.width}`, async ({
+      page,
+    }) => {
+      await prepare(page, 'light')
+      await busyCustomer(page)
+      await page.addInitScript(() => {
+        // Device-kept follows: must be gone even though the sign-out fails.
+        if (!sessionStorage.getItem('ob96.seeded')) {
+          localStorage.setItem('chalkboard.customer.follows', JSON.stringify(['x']))
+          sessionStorage.setItem('ob96.seeded', '1')
+        }
+      })
+      await page.route('**/api/v1/customer/session', (route) =>
+        route.request().method() === 'DELETE'
+          ? route.fulfill({ status: 503, json: { detail: 'unavailable' } })
+          : route.fallback(),
+      )
+      await page.goto('/explore/saved')
+      const sheet = await openProfile(page)
+      await sheet.getByRole('button', { name: 'Delete my data' }).click()
+      const erased = page.waitForResponse(
+        (r) => r.url().endsWith('/api/v1/customer/data') && r.request().method() === 'DELETE',
+      )
+      await sheet.getByRole('button', { name: 'Delete', exact: true }).click()
+      expect(((await (await erased).json()) as { status: string }).status).toBe('erased')
+      // A clear notice on Ask, not a silent stay on the sheet. By text: in local mode the session
+      // cookie outlives the failed sign-out, and the first-run dialog it opens is modal.
+      await expect(page.getByText('but sign-out didn’t finish')).toBeVisible()
+      await expect(page).toHaveURL(/\/explore\/$/)
+      // The phone's follows are gone (the reloaded app may write back an empty list).
+      const follows = await page.evaluate(() => localStorage.getItem('chalkboard.customer.follows'))
+      expect(JSON.parse(follows ?? '[]')).toEqual([])
     })
 
     for (const appearance of ['light', 'dark'] as const) {

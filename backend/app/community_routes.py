@@ -160,8 +160,9 @@ async def erase_my_data(request: Request) -> dict[str, Any]:
     """OB-96 "Delete my data": chats (and the shops' copies), passport, tips, follows,
     preferences, searches and the profile. Only this customer's; Try again repeats every step."""
     principal = await customer(request)
-    community(request)
-    # No rate limit, like the owner's erasure: a deletion is never refused.
+    # Generous: a real deletion and its retries never meet it; a scripted loop does. When the
+    # limit store errors, the deletion still runs (signed-in, no paid AI).
+    await enforce_limits(request, [("customer:erase", principal.uid)])
     return await erasure.erase_customer(request, principal.uid)
 
 

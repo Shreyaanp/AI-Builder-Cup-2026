@@ -14,6 +14,15 @@ Usage (from backend/, with the environment of the server whose data it removes):
   uv run python -m scripts.remove_shop --sealed              # also every half-deleted shop
   uv run python -m scripts.remove_shop --shop BID --apply --project PROJECT
 Output names shops by ID and owners by a short hash; never names, emails or UIDs.
+
+Notes before --apply:
+- A sealed shop whose `owners` list is already empty is only reported ("no owner found"), never
+  erased: the owner erasure has no account to reach it through. Check in the dry run that the
+  shop you mean (e.g. the OB-136 one) still lists its owner, or its records stay and need a
+  manual removal.
+- Even the dry run starts the full app lifespan against the target project (model client
+  warm-up, the replay maintenance task, the recs flush). It writes no shop data, but run it
+  only with the environment you mean to touch.
 """
 
 from __future__ import annotations
@@ -77,7 +86,7 @@ def report(result: Plan) -> None:
             "to erase this owner"
         )
     for bid in result.orphans:
-        print(f"  {bid}: no owner found (already erased, or needs a manual look)")
+        print(f"  {bid}: no owner found, NOT erased (already erased, or remove it by hand)")
     for bid in result.samples:
         print(f"  {bid}: sample shop, kept")
     if not (result.owners or result.refused or result.orphans or result.samples):

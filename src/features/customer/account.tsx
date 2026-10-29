@@ -26,8 +26,11 @@ export interface CustomerAccount {
   signIn: () => Promise<boolean>
   /** Read the sign-in configuration again after it failed ('unavailable'). */
   retry: () => void
-  /** `deleted` after "Delete my data": the front door says the account was deleted. */
-  signOut: (reason?: FarewellReason) => Promise<void>
+  /**
+   * `data-deleted` after "Delete my data". With `orIfItFails`, a failed sign-out still clears
+   * this phone's customer data, and the front door says that reason instead.
+   */
+  signOut: (reason?: FarewellReason, options?: { orIfItFails?: FarewellReason }) => Promise<void>
   /** Same-origin fetch with the customer's credentials. Throws `Error(status)` on failure. */
   api: <T>(path: string, init?: RequestInit) => Promise<T>
   /** The same credentials on a raw response (live streams). */
@@ -222,15 +225,21 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
   }, [api, load, mode])
 
   const signOut = useCallback(
-    async (reason: FarewellReason = 'signed-out') => {
+    async (
+      reason: FarewellReason = 'signed-out',
+      { orIfItFails }: { orIfItFails?: FarewellReason } = {},
+    ) => {
       ending.current = true
       try {
         if (mode === 'firebase') await firebase.current?.signOut()
         else await api('/api/v1/customer/session', { method: 'DELETE' })
       } catch {
-        ending.current = false
-        setError('unfinished')
-        return
+        if (!orIfItFails) {
+          ending.current = false
+          setError('unfinished')
+          return
+        }
+        reason = orIfItFails
       }
       await clearSession('customer')
       setProfile(null)

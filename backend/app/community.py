@@ -857,11 +857,23 @@ class Community:
         return list((self.docs.get("tipped", uid) or {}).get("shops", []))
 
     # Customer erasure ("Delete my data"): what this customer keeps here besides the chats in
-    # the shops' inboxes and the passport, which erasure.erase_customer erases first.
+    # the shops' inboxes and the passport, which erasure.erase_customer erases too.
 
-    def erase_tips(self, uid: str, bids: list[str]) -> None:
-        """This customer's tips: the indexed ones, and any at these shops from before the index."""
-        for bid in dict.fromkeys([*self.tipped(uid), *bids]):
+    def note_tipped(self, uid: str, bids: list[str]) -> None:
+        """Add shops that may hold a tip from before the index, so erasure still finds them once
+        the follows, chats and stamps that named them are gone (Try again)."""
+
+        def change(data: dict[str, Any] | None) -> tuple[float, dict[str, Any]]:
+            # Uncapped: the whole index is dropped once these shops' tips are erased.
+            shops = [*(data or {}).get("shops", []), *bids]
+            return time.time(), {"shops": list(dict.fromkeys(shops))}
+
+        with self.lock:
+            self.docs.update("tipped", uid, uid, change)
+
+    def erase_tips(self, uid: str) -> None:
+        """This customer's tips at every indexed shop; the index goes only once they all have."""
+        for bid in self.tipped(uid):
             self.docs.delete("tip", f"{bid}\0{uid}")
         self.docs.delete("tipped", uid)
 

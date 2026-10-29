@@ -536,6 +536,9 @@ class MerchantRepository(Protocol):
     def thread_action(
         self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""
     ) -> Inquiry: ...
+    def thread_exists(self, bid: str, iid: str) -> bool:
+        """Whether this chat is still stored, whatever state its shop is in (erasure checks)."""
+        ...
 
     # Connect your system: saved column and field mappings per shop and source
     def get_connector_mapping(
@@ -1518,6 +1521,13 @@ class MerchantStore:
 
     def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry:
         return self.thread_action(uid, bid, iid, "", "close")
+
+    def thread_exists(self, bid: str, iid: str) -> bool:
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT 1 FROM inquiries WHERE business_id=? AND id=?", (bid, iid)
+            ).fetchone()
+        return row is not None
 
     def thread_action(
         self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""

@@ -109,3 +109,15 @@ def test_ob136_nothing_calls_the_removal_by_itself() -> None:
         if "remove_shop" in path.read_text(encoding="utf-8") and path.name != "remove_shop.py"
     ]
     assert callers == []
+
+
+def test_ob136_an_ownerless_shop_is_reported_not_erased_and_the_notes_say_so(shops, capsys) -> None:
+    """Review notes 4 and 5 on #580: an owner-less sealed shop stays, and the dry run starts the
+    app lifespan; both are spelled out before anyone passes --apply."""
+    removed, _, _, _ = shops
+    orphan = "00000000-0000-4000-8000-000000000000"
+    assert run(removed, "--shop", orphan) == 0
+    assert f"{orphan}: no owner found, NOT erased" in capsys.readouterr().out
+    notes = remove_shop.__doc__ or ""
+    assert "no owner found" in notes and "only reported" in notes
+    assert "dry run starts the full app lifespan" in " ".join(notes.split())

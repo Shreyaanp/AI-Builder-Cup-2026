@@ -173,8 +173,9 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
       refreshPassport()
       setConfirming(false)
       if (identified) {
-        // Clears the rest of this phone's customer data and says "Account deleted" on Ask.
-        await account.signOut('deleted')
+        // Clears the rest of this phone's customer data and says so on Ask, also when the
+        // sign-out itself fails (OB-96 review: the phone must not keep the session silently).
+        await account.signOut('data-deleted', { orIfItFails: 'data-deleted-signed-in' })
         return
       }
       setNotice({ kind: 'success', text: t.deleteDataDone })
