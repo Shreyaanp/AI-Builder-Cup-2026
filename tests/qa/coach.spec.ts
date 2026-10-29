@@ -16,7 +16,7 @@ test('text upkeep reviews price and sold-out together before saving', async ({ p
   const id = await owner(page)
   await say(page, 'Kopi is 20 rupees now, kaya toast sold out')
   const review = page.getByRole('dialog', { name: 'Check before saving' })
-  await expect(review).toContainText(/₹20(?![.d])/)
+  await expect(review).toContainText(/₹20(?![.\d])/)
   const before = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
   expect(before.find((p: { name: string }) => p.name === 'Kopi').price).toBe(1800)
   await confirm(page)

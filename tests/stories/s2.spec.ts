@@ -100,7 +100,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
       mimeType: 'text/csv',
       buffer: Buffer.from('Item Name,Price\nMasala chai,35\n'),
     })
-    await expect(page.getByRole('dialog', { name: reviewName })).toContainText(/₹35(?![.d])/)
+    await expect(page.getByRole('dialog', { name: reviewName })).toContainText(/₹35(?![.\d])/)
     await shot(page, 2, 7)
     await confirm(page)
     await customer.getByRole('button', { name: 'Refresh', exact: true }).click()

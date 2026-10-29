@@ -12,7 +12,7 @@ test('Google details → gallery → INR preview → honest waiting state, reloa
   await flow.locator('input[type=file]:not([capture])').setInputFiles(await image(page))
   await expect(flow.getByRole('button', { name: 'Remove photo 1' })).toBeVisible()
   await flow.getByRole('button', { name: 'Next', exact: true }).click()
-  await expect(flow).toContainText(/₹18(?![.d])/)
+  await expect(flow).toContainText(/₹18(?![.\d])/)
   await expect(flow.getByRole('link', { name: 'Call', exact: true })).toHaveCount(0)
   await flow.getByRole('button', { name: 'Next', exact: true }).click()
   await expect(flow.getByText('Waiting for Google API access')).toBeVisible()
