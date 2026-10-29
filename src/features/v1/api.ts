@@ -49,6 +49,8 @@ export interface Business {
   coach_notes?: { id: string; text: string; created: string }[]
   /** Photo IDs the owner chose to show customers (public once the page is shared). */
   gallery?: string[]
+  /** What each gallery photo shows (shop front, inside, menu, product, other), by photo ID. */
+  photo_kinds?: Record<string, string>
   /** ID of the shop's icon picture; the app draws a monogram when there is none. */
   icon?: string | null
   registration: string
