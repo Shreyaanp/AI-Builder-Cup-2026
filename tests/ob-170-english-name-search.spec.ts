@@ -24,7 +24,13 @@ test('OB-170: Ask finds "चिंकू जिया" when the customer types "
   }
   const name = `चिंकू जिया ${Date.now().toString().slice(-6)}`
   await seedShop(page, false, name, point)
-  const id = (await (await page.request.get('/api/v1/businesses')).json())[0].id as string
+  // This run's shop by its name, never whichever shop the list happens to start with.
+  const businesses = (await (await page.request.get('/api/v1/businesses')).json()) as Array<{
+    id: string
+    fields: { name: string }
+  }>
+  const id = businesses.find((b) => b.fields.name === name)?.id as string
+  expect(id).toBeTruthy()
   await publish(page, id)
   await page.addInitScript(
     (area) => localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place: area })),

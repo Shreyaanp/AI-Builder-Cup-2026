@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field
 
 from .customer import InquiryInput
 from .gemini_schema import gemini_schema, parse_reply
+from .latin_names import sounds_like
 from .merchant import BusinessFields, CustomFact, MerchantRepository, ProductFields
 from .money import exponent, to_major, to_minor
 from .product_units import UNITS, normalize_unit
@@ -140,7 +141,10 @@ def matches(product_name: str, item: str) -> bool:
     if key and key in SYNONYMS and words(product_name) & set(SYNONYMS[key]):
         return True
     wanted = words(item) - {"of", "the", "and", "some"}
-    return bool(wanted) and wanted <= words(product_name)
+    # 'atta' also finds a supplier's 'आटा': names in any script by their English sound (OB-170).
+    return bool(wanted) and (
+        wanted <= words(product_name) or all(sounds_like(w, product_name) for w in wanted)
+    )
 
 
 # ---------------------------------------------------------------------------------------------
