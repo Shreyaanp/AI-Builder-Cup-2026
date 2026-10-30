@@ -51,7 +51,7 @@ function Group({ title, children }: { title?: string; children: ReactNode }) {
           component="h2"
           variant="titleSmall"
           color="text.secondary"
-          sx={{ px: 1, mb: 1.5 }}
+          sx={{ px: 1, mb: 1 }}
         >
           {title}
         </Typography>
@@ -95,7 +95,7 @@ function Row({
         width: '100%',
         minHeight: 56,
         px: 3,
-        py: 1.5,
+        py: 1,
         gap: 2,
         justifyContent: 'flex-start',
         textAlign: 'start',
@@ -180,6 +180,18 @@ export function YouScreen() {
             <TextField
               select
               fullWidth
+              // The visible text is a div (the native input is hidden), so it follows the body size
+              // instead of adding the 16px field size; the label shrinks to 12px (80% of 15).
+              sx={{
+                '& .MuiSelect-select': {
+                  typography: 'bodyLarge',
+                  lineHeight: '1.5rem',
+                  py: 4,
+                  pl: 4,
+                },
+                '& .MuiInputLabel-root': { typography: 'bodyLarge' },
+                '& .MuiInputLabel-shrink': { transform: 'translate(14px, -9px) scale(0.8)' },
+              }}
               label={t.language}
               value={preferences.language}
               onChange={(event) =>
@@ -210,14 +222,21 @@ export function YouScreen() {
                 value && dispatch({ type: 'appearance', appearance: value })
               }
               aria-labelledby="look-label"
-              sx={{ '& .MuiToggleButton-root': { color: roles.onSurface, minHeight: 48 } }}
+              sx={{
+                '& .MuiToggleButton-root': {
+                  color: roles.onSurface,
+                  minHeight: 48,
+                  p: 2,
+                  typography: 'labelLarge',
+                },
+              }}
             >
               <ToggleButton value="system">{t.themeSystem}</ToggleButton>
               <ToggleButton value="light">{t.themeLight}</ToggleButton>
               <ToggleButton value="dark">{t.themeDark}</ToggleButton>
             </ToggleButtonGroup>
           </Box>
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 2, px: 3, py: 1.5 }}>
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 2, px: 3, py: 1 }}>
             <Box sx={{ flex: 1 }}>
               <Typography variant="labelLarge" sx={{ display: 'block' }}>
                 {tabs.coachVoice}
@@ -227,7 +246,6 @@ export function YouScreen() {
               </Typography>
             </Box>
             <Switch
-              sx={{ height: 48, py: '17px', '& .MuiSwitch-switchBase': { p: '14px' } }}
               checked={ws.speakReplies}
               onChange={(_, checked) => ws.setSpeakReplies(checked)}
               slotProps={{ input: { 'aria-label': t.readAloud } }}

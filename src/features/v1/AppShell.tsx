@@ -179,7 +179,7 @@ export function AppShell() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 1.5,
+              gap: 1,
               pt: 'calc(16px + env(safe-area-inset-top))',
               pl: 'env(safe-area-inset-left)',
             }}
@@ -261,7 +261,7 @@ export function AppShell() {
               display: 'grid',
               gridTemplateColumns: `repeat(${destinations.length}, 1fr)`,
               bgcolor: roles.surfaceContainer,
-              pt: 1.5,
+              pt: 1,
               pb: 'calc(16px + env(safe-area-inset-bottom))',
               px: 'env(safe-area-inset-left)',
             }}
@@ -352,7 +352,7 @@ function NavItem({
       onClick={() => onSelect(item.id)}
       sx={{
         flexDirection: 'column',
-        gap: 0.5,
+        gap: 0,
         minWidth: rail ? 80 : 64,
         minHeight: 56,
         borderRadius: `${shape.lg}px`,
@@ -379,7 +379,7 @@ function NavItem({
         sx={{
           fontWeight: selected ? 700 : 500,
           lineHeight: 1.8,
-          py: 0.5,
+          py: 1,
           'html[lang="ta"] &': { fontFamily: '"Noto Sans Tamil", sans-serif' },
         }}
       >

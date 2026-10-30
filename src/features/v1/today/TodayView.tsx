@@ -95,11 +95,7 @@ export function TodayView({
   return (
     <Stack spacing={{ xs: 4, sm: 5 }} sx={{ pt: { xs: 1, sm: 6 }, pb: 4 }} data-testid="today">
       <Box data-tour="today">
-        <Typography
-          component="h1"
-          variant="headlineSmall"
-          sx={{ overflowWrap: 'anywhere', fontSize: { xs: '1.375rem', sm: undefined } }}
-        >
+        <Typography component="h1" variant="titleLarge" sx={{ overflowWrap: 'anywhere' }}>
           {tt.greet(plan.part, name ?? '')}
         </Typography>
         {plan.line && <LineText line={plan.line} />}
@@ -361,9 +357,9 @@ export function NeedsCard({
         <Typography
           id="today-needs"
           component="h2"
+          variant="titleLarge"
           sx={{
             fontFamily: HAND_FONT,
-            fontSize: '1.5rem',
             fontWeight: 700,
             lineHeight: 1.2,
             px: 1,

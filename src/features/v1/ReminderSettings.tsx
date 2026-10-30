@@ -137,7 +137,7 @@ export function ReminderSettings() {
   }
 
   return (
-    <Box sx={{ px: 3, py: 1.5 }}>
+    <Box sx={{ px: 3, py: 1 }}>
       <FormControlLabel
         sx={{ m: 0, width: '100%', justifyContent: 'space-between', minHeight: 48, gap: 2 }}
         labelPlacement="start"
@@ -152,7 +152,6 @@ export function ReminderSettings() {
             }
             onChange={(_, checked) => void toggle(checked)}
             slotProps={{ input: { 'aria-describedby': 'reminder-status' } }}
-            sx={{ height: 48, py: '17px', '& .MuiSwitch-switchBase': { p: '14px' } }}
           />
         }
       />

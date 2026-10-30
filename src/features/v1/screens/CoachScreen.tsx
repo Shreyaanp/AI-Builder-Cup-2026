@@ -1572,7 +1572,7 @@ function CoachScreen({
           sx={{
             display: 'flex',
             alignItems: 'flex-end',
-            gap: 0.5,
+            gap: 1,
             bgcolor: roles.surfaceContainerHigh,
             borderRadius: `${shape.xl}px`,
             p: 1,
