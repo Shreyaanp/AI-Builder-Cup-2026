@@ -242,8 +242,13 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
       <Typography
         id="today-day-one"
         component="h2"
-        variant="headlineSmall"
-        sx={{ fontFamily: HAND_FONT, fontWeight: 700, lineHeight: 1.2 }}
+        variant="headlineLarge"
+        sx={(t) => ({
+          fontFamily: HAND_FONT,
+          fontWeight: 700,
+          lineHeight: 1.2,
+          [t.breakpoints.up('sm')]: { fontSize: t.typography.headlineMedium.fontSize },
+        })}
       >
         {tt.dayOne(ws.active?.fields.name ?? '')}
       </Typography>
