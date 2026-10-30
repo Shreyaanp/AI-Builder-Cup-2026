@@ -642,6 +642,7 @@ function Impact({ view }: { view: PassportView }) {
   const locale = useLocale()
   const theme = useTheme()
   const coral = theme.chalk.coral
+  const calm = theme.palette.mode === 'dark'
   const meals = view.impact.meals
   const growth = [0, 1, 5, 12, 25, 50].filter((m) => meals >= m).length
   return (
@@ -650,8 +651,9 @@ function Impact({ view }: { view: PassportView }) {
         sx={{
           p: 4,
           borderRadius: '20px',
-          bgcolor: coral.container,
-          color: coral.onContainer,
+          // Soft coral in light; in dark the coral container is a loud brick red (OB-215/OB-145).
+          bgcolor: calm ? theme.material.surfaceContainerLow : coral.container,
+          color: calm ? theme.material.onSurface : coral.onContainer,
           display: 'flex',
           gap: 4,
           alignItems: 'center',

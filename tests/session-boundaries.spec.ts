@@ -263,7 +263,7 @@ for (const [side, action] of [
     await expect(page).toHaveURL(side === 'owner' ? /\/\?app=business$/ : /\/explore\/$/)
     // The front door says what happened in one line.
     const farewell =
-      action === 'delete' ? 'Account deleted. You are signed out.' : 'You are signed out.'
+      action === 'delete' ? 'Your data is deleted. You are signed out.' : 'You are signed out.'
     await expect(page.getByRole('status').filter({ hasText: farewell })).toBeVisible()
     // Captain UX gate (#335): the note sat over the docked Ask box; it now stays in the top part.
     const note = await page.getByRole('status').filter({ hasText: farewell }).boundingBox()

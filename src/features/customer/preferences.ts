@@ -1,3 +1,4 @@
+import { formatAmount } from '../v1/format'
 import type { AccountCopy } from './copy'
 import type { Profile } from './types'
 
@@ -12,11 +13,15 @@ function languageName(code: string, locale: string) {
   }
 }
 
-/** Labels for what the profile remembers, each removable on its own. */
+/**
+ * Labels for what the profile remembers, each removable on its own. The remembered budget has no
+ * currency of its own, so it is shown in the area's money ("S$100", "₹100"; OB-216).
+ */
 export function preferenceChips(
   profile: Profile | null,
   t: AccountCopy,
   locale: string,
+  currency: string,
 ): { key: PreferenceKey; label: string }[] {
   const prefs = profile?.preferences
   if (!prefs) return []
@@ -25,7 +30,7 @@ export function preferenceChips(
     prefs.halal && { key: 'halal' as const, label: t.halal },
     prefs.budget != null && {
       key: 'budget' as const,
-      label: t.budget.replace('{amount}', String(prefs.budget)),
+      label: t.budget.replace('{amount}', formatAmount(prefs.budget, currency, locale)),
     },
     prefs.language && {
       key: 'language' as const,

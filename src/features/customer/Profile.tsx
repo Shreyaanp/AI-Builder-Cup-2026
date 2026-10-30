@@ -129,7 +129,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
   // Until the account is known, Delete could wrongly take the device-only branch for someone
   // who is signed in: it waits (OB-96 review).
   const loading = account.status === 'loading'
-  const chips = preferenceChips(profile, t, locale)
+  const chips = preferenceChips(profile, t, locale, areaCurrency(askedArea()))
   async function remove(key: PreferenceKey, label: string) {
     if (!profile) return
     const reset = { vegetarian: false, halal: false, budget: null, language: '' }[key]
