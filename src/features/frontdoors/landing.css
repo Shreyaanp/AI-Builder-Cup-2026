@@ -79,7 +79,7 @@
   max-width: 34rem;
   color: var(--muted);
   /* The logo's size (the theme's titleLarge); phones use the body size (below). */
-  font-size: 1.375rem !important;
+  font-size: var(--type-logo-size, 1.375rem) !important;
 }
 /* Buttons and the app mock-up use the body size, so the first view has three text sizes. */
 .lp .MuiButton-root.MuiButton-root {
@@ -943,8 +943,9 @@
     flex-shrink: 0;
   }
   .lp-title {
-    font-size: var(--type-displaySmall-size, 2.25rem) !important;
-    line-height: var(--type-displaySmall-line, 2.75rem) !important;
+    font-size: var(--type-hero-size, 2.25rem) !important;
+    line-height: var(--type-hero-line, 2.5rem) !important;
+    letter-spacing: var(--type-hero-tracking, -0.044em) !important;
   }
   .lp-h2,
   .lp-final-title {

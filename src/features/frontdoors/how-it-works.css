@@ -62,15 +62,15 @@
 .hw .hw-lead {
   margin-top: 12px;
   /* The logo's size (the theme's titleLarge); phones use the body size (below). */
-  font-size: 1.375rem;
+  font-size: var(--type-logo-size, 1.375rem);
   line-height: 1.35;
   color: var(--muted);
 }
 /* Three text sizes in the first view: title, the logo's size, body (OB-87). */
 @media (max-width: 599px) {
   .hw .hw-title {
-    font-size: var(--type-displaySmall-size, 2.25rem);
-    line-height: var(--type-displaySmall-line, 2.75rem);
+    font-size: var(--type-hero-size, 2.25rem);
+    line-height: var(--type-hero-line, 2.5rem);
   }
   .hw .hw-lead {
     font-size: var(--type-bodyLarge-size, 1rem);
@@ -186,7 +186,7 @@
 .hw .hw-flow-line {
   margin-top: 12px;
   /* The logo's size (the theme's titleLarge). */
-  font-size: 1.375rem;
+  font-size: var(--type-logo-size, 1.375rem);
   line-height: 1.3;
   font-weight: 700;
   letter-spacing: -0.02em;
