@@ -22,6 +22,9 @@ import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
+import { ConfirmUndo } from '../supply/ConfirmUndo'
+import { supplyChanged } from '../supply/supplyEvents'
+import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 import { useSourcingCopy } from './copy'
 import { deliveryLabel, useOrders, useReceiveOrder } from './orderData'
 import { DemoChip, StatusChip } from './SourcingCards'
@@ -326,6 +329,7 @@ function Thread({
           {s.markReceived}
         </Button>
       )}
+      {OPEN.has(order.status) && <ChangeSentOrder order={order} base={base} onChange={onChange} />}
       {!closed && (
         <Box
           component="form"
@@ -362,6 +366,117 @@ function Thread({
         <Button disabled sx={{ alignSelf: 'flex-start' }}>
           {s.status[order.status]}
         </Button>
+      )}
+    </Stack>
+  )
+}
+
+// What the supplier reads when the owner cancels (backend sourcing.CANCEL_TEXT, in English like
+// every supplier message).
+const CANCEL_TEXT = 'Sorry, please cancel this order.'
+
+/** A sent order: change its quantities or cancel it, the supplier told each time (OB-225). */
+function ChangeSentOrder({
+  order,
+  base,
+  onChange,
+}: {
+  order: Order
+  base: string
+  onChange: () => Promise<void>
+}) {
+  const { api } = useWorkspace()
+  const c = useOrderChangeCopy()
+  const [mode, setMode] = useState<'idle' | 'cancel' | 'change'>('idle')
+  const [error, setError] = useState('')
+  const [amounts, setAmounts] = useState<string[]>([])
+  // A supplier reply can land during the undo countdown; the request uses the newest version.
+  const version = useRef(order.version)
+  useEffect(() => {
+    version.current = order.version
+  }, [order.version])
+  const lines = order.lines
+    .map((line, index) => ({ line, index }))
+    .filter(({ line }) => line.price !== null)
+  const changed = lines
+    .map(({ line, index }) => ({
+      line: index,
+      quantity: Number(amounts[index]),
+      was: line.quantity,
+    }))
+    .filter((row) => row.quantity !== row.was)
+  const valid = changed.length > 0 && changed.every((row) => row.quantity > 0)
+  async function run(path: 'cancel' | 'change', body: object) {
+    setError('')
+    try {
+      await api(`${base}/${path}`, {
+        method: 'POST',
+        body: JSON.stringify({ version: version.current, ...body }),
+      })
+      setMode('idle')
+      supplyChanged()
+    } catch {
+      setError(c.failed)
+    }
+    await onChange()
+  }
+  return (
+    <Stack spacing={2}>
+      {mode === 'idle' ? (
+        <Stack direction="row" sx={{ flexWrap: 'wrap', columnGap: 2, rowGap: 1 }}>
+          <Button
+            onClick={() => {
+              setAmounts(order.lines.map((line) => String(line.quantity)))
+              setMode('change')
+            }}
+            sx={{ minHeight: 48 }}
+          >
+            {c.changeQuantity}
+          </Button>
+          <Button color="error" onClick={() => setMode('cancel')} sx={{ minHeight: 48 }}>
+            {c.cancelOrder}
+          </Button>
+        </Stack>
+      ) : mode === 'cancel' ? (
+        <ConfirmUndo
+          ask={c.cancelAsk(order.supplier.name, CANCEL_TEXT)}
+          confirm={c.sendCancel}
+          counting={c.sendingIn}
+          danger
+          onKeep={() => setMode('idle')}
+          onRun={() => run('cancel', {})}
+        />
+      ) : (
+        <ConfirmUndo
+          ask={c.changeAsk(order.supplier.name)}
+          confirm={c.sendChange}
+          counting={c.sendingIn}
+          disabled={!valid}
+          onKeep={() => setMode('idle')}
+          onRun={() =>
+            run('change', { lines: changed.map(({ line, quantity }) => ({ line, quantity })) })
+          }
+        >
+          {lines.map(({ line, index }) => (
+            <TextField
+              key={index}
+              type="number"
+              label={c.quantityOf(line.name, line.unit)}
+              value={amounts[index]}
+              onChange={(event) =>
+                setAmounts((known) =>
+                  known.map((value, i) => (i === index ? event.target.value : value)),
+                )
+              }
+              slotProps={{ htmlInput: { min: 0, step: 'any', inputMode: 'decimal' } }}
+            />
+          ))}
+        </ConfirmUndo>
+      )}
+      {error && (
+        <Typography role="alert" variant="bodyMedium" color="error">
+          {error}
+        </Typography>
       )}
     </Stack>
   )

@@ -13,7 +13,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
-from app import supply_chain, supply_docs
+from app import supply_chain, supply_coming, supply_docs
 from app.coordinator import DEMO_OWNER_UID, MerchantContext, SupplierGenerator, current
 from app.forecast import ForecastService
 from app.gemini_schema import gemini_schema
@@ -384,7 +384,9 @@ def test_forecast_drafts_a_po_to_the_best_supplier_with_the_reason(shop) -> None
     # A kirana starts with WhatsApp for every supplier; owners can edit those rules.
     rows = supply_chain.relationships(store, "alice", bid)
     assert {row["rules"]["system_format"] for row in rows} == {"text"}
-    assert draft(store, bid)["order"]["number"] == "4500012346"
+    # The same need brings the open draft back, never a duplicate (OB-226, #597).
+    assert draft(store, bid)["order"]["id"] == po["id"]
+    assert draft(store, bid, "sugar")["order"]["number"] == "4500012346"
 
 
 def run_loop(store: MerchantStore, bid: str, system: str) -> dict:
@@ -653,3 +655,72 @@ def test_sap_sandbox_route_shows_the_recorded_sample_when_off(client) -> None:
     answer = client.get(f"/api/v1/businesses/{bid}/supply/sap-sandbox").json()
     assert answer["source"] == "recorded" and answer["reason"] == "off"
     assert answer["orders"] and "<IDOC" in answer["orders"][0]["idoc"]
+
+
+def test_ob226_reorder_counts_what_is_on_its_way_and_never_duplicates(shop) -> None:
+    """#597: after the atta PO is sent, another reorder says it is already on order instead of
+    drafting the same need again; with less on the way it drafts only the rest."""
+    store, bid = shop
+    po = draft(store, bid)["order"]
+    wanted = po["reason"]["wanted"]
+    assert wanted > 0 and po["reason"]["on_order"] == 0
+    if po["blocked"]:
+        fix = next(c["fix"] for c in po["checks"] if c["blocking"] and c["fix"])
+        po = supply_chain.apply_fix(store, "alice", bid, po["id"], po["version"], fix)
+    sent = supply_chain.approve(store, "alice", bid, po["id"], po["version"])
+    coming = sent["lines"][0]["quantity"]
+    assert coming >= wanted
+    again = draft(store, bid, "atta")
+    assert again["status"] == "on_order"
+    assert again["quantity"] == coming and again["arrives"] == sent["delivery"]
+    assert len(supply_chain.orders(store, "alice", bid)) == 1
+    # The owner can still order a named quantity on top.
+    extra = draft(store, bid, "atta", 5)
+    assert extra["status"] == "drafted" and extra["order"]["id"] != sent["id"]
+    # Cancelled orders are not on their way: the need comes back in full.
+    supply_chain.cancel(store, "alice", bid, extra["order"]["id"], extra["order"]["version"])
+    latest = supply_chain.get_po(store, "alice", bid, sent["id"])
+    supply_chain.cancel(store, "alice", bid, sent["id"], latest["version"])
+    fresh = draft(store, bid, "atta")
+    assert fresh["status"] == "drafted" and fresh["order"]["reason"]["on_order"] == 0
+
+
+def test_ob226_less_on_the_way_drafts_only_the_rest(shop) -> None:
+    store, bid = shop
+    full = draft(store, bid)["order"]
+    wanted = full["reason"]["wanted"]
+    supply_chain.cancel(store, "alice", bid, full["id"], full["version"])
+    part = draft(store, bid, "atta", round(wanted / 2))["order"]
+    if part["blocked"]:
+        part = supply_chain.apply_fix(
+            store, "alice", bid, part["id"], part["version"], {"kind": "cash"}
+        )
+    sent = supply_chain.approve(store, "alice", bid, part["id"], part["version"])
+    rest = draft(store, bid, "atta")
+    assert rest["status"] == "drafted"
+    reason = rest["order"]["reason"]
+    assert reason["on_order"] == sent["lines"][0]["quantity"]
+    assert reason["wanted"] == round(wanted - sent["lines"][0]["quantity"], 2)
+
+
+def test_ob226_a_sent_chat_order_counts_as_on_order(shop) -> None:
+    from app import sourcing
+    from app.coordinator import find_suppliers, prepare_order
+
+    store, bid = shop
+    wanted = draft(store, bid)["order"]["reason"]["wanted"]
+    found = asyncio.run(find_suppliers("Atta (wheat flour)"))
+    made = prepare_order(
+        found["suppliers"][0]["id"], [{"name": "Atta (wheat flour)", "quantity": 10, "unit": "kg"}]
+    )
+    order = sourcing.get_order(store, "alice", bid, made["order_id"])
+    assert order["lines"][0]["price"] is not None
+    sourcing.confirm(store, "alice", bid, order["id"], order["version"])
+    coming = supply_coming.on_order(store, "alice", bid, "Atta (wheat flour)", "kg")
+    assert coming["quantity"] == 10 and coming["arrives"]
+    assert coming["draft"] is not None  # the PO drafted above, returned instead of a new one
+    again = draft(store, bid)
+    # The same draft, sized again for the 10 kg now on its way (#603).
+    assert again["existing"] and again["order"]["id"] == coming["draft"]["id"]
+    assert again["order"]["reason"]["wanted"] == round(wanted - 10, 2)
+    assert again["order"]["reason"]["on_order"] == 10

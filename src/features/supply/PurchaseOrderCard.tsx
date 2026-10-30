@@ -29,6 +29,8 @@ import { chalkWrite, stampThud } from '../../design/chalkMotion'
 import { formatShopPrice } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
 import { Code } from './Code'
+import { ConfirmUndo } from './ConfirmUndo'
+import { useOrderChangeCopy } from './orderChangeCopy'
 import { useShowcaseCopy } from './showcaseCopy'
 import { orderTotal, poNumber } from './orderFormat'
 import { useSupplyCopy, type SupplyCopy } from './copy'
@@ -146,6 +148,8 @@ export function PurchaseOrderCard({
   const actions = usePoActions(onChange)
   const [busy, setBusy] = useState<string | null>(null)
   const [justSent, setJustSent] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const c = useOrderChangeCopy()
   const draft = order.status === 'draft'
   const blocking = order.checks.filter((check) => check.blocking)
   const reasons = order.checks.filter((check) => !check.blocking)
@@ -348,7 +352,7 @@ export function PurchaseOrderCard({
         </Stack>
       ) : order.status === 'cancelled' ? (
         <Typography variant="bodyMedium" color="text.secondary">
-          {order.sent ? s.status.cancelled : s.discarded}
+          {order.sent ? c.poCancelled(order.supplier.name, !!order.simulated) : s.discarded}
         </Typography>
       ) : (
         <>
@@ -397,6 +401,27 @@ export function PurchaseOrderCard({
           </Sheet>
           <Timeline order={order} busy={busy} act={act} actions={actions} />
           <NextStep order={order} busy={busy} act={act} actions={actions} />
+          {/* A sent order can still be cancelled until the supplier confirms it (OB-225). */}
+          {(order.status === 'sent' || order.status === 'changed') &&
+            (cancelling ? (
+              <ConfirmUndo
+                ask={c.poCancelAsk(order.supplier.name, !!order.simulated)}
+                confirm={c.cancelOrder}
+                counting={c.cancellingIn}
+                danger
+                onKeep={() => setCancelling(false)}
+                onRun={() => act('cancel', () => actions.cancel(order))}
+              />
+            ) : (
+              <Button
+                color="error"
+                disabled={busy !== null}
+                onClick={() => setCancelling(true)}
+                sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+              >
+                {c.cancelOrder}
+              </Button>
+            ))}
         </>
       )}
     </Box>
@@ -773,12 +798,6 @@ function NextStep({
       ))}
       {order.status === 'changed' && (
         <Stack direction="row" spacing={2} sx={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <Button
-            disabled={busy !== null}
-            onClick={() => void act('cancel', () => actions.cancel(order))}
-          >
-            {s.cancelOrder}
-          </Button>
           <Button
             variant="contained"
             disabled={busy !== null || flags > 0}

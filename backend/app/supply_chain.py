@@ -415,11 +415,22 @@ async def draft_reorder(
     generator: Any,
     demo_owner: str,
     supplier_id: str = "",
+    anyway: bool = False,
 ) -> dict[str, Any]:
-    """Draft the purchase order the forecast and rules call for (nothing is sent)."""
+    """Draft the purchase order the forecast and rules call for (nothing is sent). When some is
+    on order in a unit that does not convert, it asks first: `anyway` is the owner's yes."""
     import anyio
 
     from . import sourcing
+    from .supply_coming import (
+        coming_orders,
+        cover,
+        covered,
+        on_order,
+        resize,
+        settle_drafts,
+        still_wanted,
+    )
 
     context = await anyio.to_thread.run_sync(_owned, store, uid, bid)
     fields = context["business"]["fields"]
@@ -430,6 +441,13 @@ async def draft_reorder(
         mode="json"
     )
     inventory = context["inventory"]
+    known = await anyio.to_thread.run_sync(coming_orders, store, uid, bid)
+
+    def is_covered(product: dict[str, Any], need: dict[str, Any]) -> bool:
+        unit = product.get("unit") or "kg"
+        coming = on_order(store, uid, bid, product["name"], unit, known)
+        return cover(need, coming) in {"full", "units"}
+
     target = await anyio.to_thread.run_sync(
         lambda: pick_item(
             item,
@@ -439,10 +457,17 @@ async def draft_reorder(
             lambda name: any(
                 can_supply(store, bid, p, currency) for p in inventory if p["name"] == name
             ),
+            is_covered,
         )
     )
     if not target:
         return {"status": "needs_item"}
+    if not item.strip():
+        # Items this reorder skipped as covered: their unsent drafts are sized again or withdrawn
+        # too, so none stays approvable at an old size (#603).
+        await anyio.to_thread.run_sync(
+            settle_drafts, store, uid, bid, inventory, forecast, today, known, target
+        )
     product = next(
         (p for p in inventory if p["name"].casefold() == target.casefold()),
         next((p for p in inventory if sourcing.matches(p["name"], target)), None),
@@ -450,13 +475,45 @@ async def draft_reorder(
     unit = (product or {}).get("unit") or "kg"
     need = need_from_forecast(product, forecast, target, today)
     need_by = need["runs_out"] or ""
+    coming = await anyio.to_thread.run_sync(on_order, store, uid, bid, target, unit, known)
     if quantity:
         wanted = float(quantity)
     elif need["daily"]:
-        # Demand until the delivery lands, plus a week of cover, minus what is on the shelf.
-        wanted = max(0.0, need["daily"] * (COVER_DAYS + 2) - need["stock"])
+        wanted = still_wanted(need, coming["quantity"])
     else:
         wanted = 0.0
+    done = not quantity and covered(need, coming["quantity"])
+    if coming["draft"]:
+        # One draft per need: the open one comes back, sized again for what is now on its way
+        # (or with the owner's quantity, if named).
+        waiting: dict[str, Any] = coming["draft"]
+        reason = waiting.setdefault("reason", {})
+        if done and not reason.get("owner_quantity"):
+            # What was sent since covers it: the draft would only over-order.
+            reason["withdrawn"] = "on_order"
+            waiting["status"] = "cancelled"
+            await anyio.to_thread.run_sync(_save, store, bid, waiting)
+            return {"status": "on_order", "item": target, "unit": unit, **coming, "draft": None}
+        if quantity or (
+            need["daily"]
+            and not reason.get("owner_quantity")
+            and reason.get("on_order") != coming["quantity"]
+        ):
+            resize(store, bid, waiting, target, unit, wanted)
+            reason["wanted"] = round(wanted, 2)
+            reason["on_order"] = coming["quantity"]
+            reason["owner_quantity"] = bool(quantity) or bool(reason.get("owner_quantity"))
+        await anyio.to_thread.run_sync(recheck, store, bid, waiting, today)
+        waiting = await anyio.to_thread.run_sync(_save, store, bid, waiting)
+        if waiting.get("auto_send_allowed"):
+            waiting = await anyio.to_thread.run_sync(_send, store, bid, waiting, True)
+        return {"status": "drafted", "order": waiting, "existing": True}
+    if done:
+        return {"status": "on_order", "item": target, "unit": unit, **coming}
+    if not quantity and not anyway and coming["other"]:
+        # 2 pack is on its way and the shop counts litres: the app cannot tell if it is enough,
+        # so the owner says before a second order goes out (#603).
+        return {"status": "on_order_units", "item": target, "unit": unit, **coming}
     candidates = await anyio.to_thread.run_sync(supplier_candidates, store, bid, target, currency)
     if not candidates:
         found = await sourcing.find(
@@ -551,6 +608,7 @@ async def draft_reorder(
             "method": need["method"],
             "wanted": round(wanted, 2),
             "owner_quantity": bool(quantity),
+            "on_order": coming["quantity"],
             "tier_min": best["tier_min"],
             "moq": best["moq"],
             "on_time": best["on_time"],
@@ -593,9 +651,12 @@ def pick_item(
     forecast: dict[str, Any],
     today: date,
     supplied: Callable[[str], bool] = lambda _: False,
+    is_covered: Callable[[dict[str, Any], dict[str, Any]], bool] = lambda _p, _n: False,
 ) -> str:
     """The named item, else the stocked item that runs out first. Items a linked supplier
-    stocks come first: a tea stall reorders tea dust, not the chai it brews from it (#264)."""
+    stocks come first: a tea stall reorders tea dust, not the chai it brews from it (#264).
+    Items whose need is already on its way come last: milk on order must not hide the sugar
+    that still runs out (#603)."""
     from .sourcing import matches
 
     if item.strip():
@@ -606,17 +667,22 @@ def pick_item(
         return named or next(
             (p["name"] for p in inventory if matches(p["name"], item)), item.strip()[:80]
         )
-    soonest: tuple[bool, str, str] | None = None
+    soonest: tuple[bool, bool, str, str] | None = None
     for product in inventory:
         if product.get("stock") is None:
             continue
         need = need_from_forecast(product, forecast, product["name"], today)
         if not need["runs_out"]:
             continue
-        rank = (not supplied(product["name"]), need["runs_out"], product["name"])
-        if soonest is None or rank[:2] < soonest[:2]:
+        rank = (
+            is_covered(product, need),
+            not supplied(product["name"]),
+            need["runs_out"],
+            product["name"],
+        )
+        if soonest is None or rank[:3] < soonest[:3]:
             soonest = rank
-    return soonest[2] if soonest else ""
+    return soonest[3] if soonest else ""
 
 
 def supplier_candidates(
@@ -785,11 +851,37 @@ def _send(store: MerchantRepository, bid: str, po: dict[str, Any], auto: bool) -
 def cancel(
     store: MerchantRepository, uid: str, bid: str, po_id: str, version: int
 ) -> dict[str, Any]:
-    _owned(store, uid, bid)
+    context = _owned(store, uid, bid)
     po = get_po(store, uid, bid, po_id)
     _check_version(po, version)
     if po["status"] not in {"draft", "sent", "changed"}:
         raise HTTPException(409, "This order can no longer be cancelled here.")
+    if po.get("sent"):
+        # The supplier gets the cancellation in its own format, kept with the order's documents
+        # (an order change with every line deleted), so "the supplier was told" is on record.
+        doc = po_document(po).model_copy(
+            update={
+                "kind": "ORDER_CHANGE",
+                "ref": po["number"],
+                "issued": shop_today(context).isoformat(),
+                "note": "Cancelled by the buyer",
+            }
+        )
+        doc.lines = [line.model_copy(update={"status": "rejected"}) for line in doc.lines]
+        system: Format = po["supplier"]["system"]
+        po["documents"].append(
+            document_entry(
+                doc,
+                sender="buyer",
+                raw=render(doc, "json"),
+                raw_format="json",
+                translated=render(doc, system),
+                translated_format=system,
+                flags=[],
+                reader="template",
+            )
+        )
+        po["cancelled_at"] = time.time()
     po["status"] = "cancelled"
     return _save(store, bid, po)
 

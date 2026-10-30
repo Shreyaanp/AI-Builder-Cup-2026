@@ -52,7 +52,7 @@ export function DemoChip() {
   )
 }
 
-export function StatusChip({ status }: { status: OrderStatus }) {
+export function StatusChip({ status, replaced }: { status: OrderStatus; replaced?: boolean }) {
   const roles = useTheme().material
   const s = useSourcingCopy()
   const tone: Record<OrderStatus, [string, string]> = {
@@ -79,7 +79,7 @@ export function StatusChip({ status }: { status: OrderStatus }) {
       component="span"
       size="small"
       icon={icon}
-      label={s.status[status]}
+      label={replaced && status === 'replaced' ? s.replacedChip : s.status[status]}
       sx={{
         height: 24,
         flexShrink: 0,
@@ -443,7 +443,7 @@ export function OrderCard({
           <Typography variant="labelLarge" color="text.secondary" sx={{ flex: 1 }}>
             {s.orderRequest}
           </Typography>
-          <StatusChip status={order.status} />
+          <StatusChip status={order.status} replaced={Boolean(order.replaced_by)} />
         </Stack>
         <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 3 }}>
           <Typography variant="titleMedium" sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
@@ -541,7 +541,7 @@ export function OrderCard({
           </Box>
         ) : order.status === 'replaced' ? (
           <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 3, ...fieldFade }}>
-            {s.discarded}
+            {order.replaced_by ? s.replacedByEdit : s.discarded}
           </Typography>
         ) : (
           <Box sx={{ mt: 3, ...enterRise }}>

@@ -7087,6 +7087,128 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/orders/{order_id}/cancel": {
+      "post": {
+        "summary": "Cancel Order",
+        "description": "Cancel a sent order: the supplier gets the cancellation at once.",
+        "operationId": "cancel_order_api_v1_businesses__business_id__orders__order_id__cancel_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderVersion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancel Order Api V1 Businesses  Business Id  Orders  Order Id  Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/orders/{order_id}/change": {
+      "post": {
+        "summary": "Change Order",
+        "description": "New quantities on a sent order: the supplier is told what changed.",
+        "operationId": "change_order_api_v1_businesses__business_id__orders__order_id__change_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Change Order Api V1 Businesses  Business Id  Orders  Order Id  Change Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/orders/{order_id}/messages": {
       "post": {
         "summary": "Post Order Message",
@@ -10126,7 +10248,7 @@
           },
           "shipped": {
             "items": {
-              "$ref": "#/components/schemas/LineQuantity"
+              "$ref": "#/components/schemas/app__supply_routes__LineQuantity"
             },
             "type": "array",
             "maxItems": 60,
@@ -13402,29 +13524,6 @@
         ],
         "title": "LevelView"
       },
-      "LineQuantity": {
-        "properties": {
-          "line": {
-            "type": "integer",
-            "maximum": 99990.0,
-            "minimum": 1.0,
-            "title": "Line"
-          },
-          "quantity": {
-            "type": "number",
-            "maximum": 1000000.0,
-            "minimum": 0.0,
-            "title": "Quantity"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "line",
-          "quantity"
-        ],
-        "title": "LineQuantity"
-      },
       "LocalSignIn": {
         "properties": {
           "name": {
@@ -13940,6 +14039,31 @@
           "demo"
         ],
         "title": "Opportunity"
+      },
+      "OrderChange": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/app__sourcing_routes__LineQuantity"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Lines"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "lines"
+        ],
+        "title": "OrderChange"
       },
       "OrderMessage": {
         "properties": {
@@ -15759,7 +15883,7 @@
           },
           "received": {
             "items": {
-              "$ref": "#/components/schemas/LineQuantity"
+              "$ref": "#/components/schemas/app__supply_routes__LineQuantity"
             },
             "type": "array",
             "maxItems": 60,
@@ -15867,6 +15991,11 @@
             "maxLength": 120,
             "title": "Supplier Id",
             "default": ""
+          },
+          "anyway": {
+            "type": "boolean",
+            "title": "Anyway",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -18995,6 +19124,52 @@
           "quantity"
         ],
         "title": "Decision"
+      },
+      "app__sourcing_routes__LineQuantity": {
+        "properties": {
+          "line": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 0.0,
+            "title": "Line"
+          },
+          "quantity": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "line",
+          "quantity"
+        ],
+        "title": "LineQuantity"
+      },
+      "app__supply_routes__LineQuantity": {
+        "properties": {
+          "line": {
+            "type": "integer",
+            "maximum": 99990.0,
+            "minimum": 1.0,
+            "title": "Line"
+          },
+          "quantity": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Quantity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "line",
+          "quantity"
+        ],
+        "title": "LineQuantity"
       },
       "app__trust_routes__Decision": {
         "properties": {

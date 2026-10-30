@@ -8,18 +8,23 @@ import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useSourcingCopy } from '../sourcing/copy'
 import { Sheet } from '../v1/Sheet'
-import { dayLabel } from '../supply/supplyData'
+import { dayLabel, leadNeed, useOnOrderText, useSupply } from '../supply/supplyData'
+import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 
 type Forecast = components['schemas']['Forecast']
 const LOW_STOCK = 5
 
 export function PrepPlanTile() {
   const { api, active, products, startCoachDraft, readOnlyMessage } = useWorkspace()
-  // Only the public demo (a read-only workspace) gets the shared rule and the detail sheet.
+  // Only the public demo (a read-only workspace) gets the detail sheet.
   const demo = Boolean(readOnlyMessage)
   const t = useCopy()
   const s = useSourcingCopy()
+  const c = useOrderChangeCopy()
   const locale = useLocale()
+  // The supply needs are the one source for "runs out" and "on order", same as Today.
+  const { data: supply } = useSupply(true)
+  const onOrderText = useOnOrderText()
   const [loaded, setLoaded] = useState<{
     id: string
     revision: number
@@ -50,30 +55,18 @@ export function PrepPlanTile() {
   const tomorrowRows = value?.predictions?.filter((row) => row.date === tomorrow) ?? []
   const rows = tomorrowRows.slice(0, 3)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
-  // Runs out: the first forecast day on which the week's predicted demand passes a counted
-  // stock ("Croissant runs out Thu, Oct 23"). Same rule and same date format as the supply card
-  // on Today (the forecast's upper bound), so the two never disagree. With no forecast for it,
-  // a stock of at most 5 is running low. Items without a stock count never show here.
-  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' })
-  const low = products.flatMap((product) => {
-    if (product.stock == null) return []
-    const days = (value?.predictions ?? [])
-      .filter((row) => row.item.toLowerCase() === product.name.toLowerCase())
-      .sort((a, b) => a.date.localeCompare(b.date))
-    let demand = 0
-    for (const row of days) {
-      if (demo) {
-        demand += row.upper ?? row.quantity
-        if (demand > product.stock) return [{ name: product.name, day: dayLabel(row.date, locale) }]
-      } else {
-        demand += row.quantity
-        if (demand >= product.stock)
-          return [{ name: product.name, day: weekday.format(new Date(`${row.date}T00:00:00Z`)) }]
-      }
-    }
-    return days.length === 0 && product.stock <= LOW_STOCK ? [{ name: product.name, day: '' }] : []
-  })
-  const first = low[0]
+  // Runs out and on order come from the supply needs only, the list Today reads, so the two
+  // screens cannot disagree (#603): the first need not yet covered leads, with how many more.
+  // Only items with no forecast at all fall back to "running low" at a stock of 5 or less.
+  const { need, more } = leadNeed(supply?.needs)
+  const onOrder = need ? onOrderText(need) : ''
+  const forecastFor = new Set((value?.predictions ?? []).map((row) => row.item.toLowerCase()))
+  const low =
+    supply && value && !need
+      ? products.filter(
+          (p) => p.stock != null && p.stock <= LOW_STOCK && !forecastFor.has(p.name.toLowerCase()),
+        )
+      : []
   return (
     <>
       <Tile
@@ -166,12 +159,12 @@ export function PrepPlanTile() {
           </Typography>
         )}
       </Sheet>
-      {first && (
+      {(need || low.length > 0) && (
         <Tile
           icon={<PackageSearch size={20} />}
           label={
-            first.day
-              ? s.runsOut(first.name, first.day)
+            need
+              ? s.runsOut(need.item, dayLabel(need.runs_out, locale))
               : s.runningLow(
                   low
                     .map((item) => item.name)
@@ -179,9 +172,18 @@ export function PrepPlanTile() {
                     .join(', '),
                 )
           }
-          value={s.findSuppliers}
-          onClick={() => startCoachDraft(s.lowMessage(first.name.toLowerCase()), { send: true })}
-        />
+          value={need?.covered ? onOrder : s.findSuppliers}
+          onClick={() => {
+            const name = (need?.item ?? low[0]?.name ?? '').toLowerCase()
+            startCoachDraft(need?.covered ? c.reorderPrompt(name) : s.lowMessage(name), {
+              send: true,
+            })
+          }}
+        >
+          {/* Partly on order still needs ordering: what is coming shows under Find suppliers. */}
+          {need && !need.covered && onOrder && <Supporting>{onOrder}</Supporting>}
+          {more > 0 && <Supporting>{c.moreRunOut(more)}</Supporting>}
+        </Tile>
       )}
     </>
   )

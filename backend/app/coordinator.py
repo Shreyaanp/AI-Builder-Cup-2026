@@ -1206,6 +1206,12 @@ def prepare_order(
     order = sourcing.new_order(shop, pin, items, note, delivery, distance, now)
     if replaces_order_id:
         order["replaces"] = replaces_order_id
+        # The old draft is superseded at once (OB-222): only the new card can be sent.
+        for old in ctx.store.supplier_orders(ctx.uid, ctx.business_id):
+            if old["id"] == replaces_order_id and old["status"] == "draft":
+                old["status"] = "replaced"
+                old["replaced_by"] = order["id"]
+                sourcing.save(ctx.store, ctx.uid, ctx.business_id, old, now)
     ctx.store.save_supplier_order(ctx.uid, ctx.business_id, order)
     missing = [line["name"] for line in order["lines"] if line["price"] is None]
     return {

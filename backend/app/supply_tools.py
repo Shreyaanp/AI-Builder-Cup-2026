@@ -129,7 +129,9 @@ def set_supplier_rules(
     }
 
 
-async def draft_reorder(item: str = "", quantity: float | None = None) -> dict[str, Any]:
+async def draft_reorder(
+    item: str = "", quantity: float | None = None, anyway: bool = False
+) -> dict[str, Any]:
     """Draft a purchase order from the forecast, stock and the supplier rules: how much to
     order (covering demand until delivery plus a week, rounded to the MOQ and packs), from the
     best supplier (price tier, arrives before the shop runs out, credit left). Use it for
@@ -137,7 +139,9 @@ async def draft_reorder(item: str = "", quantity: float | None = None) -> dict[s
     an item running out. item: only if the owner named one (else the item that runs out
     first); quantity only if they said it. Nothing is sent: the owner approves the card.
     Explain the choice in one line from reason (stock, runs_out, supplier, price tier, arrival,
-    credit) and name any broken rule. If the supplier is demo, say it is a simulated supplier."""
+    credit) and name any broken rule. If the supplier is demo, say it is a simulated supplier.
+    anyway: only after the owner said yes to ordering more of something already on order in
+    another unit (status on_order_other_unit)."""
     from . import supply_chain
     from .forecast import ForecastService
 
@@ -159,6 +163,7 @@ async def draft_reorder(item: str = "", quantity: float | None = None) -> dict[s
             service,
             _generator(),
             DEMO_OWNER_UID,
+            anyway=anyway,
         )
     except HTTPException as error:
         return _invalid(error, ctx)
@@ -172,11 +177,36 @@ async def draft_reorder(item: str = "", quantity: float | None = None) -> dict[s
             "status": "no_supplier",
             "instruction": "Say no supplier near them stocks this item; ask for another name.",
         }
+    if result["status"] == "on_order":
+        return {
+            "status": "already_on_order",
+            "item": result["item"],
+            "on_order": result["quantity"],
+            "unit": result["unit"],
+            "arrives": result["arrives"] or None,
+            "instruction": "Say this much is already on order and when it arrives; no new order "
+            "is needed. Offer to draft one anyway only if the owner names a quantity.",
+        }
+    if result["status"] == "on_order_units":
+        return {
+            "status": "on_order_other_unit",
+            "item": result["item"],
+            "unit": result["unit"],
+            "on_order": [{**row, "arrives": row["arrives"] or None} for row in result["other"]],
+            "instruction": "Say this much is already on order, in its own unit, and when it "
+            "arrives; the app cannot tell if it is enough. Ask if they want to order more. Only "
+            "if they say yes, call draft_reorder again with anyway=true.",
+        }
     order = result["order"]
     return {
         **supply_chain.summary(order),
         "card_id": _card(ctx, "purchase_order", order),
         "status": "sent_automatically" if order.get("auto_sent") else "needs_owner_tap",
+        **(
+            {"instruction": "This draft was already waiting; say so and do not make another."}
+            if result.get("existing")
+            else {}
+        ),
     }
 
 

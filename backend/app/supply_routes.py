@@ -6,7 +6,7 @@ import anyio
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import coordinator, supply_chain, supply_io, supply_outbound
+from . import coordinator, supply_chain, supply_coming, supply_io, supply_outbound
 from .forecast import ForecastService
 from .limits import enforce_limits
 from .merchant_routes import consented_owner, owner, store
@@ -37,6 +37,8 @@ class ReorderBody(BaseModel):
     item: str = Field(default="", max_length=80)
     quantity: float | None = Field(default=None, gt=0, le=100_000)
     supplier_id: str = Field(default="", max_length=120)
+    # Yes to "2 pack is already on order, order more?" when the units do not compare (#603).
+    anyway: bool = False
 
 
 class Fix(BaseModel):
@@ -105,10 +107,33 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
         product = next(p for p in context["inventory"] if p["name"] == item)
         return supply_chain.can_supply(store(request), business_id, product, currency)
 
+    # What is already on its way, so Today does not ask for the same milk twice (OB-226); the
+    # orders are read once for every need.
+    known = (
+        await anyio.to_thread.run_sync(
+            supply_coming.coming_orders, store(request), uid, business_id
+        )
+        if needs
+        else ([], [])
+    )
     for need in needs:
         need["supplied"] = await anyio.to_thread.run_sync(supplied, need["item"])
-    # Today leads with what a linked supplier can bring: chai runs out because tea dust does.
-    needs.sort(key=lambda need: (not need["supplied"], need["runs_out"]))
+        unit = (
+            next((p.get("unit") for p in context["inventory"] if p["name"] == need["item"]), None)
+            or "kg"
+        )
+        coming = supply_coming.on_order(store(request), uid, business_id, need["item"], unit, known)
+        need["on_order"], need["arrives"] = coming["quantity"], coming["arrives"]
+        need["on_order_other"] = [
+            {"quantity": row["quantity"], "unit": row["unit"], "arrives": row["arrives"]}
+            for row in coming["other"]
+        ]
+        # The one answer to "is this handled?": Today and Grow both lead with the first need
+        # that is not, so milk on order never hides the sugar that still runs out (#603).
+        need["cover"] = supply_coming.cover(need, coming)
+        need["covered"] = need["cover"] in {"full", "units"}
+    # Then what a linked supplier can bring first: chai runs out because tea dust does.
+    needs.sort(key=lambda need: (need["covered"], not need["supplied"], need["runs_out"]))
     return {"suppliers": rows, "orders": orders, "needs": needs}
 
 
@@ -179,6 +204,7 @@ async def reorder(business_id: str, body: ReorderBody, request: Request) -> dict
         coordinator._generator(),
         coordinator.DEMO_OWNER_UID,
         body.supplier_id,
+        body.anyway,
     )
 
 
