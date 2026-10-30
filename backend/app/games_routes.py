@@ -29,6 +29,7 @@ from .games import (
     use_perk,
 )
 from .limits import enforce_limits
+from .merchant_routes import store
 from .passport import PrizeKind, local_now, week_of
 from .passport_routes import (
     PassportView,
@@ -36,10 +37,12 @@ from .passport_routes import (
     ScratchView,
     build_view,
     coops,
+    home_today,
     passports,
     scratch_view,
     shop_perks,
 )
+from .region import shop_zone
 
 router = APIRouter(prefix="/api/v1")
 
@@ -90,8 +93,14 @@ async def scratch(
     principal = await customer(request)
     await enforce_limits(request, [("passport", principal.uid)], anonymous=True)
     now = time.time()
+    zone = tz
+    held = await anyio.to_thread.run_sync(passports(request).get, principal.uid)
+    shop_id = next((t.shop_id for t in held.scratch if t.id == ticket_id[:40]), "") if held else ""
+    if shop_id:
+        shop = await anyio.to_thread.run_sync(store(request).public_shop, shop_id)
+        zone = shop_zone(shop) if shop else tz
     state, ticket = await anyio.to_thread.run_sync(
-        passports(request).edit, principal.uid, lambda s: reveal(s, ticket_id[:40], now)
+        passports(request).edit, principal.uid, lambda s: reveal(s, ticket_id[:40], now, zone)
     )
     if ticket is None:
         raise HTTPException(404, "SCRATCH_NOT_FOUND")
@@ -117,7 +126,11 @@ async def freeze(
 ) -> FreezeResult:
     principal = await customer(request)
     await enforce_limits(request, [("passport", principal.uid)], anonymous=True)
-    current = week_of(local_now(tz, time.time()).date())
+    current = week_of(
+        await home_today(
+            request, await anyio.to_thread.run_sync(passports(request).get, principal.uid), tz
+        )
+    )
     state, verdict = await anyio.to_thread.run_sync(
         passports(request).edit, principal.uid, lambda s: plan_freeze(s, current, body.week)
     )
